@@ -645,19 +645,21 @@ const upsertEvent = async (
 };
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
 export const upsertEntitiesFromEvent = async (event: Event) => {
+  // First check if this event has already been processed by looking for an existing transaction
   const existingTransaction = await transactionRepository.findOne({
     where: { event: { id: event.id } },
   });
-  const newTransaction = existingTransaction || new Transaction();
+
+  if (existingTransaction) {
+    console.log(`Event ${event.id} has already been processed, skipping`);
+    return;
+  }
+
+  let skipTransaction = false;
+  const newTransaction = new Transaction();
   newTransaction.event = event;
 
-  // set to true if the Event does not require a transaction (i.e. a Transfer event)
-  let skipTransaction = false;
-
-  const chainId = event.market.chainId;
-  const address = event.market.address;
-  const market = event.market;
-
+  // Process the event based on its type
   switch (event.logData.eventName) {
     // Market events
     case EventType.MarketInitialized: {
@@ -670,9 +672,9 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       } as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
         marketCreatedArgs,
-        chainId,
-        address,
-        market
+        event.market.chainId,
+        event.market.address,
+        event.market
       );
       skipTransaction = true;
       break;
@@ -687,9 +689,9 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       } as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
         marketUpdatedArgs,
-        chainId,
-        address,
-        market
+        event.market.chainId,
+        event.market.address,
+        event.market
       );
       skipTransaction = true;
       break;
@@ -704,17 +706,18 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         endTime: event.logData.args.endTime,
         startingSqrtPriceX96: event.logData.args.startingSqrtPriceX96,
       } as EpochCreatedEventLog;
-      await createEpochFromEvent(epochCreatedArgs, market);
+      await createEpochFromEvent(epochCreatedArgs, event.market);
 
       const marketInfo = MARKETS.find(
         (m) =>
-          m.marketChainId === chainId &&
-          m.deployment.address.toLowerCase() === address.toLowerCase()
+          m.marketChainId === event.market.chainId &&
+          m.deployment.address.toLowerCase() ===
+            event.market.address.toLowerCase()
       );
       if (marketInfo) {
         await createOrUpdateEpochFromContract(
           marketInfo,
-          market,
+          event.market,
           Number(epochCreatedArgs.epochId)
         );
       }
@@ -725,7 +728,10 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       console.log('Market settled event. event: ', event);
       const epoch = await epochRepository.findOne({
         where: {
-          market: { address, chainId },
+          market: {
+            address: event.market.address,
+            chainId: event.market.chainId,
+          },
           epochId: Number(event.logData.args.epochId),
         },
         relations: ['market'],
@@ -742,7 +748,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         epoch.settlementPriceD18 = settlementPriceD18.toString();
         await epochRepository.save(epoch);
       } else {
-        console.error('Epoch not found for market: ', market);
+        console.error('Epoch not found for market: ', event.market);
       }
       skipTransaction = true;
       break;
@@ -813,30 +819,35 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       // Ensure all required fields have values to prevent UpdateValuesMissingError
       if (!newTransaction.baseToken) newTransaction.baseToken = '0';
       if (!newTransaction.quoteToken) newTransaction.quoteToken = '0';
-      if (!newTransaction.borrowedBaseToken) newTransaction.borrowedBaseToken = '0';
-      if (!newTransaction.borrowedQuoteToken) newTransaction.borrowedQuoteToken = '0';
+      if (!newTransaction.borrowedBaseToken)
+        newTransaction.borrowedBaseToken = '0';
+      if (!newTransaction.borrowedQuoteToken)
+        newTransaction.borrowedQuoteToken = '0';
       if (!newTransaction.tradeRatioD18) newTransaction.tradeRatioD18 = '0';
 
       // Save the transaction
       console.log('Saving new transaction: ', newTransaction);
-      const savedTransaction = await transactionRepository.save(newTransaction);
+      await transactionRepository.save(newTransaction);
 
       // Then create or modify the position with the saved transaction
       try {
-        await createOrModifyPositionFromTransaction(savedTransaction);
+        await createOrModifyPositionFromTransaction(newTransaction);
       } catch (positionError) {
         console.error('Error creating or modifying position:', positionError);
-        // Continue processing even if position creation fails
-        // This allows us to at least save the transaction data
       }
     } catch (error) {
       console.error('Error processing event:', error);
-      if (error && typeof error === 'object' && 'code' in error) {
-        if (error.code === '23505') {
-          console.warn(
-            'Duplicate key error - this event may have already been processed'
-          );
-        }
+      // If it's a duplicate key error, just log and continue
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === '23505'
+      ) {
+        console.warn(
+          'Duplicate key error - this event may have already been processed'
+        );
+        return;
       }
       throw error;
     }

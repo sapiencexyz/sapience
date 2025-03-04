@@ -242,17 +242,14 @@ const updateTransactionStateFromEvent = (
 };
 
 /**
- * Upsert a CollateralTransfer given a Transaction.
- * @param transaction the Transaction to upsert a CollateralTransfer for
+ * Find or create a CollateralTransfer for a Transaction.
+ * @param transaction the Transaction to find or create a CollateralTransfer for
  */
 export const insertCollateralTransfer = async (transaction: Transaction) => {
   const eventArgs = transaction.event.logData.args;
 
   if (!eventArgs.deltaCollateral || eventArgs.deltaCollateral == '0') {
-    console.log(
-      'Delta collateral not found in eventArgs',
-      eventArgs.deltaCollateral
-    );
+    console.log('Delta collateral not found in eventArgs');
     return;
   }
 
@@ -269,49 +266,61 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
 
   // Create a new one if it doesn't exist
   const transfer = new CollateralTransfer();
-
-  // Update the transfer properties
   transfer.transactionHash = transaction.event.transactionHash;
   transfer.timestamp = Number(transaction.event.timestamp);
   transfer.owner = transaction.event.logData.args.sender as string;
   transfer.collateral = eventArgs.deltaCollateral as string;
 
-  // Assign to transaction
-  transaction.collateralTransfer = transfer;
+  // Save and assign to transaction
+  try {
+    const savedTransfer = await collateralTransferRepository.save(transfer);
+    transaction.collateralTransfer = savedTransfer;
+  } catch (error) {
+    // If we get a duplicate key error, try to find the existing transfer again
+    // This handles race conditions
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === '23505'
+    ) {
+      const retryTransfer = await collateralTransferRepository.findOne({
+        where: { transactionHash: transaction.event.transactionHash },
+      });
+      if (retryTransfer) {
+        transaction.collateralTransfer = retryTransfer;
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
+  }
 };
 
 /**
- * Upsert a MarketPrice given a Transaction.
- * @param transaction the Transaction to upsert a MarketPrice for
+ * Create a MarketPrice for a Transaction.
+ * @param transaction the Transaction to create a MarketPrice for
  */
 export const insertMarketPrice = async (transaction: Transaction) => {
   if (
     transaction.type === TransactionType.LONG ||
     transaction.type === TransactionType.SHORT
   ) {
-    console.log('Upserting market price for transaction: ', transaction);
-
-    // Check if a market price already exists for this transaction
-    const existingMarketPrice = await marketPriceRepository.findOne({
-      where: { transaction: { id: transaction.id } },
-    });
-
-    if (existingMarketPrice) {
-      // If it exists, just use it
-      transaction.marketPrice = existingMarketPrice;
-      return;
-    }
-
-    // Create a new market price if it doesn't exist
+    // Create a new market price
     const newMp = new MarketPrice();
-    const finalPrice = transaction.event.logData.args.finalPrice;
-    newMp.value = finalPrice as string;
+    const finalPrice = transaction.event.logData.args.finalPrice as string;
+    newMp.value = finalPrice;
     newMp.timestamp = transaction.event.timestamp;
 
-    // Assign to transaction
-    transaction.marketPrice = newMp;
-
-    console.log('upserting market price: ', newMp);
+    // Save and assign to transaction
+    try {
+      const savedMp = await marketPriceRepository.save(newMp);
+      transaction.marketPrice = savedMp;
+    } catch (error) {
+      console.error('Error saving market price:', error);
+      throw error;
+    }
   }
 };
 
@@ -465,28 +474,34 @@ export const updateTransactionFromAddLiquidityEvent = (
 
   newTransaction.lpBaseDeltaToken = event.logData.args.addedAmount0 as string;
   newTransaction.lpQuoteDeltaToken = event.logData.args.addedAmount1 as string;
-  
+
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken || newTransaction.baseToken === '') {
     newTransaction.baseToken = '0';
   }
-  
+
   if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
     newTransaction.quoteToken = '0';
   }
-  
-  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
     newTransaction.borrowedBaseToken = '0';
   }
-  
-  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
     newTransaction.borrowedQuoteToken = '0';
   }
-  
+
   if (!newTransaction.collateral || newTransaction.collateral === '') {
     newTransaction.collateral = '0';
   }
-  
+
   if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
     newTransaction.tradeRatioD18 = '0';
   }
@@ -510,28 +525,34 @@ export const updateTransactionFromLiquidityClosedEvent = async (
     .collectedAmount0 as string;
   newTransaction.lpQuoteDeltaToken = event.logData.args
     .collectedAmount1 as string;
-    
+
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken || newTransaction.baseToken === '') {
     newTransaction.baseToken = '0';
   }
-  
+
   if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
     newTransaction.quoteToken = '0';
   }
-  
-  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
     newTransaction.borrowedBaseToken = '0';
   }
-  
-  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
     newTransaction.borrowedQuoteToken = '0';
   }
-  
+
   if (!newTransaction.collateral || newTransaction.collateral === '') {
     newTransaction.collateral = '0';
   }
-  
+
   if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
     newTransaction.tradeRatioD18 = '0';
   }
@@ -566,28 +587,34 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
         BigInt(-1)
       ).toString()
     : (event.logData.args.increasedAmount1 as string);
-    
+
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken || newTransaction.baseToken === '') {
     newTransaction.baseToken = '0';
   }
-  
+
   if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
     newTransaction.quoteToken = '0';
   }
-  
-  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
     newTransaction.borrowedBaseToken = '0';
   }
-  
-  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
     newTransaction.borrowedQuoteToken = '0';
   }
-  
+
   if (!newTransaction.collateral || newTransaction.collateral === '') {
     newTransaction.collateral = '0';
   }
-  
+
   if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
     newTransaction.tradeRatioD18 = '0';
   }
@@ -664,24 +691,30 @@ export const updateTransactionFromPositionSettledEvent = async (
 
   updateTransactionStateFromEvent(newTransaction, event);
   newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || '0';
-  
+
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken || newTransaction.baseToken === '') {
     newTransaction.baseToken = '0';
   }
-  
+
   if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
     newTransaction.quoteToken = '0';
   }
-  
-  if (!newTransaction.borrowedBaseToken || newTransaction.borrowedBaseToken === '') {
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
     newTransaction.borrowedBaseToken = '0';
   }
-  
-  if (!newTransaction.borrowedQuoteToken || newTransaction.borrowedQuoteToken === '') {
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
     newTransaction.borrowedQuoteToken = '0';
   }
-  
+
   if (!newTransaction.collateral || newTransaction.collateral === '') {
     newTransaction.collateral = '0';
   }
