@@ -19,7 +19,7 @@ const INDEX_CANDLES_QUERY = gql`
       epochId: $epochId
       from: $timestamp
       to: $timestamp
-      interval: 1
+      interval: 60
     ) {
       timestamp
       close
