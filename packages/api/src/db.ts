@@ -24,7 +24,8 @@ const devDataSource: DataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   synchronize: false,
-  logging: ['warn', 'error', 'log', 'info'],
+  logging: true,
+  logger: 'advanced-console',
   migrations: ['src/migrations/*.ts'],
   ssl: !process.env.DATABASE_URL?.includes('localhost'),
   entities: [
@@ -45,7 +46,8 @@ const postgresDataSource: DataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   synchronize: false,
-  logging: ['warn', 'error', 'log', 'info'],
+  logging: true,
+  logger: 'advanced-console',
   migrations: ['src/migrations/*.ts'],
   entities: [
     ResourcePrice,

@@ -8,7 +8,6 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import {
-  Check,
   Info,
   ChevronDown,
   ChevronUp,
@@ -111,10 +110,10 @@ const useLPPositions = (
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) => {
-  const { chainId, address: marketAddress } = periodContext;
+  const { chainId, address: marketAddress, epoch } = periodContext;
 
   return useQuery({
-    queryKey: ['lpPositions', walletAddress, chainId, marketAddress],
+    queryKey: ['lpPositions', walletAddress, chainId, marketAddress, epoch],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: LP_POSITIONS_QUERY,
@@ -129,8 +128,12 @@ const useLPPositions = (
         throw new Error(errors[0].message);
       }
 
-      // Filter for LP positions only
-      return data.positions.filter((position: any) => position.isLP);
+      // Filter for LP positions only and within the current epoch
+      return data.positions.filter((position: any) => {
+        const { isLP } = position;
+        const positionEpochId = Number(position.epoch?.epochId);
+        return isLP && positionEpochId === epoch;
+      });
     },
     enabled:
       Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
@@ -218,10 +221,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   const { endTime } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
-      id: 'settled',
-      desc: false,
-    },
-    {
       id: 'position',
       desc: true,
     },
@@ -257,9 +256,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         'pnl',
       ].includes(columnId)
     ) {
-      return row.original.isSettled ? (
-        <span className="font-medium">Position Settled</span>
-      ) : (
+      return (
         <span className="font-medium text-muted-foreground">
           Position Closed
         </span>
@@ -345,8 +342,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({
           </Link>
         );
       }
-      case 'settled':
-        return value ? <Check className="h-4 w-4 text-green-500 mr-2" /> : null;
       default:
         return value;
     }
@@ -395,15 +390,6 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         header: PnLHeaderCell,
         accessorFn: (row) => row.positionId,
       },
-      ...(expired
-        ? [
-            {
-              id: 'settled',
-              header: 'Settled',
-              accessorKey: 'isSettled',
-            },
-          ]
-        : []),
       {
         id: 'more',
         header: '',
@@ -506,9 +492,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
                 'highPrice',
                 'pnl',
               ];
-              const statusCell = row.original.isSettled ? (
-                <span className="font-medium">Position Settled</span>
-              ) : (
+              const statusCell = (
                 <span className="font-medium text-muted-foreground">
                   Position Closed
                 </span>

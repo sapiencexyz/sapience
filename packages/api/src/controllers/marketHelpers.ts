@@ -89,85 +89,136 @@ export const handlePositionSettledEvent = async (event: Event) => {
 export const createOrModifyPositionFromTransaction = async (
   transaction: Transaction
 ) => {
-  const eventArgs = transaction.event.logData.args;
-  const epochId = eventArgs.epochId;
+  try {
+    const eventArgs = transaction.event.logData.args;
+    const epochId = eventArgs.epochId;
 
-  const epoch = await epochRepository.findOne({
-    where: {
-      epochId: Number(epochId),
-      market: { address: transaction.event.market.address },
-    },
-  });
-  if (!epoch) {
-    console.error(
-      'Epoch not found: ',
-      epochId,
-      'market:',
-      transaction.event.market.address
-    );
-    return;
-  }
+    if (!epochId) {
+      console.error('No epochId found in event args:', eventArgs);
+      return;
+    }
 
-  const existingPosition = await positionRepository.findOne({
-    where: {
-      epoch: {
+    const epoch = await epochRepository.findOne({
+      where: {
         epochId: Number(epochId),
         market: { address: transaction.event.market.address },
       },
-      positionId: Number(transaction.event.logData.args.positionId),
-    },
-    relations: [
-      'transactions',
-      'epoch',
-      'epoch.market',
-      'transactions.event',
-      'transactions.marketPrice',
-      'transactions.collateralTransfer',
-    ],
-  });
+    });
+    if (!epoch) {
+      console.error(
+        'Epoch not found: ',
+        epochId,
+        'market:',
+        transaction.event.market.address
+      );
+      return;
+    }
 
-  const position = existingPosition || new Position();
+    const positionId = Number(transaction.event.logData.args.positionId);
+    if (isNaN(positionId)) {
+      console.error(
+        'Invalid positionId:',
+        transaction.event.logData.args.positionId
+      );
+      return;
+    }
 
-  if (existingPosition) {
-    console.log('existing position: ', existingPosition);
+    const existingPosition = await positionRepository.findOne({
+      where: {
+        epoch: {
+          epochId: Number(epochId),
+          market: { address: transaction.event.market.address },
+        },
+        positionId: positionId,
+      },
+      relations: [
+        'transactions',
+        'epoch',
+        'epoch.market',
+        'transactions.event',
+        'transactions.marketPrice',
+        'transactions.collateralTransfer',
+      ],
+    });
+
+    // Create a new position or use the existing one
+    const position = existingPosition || new Position();
+
+    if (existingPosition) {
+      console.log('Found existing position:', existingPosition.id);
+    } else {
+      console.log('Creating new position for positionId:', positionId);
+    }
+
+    // Set all required fields explicitly
+    position.positionId = positionId;
+    position.epoch = epoch;
+    position.owner = (eventArgs.sender as string) || position.owner || '';
+    position.isLP = isLpPosition(transaction);
+
+    // Initialize transactions array if it doesn't exist
+    if (!position.transactions) {
+      position.transactions = [];
+    }
+
+    // Add the current transaction to the position's transactions
+    // Check if the transaction is already in the array to avoid duplicates
+    const transactionExists = position.transactions.some(
+      (t) => t.id === transaction.id
+    );
+    if (!transactionExists) {
+      position.transactions.push(transaction);
+
+      // Update the transaction with a reference to this position
+      // But don't save it here - it will be saved by the caller
+      transaction.position = position;
+    }
+
+    // Latest position state - ensure all fields have values
+    position.baseToken = (eventArgs.positionVgasAmount as string) || '0';
+    position.quoteToken = (eventArgs.positionVethAmount as string) || '0';
+    position.borrowedBaseToken =
+      (eventArgs.positionBorrowedVgas as string) || '0';
+    position.borrowedQuoteToken =
+      (eventArgs.positionBorrowedVeth as string) || '0';
+    position.collateral = (eventArgs.positionCollateralAmount as string) || '0';
+
+    // LP Position state - ensure all fields have values
+    position.lpBaseToken =
+      (eventArgs.loanAmount0 as string) ||
+      (eventArgs.addedAmount0 as string) ||
+      '0';
+    position.lpQuoteToken =
+      (eventArgs.loanAmount1 as string) ||
+      (eventArgs.addedAmount1 as string) ||
+      '0';
+
+    // LP Position configuration
+    if (eventArgs.upperTick && eventArgs.lowerTick) {
+      position.highPriceTick = eventArgs.upperTick.toString();
+      position.lowPriceTick = eventArgs.lowerTick.toString();
+    } else {
+      // Ensure these fields have default values if not set
+      if (!position.highPriceTick) position.highPriceTick = '0';
+      if (!position.lowPriceTick) position.lowPriceTick = '0';
+    }
+
+    // Ensure isSettled has a default value
+    if (position.isSettled === undefined || position.isSettled === null) {
+      position.isSettled = false;
+    }
+
+    console.log('Saving position: ', position.id || 'new');
+
+    // Use save method which handles both insert and update
+    const savedPosition = await positionRepository.save(position);
+    console.log('Position saved successfully:', savedPosition.id);
+
+    return savedPosition;
+  } catch (error) {
+    console.error('Error in createOrModifyPositionFromTransaction:', error);
+    throw error;
   }
-
-  position.positionId = Number(eventArgs.positionId);
-  position.epoch = epoch;
-  position.owner = (eventArgs.sender as string) || position.owner;
-  position.isLP = isLpPosition(transaction);
-  position.transactions = position.transactions || [];
-  position.transactions.push(transaction);
-
-  // Latest position state
-  position.baseToken = eventArgs.positionVgasAmount as string;
-  position.quoteToken = eventArgs.positionVethAmount as string;
-  position.borrowedBaseToken = eventArgs.positionBorrowedVgas as string;
-  position.borrowedQuoteToken = eventArgs.positionBorrowedVeth as string;
-  position.collateral = eventArgs.positionCollateralAmount as string;
-
-  // LP Position state
-  position.lpBaseToken =
-    (eventArgs.loanAmount0 as string) ||
-    (eventArgs.addedAmount0 as string) ||
-    '0';
-  position.lpQuoteToken =
-    (eventArgs.loanAmount1 as string) ||
-    (eventArgs.addedAmount1 as string) ||
-    '0';
-
-  // LP Position configuration
-  if (eventArgs.upperTick && eventArgs.lowerTick) {
-    position.highPriceTick = eventArgs.upperTick.toString();
-    position.lowPriceTick = eventArgs.lowerTick.toString();
-  }
-
-  // Non-setted position data
-  // position.owner = ;
-  // position.settled = ;
-
-  console.log('Saving position: ', position);
-  await positionRepository.save(position);
 };
 
 const updateTransactionStateFromEvent = (
@@ -176,12 +227,14 @@ const updateTransactionStateFromEvent = (
 ) => {
   const eventArgs = event.logData.args;
   // Latest position state
-  transaction.baseToken = eventArgs.positionVgasAmount as string;
-  transaction.quoteToken = eventArgs.positionVethAmount as string;
-  transaction.borrowedBaseToken = eventArgs.positionBorrowedVgas as string;
-  transaction.borrowedQuoteToken = eventArgs.positionBorrowedVeth as string;
-
-  transaction.collateral = eventArgs.positionCollateralAmount as string;
+  transaction.baseToken = (eventArgs.positionVgasAmount as string) || '0';
+  transaction.quoteToken = (eventArgs.positionVethAmount as string) || '0';
+  transaction.borrowedBaseToken =
+    (eventArgs.positionBorrowedVgas as string) || '0';
+  transaction.borrowedQuoteToken =
+    (eventArgs.positionBorrowedVeth as string) || '0';
+  transaction.collateral =
+    (eventArgs.positionCollateralAmount as string) || '0';
 
   if (eventArgs.tradeRatio) {
     transaction.tradeRatioD18 = eventArgs.tradeRatio as string;
@@ -189,17 +242,14 @@ const updateTransactionStateFromEvent = (
 };
 
 /**
- * Upsert a CollateralTransfer given a Transaction.
- * @param transaction the Transaction to upsert a CollateralTransfer for
+ * Find or create a CollateralTransfer for a Transaction.
+ * @param transaction the Transaction to find or create a CollateralTransfer for
  */
 export const insertCollateralTransfer = async (transaction: Transaction) => {
   const eventArgs = transaction.event.logData.args;
 
   if (!eventArgs.deltaCollateral || eventArgs.deltaCollateral == '0') {
-    console.log(
-      'Delta collateral not found in eventArgs',
-      eventArgs.deltaCollateral
-    );
+    console.log('Delta collateral not found in eventArgs');
     return;
   }
 
@@ -208,54 +258,69 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
     where: { transactionHash: transaction.event.transactionHash },
   });
 
-  // If it exists, use it; otherwise create a new one
-  const transfer = existingTransfer || new CollateralTransfer();
+  if (existingTransfer) {
+    // If it exists, just use it
+    transaction.collateralTransfer = existingTransfer;
+    return;
+  }
 
-  // Update the transfer properties
+  // Create a new one if it doesn't exist
+  const transfer = new CollateralTransfer();
   transfer.transactionHash = transaction.event.transactionHash;
   transfer.timestamp = Number(transaction.event.timestamp);
   transfer.owner = transaction.event.logData.args.sender as string;
   transfer.collateral = eventArgs.deltaCollateral as string;
 
-  // Use upsert to handle the duplicate key case
-  await collateralTransferRepository.upsert(
-    {
-      transactionHash: transfer.transactionHash,
-      timestamp: transfer.timestamp,
-      owner: transfer.owner,
-      collateral: transfer.collateral,
-    },
-    ['transactionHash']
-  );
-
-  // Only set the transfer relationship if it doesn't already exist
-  if (!transaction.collateralTransfer) {
-    transaction.collateralTransfer = transfer;
+  // Save and assign to transaction
+  try {
+    const savedTransfer = await collateralTransferRepository.save(transfer);
+    transaction.collateralTransfer = savedTransfer;
+  } catch (error) {
+    // If we get a duplicate key error, try to find the existing transfer again
+    // This handles race conditions
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      error.code === '23505'
+    ) {
+      const retryTransfer = await collateralTransferRepository.findOne({
+        where: { transactionHash: transaction.event.transactionHash },
+      });
+      if (retryTransfer) {
+        transaction.collateralTransfer = retryTransfer;
+      } else {
+        throw error;
+      }
+    } else {
+      throw error;
+    }
   }
 };
 
 /**
- * Upsert a MarketPrice given a Transaction.
- * @param transaction the Transaction to upsert a MarketPrice for
+ * Create a MarketPrice for a Transaction.
+ * @param transaction the Transaction to create a MarketPrice for
  */
 export const insertMarketPrice = async (transaction: Transaction) => {
   if (
     transaction.type === TransactionType.LONG ||
     transaction.type === TransactionType.SHORT
   ) {
-    console.log('Upserting market price for transaction: ', transaction);
-    // upsert market price
-    const newMp = new MarketPrice(); // might already get saved when upserting txn
-    const finalPrice = transaction.event.logData.args.finalPrice;
-    newMp.value = finalPrice as string;
+    // Create a new market price
+    const newMp = new MarketPrice();
+    const finalPrice = transaction.event.logData.args.finalPrice as string;
+    newMp.value = finalPrice;
     newMp.timestamp = transaction.event.timestamp;
-    newMp.transaction = transaction;
 
-    // Ensure the transaction has a marketPrice reference
-    transaction.marketPrice = newMp;
-
-    console.log('upserting market price: ', newMp);
-    await marketPriceRepository.save(newMp);
+    // Save and assign to transaction
+    try {
+      const savedMp = await marketPriceRepository.save(newMp);
+      transaction.marketPrice = savedMp;
+    } catch (error) {
+      console.error('Error saving market price:', error);
+      throw error;
+    }
   }
 };
 
@@ -409,6 +474,37 @@ export const updateTransactionFromAddLiquidityEvent = (
 
   newTransaction.lpBaseDeltaToken = event.logData.args.addedAmount0 as string;
   newTransaction.lpQuoteDeltaToken = event.logData.args.addedAmount1 as string;
+
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
+    newTransaction.borrowedBaseToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
+
+  if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
+    newTransaction.tradeRatioD18 = '0';
+  }
 };
 
 /**
@@ -429,6 +525,37 @@ export const updateTransactionFromLiquidityClosedEvent = async (
     .collectedAmount0 as string;
   newTransaction.lpQuoteDeltaToken = event.logData.args
     .collectedAmount1 as string;
+
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
+    newTransaction.borrowedBaseToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
+
+  if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
+    newTransaction.tradeRatioD18 = '0';
+  }
 };
 
 /**
@@ -460,6 +587,37 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
         BigInt(-1)
       ).toString()
     : (event.logData.args.increasedAmount1 as string);
+
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
+    newTransaction.borrowedBaseToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
+
+  if (!newTransaction.tradeRatioD18 || newTransaction.tradeRatioD18 === '') {
+    newTransaction.tradeRatioD18 = '0';
+  }
 };
 
 /**
@@ -478,6 +636,39 @@ export const updateTransactionFromTradeModifiedEvent = async (
   } as TradePositionEventLog);
 
   updateTransactionStateFromEvent(newTransaction, event);
+
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
+    newTransaction.borrowedBaseToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
+
+  if (!newTransaction.tradeRatioD18 && args.tradeRatio) {
+    newTransaction.tradeRatioD18 = args.tradeRatio;
+  } else if (!newTransaction.tradeRatioD18) {
+    newTransaction.tradeRatioD18 = '0';
+  }
 };
 
 export const updateTransactionFromPositionSettledEvent = async (
@@ -500,6 +691,33 @@ export const updateTransactionFromPositionSettledEvent = async (
 
   updateTransactionStateFromEvent(newTransaction, event);
   newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || '0';
+
+  // Ensure all required fields have default values if not set
+  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
+    newTransaction.baseToken = '0';
+  }
+
+  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
+    newTransaction.quoteToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedBaseToken ||
+    newTransaction.borrowedBaseToken === ''
+  ) {
+    newTransaction.borrowedBaseToken = '0';
+  }
+
+  if (
+    !newTransaction.borrowedQuoteToken ||
+    newTransaction.borrowedQuoteToken === ''
+  ) {
+    newTransaction.borrowedQuoteToken = '0';
+  }
+
+  if (!newTransaction.collateral || newTransaction.collateral === '') {
+    newTransaction.collateral = '0';
+  }
 };
 
 /**
