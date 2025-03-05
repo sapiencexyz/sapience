@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/table';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei, foilApi } from '~/lib/utils/util';
+import { convertGgasPerWstEthToGwei, foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
@@ -215,7 +215,7 @@ const TransactionTable: React.FC<Props> = ({
             : 0;
           return useMarketUnits
             ? tradeRatio * 10 ** 18
-            : convertWstEthToGwei(tradeRatio * 10 ** 18, stEthPerToken);
+            : convertGgasPerWstEthToGwei(tradeRatio * 10 ** 18, stEthPerToken);
         },
       },
       {

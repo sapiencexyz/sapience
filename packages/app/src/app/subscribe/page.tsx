@@ -30,7 +30,7 @@ import {
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei, foilApi } from '~/lib/utils/util';
+import { convertGgasPerWstEthToGwei, foilApi } from '~/lib/utils/util';
 
 const SUBSCRIPTIONS_QUERY = gql`
   query GetSubscriptions($owner: String!) {
@@ -129,7 +129,7 @@ const useSubscriptions = (address?: string) => {
     }
     const unitsAdjustedEntryPrice = useMarketUnits
       ? entryPrice
-      : convertWstEthToGwei(entryPrice, stEthPerToken);
+      : convertGgasPerWstEthToGwei(entryPrice, stEthPerToken);
     return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 

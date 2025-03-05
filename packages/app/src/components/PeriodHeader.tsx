@@ -15,7 +15,7 @@ import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { tickToPrice, convertWstEthToGwei } from '~/lib/utils/util';
+import { tickToPrice, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -58,11 +58,17 @@ const PeriodHeader = () => {
 
   const minPrice = useMarketUnits
     ? tickToPrice(baseAssetMinPriceTick)
-    : convertWstEthToGwei(tickToPrice(baseAssetMinPriceTick), stEthPerToken);
+    : convertGgasPerWstEthToGwei(
+        tickToPrice(baseAssetMinPriceTick),
+        stEthPerToken
+      );
 
   const maxPrice = useMarketUnits
     ? tickToPrice(baseAssetMaxPriceTick)
-    : convertWstEthToGwei(tickToPrice(baseAssetMaxPriceTick), stEthPerToken);
+    : convertGgasPerWstEthToGwei(
+        tickToPrice(baseAssetMaxPriceTick),
+        stEthPerToken
+      );
 
   const links = (
     <>
