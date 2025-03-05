@@ -163,7 +163,7 @@ export class ResourcePerformance {
     if (initialTimestamp) {
       whereClause = {
         resource: { id: this.resource.id },
-        timestamp: MoreThan(initialTimestamp),
+        timestamp: MoreThan(initialTimestamp - INTERVAL_28_DAYS),
       };
     } else {
       whereClause = {
@@ -264,15 +264,21 @@ export class ResourcePerformance {
     // Process all resource prices
     while (this.runtime.currentIdx < this.runtime.dbResourcePricesLength) {
       const item = this.runtime.dbResourcePrices[this.runtime.currentIdx];
-      for (const interval of this.intervals) {
-        this.processResourcePriceData(item, this.runtime.currentIdx, interval);
-        this.processTrailingAvgPricesData(
-          item,
-          this.runtime.currentIdx,
-          interval
-        );
-        this.processIndexPricesData(item, this.runtime.currentIdx, interval);
+      
+      // Only process data on or after initialTimestamp if it's provided
+      // Still process all items if initialTimestamp is not provided
+      if (!initialTimestamp || item.timestamp >= initialTimestamp) {
+        for (const interval of this.intervals) {
+          this.processResourcePriceData(item, this.runtime.currentIdx, interval);
+          this.processTrailingAvgPricesData(
+            item,
+            this.runtime.currentIdx,
+            interval
+          );
+          this.processIndexPricesData(item, this.runtime.currentIdx, interval);
+        }
       }
+      
       this.runtime.currentIdx++;
     }
 
