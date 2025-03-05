@@ -40,7 +40,7 @@ import { toast } from '~/hooks/use-toast';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { foilApi, convertWstEthToGwei } from '~/lib/utils/util';
+import { foilApi, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
@@ -270,7 +270,7 @@ const TraderPositionsTable: React.FC<Props> = ({
 
     const unitsAdjustedEntryPrice = useMarketUnits
       ? entryPrice
-      : convertWstEthToGwei(entryPrice, stEthPerToken);
+      : convertGgasPerWstEthToGwei(entryPrice, stEthPerToken);
     return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 

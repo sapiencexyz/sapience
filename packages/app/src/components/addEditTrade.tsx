@@ -37,7 +37,10 @@ import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import { removeLeadingZeros, convertWstEthToGwei } from '~/lib/utils/util';
+import {
+  removeLeadingZeros,
+  convertGgasPerWstEthToGwei,
+} from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 import PositionSelector from './positionSelector';
@@ -978,7 +981,7 @@ export default function AddEditTrade() {
                             quotedFillPrice || BigInt(0),
                             TOKEN_DECIMALS
                           )
-                        ) * convertWstEthToGwei(1, stEthPerToken)
+                        ) * convertGgasPerWstEthToGwei(1, stEthPerToken)
                   }
                 />{' '}
                 {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}

@@ -94,21 +94,16 @@ export function getChain(chainId: number): Chain {
   throw new Error(`Chain with id ${chainId} not found`);
 }
 
-export const convertWstEthToGwei = (
-  wstEth: number,
-  stEthPerToken: number | undefined
-) => {
-  return (wstEth * 1e9) / (stEthPerToken || 1);
-};
-
 export const convertGgasPerWstEthToGwei = (
-  value: number,
-  stEthPerToken: number | undefined
+  wstEth: number,
+  wstEthinEth: number | undefined
 ) => {
+  // wstEthinEth = (how many ETH in wstETH) * 1e9; units = wstETH / ETH
   // For Ggas/wstETH to gwei:
-  // 1. Convert Ggas/wstETH to Ggas/stETH by dividing by stEthPerToken
-  // 2. Convert Ggas/stETH to gwei by multiplying by 1e9
-  return (value * 1e9) / (stEthPerToken || 1);
+  // 1. Remove redundant decimals from wstEthinEth by dividing it by 1e9
+  // 2. Convert Ggas/wstETH to gas/gwei by multiplying by wstEthinEth
+  // Explanation to 2: GGas/stETH == gas/gwei, just need to remove the wstETH part
+  return wstEth * ((wstEthinEth || 1e9) / 1e9);
 };
 
 export const gweiToEther = (gweiValue: bigint): string => {

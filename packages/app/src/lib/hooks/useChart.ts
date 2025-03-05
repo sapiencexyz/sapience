@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
-import { convertWstEthToGwei, foilApi } from '../utils/util';
+import { convertGgasPerWstEthToGwei, foilApi } from '../utils/util';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
@@ -588,16 +588,24 @@ export const useChart = ({
             time: (mp.startTimestamp / 1000) as UTCTimestamp,
             open: useMarketUnits
               ? Number(formatUnits(BigInt(mp.open), 18))
-              : Number(convertWstEthToGwei(mp.open / 1e18, stEthPerToken)),
+              : Number(
+                  convertGgasPerWstEthToGwei(mp.open / 1e18, stEthPerToken)
+                ),
             high: useMarketUnits
               ? Number(formatUnits(BigInt(mp.high), 18))
-              : Number(convertWstEthToGwei(mp.high / 1e18, stEthPerToken)),
+              : Number(
+                  convertGgasPerWstEthToGwei(mp.high / 1e18, stEthPerToken)
+                ),
             low: useMarketUnits
               ? Number(formatUnits(BigInt(mp.low), 18))
-              : Number(convertWstEthToGwei(mp.low / 1e18, stEthPerToken)),
+              : Number(
+                  convertGgasPerWstEthToGwei(mp.low / 1e18, stEthPerToken)
+                ),
             close: useMarketUnits
               ? Number(formatUnits(BigInt(mp.close), 18))
-              : Number(convertWstEthToGwei(mp.close / 1e18, stEthPerToken)),
+              : Number(
+                  convertGgasPerWstEthToGwei(mp.close / 1e18, stEthPerToken)
+                ),
           };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
