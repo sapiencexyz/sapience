@@ -141,9 +141,12 @@ export class ResourcePerformance {
     }
 
     this.storage = storage.store;
-
     this.lastTimestampProcessed = storage.latestTimestamp;
-
+    
+    // Initialize runtime data with historical information from storage
+    this.initializeRuntimeDataFromStorage();
+    
+    // Now process new data since the last timestamp
     await this.processResourceData(this.lastTimestampProcessed);
   }
 
@@ -961,5 +964,49 @@ export class ResourcePerformance {
       interval = ResourcePerformance.MIN_INTERVAL;
     }
     return (Math.floor(timestamp / interval) + 1) * interval;
+  }
+
+  // New method to initialize runtime data from storage
+  private initializeRuntimeDataFromStorage() {
+    // Initialize runtime data structures with historical data from storage
+    for (const interval of this.intervals) {
+      // Initialize trailing avg data
+      const trailingAvgStore = this.storage[interval].trailingAvgStore;
+      if (trailingAvgStore.trailingAvgData.length > 0) {
+        this.runtime.trailingAvgProcessData[interval] = {
+          used: 0n,
+          feePaid: 0n,
+          nextTimestamp: 0,
+          startTimestampIndex: 0,
+          endTimestampIndex: 0,
+          startTimestamp: 0,
+          endTimestamp: 0,
+          trailingAvgData: [...trailingAvgStore.trailingAvgData]
+        };
+        
+        // Calculate totals from historical data
+        for (const item of trailingAvgStore.trailingAvgData) {
+          this.runtime.trailingAvgProcessData[interval].used += BigInt(item.used);
+          this.runtime.trailingAvgProcessData[interval].feePaid += BigInt(item.feePaid);
+        }
+      }
+      
+      // Initialize index data for each epoch
+      for (const epochId in this.storage[interval].indexStore) {
+        if (!this.runtime.indexProcessData[interval]) {
+          this.runtime.indexProcessData[interval] = {};
+        }
+        
+        const indexStore = this.storage[interval].indexStore[epochId];
+        if (indexStore.metadata.length > 0) {
+          const lastMetadata = indexStore.metadata[indexStore.metadata.length - 1];
+          this.runtime.indexProcessData[interval][epochId] = {
+            used: lastMetadata.used,
+            feePaid: lastMetadata.feePaid,
+            nextTimestamp: 0
+          };
+        }
+      }
+    }
   }
 }
