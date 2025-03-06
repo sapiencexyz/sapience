@@ -4,11 +4,19 @@ import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useMemo,
+  useCallback,
+  useContext,
+} from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
 import { convertGgasPerWstEthToGwei, foilApi } from '../utils/util';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
@@ -189,7 +197,7 @@ const getClosestPricePoint = (
 export const useChart = ({
   resourceSlug,
   market,
-  seriesVisibility,
+  seriesVisibility: seriesVisibilityProp,
   useMarketUnits,
   startTime,
   containerRef,
@@ -211,10 +219,18 @@ export const useChart = ({
     timestamp: number | null;
   } | null>(null);
 
+  // Check if we have a PeriodProvider context with seriesVisibility
+  // If it exists, use it, otherwise fall back to the prop
+  const { seriesVisibility: seriesVisibilityFromContext, setSeriesVisibility } =
+    useContext(PeriodContext);
+  const seriesVisibility = seriesVisibilityFromContext || seriesVisibilityProp;
+
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
 
-  const { data: marketPrices } = useQuery<PriceChartData[]>({
+  const { data: marketPrices, isLoading: isMarketPricesLoading } = useQuery<
+    PriceChartData[]
+  >({
     queryKey: [
       'market-prices',
       `${market?.chainId}:${market?.address}`,
@@ -250,7 +266,7 @@ export const useChart = ({
         close: candle.close,
       }));
     },
-    enabled: !!market && (seriesVisibility?.candles ?? true),
+    enabled: !!market,
   });
 
   // Helper function for getting time range from window
@@ -821,6 +837,43 @@ export const useChart = ({
     }),
     [isIndexLoading, isResourceLoading, market, resourceSlug]
   );
+
+  useEffect(() => {
+    if (!isMarketPricesLoading && setSeriesVisibility) {
+      setSeriesVisibility({
+        candles: !!marketPrices?.length,
+        index: seriesVisibility.index,
+        resource: seriesVisibility.resource,
+        trailing: !marketPrices?.length,
+      });
+
+      if (marketPrices?.length) {
+        // set zoom level to the start and end of the candles data
+        // Find the first candle with a non-zero price value
+        const firstCandleIndex = marketPrices.findIndex(
+          (candle) => Number(candle.close) !== 0
+        );
+        const firstCandle =
+          firstCandleIndex >= 0
+            ? marketPrices[firstCandleIndex]
+            : marketPrices[0];
+        console.log('firstCandle', firstCandle);
+        const lastCandle = marketPrices[marketPrices.length - 1];
+        chartRef.current?.timeScale().setVisibleRange({
+          from: (firstCandle.startTimestamp / 1000) as UTCTimestamp,
+          to: (lastCandle.endTimestamp / 1000) as UTCTimestamp,
+        });
+      } else {
+        // set zoom level to previous 28 days
+        const now = Math.floor(Date.now() / 1000);
+        const from = now - 28 * 86400;
+        chartRef.current?.timeScale().setVisibleRange({
+          from: from as UTCTimestamp,
+          to: now as UTCTimestamp,
+        });
+      }
+    }
+  }, [marketPrices, setSeriesVisibility, isMarketPricesLoading]);
 
   return {
     isLogarithmic,
