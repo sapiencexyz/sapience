@@ -45,23 +45,23 @@ export class ResourcePerformanceManager {
         resource
       );
       if (hardInitialize) {
-        console.log(`Hard initializing resource ${resource.name}`);
+        console.log(`ResourcePerformanceManager Hard initializing resource ${resource.name}`);
         await this.resourcePerformances[resource.slug].hardInitialize();
       } else {
-        console.log(`Soft initializing resource ${resource.name}`);
+        console.log(`ResourcePerformanceManager Soft initializing resource ${resource.name}`);
         await this.resourcePerformances[resource.slug].softInitialize();
       }
-      console.log(`Resource ${resource.slug} done`);
+      console.log(`ResourcePerformanceManager Resource ${resource.slug} done`);
     }
   }
 
   public async hardRefresh(resources: Resource[]) {
-    console.log('Hard Refresh');
+    console.log('ResourcePerformanceManager Hard Refresh');
     await this.initializeResources(resources, true);
   }
 
   public async softRefresh(resources: Resource[]) {
-    console.log('Soft Refresh');
+    console.log('ResourcePerformanceManager Soft Refresh');
     await this.initializeResources(resources, false);
   }
 
