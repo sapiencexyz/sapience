@@ -377,6 +377,16 @@ export class ResourcePerformance {
       }
       restoredStorage[interval] = storageInterval.store;
       latestTimestamp = storageInterval.latestTimestamp;
+      const indexStoreMetadata =
+        restoredStorage[interval].indexStore['1'].metadata;
+      const lastMetadata = indexStoreMetadata[indexStoreMetadata.length - 1];
+      // console.log(
+      //   'LLL 12 ',
+      //   lastMetadata.used.toString(),
+      //   lastMetadata.feePaid.toString(),
+      //   lastMetadata.startTimestamp,
+      //   lastMetadata.endTimestamp
+      // );
     }
 
     return {
@@ -531,6 +541,7 @@ export class ResourcePerformance {
     for (const epoch of this.epochs) {
       const epochStartTime = epoch.startTimestamp;
       const epochEndTime = epoch.endTimestamp;
+      // Skip data points that are not in the epoch
       if (
         !epochStartTime ||
         item.timestamp < epochStartTime ||
@@ -539,13 +550,13 @@ export class ResourcePerformance {
         continue;
       }
 
-      const ipd = this.runtime.indexProcessData[interval][epoch.id];
+      // Runtime data
+      const ripd = this.runtime.indexProcessData[interval][epoch.id];
 
       // If this is the first item or we're starting a new interval
-      if (!ipd.nextTimestamp) {
-        ipd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
-        ipd.used = BigInt(item.used);
-        ipd.feePaid = BigInt(item.feePaid);
+      if (!ripd.nextTimestamp) {
+        // console.log('LLL 13 ', item.timestamp, interval);
+        ripd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
 
         // Initialize index store if needed
         if (!this.persistentStorage[interval].indexStore[epoch.id]) {
@@ -556,48 +567,91 @@ export class ResourcePerformance {
             trailingAvgData: [], // Unused in index store
           };
         }
+        const piStore = this.persistentStorage[interval].indexStore[epoch.id];
 
         // Create a placeholder in the store
-        const indexStore =
-          this.persistentStorage[interval].indexStore[epoch.id];
         const itemStartTime = this.startOfCurrentInterval(
           item.timestamp,
           interval
         );
-        const avgPrice = ipd.used > 0n ? ipd.feePaid / ipd.used : 0n;
 
         // Check if we already have an item for this interval
-        const existingIndex = indexStore.data.findIndex(
-          (d) => d.timestamp >= itemStartTime && d.timestamp < ipd.nextTimestamp
-        );
+        const lastStoreIndex =
+          piStore.data.length > 0 ? piStore.data.length - 1 : undefined;
+        const isLastStoredItem =
+          lastStoreIndex !== undefined
+            ? piStore.data[lastStoreIndex].timestamp == itemStartTime
+            : false;
 
-        if (existingIndex === -1) {
+        // console.log('LLL 14 ', isLastStoredItem, lastStoreIndex, itemStartTime);
+
+        // const existingIndex = piStore.data.findIndex(
+        //   (d) =>
+        //     d.timestamp >= itemStartTime && d.timestamp < ripd.nextTimestamp
+        // );
+
+        if (isLastStoredItem && lastStoreIndex !== undefined) {
+          //   console.log(
+          //     'LLL 15 ',
+          //     piStore.metadata[lastStoreIndex].used.toString(),
+          //   piStore.metadata[lastStoreIndex].feePaid.toString()
+          // );
+          // // Retrieve history from the store
+          const metadata = piStore.metadata[lastStoreIndex];
+          ripd.used = metadata.used;
+          ripd.feePaid = metadata.feePaid;
+          // console.log('LLL 16 ', ripd.used.toString(), ripd.feePaid.toString());
+        } else {
           // Create a new placeholder
-          indexStore.data.push({
-            timestamp: item.timestamp,
-            open: avgPrice.toString(),
-            high: avgPrice.toString(),
-            low: avgPrice.toString(),
-            close: avgPrice.toString(),
+          piStore.data.push({
+            timestamp: itemStartTime,
+            open: '0',
+            high: '0',
+            low: '0',
+            close: '0',
           });
 
-          indexStore.metadata.push({
-            used: ipd.used,
-            feePaid: ipd.feePaid,
-            startTimestamp: epochStartTime,
+          piStore.metadata.push({
+            startTimestamp: item.timestamp,
             endTimestamp: item.timestamp,
+            used: 0n,
+            feePaid: 0n,
           });
 
-          indexStore.pointers[item.timestamp] = indexStore.data.length - 1;
+          piStore.pointers[item.timestamp] = piStore.data.length - 1;
         }
       }
 
-      // Get the current placeholder index
-      const indexStore = this.persistentStorage[interval].indexStore[epoch.id];
-      const currentPlaceholderIndex = indexStore.data.length - 1;
+      // Persistent data
+      const piStore = this.persistentStorage[interval].indexStore[epoch.id];
 
+      // Get the current placeholder index (the last item in the store)
+      const currentPlaceholderIndex = piStore.data.length - 1;
+
+      // Categorize the current data point
       const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
-      const isNewInterval = item.timestamp > ipd.nextTimestamp;
+      const isNewInterval = item.timestamp > ripd.nextTimestamp;
+
+      // console.log(
+      //   'LLL 17 ',
+      //   interval,
+      //   ripd.used.toString(),
+      //   ripd.feePaid.toString(),
+      //   item.used.toString(),
+      //   item.feePaid.toString()
+      // );
+      ripd.used += BigInt(item.used);
+      ripd.feePaid += BigInt(item.feePaid);
+      if (interval == 300) {
+        const avgPrice = ripd.used > 0n ? ripd.feePaid / ripd.used : 0n;
+        console.log(
+          'LLL 18 ',
+          interval,
+          ripd.used.toString(),
+          ripd.feePaid.toString(),
+          avgPrice.toString()
+        );
+      }
 
       // check if it's the last price item or last in the interval
       if (
@@ -605,71 +659,72 @@ export class ResourcePerformance {
         isNewInterval ||
         (epochEndTime && item.timestamp > epochEndTime)
       ) {
-        // Still in current interval means end of items or end of epoch. We need to use the current values and close the interval
+        let fixedFeePaid: bigint = BigInt(ripd.feePaid);
+        let fixedUsed: bigint = BigInt(ripd.used);
+
         if (!isNewInterval) {
-          ipd.used += BigInt(item.used);
-          ipd.feePaid += BigInt(item.feePaid);
+          // We need to remove the current item from the data since it's not in the current interval
+          fixedFeePaid -= BigInt(item.feePaid);
+          fixedUsed -= BigInt(item.used);
         }
 
         // Finalize the current interval
-        const avgPrice = ipd.used > 0n ? ipd.feePaid / ipd.used : 0n;
+        const avgPrice: bigint = fixedUsed > 0n ? fixedFeePaid / fixedUsed : 0n;
 
-        if (currentPlaceholderIndex >= 0) {
-          // Update the placeholder with final values
-          indexStore.data[currentPlaceholderIndex] = {
-            timestamp: indexStore.data[currentPlaceholderIndex].timestamp,
-            open: avgPrice.toString(),
-            high: avgPrice.toString(),
-            low: avgPrice.toString(),
-            close: avgPrice.toString(),
-          };
+        // Update the placeholder with final values
+        piStore.data[currentPlaceholderIndex] = {
+          timestamp: piStore.data[currentPlaceholderIndex].timestamp,
+          open: avgPrice.toString(),
+          high: avgPrice.toString(),
+          low: avgPrice.toString(),
+          close: avgPrice.toString(),
+        };
 
-          indexStore.metadata[currentPlaceholderIndex] = {
-            used: ipd.used,
-            feePaid: ipd.feePaid,
-            startTimestamp: epochStartTime,
-            endTimestamp: item.timestamp,
-          };
-        }
+        piStore.metadata[currentPlaceholderIndex] = {
+          startTimestamp:
+            piStore.metadata[currentPlaceholderIndex].startTimestamp,
+          endTimestamp: item.timestamp,
+          used: ripd.used,
+          feePaid: ripd.feePaid,
+        };
 
         // Prepare for next interval
-        ipd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
+        ripd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
 
         // Create a placeholder for the next interval
-        const itemStartTime = this.startOfCurrentInterval(
-          item.timestamp,
-          interval
-        );
+        // Don't create a placeholder if it's the last item, otherwise will be added to the persisted store as empty
+        if (!isLastItem) {
+          const itemStartTime = this.startOfCurrentInterval(
+            item.timestamp,
+            interval
+          );
 
-        // Check if we already have an item for this interval
-        const existingIndex = indexStore.data.findIndex(
-          (d) => d.timestamp >= itemStartTime && d.timestamp < ipd.nextTimestamp
-        );
+          // Check if we already have an item for this interval
+          const existingIndex = piStore.data.findIndex(
+            (d) => d.timestamp == itemStartTime
+          );
 
-        if (existingIndex === -1) {
-          // Create a new placeholder
-          indexStore.data.push({
-            timestamp: item.timestamp,
-            open: '0',
-            high: '0',
-            low: '0',
-            close: '0',
-          });
+          if (existingIndex === -1) {
+            // Create a new placeholder
+            piStore.data.push({
+              timestamp: itemStartTime,
+              open: avgPrice.toString(),
+              high: avgPrice.toString(),
+              low: avgPrice.toString(),
+              close: avgPrice.toString(),
+            });
 
-          indexStore.metadata.push({
-            used: 0n,
-            feePaid: 0n,
-            startTimestamp: epochStartTime,
-            endTimestamp: item.timestamp,
-          });
+            piStore.metadata.push({
+              startTimestamp: item.timestamp,
+              endTimestamp: ripd.nextTimestamp,
+              used: ripd.used,
+              feePaid: ripd.feePaid,
+            });
 
-          indexStore.pointers[item.timestamp] = indexStore.data.length - 1;
+            piStore.pointers[item.timestamp] = piStore.data.length - 1;
+          }
         }
       }
-
-      // Always update the accumulated values
-      ipd.used += BigInt(item.used);
-      ipd.feePaid += BigInt(item.feePaid);
     }
   }
 
@@ -703,13 +758,14 @@ export class ResourcePerformance {
   ) {
     // Runtime data
     const rtpd = this.runtime.trailingAvgProcessData[interval];
+    // console.log('LLL 12 ', rtpd.trailingAvgData.length);
 
     // Persistent data
     const ptStore = this.persistentStorage[interval].trailingAvgStore;
 
     // First data point processed in this batch. Initialize accumulators and create a placeholder in the pstore if needed for the this data point
     if (!rtpd.nextTimestamp) {
-      console.log('LLL 1 ', item.timestamp, interval);
+      // console.log('LLL 1 ', item.timestamp, interval);
       rtpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
 
       // Create a placeholder in the store if not found
@@ -725,14 +781,14 @@ export class ResourcePerformance {
           ? ptStore.data[lastStoreIndex].timestamp == itemStartTime
           : false;
 
-      console.log(
-        'LLL 2 ',
-        isLastStoredItem,
-        itemStartTime,
-        rtpd.nextTimestamp
-      );
-      console.log('LLL 3 ', rtpd.trailingAvgData.length);
-      console.log('LLL 4 ', ptStore.trailingAvgData.length);
+      // console.log(
+      //   'LLL 2 ',
+      //   isLastStoredItem,
+      //   itemStartTime,
+      //   rtpd.nextTimestamp
+      // );
+      // console.log('LLL 3 ', rtpd.trailingAvgData.length);
+      // console.log('LLL 4 ', ptStore.trailingAvgData.length);
       if (isLastStoredItem && lastStoreIndex !== undefined) {
         // Retrieve history from the store
         const metadata = ptStore.metadata[lastStoreIndex];
@@ -756,7 +812,7 @@ export class ResourcePerformance {
         });
 
         if (!ptStore.trailingAvgData) {
-          console.log('LLL 10 Initialize trailing avg data');
+          // console.log('LLL 10 Initialize trailing avg data');
           ptStore.trailingAvgData = [];
         }
 
@@ -766,7 +822,6 @@ export class ResourcePerformance {
 
     // Get the current placeholder index (the last item in the store)
     const currentPlaceholderIndex = ptStore.data.length - 1;
-    console.log('LLL 7 ', rtpd.trailingAvgData.length);
 
     // Categorize the current data point
     const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
@@ -820,7 +875,7 @@ export class ResourcePerformance {
           currentIdx
         );
       }
-      
+
       // If not the last item, prepare for next interval
       if (!isLastItem) {
         rtpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
@@ -832,7 +887,9 @@ export class ResourcePerformance {
         );
 
         // Check if we already have an item for this interval
-        const existingIndex = ptStore.data.findIndex( (d) => d.timestamp == itemStartTime );
+        const existingIndex = ptStore.data.findIndex(
+          (d) => d.timestamp == itemStartTime
+        );
 
         if (existingIndex === -1) {
           // Create a new placeholder
@@ -862,6 +919,8 @@ export class ResourcePerformance {
     // TODO Check if is item.timestamp - this.trailingAvgTime or rtpd.nextTimestamp - this.trailingAvgTime
     const trailingAvgTimestamp = item.timestamp - this.trailingAvgTime;
     const lastIdx = rtpd.trailingAvgData.length - 1;
+
+    // console.log('LLL 11 ', oldItem.timestamp < trailingAvgTimestamp, item.timestamp, oldItem.timestamp,trailingAvgTimestamp, rtpd.trailingAvgData.length);
 
     while (oldItem.timestamp < trailingAvgTimestamp) {
       rtpd.used -= BigInt(oldItem.used);
