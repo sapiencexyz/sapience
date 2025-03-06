@@ -42,7 +42,7 @@ const TradePoolLayout = ({
     TimeWindow.W
   );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
-    TimeInterval.I5M
+    TimeInterval.I15M
   );
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
@@ -62,13 +62,13 @@ const TradePoolLayout = ({
         setSelectedInterval(TimeInterval.I5M);
         break;
       case TimeWindow.W:
-        setSelectedInterval(TimeInterval.I5M);
+        setSelectedInterval(TimeInterval.I15M);
         break;
       case TimeWindow.M:
         setSelectedInterval(TimeInterval.I30M);
         break;
       default:
-        setSelectedInterval(TimeInterval.I5M);
+        setSelectedInterval(TimeInterval.I15M);
     }
   }, [selectedWindow]);
 
