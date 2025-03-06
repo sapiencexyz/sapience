@@ -35,13 +35,6 @@ export const BLANK_MARKET: PeriodContextType = {
   },
   chainId: 0,
   liquidity: 0,
-  seriesVisibility: {
-    candles: true,
-    index: true,
-    resource: true,
-    trailing: true,
-  },
-  setSeriesVisibility: () => {},
   owner: '',
   baseAssetMinPriceTick: 0,
   baseAssetMaxPriceTick: 0,

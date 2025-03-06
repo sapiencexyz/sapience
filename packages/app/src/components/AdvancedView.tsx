@@ -31,16 +31,18 @@ import MarketUnitsToggle from './marketUnitsToggle';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 
-const TradePoolLayout = ({
+const AdvancedView = ({
   params,
   isTrade,
 }: {
   params: { id: string; epoch: string };
   isTrade: boolean;
 }) => {
-  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(null);
+  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
+    TimeWindow.W
+  );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
-    TimeInterval.I15M
+    TimeInterval.I5M
   );
   const [chartType, setChartType] = useState<ChartType>(
     isTrade ? ChartType.PRICE : ChartType.LIQUIDITY
@@ -60,13 +62,13 @@ const TradePoolLayout = ({
         setSelectedInterval(TimeInterval.I5M);
         break;
       case TimeWindow.W:
-        setSelectedInterval(TimeInterval.I15M);
+        setSelectedInterval(TimeInterval.I5M);
         break;
       case TimeWindow.M:
         setSelectedInterval(TimeInterval.I30M);
         break;
       default:
-        setSelectedInterval(TimeInterval.I15M);
+        setSelectedInterval(TimeInterval.I5M);
     }
   }, [selectedWindow]);
 
@@ -75,6 +77,26 @@ const TradePoolLayout = ({
   const { markets } = useFoil();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
+
+  const [seriesVisibility, setSeriesVisibility] = useState<{
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+    trailing: boolean;
+  }>({
+    candles: true,
+    index: !isBeforeStart,
+    resource: false,
+    trailing: isBeforeStart,
+  });
+
+  useEffect(() => {
+    setSeriesVisibility((prev) => ({
+      ...prev,
+      index: !isBeforeStart,
+      trailing: isBeforeStart,
+    }));
+  }, [isBeforeStart]);
 
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
@@ -91,6 +113,12 @@ const TradePoolLayout = ({
         : `Pool Liquidity for ${market.resource.name} | Foil`;
     }
   }, [market?.resource?.name, isTrade]);
+
+  const toggleSeries = (
+    series: 'candles' | 'index' | 'resource' | 'trailing'
+  ) => {
+    setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
+  };
 
   const disabledSeries = {
     candles: false,
@@ -118,6 +146,7 @@ const TradePoolLayout = ({
               chainId: Number(chainId),
               address: marketAddress,
             }}
+            seriesVisibility={seriesVisibility}
             selectedWindow={selectedWindow}
             selectedInterval={selectedInterval}
           />
@@ -192,7 +221,11 @@ const TradePoolLayout = ({
                     />
                     {chartType === ChartType.PRICE && (
                       <div className="ml-auto flex items-center">
-                        <PriceToggles seriesDisabled={disabledSeries} />
+                        <PriceToggles
+                          seriesVisibility={seriesVisibility}
+                          toggleSeries={toggleSeries}
+                          seriesDisabled={disabledSeries}
+                        />
                         <Link
                           className="ml-3"
                           href="https://docs.foil.xyz/price-glossary"
@@ -214,4 +247,4 @@ const TradePoolLayout = ({
   );
 };
 
-export default TradePoolLayout;
+export default AdvancedView;
