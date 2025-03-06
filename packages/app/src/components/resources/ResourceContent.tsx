@@ -271,7 +271,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const [selectedInterval, setSelectedInterval] = React.useState(
     TimeInterval.I30M
   );
-  const [chartHoverData] = React.useState<{
+  const [chartHoverData, setChartHoverData] = React.useState<{
     price: number | null;
     timestamp: number | null;
   } | null>(null);
