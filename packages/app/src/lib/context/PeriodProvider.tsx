@@ -134,7 +134,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     resource: false,
     trailing: false,
   });
-  console.log("seriesVisibility", seriesVisibility);
 
   useEffect(() => {
     const chain = Object.entries(Chains).find((chainOption) => {

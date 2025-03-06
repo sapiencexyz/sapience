@@ -4,7 +4,7 @@ import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useState, useMemo, useCallback, useContext } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, useContext, use } from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
@@ -214,13 +214,13 @@ export const useChart = ({
 
   // Check if we have a PeriodProvider context with seriesVisibility
   // If it exists, use it, otherwise fall back to the prop
-  const periodContext = useContext(PeriodContext);
-  const seriesVisibility = periodContext?.seriesVisibility || seriesVisibilityProp;
+  const {seriesVisibility: seriesVisibilityFromContext, setSeriesVisibility} = useContext(PeriodContext);
+  const seriesVisibility = seriesVisibilityFromContext || seriesVisibilityProp;
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
 
-  const { data: marketPrices } = useQuery<PriceChartData[]>({
+  const { data: marketPrices, isLoading: isMarketPricesLoading } = useQuery<PriceChartData[]>({
     queryKey: [
       'market-prices',
       `${market?.chainId}:${market?.address}`,
@@ -256,8 +256,10 @@ export const useChart = ({
         close: candle.close,
       }));
     },
-    enabled: !!market && (seriesVisibility?.candles ?? true),
+    enabled: !!market,
   });
+
+
 
   // Helper function for getting time range from window
   const getTimeRangeFromWindow = (window: TimeWindow): number => {
@@ -825,6 +827,17 @@ export const useChart = ({
     }),
     [isIndexLoading, isResourceLoading, market, resourceSlug]
   );
+
+  useEffect(() => {
+    if(!isMarketPricesLoading && setSeriesVisibility){
+      setSeriesVisibility({
+        candles: !!marketPrices?.length,
+        index: seriesVisibility.index,
+        resource: seriesVisibility.resource,
+        trailing: !marketPrices?.length,
+      });
+    }
+  }, [marketPrices,setSeriesVisibility, isMarketPricesLoading]);
 
   return {
     isLogarithmic,
