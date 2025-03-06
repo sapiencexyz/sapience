@@ -618,12 +618,14 @@ export const useChart = ({
     if (indexPriceSeriesRef.current && !isBeforeStart) {
       // Start with the existing index prices data
       let indexLineData = indexPrices?.length
-        ? indexPrices.map((ip) => ({
-            time: (ip.timestamp / 1000) as UTCTimestamp,
-            value: useMarketUnits
-              ? Number((stEthPerToken || 1) * (ip.price / 1e9))
-              : ip.price,
-          }))
+        ? indexPrices.map((ip) => {
+            return {
+              time: (ip.timestamp / 1000) as UTCTimestamp,
+              value: useMarketUnits
+                ? Number(ip.price / ((stEthPerToken || 1e9) / 1e9))
+                : ip.price,
+            };
+          })
         : [];
 
       // If we have the latest index price from the stats component, ensure it's included
@@ -636,8 +638,8 @@ export const useChart = ({
 
         // Calculate the value using the same formula as in the stats component
         const latestValue = useMarketUnits
-          ? Number(formatUnits(BigInt(latestIndexPrice.value || 0), 18)) *
-            (stEthPerToken || 1)
+          ? Number(formatUnits(BigInt(latestIndexPrice.value || 0), 9)) /
+            ((stEthPerToken || 1e9) / 1e9)
           : Number(formatUnits(BigInt(latestIndexPrice.value || 0), 9));
 
         // Remove any existing data points that are within 60 seconds of the latest timestamp
@@ -672,7 +674,7 @@ export const useChart = ({
       const resourceLineData = resourcePrices.map((rp) => ({
         time: (rp.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
-          ? Number((stEthPerToken || 1) * (rp.price / 1e9))
+          ? Number(rp.price / ((stEthPerToken || 1e9) / 1e9))
           : rp.price,
       }));
       resourcePriceSeriesRef.current.setData(resourceLineData);
@@ -684,7 +686,7 @@ export const useChart = ({
       const trailingLineData = trailingResourcePrices.map((trp) => ({
         time: (trp.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
-          ? Number((stEthPerToken || 1) * (trp.price / 1e9))
+          ? Number(trp.price / ((stEthPerToken || 1e9) / 1e9))
           : trp.price,
       }));
       trailingPriceSeriesRef.current.setData(trailingLineData);
