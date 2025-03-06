@@ -277,8 +277,8 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   } | null>(null);
 
   const [seriesVisibility, setSeriesVisibility] = React.useState({
-    candles: true,
-    index: true,
+    candles: false,
+    index: false,
     resource: true,
     trailing: false,
   });
@@ -476,18 +476,6 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                   selectedWindow={DEFAULT_SELECTED_WINDOW}
                   selectedInterval={selectedInterval}
                   seriesVisibility={seriesVisibility}
-                  onHoverChange={(data) => {
-                    // Only update if we have valid data
-                    if (
-                      data &&
-                      data.price !== null &&
-                      data.timestamp !== null
-                    ) {
-                      setChartHoverData(data);
-                    } else {
-                      setChartHoverData(null);
-                    }
-                  }}
                 />
               </div>
             </div>

@@ -31,7 +31,7 @@ import MarketUnitsToggle from './marketUnitsToggle';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 
-const AdvancedView = ({
+const TradePoolLayout = ({
   params,
   isTrade,
 }: {
@@ -77,26 +77,10 @@ const AdvancedView = ({
   const { markets } = useFoil();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
+  const hasMarketData = false;
 
-  const [seriesVisibility, setSeriesVisibility] = useState<{
-    candles: boolean;
-    index: boolean;
-    resource: boolean;
-    trailing: boolean;
-  }>({
-    candles: true,
-    index: !isBeforeStart,
-    resource: false,
-    trailing: isBeforeStart,
-  });
 
-  useEffect(() => {
-    setSeriesVisibility((prev) => ({
-      ...prev,
-      index: !isBeforeStart,
-      trailing: isBeforeStart,
-    }));
-  }, [isBeforeStart]);
+
 
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
@@ -114,11 +98,7 @@ const AdvancedView = ({
     }
   }, [market?.resource?.name, isTrade]);
 
-  const toggleSeries = (
-    series: 'candles' | 'index' | 'resource' | 'trailing'
-  ) => {
-    setSeriesVisibility((prev) => ({ ...prev, [series]: !prev[series] }));
-  };
+ 
 
   const disabledSeries = {
     candles: false,
@@ -146,7 +126,7 @@ const AdvancedView = ({
               chainId: Number(chainId),
               address: marketAddress,
             }}
-            seriesVisibility={seriesVisibility}
+           
             selectedWindow={selectedWindow}
             selectedInterval={selectedInterval}
           />
@@ -222,8 +202,6 @@ const AdvancedView = ({
                     {chartType === ChartType.PRICE && (
                       <div className="ml-auto flex items-center">
                         <PriceToggles
-                          seriesVisibility={seriesVisibility}
-                          toggleSeries={toggleSeries}
                           seriesDisabled={disabledSeries}
                         />
                         <Link
@@ -247,4 +225,4 @@ const AdvancedView = ({
   );
 };
 
-export default AdvancedView;
+export default TradePoolLayout;

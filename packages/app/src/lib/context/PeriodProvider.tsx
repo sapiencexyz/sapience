@@ -45,6 +45,18 @@ export interface PeriodContextType {
     chainId: number;
     epochId: number;
   };
+  seriesVisibility: {
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+    trailing: boolean;
+  };
+  setSeriesVisibility: (seriesVisibility: {
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+    trailing: boolean;
+  }) => void;
 }
 
 interface PeriodProviderProps {
@@ -116,6 +128,14 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     state.poolAddress
   );
 
+  const [seriesVisibility, setSeriesVisibility] = useState({
+    candles: false,
+    index: false,
+    resource: false,
+    trailing: false,
+  });
+  console.log("seriesVisibility", seriesVisibility);
+
   useEffect(() => {
     const chain = Object.entries(Chains).find((chainOption) => {
       if (chainId === 13370 && chainOption[0] === 'localhost') {
@@ -141,6 +161,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
         chainId,
         epochId: epoch || 0,
       },
+   
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
@@ -149,8 +170,11 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
       ...currentState,
       foilData: { address, abi: foilData.abi },
       foilVaultData,
+      seriesVisibility,
+      setSeriesVisibility,  
     }));
-  }, [foilData, address, foilVaultData]);
+    console.log("seriesVisibility", seriesVisibility);
+  }, [foilData, address, foilVaultData, seriesVisibility, setSeriesVisibility]);
 
   useEffect(() => {
     if (marketViewFunctionResult.error) {

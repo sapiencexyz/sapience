@@ -4,7 +4,7 @@ import { print } from 'graphql';
 import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, useContext } from 'react';
 import { formatUnits } from 'viem';
 
 import { useFoil } from '../context/FoilProvider';
@@ -14,6 +14,7 @@ import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
 
 import { useLatestIndexPrice } from './useResources';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 export const GREEN_PRIMARY = '#41A53E';
 export const RED = '#C44444';
@@ -189,7 +190,7 @@ const getClosestPricePoint = (
 export const useChart = ({
   resourceSlug,
   market,
-  seriesVisibility,
+  seriesVisibility: seriesVisibilityProp,
   useMarketUnits,
   startTime,
   containerRef,
@@ -210,6 +211,11 @@ export const useChart = ({
     price: number | null;
     timestamp: number | null;
   } | null>(null);
+
+  // Check if we have a PeriodProvider context with seriesVisibility
+  // If it exists, use it, otherwise fall back to the prop
+  const periodContext = useContext(PeriodContext);
+  const seriesVisibility = periodContext?.seriesVisibility || seriesVisibilityProp;
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
