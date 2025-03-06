@@ -38,9 +38,7 @@ const TradePoolLayout = ({
   params: { id: string; epoch: string };
   isTrade: boolean;
 }) => {
-  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
-    null
-  );
+  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I15M
   );
@@ -77,10 +75,6 @@ const TradePoolLayout = ({
   const { markets } = useFoil();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
-  const hasMarketData = false;
-
-
-
 
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
@@ -97,8 +91,6 @@ const TradePoolLayout = ({
         : `Pool Liquidity for ${market.resource.name} | Foil`;
     }
   }, [market?.resource?.name, isTrade]);
-
- 
 
   const disabledSeries = {
     candles: false,
@@ -126,7 +118,6 @@ const TradePoolLayout = ({
               chainId: Number(chainId),
               address: marketAddress,
             }}
-           
             selectedWindow={selectedWindow}
             selectedInterval={selectedInterval}
           />
@@ -201,9 +192,7 @@ const TradePoolLayout = ({
                     />
                     {chartType === ChartType.PRICE && (
                       <div className="ml-auto flex items-center">
-                        <PriceToggles
-                          seriesDisabled={disabledSeries}
-                        />
+                        <PriceToggles seriesDisabled={disabledSeries} />
                         <Link
                           className="ml-3"
                           href="https://docs.foil.xyz/price-glossary"

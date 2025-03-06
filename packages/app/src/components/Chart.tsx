@@ -28,6 +28,9 @@ interface Props {
   };
   selectedWindow: TimeWindow | null;
   selectedInterval: TimeInterval;
+  onHoverChange?: (
+    data: { price: number | null; timestamp: number | null } | null
+  ) => void;
 }
 
 const Chart: React.FC<Props> = ({
@@ -36,9 +39,11 @@ const Chart: React.FC<Props> = ({
   seriesVisibility,
   selectedWindow,
   selectedInterval,
+  onHoverChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const { useMarketUnits, startTime } = useContext(PeriodContext);
+  const [isHovering, setIsHovering] = useState(false);
 
   const { isLogarithmic, setIsLogarithmic, loadingStates, hoverData } =
     useChart({
@@ -51,6 +56,45 @@ const Chart: React.FC<Props> = ({
       selectedWindow,
       selectedInterval,
     });
+
+  // Handle mouse enter/leave events
+  useEffect(() => {
+    const container = chartContainerRef.current;
+    if (!container) return;
+
+    const handleMouseEnter = () => {
+      setIsHovering(true);
+    };
+
+    const handleMouseLeave = () => {
+      setIsHovering(false);
+      if (onHoverChange) {
+        onHoverChange(null);
+      }
+    };
+
+    container.addEventListener('mouseenter', handleMouseEnter);
+    container.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      container.removeEventListener('mouseenter', handleMouseEnter);
+      container.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [onHoverChange]);
+
+  // Pass hover data to parent when it changes
+  useEffect(() => {
+    if (onHoverChange && isHovering && hoverData) {
+      onHoverChange(hoverData);
+    }
+  }, [hoverData, onHoverChange, isHovering]);
+
+  // Reset hover data when not hovering
+  useEffect(() => {
+    if (!isHovering && onHoverChange) {
+      onHoverChange(null);
+    }
+  }, [isHovering, onHoverChange]);
 
   const memoizedLoadingStates = useMemo(() => {
     return {

@@ -271,7 +271,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const [selectedInterval, setSelectedInterval] = React.useState(
     TimeInterval.I30M
   );
-  const [chartHoverData, setChartHoverData] = React.useState<{
+  const [chartHoverData] = React.useState<{
     price: number | null;
     timestamp: number | null;
   } | null>(null);
@@ -476,6 +476,18 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                   selectedWindow={DEFAULT_SELECTED_WINDOW}
                   selectedInterval={selectedInterval}
                   seriesVisibility={seriesVisibility}
+                  onHoverChange={(data) => {
+                    // Only update if we have valid data
+                    if (
+                      data &&
+                      data.price !== null &&
+                      data.timestamp !== null
+                    ) {
+                      setChartHoverData(data);
+                    } else {
+                      setChartHoverData(null);
+                    }
+                  }}
                 />
               </div>
             </div>

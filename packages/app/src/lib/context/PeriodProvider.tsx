@@ -160,7 +160,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
         chainId,
         epochId: epoch || 0,
       },
-   
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
@@ -170,9 +169,9 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
       foilData: { address, abi: foilData.abi },
       foilVaultData,
       seriesVisibility,
-      setSeriesVisibility,  
+      setSeriesVisibility,
     }));
-    console.log("seriesVisibility", seriesVisibility);
+    console.log('seriesVisibility', seriesVisibility);
   }, [foilData, address, foilVaultData, seriesVisibility, setSeriesVisibility]);
 
   useEffect(() => {
