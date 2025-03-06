@@ -836,6 +836,28 @@ export const useChart = ({
         resource: seriesVisibility.resource,
         trailing: !marketPrices?.length,
       });
+
+      if(!!marketPrices?.length){
+        //set zoom level to the start and end of the candles data
+        // Find the first candle with a non-zero price value
+        const firstCandleIndex = marketPrices.findIndex(candle => Number(candle.close) !== 0);
+        const firstCandle = firstCandleIndex >= 0 ? marketPrices[firstCandleIndex] : marketPrices[0];
+        console.log("firstCandle", firstCandle);
+        const lastCandle = marketPrices[marketPrices.length - 1];
+        chartRef.current?.timeScale().setVisibleRange({
+          from: firstCandle.startTimestamp / 1000 as UTCTimestamp,
+          to: lastCandle.endTimestamp / 1000 as UTCTimestamp,
+        });
+      }
+      else{ 
+        //set zoom level to previous 28 days
+        const now = Math.floor(Date.now() / 1000);
+        const from = now - 28 * 86400;
+        chartRef.current?.timeScale().setVisibleRange({
+          from: from as UTCTimestamp,
+          to: now as UTCTimestamp,
+        });
+      }
     }
   }, [marketPrices,setSeriesVisibility, isMarketPricesLoading]);
 
