@@ -39,7 +39,7 @@ const TradePoolLayout = ({
   isTrade: boolean;
 }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
-    TimeWindow.W
+    null
   );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I15M
