@@ -84,8 +84,8 @@ const IndexPriceDisplay = ({
   }
 
   const value = useMarketUnits
-    ? Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 18)) *
-      (stEthPerToken || 1)
+    ? Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 9)) /
+      ((stEthPerToken || 1e9) / 1e9)
     : Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 9));
 
   return (
