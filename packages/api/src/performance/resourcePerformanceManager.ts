@@ -49,12 +49,12 @@ export class ResourcePerformanceManager {
       );
       if (hardInitialize) {
         console.log(
-          `ResourcePerformanceManager Hard initializing resource ${resource.name}`
+          `ResourcePerformanceManager Hard initializing resource ${resource.slug}`
         );
         await this.resourcePerformances[resource.slug].hardInitialize();
       } else {
         console.log(
-          `ResourcePerformanceManager Soft initializing resource ${resource.name}`
+          `ResourcePerformanceManager Soft initializing resource ${resource.slug}`
         );
         await this.resourcePerformances[resource.slug].softInitialize();
       }
