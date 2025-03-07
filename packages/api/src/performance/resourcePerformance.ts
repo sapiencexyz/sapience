@@ -156,7 +156,7 @@ export class ResourcePerformance {
     }
 
     console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.name} (${initialTimestamp})`
+      ` ResourcePerformance.processResourceData.${this.resource.slug} (${initialTimestamp})`
     );
 
     this.runtime.processingResourceItems = true;
@@ -170,7 +170,7 @@ export class ResourcePerformance {
     await this.pullMarketsAndEpochs();
 
     console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.name}.process`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
     );
 
     this.initializeRuntimeData(dbResourcePrices);
@@ -198,20 +198,20 @@ export class ResourcePerformance {
         ].timestamp;
     }
     console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.name}.process`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
     );
 
     // Save the updated storage to file
     console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.name}.persistStorage`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.persistStorage`
     );
     await this.persistStorage();
     console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.name}.persistStorage`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.persistStorage`
     );
 
     console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.name} (${initialTimestamp})`
+      ` ResourcePerformance.processResourceData.${this.resource.slug} (${initialTimestamp})`
     );
     this.runtime.processingResourceItems = false;
   }
@@ -231,7 +231,7 @@ export class ResourcePerformance {
     }
 
     console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.name}.find.resourcePrices`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.resourcePrices`
     );
     const dbResourcePrices = await resourcePriceRepository.find({
       where: whereClause,
@@ -240,11 +240,11 @@ export class ResourcePerformance {
       },
     });
     console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.name}.find.resourcePrices`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.resourcePrices`
     );
 
     console.log(
-      ` ResourcePerformance.processResourceData.${this.resource.name}.find.resourcePrices.length`,
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.resourcePrices.length`,
       dbResourcePrices.length
     );
 
@@ -256,7 +256,7 @@ export class ResourcePerformance {
     // Notice: doing it everytime since we don't know if a new market was added
     if (!this.markets || this.markets.length === 0 || !onlyIfMissing) {
       console.time(
-        ` ResourcePerformance.processResourceData.${this.resource.name}.find.markets`
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
       );
       this.markets = await marketRepository.find({
         where: {
@@ -264,7 +264,7 @@ export class ResourcePerformance {
         },
       });
       console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.name}.find.markets`
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
       );
     }
 
@@ -272,7 +272,7 @@ export class ResourcePerformance {
     // Notice: doing it everytime since we don't know if a new epoch was added
     if (!this.epochs || this.epochs.length === 0 || !onlyIfMissing) {
       console.time(
-        ` ResourcePerformance.processResourceData.${this.resource.name}.find.epochs`
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.epochs`
       );
       this.epochs = await epochRepository.find({
         where: {
@@ -284,7 +284,7 @@ export class ResourcePerformance {
         relations: ['market'],
       });
       console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.name}.find.epochs`
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.epochs`
       );
     }
   }
@@ -989,8 +989,15 @@ export class ResourcePerformance {
 
     // If the requested 'to' timestamp is beyond our last processed interval
     if (to > lastProcessedData.timestamp) {
-      // Process new data starting from the last timestamp we processed
-      await this.processResourceData(this.lastTimestampProcessed);
+      if (this.runtime.processingResourceItems) {
+        // There's an update already running, don't call it again
+        console.log(
+          `ResourcePerformance - Update already running for ${this.resource.slug} to ${to}`
+        );
+      } else {
+        // Process new data starting from the last timestamp we processed
+        await this.processResourceData(this.lastTimestampProcessed);
+      }
     }
   }
 

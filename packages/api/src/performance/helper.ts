@@ -14,7 +14,7 @@ export async function saveStorageToFile(
   }
 
   console.time(
-    `  processResourceData.${resourceName}.${sectionName}.saveStorage`
+    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
   );
   const storageDir = process.env.STORAGE_PATH;
   if (!storageDir) {
@@ -42,9 +42,9 @@ export async function saveStorageToFile(
   );
 
   console.timeEnd(
-    `  processResourceData.${resourceName}.${sectionName}.saveStorage`
+    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
   );
-  console.log(`  -> Saved storage to ${filename}`);
+  console.log(`  ResourcePerformance --> Saved storage to ${filename}`);
 }
 
 export async function loadStorageFromFile(
@@ -63,7 +63,7 @@ export async function loadStorageFromFile(
   }
 
   console.time(
-    `  processResourceData.${resourceName}.${sectionName}.loadStorage`
+    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
   );
   const storageDir = process.env.STORAGE_PATH;
   if (!storageDir) {
@@ -96,9 +96,9 @@ export async function loadStorageFromFile(
   };
 
   console.timeEnd(
-    `  processResourceData.${resourceName}.${sectionName}.loadStorage`
+    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
   );
-  console.log(`  -> Loaded storage from ${filename}`);
+  console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
   return {
     latestTimestamp: storage.latestTimestamp,
     store: storage.store,
