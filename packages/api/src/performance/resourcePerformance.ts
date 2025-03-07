@@ -736,20 +736,25 @@ export class ResourcePerformance {
         item.timestamp,
         interval
       );
+
       // Check if we already have an item for this interval
       const lastStoreIndex =
         ptStore.data.length > 0 ? ptStore.data.length - 1 : undefined;
+
+      // Get cached data from the latest stored item
+      if (lastStoreIndex !== undefined) {
+        const metadata = ptStore.metadata[lastStoreIndex];
+        rtpd.used = metadata.used;
+        rtpd.feePaid = metadata.feePaid;
+      }
+
+      // Check if we already have an item for this interval
       const isLastStoredItem =
         lastStoreIndex !== undefined
           ? ptStore.data[lastStoreIndex].timestamp == itemStartTime
           : false;
 
-      if (isLastStoredItem && lastStoreIndex !== undefined) {
-        // Retrieve history from the store
-        const metadata = ptStore.metadata[lastStoreIndex];
-        rtpd.used = metadata.used;
-        rtpd.feePaid = metadata.feePaid;
-      } else {
+      if (!isLastStoredItem) {
         // Create a new placeholder for the next item. It will be updated once is finished processing the current item
         ptStore.data.push({
           timestamp: itemStartTime,
@@ -762,8 +767,8 @@ export class ResourcePerformance {
         ptStore.metadata.push({
           startTimestamp: item.timestamp,
           endTimestamp: item.timestamp,
-          used: 0n,
-          feePaid: 0n,
+          used: rtpd.used,
+          feePaid: rtpd.feePaid,
         });
 
         if (!ptStore.trailingAvgData) {
@@ -801,7 +806,7 @@ export class ResourcePerformance {
     // Include the new item in accumulators and the runtime trailing avg data
     rtpd.used += BigInt(item.used);
     rtpd.feePaid += BigInt(item.feePaid);
-    // const previousItemTimestamp = rtpd.trailingAvgData.length > 0 ? rtpd.trailingAvgData[rtpd.trailingAvgData.length - 1].timestamp : item.timestamp;
+
     rtpd.trailingAvgData.push({
       timestamp: item.timestamp,
       used: item.used,
@@ -820,23 +825,23 @@ export class ResourcePerformance {
       }
 
       // Finalize the current interval
-      const price: bigint = fixedUsed > 0n ? fixedFeePaid / fixedUsed : 0n;
+      const avgPrice: bigint = fixedUsed > 0n ? fixedFeePaid / fixedUsed : 0n;
 
       // Update the placeholder with final values
       ptStore.data[currentPlaceholderIndex] = {
         timestamp: ptStore.data[currentPlaceholderIndex].timestamp,
-        open: price.toString(),
-        high: price.toString(),
-        low: price.toString(),
-        close: price.toString(),
+        open: avgPrice.toString(),
+        high: avgPrice.toString(),
+        low: avgPrice.toString(),
+        close: avgPrice.toString(),
       };
 
       ptStore.metadata[currentPlaceholderIndex] = {
         startTimestamp:
           ptStore.metadata[currentPlaceholderIndex].startTimestamp,
-        endTimestamp: rtpd.nextTimestamp,
-        used: fixedUsed,
-        feePaid: fixedFeePaid,
+        endTimestamp: item.timestamp,
+        used: rtpd.used,
+        feePaid: rtpd.feePaid,
       };
 
       // Notice: Add the trailing avg data to the metadata, only if it's the last data point
@@ -847,8 +852,8 @@ export class ResourcePerformance {
         );
       }
 
-      // If not the last item, prepare for next interval
-      if (!isLastItem) {
+      // Prepare and create a placeholder for the next interval if there's a new interval
+      if (isNewInterval) {
         rtpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
 
         // Create a placeholder for the next interval
@@ -866,10 +871,10 @@ export class ResourcePerformance {
           // Create a new placeholder
           ptStore.data.push({
             timestamp: itemStartTime,
-            open: price.toString(),
-            high: price.toString(),
-            low: price.toString(),
-            close: price.toString(),
+            open: avgPrice.toString(),
+            high: avgPrice.toString(),
+            low: avgPrice.toString(),
+            close: avgPrice.toString(),
           });
 
           ptStore.metadata.push({
