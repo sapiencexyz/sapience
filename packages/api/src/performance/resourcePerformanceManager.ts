@@ -41,6 +41,9 @@ export class ResourcePerformanceManager {
   ) {
     this.resources = resources;
     for (const resource of this.resources) {
+      if (resource.slug != 'ethereum-gas') {
+        continue;
+      }
       this.resourcePerformances[resource.slug] = new ResourcePerformance(
         resource
       );

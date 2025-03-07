@@ -555,7 +555,9 @@ export class ResourcePerformance {
 
       // If this is the first item or we're starting a new interval
       if (!ripd.nextTimestamp) {
-        // console.log('LLL 13 ', item.timestamp, interval);
+        if (interval == 300 && epoch.id == 2) {
+          console.log('LLL INITIALIZE ', item.timestamp, interval);
+        }
         ripd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
 
         // Initialize index store if needed
@@ -582,6 +584,9 @@ export class ResourcePerformance {
           lastStoreIndex !== undefined
             ? piStore.data[lastStoreIndex].timestamp == itemStartTime
             : false;
+        if (interval == 300 && epoch.id == 2) {
+          console.log('LLL INIT STORE ', lastStoreIndex, piStore.data[lastStoreIndex || 0].timestamp, itemStartTime);
+        }
 
         // console.log('LLL 14 ', isLastStoredItem, lastStoreIndex, itemStartTime);
 
@@ -600,6 +605,9 @@ export class ResourcePerformance {
           const metadata = piStore.metadata[lastStoreIndex];
           ripd.used = metadata.used;
           ripd.feePaid = metadata.feePaid;
+          if (interval == 300) {
+            console.log('LLL 21 ', ripd.used.toString(), ripd.feePaid.toString());
+          }
           // console.log('LLL 16 ', ripd.used.toString(), ripd.feePaid.toString());
         } else {
           // Create a new placeholder
@@ -640,18 +648,19 @@ export class ResourcePerformance {
       //   item.used.toString(),
       //   item.feePaid.toString()
       // );
-      ripd.used += BigInt(item.used);
-      ripd.feePaid += BigInt(item.feePaid);
-      if (interval == 300) {
+      if (interval == 300 && epoch.id == 2) {
         const avgPrice = ripd.used > 0n ? ripd.feePaid / ripd.used : 0n;
         console.log(
           'LLL 18 ',
           interval,
+          epoch.id,
           ripd.used.toString(),
           ripd.feePaid.toString(),
           avgPrice.toString()
         );
       }
+      ripd.used += BigInt(item.used);
+      ripd.feePaid += BigInt(item.feePaid);
 
       // check if it's the last price item or last in the interval
       if (
@@ -659,6 +668,9 @@ export class ResourcePerformance {
         isNewInterval ||
         (epochEndTime && item.timestamp > epochEndTime)
       ) {
+        if (interval == 300 && epoch.id == 2) {
+          console.log('LLL CLOSE INTERVAL', ripd.used.toString(), ripd.feePaid.toString());
+        }
         let fixedFeePaid: bigint = BigInt(ripd.feePaid);
         let fixedUsed: bigint = BigInt(ripd.used);
 
@@ -723,6 +735,10 @@ export class ResourcePerformance {
 
             piStore.pointers[item.timestamp] = piStore.data.length - 1;
           }
+        }
+        if (isLastItem && interval == 300 && epoch.id == 2) {
+          console.log('LLL 19 ', ripd.used.toString(), ripd.feePaid.toString());
+          console.log('LLL 20 ', piStore.data[currentPlaceholderIndex].open);
         }
       }
     }
