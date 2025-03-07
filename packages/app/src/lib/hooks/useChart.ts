@@ -221,9 +221,14 @@ export const useChart = ({
 
   // Check if we have a PeriodProvider context with seriesVisibility
   // If it exists, use it, otherwise fall back to the prop
-  const { seriesVisibility: seriesVisibilityFromContext, setSeriesVisibility } =
-    useContext(PeriodContext);
-  const seriesVisibility = seriesVisibilityFromContext || seriesVisibilityProp;
+  const {
+    market: contextMarket,
+    seriesVisibility: seriesVisibilityFromContext,
+    setSeriesVisibility,
+  } = useContext(PeriodContext);
+  const seriesVisibility = contextMarket
+    ? seriesVisibilityFromContext
+    : seriesVisibilityProp;
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
