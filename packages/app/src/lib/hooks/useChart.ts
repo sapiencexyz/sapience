@@ -839,7 +839,7 @@ export const useChart = ({
   );
 
   useEffect(() => {
-    if (!isMarketPricesLoading && setSeriesVisibility) {
+    if (market && !isMarketPricesLoading && setSeriesVisibility) {
       setSeriesVisibility({
         candles: !!marketPrices?.length,
         index: seriesVisibility.index,
@@ -873,7 +873,7 @@ export const useChart = ({
         });
       }
     }
-  }, [marketPrices, setSeriesVisibility, isMarketPricesLoading]);
+  }, [marketPrices, setSeriesVisibility, isMarketPricesLoading, market]);
 
   return {
     isLogarithmic,
