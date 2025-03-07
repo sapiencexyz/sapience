@@ -1,6 +1,7 @@
 databases:
   - name: database
     databaseName: foil
+    plan: pro-4gb
 
 services:
   - name: web-service

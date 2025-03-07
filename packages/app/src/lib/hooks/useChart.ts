@@ -391,7 +391,7 @@ export const useChart = ({
           price: Number(formatUnits(BigInt(candle.close), 9)),
         }));
       },
-      enabled: !!resourceSlug && (seriesVisibility?.trailing ?? false),
+      enabled: !!resourceSlug,
     });
 
   // Fetch the latest index price using the same hook as the stats component
@@ -745,29 +745,12 @@ export const useChart = ({
     updateResourcePriceData();
     updateTrailingAverageData();
     updateSeriesVisibility();
-
-    // Set initial time range if not already set
-    if (!hasSetTimeScale.current && marketPrices?.length) {
-      const timeRange = selectedWindow
-        ? getTimeRangeFromWindow(selectedWindow)
-        : 86400;
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - timeRange;
-
-      chartRef.current.timeScale().setVisibleRange({
-        from: from as UTCTimestamp,
-        to: now as UTCTimestamp,
-      });
-      hasSetTimeScale.current = true;
-    }
   }, [
     updateCandlestickData,
     updateIndexPriceData,
     updateResourcePriceData,
     updateTrailingAverageData,
     updateSeriesVisibility,
-    marketPrices,
-    selectedWindow,
   ]);
 
   // Dedicated effect to update the chart when the latest index price changes
@@ -843,42 +826,86 @@ export const useChart = ({
     [isIndexLoading, isResourceLoading, market, resourceSlug]
   );
 
-  useEffect(() => {
-    if (market && !isMarketPricesLoading && setSeriesVisibility) {
-      setSeriesVisibility({
-        candles: !!marketPrices?.length,
-        index: seriesVisibility.index,
-        resource: seriesVisibility.resource,
-        trailing: !marketPrices?.length,
+  // Helper function to set market price time scale
+  const setMarketPriceTimeScale = () => {
+    if (marketPrices?.length) {
+      const firstCandleIndex = marketPrices.findIndex(
+        (candle) => Number(candle.close) !== 0
+      );
+      const firstCandle =
+        firstCandleIndex >= 0
+          ? marketPrices[firstCandleIndex]
+          : marketPrices[0];
+      const lastCandle = marketPrices[marketPrices.length - 1];
+      chartRef.current?.timeScale().setVisibleRange({
+        from: (firstCandle.startTimestamp / 1000) as UTCTimestamp,
+        to: (lastCandle.endTimestamp / 1000) as UTCTimestamp,
       });
+    } else if (trailingResourcePrices?.length) {
+      const now = Math.floor(Date.now() / 1000);
+      const from = now - 28 * 86400;
+      chartRef.current?.timeScale().setVisibleRange({
+        from: from as UTCTimestamp,
+        to: now as UTCTimestamp,
+      });
+    }
+  };
 
-      if (marketPrices?.length) {
-        // set zoom level to the start and end of the candles data
-        // Find the first candle with a non-zero price value
-        const firstCandleIndex = marketPrices.findIndex(
-          (candle) => Number(candle.close) !== 0
-        );
-        const firstCandle =
-          firstCandleIndex >= 0
-            ? marketPrices[firstCandleIndex]
-            : marketPrices[0];
-        console.log('firstCandle', firstCandle);
-        const lastCandle = marketPrices[marketPrices.length - 1];
-        chartRef.current?.timeScale().setVisibleRange({
-          from: (firstCandle.startTimestamp / 1000) as UTCTimestamp,
-          to: (lastCandle.endTimestamp / 1000) as UTCTimestamp,
-        });
+  // Helper function to set default time scale
+  const setDefaultTimeScale = () => {
+    const timeRange = selectedWindow
+      ? getTimeRangeFromWindow(selectedWindow)
+      : 86400;
+    const now = Math.floor(Date.now() / 1000);
+    const from = now - timeRange;
+
+    chartRef?.current?.timeScale().setVisibleRange({
+      from: from as UTCTimestamp,
+      to: now as UTCTimestamp,
+    });
+    hasSetTimeScale.current = true;
+  };
+
+  const hasSetVisibility = useRef(false);
+
+  useEffect(() => {
+    // Only run this effect when data changes, not when visibility settings change
+    if (
+      !isMarketPricesLoading &&
+      setSeriesVisibility &&
+      !isTrailingResourceLoading
+    ) {
+      if (market) {
+        // Store current values to compare
+        const hasCandles = !!marketPrices?.length;
+
+        // Only update visibility once after market and trailing prices have loaded
+        if (!hasSetVisibility.current) {
+          setSeriesVisibility({
+            candles: hasCandles,
+            index: seriesVisibility?.index ?? false,
+            resource: seriesVisibility?.resource ?? false,
+            trailing: !hasCandles,
+          });
+          hasSetVisibility.current = true;
+        }
+
+        // Set zoom level logic can stay the same
+        setMarketPriceTimeScale();
       } else {
-        // set zoom level to previous 28 days
-        const now = Math.floor(Date.now() / 1000);
-        const from = now - 28 * 86400;
-        chartRef.current?.timeScale().setVisibleRange({
-          from: from as UTCTimestamp,
-          to: now as UTCTimestamp,
-        });
+        setDefaultTimeScale();
       }
     }
-  }, [marketPrices, setSeriesVisibility, isMarketPricesLoading, market]);
+  }, [
+    marketPrices,
+    isMarketPricesLoading,
+    isTrailingResourceLoading,
+    market,
+    seriesVisibility,
+    setSeriesVisibility,
+    selectedWindow,
+    trailingResourcePrices,
+  ]);
 
   return {
     isLogarithmic,
