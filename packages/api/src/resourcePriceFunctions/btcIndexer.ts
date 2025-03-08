@@ -96,19 +96,19 @@ class BtcIndexer implements IResourcePriceIndexer {
         console.log('[BtcIndexer] Fetching latest blocks...');
         response = await axios.get(`${this.apiUrl}/blocks`);
         const blocks = response.data;
-  
+
         if (!Array.isArray(blocks) || blocks.length === 0) {
           console.error('[BtcIndexer] Invalid response from /blocks endpoint');
           return;
         }
-  
+
         // Process each block in order
         for (const block of blocks) {
           if (!block || typeof block.height !== 'number' || !block.extras) {
             console.warn('[BtcIndexer] Invalid block data:', block);
             continue;
           }
-  
+
           // Check if we already have this block
           const existingPrice = await resourcePriceRepository.findOne({
             where: {
@@ -116,14 +116,14 @@ class BtcIndexer implements IResourcePriceIndexer {
               blockNumber: block.height,
             },
           });
-  
+
           if (existingPrice) {
             console.log(
               `[BtcIndexer] Already have data for block ${block.height}, skipping...`
             );
             continue;
           }
-  
+
           // Process new block
           const blockData: BlockData = {
             height: block.height,
@@ -132,13 +132,17 @@ class BtcIndexer implements IResourcePriceIndexer {
             size: block.size,
             weight: block.weight,
           };
-  
-          console.log(`[BtcIndexer] Processing new block ${blockData.height}...`);
+
+          console.log(
+            `[BtcIndexer] Processing new block ${blockData.height}...`
+          );
           await this.storeBlockPrice(blockData.height, resource, blockData);
         }
       } catch (error) {
         if (axios.isAxiosError(error)) {
-          console.error('[BtcIndexer] Error while querying the API, sleeping for 1 sec and retrying...');
+          console.error(
+            '[BtcIndexer] Error while querying the API, sleeping for 1 sec and retrying...'
+          );
           response = null;
           this.sleep(this.retryDelay);
         }
@@ -173,11 +177,8 @@ class BtcIndexer implements IResourcePriceIndexer {
       // Calculate fee per weight unit (satoshis/vbyte)
       // We multiply by 10^9 to maintain consistency with other indexers' decimal places
       const feePerWeight =
-        data.weight > 0
-          ? (data.total_fee / data.weight) * 10 ** 9
-          : BigInt(0);
+        data.weight > 0 ? (data.total_fee / data.weight) * 10 ** 9 : BigInt(0);
 
-      
       const price = {
         resource: { id: resource.id },
         timestamp: data.time,

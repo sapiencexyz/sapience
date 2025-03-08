@@ -56,7 +56,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
           );
           await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
           // TODO (Vlad, not urgent): recursion might blow up call stack; rewrite as a while loop
-          return this.fetchBlobDataFromBlobscan(blockNumber, retryCount + 1); 
+          return this.fetchBlobDataFromBlobscan(blockNumber, retryCount + 1);
         } else if (error.response?.status === 404) {
           console.warn(
             `Seems like no blob data exists for block ${blockNumber}, skipping...`
@@ -67,9 +67,9 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
             scope.setExtra('blockNumber', blockNumber);
             if (error instanceof Error) {
               scope.setExtra('errorMessage', error.message);
-            }  
+            }
             if (error.response && error.response?.status >= 500) {
-              scope.setExtra("flakyAPIError", true);
+              scope.setExtra('flakyAPIError', true);
             }
             scope.setExtra('status', error.response?.status);
             Sentry.captureException(error);
@@ -80,8 +80,8 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
           `Failed to fetch blob data for block ${blockNumber}:`,
           error
         );
-        
-         // Log specific error details
+
+        // Log specific error details
         Sentry.withScope((scope) => {
           scope.setExtra('blockNumber', blockNumber);
           if (error instanceof Error) {
@@ -243,7 +243,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         }
       } catch (error) {
         response = null;
-        
+
         Sentry.withScope((scope) => {
           if (error instanceof Error) {
             scope.setExtra('errorMessage', error.message);
@@ -252,7 +252,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
             // handle all 500-level HTTP errors by re-requesting data until we have it
             // status code >= 500 <=> flaky API
             if (error.response && error.response?.status >= 500) {
-              scope.setExtra("flakyAPIError", true);
+              scope.setExtra('flakyAPIError', true);
             }
             scope.setExtra('status', error.response?.status);
           }
@@ -271,7 +271,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
     for (const blockNumber of blocks) {
       try {
         console.log('Indexing blob data from block', blockNumber);
-        await this.storeBlockPrice(blockNumber, resource); 
+        await this.storeBlockPrice(blockNumber, resource);
       } catch (error) {
         console.error(`Error processing block ${blockNumber}:`, error);
         Sentry.withScope((scope) => {

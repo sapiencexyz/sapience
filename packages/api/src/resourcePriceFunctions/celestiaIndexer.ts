@@ -45,7 +45,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       const params = new URLSearchParams({
         limit: '100',
         offset: '0',
-        msg_type: 'MsgPayForBlobs'
+        msg_type: 'MsgPayForBlobs',
       });
 
       let retries = 0;
@@ -54,12 +54,12 @@ class CelestiaIndexer implements IResourcePriceIndexer {
 
       while (retries < this.MAX_RETRIES) {
         try {
-          const latestKnownBlockNumber = await this.getLatestBlockNumber(); 
+          const latestKnownBlockNumber = await this.getLatestBlockNumber();
           if (latestKnownBlockNumber < currentBlockToPoll) {
             console.error(
               `[CelestiaIndexer] Info for block ${currentBlockToPoll} hasn't been written to the API yet! Killing current poll..`
             );
-            return; 
+            return;
           }
           response = await fetch(
             `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${currentBlockToPoll}/messages/?${params.toString()}`,
@@ -67,8 +67,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
           );
 
           data = await response.json();
-            
-          
+
           if (response.ok) {
             if (Array.isArray(data) && data.length > 0) {
               break;
@@ -78,8 +77,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
               );
               return;
             }
-          } 
-          
+          }
 
           console.error(
             `[CelestiaIndexer] HTTP error! status: ${response.status}`
@@ -107,7 +105,6 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         );
       }
 
-
       const blobAccumulatedDataDummy = {
         height: currentBlockToPoll,
         timeMs: new Date().getTime(),
@@ -126,10 +123,16 @@ class CelestiaIndexer implements IResourcePriceIndexer {
             tx: { gas_used: number; fee: number; status: string };
           }
         ) => {
-          if (msg.type && msg.type === "MsgPayForBlobs" && msg.tx.status === 'success') {
+          if (
+            msg.type &&
+            msg.type === 'MsgPayForBlobs' &&
+            msg.tx.status === 'success'
+          ) {
             blobAccumulatedDataDummy.height = msg.height;
             blobAccumulatedDataDummy.timeMs = new Date(msg.time).getTime();
-            blobAccumulatedDataDummy.stats.blobs_size += Number(msg.tx.gas_used);
+            blobAccumulatedDataDummy.stats.blobs_size += Number(
+              msg.tx.gas_used
+            );
             blobAccumulatedDataDummy.stats.fee += Number(msg.tx.fee);
           }
           return acc;
@@ -171,13 +174,16 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     if (latestResourcePrice?.blockNumber) {
       // Use the latest resource price timestamp as the initial timestamp (continue from where we left off)
       // might cause some indexing problems if the block hasn't been written to the API database
-      // create a fallback by querying the lastes block that is known to the API to avoid 
-      // death spirals where each new queried block isn't there yet and the empty response 
+      // create a fallback by querying the lastes block that is known to the API to avoid
+      // death spirals where each new queried block isn't there yet and the empty response
       // is cached by the API
-      this.latestKnownBlockNumber = Math.min(latestResourcePrice.blockNumber + 1, latestBlockFromAPI);
+      this.latestKnownBlockNumber = Math.min(
+        latestResourcePrice.blockNumber + 1,
+        latestBlockFromAPI
+      );
     } else {
       // This is the initial timestamp when the indexer is first started (nothing stored in DB yet), set the initial timestamp to current timestamp
-      this.latestKnownBlockNumber = latestBlockFromAPI
+      this.latestKnownBlockNumber = latestBlockFromAPI;
     }
     return this.latestKnownBlockNumber;
   }
