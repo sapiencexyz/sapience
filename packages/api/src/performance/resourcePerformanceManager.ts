@@ -41,27 +41,34 @@ export class ResourcePerformanceManager {
   ) {
     this.resources = resources;
     for (const resource of this.resources) {
+      // if (resource.slug != 'ethereum-gas') {
+      //   continue;
+      // }
       this.resourcePerformances[resource.slug] = new ResourcePerformance(
         resource
       );
       if (hardInitialize) {
-        console.log(`Hard initializing resource ${resource.name}`);
+        console.log(
+          `ResourcePerformanceManager Hard initializing resource ${resource.slug}`
+        );
         await this.resourcePerformances[resource.slug].hardInitialize();
       } else {
-        console.log(`Soft initializing resource ${resource.name}`);
+        console.log(
+          `ResourcePerformanceManager Soft initializing resource ${resource.slug}`
+        );
         await this.resourcePerformances[resource.slug].softInitialize();
       }
-      console.log(`Resource ${resource.slug} done`);
+      console.log(`ResourcePerformanceManager Resource ${resource.slug} done`);
     }
   }
 
   public async hardRefresh(resources: Resource[]) {
-    console.log('Hard Refresh');
+    console.log('ResourcePerformanceManager Hard Refresh');
     await this.initializeResources(resources, true);
   }
 
   public async softRefresh(resources: Resource[]) {
-    console.log('Soft Refresh');
+    console.log('ResourcePerformanceManager Soft Refresh');
     await this.initializeResources(resources, false);
   }
 
