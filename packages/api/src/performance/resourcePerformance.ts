@@ -358,8 +358,7 @@ export class ResourcePerformance {
     interval: number
   ) {
     const rpd = this.runtime.resourceProcessData[interval];
-    const price =
-      BigInt(item.used) > 0n ? BigInt(item.feePaid) / BigInt(item.used) : 0n;
+    const price = BigInt(item.value);
 
     // If this is the first item or we're starting a new interval
     if (!rpd.nextTimestamp) {
@@ -649,7 +648,7 @@ export class ResourcePerformance {
       // Create a placeholder in the store if not found
       const trailingAvgStore = this.storage[interval].trailingAvgStore;
       const itemStartTime = this.snapToInterval(item.timestamp, interval);
-      const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n;
+      const price = tpd.used > 0n ? tpd.feePaid / tpd.used : 0n; // always 0? 
 
       // Check if we already have an item for this interval
       let lastTimestampIndex;
