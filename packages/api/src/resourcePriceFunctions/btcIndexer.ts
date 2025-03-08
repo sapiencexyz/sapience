@@ -177,9 +177,7 @@ class BtcIndexer implements IResourcePriceIndexer {
           ? (data.total_fee / data.weight) * 10 ** 9
           : BigInt(0);
 
-      console.log(data);
-      console.log("Fee per weight", feePerWeight, "data.total_fee", data.total_fee, "data.weight", data.weight);
-
+      
       const price = {
         resource: { id: resource.id },
         timestamp: data.time,
