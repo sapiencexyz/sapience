@@ -75,7 +75,11 @@ const TradePoolLayout = ({
   const { markets } = useFoil();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
-
+  
+  //this will set the selected window to the correct time window based on the time since the market started
+  // if the market is less than a day old it will show the day window
+  //if the market is less than a week old it will show the week window
+  // if the market is older than a week it will show the month window
   useEffect(() => {
     if (chartType !== ChartType.PRICE || selectedWindow !== null) return;
 
