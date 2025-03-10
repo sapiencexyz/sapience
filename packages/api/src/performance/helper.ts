@@ -105,6 +105,29 @@ export async function loadStorageFromFile(
   };
 }
 
+export async function clearStorageFiles(): Promise<void> {
+  const storageDir = process.env.STORAGE_PATH;
+  if (!storageDir) {
+    throw new Error('STORAGE_PATH is not set');
+  }
+
+  if (!fs.existsSync(storageDir)) {
+    return; // Nothing to clear
+  }
+
+  console.time('  ResourcePerformance - clearStorageFiles');
+  
+  const files = await fs.promises.readdir(storageDir);
+  for (const file of files) {
+    if (file.endsWith('-storage.json')) {
+      await fs.promises.unlink(path.join(storageDir, file));
+    }
+  }
+
+  console.timeEnd('  ResourcePerformance - clearStorageFiles');
+  console.log(`  ResourcePerformance --> Cleared ${files.length} storage files`);
+}
+
 export function maxBigInt(a: bigint, b: bigint) {
   return a > b ? a : b;
 }

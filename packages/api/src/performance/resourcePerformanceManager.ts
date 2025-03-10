@@ -1,6 +1,6 @@
 import { ResourcePerformance } from './resourcePerformance';
 import { Resource } from 'src/models/Resource';
-
+import { clearStorageFiles } from './helper';
 export class ResourcePerformanceManager {
   private static _instance: ResourcePerformanceManager;
   private static _initialized: boolean = false;
@@ -29,18 +29,18 @@ export class ResourcePerformanceManager {
     if (ResourcePerformanceManager._initializing) {
       return;
     }
-    console.time(`ResourcePerformanceManager.initialize ${this.actionIdx}`);
+    console.time(`ResourcePerformanceManager.initialize - op# ${this.actionIdx}`);
     ResourcePerformanceManager._initializing = true;
     await this.initializeResources(resources, false);
     ResourcePerformanceManager._initialized = true;
     ResourcePerformanceManager._initializing = false;
-    console.timeEnd(`ResourcePerformanceManager.initialize ${this.actionIdx}`);
+    console.timeEnd(`ResourcePerformanceManager.initialize - op# ${this.actionIdx}`);
     this.actionIdx++;
   }
 
   public async hardRefreshResource(resourceSlug: string) {
     console.log(
-      `ResourcePerformanceManager Hard Refresh Resource ${resourceSlug} ${this.actionIdx}`
+      `ResourcePerformanceManager Hard Refresh Resource ${resourceSlug} - op# ${this.actionIdx}`
     );
     const resource = this.resources.find((r) => r.slug === resourceSlug);
     if (!resource) {
@@ -48,14 +48,14 @@ export class ResourcePerformanceManager {
     }
     await this.updateResourceCache(resource, true, 'refresh');
     console.log(
-      `ResourcePerformanceManager Hard Refresh Resource ${resourceSlug} done ${this.actionIdx}`
+      `ResourcePerformanceManager Hard Refresh Resource ${resourceSlug} done - op# ${this.actionIdx}`
     );
     this.actionIdx++;
   }
 
   public async softRefreshResource(resourceSlug: string) {
     console.log(
-      `ResourcePerformanceManager Soft Refresh Resource ${resourceSlug} ${this.actionIdx}`
+      `ResourcePerformanceManager Soft Refresh Resource ${resourceSlug} - op# ${this.actionIdx}`
     );
     const resource = this.resources.find((r) => r.slug === resourceSlug);
     if (!resource) {
@@ -63,29 +63,29 @@ export class ResourcePerformanceManager {
     }
     await this.updateResourceCache(resource, false, 'refresh');
     console.log(
-      `ResourcePerformanceManager Soft Refresh Resource ${resourceSlug} done ${this.actionIdx}`
+      `ResourcePerformanceManager Soft Refresh Resource ${resourceSlug} done - op# ${this.actionIdx}`
     );
     this.actionIdx++;
   }
 
   public async hardRefreshAllResources(resources: Resource[]) {
     console.log(
-      `ResourcePerformanceManager Hard Refresh All Resources ${this.actionIdx}`
+      `ResourcePerformanceManager Hard Refresh All Resources - op# ${this.actionIdx}`
     );
     await this.initializeResources(resources, true);
     console.log(
-      `ResourcePerformanceManager Hard Refresh All Resources done ${this.actionIdx}`
+      `ResourcePerformanceManager Hard Refresh All Resources done - op# ${this.actionIdx}`
     );
     this.actionIdx++;
   }
 
   public async softRefreshAllResources(resources: Resource[]) {
     console.log(
-      `ResourcePerformanceManager Soft Refresh All Resources ${this.actionIdx}`
+      `ResourcePerformanceManager Soft Refresh All Resources - op# ${this.actionIdx}`
     );
     await this.initializeResources(resources, false);
     console.log(
-      `ResourcePerformanceManager Soft Refresh All Resources done ${this.actionIdx}`
+      `ResourcePerformanceManager Soft Refresh All Resources done - op# ${this.actionIdx}`
     );
     this.actionIdx++;
   }
@@ -137,6 +137,11 @@ export class ResourcePerformanceManager {
     //   })
     // );
 
+    // Remove files from disk (hard init will recreate them) 
+    if (hardInitialize) {
+      await clearStorageFiles();
+    }
+
     // Get rid of existing resource performances and start fresh
     this.resourcePerformances = {};
 
@@ -147,7 +152,7 @@ export class ResourcePerformanceManager {
       );
       await this.updateResourceCache(resource, hardInitialize, 'initialize');
       console.log(
-        `ResourcePerformanceManager Initialize Resource ${resource.slug} done`
+        `ResourcePerformanceManager Initialize Resource ${resource.slug} done - op# ${this.actionIdx}`
       );
     }
   }

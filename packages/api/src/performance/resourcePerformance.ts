@@ -156,7 +156,7 @@ export class ResourcePerformance {
     }
 
     console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.slug} (${initialTimestamp})`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialTimestamp})`
     );
 
     this.runtime.processingResourceItems = true;
@@ -211,7 +211,7 @@ export class ResourcePerformance {
     );
 
     console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.slug} (${initialTimestamp})`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialTimestamp})`
     );
     this.runtime.processingResourceItems = false;
   }
