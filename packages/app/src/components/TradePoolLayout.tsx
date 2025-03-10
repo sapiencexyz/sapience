@@ -76,6 +76,20 @@ const TradePoolLayout = ({
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
 
+  useEffect(() => {
+    if (chartType !== ChartType.PRICE || selectedWindow !== null) return;
+
+    const timeSinceStart = now - startTime;
+
+    if (timeSinceStart <= 86400) {
+      setSelectedWindow(TimeWindow.D);
+    } else if (timeSinceStart <= 604800) {
+      setSelectedWindow(TimeWindow.W);
+    } else {
+      setSelectedWindow(TimeWindow.M);
+    }
+  }, [chartType, selectedWindow, startTime, now]);
+
   const [chainId, marketAddress] = params.id.split('%3A');
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
