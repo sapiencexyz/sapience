@@ -31,6 +31,7 @@
     "@apollo/server-plugin-response-cache": "^4.1.4",
     "@sentry/cli": "^2.39.0",
     "@sentry/node": "^8.40.0",
+    "@solana/web3.js": "^1.98.0",
     "axios": "^1.7.7",
     "class-validator": "^0.14.1",
     "cors": "^2.8.5",

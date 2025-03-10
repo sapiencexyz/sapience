@@ -2,19 +2,12 @@ import { mainnet, sepolia, base, cannon, arbitrum } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
+import svmIndexer from './resourcePriceFunctions/svmIndexer';
+import { safeRequire } from './utils';
 import btcIndexer from './resourcePriceFunctions/btcIndexer';
-import { Deployment, MarketInfo } from './interfaces';
+import { MarketInfo } from './interfaces';
 
-const safeRequire = async (path: string): Promise<Deployment | null> => {
-  try {
-    const module = await import(path);
-    return module.default;
-  } catch {
-    return null;
-  }
-};
-
-export const RESOURCES = [
+const EVM_RESOURCES = [
   {
     name: 'Ethereum Gas',
     slug: 'ethereum-gas',
@@ -40,6 +33,18 @@ export const RESOURCES = [
     slug: 'bitcoin-fees',
     priceIndexer: new btcIndexer(),
   },
+];
+
+const OTHER_RESOURCES = [
+  ...(process.env.SOLANA_RPC_URL
+    ? [
+        {
+          name: 'Solana Fees',
+          slug: 'solana-fees',
+          priceIndexer: new svmIndexer(process.env.SOLANA_RPC_URL),
+        },
+      ]
+    : []),
   ...(process.env.CELENIUM_API_KEY
     ? [
         {
@@ -51,12 +56,7 @@ export const RESOURCES = [
     : []),
 ];
 
-const addMarketYinYang = async (
-  markets: MarketInfo[],
-  chainId: number,
-  suffix?: string,
-  resource = RESOURCES[0] // Default to Ethereum Gas
-) => {
+const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
   const yin = await safeRequire(
     `@/protocol/deployments/${chainId}${suffix || ''}/FoilYin.json`
   );
@@ -71,6 +71,11 @@ const addMarketYinYang = async (
   );
 
   if (yin && yang && yinVault && yangVault) {
+    const ethGasResource = RESOURCES.find((r) => r.slug === 'ethereum-gas');
+    if (!ethGasResource) {
+      throw new Error('Ethereum Gas resource not found');
+    }
+
     markets.push(
       {
         deployment: yin,

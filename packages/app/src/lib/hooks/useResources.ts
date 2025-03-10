@@ -94,6 +94,18 @@ export const useResources = () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
       });
+<<<<<<< HEAD
+      const preferredOrder = [
+        'ethereum-gas',
+        'base-gas',
+        'arbitrum-gas',
+        'ethereum-blobspace',
+        'celestia-blobspace',
+        'bitcoin-fees',
+        'solana-fees',
+      ];
+=======
+>>>>>>> main
       const resources = data.resources.sort((a: any, b: any) => {
         const indexA = RESOURCE_ORDER.indexOf(a.slug);
         const indexB = RESOURCE_ORDER.indexOf(b.slug);

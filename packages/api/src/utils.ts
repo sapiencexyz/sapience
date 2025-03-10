@@ -405,3 +405,16 @@ export const sleep = async (ms: number) => {
 };
 
 export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;
+
+export const safeRequire = async (path: string): Promise<Deployment | null> => {
+  try {
+    const module = await import(path);
+    return module.default;
+  } catch {
+    return null;
+  }
+};
+
+export const sleep = async (ms: number) => {
+  return await new Promise((resolve) => setTimeout(resolve, ms));
+};
