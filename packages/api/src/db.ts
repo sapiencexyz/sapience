@@ -24,7 +24,7 @@ const devDataSource: DataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   synchronize: false,
-  logging: true,
+  logging: false,
   logger: 'advanced-console',
   migrations: ['src/migrations/*.ts'],
   ssl: !process.env.DATABASE_URL?.includes('localhost'),
