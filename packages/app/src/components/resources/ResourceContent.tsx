@@ -277,8 +277,8 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   } | null>(null);
 
   const [seriesVisibility, setSeriesVisibility] = React.useState({
-    candles: true,
-    index: true,
+    candles: false,
+    index: false,
     resource: true,
     trailing: false,
   });

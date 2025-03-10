@@ -20,7 +20,7 @@ interface Props {
     chainId: number;
     address: string;
   };
-  seriesVisibility: {
+  seriesVisibility?: {
     candles: boolean;
     index: boolean;
     resource: boolean;

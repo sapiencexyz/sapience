@@ -400,8 +400,7 @@ export class ResourcePerformance {
     interval: number
   ) {
     const rpd = this.runtime.resourceProcessData[interval];
-    const price =
-      BigInt(item.used) > 0n ? BigInt(item.feePaid) / BigInt(item.used) : 0n;
+    const price = BigInt(item.value);
 
     // If this is the first item or we're starting a new interval
     if (!rpd.nextTimestamp) {
