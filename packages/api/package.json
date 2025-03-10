@@ -8,7 +8,7 @@
   "scripts": {
     "compile": "tsc",
     "build": "tsc && npm run sentry:sourcemaps",
-    "dev": "concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\"",
+    "dev": "pnpm migration:run && concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\"",
     "dev:service": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/workers/worker.ts",
     "start": "pnpm migration:run && concurrently \"pnpm run start:service\" \"pnpm run start:worker\"",

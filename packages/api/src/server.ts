@@ -1,4 +1,4 @@
-import { initializeDataSource } from './db';
+import { initializeDataSource, resourceRepository } from './db';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
@@ -9,6 +9,7 @@ import initSentry from './instrument';
 import { initializeApolloServer } from './graphql/startApolloServer';
 import Sentry from './sentry';
 import { NextFunction, Request, Response } from 'express';
+import { ResourcePerformanceManager } from './performance';
 
 const PORT = 3001;
 
@@ -43,6 +44,12 @@ const startServer = async () => {
   if (process.env.NODE_ENV === 'production') {
     Sentry.setupExpressErrorHandler(app);
   }
+
+  console.log('ResourcePerformanceManager - Starting');
+  const resources = await resourceRepository.find();
+  const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
+  await resourcePerformanceManager.initialize(resources);
+  console.log('ResourcePerformanceManager - Initialized');
 
   // Global error handle
   // Needs the unused _next parameter to be passed in: https://expressjs.com/en/guide/error-handling.html

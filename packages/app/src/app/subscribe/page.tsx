@@ -30,7 +30,7 @@ import {
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei, foilApi } from '~/lib/utils/util';
+import { convertGgasPerWstEthToGwei, foilApi } from '~/lib/utils/util';
 
 const SUBSCRIPTIONS_QUERY = gql`
   query GetSubscriptions($owner: String!) {
@@ -129,7 +129,7 @@ const useSubscriptions = (address?: string) => {
     }
     const unitsAdjustedEntryPrice = useMarketUnits
       ? entryPrice
-      : convertWstEthToGwei(entryPrice, stEthPerToken);
+      : convertGgasPerWstEthToGwei(entryPrice, stEthPerToken);
     return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 
@@ -249,8 +249,8 @@ const SubscriptionsList = () => {
 
   if (subscriptions.length === 0) {
     return (
-      <div className="text-muted-foreground text-center my-6">
-        No active subscriptions found
+      <div className="italic text-muted-foreground text-center lg:my-48 my-12">
+        No active subscriptions are owned by the connected wallet
       </div>
     );
   }
@@ -388,6 +388,7 @@ const SubscribeContent = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [prefilledSize, setPrefilledSize] = useState<bigint | null>(null);
+  const [showActiveEpoch, setShowActiveEpoch] = useState(true);
   const { address } = useAccount();
   const [shouldOpenAfterConnect, setShouldOpenAfterConnect] = useState(false);
 
@@ -443,13 +444,30 @@ const SubscribeContent = () => {
     const nextEpoch = sortedEpochs.find(
       (epoch) => epoch.startTimestamp > currentTime
     );
-    console.log('Current Time:', currentTime);
-    console.log('Next Epoch:', nextEpoch);
-    console.log('Most Recent Epoch:', sortedEpochs[sortedEpochs.length - 1]);
 
-    // If no future epoch, get the most recent one
-    return nextEpoch || sortedEpochs[sortedEpochs.length - 1] || null;
-  }, [gasMarkets, currentTime]);
+    // Find the active epoch (current epoch that has started but not ended)
+    const activeEpoch = sortedEpochs.find(
+      (epoch) =>
+        epoch.startTimestamp <= currentTime && epoch.endTimestamp > currentTime
+    );
+
+    // Find the most recent epoch if no active or next epoch
+    const mostRecentEpoch = sortedEpochs[sortedEpochs.length - 1] || null;
+
+    // Check if we're within 7 days of active epoch's start time
+    const isWithin7DaysOfActiveEpochStart =
+      activeEpoch &&
+      currentTime - activeEpoch.startTimestamp < 7 * 24 * 60 * 60; // 7 days in seconds
+
+    // Logic for determining which epoch to show
+    if (showActiveEpoch && activeEpoch && isWithin7DaysOfActiveEpochStart) {
+      // Show active epoch if it exists and we're within 7 days of its start
+      return activeEpoch;
+    }
+
+    // Default to next epoch or most recent if no next epoch
+    return nextEpoch || mostRecentEpoch;
+  }, [gasMarkets, currentTime, showActiveEpoch]);
 
   const handleNewSubscription = () => {
     setIsDialogOpen(true);
@@ -459,9 +477,13 @@ const SubscribeContent = () => {
     setIsAnalyticsOpen(true);
   };
 
+  const toggleEpochView = () => {
+    setShowActiveEpoch(!showActiveEpoch);
+  };
+
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center w-full m-10">
+      <div className="flex justify-center items-center w-full lg:my-48 my-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -509,6 +531,8 @@ const SubscribeContent = () => {
             <Subscribe
               initialSize={prefilledSize}
               onClose={() => setIsDialogOpen(false)}
+              onPeriodToggle={toggleEpochView}
+              isActiveEpoch={showActiveEpoch}
             />
           </DialogContent>
         </Dialog>
@@ -525,6 +549,8 @@ const SubscribeContent = () => {
                 setIsDialogOpen(true);
               }}
               isAnalyticsMode
+              onPeriodToggle={toggleEpochView}
+              isActiveEpoch={showActiveEpoch}
             />
           </DialogContent>
         </Dialog>

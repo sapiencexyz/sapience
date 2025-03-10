@@ -37,14 +37,22 @@ export default function MarketSidebar({ isTrade }: { isTrade: boolean }) {
       return <Settle />;
     }
     if (isTrade) {
-      return <AddEditTrade />;
+      return (
+        <div className="py-5 px-6">
+          <AddEditTrade />
+        </div>
+      );
     }
-    return <LiquidityForm />;
+    return (
+      <div className="py-5 px-6">
+        <LiquidityForm />
+      </div>
+    );
   };
 
   return (
-    <ScrollArea className="h-full border border-border rounded-sm w-full flex-1 flex flex-col shadow-sm">
-      <div className="py-5 px-6">{renderContent()}</div>
+    <ScrollArea className="h-full border border-border rounded-sm w-full flex-1 flex flex-col">
+      {renderContent()}
     </ScrollArea>
   );
 }

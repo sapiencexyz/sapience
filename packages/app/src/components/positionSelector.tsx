@@ -14,6 +14,8 @@ import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { positionHasBalance } from '~/lib/utils/util';
 
+import PositionDisplay from './PositionDisplay';
+
 const PositionSelector: React.FC = () => {
   const { nftId, positions, setNftId } = useAddEditPosition();
   const [isOpen, setIsOpen] = useState(false);
@@ -44,7 +46,7 @@ const PositionSelector: React.FC = () => {
     <div>
       <p className="text-sm font-semibold mb-0.5">Position</p>
       <p className="text-sm items-center flex">
-        {nftId ? `#${nftId}` : 'New Position'}{' '}
+        {nftId ? <PositionDisplay positionId={nftId} /> : 'New Position'}{' '}
         <Button
           type="button"
           variant="link"
@@ -87,7 +89,7 @@ const PositionSelector: React.FC = () => {
                     onClick={() => handlePositionSelect(Number(position.id))}
                   >
                     <div className="flex items-center gap-2 w-full">
-                      <p className="font-bold">#{position.id.toString()}</p>
+                      <PositionDisplay positionId={position.id.toString()} />
                       <span className="text-sm text-muted-foreground">
                         {position.type === 'lp'
                           ? 'Liquidity Position'

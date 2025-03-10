@@ -15,7 +15,7 @@ import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { tickToPrice, convertWstEthToGwei } from '~/lib/utils/util';
+import { tickToPrice, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -58,11 +58,17 @@ const PeriodHeader = () => {
 
   const minPrice = useMarketUnits
     ? tickToPrice(baseAssetMinPriceTick)
-    : convertWstEthToGwei(tickToPrice(baseAssetMinPriceTick), stEthPerToken);
+    : convertGgasPerWstEthToGwei(
+        tickToPrice(baseAssetMinPriceTick),
+        stEthPerToken
+      );
 
   const maxPrice = useMarketUnits
     ? tickToPrice(baseAssetMaxPriceTick)
-    : convertWstEthToGwei(tickToPrice(baseAssetMaxPriceTick), stEthPerToken);
+    : convertGgasPerWstEthToGwei(
+        tickToPrice(baseAssetMaxPriceTick),
+        stEthPerToken
+      );
 
   const links = (
     <>
@@ -128,7 +134,7 @@ const PeriodHeader = () => {
   );
 
   return (
-    <div className="w-full px-3 py-6">
+    <div className="w-full p-3 pt-6 pb-4 md:py-6">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex flex-col gap-3">
           <h1 className="text-3xl font-semibold flex items-center gap-2.5">
@@ -138,12 +144,12 @@ const PeriodHeader = () => {
                 alt={resource?.name || ''}
                 width={32}
                 height={32}
-                className="w-8 h-8"
+                className="w-8 h-8  "
               />
             )}
             {resource?.name} Market
           </h1>
-          <div className="flex flex-wrap gap-y-2 gap-x-4 lg:gap-x-6 text-sm ml-2">
+          <div className="flex flex-wrap gap-y-1.5 lg:gap-y-2 gap-x-3 lg:gap-x-6 text-xs sm:text-sm">
             {links}
           </div>
         </div>

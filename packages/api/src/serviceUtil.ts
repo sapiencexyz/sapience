@@ -1,10 +1,5 @@
 import { MarketPrice } from './models/MarketPrice';
-import {
-  ONE_DAY_MS,
-  ONE_HOUR_MS,
-  ONE_MINUTE_MS,
-  TOKEN_PRECISION,
-} from './constants';
+import { ONE_DAY_MS, ONE_HOUR_MS, TOKEN_PRECISION } from './constants';
 import dataSource from './db';
 import { Transaction } from './models/Transaction';
 import { TimeWindow } from './interfaces';
@@ -106,9 +101,6 @@ export function getStartTimestampFromTimeWindow(window: TimeWindow) {
   const hourInSeconds = 3600;
   const dayInSeconds = 24 * hourInSeconds;
   const weekInSeconds = 7 * dayInSeconds;
-  if (window === TimeWindow.H) {
-    return now - hourInSeconds;
-  }
   if (window === TimeWindow.D) {
     return now - dayInSeconds;
   }
@@ -118,7 +110,6 @@ export function getStartTimestampFromTimeWindow(window: TimeWindow) {
   if (window === TimeWindow.M) {
     return now - 30 * dayInSeconds;
   }
-  //else, window === TimeWindow.Y
   return now - 365 * dayInSeconds;
 }
 
@@ -128,25 +119,17 @@ export function getTimeParamsFromWindow(window: TimeWindow) {
   let startTime: number;
 
   switch (window) {
-    case TimeWindow.Y:
-      intervalMs = ONE_DAY_MS * 7;
-      startTime = now - 365 * ONE_DAY_MS;
-      break;
     case TimeWindow.M:
       intervalMs = ONE_DAY_MS;
       startTime = now - 30 * ONE_DAY_MS;
-      break;
-    case TimeWindow.W:
-      intervalMs = 6 * ONE_HOUR_MS; // get intervals of every 6 hours for a week
-      startTime = now - 7 * ONE_DAY_MS;
       break;
     case TimeWindow.D:
       intervalMs = ONE_HOUR_MS;
       startTime = now - ONE_DAY_MS;
       break;
-    case TimeWindow.H:
-      intervalMs = 5 * ONE_MINUTE_MS;
-      startTime = now - ONE_HOUR_MS;
+    case TimeWindow.W:
+      intervalMs = 3 * ONE_HOUR_MS;
+      startTime = now - 7 * ONE_DAY_MS;
       break;
     default:
       throw new Error('Invalid volume window');

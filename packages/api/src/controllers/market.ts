@@ -21,6 +21,7 @@ import {
   getProviderForChain,
   bigintReplacer,
   sqrtPriceX96ToSettlementPriceD18,
+  getBlockByTimestamp,
 } from '../utils';
 import {
   createEpochFromEvent,
@@ -34,7 +35,6 @@ import {
   updateTransactionFromTradeModifiedEvent,
   insertMarketPrice,
   updateTransactionFromPositionSettledEvent,
-  getMarketStartEndBlock,
   insertCollateralTransfer,
   createOrUpdateEpochFromContract,
 } from './marketHelpers';
@@ -96,7 +96,6 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     updatedMarket = existingMarket || new Market();
   }
 
-  updatedMarket.public = marketInfo.public;
   updatedMarket.address = marketInfo.deployment.address;
   updatedMarket.vaultAddress = marketInfo.vaultAddress;
   updatedMarket.isYin = marketInfo.isYin;
@@ -125,6 +124,10 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
   const chainId = await client.getChainId();
 
   const processLogs = async (logs: Log[]) => {
+    console.log(
+      '[MarketIndexer]',
+      `Processing logs for market ${market.chainId}:${market.address}`
+    );
     for (const log of logs) {
       const serializedLog = JSON.stringify(log, bigintReplacer);
 
@@ -180,70 +183,196 @@ export const reindexMarketEvents = async (
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
 
-  // Get block range for the epoch
-  const { startBlockNumber, error } = await getMarketStartEndBlock(
-    market,
-    epochId.toString(),
-    client
-  );
+  // Get the epoch to calculate the time-based block
+  const epoch = await epochRepository.findOne({
+    where: {
+      market: { id: market.id },
+      epochId: Number(epochId),
+    },
+  });
 
-  if (error || !startBlockNumber) {
-    throw new Error(`Failed to get start block for epoch ${epochId}: ${error}`);
+  if (!epoch) {
+    throw new Error(`Epoch ${epochId} not found for market ${market.address}`);
   }
 
-  const startBlock = startBlockNumber;
-  const endBlock = await client.getBlockNumber();
+  if (!epoch.startTimestamp || !epoch.endTimestamp) {
+    throw new Error(`Epoch ${epochId} is missing start or end timestamp`);
+  }
 
-  for (let blockNumber = startBlock; blockNumber <= endBlock; blockNumber++) {
-    console.log('Indexing market events from block ', blockNumber);
+  // Calculate the start time as one epoch period before the epoch's start time
+  // An epoch period is defined as (endTimestamp - startTimestamp)
+  const epochDuration =
+    BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
+  const lookbackStartTime = Number(
+    BigInt(epoch.startTimestamp) - epochDuration
+  );
+
+  // Get the block number for this lookback start time
+  const lookbackStartBlock = await getBlockByTimestamp(
+    client,
+    lookbackStartTime
+  );
+
+  // Use the later of the deployment block or the lookback start block
+  const startBlock = Math.max(
+    Number(market.deployTxnBlockNumber || 0),
+    Number(lookbackStartBlock.number)
+  );
+
+  // Get the end block using the sooner of epoch end time and current time
+  const currentTime = Math.floor(Date.now() / 1000);
+  const endTime = Math.min(Number(epoch.endTimestamp), currentTime);
+
+  let endBlock;
+  try {
+    endBlock = await getBlockByTimestamp(client, endTime);
+  } catch (err) {
+    const error = err as Error;
+    console.error(
+      `Failed to get end block for timestamp ${endTime}: ${error.message}`
+    );
+    console.log(`Using current block as fallback`);
     try {
-      const logs = await client.getLogs({
-        address: market.address as `0x${string}`,
-        fromBlock: BigInt(blockNumber),
-        toBlock: BigInt(blockNumber),
-      });
+      const latestBlockNumber = await client.getBlockNumber();
+      endBlock = await client.getBlock({ blockNumber: latestBlockNumber });
+      console.log(
+        `Successfully retrieved current block ${latestBlockNumber} as fallback`
+      );
+    } catch (fbErr) {
+      const fallbackError = fbErr as Error;
+      console.error(
+        `Failed to get latest block as fallback: ${fallbackError.message}`
+      );
+      throw new Error(
+        `Could not determine end block for reindexing: ${error.message}`
+      );
+    }
+  }
 
-      for (const log of logs) {
+  const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
+
+  console.log(
+    `Reindexing market events for epoch ${epochId} from block ${startBlock} to ${endBlock.number}`
+  );
+
+  // Function to process logs regardless of how they were fetched
+  const processLogs = async (logs: Log[]) => {
+    for (const log of logs) {
+      try {
         const decodedLog = decodeEventLog({
           abi,
           data: log.data,
           topics: log.topics,
         });
         const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
-        const blockNumber = log.blockNumber;
-        const block = await client.getBlock({
-          blockNumber: log.blockNumber,
-        });
+        const logBlockNumber = log.blockNumber || 0n;
+        const block = await client.getBlock({ blockNumber: logBlockNumber });
         const logIndex = log.logIndex || 0;
         const logData = {
           ...JSON.parse(serializedLog),
           transactionHash: log.transactionHash || '',
           blockHash: log.blockHash || '',
-          blockNumber: log.blockNumber?.toString() || '',
-          logIndex: log.logIndex || 0,
+          blockNumber: logBlockNumber.toString(),
+          logIndex,
           transactionIndex: log.transactionIndex || 0,
           removed: log.removed || false,
           topics: log.topics || [],
           data: log.data || '',
         };
 
-        // Extract epochId from logData (adjust this based on your event structure)
-        const epochId = logData.args?.epochId || 0;
+        // Extract epochId from logData
+        const eventEpochId = logData.args?.epochId || 0;
 
         await upsertEvent(
           chainId,
           market.address,
-          epochId,
-          blockNumber,
+          eventEpochId,
+          logBlockNumber,
           block.timestamp,
           logIndex,
           logData
         );
+      } catch (error) {
+        console.error(
+          `Error processing log at block ${log.blockNumber || 'unknown'}:`,
+          error
+        );
       }
+    }
+  };
+
+  // Process blocks in chunks to avoid RPC limitations
+  let currentBlock = startBlock;
+  let totalLogsProcessed = 0;
+
+  while (currentBlock <= Number(endBlock.number ?? BigInt(currentBlock))) {
+    const chunkEndBlock = Math.min(
+      currentBlock + CHUNK_SIZE - 1,
+      Number(endBlock.number ?? BigInt(currentBlock))
+    );
+
+    try {
+      console.log(
+        `Fetching logs for blocks ${currentBlock} to ${chunkEndBlock}`
+      );
+      const logs = await client.getLogs({
+        address: market.address as `0x${string}`,
+        fromBlock: BigInt(currentBlock),
+        toBlock: BigInt(chunkEndBlock),
+      });
+
+      if (logs.length > 0) {
+        console.log(
+          `Found ${logs.length} logs in blocks ${currentBlock}-${chunkEndBlock}`
+        );
+        await processLogs(logs);
+        totalLogsProcessed += logs.length;
+      }
+
+      // Move to the next chunk
+      currentBlock = chunkEndBlock + 1;
     } catch (error) {
-      console.error(`Error processing block ${blockNumber}:`, error);
+      console.error(
+        `Error fetching logs for block range ${currentBlock}-${chunkEndBlock}:`,
+        error
+      );
+
+      // If a chunk fails, fall back to processing that chunk block by block
+      console.log(
+        `Falling back to block-by-block indexing for range ${currentBlock}-${chunkEndBlock}`
+      );
+      for (
+        let blockNumber = currentBlock;
+        blockNumber <= chunkEndBlock;
+        blockNumber++
+      ) {
+        try {
+          const logs = await client.getLogs({
+            address: market.address as `0x${string}`,
+            fromBlock: BigInt(blockNumber),
+            toBlock: BigInt(blockNumber),
+          });
+
+          if (logs.length > 0) {
+            console.log(
+              `Processing ${logs.length} logs from block ${blockNumber}`
+            );
+            await processLogs(logs);
+            totalLogsProcessed += logs.length;
+          }
+        } catch (error) {
+          console.error(`Error processing block ${blockNumber}:`, error);
+        }
+      }
+
+      // Move to the next chunk
+      currentBlock = chunkEndBlock + 1;
     }
   }
+
+  console.log(
+    `Completed indexing for market ${market.address} in epoch ${epochId}. Processed ${totalLogsProcessed} logs.`
+  );
 };
 
 const alertEvent = async (
@@ -478,6 +607,10 @@ const upsertEvent = async (
 
     if (existingEvent) {
       console.log('Event already exists, processing existing event');
+      // Update the existing event with any new data to avoid UpdateValuesMissingError
+      existingEvent.timestamp = timeStamp.toString();
+      existingEvent.logData = logData;
+      await eventRepository.save(existingEvent);
       await upsertEntitiesFromEvent(existingEvent);
       return existingEvent;
     }
@@ -512,19 +645,21 @@ const upsertEvent = async (
 };
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
 export const upsertEntitiesFromEvent = async (event: Event) => {
+  // First check if this event has already been processed by looking for an existing transaction
   const existingTransaction = await transactionRepository.findOne({
     where: { event: { id: event.id } },
   });
-  const newTransaction = existingTransaction || new Transaction();
+
+  if (existingTransaction) {
+    console.log(`Event ${event.id} has already been processed, skipping`);
+    return;
+  }
+
+  let skipTransaction = false;
+  const newTransaction = new Transaction();
   newTransaction.event = event;
 
-  // set to true if the Event does not require a transaction (i.e. a Transfer event)
-  let skipTransaction = false;
-
-  const chainId = event.market.chainId;
-  const address = event.market.address;
-  const market = event.market;
-
+  // Process the event based on its type
   switch (event.logData.eventName) {
     // Market events
     case EventType.MarketInitialized: {
@@ -537,9 +672,9 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       } as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
         marketCreatedArgs,
-        chainId,
-        address,
-        market
+        event.market.chainId,
+        event.market.address,
+        event.market
       );
       skipTransaction = true;
       break;
@@ -554,9 +689,9 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       } as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
         marketUpdatedArgs,
-        chainId,
-        address,
-        market
+        event.market.chainId,
+        event.market.address,
+        event.market
       );
       skipTransaction = true;
       break;
@@ -571,17 +706,18 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         endTime: event.logData.args.endTime,
         startingSqrtPriceX96: event.logData.args.startingSqrtPriceX96,
       } as EpochCreatedEventLog;
-      await createEpochFromEvent(epochCreatedArgs, market);
+      await createEpochFromEvent(epochCreatedArgs, event.market);
 
       const marketInfo = MARKETS.find(
         (m) =>
-          m.marketChainId === chainId &&
-          m.deployment.address.toLowerCase() === address.toLowerCase()
+          m.marketChainId === event.market.chainId &&
+          m.deployment.address.toLowerCase() ===
+            event.market.address.toLowerCase()
       );
       if (marketInfo) {
         await createOrUpdateEpochFromContract(
           marketInfo,
-          market,
+          event.market,
           Number(epochCreatedArgs.epochId)
         );
       }
@@ -592,7 +728,10 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       console.log('Market settled event. event: ', event);
       const epoch = await epochRepository.findOne({
         where: {
-          market: { address, chainId },
+          market: {
+            address: event.market.address,
+            chainId: event.market.chainId,
+          },
           epochId: Number(event.logData.args.epochId),
         },
         relations: ['market'],
@@ -609,7 +748,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         epoch.settlementPriceD18 = settlementPriceD18.toString();
         await epochRepository.save(epoch);
       } else {
-        console.error('Epoch not found for market: ', market);
+        console.error('Epoch not found for market: ', event.market);
       }
       skipTransaction = true;
       break;
@@ -667,12 +806,50 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
   }
 
   if (!skipTransaction) {
-    // Fill transaction with collateral transfer
-    await insertCollateralTransfer(newTransaction);
-    // Fill transaction with market price
-    await insertMarketPrice(newTransaction);
-    console.log('Saving new transaction: ', newTransaction);
-    await transactionRepository.save(newTransaction);
-    await createOrModifyPositionFromTransaction(newTransaction);
+    try {
+      // Fill transaction with collateral transfer and market price
+      await insertCollateralTransfer(newTransaction);
+      await insertMarketPrice(newTransaction);
+
+      // Ensure collateral is set to a default value if not present
+      if (!newTransaction.collateral || newTransaction.collateral === '') {
+        newTransaction.collateral = '0';
+      }
+
+      // Ensure all required fields have values to prevent UpdateValuesMissingError
+      if (!newTransaction.baseToken) newTransaction.baseToken = '0';
+      if (!newTransaction.quoteToken) newTransaction.quoteToken = '0';
+      if (!newTransaction.borrowedBaseToken)
+        newTransaction.borrowedBaseToken = '0';
+      if (!newTransaction.borrowedQuoteToken)
+        newTransaction.borrowedQuoteToken = '0';
+      if (!newTransaction.tradeRatioD18) newTransaction.tradeRatioD18 = '0';
+
+      // Save the transaction
+      console.log('Saving new transaction: ', newTransaction);
+      await transactionRepository.save(newTransaction);
+
+      // Then create or modify the position with the saved transaction
+      try {
+        await createOrModifyPositionFromTransaction(newTransaction);
+      } catch (positionError) {
+        console.error('Error creating or modifying position:', positionError);
+      }
+    } catch (error) {
+      console.error('Error processing event:', error);
+      // If it's a duplicate key error, just log and continue
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === '23505'
+      ) {
+        console.warn(
+          'Duplicate key error - this event may have already been processed'
+        );
+        return;
+      }
+      throw error;
+    }
   }
 };

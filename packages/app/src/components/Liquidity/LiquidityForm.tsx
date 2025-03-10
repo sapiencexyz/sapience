@@ -38,11 +38,7 @@ import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
-import {
-  JSBIAbs,
-  convertWstEthToGwei,
-  convertGgasPerWstEthToGwei,
-} from '~/lib/utils/util';
+import { JSBIAbs, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import LiquidityAmountInput from './LiquidityAmountInput';
 import LiquidityPriceInput from './LiquidityPriceInput';
@@ -114,7 +110,7 @@ const LiquidityForm: React.FC = () => {
       const lowPriceNum = Number(values.lowPrice);
       const minPrice = useMarketUnits
         ? tickToPrice(baseAssetMinPriceTick)
-        : convertWstEthToGwei(
+        : convertGgasPerWstEthToGwei(
             tickToPrice(baseAssetMinPriceTick),
             stEthPerToken
           );
@@ -147,7 +143,7 @@ const LiquidityForm: React.FC = () => {
       const minHighPrice = Number(values.lowPrice);
       const maxPrice = useMarketUnits
         ? tickToPrice(baseAssetMaxPriceTick)
-        : convertWstEthToGwei(
+        : convertGgasPerWstEthToGwei(
             tickToPrice(baseAssetMaxPriceTick),
             stEthPerToken
           );
@@ -721,7 +717,7 @@ const LiquidityForm: React.FC = () => {
         duration: 5000,
       });
       router.push(
-        `/trade/${chainId}%3A${marketAddress}/periods/${epoch}?nftId=${nftId}`
+        `/markets/${chainId}%3A${marketAddress}/periods/${epoch}/pool?positionId=${nftId}`
       );
     }
   }, [positionData, toast]);
@@ -1049,7 +1045,7 @@ const LiquidityForm: React.FC = () => {
       return displayPrice;
     }
     // Convert from gwei to Ggas/wstETH
-    return displayPrice / convertWstEthToGwei(1, stEthPerToken);
+    return displayPrice / convertGgasPerWstEthToGwei(1, stEthPerToken);
   };
 
   // Convert price from market units to display units
@@ -1058,7 +1054,7 @@ const LiquidityForm: React.FC = () => {
       return marketPrice;
     }
     // Convert from Ggas/wstETH to gwei
-    return convertWstEthToGwei(marketPrice, stEthPerToken);
+    return convertGgasPerWstEthToGwei(marketPrice, stEthPerToken);
   };
 
   // Update form values when market units change
@@ -1096,10 +1092,10 @@ const LiquidityForm: React.FC = () => {
     // Convert to display units based on current useMarketUnits setting
     const lowDisplayPrice = useMarketUnits
       ? lowMarketPrice
-      : convertWstEthToGwei(lowMarketPrice, stEthPerToken);
+      : convertGgasPerWstEthToGwei(lowMarketPrice, stEthPerToken);
     const highDisplayPrice = useMarketUnits
       ? highMarketPrice
-      : convertWstEthToGwei(highMarketPrice, stEthPerToken);
+      : convertGgasPerWstEthToGwei(highMarketPrice, stEthPerToken);
 
     console.log('Display Prices:', {
       lowDisplayPrice,

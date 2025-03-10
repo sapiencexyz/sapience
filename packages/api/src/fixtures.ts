@@ -26,7 +26,7 @@ const EVM_RESOURCES = [
   {
     name: 'Ethereum Blobspace',
     slug: 'ethereum-blobspace',
-    priceIndexer: new ethBlobsIndexer(),
+    priceIndexer: new ethBlobsIndexer(mainnet.id),
   },
   {
     name: 'Bitcoin Fees',
@@ -56,26 +56,18 @@ const OTHER_RESOURCES = [
     : []),
 ];
 
-export const RESOURCES = [...EVM_RESOURCES, ...OTHER_RESOURCES];
-
-const MARKET_CONFIGS = [
-  { chainId: base.id, environment: 'all' },
-  { chainId: cannon.id, environment: 'development' },
-  { chainId: sepolia.id, environment: ['staging', 'development'] },
-];
-
 const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
   const yin = await safeRequire(
-    `@/protocol/deployments/${chainId}/FoilYin.json`
+    `@/protocol/deployments/${chainId}${suffix || ''}/FoilYin.json`
   );
   const yang = await safeRequire(
-    `@/protocol/deployments/${chainId}/FoilYang.json`
+    `@/protocol/deployments/${chainId}${suffix || ''}/FoilYang.json`
   );
   const yinVault = await safeRequire(
-    `@/protocol/deployments/${chainId}/VaultYin.json`
+    `@/protocol/deployments/${chainId}${suffix || ''}/VaultYin.json`
   );
   const yangVault = await safeRequire(
-    `@/protocol/deployments/${chainId}/VaultYang.json`
+    `@/protocol/deployments/${chainId}${suffix || ''}/VaultYang.json`
   );
 
   if (yin && yang && yinVault && yangVault) {
@@ -89,16 +81,14 @@ const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
         deployment: yin,
         vaultAddress: yinVault.address,
         marketChainId: chainId,
-        public: true,
-        resource: ethGasResource,
+        resource,
         isYin: true,
       },
       {
         deployment: yang,
         vaultAddress: yangVault.address,
         marketChainId: chainId,
-        public: false,
-        resource: ethGasResource,
+        resource,
         isYin: false,
       }
     );
@@ -108,17 +98,22 @@ const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
 const initializeMarkets = async () => {
   const FULL_MARKET_LIST: MarketInfo[] = [];
 
-  for (const config of MARKET_CONFIGS) {
-    const environments = Array.isArray(config.environment)
-      ? config.environment
-      : [config.environment];
+  // Mainnet Deployments
+  await addMarketYinYang(FULL_MARKET_LIST, base.id, '-beta'); // Remove after settling feb
+  await addMarketYinYang(FULL_MARKET_LIST, base.id);
+  await addMarketYinYang(FULL_MARKET_LIST, base.id, '-blobs', RESOURCES[3]); // Use Ethereum Blobspace for -blobs
 
-    if (
-      config.environment === 'all' ||
-      (process.env.NODE_ENV && environments.includes(process.env.NODE_ENV))
-    ) {
-      await addMarketYinYang(FULL_MARKET_LIST, config.chainId);
-    }
+  // Development Deployments
+  if (process.env.NODE_ENV === 'development') {
+    await addMarketYinYang(FULL_MARKET_LIST, cannon.id);
+  }
+
+  // Testnet Deployments
+  if (
+    process.env.NODE_ENV === 'staging' ||
+    process.env.NODE_ENV === 'development'
+  ) {
+    await addMarketYinYang(FULL_MARKET_LIST, sepolia.id);
   }
 
   return FULL_MARKET_LIST;

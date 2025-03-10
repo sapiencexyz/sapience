@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import type { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
@@ -13,7 +12,6 @@ import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { useToast } from '~/hooks/use-toast';
-import { foilApi } from '~/lib/utils/util';
 
 // Types and Interfaces
 export interface PeriodContextType {
@@ -47,6 +45,18 @@ export interface PeriodContextType {
     chainId: number;
     epochId: number;
   };
+  seriesVisibility: {
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+    trailing: boolean;
+  };
+  setSeriesVisibility: (seriesVisibility: {
+    candles: boolean;
+    index: boolean;
+    resource: boolean;
+    trailing: boolean;
+  }) => void;
 }
 
 interface PeriodProviderProps {
@@ -83,30 +93,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   const { foilData, foilVaultData } = useFoilDeployment(chainId);
 
-  // Custom hooks for data fetching
-  const { data: latestPrice } = useQuery({
-    queryKey: ['latestPrice', `${state.chainId}:${state.address}`, state.epoch],
-    queryFn: async () => {
-      try {
-        const data = await foilApi.get(
-          `/prices/index/latest?contractId=${state.chainId}:${state.address}&epochId=${state.epoch}`
-        );
-        return data.price / 1e9;
-      } catch (error) {
-        console.error('Error fetching latest price:', error);
-        return null;
-      }
-    },
-    enabled: state.chainId !== 0 && state.epoch !== 0,
-    refetchInterval: () => {
-      const currentTime = Math.floor(Date.now() / 1000);
-      if (state.averagePrice && currentTime > state.endTime) {
-        return false;
-      }
-      return 60000;
-    },
-  });
-
   const marketViewFunctionResult = useReadContract({
     chainId,
     abi: foilData.abi,
@@ -142,6 +128,13 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     state.poolAddress
   );
 
+  const [seriesVisibility, setSeriesVisibility] = useState({
+    candles: false,
+    index: false,
+    resource: false,
+    trailing: false,
+  });
+
   useEffect(() => {
     const chain = Object.entries(Chains).find((chainOption) => {
       if (chainId === 13370 && chainOption[0] === 'localhost') {
@@ -171,27 +164,15 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
   useEffect(() => {
-    if (latestPrice !== undefined && latestPrice !== null) {
-      setState((currentState) => ({
-        ...currentState,
-        averagePrice: latestPrice,
-      }));
-    } else if (latestPrice === null) {
-      // When price data is not available, set averagePrice to null/0
-      setState((currentState) => ({
-        ...currentState,
-        averagePrice: 0,
-      }));
-    }
-  }, [latestPrice]);
-
-  useEffect(() => {
     setState((currentState) => ({
       ...currentState,
       foilData: { address, abi: foilData.abi },
       foilVaultData,
+      seriesVisibility,
+      setSeriesVisibility,
     }));
-  }, [foilData, address, foilVaultData]);
+    console.log('seriesVisibility', seriesVisibility);
+  }, [foilData, address, foilVaultData, seriesVisibility, setSeriesVisibility]);
 
   useEffect(() => {
     if (marketViewFunctionResult.error) {

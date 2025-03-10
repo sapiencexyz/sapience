@@ -62,14 +62,14 @@ export default function CustomConnectButton() {
                   >
                     {chain.hasIcon && (
                       <div
-                        className="w-3 h-3 rounded-full overflow-hidden mr-1"
+                        className="w-5 h-5 rounded-full overflow-hidden"
                         style={{ background: chain.iconBackground }}
                       >
                         {chain.iconUrl && (
                           <img
                             alt={chain.name ?? 'Chain icon'}
                             src={chain.iconUrl}
-                            className="w-3 h-3"
+                            className="w-5 h-5"
                           />
                         )}
                       </div>

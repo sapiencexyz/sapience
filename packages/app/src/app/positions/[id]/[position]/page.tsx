@@ -1,28 +1,19 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, ExternalLink } from 'lucide-react';
+import { ExternalLink, Loader2 } from 'lucide-react';
 
 import EpochTiming from '~/components/EpochTiming';
 import NumberDisplay from '~/components/numberDisplay';
+import PositionDisplay from '~/components/PositionDisplay';
 import { badgeVariants } from '~/components/ui/badge';
+import { FoilProvider } from '~/lib/context/FoilProvider';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { cn } from '~/lib/utils';
-import { tickToPrice, foilApi } from '~/lib/utils/util';
+import { foilApi, tickToPrice, getExplorerUrl } from '~/lib/utils/util';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
-
-const getBlockExplorerUrl = (chainId: string, address: string) => {
-  switch (chainId) {
-    case '11155111':
-      return `https://sepolia.etherscan.io/address/${address}`;
-    case '8453':
-      return `https://basescan.org/address/${address}`;
-    default:
-      return `https://etherscan.io/address/${address}`;
-  }
-};
 
 const usePosition = (contractId: string, positionId: string) => {
   return useQuery({
@@ -80,7 +71,12 @@ const PositionPage = ({
       return (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Position #{positionId}</h1>
+            <h1 className="text-2xl font-bold">
+              <PositionDisplay
+                positionId={positionId}
+                marketType={positionData.epoch.market.isYin ? 'yin' : 'yang'}
+              />
+            </h1>
             <div
               className={cn(
                 badgeVariants({ variant: 'default' }),
@@ -106,7 +102,7 @@ const PositionPage = ({
                   {chainId}:{marketAddress}
                 </p>
                 <a
-                  href={getBlockExplorerUrl(chainId, marketAddress)}
+                  href={getExplorerUrl(parseInt(chainId, 10), marketAddress)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-block text-blue-500 hover:text-blue-600 -translate-y-0.5"
@@ -123,7 +119,10 @@ const PositionPage = ({
                   {positionData.owner}
                 </p>
                 <a
-                  href={getBlockExplorerUrl(chainId, positionData.owner)}
+                  href={getExplorerUrl(
+                    parseInt(chainId, 10),
+                    positionData.owner
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-block text-blue-500 hover:text-blue-600 -translate-y-0.5"
@@ -236,19 +235,21 @@ const PositionPage = ({
   };
 
   return (
-    <PeriodProvider
-      chainId={Number(chainId)}
-      address={marketAddress}
-      epoch={Number(positionData?.epoch?.id)}
-    >
-      <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-64px)] p-4">
-        <div className="w-full max-w-[480px]">
-          <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
-            {renderPositionData()}
+    <FoilProvider>
+      <PeriodProvider
+        chainId={Number(chainId)}
+        address={marketAddress}
+        epoch={Number(positionData?.epoch?.id)}
+      >
+        <div className="flex-1 flex items-center justify-center min-h-[calc(100dvh-69px)] p-4">
+          <div className="w-full max-w-[480px]">
+            <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-6">
+              {renderPositionData()}
+            </div>
           </div>
         </div>
-      </div>
-    </PeriodProvider>
+      </PeriodProvider>
+    </FoilProvider>
   );
 };
 

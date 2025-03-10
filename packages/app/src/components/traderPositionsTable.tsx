@@ -17,10 +17,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useContext } from 'react';
 import { useReadContract } from 'wagmi';
 
-// import { useFoil } from '../lib/context/FoilProvider';
+import { useFoil } from '../lib/context/FoilProvider';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -38,13 +38,13 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from '~/hooks/use-toast';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
-// import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { foilApi } from '~/lib/utils/util';
-// import { convertWstEthToGwei } from '~/lib/util/util';
+import { foilApi, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
+import PositionDisplay from './PositionDisplay';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
@@ -106,10 +106,10 @@ const usePositions = (
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) => {
-  const { chainId, address: marketAddress } = periodContext;
+  const { chainId, address: marketAddress, epoch } = periodContext;
 
   return useQuery({
-    queryKey: ['positions', walletAddress, chainId, marketAddress],
+    queryKey: ['positions', walletAddress, chainId, marketAddress, epoch],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: POSITIONS_QUERY,
@@ -124,8 +124,12 @@ const usePositions = (
         throw new Error(errors[0].message);
       }
 
-      // Filter for non-LP positions only
-      return data.positions.filter((position: any) => !position.isLP);
+      // Filter for non-LP positions and within the current epoch
+      return data.positions.filter((position: any) => {
+        const isTrader = !position.isLP;
+        const positionEpochId = Number(position.epoch?.epochId);
+        return isTrader && positionEpochId === epoch;
+      });
     },
     enabled:
       Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
@@ -228,46 +232,47 @@ const TraderPositionsTable: React.FC<Props> = ({
   } = usePositions(walletAddress, periodContext);
   const { data: resources } = useResources();
 
-  /*
-  TODO: I think this is wrong?
-  
   const { stEthPerToken } = useFoil();
   const { useMarketUnits } = useContext(PeriodContext);
 
   const calculateEntryPrice = (position: any) => {
     let entryPrice = 0;
     if (!position.isLP) {
-      const isLong = Number(position.baseToken) - Number(position.borrowedBaseToken) > 0;
-      
+      const isLong =
+        Number(position.baseToken) - Number(position.borrowedBaseToken) > 0;
+
+      // filters for only positions with same type of trades
+      const openTrades = position.transactions.filter((t: any) => {
+        if (isLong) {
+          return Number(t.baseToken) > 0;
+        }
+        return Number(t.quoteToken) > 0;
+      });
+
       if (isLong) {
-        let baseTokenDeltaTotal = 0;
-        entryPrice = position.transactions
-          .filter((t: any) => t.baseTokenDelta && Number(t.baseTokenDelta) > 0)
-          .reduce((acc: number, transaction: any) => {
-            const delta = Number(transaction.baseTokenDelta);
-            baseTokenDeltaTotal += delta;
-            return acc + (Number(transaction.tradeRatioD18) * delta);
-          }, 0);
-        entryPrice = baseTokenDeltaTotal > 0 ? entryPrice / baseTokenDeltaTotal / 1e18 : 0;
+        let baseTokenTotal = 0;
+        entryPrice = openTrades.reduce((acc: number, transaction: any) => {
+          const baseAmount = Number(transaction.baseToken);
+          baseTokenTotal += baseAmount;
+          return acc + Number(transaction.tradeRatioD18) * baseAmount;
+        }, 0);
+        entryPrice = baseTokenTotal > 0 ? entryPrice / baseTokenTotal : 0;
       } else {
-        let quoteTokenDeltaTotal = 0;
-        entryPrice = position.transactions
-          .filter((t: any) => t.quoteTokenDelta && Number(t.quoteTokenDelta) > 0)
-          .reduce((acc: number, transaction: any) => {
-            const delta = Number(transaction.quoteTokenDelta);
-            quoteTokenDeltaTotal += delta;
-            return acc + (Number(transaction.tradeRatioD18) * delta);
-          }, 0);
-        entryPrice = quoteTokenDeltaTotal > 0 ? entryPrice / quoteTokenDeltaTotal / 1e18 : 0;
+        let quoteTokenTotal = 0;
+        entryPrice = openTrades.reduce((acc: number, transaction: any) => {
+          const quoteAmount = Number(transaction.quoteToken);
+          quoteTokenTotal += quoteAmount;
+          return acc + Number(transaction.tradeRatioD18) * quoteAmount;
+        }, 0);
+        entryPrice = quoteTokenTotal > 0 ? entryPrice / quoteTokenTotal : 0;
       }
     }
-    
+
     const unitsAdjustedEntryPrice = useMarketUnits
       ? entryPrice
-      : convertWstEthToGwei(entryPrice, stEthPerToken);
+      : convertGgasPerWstEthToGwei(entryPrice, stEthPerToken);
     return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
-  */
 
   const renderMarketCell = (row: any) => (
     <MarketCell
@@ -280,7 +285,12 @@ const TraderPositionsTable: React.FC<Props> = ({
   );
 
   const renderPositionCell = (row: any) => (
-    <div className="flex items-center gap-1">#{row.positionId.toString()}</div>
+    <div className="flex items-center gap-1">
+      <PositionDisplay
+        positionId={row.positionId.toString()}
+        marketType={row.epoch?.market?.isYin ? 'yin' : 'yang'}
+      />
+    </div>
   );
 
   const renderCollateralCell = (value: any, row: any) => {
@@ -428,13 +438,13 @@ const TraderPositionsTable: React.FC<Props> = ({
         header: 'Size',
         accessorFn: (row) => row.baseToken - row.borrowedBaseToken,
       },
-      /*
+
       {
         id: 'entryPrice',
         header: 'Effective Entry Price',
         accessorFn: (row) => calculateEntryPrice(row),
       },
-      */
+
       {
         id: 'pnl',
         header: PnLHeaderCell,
@@ -447,7 +457,7 @@ const TraderPositionsTable: React.FC<Props> = ({
         enableSorting: false,
       },
     ],
-    [periodContext /* , calculateEntryPrice */]
+    [periodContext, calculateEntryPrice]
   );
 
   const table = useReactTable({
@@ -533,7 +543,7 @@ const TraderPositionsTable: React.FC<Props> = ({
               row.original.baseToken - row.original.borrowedBaseToken === 0;
 
             if (isClosed) {
-              const valueColumns = ['collateral', 'size', 'pnl'];
+              const valueColumns = ['collateral', 'size', 'pnl', 'entryPrice'];
               const statusCell = row.original.isSettled ? (
                 <span className="font-medium">Position Settled</span>
               ) : (

@@ -26,7 +26,7 @@ interface StatBoxProps {
 }
 
 const StatBox = ({ title, tooltipContent, value, docsLink }: StatBoxProps) => (
-  <div className="rounded-sm border border-border py-3 px-4 md:py-4 md:px-6 shadow-sm text-xs md:text-base">
+  <div className="rounded-sm border border-border p-2.5 md:py-4 md:px-6 shadow-sm text-xs md:text-base">
     <div>
       {title}
       {tooltipContent && (
@@ -84,8 +84,8 @@ const IndexPriceDisplay = ({
   }
 
   const value = useMarketUnits
-    ? Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 18)) *
-      (stEthPerToken || 1)
+    ? Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 9)) /
+      ((stEthPerToken || 1e9) / 1e9)
     : Number(formatUnits(BigInt(latestIndexPrice?.value || 0), 9));
 
   return (
@@ -140,7 +140,7 @@ const Stats = () => {
   return (
     <TooltipProvider>
       <div className="flex w-full flex-col items-center pb-5">
-        <div className="grid w-full grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
           <StatBox
             title="Index Price"
             tooltipContent={`The estimated settlement price based on the average ${resourceName} price for this period`}

@@ -2,6 +2,7 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
+import { RESOURCE_ORDER, type ResourceSlug } from '~/lib/constants/resources';
 import { foilApi } from '~/lib/utils/util';
 
 export interface Epoch {
@@ -10,6 +11,7 @@ export interface Epoch {
   startTimestamp: number;
   endTimestamp: number;
   settled: boolean;
+  public: boolean;
 }
 
 export interface Market {
@@ -19,14 +21,13 @@ export interface Market {
   name: string;
   vaultAddress: string;
   isYin: boolean;
-  public: boolean;
   epochs: Epoch[];
 }
 
 export interface Resource {
   id: number;
   name: string;
-  slug: string;
+  slug: ResourceSlug;
   iconPath: string;
   markets: Market[];
 }
@@ -73,13 +74,13 @@ const RESOURCES_QUERY = gql`
         isYin
         vaultAddress
         chainId
-        public
         epochs {
           id
           epochId
           startTimestamp
           endTimestamp
           settled
+          public
         }
       }
     }
@@ -93,6 +94,7 @@ export const useResources = () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
       });
+<<<<<<< HEAD
       const preferredOrder = [
         'ethereum-gas',
         'base-gas',
@@ -102,9 +104,11 @@ export const useResources = () => {
         'bitcoin-fees',
         'solana-fees',
       ];
+=======
+>>>>>>> main
       const resources = data.resources.sort((a: any, b: any) => {
-        const indexA = preferredOrder.indexOf(a.slug);
-        const indexB = preferredOrder.indexOf(b.slug);
+        const indexA = RESOURCE_ORDER.indexOf(a.slug);
+        const indexB = RESOURCE_ORDER.indexOf(b.slug);
         return indexA - indexB;
       });
 

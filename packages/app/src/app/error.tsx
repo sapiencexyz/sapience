@@ -13,7 +13,7 @@ export default function Error({ error }: ErrorProps) {
 
   if (error.status === 403) {
     return (
-      <div className="flex min-h-[70vh] w-full flex-col justify-center">
+      <div className="flex min-h-[70dvh] w-full flex-col justify-center">
         <div className="mx-auto w-full max-w-md text-center">
           <h1 className="mb-3 text-center text-2xl font-bold">Access Denied</h1>
           <p className="text-muted-foreground">
@@ -25,7 +25,7 @@ export default function Error({ error }: ErrorProps) {
   }
 
   return (
-    <div className="flex min-h-[70vh] w-full flex-col justify-center">
+    <div className="flex min-h-[70dvh] w-full flex-col justify-center">
       <div className="mx-auto w-full max-w-md text-center">
         <h1 className="mb-3 text-center text-2xl font-bold">
           Something went wrong

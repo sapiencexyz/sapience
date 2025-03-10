@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 
+export type VaultType = 'yin' | 'yang' | 'yinBlob' | 'yangBlob';
+
 const useFoilDeployment = (chainId?: number) => {
   const [foilData, setFoilData] = useState<any>({});
-  const [foilVaultData, setFoilVaultData] = useState<{ yin: any; yang: any }>({
+  const [foilVaultData, setFoilVaultData] = useState<Record<VaultType, any>>({
     yin: {},
     yang: {},
+    yinBlob: {},
+    yangBlob: {},
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -21,10 +25,18 @@ const useFoilDeployment = (chainId?: number) => {
         const foilYangVault = await import(
           `@/protocol/deployments/${chainId}/VaultYang.json`
         );
+        const foilYinBlobVault = await import(
+          `@/protocol/deployments/${chainId}-blobs/VaultYin.json`
+        );
+        const foilYangBlobVault = await import(
+          `@/protocol/deployments/${chainId}-blobs/VaultYang.json`
+        );
         setFoilData(foil);
         setFoilVaultData({
           yin: foilYinVault,
           yang: foilYangVault,
+          yinBlob: foilYinBlobVault,
+          yangBlob: foilYangBlobVault,
         });
       } catch (err) {
         setError(err as any);

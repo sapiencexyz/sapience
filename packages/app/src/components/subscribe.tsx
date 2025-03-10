@@ -4,7 +4,13 @@
 
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HelpCircle, Loader2, Info, BookTextIcon } from 'lucide-react';
+import {
+  HelpCircle,
+  Loader2,
+  Info,
+  BookTextIcon,
+  CalendarSync,
+} from 'lucide-react';
 import { type FC, useState, useEffect, useContext, useMemo } from 'react';
 import CountUp from 'react-countup';
 import { useForm } from 'react-hook-form';
@@ -63,6 +69,8 @@ interface SubscribeProps {
   initialSize?: bigint | null;
   positionId?: number;
   onClose?: () => void;
+  onPeriodToggle?: () => void;
+  isActiveEpoch?: boolean;
 }
 
 const Subscribe: FC<SubscribeProps> = ({
@@ -71,6 +79,8 @@ const Subscribe: FC<SubscribeProps> = ({
   initialSize = null,
   positionId,
   onClose,
+  onPeriodToggle,
+  isActiveEpoch = true,
 }) => {
   const {
     address: contextMarketAddress,
@@ -853,6 +863,20 @@ const Subscribe: FC<SubscribeProps> = ({
         <p className="mb-3 text-lg">
           Enter the amount of gas you expect to use between {formattedStartTime}{' '}
           and {formattedEndTime}.
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <CalendarSync
+                  className="inline-block -mt-2 ml-1.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary transition-colors duration-200"
+                  aria-label="Switch period"
+                  onClick={onPeriodToggle}
+                />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Switch to {isActiveEpoch ? 'upcoming' : 'active'} period</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </p>
 
         <div className="mb-7">

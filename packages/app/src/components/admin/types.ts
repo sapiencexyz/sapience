@@ -14,6 +14,9 @@ export interface AddressCellProps {
 export interface PublicCellProps {
   isPublic: boolean;
   loading: boolean;
+  market: Market;
+  epochId: number;
+  onUpdate: (market: Market, epochId: number) => void;
 }
 
 export interface BondCellProps {

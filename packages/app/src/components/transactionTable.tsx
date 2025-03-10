@@ -31,10 +31,11 @@ import {
 } from '@/components/ui/table';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertWstEthToGwei, foilApi } from '~/lib/utils/util';
+import { convertGgasPerWstEthToGwei, foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
+import PositionDisplay from './PositionDisplay';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds
 
@@ -108,16 +109,14 @@ function useTransactions(
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) {
-  const { chainId, address: marketAddress } = periodContext;
+  const { chainId, address: marketAddress, epoch } = periodContext;
 
   return useQuery({
-    queryKey: ['transactions', walletAddress, chainId, marketAddress],
+    queryKey: ['transactions', walletAddress, chainId, marketAddress, epoch],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: TRANSACTIONS_QUERY,
         variables: {
-          // If we have a walletAddress, query all positions for that owner
-          // If no walletAddress, query the specific market/chain for all owners
           owner: walletAddress || undefined,
           chainId: walletAddress ? undefined : Number(chainId),
           marketAddress: walletAddress ? undefined : marketAddress,
@@ -128,15 +127,16 @@ function useTransactions(
         throw new Error(errors[0].message);
       }
 
-      // Flatten all transactions from all positions
-      return data.positions.flatMap((position: any) =>
-        position.transactions.map((tx: any) => ({
-          ...tx,
-          position,
-        }))
-      );
+      // Flatten all transactions from all positions and filter by epoch
+      return data.positions
+        .filter((position: any) => Number(position.epoch?.epochId) === epoch)
+        .flatMap((position: any) =>
+          position.transactions.map((tx: any) => ({
+            ...tx,
+            position,
+          }))
+        );
     },
-    // Only enable if we have a walletAddress or if we have chainId & marketAddress
     enabled:
       Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
     refetchInterval: POLLING_INTERVAL,
@@ -214,8 +214,8 @@ const TransactionTable: React.FC<Props> = ({
             ? parseFloat(row.tradeRatioD18) / 10 ** 18
             : 0;
           return useMarketUnits
-            ? tradeRatio
-            : convertWstEthToGwei(tradeRatio, stEthPerToken);
+            ? tradeRatio * 10 ** 18
+            : convertGgasPerWstEthToGwei(tradeRatio * 10 ** 18, stEthPerToken);
         },
       },
       {
@@ -250,7 +250,10 @@ const TransactionTable: React.FC<Props> = ({
 
   const renderPositionCell = (row: any) => (
     <div className="flex items-center gap-1">
-      #{row.original.position.positionId}
+      <PositionDisplay
+        positionId={row.original.position.positionId}
+        marketType={row.original.position.epoch.market.isYin ? 'yin' : 'yang'}
+      />
       <Link
         href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
         target="_blank"

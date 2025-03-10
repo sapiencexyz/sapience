@@ -30,6 +30,7 @@ import {
 import { foilApi } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
+import PositionDisplay from './PositionDisplay';
 
 interface Props {
   params: {
@@ -48,6 +49,7 @@ interface Position {
     market?: {
       chainId?: string;
       address?: string;
+      isYin?: boolean;
     };
   };
   isLP: boolean;
@@ -83,7 +85,10 @@ const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
         href={`/positions/${position?.epoch?.market?.chainId}:${position.epoch?.market?.address}/${position.positionId}`}
         className={`${badgeVariants({ variant: 'outline' })} hover:bg-muted transition-background`}
       >
-        #{position.positionId?.toString()}
+        <PositionDisplay
+          positionId={position.positionId?.toString()}
+          marketType={position.epoch?.market?.isYin ? 'yin' : 'yang'}
+        />
       </Link>
     ))}
   </div>

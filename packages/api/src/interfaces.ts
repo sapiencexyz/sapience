@@ -116,15 +116,12 @@ export interface Deployment {
   deployTxnBlockNumber: string;
 }
 export enum TimeWindow {
-  H = '1H',
   D = '1D',
   W = '1W',
   M = '1M',
-  Y = '1Y',
 }
 
 export interface MarketInfo {
-  public: boolean;
   deployment: Deployment;
   vaultAddress: string;
   isYin: boolean;
@@ -164,7 +161,7 @@ export interface IResourcePriceIndexer {
   client?: PublicClient;
   indexBlockPriceFromTimestamp(
     resource: Resource,
-    timestamp: number,
+    startTimestamp: number,
     endTimestamp?: number
   ): Promise<boolean>;
   indexBlocks(resource: Resource, blocks: number[]): Promise<boolean>;
