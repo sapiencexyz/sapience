@@ -29,12 +29,16 @@ export class ResourcePerformanceManager {
     if (ResourcePerformanceManager._initializing) {
       return;
     }
-    console.time(`ResourcePerformanceManager.initialize - op# ${this.actionIdx}`);
+    console.time(
+      `ResourcePerformanceManager.initialize - op# ${this.actionIdx}`
+    );
     ResourcePerformanceManager._initializing = true;
     await this.initializeResources(resources, false);
     ResourcePerformanceManager._initialized = true;
     ResourcePerformanceManager._initializing = false;
-    console.timeEnd(`ResourcePerformanceManager.initialize - op# ${this.actionIdx}`);
+    console.timeEnd(
+      `ResourcePerformanceManager.initialize - op# ${this.actionIdx}`
+    );
     this.actionIdx++;
   }
 
@@ -137,7 +141,7 @@ export class ResourcePerformanceManager {
     //   })
     // );
 
-    // Remove files from disk (hard init will recreate them) 
+    // Remove files from disk (hard init will recreate them)
     if (hardInitialize) {
       await clearStorageFiles();
     }

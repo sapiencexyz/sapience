@@ -116,7 +116,7 @@ export async function clearStorageFiles(): Promise<void> {
   }
 
   console.time('  ResourcePerformance - clearStorageFiles');
-  
+
   const files = await fs.promises.readdir(storageDir);
   for (const file of files) {
     if (file.endsWith('-storage.json')) {
@@ -125,7 +125,9 @@ export async function clearStorageFiles(): Promise<void> {
   }
 
   console.timeEnd('  ResourcePerformance - clearStorageFiles');
-  console.log(`  ResourcePerformance --> Cleared ${files.length} storage files`);
+  console.log(
+    `  ResourcePerformance --> Cleared ${files.length} storage files`
+  );
 }
 
 export function maxBigInt(a: bigint, b: bigint) {
