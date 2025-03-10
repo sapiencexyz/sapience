@@ -26,7 +26,7 @@ const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
   return (
     <ToggleGroup
       type="multiple"
-      className="flex gap-3 items-start md:items-center self-start md:self-auto"
+      className="grid grid-cols-2 w-full sm:w-auto sm:flex sm:flex-row gap-3 items-start md:items-center self-start md:self-auto"
       variant="outline"
       value={Object.entries(seriesVisibility ?? {})
         .filter(([, isVisible]) => isVisible)
@@ -37,6 +37,7 @@ const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
         variant={seriesVisibility?.candles ? 'default' : 'outline'}
         onClick={() => toggleSeries('candles')}
         disabled={seriesDisabled.candles}
+        className="w-full flex-1 sm:flex-initial sm:w-auto whitespace-nowrap"
       >
         <Image
           src="/priceicons/market.svg"
@@ -51,6 +52,7 @@ const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
         variant={seriesVisibility?.index ? 'default' : 'outline'}
         onClick={() => toggleSeries('index')}
         disabled={seriesDisabled.index}
+        className="w-full flex-1 sm:flex-initial sm:w-auto whitespace-nowrap"
       >
         <Image
           src="/priceicons/index.svg"
@@ -65,6 +67,7 @@ const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
         variant={seriesVisibility?.resource ? 'default' : 'outline'}
         onClick={() => toggleSeries('resource')}
         disabled={seriesDisabled.resource}
+        className="w-full flex-1 sm:flex-initial sm:w-auto whitespace-nowrap"
       >
         <Image
           src="/priceicons/resource.svg"
@@ -80,6 +83,7 @@ const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
         variant={seriesVisibility?.trailing ? 'default' : 'outline'}
         onClick={() => toggleSeries('trailing')}
         disabled={seriesDisabled.trailing}
+        className="w-full flex-1 sm:flex-initial sm:w-auto whitespace-nowrap"
       >
         <Image
           src="/priceicons/average.svg"

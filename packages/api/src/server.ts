@@ -45,11 +45,11 @@ const startServer = async () => {
     Sentry.setupExpressErrorHandler(app);
   }
 
-  console.log('Starting resource performance manager');
+  console.log('ResourcePerformanceManager - Starting');
   const resources = await resourceRepository.find();
   const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
   await resourcePerformanceManager.initialize(resources);
-  console.log('Resource performance manager initialized');
+  console.log('ResourcePerformanceManager - Initialized');
 
   // Global error handle
   // Needs the unused _next parameter to be passed in: https://expressjs.com/en/guide/error-handling.html

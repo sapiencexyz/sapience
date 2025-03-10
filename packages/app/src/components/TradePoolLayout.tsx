@@ -163,12 +163,16 @@ const TradePoolLayout = ({
         <div className="flex flex-col w-full h-[calc(100dvh-69px)] overflow-y-auto lg:overflow-hidden">
           <PeriodHeader />
           <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
-            <div className="flex flex-col flex-1 px-4 md:px-3 gap-5 md:flex-row min-h-0">
-              <div className="w-full order-2 md:order-2 md:max-w-[340px] pb-4 flex flex-col h-full">
+            <div className="flex flex-col flex-1 px-4 md:px-3 gap-2 md:gap-5 md:flex-row min-h-0">
+              <div className="w-full order-2 md:order-2 md:max-w-[340px] pb-4 flex flex-col h-full pt-0">
+                <div className="flex items-center gap-4 mb-6 flex-shrink-0 md:hidden">
+                  <Label className="whitespace-nowrap">Price Units</Label>
+                  <MarketUnitsToggle />
+                </div>
                 <div className="flex-1 overflow-y-auto">
                   <MarketSidebar isTrade={isTrade} />
                 </div>
-                <div className="flex items-center gap-4 mt-4 lg:ml-auto flex-shrink-0">
+                <div className="hidden md:flex items-center gap-4 mt-4 lg:ml-auto flex-shrink-0">
                   <Label className="whitespace-nowrap">Price Units</Label>
                   <MarketUnitsToggle />
                 </div>
@@ -176,47 +180,58 @@ const TradePoolLayout = ({
               <div className="flex flex-col w-full order-1 md:order-1">
                 <Stats />
 
-                <div className="flex flex-1 min-h-[400px] md:min-h-0">
+                <div className="flex flex-1 min-h-[250px] md:min-h-0">
                   <div className="flex w-full h-full border border-border rounded-sm shadow-sm">
                     {renderChart()}
                   </div>
                 </div>
                 <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
-                  <div className="flex flex-col md:flex-row gap-3 w-full">
-                    <ChartSelector
-                      chartType={chartType}
-                      setChartType={setChartType}
-                      isTrade={isTrade}
-                    />
+                  <div className="flex flex-row flex-wrap gap-3 w-full">
+                    <div className="order-2 sm:order-none">
+                      <ChartSelector
+                        chartType={chartType}
+                        setChartType={setChartType}
+                        isTrade={isTrade}
+                      />
+                    </div>
                     {chartType !== ChartType.LIQUIDITY && (
-                      <WindowSelector
-                        selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow}
-                      />
+                      <div className="order-2 sm:order-none">
+                        <WindowSelector
+                          selectedWindow={selectedWindow}
+                          setSelectedWindow={setSelectedWindow}
+                        />
+                      </div>
                     )}
                     {chartType === ChartType.PRICE && (
-                      <IntervalSelector
-                        selectedInterval={selectedInterval}
-                        setSelectedInterval={setSelectedInterval}
-                      />
+                      <div className="order-2 sm:order-none">
+                        <IntervalSelector
+                          selectedInterval={selectedInterval}
+                          setSelectedInterval={setSelectedInterval}
+                        />
+                      </div>
                     )}
-                    <DataDrawer
-                      trigger={
-                        <Button>
-                          <DatabaseIcon className="w-4 h-4 mr-0.5" />
-                          Data
-                        </Button>
-                      }
-                    />
+                    <div className="order-2 sm:order-none w-full sm:w-auto">
+                      <DataDrawer
+                        trigger={
+                          <Button className="w-full sm:w-auto">
+                            <DatabaseIcon className="w-4 h-4 mr-0.5" />
+                            Data
+                          </Button>
+                        }
+                      />
+                    </div>
                     {chartType === ChartType.PRICE && (
-                      <div className="ml-auto flex items-center">
+                      <div className="ml-auto flex flex-col w-full sm:w-auto sm:flex-row items-start sm:items-center order-1 sm:order-none mb-3 sm:mb-0">
                         <PriceToggles seriesDisabled={disabledSeries} />
                         <Link
-                          className="ml-3"
+                          className="mt-4 sm:mt-0 sm:ml-3 self-start sm:self-auto flex items-center gap-1.5 text-blue-500 hover:text-blue-600"
                           href="https://docs.foil.xyz/price-glossary"
                           target="_blank"
                         >
-                          <CircleHelp className="w-5 h-5 text-blue-500 hover:text-blue-600" />
+                          <CircleHelp className="w-5 h-5" />
+                          <span className="sm:hidden text-sm font-medium leading-none">
+                            What do these prices mean?
+                          </span>
                         </Link>
                       </div>
                     )}
