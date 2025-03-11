@@ -53,6 +53,7 @@ const Admin = () => {
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState('');
+  const [refreshResourceSlug, setRefreshResourceSlug] = useState('all');
   const [startTimestamp, setStartTimestamp] = useState('');
   const [endTimestamp, setEndTimestamp] = useState('');
   const { signMessageAsync } = useSignMessage();
@@ -143,17 +144,25 @@ const Admin = () => {
         message: ADMIN_AUTHENTICATE_MSG,
       });
 
-      const response = await foilApi.get(
-        `/cache/refresh?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
-      );
+      // Build the endpoint URL based on whether a specific resource is selected
+      const endpoint =
+        refreshResourceSlug && refreshResourceSlug !== 'all'
+          ? `/cache/refresh/${refreshResourceSlug}?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
+          : `/cache/refresh?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`;
+
+      const response = await foilApi.get(endpoint);
 
       if (response.success) {
         toast({
           title: 'Cache refreshed',
-          description: 'Cache has been successfully refreshed',
+          description:
+            refreshResourceSlug && refreshResourceSlug !== 'all'
+              ? `Cache for ${refreshResourceSlug} has been successfully refreshed`
+              : 'Cache has been successfully refreshed for all resources',
           variant: 'default',
         });
         setRefreshCacheOpen(false);
+        setRefreshResourceSlug('all'); // Reset to "all" instead of empty string
       } else {
         toast({
           title: 'Cache refresh failed',
@@ -344,6 +353,40 @@ const Admin = () => {
               This will trigger a hard initialization of the cache. This
               operation requires authentication.
             </p>
+
+            <div className="space-y-2">
+              <label className="block">
+                <span className="text-sm font-medium">Resource (Optional)</span>
+                <Select
+                  value={refreshResourceSlug}
+                  onValueChange={setRefreshResourceSlug}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        resourcesLoading
+                          ? 'Loading...'
+                          : 'All resources (default)'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All resources</SelectItem>
+                    {resourcesData?.map(
+                      (resource: { slug: string; name: string }) => (
+                        <SelectItem key={resource.slug} value={resource.slug}>
+                          {resource.name}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Select a specific resource to refresh, or leave empty to refresh
+                all resources.
+              </p>
+            </div>
 
             <Button
               onClick={handleRefreshCache}
