@@ -1,86 +1,74 @@
 import { IntervalStore } from './types';
-import * as fs from 'fs';
-import * as path from 'path';
+import { performanceCacheRepository } from '../db';
 
-export async function saveStorageToFile(
+export async function persistStorage(
   storage: IntervalStore,
   latestTimestamp: number,
   resourceSlug: string,
   resourceName: string,
-  sectionName: string
+  interval: number,
+  jsonSection: string
 ): Promise<undefined> {
   if (process.env.SAVE_STORAGE !== 'true') {
     return;
   }
 
   console.time(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
+    `  ResourcePerformance - processResourceData.${resourceName}.${interval}.${jsonSection}.saveStorage`
   );
-  const storageDir = process.env.STORAGE_PATH;
-  if (!storageDir) {
-    throw new Error('STORAGE_PATH is not set');
-  }
 
-  if (!fs.existsSync(storageDir)) {
-    fs.mkdirSync(storageDir, { recursive: true });
-  }
-
-  const filename = path.join(
-    storageDir,
-    `${resourceSlug}-${sectionName}-storage.json`
-  );
-  await fs.promises.writeFile(
-    filename,
-    JSON.stringify(
-      {
-        latestTimestamp,
-        store: storage,
-      },
-      (key, value) => (typeof value === 'bigint' ? value.toString() : value),
-      2
-    )
-  );
+  // Create or update the cache entry
+  await performanceCacheRepository.save({
+    resourceSlug,
+    interval,
+    jsonSection,
+    storageVersion: '1', // You may want to manage versions
+    latestTimestamp,
+    storage: JSON.stringify(storage, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value
+    ),
+  });
 
   console.timeEnd(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
+    `  ResourcePerformance - processResourceData.${resourceName}.${interval}.${jsonSection}.saveStorage`
   );
-  console.log(`  ResourcePerformance --> Saved storage to ${filename}`);
+  console.log(`  ResourcePerformance --> Saved storage to database`);
 }
 
-export async function loadStorageFromFile(
+export async function restorePersistedStorage(
   resourceSlug: string,
   resourceName: string,
-  sectionName: string
-): Promise<
-  | {
-      latestTimestamp: number;
-      store: IntervalStore;
-    }
-  | undefined
-> {
+  interval: number,
+  jsonSection: string
+): Promise<{ latestTimestamp: number; store: IntervalStore } | undefined> {
   if (process.env.SAVE_STORAGE !== 'true') {
     return undefined;
   }
 
   console.time(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+    `  ResourcePerformance - processResourceData.${resourceName}.${interval}.${jsonSection}.loadStorage`
   );
-  const storageDir = process.env.STORAGE_PATH;
-  if (!storageDir) {
-    throw new Error('STORAGE_PATH is not set');
-  }
 
-  const filename = path.join(
-    storageDir,
-    `${resourceSlug}-${sectionName}-storage.json`
-  );
-  if (!fs.existsSync(filename)) {
-    console.log(`!! Storage file ${filename} does not exist`);
+  const cacheEntry = await performanceCacheRepository.findOne({
+    where: {
+      resourceSlug,
+      interval,
+      jsonSection,
+      storageVersion: '1',
+    },
+    order: {
+      createdAt: 'DESC',
+    },
+  });
+
+  if (!cacheEntry) {
+    console.log(
+      `!! Storage entry for ${resourceSlug}-${interval}-${jsonSection} does not exist`
+    );
     return undefined;
   }
 
-  const fileContent = await fs.promises.readFile(filename, 'utf-8');
-  const storage = JSON.parse(fileContent, (key, value) => {
+  const storage = JSON.parse(cacheEntry.storage, (key, value) => {
     // Convert string numbers that might be bigints back to bigint
     if (typeof value === 'string' && /^\d+$/.test(value)) {
       try {
@@ -90,44 +78,26 @@ export async function loadStorageFromFile(
       }
     }
     return value;
-  }) as {
-    latestTimestamp: number;
-    store: IntervalStore;
-  };
+  });
 
   console.timeEnd(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+    `  ResourcePerformance - processResourceData.${resourceName}.${interval}.${jsonSection}.loadStorage`
   );
-  console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
+  console.log(`  ResourcePerformance - -> Loaded storage from database`);
+
   return {
-    latestTimestamp: storage.latestTimestamp,
-    store: storage.store,
+    latestTimestamp: cacheEntry.latestTimestamp,
+    store: storage,
   };
 }
 
-export async function clearStorageFiles(): Promise<void> {
-  const storageDir = process.env.STORAGE_PATH;
-  if (!storageDir) {
-    throw new Error('STORAGE_PATH is not set');
-  }
+export async function clearPersistedStore(): Promise<void> {
+  console.time('  ResourcePerformance - clearStorage');
 
-  if (!fs.existsSync(storageDir)) {
-    return; // Nothing to clear
-  }
+  await performanceCacheRepository.delete({});
 
-  console.time('  ResourcePerformance - clearStorageFiles');
-
-  const files = await fs.promises.readdir(storageDir);
-  for (const file of files) {
-    if (file.endsWith('-storage.json')) {
-      await fs.promises.unlink(path.join(storageDir, file));
-    }
-  }
-
-  console.timeEnd('  ResourcePerformance - clearStorageFiles');
-  console.log(
-    `  ResourcePerformance --> Cleared ${files.length} storage files`
-  );
+  console.timeEnd('  ResourcePerformance - clearStorage');
+  console.log('  ResourcePerformance --> Cleared performance cache storage');
 }
 
 export function maxBigInt(a: bigint, b: bigint) {

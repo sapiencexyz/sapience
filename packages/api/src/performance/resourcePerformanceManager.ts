@@ -1,6 +1,6 @@
 import { ResourcePerformance } from './resourcePerformance';
 import { Resource } from 'src/models/Resource';
-import { clearStorageFiles } from './helper';
+import { clearPersistedStore } from './helper';
 export class ResourcePerformanceManager {
   private static _instance: ResourcePerformanceManager;
   private static _initialized: boolean = false;
@@ -143,7 +143,7 @@ export class ResourcePerformanceManager {
 
     // Remove files from disk (hard init will recreate them)
     if (hardInitialize) {
-      await clearStorageFiles();
+      await clearPersistedStore();
     }
 
     // Get rid of existing resource performances and start fresh
