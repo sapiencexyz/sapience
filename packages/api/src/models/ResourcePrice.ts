@@ -6,6 +6,7 @@ import {
   CreateDateColumn,
   Unique,
   ManyToOne,
+  Index,
 } from 'typeorm';
 import { Resource } from './Resource';
 
@@ -19,12 +20,15 @@ export class ResourcePrice {
   createdAt: Date;
 
   @ManyToOne(() => Resource, (resource) => resource.resourcePrices)
+  @Index()
   resource: Resource;
 
   @Column({ type: 'integer' })
+  @Index()
   blockNumber: number;
 
   @Column({ type: 'integer' })
+  @Index()
   timestamp: number;
 
   @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })

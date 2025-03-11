@@ -7,6 +7,7 @@ import {
   ManyToOne,
   Unique,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { Transaction } from './Transaction';
 import { NUMERIC_PRECISION } from '../constants';
@@ -29,6 +30,7 @@ export class Position {
   epoch: Epoch;
 
   @Column({ type: 'integer' })
+  @Index()
   positionId: number;
 
   @Column({ type: 'varchar', nullable: true })

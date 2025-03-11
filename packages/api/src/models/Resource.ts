@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   OneToMany,
+  Index,
 } from 'typeorm';
 import { Market } from './Market';
 import { ResourcePrice } from './ResourcePrice';
@@ -20,6 +21,7 @@ export class Resource {
   name: string;
 
   @Column({ type: 'varchar', unique: true })
+  @Index()
   slug: string;
 
   @OneToMany(() => Market, (market) => market.resource)
