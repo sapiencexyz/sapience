@@ -1,10 +1,12 @@
 import { ResourcePerformance } from './resourcePerformance';
 import { Resource } from 'src/models/Resource';
-
+import { clearStorageFiles } from './helper';
 export class ResourcePerformanceManager {
   private static _instance: ResourcePerformanceManager;
   private static _initialized: boolean = false;
   private static _initializing: boolean = false;
+
+  private actionIdx: number = 0;
 
   private resources: Resource[] = [];
   private resourcePerformances: {
@@ -27,49 +29,69 @@ export class ResourcePerformanceManager {
     if (ResourcePerformanceManager._initializing) {
       return;
     }
-    console.time('ResourcePerformanceManager.initialize');
+    console.time(
+      `ResourcePerformanceManager.initialize - op# ${this.actionIdx}`
+    );
     ResourcePerformanceManager._initializing = true;
     await this.initializeResources(resources, false);
     ResourcePerformanceManager._initialized = true;
     ResourcePerformanceManager._initializing = false;
-    console.timeEnd('ResourcePerformanceManager.initialize');
+    console.timeEnd(
+      `ResourcePerformanceManager.initialize - op# ${this.actionIdx}`
+    );
+    this.actionIdx++;
   }
 
-  private async initializeResources(
-    resources: Resource[],
-    hardInitialize: boolean
-  ) {
-    this.resources = resources;
-    for (const resource of this.resources) {
-      // if (resource.slug != 'ethereum-gas') {
-      //   continue;
-      // }
-      this.resourcePerformances[resource.slug] = new ResourcePerformance(
-        resource
-      );
-      if (hardInitialize) {
-        console.log(
-          `ResourcePerformanceManager Hard initializing resource ${resource.slug}`
-        );
-        await this.resourcePerformances[resource.slug].hardInitialize();
-      } else {
-        console.log(
-          `ResourcePerformanceManager Soft initializing resource ${resource.slug}`
-        );
-        await this.resourcePerformances[resource.slug].softInitialize();
-      }
-      console.log(`ResourcePerformanceManager Resource ${resource.slug} done`);
+  public async hardRefreshResource(resourceSlug: string) {
+    console.log(
+      `ResourcePerformanceManager Hard Refresh Resource ${resourceSlug} - op# ${this.actionIdx}`
+    );
+    const resource = this.resources.find((r) => r.slug === resourceSlug);
+    if (!resource) {
+      throw new Error(`Resource ${resourceSlug} not found`);
     }
+    await this.updateResourceCache(resource, true, 'refresh');
+    console.log(
+      `ResourcePerformanceManager Hard Refresh Resource ${resourceSlug} done - op# ${this.actionIdx}`
+    );
+    this.actionIdx++;
   }
 
-  public async hardRefresh(resources: Resource[]) {
-    console.log('ResourcePerformanceManager Hard Refresh');
+  public async softRefreshResource(resourceSlug: string) {
+    console.log(
+      `ResourcePerformanceManager Soft Refresh Resource ${resourceSlug} - op# ${this.actionIdx}`
+    );
+    const resource = this.resources.find((r) => r.slug === resourceSlug);
+    if (!resource) {
+      throw new Error(`Resource ${resourceSlug} not found`);
+    }
+    await this.updateResourceCache(resource, false, 'refresh');
+    console.log(
+      `ResourcePerformanceManager Soft Refresh Resource ${resourceSlug} done - op# ${this.actionIdx}`
+    );
+    this.actionIdx++;
+  }
+
+  public async hardRefreshAllResources(resources: Resource[]) {
+    console.log(
+      `ResourcePerformanceManager Hard Refresh All Resources - op# ${this.actionIdx}`
+    );
     await this.initializeResources(resources, true);
+    console.log(
+      `ResourcePerformanceManager Hard Refresh All Resources done - op# ${this.actionIdx}`
+    );
+    this.actionIdx++;
   }
 
-  public async softRefresh(resources: Resource[]) {
-    console.log('ResourcePerformanceManager Soft Refresh');
+  public async softRefreshAllResources(resources: Resource[]) {
+    console.log(
+      `ResourcePerformanceManager Soft Refresh All Resources - op# ${this.actionIdx}`
+    );
     await this.initializeResources(resources, false);
+    console.log(
+      `ResourcePerformanceManager Soft Refresh All Resources done - op# ${this.actionIdx}`
+    );
+    this.actionIdx++;
   }
 
   public getResourcePerformance(resourceSlug: string) {
@@ -106,5 +128,54 @@ export class ResourcePerformanceManager {
       throw new Error('Resource performance not initialized');
     }
     return this.resourcePerformances;
+  }
+
+  private async initializeResources(
+    resources: Resource[],
+    hardInitialize: boolean
+  ) {
+    // Clean up existing resource performances
+    // await Promise.all(
+    //   Object.values(this.resourcePerformances).map(async (rp) => {
+    //     await rp.cleanup(); // TODO implement this method in ResourcePerformance class. It should stop (using AbortController) any running process (db or fs)
+    //   })
+    // );
+
+    // Remove files from disk (hard init will recreate them)
+    if (hardInitialize) {
+      await clearStorageFiles();
+    }
+
+    // Get rid of existing resource performances and start fresh
+    this.resourcePerformances = {};
+
+    this.resources = resources;
+    for (const resource of this.resources) {
+      this.resourcePerformances[resource.slug] = new ResourcePerformance(
+        resource
+      );
+      await this.updateResourceCache(resource, hardInitialize, 'initialize');
+      console.log(
+        `ResourcePerformanceManager Initialize Resource ${resource.slug} done - op# ${this.actionIdx}`
+      );
+    }
+  }
+
+  private async updateResourceCache(
+    resource: Resource,
+    hardInitialize: boolean,
+    logMode: 'initialize' | 'refresh'
+  ) {
+    if (hardInitialize) {
+      console.log(
+        `ResourcePerformanceManager Hard ${logMode} resource ${resource.slug}`
+      );
+      await this.resourcePerformances[resource.slug].hardInitialize();
+    } else {
+      console.log(
+        `ResourcePerformanceManager Soft ${logMode} resource ${resource.slug}`
+      );
+      await this.resourcePerformances[resource.slug].softInitialize();
+    }
   }
 }
