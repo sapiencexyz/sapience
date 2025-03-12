@@ -1,6 +1,7 @@
 import { Resource } from 'src/models/Resource';
 import {
   epochRepository,
+  marketPriceRepository,
   marketRepository,
   resourcePriceRepository,
 } from 'src/db';
@@ -75,6 +76,16 @@ export class ResourcePerformance {
         trailingAvgData: TrailingAvgData[];
       };
     };
+    marketProcessData: {
+      [interval: number]: {
+        open: bigint;
+        high: bigint;
+        low: bigint;
+        close: bigint;
+        nextTimestamp: number;
+      };
+    };
+
   } = {
     dbResourcePrices: [],
     dbResourcePricesLength: 0,
@@ -83,6 +94,7 @@ export class ResourcePerformance {
     indexProcessData: {},
     resourceProcessData: {},
     trailingAvgProcessData: {},
+    marketProcessData: {},
   };
 
   constructor(
@@ -116,7 +128,7 @@ export class ResourcePerformance {
           trailingAvgData: [],
         },
         indexStore: {},
-        // marketStore: {},
+        marketStore: {},
       };
       this.runtime.resourceProcessData[interval] = {
         open: 0n,
@@ -162,8 +174,13 @@ export class ResourcePerformance {
     this.runtime.processingResourceItems = true;
 
     const dbResourcePrices = await this.pullResourcePrices(initialTimestamp);
-    if (dbResourcePrices.length === 0) {
-      this.runtime.processingResourceItems = false;
+    const dbMarketPrices = await this.pullMarketPrices(initialTimestamp);
+
+    if (dbResourcePrices.length === 0 && dbMarketPrices.length === 0) {
+      console.timeEnd(
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialTimestamp})`
+      );
+        this.runtime.processingResourceItems = false;
       return;
     }
 
@@ -188,6 +205,17 @@ export class ResourcePerformance {
         this.processIndexPricesData(item, this.runtime.currentIdx, interval);
       }
       this.runtime.currentIdx++;
+    }
+
+    // Process all market prices
+    let marketIdx = 0;
+    let dbMarketPricesLength = dbMarketPrices.length;
+    while (marketIdx < dbMarketPricesLength) {
+      const item = dbMarketPrices[marketIdx];
+      for (const interval of this.intervals) {
+        this.processMarketPriceData(item, marketIdx, interval);
+      }
+      marketIdx++;
     }
 
     // Update the last timestamp processed
@@ -251,6 +279,46 @@ export class ResourcePerformance {
     return dbResourcePrices;
   }
 
+  private async pullMarketPrices(initialTimestamp?: number) {
+    // Build the query based on whether we have an initialTimestamp
+    console.time(
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
+    );
+
+    const dbMarketPrices = await marketPriceRepository
+    .createQueryBuilder('marketPrice')
+    .leftJoinAndSelect('marketPrice.transaction', 'transaction')
+    .leftJoinAndSelect('transaction.event', 'event')
+    .leftJoinAndSelect('event.market', 'market')
+    .leftJoinAndSelect('market.resource', 'resource')
+    .leftJoinAndSelect('transaction.position', 'position')
+    .leftJoinAndSelect('position.epoch', 'epoch')
+    .where('resource.id = :resourceId', { resourceId: this.resource.id })
+    .andWhere(
+      'CAST(marketPrice.timestamp AS bigint) > :from',
+      { from: initialTimestamp?.toString() ?? '0' }
+    )
+    .orderBy('marketPrice.timestamp', 'ASC')
+    .getMany();
+
+    const reducedDbMarketPrices = dbMarketPrices.map((item) => ({
+      value: item.value,
+      timestamp: Number(item.timestamp),
+      epoch: item.transaction.position.epoch.id,
+    }));
+
+    console.timeEnd(
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
+    );
+
+    console.log(
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices.length`,
+      dbMarketPrices.length
+    );
+
+    return reducedDbMarketPrices;
+  }
+
   private async pullMarketsAndEpochs(onlyIfMissing: boolean = true) {
     // Find markets if not already loaded
     // Notice: doing it everytime since we don't know if a new market was added
@@ -293,7 +361,6 @@ export class ResourcePerformance {
     this.runtime.dbResourcePrices = dbResourcePrices;
     this.runtime.dbResourcePricesLength = dbResourcePrices.length;
     this.runtime.currentIdx = 0;
-    this.runtime.processingResourceItems = false;
 
     // Reset processing data structures
     // We don't need complex initialization anymore since our processing methods
@@ -301,6 +368,7 @@ export class ResourcePerformance {
     this.runtime.indexProcessData = {};
     this.runtime.resourceProcessData = {};
     this.runtime.trailingAvgProcessData = {};
+    this.runtime.marketProcessData = {};
 
     // Initialize with empty objects for each interval
     for (const interval of this.intervals) {
@@ -331,6 +399,13 @@ export class ResourcePerformance {
         this.runtime.indexProcessData[interval][epoch.id] = {
           used: 0n,
           feePaid: 0n,
+          nextTimestamp: 0,
+        };
+        this.runtime.marketProcessData[interval][epoch.id] = {
+          open: 0n,
+          high: 0n,
+          low: 0n,
+          close: 0n,
           nextTimestamp: 0,
         };
       }

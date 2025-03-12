@@ -34,9 +34,9 @@ export type IntervalStore = {
   indexStore: {
     [epoch: string]: IndexStore;
   };
-  // marketStore: {
-  //   [market: string]: IndexStore;
-  // };
+  marketStore: {
+    [epoch: string]: IndexStore;
+  };
 };
 
 export type StorageData = {

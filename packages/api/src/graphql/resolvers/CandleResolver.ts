@@ -652,4 +652,90 @@ export class CandleResolver {
       throw new Error('Failed to fetch market candles');
     }
   }
+
+  @Query(() => [CandleType])
+  async legacyMarketCandles(
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('address', () => String) address: string,
+    @Arg('epochId', () => String) epochId: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number
+  ): Promise<CandleType[]> {
+    try {
+      const market = await dataSource.getRepository(Market).findOne({
+        where: { chainId, address },
+      });
+
+      if (!market) {
+        throw new Error(
+          `Market not found with chainId: ${chainId} and address: ${address}`
+        );
+      }
+
+      const epoch = await dataSource.getRepository(Epoch).findOne({
+        where: {
+          market: { id: market.id },
+          epochId: Number(epochId),
+        },
+      });
+
+      if (!epoch) {
+        throw new Error(`Epoch not found with id: ${epochId}`);
+      }
+
+      // First get the most recent price before the from timestamp
+      const lastPriceBefore = await dataSource
+        .getRepository(MarketPrice)
+        .createQueryBuilder('marketPrice')
+        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
+        .leftJoinAndSelect('transaction.event', 'event')
+        .leftJoinAndSelect('event.market', 'market')
+        .leftJoinAndSelect('transaction.position', 'position')
+        .leftJoinAndSelect('position.epoch', 'epoch')
+        .where('market.chainId = :chainId', { chainId })
+        .andWhere('market.address = :address', { address })
+        .andWhere('epoch.epochId = :epochId', { epochId: Number(epochId) })
+        .andWhere('CAST(marketPrice.timestamp AS bigint) < :from', {
+          from: from.toString(),
+        })
+        .orderBy('marketPrice.timestamp', 'DESC')
+        .take(1)
+        .getOne();
+
+      // Then get all prices within the range
+      const pricesInRange = await dataSource
+        .getRepository(MarketPrice)
+        .createQueryBuilder('marketPrice')
+        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
+        .leftJoinAndSelect('transaction.event', 'event')
+        .leftJoinAndSelect('event.market', 'market')
+        .leftJoinAndSelect('transaction.position', 'position')
+        .leftJoinAndSelect('position.epoch', 'epoch')
+        .where('market.chainId = :chainId', { chainId })
+        .andWhere('market.address = :address', { address })
+        .andWhere('epoch.epochId = :epochId', { epochId: Number(epochId) })
+        .andWhere(
+          'CAST(marketPrice.timestamp AS bigint) BETWEEN :from AND :to',
+          { from: from.toString(), to: to.toString() }
+        )
+        .orderBy('marketPrice.timestamp', 'ASC')
+        .getMany();
+
+      // Combine the results, putting the last price before first if it exists
+      const prices = pricesInRange;
+      const lastKnownPrice = lastPriceBefore?.value;
+
+      return groupPricesByInterval(
+        prices.map((p) => ({ timestamp: Number(p.timestamp), value: p.value })),
+        interval,
+        from,
+        to,
+        lastKnownPrice
+      );
+    } catch (error) {
+      console.error('Error fetching market candles:', error);
+      throw new Error('Failed to fetch market candles');
+    }
+  }
 }
