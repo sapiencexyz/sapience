@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   OneToOne,
+  Index,
 } from 'typeorm';
 import { Transaction } from './Transaction';
 import { NUMERIC_PRECISION } from '../constants';
@@ -20,6 +21,7 @@ export class MarketPrice {
   createdAt: Date;
 
   @Column({ type: 'bigint' })
+  @Index()
   timestamp: string;
 
   @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
