@@ -163,14 +163,21 @@ export class ResourcePerformance {
 
     this.persistentStorage = restoredStorage.store;
 
-    this.lastResourceTimestampProcessed = restoredStorage.latestResourceTimestamp;
+    this.lastResourceTimestampProcessed =
+      restoredStorage.latestResourceTimestamp;
     this.lastMarketTimestampProcessed = restoredStorage.latestMarketTimestamp;
 
     await this.pullMarketsAndEpochs(false);
-    await this.processResourceData(this.lastResourceTimestampProcessed, this.lastMarketTimestampProcessed);
+    await this.processResourceData(
+      this.lastResourceTimestampProcessed,
+      this.lastMarketTimestampProcessed
+    );
   }
 
-  private async processResourceData(initialResourceTimestamp?: number,  initialMarketTimestamp?: number) {
+  private async processResourceData(
+    initialResourceTimestamp?: number,
+    initialMarketTimestamp?: number
+  ) {
     if (this.runtime.processingResourceItems) {
       throw new Error('Resource prices are already being processed');
     }
@@ -181,7 +188,9 @@ export class ResourcePerformance {
 
     this.runtime.processingResourceItems = true;
 
-    const dbResourcePrices = await this.pullResourcePrices(initialResourceTimestamp);
+    const dbResourcePrices = await this.pullResourcePrices(
+      initialResourceTimestamp
+    );
     const dbMarketPrices = await this.pullMarketPrices(initialMarketTimestamp);
 
     if (dbResourcePrices.length === 0 && dbMarketPrices.length === 0) {
@@ -239,13 +248,9 @@ export class ResourcePerformance {
         ].timestamp;
     }
 
-    console.log('LLL 1100', dbMarketPricesLength);
     if (dbMarketPricesLength > 0) {
       this.lastMarketTimestampProcessed =
-        dbMarketPrices[
-          dbMarketPricesLength - 1
-        ].timestamp;
-      console.log('LLL 1101', this.lastMarketTimestampProcessed);
+        dbMarketPrices[dbMarketPricesLength - 1].timestamp;
     }
 
     console.timeEnd(
@@ -304,7 +309,6 @@ export class ResourcePerformance {
 
   private async pullMarketPrices(initialTimestamp?: number) {
     // Build the query based on whether we have an initialTimestamp
-    console.log('LLL 295', initialTimestamp);
     console.time(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
     );
@@ -481,9 +485,6 @@ export class ResourcePerformance {
       restoredStorage[interval] = storageInterval.store;
       latestResourceTimestamp = storageInterval.latestResourceTimestamp;
       latestMarketTimestamp = storageInterval.latestMarketTimestamp;
-      // const indexStoreMetadata =
-      //   restoredStorage[interval].indexStore['1'].metadata;
-      // const lastMetadata = indexStoreMetadata[indexStoreMetadata.length - 1];
     }
 
     return {
@@ -884,23 +885,6 @@ export class ResourcePerformance {
     const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
     const isNewInterval = item.timestamp >= rtpd.nextTimestamp;
 
-    // if (interval == 300 && epoch.id == 2) {
-    //   const avgPrice = ripd.used > 0n ? ripd.feePaid / ripd.used : 0n;
-    //   console.log(
-    //     'LLL 18 ',
-    //     interval,
-    //     epoch.id,
-    //     item.timestamp,
-    //     ripd.used.toString(),
-    //     ripd.feePaid.toString(),
-    //     avgPrice.toString(),
-    //     item.used.toString(),
-    //     item.feePaid.toString(),
-    //     (ripd.used + BigInt(item.used)).toString(),
-    //     (ripd.feePaid + BigInt(item.feePaid)).toString()
-    //   );
-    // }
-
     // Include the new item in accumulators and the runtime trailing avg data
     rtpd.used += BigInt(item.used);
     rtpd.feePaid += BigInt(item.feePaid);
@@ -1080,13 +1064,6 @@ export class ResourcePerformance {
             close: itemValueBn.toString(),
           });
 
-          // pmStore.metadata.push({
-          //   startTimestamp: item.timestamp,
-          //   endTimestamp: item.timestamp,
-          //   used: 0n,
-          //   feePaid: 0n,
-          // });
-
           pmStore.pointers[item.timestamp] = pmStore.data.length - 1;
         }
       }
@@ -1096,14 +1073,10 @@ export class ResourcePerformance {
       const currentPlaceholderIndex = pmStore.data.length - 1;
 
       const isNewInterval = item.timestamp >= rmpd.nextTimestamp;
-      const isEndOfEpoch = (epochEndTime && item.timestamp > epochEndTime);
+      const isEndOfEpoch = epochEndTime && item.timestamp > epochEndTime;
 
       rmpd.open = rmpd.open === 0n ? itemValueBn : rmpd.open;
-      if (
-        isNewInterval ||
-        isLastItem ||
-        isEndOfEpoch
-      ) {
+      if (isNewInterval || isLastItem || isEndOfEpoch) {
         // Finalize the current interval
         pmStore.data[currentPlaceholderIndex] = {
           timestamp: pmStore.data[currentPlaceholderIndex].timestamp,
@@ -1131,9 +1104,6 @@ export class ResourcePerformance {
             d.timestamp >= itemStartTime && d.timestamp < rmpd.nextTimestamp
         );
 
-        if(interval == 900 && epoch.id == 3) {
-          console.log('LLL 1096', currentPlaceholderIndex, item.timestamp, interval, epoch.id, pmStore.data[currentPlaceholderIndex].timestamp, rmpd.nextTimestamp, itemStartTime, existingIndex, isEndOfEpoch);
-        }
         if (existingIndex === -1 && !isEndOfEpoch) {
           // Create a new placeholder
           pmStore.data.push({
@@ -1143,13 +1113,6 @@ export class ResourcePerformance {
             low: item.value,
             close: item.value,
           });
-
-          // pmStore.metadata.push({
-          //   startTimestamp: itemStartTime,
-          //   endTimestamp: rmpd.nextTimestamp,
-          //   used: 0n,
-          //   feePaid: 0n,
-          // });
 
           pmStore.pointers[item.timestamp] = pmStore.data.length - 1;
         }
@@ -1241,10 +1204,9 @@ export class ResourcePerformance {
       false
     );
 
-    // console.log('LLL 1369', prices);
+    const filledPrices = this.fillMissingCandles(prices, from, to, interval);
 
-    // return this.fillMissingCandles(prices, from, to, interval);
-    return prices;
+    return filledPrices;
   }
 
   getMarketFromChainAndAddress(chainId: number, address: string) {
@@ -1280,7 +1242,10 @@ export class ResourcePerformance {
         );
       } else {
         // Process new data starting from the last timestamp we processed
-        await this.processResourceData(this.lastResourceTimestampProcessed, this.lastMarketTimestampProcessed );
+        await this.processResourceData(
+          this.lastResourceTimestampProcessed,
+          this.lastMarketTimestampProcessed
+        );
       }
     }
   }
@@ -1363,35 +1328,64 @@ export class ResourcePerformance {
     let outputIdx = 0;
     let pricesIdx = 0;
     let lastClose = '0';
-    let found = false;
     const pricesLength = prices.length;
     if (pricesLength === 0) {
       return outputEntries;
     }
 
-    while (outputIdx < outputEntries.length) {
-      found =
-        outputEntries[outputIdx].timestamp === prices[pricesIdx]?.timestamp;
-      while (!found && pricesIdx < pricesLength) {
-        found =
-          outputEntries[outputIdx].timestamp === prices[pricesIdx].timestamp;
-        pricesIdx++;
-      }
+    let nextPriceItemTimestamp = prices[pricesIdx].timestamp;
 
-      if (!found) {
-        // No price found for this output entry, use the last close as all values to fill the gap
+    while (outputIdx < outputEntries.length) {
+      if (outputEntries[outputIdx].timestamp < nextPriceItemTimestamp) {
         outputEntries[outputIdx].close = lastClose;
         outputEntries[outputIdx].high = lastClose;
         outputEntries[outputIdx].low = lastClose;
         outputEntries[outputIdx].open = lastClose;
-      } else {
+
+        outputIdx++;
+        continue;
+      }
+
+      if (outputEntries[outputIdx].timestamp == nextPriceItemTimestamp) {
         outputEntries[outputIdx] = prices[pricesIdx];
         lastClose = prices[pricesIdx].close;
+        pricesIdx++;
+        nextPriceItemTimestamp =
+          pricesIdx < pricesLength
+            ? prices[pricesIdx].timestamp
+            : timeWindow.to + 1; // set it in the future if not more prices to fall in the first if for the next loops
+
+        outputIdx++;
+        continue;
       }
-      outputIdx++;
+
+      if (outputEntries[outputIdx].timestamp > nextPriceItemTimestamp) {
+        // pick the last known price first
+        let lastKnownPrice = prices[pricesIdx].close;
+
+        // then move the prices  the price in the prices array
+        while (
+          nextPriceItemTimestamp < outputEntries[outputIdx].timestamp ||
+          pricesIdx < pricesLength
+        ) {
+          nextPriceItemTimestamp = prices[pricesIdx].timestamp;
+          lastKnownPrice = prices[pricesIdx].close;
+          pricesIdx++;
+        }
+
+        if (nextPriceItemTimestamp === outputEntries[outputIdx].timestamp) {
+          outputEntries[outputIdx] = prices[pricesIdx];
+        } else {
+          outputEntries[outputIdx].close = lastKnownPrice;
+          outputEntries[outputIdx].high = lastKnownPrice;
+          outputEntries[outputIdx].low = lastKnownPrice;
+          outputEntries[outputIdx].open = lastKnownPrice;
+        }
+
+        outputIdx++;
+      }
     }
 
-    console.log('LLL 1371', outputEntries.slice(-20));
     return outputEntries;
   }
 
