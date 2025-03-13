@@ -598,6 +598,7 @@ export class CandleResolver {
       epochId
     );
 
+    console.log('LLL 601', prices);
     return prices;
   }
 

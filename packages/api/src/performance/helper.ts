@@ -4,7 +4,8 @@ import * as path from 'path';
 
 export async function saveStorageToFile(
   storage: IntervalStore,
-  latestTimestamp: number,
+  latestResourceTimestamp: number,
+  latestMarketTimestamp: number,
   resourceSlug: string,
   resourceName: string,
   sectionName: string
@@ -33,7 +34,8 @@ export async function saveStorageToFile(
     filename,
     JSON.stringify(
       {
-        latestTimestamp,
+        latestResourceTimestamp,
+        latestMarketTimestamp,
         store: storage,
       },
       (key, value) => (typeof value === 'bigint' ? value.toString() : value),
@@ -53,7 +55,8 @@ export async function loadStorageFromFile(
   sectionName: string
 ): Promise<
   | {
-      latestTimestamp: number;
+      latestResourceTimestamp: number;
+      latestMarketTimestamp: number;
       store: IntervalStore;
     }
   | undefined
@@ -91,7 +94,8 @@ export async function loadStorageFromFile(
     }
     return value;
   }) as {
-    latestTimestamp: number;
+    latestResourceTimestamp: number;
+    latestMarketTimestamp: number;
     store: IntervalStore;
   };
 
@@ -100,7 +104,8 @@ export async function loadStorageFromFile(
   );
   console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
   return {
-    latestTimestamp: storage.latestTimestamp,
+    latestResourceTimestamp: storage.latestResourceTimestamp,
+    latestMarketTimestamp: storage.latestMarketTimestamp,
     store: storage.store,
   };
 }
