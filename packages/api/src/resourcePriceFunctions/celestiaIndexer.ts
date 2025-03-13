@@ -69,14 +69,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
           data = await response.json();
 
           if (response.ok) {
-            if (Array.isArray(data) && data.length > 0) {
               break;
-            } else {
-              console.error(
-                `[CelestiaIndexer] Info for block ${currentBlockToPoll} hasn't been written to the API yet! We are most likely in a API cache death spiral...`
-              );
-              return;
-            }
           }
 
           console.error(
