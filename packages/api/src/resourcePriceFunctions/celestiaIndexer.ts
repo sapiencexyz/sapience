@@ -69,7 +69,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
           data = await response.json();
 
           if (response.ok) {
-              break;
+            break;
           }
 
           console.error(
