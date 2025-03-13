@@ -125,13 +125,11 @@ export class ResourcePerformance {
         resourceStore: {
           data: [],
           metadata: [],
-          pointers: {},
           trailingAvgData: [],
         },
         trailingAvgStore: {
           data: [],
           metadata: [],
-          pointers: {},
           trailingAvgData: [],
         },
         indexStore: {},
@@ -538,8 +536,6 @@ export class ResourcePerformance {
           used: 0n,
           feePaid: 0n,
         });
-
-        resourceStore.pointers[item.timestamp] = resourceStore.data.length - 1;
       }
     }
 
@@ -602,8 +598,6 @@ export class ResourcePerformance {
           used: 0n,
           feePaid: 0n,
         });
-
-        resourceStore.pointers[item.timestamp] = resourceStore.data.length - 1;
       }
     } else {
       // Update the current interval
@@ -654,7 +648,6 @@ export class ResourcePerformance {
           this.persistentStorage[interval].indexStore[epoch.id] = {
             data: [],
             metadata: [],
-            pointers: {},
             trailingAvgData: [], // Unused in index store
           };
         }
@@ -698,8 +691,6 @@ export class ResourcePerformance {
             used: ripd.used,
             feePaid: ripd.feePaid,
           });
-
-          piStore.pointers[item.timestamp] = piStore.data.length - 1;
         }
       }
 
@@ -784,8 +775,6 @@ export class ResourcePerformance {
               used: ripd.used,
               feePaid: ripd.feePaid,
             });
-
-            piStore.pointers[item.timestamp] = piStore.data.length - 1;
           }
         }
       }
@@ -873,8 +862,6 @@ export class ResourcePerformance {
         if (!ptStore.trailingAvgData) {
           ptStore.trailingAvgData = [];
         }
-
-        ptStore.pointers[item.timestamp] = ptStore.data.length - 1;
       }
     }
 
@@ -965,8 +952,6 @@ export class ResourcePerformance {
             used: rtpd.used,
             feePaid: rtpd.feePaid,
           });
-
-          ptStore.pointers[item.timestamp] = ptStore.data.length - 1;
         }
       }
     }
@@ -1024,7 +1009,6 @@ export class ResourcePerformance {
           this.persistentStorage[interval].marketStore[epoch.id] = {
             data: [],
             metadata: [],
-            pointers: {},
             trailingAvgData: [],
           };
         }
@@ -1063,8 +1047,6 @@ export class ResourcePerformance {
             low: minBigInt(rmpd.low, itemValueBn).toString(),
             close: itemValueBn.toString(),
           });
-
-          pmStore.pointers[item.timestamp] = pmStore.data.length - 1;
         }
       }
 
@@ -1113,8 +1095,6 @@ export class ResourcePerformance {
             low: item.value,
             close: item.value,
           });
-
-          pmStore.pointers[item.timestamp] = pmStore.data.length - 1;
         }
       } else {
         // Update the current interval min/max values

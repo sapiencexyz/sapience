@@ -28,9 +28,6 @@ export type CandleMetadata = {
 export type IndexStore = {
   data: CandleData[];
   metadata: CandleMetadata[];
-  pointers: {
-    [closestTimestamp: number]: number;
-  };
   trailingAvgData: TrailingAvgData[];
 };
 
