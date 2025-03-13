@@ -12,6 +12,12 @@ export type TrailingAvgData = {
   feePaid: string;
 };
 
+export type MarketPriceData = {
+  value: string;
+  timestamp: number;
+  epoch: number;
+};
+
 export type CandleMetadata = {
   used: bigint;
   feePaid: bigint;
