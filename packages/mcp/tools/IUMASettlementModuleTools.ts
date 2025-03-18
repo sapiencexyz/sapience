@@ -4,7 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import IUMASettlementModuleABI from '../out/IUMASettlementModule.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.IUMASettlementModule.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -37,31 +40,18 @@ export const IUMASettlementModuleTools = {
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IUMASettlementModuleABI),
-          functionName: "submitSettlementPrice",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IUMASettlementModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "submitSettlementPrice",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called submitSettlementPrice on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -82,31 +72,18 @@ export const IUMASettlementModuleTools = {
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IUMASettlementModuleABI),
-          functionName: "assertionResolvedCallback",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IUMASettlementModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "assertionResolvedCallback",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called assertionResolvedCallback on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -127,31 +104,18 @@ export const IUMASettlementModuleTools = {
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IUMASettlementModuleABI),
-          functionName: "assertionDisputedCallback",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IUMASettlementModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "assertionDisputedCallback",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called assertionDisputedCallback on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }

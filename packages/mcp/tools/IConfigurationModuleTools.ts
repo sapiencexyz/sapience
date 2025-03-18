@@ -4,7 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import IConfigurationModuleABI from '../out/IConfigurationModule.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.IConfigurationModule.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -61,33 +64,18 @@ export const IConfigurationModuleTools = {
     },
     function: async ({ contractAddress, owner, collateralAsset, feeCollectors, callbackRecipient, minTradeSize, marketParams }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IConfigurationModuleABI),
-          functionName: "initializeMarket",
-args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTradeSize), marketParams],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IConfigurationModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "initializeMarket",
-args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTradeSize), marketParams],
+          args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTradeSize), marketParams]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called initializeMarket on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -108,31 +96,18 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IConfigurationModuleABI),
-          functionName: "updateMarket",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IConfigurationModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "updateMarket",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called updateMarket on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -153,31 +128,18 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IConfigurationModuleABI),
-          functionName: "createEpoch",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IConfigurationModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "createEpoch",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called createEpoch on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }

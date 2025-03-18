@@ -22,9 +22,6 @@ import * as path from 'path';
 import { glob } from 'glob';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
-import { base } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
 import { fileURLToPath } from 'url';
 
 const execPromise = promisify(exec);
@@ -34,6 +31,18 @@ type FunctionParam = {
   name: string;
   type: string;
   description?: string;
+};
+
+type StructField = {
+  name: string;
+  type: string;
+  description?: string;
+};
+
+type StructDefinition = {
+  name: string;
+  description?: string;
+  fields: StructField[];
 };
 
 type FunctionDefinition = {
@@ -49,6 +58,7 @@ type InterfaceDefinition = {
   name: string;
   description?: string;
   functions: FunctionDefinition[];
+  structs: StructDefinition[];
 };
 
 // Note: This script requires Foundry (forge) to be installed and in your PATH
@@ -124,15 +134,40 @@ function parseNatSpec(docString?: string): { [key: string]: string } {
 }
 
 // Update the execPromise function to execute commands in the protocol directory
-async function execInProtocolDir(command: string): Promise<{stdout: string, stderr: string}> {
-  return execPromise(`cd ../protocol && ${command}`);
+async function execInProtocolDir(command: string, retries = 3): Promise<{stdout: string, stderr: string}> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Add a timeout of 30 seconds
+      const timeout = 30000;
+      const result = await Promise.race([
+        execPromise(`cd ../protocol && ${command}`),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Command timed out')), timeout)
+        )
+      ]) as {stdout: string, stderr: string};
+      
+      return result;
+    } catch (error) {
+      console.warn(`Attempt ${i + 1} failed:`, error);
+      if (i === retries - 1) throw error;
+      // Wait 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+  throw new Error('All retry attempts failed');
 }
 
-// Update generateAST function to work with protocol directory
+// Update generateAST function to work with protocol directory and handle multiple files
 async function generateAST(filePath: string): Promise<any> {
   try {
+    console.log(`Generating AST for ${filePath}...`);
+    
     // Run forge build in the protocol directory with --ast flag
-    await execInProtocolDir(`forge build --ast`);
+    const { stdout, stderr } = await execInProtocolDir('forge build --ast');
+    
+    if (stderr) {
+      console.warn('Forge build stderr:', stderr);
+    }
     
     // Determine the output path - now relative to the protocol directory
     const contractName = path.basename(filePath, '.sol');
@@ -142,8 +177,21 @@ async function generateAST(filePath: string): Promise<any> {
       contractName + '.json'
     );
     
+    // Check if file exists
+    if (!fs.existsSync(outputPath)) {
+      console.error('AST file not found at:', outputPath);
+      return null;
+    }
+    
     // Read the AST from the output file
-    const output = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+    const fileContent = fs.readFileSync(outputPath, 'utf8');
+    console.log('Raw file content:', fileContent);
+    
+    const output = JSON.parse(fileContent);
+    
+    // Debug logging
+    console.log('AST Output for', contractName, ':', JSON.stringify(output, null, 2));
+    
     return output.ast;
   } catch (error) {
     console.error('Error generating AST with forge:', error);
@@ -154,8 +202,42 @@ async function generateAST(filePath: string): Promise<any> {
 // Process AST to extract interface definition
 function processAST(ast: any): InterfaceDefinition[] {
   const interfaces: InterfaceDefinition[] = [];
+  
+  // If ast is an array of strings, it's a list of struct definitions
+  if (Array.isArray(ast) && ast.length > 0 && typeof ast[0] === 'string') {
+    const structInterface: InterfaceDefinition = {
+      name: 'IFoilStructs',
+      description: 'Struct definitions for the Foil protocol',
+      functions: [],
+      structs: []
+    };
 
-  function traverseNode(node: ASTNode) {
+    // Process each struct definition
+    for (const structJson of ast) {
+      try {
+        const structDef = JSON.parse(structJson);
+        const structDefinition: StructDefinition = {
+          name: structDef.name,
+          description: '',
+          fields: structDef.members.map((member: any) => ({
+            name: member.name,
+            type: member.type,
+            description: ''
+          }))
+        };
+        structInterface.structs.push(structDefinition);
+      } catch (error) {
+        console.error('Error parsing struct definition:', error);
+      }
+    }
+
+    if (structInterface.structs.length > 0) {
+      interfaces.push(structInterface);
+    }
+    return interfaces;
+  }
+  
+  function traverseNode(node: any) {
     if (node.nodeType === 'ContractDefinition' && node.contractKind === 'interface') {
       const contractNode = node as ContractDefinition;
       
@@ -163,7 +245,8 @@ function processAST(ast: any): InterfaceDefinition[] {
       const interfaceDef: InterfaceDefinition = {
         name: contractNode.name,
         description: '',
-        functions: []
+        functions: [],
+        structs: []
       };
 
       // Extract interface documentation
@@ -172,7 +255,7 @@ function processAST(ast: any): InterfaceDefinition[] {
         interfaceDef.description = natspec.dev || natspec.description || '';
       }
 
-      // Process interface functions
+      // Process interface functions and structs
       for (const childNode of contractNode.nodes) {
         if (childNode.nodeType === 'FunctionDefinition' && childNode.visibility === 'external') {
           const funcNode = childNode as FunctionDefinitionNode;
@@ -215,6 +298,32 @@ function processAST(ast: any): InterfaceDefinition[] {
           }
 
           interfaceDef.functions.push(functionDef);
+        } else if (childNode.nodeType === 'StructDefinition') {
+          // Process struct
+          const structDef: StructDefinition = {
+            name: childNode.name,
+            description: '',
+            fields: []
+          };
+
+          // Extract struct documentation
+          if (childNode.documentation) {
+            const natspec = parseNatSpec(childNode.documentation.text);
+            structDef.description = natspec.dev || natspec.description || '';
+          }
+
+          // Process struct fields
+          childNode.members.forEach((member: any) => {
+            const fieldName = member.name;
+            const fieldDesc = structDef.description ? parseNatSpec(structDef.description)[`param_${fieldName}`] || '' : '';
+            structDef.fields.push({
+              name: fieldName,
+              type: member.typeName.typeDescriptions.typeString,
+              description: fieldDesc
+            });
+          });
+
+          interfaceDef.structs.push(structDef);
         }
       }
 
@@ -317,7 +426,7 @@ function generateReturnValue(returns: FunctionParam[]): string {
 
 // Function to generate MCP tool definitions for an interface
 function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: string): string {
-  const { name, description, functions } = interfaceDefinition;
+  const { name, description, functions, structs } = interfaceDefinition;
   
   let output = `// MCP Tool for ${name}\n`;
   output += `import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';\n`;
@@ -326,7 +435,26 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
   
   // Import ABI
   output += `// Import ABI from Foundry artifacts\n`;
-  output += `import ${name}ABI from '${abiPath}';\n\n`;
+  output += `import abiJson from '${abiPath}';\n\n`;
+  
+  // Parse the ABI from the JSON strings
+  output += `// Parse the ABI from the JSON strings\n`;
+  output += `const parsedABI = abiJson.${name}.map(item => JSON.parse(item));\n\n`;
+
+  // Generate TypeScript types for structs
+  if (structs.length > 0) {
+    output += `// TypeScript types for structs\n`;
+    output += `export type ${name}Structs = {\n`;
+    for (const struct of structs) {
+      output += `  ${struct.name}: {\n`;
+      for (const field of struct.fields) {
+        const tsType = solidityToTypeScript(field.type);
+        output += `    ${field.name}: ${tsType};\n`;
+      }
+      output += `  };\n`;
+    }
+    output += `};\n\n`;
+  }
   
   // Create clients setup
   output += `// Configure viem clients\n`;
@@ -391,10 +519,10 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
       // Read-only function
       output += `      try {\n`;
       output += `        const result = await publicClient.readContract({\n`;
-      output += `          address: contractAddress,\n`;
-      output += `          abi: parseAbi(${name}ABI),\n`;
+      output += `          address: contractAddress as \`0x\${string}\`,\n`;
+      output += `          abi: parsedABI,\n`;
       output += `          functionName: "${func.name}",\n`;
-      output += generateFunctionArgs(func.params);
+      output += `          args: [${func.params.map(p => formatParamValue(p, p.name)).join(', ')}]\n`;
       output += `        });\n\n`;
       output += generateReturnValue(func.returns);
       output += `      } catch (error) {\n`;
@@ -403,33 +531,16 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
     } else {
       // Write function
       output += `      if (!hasPrivateKey) {\n`;
-      output += `        return { error: "Write operations require PRIVATE_KEY environment variable" };\n`;
+      output += `        return { error: "Private key not configured" };\n`;
       output += `      }\n\n`;
       output += `      try {\n`;
-      output += `        // Prepare transaction data\n`;
-      output += `        const data = encodeFunctionData({\n`;
-      output += `          abi: parseAbi(${name}ABI),\n`;
-      output += `          functionName: "${func.name}",\n`;
-      output += generateFunctionArgs(func.params);
-      output += `        });\n\n`;
-      
-      output += `        // Send transaction\n`;
       output += `        const hash = await walletClient!.writeContract({\n`;
-      output += `          address: contractAddress,\n`;
-      output += `          abi: parseAbi(${name}ABI),\n`;
+      output += `          address: contractAddress as \`0x\${string}\`,\n`;
+      output += `          abi: parsedABI,\n`;
       output += `          functionName: "${func.name}",\n`;
-      output += generateFunctionArgs(func.params);
+      output += `          args: [${func.params.map(p => formatParamValue(p, p.name)).join(', ')}]\n`;
       output += `        });\n\n`;
-      
-      output += `        // Wait for transaction\n`;
-      output += `        const receipt = await publicClient.waitForTransactionReceipt({ hash });\n\n`;
-      
-      output += `        return {\n`;
-      output += `          hash,\n`;
-      output += `          receipt,\n`;
-      output += `          description: \`Called ${func.name} on \${contractAddress}\`\n`;
-      output += `        };\n`;
-      
+      output += `        return { hash };\n`;
       output += `      } catch (error) {\n`;
       output += `        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };\n`;
       output += `      }\n`;
@@ -447,20 +558,101 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
 // Function to extract ABI from AST
 function extractABIFromAST(ast: any): string[] {
   const abi: string[] = [];
+  const structs: { [key: string]: any } = {};
   
+  // First pass: collect all struct definitions
+  function collectStructs(node: any) {
+    if (node.nodeType === 'StructDefinition') {
+      const structName = node.name;
+      const members = node.members.map((m: any) => {
+        const type = m.typeName.typeDescriptions.typeString;
+        // Handle nested structs
+        if (type.startsWith('struct ')) {
+          const nestedStructName = type.split('struct ')[1];
+          return {
+            name: m.name,
+            type: 'tuple',
+            internalType: type,
+            components: structs[nestedStructName] || []
+          };
+        }
+        return {
+          name: m.name,
+          type: type,
+          internalType: type
+        };
+      });
+      structs[structName] = members;
+      
+      // Add struct definition to ABI
+      abi.push(JSON.stringify({
+        name: structName,
+        type: 'struct',
+        members: members
+      }));
+    }
+    
+    if (node.nodes) {
+      for (const child of node.nodes) {
+        collectStructs(child);
+      }
+    }
+  }
+  
+  // Second pass: process functions and handle struct types
   function processNode(node: any) {
     if (node.nodeType === 'FunctionDefinition') {
-      const inputs = node.parameters.parameters.map((p: any) => ({
-        name: p.name,
-        type: p.typeName.typeDescriptions.typeString,
-        internalType: p.typeName.typeDescriptions.typeString
-      }));
+      const inputs = node.parameters.parameters.map((p: any) => {
+        const type = p.typeName.typeDescriptions.typeString;
+        // If the type is a struct, expand it into its components
+        if (type.startsWith('struct ')) {
+          const structName = type.split('struct ')[1];
+          if (structs[structName]) {
+            return {
+              name: p.name,
+              type: 'tuple',
+              internalType: type,
+              components: structs[structName].map((m: any) => ({
+                name: m.name,
+                type: m.type,
+                internalType: m.internalType,
+                components: m.components
+              }))
+            };
+          }
+        }
+        return {
+          name: p.name,
+          type: type,
+          internalType: type
+        };
+      });
       
-      const outputs = node.returnParameters.parameters.map((p: any) => ({
-        name: p.name || '',
-        type: p.typeName.typeDescriptions.typeString,
-        internalType: p.typeName.typeDescriptions.typeString
-      }));
+      const outputs = node.returnParameters.parameters.map((p: any) => {
+        const type = p.typeName.typeDescriptions.typeString;
+        // If the type is a struct, expand it into its components
+        if (type.startsWith('struct ')) {
+          const structName = type.split('struct ')[1];
+          if (structs[structName]) {
+            return {
+              name: p.name || '',
+              type: 'tuple',
+              internalType: type,
+              components: structs[structName].map((m: any) => ({
+                name: m.name,
+                type: m.type,
+                internalType: m.internalType,
+                components: m.components
+              }))
+            };
+          }
+        }
+        return {
+          name: p.name || '',
+          type: type,
+          internalType: type
+        };
+      });
       
       abi.push(JSON.stringify({
         inputs,
@@ -481,7 +673,11 @@ function extractABIFromAST(ast: any): string[] {
     }
   }
   
+  // First collect all structs
+  collectStructs(ast);
+  // Then process functions
   traverse(ast);
+  
   return abi;
 }
 
@@ -521,46 +717,76 @@ async function main() {
     
     console.log(`Found ${interfaceFiles.length} interface files to process`);
     
+    // Collect all ABIs
+    const allABIs: { [key: string]: any[] } = {};
+    
+    // First, process all struct interface files to collect struct definitions
     for (const filePath of interfaceFiles) {
-      try {
+      if (filePath.includes('Structs')) {
         const fullPath = path.join(absoluteInterfacesDir, filePath);
-        console.log(`Processing ${fullPath}...`);
+        console.log(`Processing struct interface ${fullPath}...`);
         
-        // Generate AST
         const ast = await generateAST(fullPath);
-        
-        // Process AST
-        const interfaces = processAST(ast);
-        
-        if (interfaces.length === 0) {
-          console.warn(`No interfaces found in ${filePath}`);
-          continue;
+        if (ast) {
+          const interfaces = processAST(ast);
+          for (const interfaceDef of interfaces) {
+            // Extract ABI and add to collection
+            const abi = extractABIFromAST(ast);
+            allABIs[interfaceDef.name] = abi;
+            console.log(`Added struct definitions from ${interfaceDef.name}`);
+          }
         }
-        
-        // Generate MCP tools for each interface
-        for (const interfaceDefinition of interfaces) {
-          // Determine ABI path - update path to be relative to our output directory
-          const relativeAbiPath = `../out/${interfaceDefinition.name}.ast.json`;
-          
-          // Generate MCP tool
-          const toolCode = generateMCPTool(interfaceDefinition, relativeAbiPath);
-          
-          // Write output
-          const outputPath = path.join(outputDir, `${interfaceDefinition.name}Tools.ts`);
-          fs.writeFileSync(outputPath, toolCode);
-          
-          // Save the ABI to our out directory
-          const astOutputPath = path.join(outDir, `${interfaceDefinition.name}.ast.json`);
-          const abi = extractABIFromAST(ast);
-          fs.writeFileSync(astOutputPath, JSON.stringify(abi, null, 2));
-          
-          console.log(`Generated MCP tool at ${outputPath}`);
-          console.log(`Saved ABI at ${astOutputPath}`);
-        }
-      } catch (error) {
-        console.error(`Error processing ${filePath}:`, error);
       }
     }
+    
+    // Then process main interface files
+    for (const filePath of interfaceFiles) {
+      if (!filePath.includes('Structs')) {
+        try {
+          const fullPath = path.join(absoluteInterfacesDir, filePath);
+          console.log(`Processing ${fullPath}...`);
+          
+          // Generate AST
+          const ast = await generateAST(fullPath);
+          
+          if (!ast) {
+            console.warn(`No AST generated for ${filePath}`);
+            continue;
+          }
+          
+          // Process AST
+          const interfaces = processAST(ast);
+          
+          if (interfaces.length === 0) {
+            console.warn(`No interfaces found in ${filePath}`);
+            continue;
+          }
+          
+          // Generate MCP tools for each interface
+          for (const interfaceDefinition of interfaces) {
+            // Generate MCP tool
+            const toolCode = generateMCPTool(interfaceDefinition, '../out/abi.json');
+            
+            // Write output
+            const outputPath = path.join(outputDir, `${interfaceDefinition.name}Tools.ts`);
+            fs.writeFileSync(outputPath, toolCode);
+            
+            // Extract ABI and add to collection
+            const abi = extractABIFromAST(ast);
+            allABIs[interfaceDefinition.name] = abi;
+            
+            console.log(`Generated MCP tool at ${outputPath}`);
+          }
+        } catch (error) {
+          console.error(`Error processing ${filePath}:`, error);
+        }
+      }
+    }
+    
+    // Write consolidated ABI file
+    const consolidatedAbiPath = path.join(outDir, 'abi.json');
+    fs.writeFileSync(consolidatedAbiPath, JSON.stringify(allABIs, null, 2));
+    console.log(`Saved consolidated ABI at ${consolidatedAbiPath}`);
     
     // Generate index file in tools directory
     const toolFiles = await glob(`${outputDir}/*Tools.ts`);

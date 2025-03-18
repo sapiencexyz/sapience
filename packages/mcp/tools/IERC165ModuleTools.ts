@@ -4,7 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import IERC165ModuleABI from '../out/IERC165Module.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.IERC165Module.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -38,9 +41,10 @@ export const IERC165ModuleTools = {
     function: async ({ contractAddress }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IERC165ModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "supportsInterface",
+          args: []
         });
 
         return { success: true };

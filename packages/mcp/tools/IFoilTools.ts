@@ -4,7 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import IFoilABI from '../out/IFoil.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.IFoil.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({

@@ -4,10 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import IViewsModuleABI from '../out/IViewsModule.ast.json';
+import abiJson from '../out/abi.json';
 
 // Parse the ABI from the JSON strings
-const parsedABI = IViewsModuleABI.map(item => JSON.parse(item));
+const parsedABI = abiJson.IViewsModule.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -44,9 +44,10 @@ export const IViewsModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getMarket",
+          args: []
         });
 
-        return result;
+        return { success: true };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -68,9 +69,10 @@ export const IViewsModuleTools = {
     function: async ({ contractAddress }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
+          address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getEpoch",
+          args: []
         });
 
         return { success: true };
@@ -98,9 +100,10 @@ export const IViewsModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getLatestEpoch",
+          args: []
         });
 
-        return result;
+        return { success: true };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -121,31 +124,18 @@ export const IViewsModuleTools = {
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parsedABI,
-          functionName: "getPosition",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
+          address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getPosition",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called getPosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -166,31 +156,18 @@ export const IViewsModuleTools = {
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parsedABI,
-          functionName: "getPositionSize",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
+          address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getPositionSize",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called getPositionSize on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -216,10 +193,10 @@ export const IViewsModuleTools = {
     function: async ({ contractAddress, epochId }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
+          address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getSqrtPriceX96",
-args: [BigInt(epochId)],
+          args: [BigInt(epochId)]
         });
 
         return { result };
@@ -248,10 +225,10 @@ args: [BigInt(epochId)],
     function: async ({ contractAddress, epochId }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
+          address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getReferencePrice",
-args: [BigInt(epochId)],
+          args: [BigInt(epochId)]
         });
 
         return { result };
@@ -280,10 +257,10 @@ args: [BigInt(epochId)],
     function: async ({ contractAddress, positionId }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
+          address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getPositionCollateralValue",
-args: [BigInt(positionId)],
+          args: [BigInt(positionId)]
         });
 
         return { result };
@@ -312,10 +289,10 @@ args: [BigInt(positionId)],
     function: async ({ contractAddress, positionId }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
+          address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getPositionPnl",
-args: [BigInt(positionId)],
+          args: [BigInt(positionId)]
         });
 
         return { result };
@@ -340,9 +317,10 @@ args: [BigInt(positionId)],
     function: async ({ contractAddress }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
+          address: contractAddress as `0x${string}`,
           abi: parsedABI,
           functionName: "getMarketTickSpacing",
+          args: []
         });
 
         return { success: true };

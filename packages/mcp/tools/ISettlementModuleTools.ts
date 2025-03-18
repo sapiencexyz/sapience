@@ -4,7 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import ISettlementModuleABI from '../out/ISettlementModule.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.ISettlementModule.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -41,33 +44,18 @@ export const ISettlementModuleTools = {
     },
     function: async ({ contractAddress, positionId }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ISettlementModuleABI),
-          functionName: "settlePosition",
-args: [BigInt(positionId)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ISettlementModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "settlePosition",
-args: [BigInt(positionId)],
+          args: [BigInt(positionId)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called settlePosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -88,31 +76,18 @@ args: [BigInt(positionId)],
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ISettlementModuleABI),
-          functionName: "__manual_setSettlementPrice",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ISettlementModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "__manual_setSettlementPrice",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called __manual_setSettlementPrice on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }

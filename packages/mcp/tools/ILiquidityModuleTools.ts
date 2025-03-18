@@ -4,7 +4,44 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import ILiquidityModuleABI from '../out/ILiquidityModule.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.ILiquidityModule.map(item => JSON.parse(item));
+
+// TypeScript types for structs
+export type ILiquidityModuleStructs = {
+  DecreaseLiquidityPositionStack: {
+    previousAmount0: bigint;
+    previousAmount1: bigint;
+    previousLiquidity: bigint;
+    lowerTick: bigint;
+    upperTick: bigint;
+    decreaseParams: any;
+    tokensOwed0: bigint;
+    tokensOwed1: bigint;
+    isFeeCollector: boolean;
+    requiredCollateralAmount: bigint;
+    newCollateralAmount: bigint;
+    loanAmount0: bigint;
+    loanAmount1: bigint;
+  };
+  IncreaseLiquidityPositionStack: {
+    previousAmount0: bigint;
+    previousAmount1: bigint;
+    previousLiquidity: bigint;
+    lowerTick: bigint;
+    upperTick: bigint;
+    increaseParams: any;
+    tokensOwed0: bigint;
+    tokensOwed1: bigint;
+    isFeeCollector: boolean;
+    requiredCollateralAmount: bigint;
+    newCollateralAmount: bigint;
+    loanAmount0: bigint;
+    loanAmount1: bigint;
+  };
+};
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -41,33 +78,18 @@ export const ILiquidityModuleTools = {
     },
     function: async ({ contractAddress, params }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ILiquidityModuleABI),
-          functionName: "createLiquidityPosition",
-args: [params],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ILiquidityModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "createLiquidityPosition",
-args: [params],
+          args: [params]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called createLiquidityPosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -92,33 +114,18 @@ args: [params],
     },
     function: async ({ contractAddress, params }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ILiquidityModuleABI),
-          functionName: "decreaseLiquidityPosition",
-args: [params],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ILiquidityModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "decreaseLiquidityPosition",
-args: [params],
+          args: [params]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called decreaseLiquidityPosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -139,31 +146,18 @@ args: [params],
     },
     function: async ({ contractAddress }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ILiquidityModuleABI),
-          functionName: "increaseLiquidityPosition",
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ILiquidityModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "increaseLiquidityPosition",
+          args: []
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called increaseLiquidityPosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -185,9 +179,10 @@ args: [params],
     function: async ({ contractAddress }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(ILiquidityModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "quoteLiquidityPositionTokens",
+          args: []
         });
 
         return { success: true };
@@ -212,9 +207,10 @@ args: [params],
     function: async ({ contractAddress }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(ILiquidityModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "quoteRequiredCollateral",
+          args: []
         });
 
         return { success: true };
@@ -246,33 +242,18 @@ args: [params],
     },
     function: async ({ contractAddress, positionId, collateralAmount }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ILiquidityModuleABI),
-          functionName: "depositCollateral",
-args: [BigInt(positionId), BigInt(collateralAmount)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ILiquidityModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "depositCollateral",
-args: [BigInt(positionId), BigInt(collateralAmount)],
+          args: [BigInt(positionId), BigInt(collateralAmount)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called depositCollateral on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -310,10 +291,10 @@ args: [BigInt(positionId), BigInt(collateralAmount)],
     function: async ({ contractAddress, liquidity, sqrtPriceX96, sqrtPriceAX96, sqrtPriceBX96 }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(ILiquidityModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "getTokensFromLiquidity",
-args: [BigInt(liquidity), BigInt(sqrtPriceX96), BigInt(sqrtPriceAX96), BigInt(sqrtPriceBX96)],
+          args: [BigInt(liquidity), BigInt(sqrtPriceX96), BigInt(sqrtPriceAX96), BigInt(sqrtPriceBX96)]
         });
 
         return {

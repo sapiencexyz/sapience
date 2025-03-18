@@ -4,7 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import IERC721EnumerableABI from '../out/IERC721Enumerable.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.IERC721Enumerable.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -38,9 +41,10 @@ export const IERC721EnumerableTools = {
     function: async ({ contractAddress }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721EnumerableABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "totalSupply",
+          args: []
         });
 
         return { result };
@@ -71,10 +75,10 @@ export const IERC721EnumerableTools = {
     function: async ({ contractAddress, owner, index }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721EnumerableABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "tokenOfOwnerByIndex",
-args: [owner, BigInt(index)],
+          args: [owner, BigInt(index)]
         });
 
         return { result };
@@ -102,10 +106,10 @@ args: [owner, BigInt(index)],
     function: async ({ contractAddress, index }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721EnumerableABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "tokenByIndex",
-args: [BigInt(index)],
+          args: [BigInt(index)]
         });
 
         return { result };

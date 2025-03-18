@@ -4,7 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import ITradeModuleABI from '../out/ITradeModule.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.ITradeModule.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -53,33 +56,18 @@ export const ITradeModuleTools = {
     },
     function: async ({ contractAddress, epochId, size, maxCollateral, deadline }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ITradeModuleABI),
-          functionName: "createTraderPosition",
-args: [BigInt(epochId), BigInt(size), BigInt(maxCollateral), BigInt(deadline)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ITradeModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "createTraderPosition",
-args: [BigInt(epochId), BigInt(size), BigInt(maxCollateral), BigInt(deadline)],
+          args: [BigInt(epochId), BigInt(size), BigInt(maxCollateral), BigInt(deadline)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called createTraderPosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -116,33 +104,18 @@ args: [BigInt(epochId), BigInt(size), BigInt(maxCollateral), BigInt(deadline)],
     },
     function: async ({ contractAddress, positionId, size, deltaCollateralLimit, deadline }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ITradeModuleABI),
-          functionName: "modifyTraderPosition",
-args: [BigInt(positionId), BigInt(size), BigInt(deltaCollateralLimit), BigInt(deadline)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ITradeModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "modifyTraderPosition",
-args: [BigInt(positionId), BigInt(size), BigInt(deltaCollateralLimit), BigInt(deadline)],
+          args: [BigInt(positionId), BigInt(size), BigInt(deltaCollateralLimit), BigInt(deadline)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called modifyTraderPosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -171,33 +144,18 @@ args: [BigInt(positionId), BigInt(size), BigInt(deltaCollateralLimit), BigInt(de
     },
     function: async ({ contractAddress, epochId, size }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ITradeModuleABI),
-          functionName: "quoteCreateTraderPosition",
-args: [BigInt(epochId), BigInt(size)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ITradeModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "quoteCreateTraderPosition",
-args: [BigInt(epochId), BigInt(size)],
+          args: [BigInt(epochId), BigInt(size)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called quoteCreateTraderPosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -226,33 +184,18 @@ args: [BigInt(epochId), BigInt(size)],
     },
     function: async ({ contractAddress, positionId, size }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(ITradeModuleABI),
-          functionName: "quoteModifyTraderPosition",
-args: [BigInt(positionId), BigInt(size)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(ITradeModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "quoteModifyTraderPosition",
-args: [BigInt(positionId), BigInt(size)],
+          args: [BigInt(positionId), BigInt(size)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called quoteModifyTraderPosition on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }

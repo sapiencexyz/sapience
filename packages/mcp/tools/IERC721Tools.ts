@@ -4,7 +4,10 @@ import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
-import IERC721ABI from '../out/IERC721.ast.json';
+import abiJson from '../out/abi.json';
+
+// Parse the ABI from the JSON strings
+const parsedABI = abiJson.IERC721.map(item => JSON.parse(item));
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -41,10 +44,10 @@ export const IERC721Tools = {
     function: async ({ contractAddress, owner }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "balanceOf",
-args: [owner],
+          args: [owner]
         });
 
         return { result };
@@ -72,10 +75,10 @@ args: [owner],
     function: async ({ contractAddress, tokenId }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "ownerOf",
-args: [BigInt(tokenId)],
+          args: [BigInt(tokenId)]
         });
 
         return { result };
@@ -111,33 +114,18 @@ args: [BigInt(tokenId)],
     },
     function: async ({ contractAddress, from, to, tokenId, data: dataParam }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IERC721ABI),
-          functionName: "safeTransferFrom",
-args: [from, to, BigInt(tokenId), dataParam],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "safeTransferFrom",
-args: [from, to, BigInt(tokenId), dataParam],
+          args: [from, to, BigInt(tokenId), data]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called safeTransferFrom on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -167,33 +155,18 @@ args: [from, to, BigInt(tokenId), dataParam],
     },
     function: async ({ contractAddress, from, to, tokenId }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IERC721ABI),
-          functionName: "safeTransferFrom",
-args: [from, to, BigInt(tokenId)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "safeTransferFrom",
-args: [from, to, BigInt(tokenId)],
+          args: [from, to, BigInt(tokenId)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called safeTransferFrom on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -223,33 +196,18 @@ args: [from, to, BigInt(tokenId)],
     },
     function: async ({ contractAddress, from, to, tokenId }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IERC721ABI),
-          functionName: "transferFrom",
-args: [from, to, BigInt(tokenId)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "transferFrom",
-args: [from, to, BigInt(tokenId)],
+          args: [from, to, BigInt(tokenId)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called transferFrom on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -276,33 +234,18 @@ args: [from, to, BigInt(tokenId)],
     },
     function: async ({ contractAddress, to, tokenId }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IERC721ABI),
-          functionName: "approve",
-args: [to, BigInt(tokenId)],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "approve",
-args: [to, BigInt(tokenId)],
+          args: [to, BigInt(tokenId)]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called approve on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -329,33 +272,18 @@ args: [to, BigInt(tokenId)],
     },
     function: async ({ contractAddress, operator, approved }) => {
       if (!hasPrivateKey) {
-        return { error: "Write operations require PRIVATE_KEY environment variable" };
+        return { error: "Private key not configured" };
       }
 
       try {
-        // Prepare transaction data
-        const data = encodeFunctionData({
-          abi: parseAbi(IERC721ABI),
-          functionName: "setApprovalForAll",
-args: [operator, approved],
-        });
-
-        // Send transaction
         const hash = await walletClient!.writeContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "setApprovalForAll",
-args: [operator, approved],
+          args: [operator, approved]
         });
 
-        // Wait for transaction
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-        return {
-          hash,
-          receipt,
-          description: `Called setApprovalForAll on ${contractAddress}`
-        };
+        return { hash };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -380,10 +308,10 @@ args: [operator, approved],
     function: async ({ contractAddress, tokenId }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "getApproved",
-args: [BigInt(tokenId)],
+          args: [BigInt(tokenId)]
         });
 
         return { result };
@@ -414,10 +342,10 @@ args: [BigInt(tokenId)],
     function: async ({ contractAddress, owner, operator }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IERC721ABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "isApprovedForAll",
-args: [owner, operator],
+          args: [owner, operator]
         });
 
         return { result };
