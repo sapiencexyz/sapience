@@ -6,6 +6,9 @@ import { privateKeyToAccount } from 'viem/accounts';
 // Import ABI from Foundry artifacts
 import IViewsModuleABI from '../out/IViewsModule.ast.json';
 
+// Parse the ABI from the JSON strings
+const parsedABI = IViewsModuleABI.map(item => JSON.parse(item));
+
 // Configure viem clients
 const publicClient = createPublicClient({
   chain: base,
@@ -38,12 +41,12 @@ export const IViewsModuleTools = {
     function: async ({ contractAddress }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "getMarket",
         });
 
-        return { success: true };
+        return result;
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -66,7 +69,7 @@ export const IViewsModuleTools = {
       try {
         const result = await publicClient.readContract({
           address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getEpoch",
         });
 
@@ -92,12 +95,12 @@ export const IViewsModuleTools = {
     function: async ({ contractAddress }) => {
       try {
         const result = await publicClient.readContract({
-          address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          address: contractAddress as `0x${string}`,
+          abi: parsedABI,
           functionName: "getLatestEpoch",
         });
 
-        return { success: true };
+        return result;
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -124,14 +127,14 @@ export const IViewsModuleTools = {
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getPosition",
         });
 
         // Send transaction
         const hash = await walletClient!.writeContract({
           address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getPosition",
         });
 
@@ -169,14 +172,14 @@ export const IViewsModuleTools = {
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getPositionSize",
         });
 
         // Send transaction
         const hash = await walletClient!.writeContract({
           address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getPositionSize",
         });
 
@@ -214,7 +217,7 @@ export const IViewsModuleTools = {
       try {
         const result = await publicClient.readContract({
           address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getSqrtPriceX96",
 args: [BigInt(epochId)],
         });
@@ -246,7 +249,7 @@ args: [BigInt(epochId)],
       try {
         const result = await publicClient.readContract({
           address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getReferencePrice",
 args: [BigInt(epochId)],
         });
@@ -278,7 +281,7 @@ args: [BigInt(epochId)],
       try {
         const result = await publicClient.readContract({
           address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getPositionCollateralValue",
 args: [BigInt(positionId)],
         });
@@ -310,7 +313,7 @@ args: [BigInt(positionId)],
       try {
         const result = await publicClient.readContract({
           address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getPositionPnl",
 args: [BigInt(positionId)],
         });
@@ -338,7 +341,7 @@ args: [BigInt(positionId)],
       try {
         const result = await publicClient.readContract({
           address: contractAddress,
-          abi: parseAbi(IViewsModuleABI),
+          abi: parsedABI,
           functionName: "getMarketTickSpacing",
         });
 

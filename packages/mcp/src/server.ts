@@ -13,15 +13,21 @@ const server = new McpServer({
 for (const [moduleName, moduleTools] of Object.entries(tools)) {
   if (typeof moduleTools === 'object' && moduleTools !== null) {
     const toolsObj = moduleTools as Record<string, {
-      parameters: z.ZodRawShape;
+      parameters: any;
       function: (args: Record<string, unknown>) => Promise<unknown>;
     }>;
 
     for (const [toolName, tool] of Object.entries(toolsObj)) {
-      const fullToolName = `${moduleName}.${toolName}`;
+      const fullToolName = `${moduleName}_${toolName}`;
+      
+      // Create a simple Zod schema for the parameters
+      const paramsSchema = z.object({
+        contractAddress: z.string()
+      });
+      
       server.tool(
         fullToolName,
-        tool.parameters,
+        paramsSchema.shape,
         async (args) => {
           try {
             const result = await tool.function(args);
