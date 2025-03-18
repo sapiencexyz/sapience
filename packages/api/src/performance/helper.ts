@@ -1,9 +1,12 @@
 import { IntervalStore } from './types';
 import { performanceCacheRepository } from '../db';
 
+const STORAGE_VERSION = '1';
+
 export async function persistStorage(
   storage: IntervalStore,
-  latestTimestamp: number,
+  latestResourceTimestamp: number,
+  latestMarketTimestamp: number,
   resourceSlug: string,
   resourceName: string,
   interval: number,
@@ -22,7 +25,7 @@ export async function persistStorage(
     resourceSlug,
     interval,
     jsonSection,
-    storageVersion: '1', // You may want to manage versions
+    storageVersion: STORAGE_VERSION,
     latestTimestamp,
     storage: JSON.stringify(storage, (key, value) =>
       typeof value === 'bigint' ? value.toString() : value
@@ -39,8 +42,15 @@ export async function restorePersistedStorage(
   resourceSlug: string,
   resourceName: string,
   interval: number,
-  jsonSection: string
-): Promise<{ latestTimestamp: number; store: IntervalStore } | undefined> {
+  sectionName: string
+): Promise<
+  | {
+      latestResourceTimestamp: number;
+      latestMarketTimestamp: number;
+      store: IntervalStore;
+    }
+  | undefined
+> {
   if (process.env.SAVE_STORAGE !== 'true') {
     return undefined;
   }
@@ -54,7 +64,7 @@ export async function restorePersistedStorage(
       resourceSlug,
       interval,
       jsonSection,
-      storageVersion: '1',
+      storageVersion: STORAGE_VERSION,
     },
     order: {
       createdAt: 'DESC',
@@ -76,6 +86,22 @@ export async function restorePersistedStorage(
       } catch {
         return value;
       }
+      return value;
+    }) as {
+      fileVersion: number;
+      latestResourceTimestamp: number;
+      latestMarketTimestamp: number;
+      store: IntervalStore;
+    };
+    console.timeEnd(
+      `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+    );
+    console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
+    if (storage.fileVersion !== FILE_VERSION) {
+      console.log(
+        `!! Storage file ${filename} has an unsupported version -${storage.fileVersion}-. Expected -${FILE_VERSION}-`
+      );
+      return undefined;
     }
     return value;
   });
@@ -89,6 +115,18 @@ export async function restorePersistedStorage(
     latestTimestamp: cacheEntry.latestTimestamp,
     store: storage,
   };
+    return {
+      latestResourceTimestamp: storage.latestResourceTimestamp,
+      latestMarketTimestamp: storage.latestMarketTimestamp,
+      store: storage.store,
+    };
+  } catch (error) {
+    console.error(`!! Error loading storage from ${filename}: ${error}`);
+    console.timeEnd(
+      `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+    );
+    return undefined;
+  }
 }
 
 export async function clearPersistedStore(): Promise<void> {
