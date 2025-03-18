@@ -17,18 +17,6 @@ export async function persistStorage(
     `  ResourcePerformance - processResourceData.${resourceName}.${interval}.${jsonSection}.saveStorage`
   );
 
-  console.log(
-    `  ResourcePerformance - storage for ${resourceName}.${interval}.${jsonSection}`
-  );
-  // get the storage as a json string
-  const storageJson = JSON.stringify(storage, (key, value) =>
-    typeof value === 'bigint' ? value.toString() : value
-  );
-
-  console.log(
-    `  ResourcePerformance - going to save ${storageJson.length} characters`
-  );
-
   // Create or update the cache entry
   await performanceCacheRepository.save({
     resourceSlug,
@@ -36,10 +24,11 @@ export async function persistStorage(
     jsonSection,
     storageVersion: '1', // You may want to manage versions
     latestTimestamp,
-    storage: storageJson,
+    storage: JSON.stringify(storage, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value
+    ),
   });
 
-  console.log(`  ResourcePerformance - saved ${storageJson.length} characters`);
   console.timeEnd(
     `  ResourcePerformance - processResourceData.${resourceName}.${interval}.${jsonSection}.saveStorage`
   );
