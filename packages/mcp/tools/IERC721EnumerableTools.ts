@@ -6,25 +6,61 @@ import { privateKeyToAccount } from 'viem/accounts';
 // Import ABI from Foundry artifacts
 import abiJson from '../out/abi.json';
 
+// Helper function to convert BigInts to strings in objects
+function replaceBigInts(obj: any): any {
+    if (obj === null || obj === undefined) {
+        return obj;
+    }
+    if (typeof obj === 'bigint') {
+        return obj.toString();
+    }
+    if (Array.isArray(obj)) {
+        return obj.map(replaceBigInts);
+    }
+    if (typeof obj === 'object') {
+        return Object.fromEntries(
+            Object.entries(obj).map(([key, value]) => [key, replaceBigInts(value)])
+        );
+    }
+    return obj;
+}
+
 // Process ABI and handle struct types
 const parsedABI = abiJson.map(item => {
   // Convert struct types to tuples
   if (item.type === 'function') {
     item.inputs = item.inputs.map((input: any) => {
       if (input.internalType?.startsWith('struct ')) {
-        return { ...input, type: 'tuple' };
+        const structName = input.internalType.split('struct ')[1];
+        if (structName.includes('.')) {
+          const [_, actualStructName] = structName.split('.');
+          const structDef = abiJson.find((s: any) => s.type === 'struct' && s.name === actualStructName);
+          if (structDef) {
+            return { ...input, type: 'tuple', components: structDef.members };
+          }
+        }
       }
       return input;
     });
     item.outputs = item.outputs.map((output: any) => {
       if (output.internalType?.startsWith('struct ')) {
-        return { ...output, type: 'tuple' };
+        const structName = output.internalType.split('struct ')[1];
+        if (structName.includes('.')) {
+          const [_, actualStructName] = structName.split('.');
+          const structDef = abiJson.find((s: any) => s.type === 'struct' && s.name === actualStructName);
+          if (structDef) {
+            return { ...output, type: 'tuple', components: structDef.members };
+          }
+        }
       }
       return output;
     });
   }
   return item;
-}).filter(item => item.type === 'function');
+});
+
+// Filter ABI to only include functions
+const functionABI = parsedABI.filter(item => item.type === 'function');
 
 // Configure viem clients
 const publicClient = createPublicClient({
@@ -59,12 +95,12 @@ export const IERC721EnumerableTools = {
       try {
         const result = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
-          abi: parsedABI,
+          abi: functionABI,
           functionName: "totalSupply",
           args: []
         });
 
-        return { result };
+        return { result: replaceBigInts(result) };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -93,12 +129,12 @@ export const IERC721EnumerableTools = {
       try {
         const result = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
-          abi: parsedABI,
+          abi: functionABI,
           functionName: "tokenOfOwnerByIndex",
           args: [owner, BigInt(index)]
         });
 
-        return { result };
+        return { result: replaceBigInts(result) };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
@@ -124,12 +160,12 @@ export const IERC721EnumerableTools = {
       try {
         const result = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
-          abi: parsedABI,
+          abi: functionABI,
           functionName: "tokenByIndex",
           args: [BigInt(index)]
         });
 
-        return { result };
+        return { result: replaceBigInts(result) };
       } catch (error) {
         return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }

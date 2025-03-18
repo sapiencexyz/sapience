@@ -564,26 +564,64 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
   output += `// Import ABI from Foundry artifacts\n`;
   output += `import abiJson from '${abiPath}';\n\n`;
   
-  // Parse the ABI and handle struct types
+  // Add BigInt handling helper function
+  output += `// Helper function to convert BigInts to strings in objects\n`;
+  output += `function replaceBigInts(obj: any): any {\n`;
+  output += `    if (obj === null || obj === undefined) {\n`;
+  output += `        return obj;\n`;
+  output += `    }\n`;
+  output += `    if (typeof obj === 'bigint') {\n`;
+  output += `        return obj.toString();\n`;
+  output += `    }\n`;
+  output += `    if (Array.isArray(obj)) {\n`;
+  output += `        return obj.map(replaceBigInts);\n`;
+  output += `    }\n`;
+  output += `    if (typeof obj === 'object') {\n`;
+  output += `        return Object.fromEntries(\n`;
+  output += `            Object.entries(obj).map(([key, value]) => [key, replaceBigInts(value)])\n`;
+  output += `        );\n`;
+  output += `    }\n`;
+  output += `    return obj;\n`;
+  output += `}\n\n`;
+  
+  // Process ABI and handle struct types
   output += `// Process ABI and handle struct types\n`;
   output += `const parsedABI = abiJson.map(item => {\n`;
   output += `  // Convert struct types to tuples\n`;
   output += `  if (item.type === 'function') {\n`;
   output += `    item.inputs = item.inputs.map((input: any) => {\n`;
   output += `      if (input.internalType?.startsWith('struct ')) {\n`;
-  output += `        return { ...input, type: 'tuple' };\n`;
+  output += `        const structName = input.internalType.split('struct ')[1];\n`;
+  output += `        if (structName.includes('.')) {\n`;
+  output += `          const [_, actualStructName] = structName.split('.');\n`;
+  output += `          const structDef = abiJson.find((s: any) => s.type === 'struct' && s.name === actualStructName);\n`;
+  output += `          if (structDef) {\n`;
+  output += `            return { ...input, type: 'tuple', components: structDef.members };\n`;
+  output += `          }\n`;
+  output += `        }\n`;
   output += `      }\n`;
   output += `      return input;\n`;
   output += `    });\n`;
   output += `    item.outputs = item.outputs.map((output: any) => {\n`;
   output += `      if (output.internalType?.startsWith('struct ')) {\n`;
-  output += `        return { ...output, type: 'tuple' };\n`;
+  output += `        const structName = output.internalType.split('struct ')[1];\n`;
+  output += `        if (structName.includes('.')) {\n`;
+  output += `          const [_, actualStructName] = structName.split('.');\n`;
+  output += `          const structDef = abiJson.find((s: any) => s.type === 'struct' && s.name === actualStructName);\n`;
+  output += `          if (structDef) {\n`;
+  output += `            return { ...output, type: 'tuple', components: structDef.members };\n`;
+  output += `          }\n`;
+  output += `        }\n`;
   output += `      }\n`;
   output += `      return output;\n`;
   output += `    });\n`;
   output += `  }\n`;
   output += `  return item;\n`;
-  output += `}).filter(item => item.type === 'function');\n\n`;
+  output += `});\n\n`;
+  
+  // Filter ABI to only include functions
+  output += `// Filter ABI to only include functions\n`;
+  output += `const functionABI = parsedABI.filter(item => item.type === 'function');\n\n`;
 
   // Generate TypeScript types for structs
   if (structs.length > 0) {
@@ -664,11 +702,11 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
       output += `      try {\n`;
       output += `        const result = await publicClient.readContract({\n`;
       output += `          address: contractAddress as \`0x\${string}\`,\n`;
-      output += `          abi: parsedABI,\n`;
+      output += `          abi: functionABI,\n`;
       output += `          functionName: "${func.name}",\n`;
       output += `          args: [${func.params.map(p => formatParamValue(p, p.name)).join(', ')}]\n`;
       output += `        });\n\n`;
-      output += generateReturnValue(func.returns);
+      output += `        return { result: replaceBigInts(result) };\n`;
       output += `      } catch (error) {\n`;
       output += `        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };\n`;
       output += `      }\n`;
@@ -680,7 +718,7 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
       output += `      try {\n`;
       output += `        const hash = await walletClient!.writeContract({\n`;
       output += `          address: contractAddress as \`0x\${string}\`,\n`;
-      output += `          abi: parsedABI,\n`;
+      output += `          abi: functionABI,\n`;
       output += `          functionName: "${func.name}",\n`;
       output += `          args: [${func.params.map(p => formatParamValue(p, p.name)).join(', ')}]\n`;
       output += `        });\n\n`;
