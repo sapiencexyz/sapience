@@ -116,16 +116,19 @@ export const IViewsModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        id: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "id"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, id }) => {
       try {
         const result = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "getEpoch",
-          args: []
+          args: [BigInt(id)]
         });
 
         return { result: replaceBigInts(result) };
@@ -172,10 +175,13 @@ export const IViewsModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        positionId: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "positionId"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, positionId }) => {
       if (!hasPrivateKey) {
         return { error: "Private key not configured" };
       }
@@ -185,7 +191,7 @@ export const IViewsModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "getPosition",
-          args: []
+          args: [BigInt(positionId)]
         });
 
         return { hash };
@@ -204,10 +210,13 @@ export const IViewsModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        positionId: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "positionId"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, positionId }) => {
       if (!hasPrivateKey) {
         return { error: "Private key not configured" };
       }
@@ -217,7 +226,7 @@ export const IViewsModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "getPositionSize",
-          args: []
+          args: [BigInt(positionId)]
         });
 
         return { hash };

@@ -274,28 +274,28 @@ function processAST(ast: any): InterfaceDefinition[] {
           if (funcNode.documentation) {
             const natspec = parseNatSpec(funcNode.documentation.text);
             functionDef.description = natspec.dev || natspec.description || '';
-            
-            // Process parameters
-            funcNode.parameters.parameters.forEach((param) => {
-              const paramName = param.name;
-              const paramDesc = natspec[`param_${paramName}`] || '';
-              functionDef.params.push({
-                name: paramName,
-                type: param.typeName.typeDescriptions.typeString,
-                description: paramDesc
-              });
-            });
-
-            // Process return values
-            funcNode.returnParameters.parameters.forEach((param, index) => {
-              const returnDesc = natspec[`return_${index}`] || '';
-              functionDef.returns.push({
-                name: param.name || `result${index}`,
-                type: param.typeName.typeDescriptions.typeString,
-                description: returnDesc
-              });
-            });
           }
+
+          // Process parameters regardless of documentation
+          funcNode.parameters.parameters.forEach((param) => {
+            const paramName = param.name;
+            const paramDesc = funcNode.documentation ? parseNatSpec(funcNode.documentation.text)[`param_${paramName}`] || '' : '';
+            functionDef.params.push({
+              name: paramName,
+              type: param.typeName.typeDescriptions.typeString,
+              description: paramDesc
+            });
+          });
+
+          // Process return values regardless of documentation
+          funcNode.returnParameters.parameters.forEach((param, index) => {
+            const returnDesc = funcNode.documentation ? parseNatSpec(funcNode.documentation.text)[`return_${index}`] || '' : '';
+            functionDef.returns.push({
+              name: param.name || `result${index}`,
+              type: param.typeName.typeDescriptions.typeString,
+              description: returnDesc
+            });
+          });
 
           interfaceDef.functions.push(functionDef);
         } else if (childNode.nodeType === 'StructDefinition') {

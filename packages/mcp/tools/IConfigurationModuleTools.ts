@@ -144,10 +144,13 @@ export const IConfigurationModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        marketParams: {
+          type: "any",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "marketParams"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, marketParams }) => {
       if (!hasPrivateKey) {
         return { error: "Private key not configured" };
       }
@@ -157,7 +160,7 @@ export const IConfigurationModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "updateMarket",
-          args: []
+          args: [marketParams]
         });
 
         return { hash };
@@ -176,10 +179,28 @@ export const IConfigurationModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        startTime: {
+          type: "string",
+        },
+        endTime: {
+          type: "string",
+        },
+        startingSqrtPriceX96: {
+          type: "string",
+        },
+        baseAssetMinPriceTick: {
+          type: "string",
+        },
+        baseAssetMaxPriceTick: {
+          type: "string",
+        },
+        salt: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "startTime", "endTime", "startingSqrtPriceX96", "baseAssetMinPriceTick", "baseAssetMaxPriceTick", "salt"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, startTime, endTime, startingSqrtPriceX96, baseAssetMinPriceTick, baseAssetMaxPriceTick, salt }) => {
       if (!hasPrivateKey) {
         return { error: "Private key not configured" };
       }
@@ -189,7 +210,7 @@ export const IConfigurationModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "createEpoch",
-          args: []
+          args: [BigInt(startTime), BigInt(endTime), BigInt(startingSqrtPriceX96), BigInt(baseAssetMinPriceTick), BigInt(baseAssetMaxPriceTick), BigInt(salt)]
         });
 
         return { hash };

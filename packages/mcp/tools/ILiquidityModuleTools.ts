@@ -194,10 +194,13 @@ export const ILiquidityModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        params: {
+          type: "any",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "params"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, params }) => {
       if (!hasPrivateKey) {
         return { error: "Private key not configured" };
       }
@@ -207,7 +210,7 @@ export const ILiquidityModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "increaseLiquidityPosition",
-          args: []
+          args: [params]
         });
 
         return { hash };
@@ -226,16 +229,31 @@ export const ILiquidityModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        epochId: {
+          type: "string",
+        },
+        depositedCollateralAmount: {
+          type: "string",
+        },
+        sqrtPriceX96: {
+          type: "string",
+        },
+        sqrtPriceAX96: {
+          type: "string",
+        },
+        sqrtPriceBX96: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "epochId", "depositedCollateralAmount", "sqrtPriceX96", "sqrtPriceAX96", "sqrtPriceBX96"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, epochId, depositedCollateralAmount, sqrtPriceX96, sqrtPriceAX96, sqrtPriceBX96 }) => {
       try {
         const result = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "quoteLiquidityPositionTokens",
-          args: []
+          args: [BigInt(epochId), BigInt(depositedCollateralAmount), BigInt(sqrtPriceX96), BigInt(sqrtPriceAX96), BigInt(sqrtPriceBX96)]
         });
 
         return { result: replaceBigInts(result) };
@@ -254,16 +272,22 @@ export const ILiquidityModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        positionId: {
+          type: "string",
+        },
+        liquidity: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "positionId", "liquidity"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, positionId, liquidity }) => {
       try {
         const result = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "quoteRequiredCollateral",
-          args: []
+          args: [BigInt(positionId), BigInt(liquidity)]
         });
 
         return { result: replaceBigInts(result) };

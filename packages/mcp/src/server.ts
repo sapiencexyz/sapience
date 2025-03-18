@@ -20,10 +20,15 @@ for (const [moduleName, moduleTools] of Object.entries(tools)) {
     for (const [toolName, tool] of Object.entries(toolsObj)) {
       const fullToolName = `${moduleName}_${toolName}`;
       
-      // Create a simple Zod schema for the parameters
-      const paramsSchema = z.object({
-        contractAddress: z.string()
-      });
+      // Create a Zod schema from the tool's parameter definition
+      const paramsSchema = z.object(
+        Object.fromEntries(
+          Object.entries(tool.parameters.properties).map(([key, prop]: [string, any]) => [
+            key,
+            z.string()
+          ])
+        )
+      ).required(tool.parameters.required);
       
       server.tool(
         fullToolName,

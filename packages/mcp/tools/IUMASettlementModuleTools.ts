@@ -88,10 +88,19 @@ export const IUMASettlementModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        epochId: {
+          type: "string",
+        },
+        asserter: {
+          type: "string",
+        },
+        settlementSqrtPriceX96: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "epochId", "asserter", "settlementSqrtPriceX96"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, epochId, asserter, settlementSqrtPriceX96 }) => {
       if (!hasPrivateKey) {
         return { error: "Private key not configured" };
       }
@@ -101,7 +110,7 @@ export const IUMASettlementModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "submitSettlementPrice",
-          args: []
+          args: [BigInt(epochId), asserter, BigInt(settlementSqrtPriceX96)]
         });
 
         return { hash };
@@ -120,10 +129,16 @@ export const IUMASettlementModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        assertionId: {
+          type: "string",
+        },
+        assertedTruthfully: {
+          type: "boolean",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "assertionId", "assertedTruthfully"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, assertionId, assertedTruthfully }) => {
       if (!hasPrivateKey) {
         return { error: "Private key not configured" };
       }
@@ -133,7 +148,7 @@ export const IUMASettlementModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "assertionResolvedCallback",
-          args: []
+          args: [assertionId, assertedTruthfully]
         });
 
         return { hash };
@@ -152,10 +167,13 @@ export const IUMASettlementModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        assertionId: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "assertionId"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, assertionId }) => {
       if (!hasPrivateKey) {
         return { error: "Private key not configured" };
       }
@@ -165,7 +183,7 @@ export const IUMASettlementModuleTools = {
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "assertionDisputedCallback",
-          args: []
+          args: [assertionId]
         });
 
         return { hash };

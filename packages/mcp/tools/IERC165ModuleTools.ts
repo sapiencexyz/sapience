@@ -88,16 +88,19 @@ export const IERC165ModuleTools = {
           type: "string",
           description: "The address of the contract to interact with"
         },
+        interfaceId: {
+          type: "string",
+        },
       },
-      required: ["contractAddress"]
+      required: ["contractAddress", "interfaceId"]
     },
-    function: async ({ contractAddress }) => {
+    function: async ({ contractAddress, interfaceId }) => {
       try {
         const result = await publicClient.readContract({
           address: contractAddress as `0x${string}`,
           abi: functionABI,
           functionName: "supportsInterface",
-          args: []
+          args: [interfaceId]
         });
 
         return { result: replaceBigInts(result) };
