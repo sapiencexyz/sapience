@@ -33,7 +33,7 @@ export class ResourcePerformance {
   private intervals: number[];
 
   private trailingAvgTime: number[] =[TIME_INTERVALS.intervals.INTERVAL_28_DAYS, TIME_INTERVALS.intervals.INTERVAL_7_DAYS];
-  private lastTimestampProcessed: number = 0;
+  private lastResourceTimestampProcessed: number = 0;
   private lastMarketTimestampProcessed: number = 0;
 
   // Persistent storage. The main storage for the resource performance data and where all the data is pulled when required
