@@ -424,6 +424,133 @@ function generateReturnValue(returns: FunctionParam[]): string {
   }
 }
 
+// Function to extract ABI from AST
+function extractABIFromAST(ast: any): string[] {
+  const abi: string[] = [];
+  const structs: { [key: string]: any } = {};
+  
+  // First pass: collect all struct definitions
+  function collectStructs(node: any) {
+    if (node.nodeType === 'StructDefinition') {
+      const structName = node.name;
+      const members = node.members.map((m: any) => {
+        const type = m.typeName.typeDescriptions.typeString;
+        // Handle nested structs
+        if (type.startsWith('struct ')) {
+          const nestedStructName = type.split('struct ')[1];
+          return {
+            name: m.name,
+            type: 'tuple',
+            internalType: type,
+            components: structs[nestedStructName] || []
+          };
+        }
+        return {
+          name: m.name,
+          type: type,
+          internalType: type
+        };
+      });
+      structs[structName] = members;
+      
+      // Add struct definition to ABI
+      abi.push(JSON.stringify({
+        name: structName,
+        type: 'struct',
+        members: members
+      }));
+    }
+    
+    if (node.nodes) {
+      for (const child of node.nodes) {
+        collectStructs(child);
+      }
+    }
+  }
+  
+  // Second pass: process functions and handle struct types
+  function processNode(node: any) {
+    if (node.nodeType === 'FunctionDefinition') {
+      const inputs = node.parameters.parameters.map((p: any) => {
+        const type = p.typeName.typeDescriptions.typeString;
+        // If the type is a struct, expand it into its components
+        if (type.startsWith('struct ')) {
+          const structName = type.split('struct ')[1];
+          if (structs[structName]) {
+            return {
+              name: p.name,
+              type: 'tuple',
+              internalType: type,
+              components: structs[structName].map((m: any) => ({
+                name: m.name,
+                type: m.type,
+                internalType: m.internalType,
+                components: m.components
+              }))
+            };
+          }
+        }
+        return {
+          name: p.name,
+          type: type,
+          internalType: type
+        };
+      });
+      
+      const outputs = node.returnParameters.parameters.map((p: any) => {
+        const type = p.typeName.typeDescriptions.typeString;
+        // If the type is a struct, expand it into its components
+        if (type.startsWith('struct ')) {
+          const structName = type.split('struct ')[1];
+          if (structs[structName]) {
+            return {
+              name: p.name || '',
+              type: 'tuple',
+              internalType: type,
+              components: structs[structName].map((m: any) => ({
+                name: m.name,
+                type: m.type,
+                internalType: m.internalType,
+                components: m.components
+              }))
+            };
+          }
+        }
+        return {
+          name: p.name || '',
+          type: type,
+          internalType: type
+        };
+      });
+      
+      // Add function to ABI
+      abi.push(JSON.stringify({
+        inputs,
+        outputs,
+        stateMutability: node.stateMutability,
+        type: 'function',
+        name: node.name
+      }));
+    }
+  }
+  
+  function traverse(node: any) {
+    processNode(node);
+    if (node.nodes) {
+      for (const child of node.nodes) {
+        traverse(child);
+      }
+    }
+  }
+  
+  // First collect all structs
+  collectStructs(ast);
+  // Then process functions
+  traverse(ast);
+  
+  return abi;
+}
+
 // Function to generate MCP tool definitions for an interface
 function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: string): string {
   const { name, description, functions, structs } = interfaceDefinition;
@@ -437,9 +564,26 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
   output += `// Import ABI from Foundry artifacts\n`;
   output += `import abiJson from '${abiPath}';\n\n`;
   
-  // Parse the ABI from the JSON strings
-  output += `// Parse the ABI from the JSON strings\n`;
-  output += `const parsedABI = abiJson.${name}.map(item => JSON.parse(item));\n\n`;
+  // Parse the ABI and handle struct types
+  output += `// Process ABI and handle struct types\n`;
+  output += `const parsedABI = abiJson.map(item => {\n`;
+  output += `  // Convert struct types to tuples\n`;
+  output += `  if (item.type === 'function') {\n`;
+  output += `    item.inputs = item.inputs.map((input: any) => {\n`;
+  output += `      if (input.internalType?.startsWith('struct ')) {\n`;
+  output += `        return { ...input, type: 'tuple' };\n`;
+  output += `      }\n`;
+  output += `      return input;\n`;
+  output += `    });\n`;
+  output += `    item.outputs = item.outputs.map((output: any) => {\n`;
+  output += `      if (output.internalType?.startsWith('struct ')) {\n`;
+  output += `        return { ...output, type: 'tuple' };\n`;
+  output += `      }\n`;
+  output += `      return output;\n`;
+  output += `    });\n`;
+  output += `  }\n`;
+  output += `  return item;\n`;
+  output += `}).filter(item => item.type === 'function');\n\n`;
 
   // Generate TypeScript types for structs
   if (structs.length > 0) {
@@ -555,132 +699,6 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
   return output;
 }
 
-// Function to extract ABI from AST
-function extractABIFromAST(ast: any): string[] {
-  const abi: string[] = [];
-  const structs: { [key: string]: any } = {};
-  
-  // First pass: collect all struct definitions
-  function collectStructs(node: any) {
-    if (node.nodeType === 'StructDefinition') {
-      const structName = node.name;
-      const members = node.members.map((m: any) => {
-        const type = m.typeName.typeDescriptions.typeString;
-        // Handle nested structs
-        if (type.startsWith('struct ')) {
-          const nestedStructName = type.split('struct ')[1];
-          return {
-            name: m.name,
-            type: 'tuple',
-            internalType: type,
-            components: structs[nestedStructName] || []
-          };
-        }
-        return {
-          name: m.name,
-          type: type,
-          internalType: type
-        };
-      });
-      structs[structName] = members;
-      
-      // Add struct definition to ABI
-      abi.push(JSON.stringify({
-        name: structName,
-        type: 'struct',
-        members: members
-      }));
-    }
-    
-    if (node.nodes) {
-      for (const child of node.nodes) {
-        collectStructs(child);
-      }
-    }
-  }
-  
-  // Second pass: process functions and handle struct types
-  function processNode(node: any) {
-    if (node.nodeType === 'FunctionDefinition') {
-      const inputs = node.parameters.parameters.map((p: any) => {
-        const type = p.typeName.typeDescriptions.typeString;
-        // If the type is a struct, expand it into its components
-        if (type.startsWith('struct ')) {
-          const structName = type.split('struct ')[1];
-          if (structs[structName]) {
-            return {
-              name: p.name,
-              type: 'tuple',
-              internalType: type,
-              components: structs[structName].map((m: any) => ({
-                name: m.name,
-                type: m.type,
-                internalType: m.internalType,
-                components: m.components
-              }))
-            };
-          }
-        }
-        return {
-          name: p.name,
-          type: type,
-          internalType: type
-        };
-      });
-      
-      const outputs = node.returnParameters.parameters.map((p: any) => {
-        const type = p.typeName.typeDescriptions.typeString;
-        // If the type is a struct, expand it into its components
-        if (type.startsWith('struct ')) {
-          const structName = type.split('struct ')[1];
-          if (structs[structName]) {
-            return {
-              name: p.name || '',
-              type: 'tuple',
-              internalType: type,
-              components: structs[structName].map((m: any) => ({
-                name: m.name,
-                type: m.type,
-                internalType: m.internalType,
-                components: m.components
-              }))
-            };
-          }
-        }
-        return {
-          name: p.name || '',
-          type: type,
-          internalType: type
-        };
-      });
-      
-      abi.push(JSON.stringify({
-        inputs,
-        outputs,
-        stateMutability: node.stateMutability,
-        type: 'function',
-        name: node.name
-      }));
-    }
-  }
-  
-  function traverse(node: any) {
-    processNode(node);
-    if (node.nodes) {
-      for (const child of node.nodes) {
-        traverse(child);
-      }
-    }
-  }
-  
-  // First collect all structs
-  collectStructs(ast);
-  // Then process functions
-  traverse(ast);
-  
-  return abi;
-}
-
 // Main function to generate tools
 async function main() {
   try {
@@ -717,75 +735,56 @@ async function main() {
     
     console.log(`Found ${interfaceFiles.length} interface files to process`);
     
-    // Collect all ABIs
-    const allABIs: { [key: string]: any[] } = {};
+    // Collect all ABIs into a single array
+    const allABIs: string[] = [];
     
-    // First, process all struct interface files to collect struct definitions
+    // Process all interface files
     for (const filePath of interfaceFiles) {
-      if (filePath.includes('Structs')) {
+      try {
         const fullPath = path.join(absoluteInterfacesDir, filePath);
-        console.log(`Processing struct interface ${fullPath}...`);
+        console.log(`Processing ${fullPath}...`);
         
+        // Generate AST
         const ast = await generateAST(fullPath);
-        if (ast) {
-          const interfaces = processAST(ast);
-          for (const interfaceDef of interfaces) {
-            // Extract ABI and add to collection
-            const abi = extractABIFromAST(ast);
-            allABIs[interfaceDef.name] = abi;
-            console.log(`Added struct definitions from ${interfaceDef.name}`);
-          }
+        
+        if (!ast) {
+          console.warn(`No AST generated for ${filePath}`);
+          continue;
         }
+        
+        // Process AST
+        const interfaces = processAST(ast);
+        
+        if (interfaces.length === 0) {
+          console.warn(`No interfaces found in ${filePath}`);
+          continue;
+        }
+        
+        // Generate MCP tools for each interface
+        for (const interfaceDefinition of interfaces) {
+          // Generate MCP tool
+          const toolCode = generateMCPTool(interfaceDefinition, '../out/abi.json');
+          
+          // Write output
+          const outputPath = path.join(outputDir, `${interfaceDefinition.name}Tools.ts`);
+          fs.writeFileSync(outputPath, toolCode);
+          
+          // Extract ABI and add to collection
+          const abi = extractABIFromAST(ast);
+          allABIs.push(...abi);
+          
+          console.log(`Generated MCP tool at ${outputPath}`);
+        }
+      } catch (error) {
+        console.error(`Error processing ${filePath}:`, error);
       }
     }
     
-    // Then process main interface files
-    for (const filePath of interfaceFiles) {
-      if (!filePath.includes('Structs')) {
-        try {
-          const fullPath = path.join(absoluteInterfacesDir, filePath);
-          console.log(`Processing ${fullPath}...`);
-          
-          // Generate AST
-          const ast = await generateAST(fullPath);
-          
-          if (!ast) {
-            console.warn(`No AST generated for ${filePath}`);
-            continue;
-          }
-          
-          // Process AST
-          const interfaces = processAST(ast);
-          
-          if (interfaces.length === 0) {
-            console.warn(`No interfaces found in ${filePath}`);
-            continue;
-          }
-          
-          // Generate MCP tools for each interface
-          for (const interfaceDefinition of interfaces) {
-            // Generate MCP tool
-            const toolCode = generateMCPTool(interfaceDefinition, '../out/abi.json');
-            
-            // Write output
-            const outputPath = path.join(outputDir, `${interfaceDefinition.name}Tools.ts`);
-            fs.writeFileSync(outputPath, toolCode);
-            
-            // Extract ABI and add to collection
-            const abi = extractABIFromAST(ast);
-            allABIs[interfaceDefinition.name] = abi;
-            
-            console.log(`Generated MCP tool at ${outputPath}`);
-          }
-        } catch (error) {
-          console.error(`Error processing ${filePath}:`, error);
-        }
-      }
-    }
-    
-    // Write consolidated ABI file
+    // Write consolidated ABI file as a single array
     const consolidatedAbiPath = path.join(outDir, 'abi.json');
-    fs.writeFileSync(consolidatedAbiPath, JSON.stringify(allABIs, null, 2));
+    // Parse each ABI string to get the actual objects, then stringify once
+    const parsedABIs = allABIs.map(abi => JSON.parse(abi));
+    fs.writeFileSync(consolidatedAbiPath, JSON.stringify(parsedABIs, null, 2));
     console.log(`Saved consolidated ABI at ${consolidatedAbiPath}`);
     
     // Generate index file in tools directory

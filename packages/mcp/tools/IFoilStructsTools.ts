@@ -6,106 +6,80 @@ import { privateKeyToAccount } from 'viem/accounts';
 // Import ABI from Foundry artifacts
 import abiJson from '../out/abi.json';
 
-// Parse the ABI from the JSON strings
-const parsedABI = abiJson.IFoilStructs.map(item => JSON.parse(item));
+// Process ABI and handle struct types
+const parsedABI = abiJson.map(item => {
+  // Convert struct types to tuples
+  if (item.type === 'function') {
+    item.inputs = item.inputs.map((input: any) => {
+      if (input.internalType?.startsWith('struct ')) {
+        return { ...input, type: 'tuple' };
+      }
+      return input;
+    });
+    item.outputs = item.outputs.map((output: any) => {
+      if (output.internalType?.startsWith('struct ')) {
+        return { ...output, type: 'tuple' };
+      }
+      return output;
+    });
+  }
+  return item;
+}).filter(item => item.type === 'function');
 
 // TypeScript types for structs
 export type IFoilStructsStructs = {
-  LiquidityPositionCreatedEventData: {
-    sender: string;
+  LiquidityMintParams: {
     epochId: bigint;
-    positionId: bigint;
-    liquidity: bigint;
-    addedAmount0: bigint;
-    addedAmount1: bigint;
+    amountTokenA: bigint;
+    amountTokenB: bigint;
+    collateralAmount: bigint;
     lowerTick: bigint;
     upperTick: bigint;
-    positionCollateralAmount: bigint;
-    positionVethAmount: bigint;
-    positionVgasAmount: bigint;
-    positionBorrowedVeth: bigint;
-    positionBorrowedVgas: bigint;
-    deltaCollateral: bigint;
+    minAmountTokenA: bigint;
+    minAmountTokenB: bigint;
+    deadline: bigint;
   };
-  LiquidityPositionDecreasedEventData: {
-    sender: string;
-    epochId: bigint;
+  LiquidityDecreaseParams: {
     positionId: bigint;
-    requiredCollateralAmount: bigint;
     liquidity: bigint;
-    decreasedAmount0: bigint;
-    decreasedAmount1: bigint;
-    loanAmount0: bigint;
-    loanAmount1: bigint;
-    positionCollateralAmount: bigint;
-    positionVethAmount: bigint;
-    positionVgasAmount: bigint;
-    positionBorrowedVeth: bigint;
-    positionBorrowedVgas: bigint;
-    deltaCollateral: bigint;
+    minGasAmount: bigint;
+    minEthAmount: bigint;
+    deadline: bigint;
   };
-  LiquidityPositionIncreasedEventData: {
-    sender: string;
-    epochId: bigint;
+  LiquidityIncreaseParams: {
     positionId: bigint;
-    requiredCollateralAmount: bigint;
-    liquidity: bigint;
-    increasedAmount0: bigint;
-    increasedAmount1: bigint;
-    loanAmount0: bigint;
-    loanAmount1: bigint;
-    positionCollateralAmount: bigint;
-    positionVethAmount: bigint;
-    positionVgasAmount: bigint;
-    positionBorrowedVeth: bigint;
-    positionBorrowedVgas: bigint;
-    deltaCollateral: bigint;
+    collateralAmount: bigint;
+    gasTokenAmount: bigint;
+    ethTokenAmount: bigint;
+    minGasAmount: bigint;
+    minEthAmount: bigint;
+    deadline: bigint;
   };
-  LiquidityPositionClosedEventData: {
-    sender: string;
-    epochId: bigint;
-    positionId: bigint;
-    positionKind: any;
-    collectedAmount0: bigint;
-    collectedAmount1: bigint;
-    loanAmount0: bigint;
-    loanAmount1: bigint;
-    positionCollateralAmount: bigint;
-    positionVethAmount: bigint;
-    positionVgasAmount: bigint;
-    positionBorrowedVeth: bigint;
-    positionBorrowedVgas: bigint;
-    deltaCollateral: bigint;
+  MarketParams: {
+    feeRate: bigint;
+    assertionLiveness: bigint;
+    bondAmount: bigint;
+    bondCurrency: string;
+    uniswapPositionManager: string;
+    uniswapSwapRouter: string;
+    uniswapQuoter: string;
+    optimisticOracleV3: string;
+    claimStatement: string;
   };
-  TraderPositionModifiedEventData: {
-    sender: string;
+  EpochData: {
     epochId: bigint;
-    positionId: bigint;
-    requiredCollateral: bigint;
-    initialPrice: bigint;
-    finalPrice: bigint;
-    tradeRatio: bigint;
-    positionCollateralAmount: bigint;
-    positionVethAmount: bigint;
-    positionVgasAmount: bigint;
-    positionBorrowedVeth: bigint;
-    positionBorrowedVgas: bigint;
-    deltaCollateral: bigint;
-  };
-  TraderPositionCreatedEventData: {
-    sender: string;
-    epochId: bigint;
-    positionId: bigint;
-    requiredCollateral: bigint;
-    initialPrice: bigint;
-    finalPrice: bigint;
-    tradeRatio: bigint;
-    positionCollateralAmount: bigint;
-    positionVethAmount: bigint;
-    positionVgasAmount: bigint;
-    positionBorrowedVeth: bigint;
-    positionBorrowedVgas: bigint;
-    deltaCollateral: bigint;
+    startTime: bigint;
+    endTime: bigint;
+    pool: string;
+    ethToken: string;
+    gasToken: string;
+    minPriceD18: bigint;
+    maxPriceD18: bigint;
+    baseAssetMinPriceTick: bigint;
+    baseAssetMaxPriceTick: bigint;
+    settled: boolean;
+    settlementPriceD18: bigint;
+    assertionId: string;
   };
 };
 

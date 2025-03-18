@@ -6,8 +6,25 @@ import { privateKeyToAccount } from 'viem/accounts';
 // Import ABI from Foundry artifacts
 import abiJson from '../out/abi.json';
 
-// Parse the ABI from the JSON strings
-const parsedABI = abiJson.ITradeModule.map(item => JSON.parse(item));
+// Process ABI and handle struct types
+const parsedABI = abiJson.map(item => {
+  // Convert struct types to tuples
+  if (item.type === 'function') {
+    item.inputs = item.inputs.map((input: any) => {
+      if (input.internalType?.startsWith('struct ')) {
+        return { ...input, type: 'tuple' };
+      }
+      return input;
+    });
+    item.outputs = item.outputs.map((output: any) => {
+      if (output.internalType?.startsWith('struct ')) {
+        return { ...output, type: 'tuple' };
+      }
+      return output;
+    });
+  }
+  return item;
+}).filter(item => item.type === 'function');
 
 // Configure viem clients
 const publicClient = createPublicClient({
