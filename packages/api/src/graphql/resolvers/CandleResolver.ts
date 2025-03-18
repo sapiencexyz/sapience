@@ -576,6 +576,40 @@ export class CandleResolver {
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
+    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
+    const resourcePerformance =
+      resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+        chainId,
+        address
+      );
+
+    if (!resourcePerformance) {
+      throw new Error(
+        `Resource performance not initialized for ${chainId}-${address}`
+      );
+    }
+
+    const prices = await resourcePerformance.getMarketPrices(
+      from,
+      to,
+      interval,
+      chainId,
+      address,
+      epochId
+    );
+
+    return prices;
+  }
+
+  @Query(() => [CandleType])
+  async legacyMarketCandles(
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('address', () => String) address: string,
+    @Arg('epochId', () => String) epochId: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number
+  ): Promise<CandleType[]> {
     try {
       const market = await dataSource.getRepository(Market).findOne({
         where: { chainId, address },
