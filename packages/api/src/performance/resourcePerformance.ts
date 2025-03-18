@@ -414,7 +414,33 @@ export class ResourcePerformance {
         nextTimestamp: 0,
       };
 
+      this.runtime.trailingAvgProcessData[interval] = {};
+
       for (const trailingAvgTime of this.trailingAvgTime) {
+        if (!this.persistentStorage[interval].trailingAvgStore[trailingAvgTime.toString()]) {
+          this.persistentStorage[interval].trailingAvgStore[trailingAvgTime.toString()] = {
+            data: [],
+            metadata: [],
+            trailingAvgData: [],
+          };
+        }
+
+        this.runtime.trailingAvgProcessData[interval][
+          trailingAvgTime.toString()
+        ] = {
+          used: 0n,
+          feePaid: 0n,
+          nextTimestamp: 0,
+          startTimestampIndex: 0,
+          endTimestampIndex: 0,
+          // startTimestamp: 0,
+          endTimestamp: 0,
+          trailingAvgData: [
+            ...this.persistentStorage[interval].trailingAvgStore[
+              trailingAvgTime.toString()
+            ].trailingAvgData, // Initialize with stored data
+          ],
+        }
         this.runtime.trailingAvgProcessData[interval][
           trailingAvgTime.toString()
         ] = {
