@@ -370,9 +370,11 @@ const NavLinks = ({
         <Link href="/subscribe" onClick={() => onClose?.()}>
           Subscribe
         </Link>
+        {/*
         <Link href="/earn/ethereum-gas" onClick={() => onClose?.()}>
           Earn
         </Link>
+        */}
         <Link href="https://docs.foil.xyz" onClick={() => onClose?.()}>
           Docs
         </Link>
@@ -393,13 +395,13 @@ const NavLinks = ({
           Subscribe
         </Button>
       </Link>
-
+      {/*
       <Link href="/earn/ethereum-gas" className="hover:no-underline mx-0.5">
         <Button variant="ghost" className={getButtonClasses('/earn')}>
           Earn
         </Button>
       </Link>
-
+      */}
       <ResourcePopover label="Trade" path="trade" />
       <ResourcePopover label="Pool" path="pool" />
 
