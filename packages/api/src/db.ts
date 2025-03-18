@@ -9,6 +9,7 @@ import { MarketPrice } from './models/MarketPrice';
 import { RenderJob } from './models/RenderJob';
 import { CollateralTransfer } from './models/CollateralTransfer';
 import { Resource } from './models/Resource';
+import { PerformanceCache } from './models/PerformanceCache';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path, { dirname } from 'path';
@@ -39,6 +40,7 @@ const devDataSource: DataSource = new DataSource({
     RenderJob,
     CollateralTransfer,
     Resource,
+    PerformanceCache,
   ],
 });
 
@@ -60,6 +62,7 @@ const postgresDataSource: DataSource = new DataSource({
     RenderJob,
     CollateralTransfer,
     Resource,
+    PerformanceCache,
   ],
 });
 
@@ -90,5 +93,7 @@ export const marketPriceRepository = dataSource.getRepository(MarketPrice);
 export const renderJobRepository = dataSource.getRepository(RenderJob);
 export const collateralTransferRepository =
   dataSource.getRepository(CollateralTransfer);
+export const performanceCacheRepository =
+  dataSource.getRepository(PerformanceCache);
 
 export default dataSource;
