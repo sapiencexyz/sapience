@@ -14,17 +14,12 @@ const publicClient = createPublicClient({
 
 // Get private key from environment
 const privateKey = process.env.PRIVATE_KEY;
-if (!privateKey) {
-  throw new Error('PRIVATE_KEY environment variable is required for write operations');
-}
-
-// Create wallet client
-const account = privateKeyToAccount(privateKey as `0x${string}`);
-const walletClient = createWalletClient({
-  account,
+const hasPrivateKey = !!privateKey;
+const walletClient = hasPrivateKey ? createWalletClient({
+  account: privateKeyToAccount(privateKey as `0x${string}`),
   chain: base,
   transport: http()
-});
+}) : null;
 
 // MCP Tool Definitions
 export const IERC721Tools = {
@@ -54,7 +49,7 @@ args: [owner],
 
         return { result };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -85,7 +80,7 @@ args: [BigInt(tokenId)],
 
         return { result };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -114,21 +109,25 @@ args: [BigInt(tokenId)],
       },
       required: ["contractAddress", "from", "to", "tokenId", "data"]
     },
-    function: async ({ contractAddress, from, to, tokenId, data }) => {
+    function: async ({ contractAddress, from, to, tokenId, data: dataParam }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
           abi: parseAbi(IERC721ABI),
           functionName: "safeTransferFrom",
-args: [from, to, BigInt(tokenId), data],
+args: [from, to, BigInt(tokenId), dataParam],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "safeTransferFrom",
-args: [from, to, BigInt(tokenId), data],
+args: [from, to, BigInt(tokenId), dataParam],
         });
 
         // Wait for transaction
@@ -140,7 +139,7 @@ args: [from, to, BigInt(tokenId), data],
           description: `Called safeTransferFrom on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -167,6 +166,10 @@ args: [from, to, BigInt(tokenId), data],
       required: ["contractAddress", "from", "to", "tokenId"]
     },
     function: async ({ contractAddress, from, to, tokenId }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -176,7 +179,7 @@ args: [from, to, BigInt(tokenId)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "safeTransferFrom",
@@ -192,7 +195,7 @@ args: [from, to, BigInt(tokenId)],
           description: `Called safeTransferFrom on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -219,6 +222,10 @@ args: [from, to, BigInt(tokenId)],
       required: ["contractAddress", "from", "to", "tokenId"]
     },
     function: async ({ contractAddress, from, to, tokenId }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -228,7 +235,7 @@ args: [from, to, BigInt(tokenId)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "transferFrom",
@@ -244,7 +251,7 @@ args: [from, to, BigInt(tokenId)],
           description: `Called transferFrom on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -268,6 +275,10 @@ args: [from, to, BigInt(tokenId)],
       required: ["contractAddress", "to", "tokenId"]
     },
     function: async ({ contractAddress, to, tokenId }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -277,7 +288,7 @@ args: [to, BigInt(tokenId)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "approve",
@@ -293,7 +304,7 @@ args: [to, BigInt(tokenId)],
           description: `Called approve on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -317,6 +328,10 @@ args: [to, BigInt(tokenId)],
       required: ["contractAddress", "operator", "approved"]
     },
     function: async ({ contractAddress, operator, approved }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -326,7 +341,7 @@ args: [operator, approved],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "setApprovalForAll",
@@ -342,7 +357,7 @@ args: [operator, approved],
           description: `Called setApprovalForAll on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -373,7 +388,7 @@ args: [BigInt(tokenId)],
 
         return { result };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -407,7 +422,7 @@ args: [owner, operator],
 
         return { result };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },

@@ -1,0 +1,4 @@
+[
+  "{\"inputs\":[{\"name\":\"positionId\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\",\"name\":\"settlePosition\"}",
+  "{\"inputs\":[],\"outputs\":[{\"name\":\"settlementPriceX96\",\"type\":\"uint160\",\"internalType\":\"uint160\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\",\"name\":\"__manual_setSettlementPrice\"}"
+]

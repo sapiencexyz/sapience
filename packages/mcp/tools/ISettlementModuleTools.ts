@@ -14,17 +14,12 @@ const publicClient = createPublicClient({
 
 // Get private key from environment
 const privateKey = process.env.PRIVATE_KEY;
-if (!privateKey) {
-  throw new Error('PRIVATE_KEY environment variable is required for write operations');
-}
-
-// Create wallet client
-const account = privateKeyToAccount(privateKey as `0x${string}`);
-const walletClient = createWalletClient({
-  account,
+const hasPrivateKey = !!privateKey;
+const walletClient = hasPrivateKey ? createWalletClient({
+  account: privateKeyToAccount(privateKey as `0x${string}`),
   chain: base,
   transport: http()
-});
+}) : null;
 
 // MCP Tool Definitions
 export const ISettlementModuleTools = {
@@ -45,6 +40,10 @@ export const ISettlementModuleTools = {
       required: ["contractAddress", "positionId"]
     },
     function: async ({ contractAddress, positionId }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -54,7 +53,7 @@ args: [BigInt(positionId)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ISettlementModuleABI),
           functionName: "settlePosition",
@@ -70,7 +69,7 @@ args: [BigInt(positionId)],
           description: `Called settlePosition on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -88,6 +87,10 @@ args: [BigInt(positionId)],
       required: ["contractAddress"]
     },
     function: async ({ contractAddress }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -96,7 +99,7 @@ args: [BigInt(positionId)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ISettlementModuleABI),
           functionName: "__manual_setSettlementPrice",
@@ -111,7 +114,7 @@ args: [BigInt(positionId)],
           description: `Called __manual_setSettlementPrice on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },

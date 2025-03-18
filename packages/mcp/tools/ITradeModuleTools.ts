@@ -14,17 +14,12 @@ const publicClient = createPublicClient({
 
 // Get private key from environment
 const privateKey = process.env.PRIVATE_KEY;
-if (!privateKey) {
-  throw new Error('PRIVATE_KEY environment variable is required for write operations');
-}
-
-// Create wallet client
-const account = privateKeyToAccount(privateKey as `0x${string}`);
-const walletClient = createWalletClient({
-  account,
+const hasPrivateKey = !!privateKey;
+const walletClient = hasPrivateKey ? createWalletClient({
+  account: privateKeyToAccount(privateKey as `0x${string}`),
   chain: base,
   transport: http()
-});
+}) : null;
 
 // MCP Tool Definitions
 export const ITradeModuleTools = {
@@ -57,6 +52,10 @@ export const ITradeModuleTools = {
       required: ["contractAddress", "epochId", "size", "maxCollateral", "deadline"]
     },
     function: async ({ contractAddress, epochId, size, maxCollateral, deadline }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -66,7 +65,7 @@ args: [BigInt(epochId), BigInt(size), BigInt(maxCollateral), BigInt(deadline)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ITradeModuleABI),
           functionName: "createTraderPosition",
@@ -82,7 +81,7 @@ args: [BigInt(epochId), BigInt(size), BigInt(maxCollateral), BigInt(deadline)],
           description: `Called createTraderPosition on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -116,6 +115,10 @@ args: [BigInt(epochId), BigInt(size), BigInt(maxCollateral), BigInt(deadline)],
       required: ["contractAddress", "positionId", "size", "deltaCollateralLimit", "deadline"]
     },
     function: async ({ contractAddress, positionId, size, deltaCollateralLimit, deadline }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -125,7 +128,7 @@ args: [BigInt(positionId), BigInt(size), BigInt(deltaCollateralLimit), BigInt(de
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ITradeModuleABI),
           functionName: "modifyTraderPosition",
@@ -141,7 +144,7 @@ args: [BigInt(positionId), BigInt(size), BigInt(deltaCollateralLimit), BigInt(de
           description: `Called modifyTraderPosition on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -167,6 +170,10 @@ args: [BigInt(positionId), BigInt(size), BigInt(deltaCollateralLimit), BigInt(de
       required: ["contractAddress", "epochId", "size"]
     },
     function: async ({ contractAddress, epochId, size }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -176,7 +183,7 @@ args: [BigInt(epochId), BigInt(size)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ITradeModuleABI),
           functionName: "quoteCreateTraderPosition",
@@ -192,7 +199,7 @@ args: [BigInt(epochId), BigInt(size)],
           description: `Called quoteCreateTraderPosition on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -218,6 +225,10 @@ args: [BigInt(epochId), BigInt(size)],
       required: ["contractAddress", "positionId", "size"]
     },
     function: async ({ contractAddress, positionId, size }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -227,7 +238,7 @@ args: [BigInt(positionId), BigInt(size)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ITradeModuleABI),
           functionName: "quoteModifyTraderPosition",
@@ -243,7 +254,7 @@ args: [BigInt(positionId), BigInt(size)],
           description: `Called quoteModifyTraderPosition on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },

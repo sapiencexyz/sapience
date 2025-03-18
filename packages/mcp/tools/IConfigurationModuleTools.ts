@@ -14,17 +14,12 @@ const publicClient = createPublicClient({
 
 // Get private key from environment
 const privateKey = process.env.PRIVATE_KEY;
-if (!privateKey) {
-  throw new Error('PRIVATE_KEY environment variable is required for write operations');
-}
-
-// Create wallet client
-const account = privateKeyToAccount(privateKey as `0x${string}`);
-const walletClient = createWalletClient({
-  account,
+const hasPrivateKey = !!privateKey;
+const walletClient = hasPrivateKey ? createWalletClient({
+  account: privateKeyToAccount(privateKey as `0x${string}`),
   chain: base,
   transport: http()
-});
+}) : null;
 
 // MCP Tool Definitions
 export const IConfigurationModuleTools = {
@@ -65,6 +60,10 @@ export const IConfigurationModuleTools = {
       required: ["contractAddress", "owner", "collateralAsset", "feeCollectors", "callbackRecipient", "minTradeSize", "marketParams"]
     },
     function: async ({ contractAddress, owner, collateralAsset, feeCollectors, callbackRecipient, minTradeSize, marketParams }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -74,7 +73,7 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(IConfigurationModuleABI),
           functionName: "initializeMarket",
@@ -90,7 +89,7 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
           description: `Called initializeMarket on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -108,6 +107,10 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
       required: ["contractAddress"]
     },
     function: async ({ contractAddress }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -116,7 +119,7 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(IConfigurationModuleABI),
           functionName: "updateMarket",
@@ -131,7 +134,7 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
           description: `Called updateMarket on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -149,6 +152,10 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
       required: ["contractAddress"]
     },
     function: async ({ contractAddress }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -157,7 +164,7 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(IConfigurationModuleABI),
           functionName: "createEpoch",
@@ -172,7 +179,7 @@ args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTrade
           description: `Called createEpoch on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },

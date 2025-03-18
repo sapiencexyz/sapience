@@ -1,4 +1,3 @@
-#!/usr/bin/env tsx
 /**
  * Solidity Interface to MCP Tool Generator
  * 
@@ -15,7 +14,7 @@
  * Usage:
  * - Run this script from the packages/mcp directory
  * - It will interact with the Forge project in ../../protocol
- * - Run: npx tsx src/index.ts
+ * - Run: npx tsx src/generate.ts
  */
 
 import * as fs from 'fs';
@@ -26,6 +25,7 @@ import { promisify } from 'util';
 import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
+import { fileURLToPath } from 'url';
 
 const execPromise = promisify(exec);
 
@@ -485,13 +485,16 @@ function extractABIFromAST(ast: any): string[] {
   return abi;
 }
 
-// Update main function with the correct output directory
+// Main function to generate tools
 async function main() {
   try {
+    // Get current directory using import.meta.url instead of __dirname
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    
     // Configuration - updated paths for protocol directory
     const interfacesDir = '../protocol/src/market/interfaces'; // Path to your Solidity interfaces
-    const outputDir = path.join(__dirname, '../tools'); // Output to packages/mcp/src/tools directory
-    const outDir = path.join(__dirname, '../out'); // Output to packages/mcp/src/out directory
+    const outputDir = path.join(currentDir, '../tools'); // Output to packages/mcp/src/tools directory
+    const outDir = path.join(currentDir, '../out'); // Output to packages/mcp/src/out directory
     
     // Create output directories if they don't exist
     if (!fs.existsSync(outputDir)) {
@@ -586,6 +589,4 @@ async function main() {
 main().catch(error => {
   console.error('Fatal error:', error);
   process.exit(1);
-});
-
-export * from './server';
+}); 

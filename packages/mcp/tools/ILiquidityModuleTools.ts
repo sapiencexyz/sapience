@@ -14,17 +14,12 @@ const publicClient = createPublicClient({
 
 // Get private key from environment
 const privateKey = process.env.PRIVATE_KEY;
-if (!privateKey) {
-  throw new Error('PRIVATE_KEY environment variable is required for write operations');
-}
-
-// Create wallet client
-const account = privateKeyToAccount(privateKey as `0x${string}`);
-const walletClient = createWalletClient({
-  account,
+const hasPrivateKey = !!privateKey;
+const walletClient = hasPrivateKey ? createWalletClient({
+  account: privateKeyToAccount(privateKey as `0x${string}`),
   chain: base,
   transport: http()
-});
+}) : null;
 
 // MCP Tool Definitions
 export const ILiquidityModuleTools = {
@@ -45,6 +40,10 @@ export const ILiquidityModuleTools = {
       required: ["contractAddress", "params"]
     },
     function: async ({ contractAddress, params }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -54,7 +53,7 @@ args: [params],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "createLiquidityPosition",
@@ -70,7 +69,7 @@ args: [params],
           description: `Called createLiquidityPosition on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -92,6 +91,10 @@ args: [params],
       required: ["contractAddress", "params"]
     },
     function: async ({ contractAddress, params }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -101,7 +104,7 @@ args: [params],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "decreaseLiquidityPosition",
@@ -117,7 +120,7 @@ args: [params],
           description: `Called decreaseLiquidityPosition on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -135,6 +138,10 @@ args: [params],
       required: ["contractAddress"]
     },
     function: async ({ contractAddress }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -143,7 +150,7 @@ args: [params],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "increaseLiquidityPosition",
@@ -158,7 +165,7 @@ args: [params],
           description: `Called increaseLiquidityPosition on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -185,7 +192,7 @@ args: [params],
 
         return { success: true };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -212,7 +219,7 @@ args: [params],
 
         return { success: true };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -238,6 +245,10 @@ args: [params],
       required: ["contractAddress", "positionId", "collateralAmount"]
     },
     function: async ({ contractAddress, positionId, collateralAmount }) => {
+      if (!hasPrivateKey) {
+        return { error: "Write operations require PRIVATE_KEY environment variable" };
+      }
+
       try {
         // Prepare transaction data
         const data = encodeFunctionData({
@@ -247,7 +258,7 @@ args: [BigInt(positionId), BigInt(collateralAmount)],
         });
 
         // Send transaction
-        const hash = await walletClient.writeContract({
+        const hash = await walletClient!.writeContract({
           address: contractAddress,
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "depositCollateral",
@@ -263,7 +274,7 @@ args: [BigInt(positionId), BigInt(collateralAmount)],
           description: `Called depositCollateral on ${contractAddress}`
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
@@ -310,7 +321,7 @@ args: [BigInt(liquidity), BigInt(sqrtPriceX96), BigInt(sqrtPriceAX96), BigInt(sq
           amount1: (result as [bigint, bigint])[1],
         };
       } catch (error) {
-        return { error: error.message };
+        return { error: error instanceof Error ? error.message : 'Unknown error occurred' };
       }
     }
   },
