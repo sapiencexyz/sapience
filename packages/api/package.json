@@ -23,8 +23,7 @@
     "lint:fix": "eslint src --fix && pnpm format",
     "format": "prettier --write src",
     "migration:generate": "tsx ./node_modules/typeorm/cli.js migration:generate ./src/migrations/migration -d ./src/db.ts",
-    "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d ./src/db.ts",
-    "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d ./src/db.ts"
+    "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d ./src/db.ts"
   },
   "keywords": [],
   "dependencies": {
