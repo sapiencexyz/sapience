@@ -1,5 +1,5 @@
 name="foil"
-version="<%= package.version %>"
+version="1.0.1"
 
 [var.settings]
 owner="0xdb5Af497A73620d881561eDb508012A5f84e9BA2"

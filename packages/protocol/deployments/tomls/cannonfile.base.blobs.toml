@@ -1,5 +1,5 @@
 name="foil"
-version="<%= package.version %>"
+version="1.0.1"
 preset="eth-blobs"
 
 [var.settings]
