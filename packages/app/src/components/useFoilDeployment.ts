@@ -17,19 +17,19 @@ const useFoilDeployment = (chainId?: number) => {
     const loadFoilData = async () => {
       try {
         const foil = await import(
-          `@/protocol/deployments/${chainId}/FoilYin.json`
+          `@/protocol/deployments/outputs/${chainId}/FoilYin.json`
         );
         const foilYinVault = await import(
-          `@/protocol/deployments/${chainId}/VaultYin.json`
+          `@/protocol/deployments/outputs/${chainId}/VaultYin.json`
         );
         const foilYangVault = await import(
-          `@/protocol/deployments/${chainId}/VaultYang.json`
+          `@/protocol/deployments/outputs/${chainId}/VaultYang.json`
         );
         const foilYinBlobVault = await import(
-          `@/protocol/deployments/${chainId}-blobs/VaultYin.json`
+          `@/protocol/deployments/outputs/${chainId}-blobs/VaultYin.json`
         );
         const foilYangBlobVault = await import(
-          `@/protocol/deployments/${chainId}-blobs/VaultYang.json`
+          `@/protocol/deployments/outputs/${chainId}-blobs/VaultYang.json`
         );
         setFoilData(foil);
         setFoilVaultData({
