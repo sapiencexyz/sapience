@@ -1,13 +1,19 @@
 import { Resource } from 'src/models/Resource';
 import {
   epochRepository,
+  marketPriceRepository,
   marketRepository,
   resourcePriceRepository,
 } from 'src/db';
 import { ResourcePrice } from 'src/models/ResourcePrice';
 import { Market } from 'src/models/Market';
 import { Epoch } from 'src/models/Epoch';
-import { CandleData, StorageData, TrailingAvgData } from './types';
+import {
+  CandleData,
+  MarketPriceData,
+  StorageData,
+  TrailingAvgData,
+} from './types';
 import { MoreThan } from 'typeorm';
 import { TIME_INTERVALS } from 'src/fixtures';
 
@@ -25,8 +31,10 @@ export class ResourcePerformance {
   private markets: Market[];
   private epochs: Epoch[];
   private intervals: number[];
+
   private trailingAvgTime: number[] =[TIME_INTERVALS.intervals.INTERVAL_28_DAYS, TIME_INTERVALS.intervals.INTERVAL_7_DAYS];
   private lastTimestampProcessed: number = 0;
+  private lastMarketTimestampProcessed: number = 0;
 
   // Persistent storage. The main storage for the resource performance data and where all the data is pulled when required
   private persistentStorage: StorageData = {};
@@ -66,6 +74,17 @@ export class ResourcePerformance {
         trailingAvgData: TrailingAvgData[];
       };
     };
+    marketProcessData: {
+      [interval: number]: {
+        [epochId: string]: {
+          open: bigint;
+          high: bigint;
+          low: bigint;
+          close: bigint;
+          nextTimestamp: number;
+        };
+      };
+    };
   } = {
     dbResourcePrices: [],
     dbResourcePricesLength: 0,
@@ -74,6 +93,7 @@ export class ResourcePerformance {
     indexProcessData: {},
     resourceProcessData: {},
     trailingAvgProcessData: {},
+    marketProcessData: {},
   };
 
   constructor(
@@ -98,17 +118,15 @@ export class ResourcePerformance {
         resourceStore: {
           data: [],
           metadata: [],
-          pointers: {},
           trailingAvgData: [],
         },
         trailingAvgStore: {
           data: [],
           metadata: [],
-          pointers: {},
           trailingAvgData: [],
         },
         indexStore: {},
-        // marketStore: {},
+        marketStore: {},
       };
       this.runtime.resourceProcessData[interval] = {
         open: 0n,
@@ -136,25 +154,40 @@ export class ResourcePerformance {
 
     this.persistentStorage = restoredStorage.store;
 
-    this.lastTimestampProcessed = restoredStorage.latestTimestamp;
+    this.lastResourceTimestampProcessed =
+      restoredStorage.latestResourceTimestamp;
+    this.lastMarketTimestampProcessed = restoredStorage.latestMarketTimestamp;
 
     await this.pullMarketsAndEpochs(false);
-    await this.processResourceData(this.lastTimestampProcessed);
+    await this.processResourceData(
+      this.lastResourceTimestampProcessed,
+      this.lastMarketTimestampProcessed
+    );
   }
 
-  private async processResourceData(initialTimestamp?: number) {
+  private async processResourceData(
+    initialResourceTimestamp?: number,
+    initialMarketTimestamp?: number
+  ) {
     if (this.runtime.processingResourceItems) {
       throw new Error('Resource prices are already being processed');
     }
 
     console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialTimestamp})`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialResourceTimestamp})`
     );
 
     this.runtime.processingResourceItems = true;
 
-    const dbResourcePrices = await this.pullResourcePrices(initialTimestamp);
-    if (dbResourcePrices.length === 0) {
+    const dbResourcePrices = await this.pullResourcePrices(
+      initialResourceTimestamp
+    );
+    const dbMarketPrices = await this.pullMarketPrices(initialMarketTimestamp);
+
+    if (dbResourcePrices.length === 0 && dbMarketPrices.length === 0) {
+      console.timeEnd(
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialResourceTimestamp})`
+      );
       this.runtime.processingResourceItems = false;
       return;
     }
@@ -189,13 +222,35 @@ export class ResourcePerformance {
       this.runtime.currentIdx++;
     }
 
+    // Process all market prices
+    let marketIdx = 0;
+    const dbMarketPricesLength = dbMarketPrices.length;
+    while (marketIdx < dbMarketPricesLength) {
+      const item = dbMarketPrices[marketIdx];
+      for (const interval of this.intervals) {
+        this.processMarketPriceData(
+          item,
+          marketIdx,
+          interval,
+          dbMarketPricesLength === marketIdx + 1
+        );
+      }
+      marketIdx++;
+    }
+
     // Update the last timestamp processed
     if (this.runtime.dbResourcePricesLength > 0) {
-      this.lastTimestampProcessed =
+      this.lastResourceTimestampProcessed =
         this.runtime.dbResourcePrices[
           this.runtime.dbResourcePricesLength - 1
         ].timestamp;
     }
+
+    if (dbMarketPricesLength > 0) {
+      this.lastMarketTimestampProcessed =
+        dbMarketPrices[dbMarketPricesLength - 1].timestamp;
+    }
+
     console.timeEnd(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
     );
@@ -210,7 +265,7 @@ export class ResourcePerformance {
     );
 
     console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialTimestamp})`
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialResourceTimestamp})`
     );
     this.runtime.processingResourceItems = false;
   }
@@ -248,6 +303,45 @@ export class ResourcePerformance {
     );
 
     return dbResourcePrices;
+  }
+
+  private async pullMarketPrices(initialTimestamp?: number) {
+    // Build the query based on whether we have an initialTimestamp
+    console.time(
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
+    );
+
+    const dbMarketPrices = await marketPriceRepository
+      .createQueryBuilder('marketPrice')
+      .leftJoinAndSelect('marketPrice.transaction', 'transaction')
+      .leftJoinAndSelect('transaction.event', 'event')
+      .leftJoinAndSelect('event.market', 'market')
+      .leftJoinAndSelect('market.resource', 'resource')
+      .leftJoinAndSelect('transaction.position', 'position')
+      .leftJoinAndSelect('position.epoch', 'epoch')
+      .where('resource.id = :resourceId', { resourceId: this.resource.id })
+      .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
+        from: initialTimestamp?.toString() ?? '0',
+      })
+      .orderBy('marketPrice.timestamp', 'ASC')
+      .getMany();
+
+    const reducedDbMarketPrices = dbMarketPrices.map((item) => ({
+      value: item.value,
+      timestamp: Number(item.timestamp),
+      epoch: item.transaction.position.epoch.id,
+    }));
+
+    console.timeEnd(
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
+    );
+
+    console.log(
+      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices.length`,
+      dbMarketPrices.length
+    );
+
+    return reducedDbMarketPrices;
   }
 
   private async pullMarketsAndEpochs(onlyIfMissing: boolean = true) {
@@ -292,7 +386,6 @@ export class ResourcePerformance {
     this.runtime.dbResourcePrices = dbResourcePrices;
     this.runtime.dbResourcePricesLength = dbResourcePrices.length;
     this.runtime.currentIdx = 0;
-    this.runtime.processingResourceItems = false;
 
     // Reset processing data structures
     // We don't need complex initialization anymore since our processing methods
@@ -300,6 +393,7 @@ export class ResourcePerformance {
     this.runtime.indexProcessData = {};
     this.runtime.resourceProcessData = {};
     this.runtime.trailingAvgProcessData = {};
+    this.runtime.marketProcessData = {};
 
     // Initialize with empty objects for each interval
     for (const interval of this.intervals) {
@@ -325,11 +419,19 @@ export class ResourcePerformance {
       };
 
       this.runtime.indexProcessData[interval] = {};
+      this.runtime.marketProcessData[interval] = {};
 
       for (const epoch of this.epochs) {
         this.runtime.indexProcessData[interval][epoch.id] = {
           used: 0n,
           feePaid: 0n,
+          nextTimestamp: 0,
+        };
+        this.runtime.marketProcessData[interval][epoch.id] = {
+          open: 0n,
+          high: 0n,
+          low: 0n,
+          close: 0n,
           nextTimestamp: 0,
         };
       }
@@ -338,7 +440,8 @@ export class ResourcePerformance {
 
   private async persistStorage() {
     const storage = this.persistentStorage;
-    const lastTimestampProcessed = this.lastTimestampProcessed;
+    const lastResourceTimestampProcessed = this.lastResourceTimestampProcessed;
+    const lastMarketTimestampProcessed = this.lastMarketTimestampProcessed;
     const resourceSlug = this.resource.slug;
     const resourceName = this.resource.name;
 
@@ -346,7 +449,8 @@ export class ResourcePerformance {
       // Interval resource store
       await saveStorageToFile(
         storage[interval],
-        lastTimestampProcessed,
+        lastResourceTimestampProcessed,
+        lastMarketTimestampProcessed,
         resourceSlug,
         resourceName,
         interval.toString()
@@ -356,7 +460,8 @@ export class ResourcePerformance {
 
   private async restorePersistedStorage(): Promise<
     | {
-        latestTimestamp: number;
+        latestResourceTimestamp: number;
+        latestMarketTimestamp: number;
         store: StorageData;
       }
     | undefined
@@ -364,7 +469,8 @@ export class ResourcePerformance {
     const resourceSlug = this.resource.slug;
     const resourceName = this.resource.name;
     const restoredStorage: StorageData = {};
-    let latestTimestamp = 0;
+    let latestResourceTimestamp = 0;
+    let latestMarketTimestamp = 0;
     for (const interval of this.intervals) {
       const storageInterval = await loadStorageFromFile(
         resourceSlug,
@@ -375,23 +481,16 @@ export class ResourcePerformance {
         return undefined;
       }
       restoredStorage[interval] = storageInterval.store;
-      latestTimestamp = storageInterval.latestTimestamp;
-      // const indexStoreMetadata =
-      //   restoredStorage[interval].indexStore['1'].metadata;
-      // const lastMetadata = indexStoreMetadata[indexStoreMetadata.length - 1];
+      latestResourceTimestamp = storageInterval.latestResourceTimestamp;
+      latestMarketTimestamp = storageInterval.latestMarketTimestamp;
     }
 
     return {
-      latestTimestamp,
+      latestResourceTimestamp,
+      latestMarketTimestamp,
       store: restoredStorage,
     };
   }
-
-  // async backfillMarketPrices() {
-  // }
-
-  // getMarketPrices(from: number, to: number, interval: number) {
-  // }
 
   private processResourcePriceData(
     item: ResourcePrice,
@@ -437,8 +536,6 @@ export class ResourcePerformance {
           used: 0n,
           feePaid: 0n,
         });
-
-        resourceStore.pointers[item.timestamp] = resourceStore.data.length - 1;
       }
     }
 
@@ -501,8 +598,6 @@ export class ResourcePerformance {
           used: 0n,
           feePaid: 0n,
         });
-
-        resourceStore.pointers[item.timestamp] = resourceStore.data.length - 1;
       }
     } else {
       // Update the current interval
@@ -553,7 +648,6 @@ export class ResourcePerformance {
           this.persistentStorage[interval].indexStore[epoch.id] = {
             data: [],
             metadata: [],
-            pointers: {},
             trailingAvgData: [], // Unused in index store
           };
         }
@@ -597,8 +691,6 @@ export class ResourcePerformance {
             used: ripd.used,
             feePaid: ripd.feePaid,
           });
-
-          piStore.pointers[item.timestamp] = piStore.data.length - 1;
         }
       }
 
@@ -683,8 +775,6 @@ export class ResourcePerformance {
               used: ripd.used,
               feePaid: ripd.feePaid,
             });
-
-            piStore.pointers[item.timestamp] = piStore.data.length - 1;
           }
         }
       }
@@ -773,8 +863,6 @@ export class ResourcePerformance {
         if (!ptStore.trailingAvgData) {
           ptStore.trailingAvgData = [];
         }
-
-        ptStore.pointers[item.timestamp] = ptStore.data.length - 1;
       }
     }
 
@@ -784,23 +872,6 @@ export class ResourcePerformance {
     // Categorize the current data point
     const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
     const isNewInterval = item.timestamp >= rtpd.nextTimestamp;
-
-    // if (interval == 300 && epoch.id == 2) {
-    //   const avgPrice = ripd.used > 0n ? ripd.feePaid / ripd.used : 0n;
-    //   console.log(
-    //     'LLL 18 ',
-    //     interval,
-    //     epoch.id,
-    //     item.timestamp,
-    //     ripd.used.toString(),
-    //     ripd.feePaid.toString(),
-    //     avgPrice.toString(),
-    //     item.used.toString(),
-    //     item.feePaid.toString(),
-    //     (ripd.used + BigInt(item.used)).toString(),
-    //     (ripd.feePaid + BigInt(item.feePaid)).toString()
-    //   );
-    // }
 
     // Include the new item in accumulators and the runtime trailing avg data
     rtpd.used += BigInt(item.used);
@@ -882,8 +953,6 @@ export class ResourcePerformance {
             used: rtpd.used,
             feePaid: rtpd.feePaid,
           });
-
-          ptStore.pointers[item.timestamp] = ptStore.data.length - 1;
         }
       }
     }
@@ -902,6 +971,138 @@ export class ResourcePerformance {
       rtpd.startTimestampIndex = startIdx;
       if (startIdx >= lastIdx) break; // no more items to remove
       oldItem = rtpd.trailingAvgData[startIdx];
+    }
+  }
+
+  private processMarketPriceData(
+    item: MarketPriceData,
+    currentIdx: number,
+    interval: number,
+    isLastItem: boolean
+  ) {
+    for (const epoch of this.epochs) {
+      if (epoch.id != item.epoch) {
+        continue;
+      }
+
+      const epochStartTime = epoch.startTimestamp;
+      const epochEndTime = epoch.endTimestamp;
+      // Skip data points that are not in the epoch
+      if (
+        !epochStartTime ||
+        item.timestamp < epochStartTime ||
+        (epochEndTime && item.timestamp > epochEndTime)
+      ) {
+        continue;
+      }
+      const itemValueBn = BigInt(item.value);
+
+      const rmpd = this.runtime.marketProcessData[interval][epoch.id];
+
+      if (!rmpd.nextTimestamp) {
+        rmpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
+        rmpd.open = itemValueBn;
+        rmpd.high = itemValueBn;
+        rmpd.low = itemValueBn;
+        rmpd.close = itemValueBn;
+
+        if (!this.persistentStorage[interval].marketStore[epoch.id]) {
+          this.persistentStorage[interval].marketStore[epoch.id] = {
+            data: [],
+            metadata: [],
+            trailingAvgData: [],
+          };
+        }
+
+        const pmStore = this.persistentStorage[interval].marketStore[epoch.id];
+
+        // Create a placeholder in the store
+        const itemStartTime = this.startOfCurrentInterval(
+          item.timestamp,
+          interval
+        );
+
+        // Check if we already have an item for this interval
+        const lastStoreIndex =
+          pmStore.data.length > 0 ? pmStore.data.length - 1 : undefined;
+
+        // Get cached data from the latest stored item
+        if (lastStoreIndex !== undefined) {
+          const previousData = pmStore.data[lastStoreIndex];
+          rmpd.open = BigInt(previousData.open);
+          rmpd.high = BigInt(previousData.high);
+          rmpd.low = BigInt(previousData.low);
+          rmpd.close = BigInt(previousData.close);
+        }
+
+        const isLastStoredItem =
+          lastStoreIndex !== undefined
+            ? pmStore.data[lastStoreIndex].timestamp == itemStartTime
+            : false;
+
+        if (!isLastStoredItem) {
+          pmStore.data.push({
+            timestamp: itemStartTime,
+            open: rmpd.close.toString(), // open is the previous close
+            high: maxBigInt(rmpd.high, itemValueBn).toString(),
+            low: minBigInt(rmpd.low, itemValueBn).toString(),
+            close: itemValueBn.toString(),
+          });
+        }
+      }
+
+      // Get the current placeholder index (the last item in the store)
+      const pmStore = this.persistentStorage[interval].marketStore[epoch.id];
+      const currentPlaceholderIndex = pmStore.data.length - 1;
+
+      const isNewInterval = item.timestamp >= rmpd.nextTimestamp;
+      const isEndOfEpoch = epochEndTime && item.timestamp > epochEndTime;
+
+      rmpd.open = rmpd.open === 0n ? itemValueBn : rmpd.open;
+      if (isNewInterval || isLastItem || isEndOfEpoch) {
+        // Finalize the current interval
+        pmStore.data[currentPlaceholderIndex] = {
+          timestamp: pmStore.data[currentPlaceholderIndex].timestamp,
+          open: rmpd.open.toString(),
+          high: maxBigInt(rmpd.high, itemValueBn).toString(),
+          low: minBigInt(rmpd.low, itemValueBn).toString(),
+          close: itemValueBn.toString(),
+        };
+        // Prepare the next interval
+        rmpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
+        rmpd.open = itemValueBn;
+        rmpd.high = itemValueBn;
+        rmpd.low = itemValueBn;
+        rmpd.close = itemValueBn;
+
+        // Create a placeholder for the next interval
+        const itemStartTime = this.startOfCurrentInterval(
+          item.timestamp,
+          interval
+        );
+
+        // Check if we already have an item for this interval
+        const existingIndex = pmStore.data.findIndex(
+          (d) =>
+            d.timestamp >= itemStartTime && d.timestamp < rmpd.nextTimestamp
+        );
+
+        if (existingIndex === -1 && !isEndOfEpoch) {
+          // Create a new placeholder
+          pmStore.data.push({
+            timestamp: itemStartTime,
+            open: item.value,
+            high: item.value,
+            low: item.value,
+            close: item.value,
+          });
+        }
+      } else {
+        // Update the current interval min/max values
+        rmpd.high = maxBigInt(rmpd.high, itemValueBn);
+        rmpd.low = minBigInt(rmpd.low, itemValueBn);
+        rmpd.close = itemValueBn;
+      }
     }
   }
 
@@ -962,6 +1163,33 @@ export class ResourcePerformance {
     );
   }
 
+  async getMarketPrices(
+    from: number,
+    to: number,
+    interval: number,
+    chainId: number,
+    address: string,
+    epoch: string
+  ) {
+    this.checkInterval(interval);
+    const epochId = this.getEpochId(chainId, address, epoch);
+    if (!this.persistentStorage[interval].marketStore[epochId]) {
+      return [];
+    }
+
+    const prices = await this.getPricesFromArray(
+      this.persistentStorage[interval].marketStore[epochId].data,
+      from,
+      to,
+      interval,
+      false
+    );
+
+    const filledPrices = this.fillMissingCandles(prices, from, to, interval);
+
+    return filledPrices;
+  }
+
   getMarketFromChainAndAddress(chainId: number, address: string) {
     return this.markets.find(
       (m) =>
@@ -995,7 +1223,10 @@ export class ResourcePerformance {
         );
       } else {
         // Process new data starting from the last timestamp we processed
-        await this.processResourceData(this.lastTimestampProcessed);
+        await this.processResourceData(
+          this.lastResourceTimestampProcessed,
+          this.lastMarketTimestampProcessed
+        );
       }
     }
   }
@@ -1005,25 +1236,19 @@ export class ResourcePerformance {
     from: number,
     to: number,
     interval: number,
-    fillMissing: boolean = true
+    fillInitialDatapoints: boolean = true
   ) {
     if (prices.length === 0) {
       return [];
     }
 
-    const timeWindow: {
-      from: number;
-      to: number;
-    } = {
-      from: this.startOfCurrentInterval(from, interval),
-      to: this.startOfCurrentInterval(to, interval),
-    };
+    const timeWindow = this.getTimeWindow(from, to, interval);
 
     // Check if we need to process new data for this requested time range
     await this.updateStoreIfNeeded(prices, timeWindow.to);
 
     // If there are no prices or window starts before first price, add zero entries
-    if (fillMissing && timeWindow.from < prices[0].timestamp) {
+    if (fillInitialDatapoints && timeWindow.from < prices[0].timestamp) {
       const zeroEntries = [];
       for (let t = timeWindow.from; t < prices[0].timestamp; t += interval) {
         zeroEntries.push({
@@ -1063,6 +1288,88 @@ export class ResourcePerformance {
     }));
   }
 
+  private fillMissingCandles(
+    prices: CandleData[],
+    from: number,
+    to: number,
+    interval: number
+  ) {
+    const timeWindow = this.getTimeWindow(from, to, interval);
+
+    const outputEntries = [];
+    for (let t = timeWindow.from; t < timeWindow.to; t += interval) {
+      outputEntries.push({
+        timestamp: t,
+        open: '0',
+        high: '0',
+        low: '0',
+        close: '0',
+      });
+    }
+    let outputIdx = 0;
+    let pricesIdx = 0;
+    let lastClose = '0';
+    const pricesLength = prices.length;
+    if (pricesLength === 0) {
+      return outputEntries;
+    }
+
+    let nextPriceItemTimestamp = prices[pricesIdx].timestamp;
+
+    while (outputIdx < outputEntries.length) {
+      if (outputEntries[outputIdx].timestamp < nextPriceItemTimestamp) {
+        outputEntries[outputIdx].close = lastClose;
+        outputEntries[outputIdx].high = lastClose;
+        outputEntries[outputIdx].low = lastClose;
+        outputEntries[outputIdx].open = lastClose;
+
+        outputIdx++;
+        continue;
+      }
+
+      if (outputEntries[outputIdx].timestamp == nextPriceItemTimestamp) {
+        outputEntries[outputIdx] = prices[pricesIdx];
+        lastClose = prices[pricesIdx].close;
+        pricesIdx++;
+        nextPriceItemTimestamp =
+          pricesIdx < pricesLength
+            ? prices[pricesIdx].timestamp
+            : timeWindow.to + 1; // set it in the future if not more prices to fall in the first if for the next loops
+
+        outputIdx++;
+        continue;
+      }
+
+      if (outputEntries[outputIdx].timestamp > nextPriceItemTimestamp) {
+        // pick the last known price first
+        let lastKnownPrice = prices[pricesIdx].close;
+
+        // then move the prices  the price in the prices array
+        while (
+          nextPriceItemTimestamp < outputEntries[outputIdx].timestamp ||
+          pricesIdx < pricesLength
+        ) {
+          nextPriceItemTimestamp = prices[pricesIdx].timestamp;
+          lastKnownPrice = prices[pricesIdx].close;
+          pricesIdx++;
+        }
+
+        if (nextPriceItemTimestamp === outputEntries[outputIdx].timestamp) {
+          outputEntries[outputIdx] = prices[pricesIdx];
+        } else {
+          outputEntries[outputIdx].close = lastKnownPrice;
+          outputEntries[outputIdx].high = lastKnownPrice;
+          outputEntries[outputIdx].low = lastKnownPrice;
+          outputEntries[outputIdx].open = lastKnownPrice;
+        }
+
+        outputIdx++;
+      }
+    }
+
+    return outputEntries;
+  }
+
   startOfCurrentInterval(
     timestamp: number,
     interval: number | undefined = undefined
@@ -1081,5 +1388,12 @@ export class ResourcePerformance {
       interval = ResourcePerformance.MIN_INTERVAL;
     }
     return (Math.floor(timestamp / interval) + 1) * interval;
+  }
+
+  private getTimeWindow(from: number, to: number, interval: number) {
+    return {
+      from: this.startOfCurrentInterval(from, interval),
+      to: this.startOfCurrentInterval(to, interval),
+    };
   }
 }
