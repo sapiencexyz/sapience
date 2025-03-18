@@ -13,7 +13,7 @@
   "dependencies": {
     "react": "latest",
     "react-dom": "latest",
-    "vocs": "latest"
+    "vocs": "^1.0.5"
   },
   "devDependencies": {
     "@types/react": "^18.3.5",
