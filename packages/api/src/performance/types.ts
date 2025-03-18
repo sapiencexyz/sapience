@@ -33,7 +33,9 @@ export type IndexStore = {
 
 export type IntervalStore = {
   resourceStore: IndexStore;
-  trailingAvgStore: IndexStore;
+  trailingAvgStore: {
+    [trailingAvgTime: string]: IndexStore;
+  };
   indexStore: {
     [epoch: string]: IndexStore;
   };

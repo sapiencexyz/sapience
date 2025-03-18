@@ -32,8 +32,11 @@ export class ResourcePerformance {
   private epochs: Epoch[];
   private intervals: number[];
 
-  private trailingAvgTime: number[] =[TIME_INTERVALS.intervals.INTERVAL_28_DAYS, TIME_INTERVALS.intervals.INTERVAL_7_DAYS];
-  private lastTimestampProcessed: number = 0;
+  private trailingAvgTime: number[] = [
+    TIME_INTERVALS.intervals.INTERVAL_28_DAYS,
+    TIME_INTERVALS.intervals.INTERVAL_7_DAYS,
+  ];
+  private lastResourceTimestampProcessed: number = 0;
   private lastMarketTimestampProcessed: number = 0;
 
   // Persistent storage. The main storage for the resource performance data and where all the data is pulled when required
@@ -65,13 +68,15 @@ export class ResourcePerformance {
     };
     trailingAvgProcessData: {
       [interval: number]: {
-        used: bigint;
-        feePaid: bigint;
-        nextTimestamp: number;
-        startTimestampIndex: number;
-        endTimestampIndex: number;
-        endTimestamp: number;
-        trailingAvgData: TrailingAvgData[];
+        [trailingAvgTime: string]: {
+          used: bigint;
+          feePaid: bigint;
+          nextTimestamp: number;
+          startTimestampIndex: number;
+          endTimestampIndex: number;
+          endTimestamp: number;
+          trailingAvgData: TrailingAvgData[];
+        };
       };
     };
     marketProcessData: {
@@ -106,28 +111,32 @@ export class ResourcePerformance {
       TIME_INTERVALS.intervals.INTERVAL_4_HOURS,
       TIME_INTERVALS.intervals.INTERVAL_1_DAY,
       TIME_INTERVALS.intervals.INTERVAL_7_DAYS,
-      TIME_INTERVALS.intervals.INTERVAL_28_DAYS
-    ],
+      TIME_INTERVALS.intervals.INTERVAL_28_DAYS,
+    ]
     // Default to 7 days trailing average
   ) {
     this.resource = resource;
     this.intervals = intervals;
     this.persistentStorage = {};
     for (const interval of intervals) {
-      this.persistentStorage[interval] = {
-        resourceStore: {
-          data: [],
-          metadata: [],
-          trailingAvgData: [],
-        },
-        trailingAvgStore: {
-          data: [],
-          metadata: [],
-          trailingAvgData: [],
-        },
-        indexStore: {},
-        marketStore: {},
-      };
+      for (const trailingAvgTime of this.trailingAvgTime) {
+        this.persistentStorage[interval] = {
+          resourceStore: {
+            data: [],
+            metadata: [],
+            trailingAvgData: [],
+          },
+          trailingAvgStore: {
+            [trailingAvgTime.toString()]: {
+              data: [],
+              metadata: [],
+              trailingAvgData: [],
+            },
+          },
+          indexStore: {},
+          marketStore: {},
+        };
+      }
       this.runtime.resourceProcessData[interval] = {
         open: 0n,
         high: 0n,
@@ -405,18 +414,24 @@ export class ResourcePerformance {
         nextTimestamp: 0,
       };
 
-      this.runtime.trailingAvgProcessData[interval] = {
-        used: 0n,
-        feePaid: 0n,
-        nextTimestamp: 0,
-        startTimestampIndex: 0,
-        endTimestampIndex: 0,
-        // startTimestamp: 0,
-        endTimestamp: 0,
-        trailingAvgData: [
-          ...this.persistentStorage[interval].trailingAvgStore.trailingAvgData, // Initialize with stored data
-        ],
-      };
+      for (const trailingAvgTime of this.trailingAvgTime) {
+        this.runtime.trailingAvgProcessData[interval][
+          trailingAvgTime.toString()
+        ] = {
+          used: 0n,
+          feePaid: 0n,
+          nextTimestamp: 0,
+          startTimestampIndex: 0,
+          endTimestampIndex: 0,
+          // startTimestamp: 0,
+          endTimestamp: 0,
+          trailingAvgData: [
+            ...this.persistentStorage[interval].trailingAvgStore[
+              trailingAvgTime.toString()
+            ].trailingAvgData, // Initialize with stored data
+          ],
+        };
+      }
 
       this.runtime.indexProcessData[interval] = {};
       this.runtime.marketProcessData[interval] = {};
@@ -811,10 +826,29 @@ export class ResourcePerformance {
     trailingAvgTime: number
   ) {
     // Runtime data
-    const rtpd = this.runtime.trailingAvgProcessData[interval];
+    const rtpd =
+      this.runtime.trailingAvgProcessData[interval][trailingAvgTime.toString()];
+
+    // Initialize the trailing avg store if it doesn't exist
+    if (
+      !this.persistentStorage[interval].trailingAvgStore[
+        trailingAvgTime.toString()
+      ]
+    ) {
+      this.persistentStorage[interval].trailingAvgStore[
+        trailingAvgTime.toString()
+      ] = {
+        data: [],
+        metadata: [],
+        trailingAvgData: [],
+      };
+    }
 
     // Persistent data
-    const ptStore = this.persistentStorage[interval].trailingAvgStore;
+    const ptStore =
+      this.persistentStorage[interval].trailingAvgStore[
+        trailingAvgTime.toString()
+      ];
 
     // First data point processed in this batch. Initialize accumulators and create a placeholder in the pstore if needed for the this data point
     if (!rtpd.nextTimestamp) {
@@ -1153,10 +1187,17 @@ export class ResourcePerformance {
     );
   }
 
-  getTrailingAvgPrices(from: number, to: number, interval: number) {
+  getTrailingAvgPrices(
+    from: number,
+    to: number,
+    interval: number,
+    trailingAvgTime: number
+  ) {
     this.checkInterval(interval);
     return this.getPricesFromArray(
-      this.persistentStorage[interval].trailingAvgStore.data,
+      this.persistentStorage[interval].trailingAvgStore[
+        trailingAvgTime.toString()
+      ].data,
       from,
       to,
       interval

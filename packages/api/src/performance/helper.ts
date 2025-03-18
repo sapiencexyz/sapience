@@ -2,7 +2,7 @@ import { IntervalStore } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const FILE_VERSION = 1;
+const FILE_VERSION = 2;
 
 export async function saveStorageToFile(
   storage: IntervalStore,

@@ -147,12 +147,14 @@ const TRAILING_RESOURCE_CANDLES_QUERY = gql`
     $from: Int!
     $to: Int!
     $interval: Int!
+    $trailingAvgTime: Int!
   ) {
     resourceTrailingAverageCandles(
       slug: $slug
       from: $from
       to: $to
       interval: $interval
+      trailingAvgTime: $trailingAvgTime
     ) {
       timestamp
       close
@@ -383,6 +385,7 @@ export const useChart = ({
             from,
             to: now,
             interval,
+            trailingAvgTime: 7 * 24 * 60 * 60,
           },
         });
 
