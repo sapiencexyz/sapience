@@ -9,16 +9,7 @@ import { Market } from 'src/models/Market';
 import { Epoch } from 'src/models/Epoch';
 import { CandleData, StorageData, TrailingAvgData } from './types';
 import { MoreThan } from 'typeorm';
-
-import {
-  INTERVAL_1_MINUTE,
-  INTERVAL_5_MINUTES,
-  INTERVAL_15_MINUTES,
-  INTERVAL_30_MINUTES,
-  INTERVAL_4_HOURS,
-  INTERVAL_1_DAY,
-  INTERVAL_28_DAYS,
-} from './constants';
+import { TIME_INTERVALS } from 'src/fixtures';
 
 import {
   loadStorageFromFile,
@@ -28,13 +19,13 @@ import {
 } from './helper';
 
 export class ResourcePerformance {
-  static readonly MIN_INTERVAL = INTERVAL_5_MINUTES;
+  static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
 
   private resource: Resource;
   private markets: Market[];
   private epochs: Epoch[];
   private intervals: number[];
-  private trailingAvgTime: number;
+  private trailingAvgTime: number[] =[TIME_INTERVALS.intervals.INTERVAL_28_DAYS, TIME_INTERVALS.intervals.INTERVAL_7_DAYS];
   private lastTimestampProcessed: number = 0;
 
   // Persistent storage. The main storage for the resource performance data and where all the data is pulled when required
@@ -88,18 +79,19 @@ export class ResourcePerformance {
   constructor(
     resource: Resource,
     intervals: number[] = [
-      INTERVAL_1_MINUTE,
-      INTERVAL_5_MINUTES,
-      INTERVAL_15_MINUTES,
-      INTERVAL_30_MINUTES,
-      INTERVAL_4_HOURS,
-      INTERVAL_1_DAY,
+      TIME_INTERVALS.intervals.INTERVAL_1_MINUTE,
+      TIME_INTERVALS.intervals.INTERVAL_5_MINUTES,
+      TIME_INTERVALS.intervals.INTERVAL_15_MINUTES,
+      TIME_INTERVALS.intervals.INTERVAL_30_MINUTES,
+      TIME_INTERVALS.intervals.INTERVAL_4_HOURS,
+      TIME_INTERVALS.intervals.INTERVAL_1_DAY,
+      TIME_INTERVALS.intervals.INTERVAL_7_DAYS,
+      TIME_INTERVALS.intervals.INTERVAL_28_DAYS
     ],
-    trailingAvgTime: number = INTERVAL_28_DAYS
+    // Default to 7 days trailing average
   ) {
     this.resource = resource;
     this.intervals = intervals;
-    this.trailingAvgTime = trailingAvgTime;
     this.persistentStorage = {};
     for (const interval of intervals) {
       this.persistentStorage[interval] = {
@@ -183,7 +175,14 @@ export class ResourcePerformance {
         this.processTrailingAvgPricesData(
           item,
           this.runtime.currentIdx,
-          interval
+          interval,
+          this.trailingAvgTime[0]
+        );
+        this.processTrailingAvgPricesData(
+          item,
+          this.runtime.currentIdx,
+          interval,
+          this.trailingAvgTime[1]
         );
         this.processIndexPricesData(item, this.runtime.currentIdx, interval);
       }
@@ -718,7 +717,8 @@ export class ResourcePerformance {
   private processTrailingAvgPricesData(
     item: ResourcePrice,
     currentIdx: number,
-    interval: number
+    interval: number,
+    trailingAvgTime: number
   ) {
     // Runtime data
     const rtpd = this.runtime.trailingAvgProcessData[interval];
@@ -892,7 +892,7 @@ export class ResourcePerformance {
     let startIdx = rtpd.startTimestampIndex;
     let oldItem = rtpd.trailingAvgData[startIdx];
     // TODO Check if is item.timestamp - this.trailingAvgTime or rtpd.nextTimestamp - this.trailingAvgTime
-    const trailingAvgTimestamp = item.timestamp - this.trailingAvgTime;
+    const trailingAvgTimestamp = item.timestamp - trailingAvgTime;
     const lastIdx = rtpd.trailingAvgData.length - 1;
 
     while (oldItem.timestamp < trailingAvgTimestamp) {
