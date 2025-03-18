@@ -23,8 +23,9 @@ import * as path from 'path';
 import { glob } from 'glob';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
 import { base } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 const execPromise = promisify(exec);
 
@@ -88,42 +89,35 @@ function parseNatSpec(docString?: string): { [key: string]: string } {
 
   const natspec: { [key: string]: string } = {};
   const lines = docString.split('\n');
-
-  let currentTag = 'description';
-  let currentValue = '';
-
+  
   for (const line of lines) {
     const trimmedLine = line.trim();
+    // Remove comment markers
+    const cleanLine = trimmedLine.replace(/^\/\*\*|^\*\/|^\* ?/g, '').trim();
     
-    // Skip empty lines and comment markers
-    if (trimmedLine === '' || trimmedLine === '*' || trimmedLine.startsWith('/**') || trimmedLine.startsWith('*/')) {
+    if (!cleanLine) continue;
+
+    // Match @param tag with name and description
+    const paramMatch = cleanLine.match(/^@param\s+(\w+)\s+(.+)$/);
+    if (paramMatch) {
+      const [, name, desc] = paramMatch;
+      natspec[`param_${name}`] = desc;
       continue;
     }
 
-    // Remove leading * if present
-    const cleanLine = trimmedLine.startsWith('*') ? trimmedLine.substring(1).trim() : trimmedLine;
-
-    // Check if this is a tag
-    const tagMatch = cleanLine.match(/^@(\w+)(?:\s+(.*))?$/);
-    if (tagMatch) {
-      // Save the previous tag value
-      if (currentValue) {
-        natspec[currentTag] = currentValue.trim();
-        currentValue = '';
-      }
-      
-      currentTag = tagMatch[1];
-      currentValue = tagMatch[2] || '';
-    } else {
-      // Append to current value
-      if (currentValue) currentValue += ' ';
-      currentValue += cleanLine;
+    // Match @return tag
+    const returnMatch = cleanLine.match(/^@return\s+(\w+)\s+(.+)$/);
+    if (returnMatch) {
+      const [, name, desc] = returnMatch;
+      natspec[`return_${name}`] = desc;
+      continue;
     }
-  }
 
-  // Save the last tag value
-  if (currentValue) {
-    natspec[currentTag] = currentValue.trim();
+    // Match @dev tag
+    if (cleanLine.startsWith('@dev ')) {
+      natspec.dev = cleanLine.substring(5);
+      continue;
+    }
   }
 
   return natspec;
@@ -198,34 +192,24 @@ function processAST(ast: any): InterfaceDefinition[] {
             const natspec = parseNatSpec(funcNode.documentation.text);
             functionDef.description = natspec.dev || natspec.description || '';
             
-            // Match param descriptions
-            const paramDocs: { [key: string]: string } = {};
-            const returnDocs: string[] = [];
-            
-            Object.entries(natspec).forEach(([key, value]) => {
-              if (key.startsWith('param')) {
-                const paramName = key.substring(5).trim();
-                paramDocs[paramName] = value;
-              } else if (key === 'return' || key.startsWith('return')) {
-                returnDocs.push(value);
-              }
-            });
-
             // Process parameters
-            funcNode.parameters.parameters.forEach((param, index) => {
+            funcNode.parameters.parameters.forEach((param) => {
+              const paramName = param.name;
+              const paramDesc = natspec[`param_${paramName}`] || '';
               functionDef.params.push({
-                name: param.name,
+                name: paramName,
                 type: param.typeName.typeDescriptions.typeString,
-                description: paramDocs[param.name] || ''
+                description: paramDesc
               });
             });
 
             // Process return values
             funcNode.returnParameters.parameters.forEach((param, index) => {
+              const returnDesc = natspec[`return_${index}`] || '';
               functionDef.returns.push({
                 name: param.name || `result${index}`,
                 type: param.typeName.typeDescriptions.typeString,
-                description: returnDocs[index] || ''
+                description: returnDesc
               });
             });
           }
@@ -289,21 +273,78 @@ function formatDescription(description: string): string {
   return description.replace(/\n/g, ' ').trim();
 }
 
+// Helper function to format parameter name
+function formatParamName(name: string): string {
+  return name;
+}
+
+// Helper function to format parameter value
+function formatParamValue(param: FunctionParam, name: string): string {
+  if (solidityToTypeScript(param.type) === 'bigint') {
+    return `BigInt(${formatParamName(name)})`;
+  }
+  return formatParamName(name);
+}
+
+// Helper function to generate function parameters
+function generateFunctionParams(params: FunctionParam[]): string {
+  return params.length > 0 
+    ? ', ' + params.map(p => formatParamName(p.name)).join(', ')
+    : '';
+}
+
+// Helper function to generate function args
+function generateFunctionArgs(params: FunctionParam[]): string {
+  return params.length > 0
+    ? `args: [${params.map(p => formatParamValue(p, p.name)).join(', ')}],\n`
+    : '';
+}
+
+// Helper function to generate return value handling
+function generateReturnValue(returns: FunctionParam[]): string {
+  if (returns.length === 1) {
+    return '        return { result };\n';
+  } else if (returns.length > 1) {
+    return `        return {\n${
+      returns.map((r, i) => 
+        `          ${r.name}: (result as [${returns.map(r => solidityToTypeScript(r.type)).join(', ')}])[${i}],\n`
+      ).join('')
+    }        };\n`;
+  } else {
+    return '        return { success: true };\n';
+  }
+}
+
 // Function to generate MCP tool definitions for an interface
 function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: string): string {
   const { name, description, functions } = interfaceDefinition;
   
   let output = `// MCP Tool for ${name}\n`;
-  output += `import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';\n`;
-  output += `import { base } from 'viem/chains';\n\n`;
+  output += `import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';\n`;
+  output += `import { base } from 'viem/chains';\n`;
+  output += `import { privateKeyToAccount } from 'viem/accounts';\n\n`;
   
   // Import ABI
   output += `// Import ABI from Foundry artifacts\n`;
   output += `import ${name}ABI from '${abiPath}';\n\n`;
   
-  // Create client setup
-  output += `// Configure viem client\n`;
-  output += `const client = createPublicClient({\n`;
+  // Create clients setup
+  output += `// Configure viem clients\n`;
+  output += `const publicClient = createPublicClient({\n`;
+  output += `  chain: base,\n`;
+  output += `  transport: http()\n`;
+  output += `});\n\n`;
+  
+  output += `// Get private key from environment\n`;
+  output += `const privateKey = process.env.PRIVATE_KEY;\n`;
+  output += `if (!privateKey) {\n`;
+  output += `  throw new Error('PRIVATE_KEY environment variable is required for write operations');\n`;
+  output += `}\n\n`;
+  
+  output += `// Create wallet client\n`;
+  output += `const account = privateKeyToAccount(privateKey as \`0x\${string}\`);\n`;
+  output += `const walletClient = createWalletClient({\n`;
+  output += `  account,\n`;
   output += `  chain: base,\n`;
   output += `  transport: http()\n`;
   output += `});\n\n`;
@@ -312,8 +353,17 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
   output += `// MCP Tool Definitions\n`;
   output += `export const ${name}Tools = {\n`;
   
+  // Track function name counts for overloading
+  const functionNameCounts: { [key: string]: number } = {};
+  
   for (const func of functions) {
-    output += `  ${func.name}: {\n`;
+    // Handle function overloading
+    const baseName = func.name;
+    const count = (functionNameCounts[baseName] || 0) + 1;
+    functionNameCounts[baseName] = count;
+    const functionName = count > 1 ? `${baseName}${count}` : baseName;
+    
+    output += `  ${functionName}: {\n`;
     output += `    description: ${JSON.stringify(formatDescription(func.description || `Call ${func.name} function on ${name} contract`))},\n`;
     output += `    parameters: {\n`;
     output += `      type: "object",\n`;
@@ -327,7 +377,6 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
     for (const param of func.params) {
       const tsType = solidityToTypeScript(param.type);
       output += `        ${param.name}: {\n`;
-      // Handle bigint for JSON Schema
       output += `          type: "${tsType === 'bigint' ? 'string' : typeof tsType === 'string' ? tsType : 'string'}",\n`;
       if (param.description) {
         output += `          description: ${JSON.stringify(formatDescription(param.description))},\n`;
@@ -340,43 +389,19 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
     output += `    },\n`;
     
     // Function implementation
-    output += `    function: async ({ contractAddress${func.params.length > 0 ? ', ' + func.params.map(p => p.name).join(', ') : ''} }) => {\n`;
+    output += `    function: async ({ contractAddress${generateFunctionParams(func.params)} }) => {\n`;
     
     // Handle different function types differently
     if (func.stateMutability === 'view' || func.stateMutability === 'pure') {
       // Read-only function
       output += `      try {\n`;
-      output += `        const result = await client.readContract({\n`;
+      output += `        const result = await publicClient.readContract({\n`;
       output += `          address: contractAddress,\n`;
       output += `          abi: parseAbi(${name}ABI),\n`;
       output += `          functionName: "${func.name}",\n`;
-      
-      if (func.params.length > 0) {
-        output += `          args: [${func.params.map(p => {
-          // Format bigint parameters correctly
-          if (solidityToTypeScript(p.type) === 'bigint') {
-            return `BigInt(${p.name})`;
-          }
-          return p.name;
-        }).join(', ')}],\n`;
-      }
-      
+      output += generateFunctionArgs(func.params);
       output += `        });\n\n`;
-      
-      if (func.returns.length === 1) {
-        output += `        return { result };\n`;
-      } else if (func.returns.length > 1) {
-        // Handle multiple return values
-        output += `        return {\n`;
-        for (let i = 0; i < func.returns.length; i++) {
-          const returnParam = func.returns[i];
-          output += `          ${returnParam.name}: result[${i}],\n`;
-        }
-        output += `        };\n`;
-      } else {
-        output += `        return { success: true };\n`;
-      }
-      
+      output += generateReturnValue(func.returns);
       output += `      } catch (error) {\n`;
       output += `        return { error: error.message };\n`;
       output += `      }\n`;
@@ -387,27 +412,24 @@ function generateMCPTool(interfaceDefinition: InterfaceDefinition, abiPath: stri
       output += `        const data = encodeFunctionData({\n`;
       output += `          abi: parseAbi(${name}ABI),\n`;
       output += `          functionName: "${func.name}",\n`;
-      
-      if (func.params.length > 0) {
-        output += `          args: [${func.params.map(p => {
-          // Format bigint parameters correctly
-          if (solidityToTypeScript(p.type) === 'bigint') {
-            return `BigInt(${p.name})`;
-          }
-          return p.name;
-        }).join(', ')}],\n`;
-      }
-      
+      output += generateFunctionArgs(func.params);
       output += `        });\n\n`;
       
-      output += `        // For MCP we return the transaction data that should be executed\n`;
+      output += `        // Send transaction\n`;
+      output += `        const hash = await walletClient.writeContract({\n`;
+      output += `          address: contractAddress,\n`;
+      output += `          abi: parseAbi(${name}ABI),\n`;
+      output += `          functionName: "${func.name}",\n`;
+      output += generateFunctionArgs(func.params);
+      output += `        });\n\n`;
+      
+      output += `        // Wait for transaction\n`;
+      output += `        const receipt = await publicClient.waitForTransactionReceipt({ hash });\n\n`;
+      
       output += `        return {\n`;
-      output += `          to: contractAddress,\n`;
-      output += `          data,\n`;
-      if (func.isPayable) {
-        output += `          value: "0", // Caller should specify the actual value\n`;
-      }
-      output += `          description: \`Calling ${func.name} on \${contractAddress}\`\n`;
+      output += `          hash,\n`;
+      output += `          receipt,\n`;
+      output += `          description: \`Called ${func.name} on \${contractAddress}\`\n`;
       output += `        };\n`;
       
       output += `      } catch (error) {\n`;

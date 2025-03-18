@@ -1,12 +1,27 @@
 // MCP Tool for IERC721
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
 import { base } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
 import IERC721ABI from '../out/IERC721.ast.json';
 
-// Configure viem client
-const client = createPublicClient({
+// Configure viem clients
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
+// Get private key from environment
+const privateKey = process.env.PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error('PRIVATE_KEY environment variable is required for write operations');
+}
+
+// Create wallet client
+const account = privateKeyToAccount(privateKey as `0x${string}`);
+const walletClient = createWalletClient({
+  account,
   chain: base,
   transport: http()
 });
@@ -30,11 +45,11 @@ export const IERC721Tools = {
     },
     function: async ({ contractAddress, owner }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "balanceOf",
-          args: [owner],
+args: [owner],
         });
 
         return { result };
@@ -45,7 +60,7 @@ export const IERC721Tools = {
   },
 
   ownerOf: {
-    description: "Returns the owner of the `tokenId` token. Requirements: - `tokenId` must exist.",
+    description: "Returns the owner of the `tokenId` token.",
     parameters: {
       type: "object",
       properties: {
@@ -61,11 +76,11 @@ export const IERC721Tools = {
     },
     function: async ({ contractAddress, tokenId }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "ownerOf",
-          args: [BigInt(tokenId)],
+args: [BigInt(tokenId)],
         });
 
         return { result };
@@ -76,7 +91,7 @@ export const IERC721Tools = {
   },
 
   safeTransferFrom: {
-    description: "Safely transfers `tokenId` token from `from` to `to`. Requirements: - `from` cannot be the zero address. - `to` cannot be the zero address. - `tokenId` token must exist and be owned by `from`. - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}. - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer. Emits a {Transfer} event.",
+    description: "Safely transfers `tokenId` token from `from` to `to`.",
     parameters: {
       type: "object",
       properties: {
@@ -105,14 +120,24 @@ export const IERC721Tools = {
         const data = encodeFunctionData({
           abi: parseAbi(IERC721ABI),
           functionName: "safeTransferFrom",
-          args: [from, to, BigInt(tokenId), data],
+args: [from, to, BigInt(tokenId), data],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IERC721ABI),
+          functionName: "safeTransferFrom",
+args: [from, to, BigInt(tokenId), data],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling safeTransferFrom on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called safeTransferFrom on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -120,8 +145,8 @@ export const IERC721Tools = {
     }
   },
 
-  safeTransferFrom: {
-    description: "Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients are aware of the ERC721 protocol to prevent tokens from being forever locked. Requirements: - `from` cannot be the zero address. - `to` cannot be the zero address. - `tokenId` token must exist and be owned by `from`. - If the caller is not `from`, it must have been allowed to move this token by either {approve} or {setApprovalForAll}. - If `to` refers to a smart contract, it must implement {IERC721Receiver-onERC721Received}, which is called upon a safe transfer. Emits a {Transfer} event.",
+  safeTransferFrom2: {
+    description: "Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients",
     parameters: {
       type: "object",
       properties: {
@@ -147,14 +172,24 @@ export const IERC721Tools = {
         const data = encodeFunctionData({
           abi: parseAbi(IERC721ABI),
           functionName: "safeTransferFrom",
-          args: [from, to, BigInt(tokenId)],
+args: [from, to, BigInt(tokenId)],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IERC721ABI),
+          functionName: "safeTransferFrom",
+args: [from, to, BigInt(tokenId)],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling safeTransferFrom on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called safeTransferFrom on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -163,7 +198,7 @@ export const IERC721Tools = {
   },
 
   transferFrom: {
-    description: "Transfers `tokenId` token from `from` to `to`. WARNING: Note that the caller is responsible to confirm that the recipient is capable of receiving ERC721 or else they may be permanently lost. Usage of {safeTransferFrom} prevents loss, though the caller must understand this adds an external call which potentially creates a reentrancy vulnerability. Requirements: - `from` cannot be the zero address. - `to` cannot be the zero address. - `tokenId` token must be owned by `from`. - If the caller is not `from`, it must be approved to move this token by either {approve} or {setApprovalForAll}. Emits a {Transfer} event.",
+    description: "Transfers `tokenId` token from `from` to `to`.",
     parameters: {
       type: "object",
       properties: {
@@ -189,14 +224,24 @@ export const IERC721Tools = {
         const data = encodeFunctionData({
           abi: parseAbi(IERC721ABI),
           functionName: "transferFrom",
-          args: [from, to, BigInt(tokenId)],
+args: [from, to, BigInt(tokenId)],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IERC721ABI),
+          functionName: "transferFrom",
+args: [from, to, BigInt(tokenId)],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling transferFrom on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called transferFrom on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -205,7 +250,7 @@ export const IERC721Tools = {
   },
 
   approve: {
-    description: "Gives permission to `to` to transfer `tokenId` token to another account. The approval is cleared when the token is transferred. Only a single account can be approved at a time, so approving the zero address clears previous approvals. Requirements: - The caller must own the token or be an approved operator. - `tokenId` must exist. Emits an {Approval} event.",
+    description: "Gives permission to `to` to transfer `tokenId` token to another account.",
     parameters: {
       type: "object",
       properties: {
@@ -228,14 +273,24 @@ export const IERC721Tools = {
         const data = encodeFunctionData({
           abi: parseAbi(IERC721ABI),
           functionName: "approve",
-          args: [to, BigInt(tokenId)],
+args: [to, BigInt(tokenId)],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IERC721ABI),
+          functionName: "approve",
+args: [to, BigInt(tokenId)],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling approve on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called approve on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -244,7 +299,7 @@ export const IERC721Tools = {
   },
 
   setApprovalForAll: {
-    description: "Approve or remove `operator` as an operator for the caller. Operators can call {transferFrom} or {safeTransferFrom} for any token owned by the caller. Requirements: - The `operator` cannot be the address zero. Emits an {ApprovalForAll} event.",
+    description: "Approve or remove `operator` as an operator for the caller.",
     parameters: {
       type: "object",
       properties: {
@@ -267,14 +322,24 @@ export const IERC721Tools = {
         const data = encodeFunctionData({
           abi: parseAbi(IERC721ABI),
           functionName: "setApprovalForAll",
-          args: [operator, approved],
+args: [operator, approved],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IERC721ABI),
+          functionName: "setApprovalForAll",
+args: [operator, approved],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling setApprovalForAll on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called setApprovalForAll on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -283,7 +348,7 @@ export const IERC721Tools = {
   },
 
   getApproved: {
-    description: "Returns the account approved for `tokenId` token. Requirements: - `tokenId` must exist.",
+    description: "Returns the account approved for `tokenId` token.",
     parameters: {
       type: "object",
       properties: {
@@ -299,11 +364,11 @@ export const IERC721Tools = {
     },
     function: async ({ contractAddress, tokenId }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "getApproved",
-          args: [BigInt(tokenId)],
+args: [BigInt(tokenId)],
         });
 
         return { result };
@@ -314,7 +379,7 @@ export const IERC721Tools = {
   },
 
   isApprovedForAll: {
-    description: "Returns if the `operator` is allowed to manage all of the assets of `owner`. See {setApprovalForAll}",
+    description: "Returns if the `operator` is allowed to manage all of the assets of `owner`.",
     parameters: {
       type: "object",
       properties: {
@@ -333,11 +398,11 @@ export const IERC721Tools = {
     },
     function: async ({ contractAddress, owner, operator }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(IERC721ABI),
           functionName: "isApprovedForAll",
-          args: [owner, operator],
+args: [owner, operator],
         });
 
         return { result };

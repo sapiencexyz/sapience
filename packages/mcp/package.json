@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
+    "dev": "tsx src/index.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rimraf dist"
   },
@@ -15,7 +15,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^18.11.18",
+    "@types/node": "^18.19.80",
     "rimraf": "^4.1.2",
     "ts-node": "^10.9.1",
     "tsx": "^4.19.2",

@@ -1,12 +1,27 @@
 // MCP Tool for IUMASettlementModule
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
 import { base } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
 import IUMASettlementModuleABI from '../out/IUMASettlementModule.ast.json';
 
-// Configure viem client
-const client = createPublicClient({
+// Configure viem clients
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
+// Get private key from environment
+const privateKey = process.env.PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error('PRIVATE_KEY environment variable is required for write operations');
+}
+
+// Create wallet client
+const account = privateKeyToAccount(privateKey as `0x${string}`);
+const walletClient = createWalletClient({
+  account,
   chain: base,
   transport: http()
 });
@@ -33,11 +48,20 @@ export const IUMASettlementModuleTools = {
           functionName: "submitSettlementPrice",
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IUMASettlementModuleABI),
+          functionName: "submitSettlementPrice",
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling submitSettlementPrice on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called submitSettlementPrice on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -65,11 +89,20 @@ export const IUMASettlementModuleTools = {
           functionName: "assertionResolvedCallback",
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IUMASettlementModuleABI),
+          functionName: "assertionResolvedCallback",
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling assertionResolvedCallback on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called assertionResolvedCallback on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -97,11 +130,20 @@ export const IUMASettlementModuleTools = {
           functionName: "assertionDisputedCallback",
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IUMASettlementModuleABI),
+          functionName: "assertionDisputedCallback",
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling assertionDisputedCallback on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called assertionDisputedCallback on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };

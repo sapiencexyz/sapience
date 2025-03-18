@@ -1,12 +1,27 @@
 // MCP Tool for IERC721Enumerable
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
 import { base } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
 import IERC721EnumerableABI from '../out/IERC721Enumerable.ast.json';
 
-// Configure viem client
-const client = createPublicClient({
+// Configure viem clients
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
+// Get private key from environment
+const privateKey = process.env.PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error('PRIVATE_KEY environment variable is required for write operations');
+}
+
+// Create wallet client
+const account = privateKeyToAccount(privateKey as `0x${string}`);
+const walletClient = createWalletClient({
+  account,
   chain: base,
   transport: http()
 });
@@ -27,7 +42,7 @@ export const IERC721EnumerableTools = {
     },
     function: async ({ contractAddress }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(IERC721EnumerableABI),
           functionName: "totalSupply",
@@ -41,7 +56,7 @@ export const IERC721EnumerableTools = {
   },
 
   tokenOfOwnerByIndex: {
-    description: "Returns a token ID owned by `owner` at a given `index` of its token list. Use along with {balanceOf} to enumerate all of ``owner``'s tokens. Requirements: - `owner` must be a valid address - `index` must be less than the balance of the tokens for the owner",
+    description: "Returns a token ID owned by `owner` at a given `index` of its token list.",
     parameters: {
       type: "object",
       properties: {
@@ -60,11 +75,11 @@ export const IERC721EnumerableTools = {
     },
     function: async ({ contractAddress, owner, index }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(IERC721EnumerableABI),
           functionName: "tokenOfOwnerByIndex",
-          args: [owner, BigInt(index)],
+args: [owner, BigInt(index)],
         });
 
         return { result };
@@ -75,7 +90,7 @@ export const IERC721EnumerableTools = {
   },
 
   tokenByIndex: {
-    description: "Returns a token ID at a given `index` of all the tokens stored by the contract. Use along with {totalSupply} to enumerate all tokens. Requirements: - `index` must be less than the total supply of the tokens",
+    description: "Returns a token ID at a given `index` of all the tokens stored by the contract.",
     parameters: {
       type: "object",
       properties: {
@@ -91,11 +106,11 @@ export const IERC721EnumerableTools = {
     },
     function: async ({ contractAddress, index }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(IERC721EnumerableABI),
           functionName: "tokenByIndex",
-          args: [BigInt(index)],
+args: [BigInt(index)],
         });
 
         return { result };

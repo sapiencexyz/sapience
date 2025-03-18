@@ -1,12 +1,27 @@
 // MCP Tool for IConfigurationModule
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
 import { base } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
 import IConfigurationModuleABI from '../out/IConfigurationModule.ast.json';
 
-// Configure viem client
-const client = createPublicClient({
+// Configure viem clients
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
+// Get private key from environment
+const privateKey = process.env.PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error('PRIVATE_KEY environment variable is required for write operations');
+}
+
+// Create wallet client
+const account = privateKeyToAccount(privateKey as `0x${string}`);
+const walletClient = createWalletClient({
+  account,
   chain: base,
   transport: http()
 });
@@ -24,21 +39,27 @@ export const IConfigurationModuleTools = {
         },
         owner: {
           type: "string",
+          description: "Address of a market owner, which can update the configurations and submit a settlement price",
         },
         collateralAsset: {
           type: "string",
+          description: "Address of the collateral used by the market. This cannot be a rebase token.",
         },
         feeCollectors: {
           type: "string[]",
+          description: "Addresses of fee collectors",
         },
         callbackRecipient: {
           type: "string",
+          description: "recipient of callback on resolution of epoch, can be address(0)",
         },
         minTradeSize: {
           type: "string",
+          description: "Minimum trade size for a position",
         },
         marketParams: {
           type: "any",
+          description: "Parameters used when new epochs are created",
         },
       },
       required: ["contractAddress", "owner", "collateralAsset", "feeCollectors", "callbackRecipient", "minTradeSize", "marketParams"]
@@ -49,14 +70,24 @@ export const IConfigurationModuleTools = {
         const data = encodeFunctionData({
           abi: parseAbi(IConfigurationModuleABI),
           functionName: "initializeMarket",
-          args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTradeSize), marketParams],
+args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTradeSize), marketParams],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IConfigurationModuleABI),
+          functionName: "initializeMarket",
+args: [owner, collateralAsset, feeCollectors, callbackRecipient, BigInt(minTradeSize), marketParams],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling initializeMarket on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called initializeMarket on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -84,11 +115,20 @@ export const IConfigurationModuleTools = {
           functionName: "updateMarket",
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IConfigurationModuleABI),
+          functionName: "updateMarket",
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling updateMarket on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called updateMarket on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -116,11 +156,20 @@ export const IConfigurationModuleTools = {
           functionName: "createEpoch",
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(IConfigurationModuleABI),
+          functionName: "createEpoch",
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling createEpoch on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called createEpoch on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };

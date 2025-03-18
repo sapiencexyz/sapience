@@ -1,12 +1,27 @@
 // MCP Tool for ISettlementModule
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
 import { base } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
 import ISettlementModuleABI from '../out/ISettlementModule.ast.json';
 
-// Configure viem client
-const client = createPublicClient({
+// Configure viem clients
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
+// Get private key from environment
+const privateKey = process.env.PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error('PRIVATE_KEY environment variable is required for write operations');
+}
+
+// Create wallet client
+const account = privateKeyToAccount(privateKey as `0x${string}`);
+const walletClient = createWalletClient({
+  account,
   chain: base,
   transport: http()
 });
@@ -24,6 +39,7 @@ export const ISettlementModuleTools = {
         },
         positionId: {
           type: "string",
+          description: "The ID of the position to settle",
         },
       },
       required: ["contractAddress", "positionId"]
@@ -34,14 +50,24 @@ export const ISettlementModuleTools = {
         const data = encodeFunctionData({
           abi: parseAbi(ISettlementModuleABI),
           functionName: "settlePosition",
-          args: [BigInt(positionId)],
+args: [BigInt(positionId)],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(ISettlementModuleABI),
+          functionName: "settlePosition",
+args: [BigInt(positionId)],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling settlePosition on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called settlePosition on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -69,11 +95,20 @@ export const ISettlementModuleTools = {
           functionName: "__manual_setSettlementPrice",
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(ISettlementModuleABI),
+          functionName: "__manual_setSettlementPrice",
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling __manual_setSettlementPrice on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called __manual_setSettlementPrice on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };

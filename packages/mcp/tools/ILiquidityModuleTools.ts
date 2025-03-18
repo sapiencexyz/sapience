@@ -1,12 +1,27 @@
 // MCP Tool for ILiquidityModule
-import { createPublicClient, http, parseAbi, encodeFunctionData } from 'viem';
+import { createPublicClient, http, parseAbi, encodeFunctionData, createWalletClient } from 'viem';
 import { base } from 'viem/chains';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // Import ABI from Foundry artifacts
 import ILiquidityModuleABI from '../out/ILiquidityModule.ast.json';
 
-// Configure viem client
-const client = createPublicClient({
+// Configure viem clients
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
+// Get private key from environment
+const privateKey = process.env.PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error('PRIVATE_KEY environment variable is required for write operations');
+}
+
+// Create wallet client
+const account = privateKeyToAccount(privateKey as `0x${string}`);
+const walletClient = createWalletClient({
+  account,
   chain: base,
   transport: http()
 });
@@ -24,6 +39,7 @@ export const ILiquidityModuleTools = {
         },
         params: {
           type: "any",
+          description: "The parameters for creating the liquidity position",
         },
       },
       required: ["contractAddress", "params"]
@@ -34,14 +50,24 @@ export const ILiquidityModuleTools = {
         const data = encodeFunctionData({
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "createLiquidityPosition",
-          args: [params],
+args: [params],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(ILiquidityModuleABI),
+          functionName: "createLiquidityPosition",
+args: [params],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling createLiquidityPosition on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called createLiquidityPosition on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -60,6 +86,7 @@ export const ILiquidityModuleTools = {
         },
         params: {
           type: "any",
+          description: "The parameters for decreasing the liquidity position",
         },
       },
       required: ["contractAddress", "params"]
@@ -70,14 +97,24 @@ export const ILiquidityModuleTools = {
         const data = encodeFunctionData({
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "decreaseLiquidityPosition",
-          args: [params],
+args: [params],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(ILiquidityModuleABI),
+          functionName: "decreaseLiquidityPosition",
+args: [params],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling decreaseLiquidityPosition on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called decreaseLiquidityPosition on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -105,11 +142,20 @@ export const ILiquidityModuleTools = {
           functionName: "increaseLiquidityPosition",
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(ILiquidityModuleABI),
+          functionName: "increaseLiquidityPosition",
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling increaseLiquidityPosition on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called increaseLiquidityPosition on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -131,7 +177,7 @@ export const ILiquidityModuleTools = {
     },
     function: async ({ contractAddress }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "quoteLiquidityPositionTokens",
@@ -158,7 +204,7 @@ export const ILiquidityModuleTools = {
     },
     function: async ({ contractAddress }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "quoteRequiredCollateral",
@@ -172,7 +218,7 @@ export const ILiquidityModuleTools = {
   },
 
   depositCollateral: {
-    description: "The fee collector is maybe an L2 sequencer that deposits its fees periodically instead of having upfront capital.  it's like a smart/trusted margin account",
+    description: "The fee collector is maybe an L2 sequencer that deposits its fees periodically instead of",
     parameters: {
       type: "object",
       properties: {
@@ -182,9 +228,11 @@ export const ILiquidityModuleTools = {
         },
         positionId: {
           type: "string",
+          description: "The ID of the liquidity position (fee collector has to be owner)",
         },
         collateralAmount: {
           type: "string",
+          description: "The amount of collateral to increase",
         },
       },
       required: ["contractAddress", "positionId", "collateralAmount"]
@@ -195,14 +243,24 @@ export const ILiquidityModuleTools = {
         const data = encodeFunctionData({
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "depositCollateral",
-          args: [BigInt(positionId), BigInt(collateralAmount)],
+args: [BigInt(positionId), BigInt(collateralAmount)],
         });
 
-        // For MCP we return the transaction data that should be executed
+        // Send transaction
+        const hash = await walletClient.writeContract({
+          address: contractAddress,
+          abi: parseAbi(ILiquidityModuleABI),
+          functionName: "depositCollateral",
+args: [BigInt(positionId), BigInt(collateralAmount)],
+        });
+
+        // Wait for transaction
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
         return {
-          to: contractAddress,
-          data,
-          description: `Calling depositCollateral on ${contractAddress}`
+          hash,
+          receipt,
+          description: `Called depositCollateral on ${contractAddress}`
         };
       } catch (error) {
         return { error: error.message };
@@ -221,31 +279,35 @@ export const ILiquidityModuleTools = {
         },
         liquidity: {
           type: "string",
+          description: "The amount of liquidity",
         },
         sqrtPriceX96: {
           type: "string",
+          description: "The current sqrt price",
         },
         sqrtPriceAX96: {
           type: "string",
+          description: "The sqrt price of the lower tick",
         },
         sqrtPriceBX96: {
           type: "string",
+          description: "The sqrt price of the upper tick",
         },
       },
       required: ["contractAddress", "liquidity", "sqrtPriceX96", "sqrtPriceAX96", "sqrtPriceBX96"]
     },
     function: async ({ contractAddress, liquidity, sqrtPriceX96, sqrtPriceAX96, sqrtPriceBX96 }) => {
       try {
-        const result = await client.readContract({
+        const result = await publicClient.readContract({
           address: contractAddress,
           abi: parseAbi(ILiquidityModuleABI),
           functionName: "getTokensFromLiquidity",
-          args: [BigInt(liquidity), BigInt(sqrtPriceX96), BigInt(sqrtPriceAX96), BigInt(sqrtPriceBX96)],
+args: [BigInt(liquidity), BigInt(sqrtPriceX96), BigInt(sqrtPriceAX96), BigInt(sqrtPriceBX96)],
         });
 
         return {
-          amount0: result[0],
-          amount1: result[1],
+          amount0: (result as [bigint, bigint])[0],
+          amount1: (result as [bigint, bigint])[1],
         };
       } catch (error) {
         return { error: error.message };
