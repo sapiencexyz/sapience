@@ -385,7 +385,7 @@ export const useChart = ({
             from,
             to: now,
             interval,
-            trailingAvgTime: 7 * 24 * 60 * 60,
+            trailingAvgTime: 28 * 24 * 60 * 60,
           },
         });
 
