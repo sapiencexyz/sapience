@@ -146,6 +146,16 @@ async function main() {
     }
 
     if (resourceInfo.priceIndexer) {
+      // First do an initial indexing
+      console.log(`[Worker] Starting initial indexing for resource ${resourceInfo.name}`);
+      try {
+        await resourceInfo.priceIndexer.indexBlocks(resource, []);
+        console.log(`[Worker] Completed initial indexing for resource ${resourceInfo.name}`);
+      } catch (error) {
+        console.error(`[Worker] Error during initial indexing for ${resourceInfo.name}:`, error);
+      }
+
+      // Then start watching for new blocks
       jobs.push(
         createResilientProcess(
           () => resourceInfo.priceIndexer.watchBlocksForResource(resource),

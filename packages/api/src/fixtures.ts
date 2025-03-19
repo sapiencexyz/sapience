@@ -4,8 +4,8 @@ import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import btcIndexer from './resourcePriceFunctions/btcIndexer';
 import { Deployment, MarketInfo } from './interfaces';
+import { temperatureIndexer, precipitationIndexer } from './resourcePriceFunctions/weatherIndexer';
 
-// TAT = Trailing Average Time
 export const TIME_INTERVALS = {
   intervals: {
     INTERVAL_1_MINUTE: 60,
@@ -15,8 +15,8 @@ export const TIME_INTERVALS = {
     INTERVAL_4_HOURS: 4 * 60 * 60,
     INTERVAL_1_DAY: 24 * 60 * 60,
     INTERVAL_7_DAYS: 7 * 24 * 60 * 60,
-    INTERVAL_28_DAYS: 28 * 24 * 60 * 60,
-  },
+    INTERVAL_28_DAYS: 28 * 24 * 60 * 60
+  }
 };
 const safeRequire = async (path: string): Promise<Deployment | null> => {
   try {
@@ -28,30 +28,41 @@ const safeRequire = async (path: string): Promise<Deployment | null> => {
 };
 
 export const RESOURCES = [
+  // {
+  //   name: 'Ethereum Gas',
+  //   slug: 'ethereum-gas',
+  //   priceIndexer: new evmIndexer(mainnet.id),
+  // },
+  // {
+  //   name: 'Base Gas',
+  //   slug: 'base-gas',
+  //   priceIndexer: new evmIndexer(base.id),
+  // },
+  // {
+  //   name: 'Arbitrum Gas',
+  //   slug: 'arbitrum-gas',
+  //   priceIndexer: new evmIndexer(arbitrum.id),
+  // },
+  // {
+  //   name: 'Ethereum Blobspace',
+  //   slug: 'ethereum-blobspace',
+  //   priceIndexer: new ethBlobsIndexer(mainnet.id),
+  // },
+  // {
+  //   name: 'Bitcoin Fees',
+  //   slug: 'bitcoin-fees',
+  //   priceIndexer: new btcIndexer(),
+  //   timeInterval: []
+  // },
   {
-    name: 'Ethereum Gas',
-    slug: 'ethereum-gas',
-    priceIndexer: new evmIndexer(mainnet.id),
+    name: 'NYC Temperature',
+    slug: 'nyc-temperature',
+    priceIndexer: temperatureIndexer,
   },
   {
-    name: 'Base Gas',
-    slug: 'base-gas',
-    priceIndexer: new evmIndexer(base.id),
-  },
-  {
-    name: 'Arbitrum Gas',
-    slug: 'arbitrum-gas',
-    priceIndexer: new evmIndexer(arbitrum.id),
-  },
-  {
-    name: 'Ethereum Blobspace',
-    slug: 'ethereum-blobspace',
-    priceIndexer: new ethBlobsIndexer(mainnet.id),
-  },
-  {
-    name: 'Bitcoin Fees',
-    slug: 'bitcoin-fees',
-    priceIndexer: new btcIndexer(),
+    name: 'LA Precipitation',
+    slug: 'la-precipitation',
+    priceIndexer: precipitationIndexer,
   },
   ...(process.env.CELENIUM_API_KEY
     ? [
@@ -107,14 +118,14 @@ const initializeMarkets = async () => {
   const FULL_MARKET_LIST: MarketInfo[] = [];
 
   // Mainnet Deployments
-  await addMarketYinYang(FULL_MARKET_LIST, base.id, '-beta'); // Remove after settling feb
-  await addMarketYinYang(FULL_MARKET_LIST, base.id);
-  await addMarketYinYang(FULL_MARKET_LIST, base.id, '-blobs', RESOURCES[3]); // Use Ethereum Blobspace for -blobs
+  // await addMarketYinYang(FULL_MARKET_LIST, base.id, '-beta'); // Remove after settling feb
+  // await addMarketYinYang(FULL_MARKET_LIST, base.id);
+  // await addMarketYinYang(FULL_MARKET_LIST, base.id, '-blobs', RESOURCES[3]); // Use Ethereum Blobspace for -blobs
 
-  // Development Deployments
-  if (process.env.NODE_ENV === 'development') {
-    await addMarketYinYang(FULL_MARKET_LIST, cannon.id);
-  }
+  // // Development Deployments
+  // if (process.env.NODE_ENV === 'development') {
+  //   await addMarketYinYang(FULL_MARKET_LIST, cannon.id);
+  // }
 
   // Testnet Deployments
   if (

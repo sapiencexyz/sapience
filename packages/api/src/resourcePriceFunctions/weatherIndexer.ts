@@ -1,36 +1,13 @@
-import axios, { AxiosError } from 'axios';
 import dotenv from 'dotenv';
-import fs from 'fs/promises';
-import path from 'path';
+import { IResourcePriceIndexer } from '../interfaces';
+import { resourcePriceRepository } from '../db';
+import { Resource } from '../models/Resource';
+import WeatherService from './weatherService';
+import Sentry from '../sentry';
 
 dotenv.config();
 
 // Configuration
-const CONFIG = {
-    NYC: {
-        LAT: 40.7128,
-        LON: -74.0060,
-        NAME: 'New York City',
-        API: {
-            BASE_URL: 'https://api.weather.gov',
-            HEADERS: {
-                'User-Agent': '(weather_service, contact@example.com)',
-                'Accept': 'application/geo+json'
-            }
-        }
-    },
-    LA: {
-        STATION_ID: 'USW00023272',
-        NAME: 'SAN FRANCISCO DWTN',
-        API: {
-            BASE_URL: 'https://www.ncdc.noaa.gov/cdo-web/api/v2',
-            TOKEN: process.env.NOAA_TOKEN
-        }
-    },
-    UPDATE_INTERVAL_MS: 30 * 60 * 1000, // 30 minutes
-    LOOKBACK_DAYS: 15,
-    DATA_DIR: 'data'
-} as const;
 
 // Type definitions
 interface WeatherRecord {
@@ -42,37 +19,6 @@ interface WeatherRecord {
     stationName: string;
 }
 
-interface WeatherData {
-    temperature: WeatherRecord[];
-    precipitation: WeatherRecord[];
-}
-
-interface NOAAResponse {
-    results: Array<{
-        date: string;
-        value: number;
-    }>;
-}
-
-interface NWSStation {
-    properties: {
-        stationIdentifier: string;
-        name: string;
-    };
-}
-
-interface NWSObservation {
-    timestamp: string;
-    temperature: {
-        value: number | null;
-    };
-}
-
-interface NWSResponse {
-    features: Array<{
-        properties: NWSObservation;
-    }>;
-}
 
 interface WeatherSummary {
     timestamp: string;
@@ -94,261 +40,199 @@ interface WeatherSummary {
     };
 }
 
+// Create a single shared weather service instance
+const sharedWeatherService = new WeatherService();
 
-class WeatherService {
-    private nycStation: string = '';
-    private cumulativePrecipitation: number = 0;
+class WeatherIndexer implements IResourcePriceIndexer {
+    private isWatching: boolean = false;
+    private pollInterval: NodeJS.Timeout | null = null;
+    private readonly POLL_DELAY = 30 * 60 * 1000; // 30 minutes
+    private readonly resourceType: 'temperature' | 'precipitation';
 
-    constructor() {
-        this.validateConfig();
+    constructor(resourceType: 'temperature' | 'precipitation') {
+        this.resourceType = resourceType;
+        console.log(`[WeatherIndexer] Initialized for ${resourceType}`);
     }
 
-    /**
-     * Starts the weather service, performing initial update and scheduling regular updates
-     */
-    public async start(): Promise<void> {
-        console.log('\n=== Starting Weather Service ===');
-        console.log(`Update Interval: ${CONFIG.UPDATE_INTERVAL_MS / 60000} minutes`);
-        console.log(`History: ${CONFIG.LOOKBACK_DAYS} days`);
-        console.log('Monitoring:');
-        console.log(`- ${CONFIG.NYC.NAME} Temperature (NWS API)`);
-        console.log(`- ${CONFIG.LA.NAME} Precipitation (NOAA API)`);
-        
-        await this.checkForUpdates();
-        
-        setInterval(async () => {
-            console.log('\n=== Scheduled Update ===', new Date().toISOString());
-            try {
-                await this.checkForUpdates();
-            } catch (error) {
-                console.error('Scheduled update failed:', error);
-            }
-        }, CONFIG.UPDATE_INTERVAL_MS);
-    }
-
-    /**
-     * Fetches precipitation data from NOAA API for Los Angeles
-     */
-    private async fetchLAPrecipitation(): Promise<WeatherRecord[]> {
+    private async storeWeatherPrice(resource: Resource, weatherData: WeatherSummary) {
         try {
-            const { startDate, endDate } = this.getDateRange();
-            
-            const url = `${CONFIG.LA.API.BASE_URL}/data`;
-            const params = {
-                datasetid: 'GHCND',
-                stationid: `GHCND:${CONFIG.LA.STATION_ID}`,
-                startdate: startDate.toISOString().split('T')[0],
-                enddate: endDate.toISOString().split('T')[0],
-                limit: 1000,
-                datatypeid: 'PRCP',
-                units: 'metric'
+            console.log(`[WeatherIndexer.${this.resourceType}] Attempting to store weather price for resource ${resource.slug} (ID: ${resource.id})`);
+            console.log(`[WeatherIndexer.${this.resourceType}] Latest weather data:`, {
+                temperature: weatherData.temperature.latest,
+                precipitation: weatherData.precipitation.latest
+            });
+
+            if (this.resourceType === 'temperature' && weatherData.temperature.latest?.temperature !== undefined) {
+                const price = {
+                    resource: { id: resource.id },
+                    timestamp: Math.floor(new Date(weatherData.temperature.latest.timestamp).getTime() / 1000),
+                    value: weatherData.temperature.latest.temperature.toString(),
+                    used: "1",
+                    feePaid: "1",
+                    blockNumber: 0,
+                };
+                console.log(`[WeatherIndexer.${this.resourceType}] Storing temperature price:`, price);
+                try {
+                    const result = await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+                    console.log(`[WeatherIndexer.${this.resourceType}] Database upsert result:`, result);
+                } catch (dbError) {
+                    console.error(`[WeatherIndexer.${this.resourceType}] Database error during upsert:`, dbError);
+                    throw dbError;
+                }
+                console.log(`[WeatherIndexer.${this.resourceType}] Successfully stored temperature price`);
+            } else if (this.resourceType === 'precipitation' && weatherData.precipitation.latest?.precipitation !== undefined) {
+                const price = {
+                    resource: { id: resource.id },
+                    timestamp: Math.floor(new Date(weatherData.precipitation.latest.timestamp).getTime() / 1000),
+                    value: weatherData.precipitation.latest.precipitation.toString(),
+                    used: "1",
+                    feePaid: "1",
+                    blockNumber: 0,
+                };
+                console.log(`[WeatherIndexer.${this.resourceType}] Storing precipitation price:`, price);
+                try {
+                    const result = await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+                    console.log(`[WeatherIndexer.${this.resourceType}] Database upsert result:`, result);
+                } catch (dbError) {
+                    console.error(`[WeatherIndexer.${this.resourceType}] Database error during upsert:`, dbError);
+                    throw dbError;
+                }
+                console.log(`[WeatherIndexer.${this.resourceType}] Successfully stored precipitation price`);
+            } else {
+                console.log(`[WeatherIndexer.${this.resourceType}] No valid data to store for type ${this.resourceType}`);
+                console.log(`[WeatherIndexer.${this.resourceType}] Resource type: ${this.resourceType}`);
+                console.log(`[WeatherIndexer.${this.resourceType}] Temperature data:`, weatherData.temperature.latest);
+                console.log(`[WeatherIndexer.${this.resourceType}] Precipitation data:`, weatherData.precipitation.latest);
+            }
+        } catch (error) {
+            console.error(`[WeatherIndexer.${this.resourceType}] Error storing weather price:`, error);
+            Sentry.withScope((scope) => {
+                scope.setExtra('resource', resource.slug);
+                scope.setExtra('type', this.resourceType);
+                scope.setExtra('weatherData', JSON.stringify(weatherData));
+                Sentry.captureException(error);
+            });
+            throw error;
+        }
+    }
+
+    async indexBlockPriceFromTimestamp(
+        resource: Resource,
+        startTimestamp: number,
+        endTimestamp?: number
+    ): Promise<boolean> {
+        try {
+            const weatherData = await sharedWeatherService.getHistoricalData(
+                startTimestamp,
+                endTimestamp
+            );
+
+            for (const reading of weatherData) {
+                await this.storeWeatherPrice(resource, reading);
+            }
+
+            return true;
+        } catch (error) {
+            console.error(`[WeatherIndexer.${this.resourceType}] Error indexing historical data:`, error);
+            Sentry.withScope((scope) => {
+                scope.setExtra('resource', resource.slug);
+                scope.setExtra('type', this.resourceType);
+                scope.setExtra('startTimestamp', startTimestamp);
+                scope.setExtra('endTimestamp', endTimestamp);
+                Sentry.captureException(error);
+            });
+            return false;
+        }
+    }
+
+    async indexBlocks(resource: Resource, blocks: number[]): Promise<boolean> {
+        try {
+            console.log(`[WeatherIndexer.${this.resourceType}] Starting indexBlocks for resource ${resource.slug}`);
+            const weatherData = await sharedWeatherService.getLatestData();
+            console.log(`[WeatherIndexer.${this.resourceType}] Got latest weather data in indexBlocks`);
+            console.log(`[WeatherIndexer.${this.resourceType}] Weather data structure:`, {
+                hasTemperature: !!weatherData.temperature.latest,
+                hasPrecipitation: !!weatherData.precipitation.latest,
+                temperature: weatherData.temperature.latest,
+                precipitation: weatherData.precipitation.latest
+            });
+
+            // Create a new WeatherSummary with the latest data
+            const latestData: WeatherSummary = {
+                timestamp: new Date().toISOString(),
+                nycStation: weatherData.nycStation,
+                laStation: weatherData.laStation,
+                temperature: {
+                    location: weatherData.temperature.location,
+                    records: weatherData.temperature.records,
+                    latest: weatherData.temperature.latest
+                },
+                precipitation: {
+                    location: weatherData.precipitation.location,
+                    records: weatherData.precipitation.records,
+                    latest: weatherData.precipitation.latest,
+                    cumulative: weatherData.precipitation.cumulative
+                }
             };
-            
-            const response = await axios.get<NOAAResponse>(url, {
-                params,
-                headers: { token: CONFIG.LA.API.TOKEN }
-            });
 
-            if (!response.data?.results) {
-                throw new Error('Invalid NOAA API response format');
-            }
-
-            let totalPrecip = 0;
-            const records = response.data.results
-                .filter(result => typeof result.value === 'number')
-                .map(result => {
-                    const precipMM = result.value;
-                    totalPrecip += precipMM;
-                    return {
-                        timestamp: new Date(result.date).toISOString(),
-                        precipitation: precipMM,
-                        precipitationInches: Number(this.convertMillimetersToInches(precipMM).toFixed(2)),
-                        stationName: CONFIG.LA.NAME
-                    };
-                });
-
-            console.log(`Retrieved ${records.length} precipitation records`);
-            console.log(`Total: ${totalPrecip.toFixed(1)}mm (${this.convertMillimetersToInches(totalPrecip).toFixed(2)}in)`);
-            
-            return records;
+            await this.storeWeatherPrice(resource, latestData);
+            console.log(`[WeatherIndexer.${this.resourceType}] Successfully completed indexBlocks`);
+            return true;
         } catch (error) {
-            this.handleApiError(error, 'LA precipitation');
-            throw error;
+            console.error(`[WeatherIndexer.${this.resourceType}] Error indexing blocks:`, error);
+            Sentry.withScope((scope) => {
+                scope.setExtra('resource', resource.slug);
+                scope.setExtra('type', this.resourceType);
+                scope.setExtra('blocks', blocks);
+                Sentry.captureException(error);
+            });
+            return false;
         }
     }
 
-    /**
-     * Fetches temperature data from NWS API for New York City
-     */
-    private async fetchNYCTemperature(): Promise<WeatherRecord[]> {
+    async watchBlocksForResource(resource: Resource): Promise<void> {
+        console.log(`[WeatherIndexer.${this.resourceType}] Starting to watch blocks for resource ${resource.slug}`);
+        if (this.isWatching) {
+            console.log(`[WeatherIndexer.${this.resourceType}] Already watching weather for this resource`);
+            return;
+        }
+
         try {
-            const { startDate, endDate } = this.getDateRange();
-            
-            // Get the nearest weather station
-            const pointsUrl = `${CONFIG.NYC.API.BASE_URL}/points/${CONFIG.NYC.LAT},${CONFIG.NYC.LON}`;
-            const pointsResponse = await axios.get(pointsUrl, { headers: CONFIG.NYC.API.HEADERS });
-            
-            const stationsUrl = pointsResponse.data.properties.observationStations;
-            const stationsResponse = await axios.get<{ features: NWSStation[] }>(stationsUrl, { 
-                headers: CONFIG.NYC.API.HEADERS 
-            });
+            console.log(`[WeatherIndexer.${this.resourceType}] Starting weather service`);
+            await sharedWeatherService.start();
+            console.log(`[WeatherIndexer.${this.resourceType}] Weather service started successfully`);
 
-            const station = stationsResponse.data.features[0].properties;
-            this.nycStation = station.name;
-
-            // Fetch observations
-            const observationsUrl = `${CONFIG.NYC.API.BASE_URL}/stations/${station.stationIdentifier}/observations`;
-            const observationsResponse = await axios.get<NWSResponse>(observationsUrl, {
-                headers: CONFIG.NYC.API.HEADERS,
-                params: {
-                    start: startDate.toISOString(),
-                    end: endDate.toISOString()
+            this.pollInterval = setInterval(async () => {
+                try {
+                    console.log(`[WeatherIndexer.${this.resourceType}] Polling for new weather data`);
+                    const weatherData = await sharedWeatherService.getLatestData();
+                    console.log(`[WeatherIndexer.${this.resourceType}] Received new weather data`);
+                    await this.storeWeatherPrice(resource, weatherData);
+                } catch (error) {
+                    console.error(`[WeatherIndexer.${this.resourceType}] Error in weather polling:`, error);
+                    Sentry.withScope((scope) => {
+                        scope.setExtra('resource', resource.slug);
+                        scope.setExtra('type', this.resourceType);
+                        Sentry.captureException(error);
+                    });
                 }
-            });
+            }, this.POLL_DELAY);
 
-            const records = observationsResponse.data.features
-                .map(feature => feature.properties)
-                .filter((obs: NWSObservation) => obs.temperature?.value !== null)
-                .map((obs: NWSObservation) => ({
-                    timestamp: new Date(obs.timestamp).toISOString(),
-                    temperature: Number(obs.temperature.value!.toFixed(1)),
-                    temperatureF: Number(this.convertCelsiusToFahrenheit(obs.temperature.value!).toFixed(1)),
-                    stationName: station.name
-                }));
-
-            console.log(`Retrieved ${records.length} temperature records`);
-            return records;
+            this.isWatching = true;
+            console.log(`[WeatherIndexer.${this.resourceType}] Successfully started watching blocks`);
         } catch (error) {
-            this.handleApiError(error, 'NYC temperature');
+            console.error(`[WeatherIndexer.${this.resourceType}] Failed to start watching blocks:`, error);
             throw error;
-        }
-    }
-
-    /**
-     * Performs a weather update cycle, fetching and saving new data
-     */
-    private async checkForUpdates(): Promise<void> {
-        try {
-            console.log('\n=== Fetching Weather Updates ===');
-            
-            const [tempRecords, precipRecords] = await Promise.all([
-                this.fetchNYCTemperature(),
-                this.fetchLAPrecipitation()
-            ]);
-
-            await this.saveData({ temperature: tempRecords, precipitation: precipRecords });
-            console.log('\n=== Weather Update Complete ===');
-        } catch (error) {
-            console.error('Weather update failed:', error);
-            throw error;
-        }
-    }
-
-    /**
-     * Saves weather data to a JSON file
-     */
-    private async saveData(data: WeatherData): Promise<void> {
-        await this.ensureDataDirectory();
-        const timestamp = new Date().toISOString().replace(/:/g, '-');
-        const filepath = path.join(CONFIG.DATA_DIR, `weather_data_${timestamp}.json`);
-
-        this.cumulativePrecipitation = data.precipitation.reduce(
-            (sum, record) => sum + (record.precipitation || 0), 
-            0
-        );
-
-        const summary: WeatherSummary = {
-            timestamp: new Date().toISOString(),
-            nycStation: this.nycStation,
-            laStation: CONFIG.LA.NAME,
-            temperature: {
-                location: CONFIG.NYC.NAME,
-                records: data.temperature,
-                latest: data.temperature[data.temperature.length - 1] || null
-            },
-            precipitation: {
-                location: CONFIG.LA.NAME,
-                records: data.precipitation,
-                latest: data.precipitation[data.precipitation.length - 1] || null,
-                cumulative: {
-                    millimeters: Number(this.cumulativePrecipitation.toFixed(1)),
-                    inches: Number(this.convertMillimetersToInches(this.cumulativePrecipitation).toFixed(2))
-                }
-            }
-        };
-
-        try {
-            await fs.writeFile(filepath, JSON.stringify(summary, null, 2));
-            this.logLatestReadings(summary);
-        } catch (error) {
-            console.error('Failed to save weather data:', error);
-            throw error;
-        }
-    }
-
-    // Utility methods
-    private validateConfig(): void {
-        if (!CONFIG.LA.API.TOKEN) {
-            throw new Error('NOAA API token not found in environment variables');
-        }
-    }
-
-    private getDateRange(): { startDate: Date; endDate: Date } {
-        const endDate = new Date();
-        const startDate = new Date(endDate.getTime() - (CONFIG.LOOKBACK_DAYS * 24 * 60 * 60 * 1000));
-        return { startDate, endDate };
-    }
-
-    private async ensureDataDirectory(): Promise<void> {
-        await fs.mkdir(CONFIG.DATA_DIR, { recursive: true });
-    }
-
-    private convertCelsiusToFahrenheit(celsius: number): number {
-        return (celsius * 9/5) + 32;
-    }
-
-    private convertMillimetersToInches(mm: number): number {
-        return mm / 25.4;
-    }
-
-    private handleApiError(error: unknown, context: string): void {
-        if (axios.isAxiosError(error)) {
-            const axiosError = error as AxiosError;
-            console.error(`${context} API Error:`, {
-                status: axiosError.response?.status,
-                statusText: axiosError.response?.statusText,
-                data: axiosError.response?.data
-            });
-        }
-    }
-
-    private logLatestReadings(summary: WeatherSummary): void {
-        console.log('\n=== Latest Weather Readings ===');
-        
-        if (summary.temperature.latest) {
-            console.log('\nNYC Temperature:');
-            console.log(`Time: ${summary.temperature.latest.timestamp} (UTC)`);
-            console.log(`Temperature: ${summary.temperature.latest.temperature}°C ` +
-                       `(${summary.temperature.latest.temperatureF}°F)`);
-            console.log(`Station: ${summary.temperature.latest.stationName}`);
-        }
-
-        if (summary.precipitation.latest) {
-            console.log('\nLA Precipitation:');
-            console.log(`Time: ${summary.precipitation.latest.timestamp} (UTC)`);
-            console.log(`Precipitation: ${summary.precipitation.latest.precipitation}mm ` +
-                       `(${summary.precipitation.latest.precipitationInches}in)`);
-            console.log(`Cumulative (${CONFIG.LOOKBACK_DAYS} days): ` +
-                       `${summary.precipitation.cumulative.millimeters}mm ` +
-                       `(${summary.precipitation.cumulative.inches}in)`);
-            console.log(`Station: ${summary.precipitation.latest.stationName}`);
         }
     }
 }
 
-// Start the service
-const weatherService = new WeatherService();
-weatherService.start().catch(error => {
+// Create separate indexers for temperature and precipitation
+export const temperatureIndexer = new WeatherIndexer('temperature');
+export const precipitationIndexer = new WeatherIndexer('precipitation');
+
+// Start the shared weather service
+sharedWeatherService.start().catch(error => {
     console.error('Failed to start weather service:', error);
     process.exit(1);
 }); 
