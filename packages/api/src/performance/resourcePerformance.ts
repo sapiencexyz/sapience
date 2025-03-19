@@ -1238,7 +1238,7 @@ export class ResourcePerformance {
     epoch: string
   ) {
     this.checkInterval(interval);
-    const epochId = this.getEpochId(chainId, address, epoch);
+    const { id: epochId } = this.getEpochId(chainId, address, epoch);
     if (!this.persistentStorage[interval].marketStore[epochId]) {
       return [];
     }
