@@ -5,6 +5,19 @@ import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import btcIndexer from './resourcePriceFunctions/btcIndexer';
 import { Deployment, MarketInfo } from './interfaces';
 
+// TAT = Trailing Average Time
+export const TIME_INTERVALS = {
+  intervals: {
+    INTERVAL_1_MINUTE: 60,
+    INTERVAL_5_MINUTES: 5 * 60,
+    INTERVAL_15_MINUTES: 15 * 60,
+    INTERVAL_30_MINUTES: 30 * 60,
+    INTERVAL_4_HOURS: 4 * 60 * 60,
+    INTERVAL_1_DAY: 24 * 60 * 60,
+    INTERVAL_7_DAYS: 7 * 24 * 60 * 60,
+    INTERVAL_28_DAYS: 28 * 24 * 60 * 60,
+  },
+};
 const safeRequire = async (path: string): Promise<Deployment | null> => {
   try {
     const module = await import(path);

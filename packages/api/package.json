@@ -29,6 +29,7 @@
   "dependencies": {
     "@apollo/server": "^4.11.3",
     "@apollo/server-plugin-response-cache": "^4.1.4",
+    "@msgpack/msgpack": "^3.1.1",
     "@sentry/cli": "^2.39.0",
     "@sentry/node": "^8.40.0",
     "axios": "^1.7.7",
