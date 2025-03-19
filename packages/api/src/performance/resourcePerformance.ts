@@ -1162,7 +1162,10 @@ export class ResourcePerformance {
       throw new Error(`Epoch not found for ${chainId}-${address}-${epoch}`);
     }
 
-    return theEpoch.id;
+    return {
+      id: theEpoch.id,
+      isCumulative: theEpoch.market.isCumulative,
+    };
   }
 
   getResourcePrices(from: number, to: number, interval: number) {
@@ -1183,11 +1186,14 @@ export class ResourcePerformance {
     interval: number,
     chainId: number,
     address: string,
-    epoch: string,
-    isCumulative: boolean = false
+    epoch: string
   ) {
     this.checkInterval(interval);
-    const epochId = this.getEpochId(chainId, address, epoch);
+    const { id: epochId, isCumulative } = this.getEpochId(
+      chainId,
+      address,
+      epoch
+    );
     if (!this.persistentStorage[interval].indexStore[epochId]) {
       return [];
     }

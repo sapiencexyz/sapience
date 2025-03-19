@@ -501,41 +501,6 @@ export class CandleResolver {
     // }
   }
 
-  @Query(() => [CandleType])
-  async indexCumulativeCandles(
-    @Arg('chainId', () => Int) chainId: number,
-    @Arg('address', () => String) address: string,
-    @Arg('epochId', () => String) epochId: string,
-    @Arg('from', () => Int) from: number,
-    @Arg('to', () => Int) to: number,
-    @Arg('interval', () => Int) interval: number
-  ): Promise<CandleType[]> {
-    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance =
-      resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
-        chainId,
-        address
-      );
-
-    if (!resourcePerformance) {
-      throw new Error(
-        `Resource performance not initialized for ${chainId}-${address}`
-      );
-    }
-
-    const prices = await resourcePerformance.getIndexPrices(
-      from,
-      to,
-      interval,
-      chainId,
-      address,
-      epochId,
-      true
-    );
-
-    return prices;
-  }
-
   // For retrieving the exact settlement price
   @Query(() => CandleType, { nullable: true })
   async indexPriceAtTime(
