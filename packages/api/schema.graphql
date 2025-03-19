@@ -31,6 +31,7 @@ type MarketType {
   deployTxnBlockNumber: Int
   epochs: [EpochType!]!
   id: ID!
+  isCumulative: Boolean!
   isYin: Boolean!
   owner: String
   resource: ResourceType
