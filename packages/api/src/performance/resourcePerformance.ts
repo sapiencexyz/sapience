@@ -440,22 +440,6 @@ export class ResourcePerformance {
               trailingAvgTime.toString()
             ].trailingAvgData, // Initialize with stored data
           ],
-        }
-        this.runtime.trailingAvgProcessData[interval][
-          trailingAvgTime.toString()
-        ] = {
-          used: 0n,
-          feePaid: 0n,
-          nextTimestamp: 0,
-          startTimestampIndex: 0,
-          endTimestampIndex: 0,
-          // startTimestamp: 0,
-          endTimestamp: 0,
-          trailingAvgData: [
-            ...this.persistentStorage[interval].trailingAvgStore[
-              trailingAvgTime.toString()
-            ].trailingAvgData, // Initialize with stored data
-          ],
         };
       }
 
