@@ -1,8 +1,9 @@
 import { IntervalStore } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { encode, decode } from '@msgpack/msgpack';
 
-const FILE_VERSION = 1;
+const FILE_VERSION = 3;
 
 export async function saveStorageToFile(
   storage: IntervalStore,
@@ -30,26 +31,26 @@ export async function saveStorageToFile(
 
   const filename = path.join(
     storageDir,
-    `${resourceSlug}-${sectionName}-storage.json`
+    `${resourceSlug}-${sectionName}-storage.msgpack`
   );
-  await fs.promises.writeFile(
-    filename,
-    JSON.stringify(
-      {
-        fileVersion: FILE_VERSION,
-        latestResourceTimestamp,
-        latestMarketTimestamp,
-        store: storage,
-      },
-      (key, value) => (typeof value === 'bigint' ? value.toString() : value),
-      2
-    )
-  );
+
+  const data = {
+    fileVersion: FILE_VERSION,
+    latestResourceTimestamp,
+    latestMarketTimestamp,
+    store: storage,
+  };
+
+  // Encode and save
+  const buffer = encode(data);
+  await fs.promises.writeFile(filename, buffer);
 
   console.timeEnd(
     `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
   );
-  console.log(`  ResourcePerformance --> Saved storage to ${filename}`);
+  console.log(
+    `  ResourcePerformance --> Saved storage to ${filename} (${buffer.length} bytes)`
+  );
 }
 
 export async function loadStorageFromFile(
@@ -78,48 +79,36 @@ export async function loadStorageFromFile(
 
   const filename = path.join(
     storageDir,
-    `${resourceSlug}-${sectionName}-storage.json`
+    `${resourceSlug}-${sectionName}-storage.msgpack`
   );
-  if (!fs.existsSync(filename)) {
-    console.log(`!! Storage file ${filename} does not exist`);
-    return undefined;
-  }
 
   try {
-    const fileContent = await fs.promises.readFile(filename, 'utf-8');
-    const storage = JSON.parse(fileContent, (key, value) => {
-      // Convert string numbers that might be bigints back to bigint
-      if (typeof value === 'string' && /^\d+$/.test(value)) {
-        try {
-          return BigInt(value);
-        } catch {
-          return value;
-        }
-      }
-      return value;
-    }) as {
+    const buffer = await fs.promises.readFile(filename);
+    const data = decode(buffer) as {
       fileVersion: number;
       latestResourceTimestamp: number;
       latestMarketTimestamp: number;
       store: IntervalStore;
     };
+
+    if (data.fileVersion !== FILE_VERSION) {
+      console.log(
+        `!! Storage file ${filename} has an unsupported version -${data.fileVersion}-. Expected -${FILE_VERSION}-`
+      );
+      return undefined;
+    }
+
     console.timeEnd(
       `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
     );
     console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
-    if (storage.fileVersion !== FILE_VERSION) {
-      console.log(
-        `!! Storage file ${filename} has an unsupported version -${storage.fileVersion}-. Expected -${FILE_VERSION}-`
-      );
-      return undefined;
-    }
     return {
-      latestResourceTimestamp: storage.latestResourceTimestamp,
-      latestMarketTimestamp: storage.latestMarketTimestamp,
-      store: storage.store,
+      latestResourceTimestamp: data.latestResourceTimestamp,
+      latestMarketTimestamp: data.latestMarketTimestamp,
+      store: data.store,
     };
   } catch (error) {
-    console.error(`!! Error loading storage from ${filename}: ${error}`);
+    console.log(`  ResourcePerformance - load storage failed: ${error}`);
     console.timeEnd(
       `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
     );
