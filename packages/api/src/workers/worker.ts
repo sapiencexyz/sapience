@@ -85,6 +85,7 @@ async function initializeResources() {
       resource = new Resource();
       resource.name = resourceInfo.name;
       resource.slug = resourceInfo.slug;
+      resource.cumulativeOn = resourceInfo.cumulativeOn;
       await resourceRepository.save(resource);
       console.log('created resource:', resourceInfo.name);
     } else if (!resource.slug) {
@@ -92,6 +93,11 @@ async function initializeResources() {
       resource.slug = resourceInfo.slug;
       await resourceRepository.save(resource);
       console.log('updated resource with slug:', resourceInfo.name);
+    } else if (resource.cumulativeOn !== resourceInfo.cumulativeOn) {
+        // Update existing resources with slug if missing
+      resource.cumulativeOn = resourceInfo.cumulativeOn;
+      await resourceRepository.save(resource);
+      console.log(`updated resource ${resourceInfo.name} to be ${resourceInfo.cumulativeOn ? "": "not"} cumulative`);
     }
   }
 }

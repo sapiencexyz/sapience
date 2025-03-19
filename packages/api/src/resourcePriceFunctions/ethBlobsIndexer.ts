@@ -123,6 +123,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       };
 
       await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      
       console.log(
         `[EthBlobIndexer] Stored block price for block ${blockNumber}`
       );

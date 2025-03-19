@@ -154,6 +154,7 @@ export class ResourcePerformance {
   }
 
   async softInitialize() {
+    // todo: differentiate between resources with cumulativeOn?
     const restoredStorage = await this.restorePersistedStorage();
 
     if (!restoredStorage) {
@@ -273,7 +274,11 @@ export class ResourcePerformance {
     console.time(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.persistStorage`
     );
-    await this.persistStorage();
+
+    if (this.resource.cumulativeOn) {
+
+      await this.persistStorage();
+    }
     console.timeEnd(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.persistStorage`
     );
@@ -491,6 +496,16 @@ export class ResourcePerformance {
         resourceName,
         interval.toString()
       );
+      if (this.resource.cumulativeOn) {
+        await saveStorageToFile(
+          storage[interval],
+          lastResourceTimestampProcessed,
+          lastMarketTimestampProcessed,
+          resourceSlug + "-cumulative_" + this.resource.cumulativeOn.toString(),
+          resourceName,
+          interval.toString()
+        );
+      }
     }
   }
 
@@ -1192,8 +1207,12 @@ export class ResourcePerformance {
     interval: number,
     chainId: number,
     address: string,
-    epoch: string
+    epoch: string,
+    cumulativeOn: boolean
   ) {
+
+    // TODO: add fetching from correct cache 
+
     this.checkInterval(interval);
     const epochId = this.getEpochId(chainId, address, epoch);
     if (!this.persistentStorage[interval].indexStore[epochId]) {
@@ -1204,7 +1223,7 @@ export class ResourcePerformance {
       from,
       to,
       interval,
-      false
+      false,
     );
   }
 

@@ -24,6 +24,9 @@ export class Resource {
   @Index()
   slug: string;
 
+  @Column({ type: 'boolean', default: false })
+  cumulativeOn: boolean;
+
   @OneToMany(() => Market, (market) => market.resource)
   markets: Market[];
 

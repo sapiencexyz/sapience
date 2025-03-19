@@ -335,8 +335,12 @@ export class CandleResolver {
     @Arg('from', () => Int) from: number,
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number,
-    @Arg('trailingAvgTime', () => Int) trailingAvgTime: number
+    @Arg('trailingAvgTime', () => Int) trailingAvgTime: number,
+    @Arg('cumulativeOn', () => Int) cumulativeOn: boolean,
   ): Promise<CandleType[]> {
+
+    if (cumulativeOn) { return []; }
+
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
     const resourcePerformance =
       resourcePerformanceManager.getResourcePerformance(slug);
@@ -416,7 +420,8 @@ export class CandleResolver {
     @Arg('epochId', () => String) epochId: string,
     @Arg('from', () => Int) from: number,
     @Arg('to', () => Int) to: number,
-    @Arg('interval', () => Int) interval: number
+    @Arg('interval', () => Int) interval: number,
+    @Arg('cumulativeOn', () => Int) cumulativeOn: boolean,
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
     const resourcePerformance =
@@ -437,7 +442,8 @@ export class CandleResolver {
       interval,
       chainId,
       address,
-      epochId
+      epochId,
+      cumulativeOn
     );
 
     return prices;

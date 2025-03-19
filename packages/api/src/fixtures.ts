@@ -28,40 +28,46 @@ const safeRequire = async (path: string): Promise<Deployment | null> => {
 };
 
 export const RESOURCES = [
-  {
-    name: 'Ethereum Gas',
-    slug: 'ethereum-gas',
-    priceIndexer: new evmIndexer(mainnet.id),
-  },
-  {
-    name: 'Base Gas',
-    slug: 'base-gas',
-    priceIndexer: new evmIndexer(base.id),
-  },
-  {
-    name: 'Arbitrum Gas',
-    slug: 'arbitrum-gas',
-    priceIndexer: new evmIndexer(arbitrum.id),
-  },
+  // {
+  //   name: 'Ethereum Gas',
+  //   slug: 'ethereum-gas',
+  //   priceIndexer: new evmIndexer(mainnet.id),
+  //   cumulativeOn: false,
+  // },
+  // {
+  //   name: 'Base Gas',
+  //   slug: 'base-gas',
+  //   priceIndexer: new evmIndexer(base.id),
+  //   cumulativeOn: false,
+  // },
+  // {
+  //   name: 'Arbitrum Gas',
+  //   slug: 'arbitrum-gas',
+  //   priceIndexer: new evmIndexer(arbitrum.id),
+  //   cumulativeOn: false,
+  // },
   {
     name: 'Ethereum Blobspace',
     slug: 'ethereum-blobspace',
     priceIndexer: new ethBlobsIndexer(mainnet.id),
+    cumulativeOn: true,
   },
-  {
-    name: 'Bitcoin Fees',
-    slug: 'bitcoin-fees',
-    priceIndexer: new btcIndexer(),
-  },
-  ...(process.env.CELENIUM_API_KEY
-    ? [
-        {
-          name: 'Celestia Blobspace',
-          slug: 'celestia-blobspace',
-          priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
-        },
-      ]
-    : []),
+  // {
+  //   name: 'Bitcoin Fees',
+  //   slug: 'bitcoin-fees',
+  //   priceIndexer: new btcIndexer(),
+  //   cumulativeOn: false,
+  // },
+  // ...(process.env.CELENIUM_API_KEY
+  //   ? [
+  //       {
+  //         name: 'Celestia Blobspace',
+  //         slug: 'celestia-blobspace',
+  //         priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
+  //         cumulativeOn: false,
+  //       },
+  //     ]
+  //   : []),
 ];
 
 const addMarketYinYang = async (
