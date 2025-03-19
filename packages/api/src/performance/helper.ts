@@ -2,9 +2,12 @@ import { IntervalStore } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const FILE_VERSION = 1;
+
 export async function saveStorageToFile(
   storage: IntervalStore,
-  latestTimestamp: number,
+  latestResourceTimestamp: number,
+  latestMarketTimestamp: number,
   resourceSlug: string,
   resourceName: string,
   sectionName: string
@@ -33,7 +36,9 @@ export async function saveStorageToFile(
     filename,
     JSON.stringify(
       {
-        latestTimestamp,
+        fileVersion: FILE_VERSION,
+        latestResourceTimestamp,
+        latestMarketTimestamp,
         store: storage,
       },
       (key, value) => (typeof value === 'bigint' ? value.toString() : value),
@@ -53,7 +58,8 @@ export async function loadStorageFromFile(
   sectionName: string
 ): Promise<
   | {
-      latestTimestamp: number;
+      latestResourceTimestamp: number;
+      latestMarketTimestamp: number;
       store: IntervalStore;
     }
   | undefined
@@ -79,30 +85,46 @@ export async function loadStorageFromFile(
     return undefined;
   }
 
-  const fileContent = await fs.promises.readFile(filename, 'utf-8');
-  const storage = JSON.parse(fileContent, (key, value) => {
-    // Convert string numbers that might be bigints back to bigint
-    if (typeof value === 'string' && /^\d+$/.test(value)) {
-      try {
-        return BigInt(value);
-      } catch {
-        return value;
+  try {
+    const fileContent = await fs.promises.readFile(filename, 'utf-8');
+    const storage = JSON.parse(fileContent, (key, value) => {
+      // Convert string numbers that might be bigints back to bigint
+      if (typeof value === 'string' && /^\d+$/.test(value)) {
+        try {
+          return BigInt(value);
+        } catch {
+          return value;
+        }
       }
+      return value;
+    }) as {
+      fileVersion: number;
+      latestResourceTimestamp: number;
+      latestMarketTimestamp: number;
+      store: IntervalStore;
+    };
+    console.timeEnd(
+      `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+    );
+    console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
+    if (storage.fileVersion !== FILE_VERSION) {
+      console.log(
+        `!! Storage file ${filename} has an unsupported version -${storage.fileVersion}-. Expected -${FILE_VERSION}-`
+      );
+      return undefined;
     }
-    return value;
-  }) as {
-    latestTimestamp: number;
-    store: IntervalStore;
-  };
-
-  console.timeEnd(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
-  );
-  console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
-  return {
-    latestTimestamp: storage.latestTimestamp,
-    store: storage.store,
-  };
+    return {
+      latestResourceTimestamp: storage.latestResourceTimestamp,
+      latestMarketTimestamp: storage.latestMarketTimestamp,
+      store: storage.store,
+    };
+  } catch (error) {
+    console.error(`!! Error loading storage from ${filename}: ${error}`);
+    console.timeEnd(
+      `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+    );
+    return undefined;
+  }
 }
 
 export async function clearStorageFiles(): Promise<void> {
