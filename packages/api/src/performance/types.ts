@@ -19,8 +19,8 @@ export type MarketPriceData = {
 };
 
 export type CandleMetadata = {
-  used: bigint;
-  feePaid: bigint;
+  used: string;
+  feePaid: string;
   startTimestamp: number;
   endTimestamp: number;
 };

@@ -417,8 +417,14 @@ export class ResourcePerformance {
       this.runtime.trailingAvgProcessData[interval] = {};
 
       for (const trailingAvgTime of this.trailingAvgTime) {
-        if (!this.persistentStorage[interval].trailingAvgStore[trailingAvgTime.toString()]) {
-          this.persistentStorage[interval].trailingAvgStore[trailingAvgTime.toString()] = {
+        if (
+          !this.persistentStorage[interval].trailingAvgStore[
+            trailingAvgTime.toString()
+          ]
+        ) {
+          this.persistentStorage[interval].trailingAvgStore[
+            trailingAvgTime.toString()
+          ] = {
             data: [],
             metadata: [],
             trailingAvgData: [],
@@ -558,8 +564,8 @@ export class ResourcePerformance {
         resourceStore.metadata.push({
           startTimestamp: itemStartTime,
           endTimestamp: rpd.nextTimestamp,
-          used: 0n,
-          feePaid: 0n,
+          used: '0',
+          feePaid: '0',
         });
       }
     }
@@ -620,8 +626,8 @@ export class ResourcePerformance {
         resourceStore.metadata.push({
           startTimestamp: itemStartTime,
           endTimestamp: rpd.nextTimestamp,
-          used: 0n,
-          feePaid: 0n,
+          used: '0',
+          feePaid: '0',
         });
       }
     } else {
@@ -691,8 +697,8 @@ export class ResourcePerformance {
         // Get cached data from the latest stored item
         if (lastStoreIndex !== undefined) {
           const metadata = piStore.metadata[lastStoreIndex];
-          ripd.used = metadata.used;
-          ripd.feePaid = metadata.feePaid;
+          ripd.used = BigInt(metadata.used);
+          ripd.feePaid = BigInt(metadata.feePaid);
         }
 
         const isLastStoredItem =
@@ -713,8 +719,8 @@ export class ResourcePerformance {
           piStore.metadata.push({
             startTimestamp: item.timestamp,
             endTimestamp: item.timestamp,
-            used: ripd.used,
-            feePaid: ripd.feePaid,
+            used: ripd.used.toString(),
+            feePaid: ripd.feePaid.toString(),
           });
         }
       }
@@ -763,8 +769,8 @@ export class ResourcePerformance {
           startTimestamp:
             piStore.metadata[currentPlaceholderIndex].startTimestamp,
           endTimestamp: item.timestamp,
-          used: ripd.used,
-          feePaid: ripd.feePaid,
+          used: ripd.used.toString(),
+          feePaid: ripd.feePaid.toString(),
         };
 
         // Prepare and create a placeholder for the next interval if there's a new interval
@@ -797,8 +803,8 @@ export class ResourcePerformance {
             piStore.metadata.push({
               startTimestamp: item.timestamp,
               endTimestamp: ripd.nextTimestamp,
-              used: ripd.used,
-              feePaid: ripd.feePaid,
+              used: ripd.used.toString(),
+              feePaid: ripd.feePaid.toString(),
             });
           }
         }
@@ -877,8 +883,8 @@ export class ResourcePerformance {
       // Get cached data from the latest stored item
       if (lastStoreIndex !== undefined) {
         const metadata = ptStore.metadata[lastStoreIndex];
-        rtpd.used = metadata.used;
-        rtpd.feePaid = metadata.feePaid;
+        rtpd.used = BigInt(metadata.used);
+        rtpd.feePaid = BigInt(metadata.feePaid);
       }
 
       // Check if we already have an item for this interval
@@ -900,8 +906,8 @@ export class ResourcePerformance {
         ptStore.metadata.push({
           startTimestamp: item.timestamp,
           endTimestamp: item.timestamp,
-          used: rtpd.used,
-          feePaid: rtpd.feePaid,
+          used: rtpd.used.toString(),
+          feePaid: rtpd.feePaid.toString(),
         });
 
         if (!ptStore.trailingAvgData) {
@@ -954,8 +960,8 @@ export class ResourcePerformance {
         startTimestamp:
           ptStore.metadata[currentPlaceholderIndex].startTimestamp,
         endTimestamp: item.timestamp,
-        used: rtpd.used,
-        feePaid: rtpd.feePaid,
+        used: rtpd.used.toString(),
+        feePaid: rtpd.feePaid.toString(),
       };
 
       // Notice: Add the trailing avg data to the metadata, only if it's the last data point
@@ -994,8 +1000,8 @@ export class ResourcePerformance {
           ptStore.metadata.push({
             startTimestamp: item.timestamp,
             endTimestamp: rtpd.nextTimestamp,
-            used: rtpd.used,
-            feePaid: rtpd.feePaid,
+            used: rtpd.used.toString(),
+            feePaid: rtpd.feePaid.toString(),
           });
         }
       }
