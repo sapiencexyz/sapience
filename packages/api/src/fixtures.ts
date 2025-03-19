@@ -71,16 +71,16 @@ const addMarketYinYang = async (
   resource = RESOURCES[0] // Default to Ethereum Gas
 ) => {
   const yin = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix || ''}/FoilYin.json`
+    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/FoilYin.json`
   );
   const yang = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix || ''}/FoilYang.json`
+    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/FoilYang.json`
   );
   const yinVault = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix || ''}/VaultYin.json`
+    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/VaultYin.json`
   );
   const yangVault = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix || ''}/VaultYang.json`
+    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/VaultYang.json`
   );
 
   if (yin && yang && yinVault && yangVault) {
