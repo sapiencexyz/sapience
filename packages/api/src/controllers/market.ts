@@ -99,6 +99,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   updatedMarket.address = marketInfo.deployment.address;
   updatedMarket.vaultAddress = marketInfo.vaultAddress;
   updatedMarket.isYin = marketInfo.isYin;
+  updatedMarket.isCumulative = marketInfo.isCumulative;
   updatedMarket.deployTxnBlockNumber = Number(
     marketInfo.deployment.deployTxnBlockNumber
   );

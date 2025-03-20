@@ -125,6 +125,7 @@ export interface MarketInfo {
   deployment: Deployment;
   vaultAddress: string;
   isYin: boolean;
+  isCumulative: boolean;
   marketChainId: number;
   resource: {
     name: string;
