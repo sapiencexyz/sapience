@@ -41,6 +41,7 @@ type PnLType {
   epochId: Int!
   openPositionsPnL: String!
   owner: String!
+  positionCount: Int!
   positions: [Int!]!
   totalDeposits: String!
   totalPnL: String!

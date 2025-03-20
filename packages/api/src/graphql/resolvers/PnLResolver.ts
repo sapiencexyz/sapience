@@ -27,6 +27,7 @@ export class PnLResolver {
           openPositionsPnL: pnl.openPositionsPnL.toString(),
           totalPnL: pnl.totalPnL.toString(),
           positions: Array.from(pnl.positionIds),
+          positionCount: pnl.positionCount,
         };
       });
     } catch (error) {

@@ -1,6 +1,10 @@
 import { TIME_INTERVALS } from 'src/fixtures';
 import { startOfCurrentInterval } from './helper';
 import { epochRepository, positionRepository } from 'src/db';
+import { Position } from 'src/models/Position';
+import { getProviderForChain } from 'src/utils';
+import { PublicClient } from 'viem';
+import { calculateOpenPositionValue } from 'src/helpers/positionPnL';
 
 interface PnLData {
   owner: string;
@@ -44,7 +48,7 @@ export class PnLPerformance {
   }
 
   async getEpochPnLs(chainId: number, address: string, epochId: number) {
-    const currentTimestamp = Date.now();
+    const currentTimestamp = Date.now() / 1000;
     const datapointTime = startOfCurrentInterval(
       currentTimestamp,
       this.INTERVAL
@@ -82,7 +86,7 @@ export class PnLPerformance {
         where: {
           epoch: { id: epochData.id },
         },
-        relations: ['Transaction', 'ColalteralTransfer'],
+        relations: ['transactions', 'transactions.collateralTransfer'],
       });
 
       // 2 & 3. Group positions by owner and create PnL entries
@@ -121,29 +125,35 @@ export class PnLPerformance {
               if (collateral > BigInt(0)) {
                 ownerPnl.totalDeposits += collateral;
               } else {
-                ownerPnl.totalWithdrawals += collateral;
+                ownerPnl.totalWithdrawals -= collateral;
               }
             }
           }
         }
+        ownerPnl.totalPnL = ownerPnl.totalWithdrawals - ownerPnl.totalDeposits;
 
         // 5. Account for open positions PnL
-        // TODO Check how to identify a position as open
-        if (!openPositionsOwners.has(position.id)) {
-          openPositionsOwners.set(position.id, ownerId);
+        if (this.isOpenPosition(position)) {
+          if (!openPositionsOwners.has(position.id)) {
+            openPositionsOwners.set(position.id, ownerId);
+          }
         }
-
-        // 5.1. TODO Do we need to account for "position.collateral" here?
       }
 
       // 5.2. Calculate open positions PnL for open positions
-      openPositionsOwners.forEach(async (ownerId, positionId) => {
+      const client = getProviderForChain(Number(epochData.chainId));
+
+      for (const [positionId, ownerId] of openPositionsOwners) {
         const ownerPnl = pnlByOwner.get(ownerId)!;
-        ownerPnl.openPositionsPnL = await this.getOpenPositionsPnl(
+        const openPositionPnl = await this.getOpenPositionsPnl(
           epochData,
-          positionId
+          positionId,
+          client
         );
-      });
+        ownerPnl.openPositionsPnL += openPositionPnl;
+        ownerPnl.totalPnL += openPositionPnl;
+        pnlByOwner.set(ownerId, ownerPnl);
+      }
 
       // 6. Return the PnL data array
       return Array.from(pnlByOwner.values());
@@ -156,16 +166,21 @@ export class PnLPerformance {
   // Helper method to get open positions PnL from contracts
   private async getOpenPositionsPnl(
     epochData: EpochData,
-    positionId: number
+    positionId: number,
+    client: PublicClient
   ): Promise<bigint> {
-    // TODO: Remove this, it's just here for lint to pass
-    if (positionId === 99) {
-      console.log(epochData);
-      console.log(positionId);
+    return calculateOpenPositionValue(positionId, epochData.address, client);
+  }
+
+  // TODO: Implement this
+  private isOpenPosition(position: Position): boolean {
+    // TODO REMOVE THIS, only for lint to be happy
+    if (position.id === 999) {
+      console.log(` position: ${position.id}`);
     }
-    // Implement contract interaction here
-    // This is a placeholder - you'll need to implement based on your contract structure
-    return BigInt(0);
+    // TODO Check how to identify a position as open
+    // TODO: Check if position is settled
+    return true;
   }
 
   private async getEpochData(
