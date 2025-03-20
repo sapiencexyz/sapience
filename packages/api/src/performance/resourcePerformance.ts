@@ -212,7 +212,7 @@ export class ResourcePerformance {
       ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
     );
 
-    this.initializeRuntimeData(dbResourcePrices);
+    this.initializeOrCleanupRuntimeData(dbResourcePrices);
 
     // Process all resource prices
     while (this.runtime.currentIdx < this.runtime.dbResourcePricesLength) {
@@ -236,9 +236,7 @@ export class ResourcePerformance {
       this.runtime.currentIdx++;
     }
     // Cleanup the runtime data
-    this.runtime.resourceProcessData = {};
-    this.runtime.trailingAvgProcessData = {};
-    this.runtime.marketProcessData = {};
+    this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
 
     // Process all market prices
     let marketIdx = 0;
@@ -404,11 +402,15 @@ export class ResourcePerformance {
     }
   }
 
-  private initializeRuntimeData(dbResourcePrices: ResourcePrice[]) {
-    this.runtime.dbResourcePrices = dbResourcePrices;
-    this.runtime.dbResourcePricesLength = dbResourcePrices.length;
-    this.runtime.currentIdx = 0;
-
+  private initializeOrCleanupRuntimeData(
+    dbResourcePrices: ResourcePrice[],
+    cleanup: boolean = false
+  ) {
+    if (!cleanup) {
+      this.runtime.dbResourcePrices = dbResourcePrices;
+      this.runtime.dbResourcePricesLength = dbResourcePrices.length;
+      this.runtime.currentIdx = 0;
+    }
     // Reset processing data structures
     // We don't need complex initialization anymore since our processing methods
     // will create and update placeholders in-place
