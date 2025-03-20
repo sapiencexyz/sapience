@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { encode, decode } from '@msgpack/msgpack';
 
-const FILE_VERSION = 3;
+const FILE_VERSION = 4;
 
 export async function saveStorageToFile(
   storage: IntervalStore,

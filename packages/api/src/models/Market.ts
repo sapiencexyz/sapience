@@ -43,6 +43,9 @@ export class Market {
   @Column({ type: 'boolean', default: false })
   isYin: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isCumulative: boolean;
+
   @Column({ type: 'integer' })
   @Index()
   chainId: number;
