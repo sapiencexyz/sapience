@@ -27,6 +27,17 @@ export const calculateOpenPositionValue = async (
         ],
         stateMutability: 'view',
       },
+      {
+				"inputs": [
+					{
+						"internalType": "uint256",
+						"name": "positionId",
+						"type": "uint256"
+					}
+				],
+				"type": "error",
+				"name": "InvalidPositionId"
+			},
     ],
     functionName: 'getPositionCollateralValue',
     args: [BigInt(positionId)],

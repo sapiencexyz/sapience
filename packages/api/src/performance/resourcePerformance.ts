@@ -235,6 +235,10 @@ export class ResourcePerformance {
       }
       this.runtime.currentIdx++;
     }
+    // Cleanup the runtime data
+    this.runtime.resourceProcessData = {};
+    this.runtime.trailingAvgProcessData = {};
+    this.runtime.marketProcessData = {};
 
     // Process all market prices
     let marketIdx = 0;

@@ -110,9 +110,9 @@ export class PnLPerformance {
         }
 
         const ownerPnl = pnlByOwner.get(ownerId)!;
-        if (!ownerPnl.positionIds.has(position.id)) {
+        if (!ownerPnl.positionIds.has(position.positionId)) {
           ownerPnl.positionCount++;
-          ownerPnl.positionIds.add(position.id);
+          ownerPnl.positionIds.add(position.positionId);
         }
 
         // 4. Account for collateral changes
@@ -134,8 +134,8 @@ export class PnLPerformance {
 
         // 5. Account for open positions PnL
         if (this.isOpenPosition(position)) {
-          if (!openPositionsOwners.has(position.id)) {
-            openPositionsOwners.set(position.id, ownerId);
+          if (!openPositionsOwners.has(position.positionId)) {
+            openPositionsOwners.set(position.positionId, ownerId);
           }
         }
       }
