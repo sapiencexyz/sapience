@@ -91,6 +91,7 @@ const addMarketYinYang = async (
         marketChainId: chainId,
         resource,
         isYin: true,
+        isCumulative: false,
       },
       {
         deployment: yang,
@@ -98,6 +99,7 @@ const addMarketYinYang = async (
         marketChainId: chainId,
         resource,
         isYin: false,
+        isCumulative: false,
       }
     );
   }
