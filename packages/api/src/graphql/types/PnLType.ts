@@ -6,24 +6,21 @@ export class PnLType {
   @Field(() => Int)
   epochId: number;
 
-  @Field(() => Int)
-  timestamp: number;
-
   @Field(() => String)
   owner: string;
 
-  @Field(() => Int)
-  totalDeposits: number;
+  @Field(() => String)
+  totalDeposits: string;
 
-  @Field(() => Int)
-  totalWithdrawals: number;
-  
-  @Field(() => Int)
-  openPositionsPnL: number;
+  @Field(() => String)
+  totalWithdrawals: string;
 
-  @Field(() => Int)
-  totalPnL: number;
+  @Field(() => String)
+  openPositionsPnL: string;
+
+  @Field(() => String)
+  totalPnL: string;
 
   @Field(() => [Int])
-  positions: number;
+  positions: number[];
 }

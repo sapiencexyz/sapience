@@ -1,26 +1,34 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
-import dataSource from '../../db';
-import { Epoch } from '../../models/Epoch';
 import { PnLType } from '../types';
-import { mapEpochToType } from './mappers';
+import { PnLPerformance } from '../../performance';
 
 @Resolver(() => PnLType)
 export class PnLResolver {
   @Query(() => [PnLType])
-  async epochs(
-    @Arg('marketId', () => Int, { nullable: true }) marketId?: number
+  async getEpochLeaderboard(
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('address', () => String) address: string,
+    @Arg('epochId', () => String) epochId: string
   ): Promise<PnLType[]> {
     try {
-      const where: { market?: { id: number } } = {};
-      if (marketId) {
-        where.market = { id: marketId };
-      }
+      const pnlPerformance = PnLPerformance.getInstance();
+      const pnlData = await pnlPerformance.getEpochPnLs(
+        chainId,
+        address,
+        parseInt(epochId)
+      );
 
-      const epochs = await dataSource.getRepository(Epoch).find({
-        where,
+      return pnlData.map((pnl) => {
+        return {
+          epochId: parseInt(epochId),
+          owner: pnl.owner,
+          totalDeposits: pnl.totalDeposits.toString(),
+          totalWithdrawals: pnl.totalWithdrawals.toString(),
+          openPositionsPnL: pnl.openPositionsPnL.toString(),
+          totalPnL: pnl.totalPnL.toString(),
+          positions: Array.from(pnl.positionIds),
+        };
       });
-
-      return epochs.map(mapEpochToType);
     } catch (error) {
       console.error('Error fetching epochs:', error);
       throw new Error('Failed to fetch epochs');
