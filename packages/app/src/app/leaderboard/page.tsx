@@ -30,12 +30,6 @@ interface TraderStats {
   averageReturn: number;
 }
 
-interface EpochLeaderboardPosition {
-  owner: string;
-  totalPnL: string;
-  positionCount: number;
-}
-
 const GET_EPOCH_LEADERBOARD = `
   query GetEpochLeaderboard($chainId: Int!, $address: String!, $epochId: String!) {
     getEpochLeaderboard(chainId: $chainId, address: $address, epochId: $epochId) {
@@ -46,7 +40,18 @@ const GET_EPOCH_LEADERBOARD = `
       openPositionsPnL
       totalPnL
       positions
-      positionCount
+    }
+  }
+`;
+
+const GET_POSITIONS = `
+  query GetPositions($chainId: Int!, $marketAddress: String!) {
+    positions(chainId: $chainId, marketAddress: $marketAddress) {
+      id
+      owner
+      transactions {
+        type
+      }
     }
   }
 `;
@@ -114,11 +119,27 @@ const useGlobalLeaderboard = () => {
 
       const leaderboards = await Promise.all(leaderboardPromises);
 
+      // Fetch positions data for each market
+      const positionsPromises = specificEpochs.map((epoch) =>
+        foilApi
+          .post('/graphql', {
+            query: GET_POSITIONS,
+            variables: {
+              chainId: epoch.chainId,
+              marketAddress: epoch.address,
+            },
+          })
+          .then((response) => response.data.positions)
+      );
+
+      const positionsData = await Promise.all(positionsPromises);
+
       // Aggregate stats by trader
       const traderStats: Record<string, TraderStats> = {};
 
-      leaderboards.forEach((epochLeaderboard) => {
-        epochLeaderboard.forEach((position: EpochLeaderboardPosition) => {
+      // Process each leaderboard entry
+      for (const epochLeaderboard of leaderboards) {
+        for (const position of epochLeaderboard) {
           if (!traderStats[position.owner]) {
             traderStats[position.owner] = {
               address: position.owner,
@@ -130,12 +151,28 @@ const useGlobalLeaderboard = () => {
           }
 
           traderStats[position.owner].totalPnL += Number(position.totalPnL);
-          traderStats[position.owner].totalTrades += position.positionCount;
+
+          // Find positions for this owner in the positions data
+          const ownerPositions = positionsData
+            .flat()
+            .filter((pos: any) => pos.owner === position.owner);
+
+          // Count all relevant transactions (trades and LP events)
+          const totalTrades = ownerPositions.reduce((sum: number, pos: any) => {
+            return (
+              sum +
+              pos.transactions.filter((t: { type: string }) =>
+                ['long', 'short'].includes(t.type)
+              ).length
+            );
+          }, 0);
+
+          traderStats[position.owner].totalTrades += totalTrades;
           if (Number(position.totalPnL) > 0) {
-            traderStats[position.owner].winRate += position.positionCount;
+            traderStats[position.owner].winRate += totalTrades;
           }
-        });
-      });
+        }
+      }
 
       // Calculate final stats
       const finalStats = Object.values(traderStats).map((trader) => ({
@@ -208,7 +245,7 @@ const GlobalLeaderboard = () => {
     },
     {
       id: 'totalTrades',
-      header: 'Total Positions',
+      header: 'Total Trades',
       accessorKey: 'totalTrades',
       cell: TotalTradesCellRenderer,
     },
