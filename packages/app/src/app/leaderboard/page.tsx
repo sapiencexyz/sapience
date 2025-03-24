@@ -279,9 +279,21 @@ const GlobalLeaderboard = () => {
   return (
     <div className="container max-w-screen-md mx-auto flex items-center p-12">
       <div className="border border-border rounded-lg w-full">
-        <h1 className="text-2xl md:text-3xl font-bold my-4 md:mt-8 md:mb-6 text-center">
+        <h1 className="text-2xl md:text-3xl font-bold my-4 md:mt-9 md:mb-3 text-center">
           Trading Competition Leaderboard
         </h1>
+        <p className="text-center text-muted-foreground mb-6">
+          Check out the{' '}
+          <a
+            href="https://mirror.xyz"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary border-b border-current hover:opacity-80"
+          >
+            April Trading Competition Announcement
+          </a>{' '}
+          for more details.
+        </p>
 
         <Table>
           <TableHeader>
