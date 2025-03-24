@@ -1,7 +1,6 @@
 import { router as marketRoutes } from './markets';
 import { router as estimateRoutes } from './estimate';
 import { router as getStEthPerTokenAtTimestampsRoutes } from './getStEthPerTokenAtTimestamp';
-import { router as leaderboardRoutes } from './leaderboard';
 import { router as missingBlocksRoutes } from './missing-blocks';
 import { router as positionRoutes } from './positions';
 import { router as reindexRoutes } from './reindex';
