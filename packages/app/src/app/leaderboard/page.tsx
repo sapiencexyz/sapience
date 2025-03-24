@@ -57,7 +57,7 @@ const GET_POSITIONS = `
 `;
 
 const RankCell = ({ row }: { row: { index: number } }) => (
-  <span className="text-xl font-bold">{row.index + 1}</span>
+  <span className="text-xl font-bold md:pl-4">{row.index + 1}</span>
 );
 
 const PnLCell = ({ value }: { value: number }) => {
@@ -192,8 +192,8 @@ const useGlobalLeaderboard = () => {
 
 const TableHeaderRow = ({ headerGroup }: { headerGroup: any }) => (
   <TableRow key={headerGroup.id} className="hover:bg-transparent">
-    {headerGroup.headers.map((header: any) => (
-      <TableHead key={header.id}>
+    {headerGroup.headers.map((header: any, index: number) => (
+      <TableHead key={header.id} className={index === 0 ? 'md:pl-4' : ''}>
         {flexRender(header.column.columnDef.header, header.getContext())}
       </TableHead>
     ))}
@@ -208,6 +208,11 @@ const TableBodyRow = ({ row }: { row: any }) => (
       </TableCell>
     ))}
   </TableRow>
+);
+
+const RankHeader = () => <span className="md:pl-4">Rank</span>;
+const TotalTradesHeader = () => (
+  <span className="whitespace-nowrap">Total Trades</span>
 );
 
 // Define cell renderer components for table columns
@@ -234,7 +239,7 @@ const GlobalLeaderboard = () => {
   const columns: ColumnDef<TraderStats>[] = [
     {
       id: 'rank',
-      header: 'Rank',
+      header: RankHeader,
       cell: RankCellRenderer,
     },
     {
@@ -245,7 +250,7 @@ const GlobalLeaderboard = () => {
     },
     {
       id: 'totalTrades',
-      header: 'Total Trades',
+      header: TotalTradesHeader,
       accessorKey: 'totalTrades',
       cell: TotalTradesCellRenderer,
     },
@@ -274,7 +279,7 @@ const GlobalLeaderboard = () => {
   return (
     <div className="container max-w-screen-md mx-auto flex items-center p-12">
       <div className="border border-border rounded-lg w-full">
-        <h1 className="text-2xl md:text-3xl font-bold my-4 md:mt-10 md:mb-8 text-center">
+        <h1 className="text-2xl md:text-3xl font-bold my-4 md:mt-8 md:mb-6 text-center">
           Trading Competition Leaderboard
         </h1>
 
