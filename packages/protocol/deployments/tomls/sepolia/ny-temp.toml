@@ -81,9 +81,9 @@ depends=["router.Foil"]
 # Epoch Settings
 # Change for Prod
 [var.epochSettings]
-startTime="1742425200"
+startTime="1742516000"
+endTime="1743120800"
 startingSqrtPriceX96 = "525540175778231009156997840896" # 44
-duration="604800" # 30 days in April (30 * 24 * 60 * 60)
 lowerBound="29800" # 20
 upperBound="40800" # 65
 salt="<%= stringToHex('ny-temp-march') %>"
@@ -94,7 +94,7 @@ func="createEpoch"
 from="<%= settings.deployer %>"
 args=[
   "<%= settings.startTime %>",
-  "<%= settings.startTime + settings.duration %>",
+  "<%= settings.endTime %>",
   "<%= settings.startingSqrtPriceX96 %>",
   "<%= settings.lowerBound %>", # baseAssetMinPriceTick
   "<%= settings.upperBound %>",  # baseAssetMaxPriceTick

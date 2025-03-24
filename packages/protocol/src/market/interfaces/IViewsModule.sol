@@ -77,4 +77,8 @@ interface IViewsModule {
     ) external view returns (int256 pnl);
 
     function getMarketTickSpacing() external view returns (int24);
+
+    function getDecimalPriceFromSqrtPriceX96(
+        uint160 sqrtPriceX96
+    ) external view returns (uint256);
 }

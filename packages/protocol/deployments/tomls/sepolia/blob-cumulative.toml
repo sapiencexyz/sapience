@@ -80,9 +80,9 @@ depends=["router.Foil"]
 # Epoch Settings
 # Change for Prod
 [var.epochSettings]
-startTime="1742341858"
+startTime="1742516000"
+endTime="1743120800"
 startingSqrtPriceX96 = "2169752589937389836368162586624"
-duration="604800"
 lowerBound="46000"
 upperBound="76000"
 salt="<%= stringToHex('tia-blob-cum-1') %>"
@@ -93,7 +93,7 @@ func="createEpoch"
 from="<%= settings.deployer %>"
 args=[
   "<%= settings.startTime %>",
-  "<%= settings.startTime + settings.duration %>",
+  "<%= settings.endTime %>",
   "<%= settings.startingSqrtPriceX96 %>",
   "<%= settings.lowerBound %>", # baseAssetMinPriceTick
   "<%= settings.upperBound %>",  # baseAssetMaxPriceTick
