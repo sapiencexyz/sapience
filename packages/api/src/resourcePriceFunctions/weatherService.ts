@@ -98,6 +98,7 @@ export default class WeatherService {
     private nycStation: string = '';
     private cumulativePrecipitation: number = 0;
     private isRunning: boolean = false;
+    private latestData: WeatherSummary | null = null;
 
     constructor() {
         this.validateConfig();
@@ -138,7 +139,7 @@ export default class WeatherService {
      */
     public async getLatestData(): Promise<WeatherSummary> {
         await this.checkForUpdates();
-        return this.getCurrentSummary();
+        return this.latestData || this.getCurrentSummary();
     }
 
     /**
@@ -261,7 +262,32 @@ export default class WeatherService {
                 this.fetchLAPrecipitation(new Date(Date.now() - CONFIG.LOOKBACK_DAYS * 24 * 60 * 60 * 1000), new Date())
             ]);
 
-            await this.saveData({ temperature: tempRecords, precipitation: precipRecords });
+            this.cumulativePrecipitation = precipRecords.reduce(
+                (sum, record) => sum + (record.precipitation || 0), 
+                0
+            );
+
+            this.latestData = {
+                timestamp: new Date().toISOString(),
+                nycStation: this.nycStation,
+                laStation: CONFIG.SF.NAME,
+                temperature: {
+                    location: CONFIG.NYC.NAME,
+                    records: tempRecords,
+                    latest: tempRecords[tempRecords.length - 1] || null
+                },
+                precipitation: {
+                    location: CONFIG.SF.NAME,
+                    records: precipRecords,
+                    latest: precipRecords[precipRecords.length - 1] || null,
+                    cumulative: {
+                        millimeters: Number(this.cumulativePrecipitation.toFixed(1)),
+                        inches: Number(this.convertMillimetersToInches(this.cumulativePrecipitation).toFixed(2))
+                    }
+                }
+            };
+
+            this.logLatestReadings(this.latestData);
             console.log('\n=== Weather Update Complete ===');
         } catch (error) {
             console.error('Weather update failed:', error);
