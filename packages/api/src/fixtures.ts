@@ -123,6 +123,23 @@ const addGasWeekly = async (markets: MarketInfo[]) => {
   }
 };
 
+const addTiaBlobCumulative = async (markets: MarketInfo[]) => {
+  const tiaBlobCumulative = await safeRequire(
+    `@/protocol/deployments/outputs/${sepolia.id}-tia-blobs-cum-03-18/Foil.json`
+  );
+
+  if (tiaBlobCumulative && RESOURCES.length === 6) {
+    markets.push({
+      deployment: tiaBlobCumulative,
+      vaultAddress: zeroAddress,
+      marketChainId: sepolia.id,
+      resource: RESOURCES[5], // tia blob cumulative
+      isYin: true,
+      isCumulative: true,
+    });
+  }
+};
+
 const initializeMarkets = async () => {
   const FULL_MARKET_LIST: MarketInfo[] = [];
 
@@ -133,6 +150,9 @@ const initializeMarkets = async () => {
 
   // add gas weekly
   await addGasWeekly(FULL_MARKET_LIST);
+
+  // add tia blob cumulative
+  await addTiaBlobCumulative(FULL_MARKET_LIST); // Fix abstraction later
 
   // Development Deployments
   if (process.env.NODE_ENV === 'development') {
