@@ -1,0 +1,346 @@
+{
+  "address": "0xA3e4a6B0cefA6c6441fAfA295D0Fb83f9e828c76",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_finder",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_timerAddress",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "getCurrentTime",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPendingQueries",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple[]",
+          "internalType": "struct MockOracleAncillary.QueryPoint[]",
+          "components": [
+            {
+              "name": "identifier",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "time",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "ancillaryData",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPrice",
+      "inputs": [
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "time",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "ancillaryData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getRequestParameters",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct MockOracleAncillary.QueryPoint",
+          "components": [
+            {
+              "name": "identifier",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "time",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "ancillaryData",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "hasPrice",
+      "inputs": [
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "time",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "ancillaryData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pushPrice",
+      "inputs": [
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "time",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "ancillaryData",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "price",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "pushPriceByRequestId",
+      "inputs": [
+        {
+          "name": "requestId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "price",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "requestPrice",
+      "inputs": [
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "time",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "ancillaryData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setCurrentTime",
+      "inputs": [
+        {
+          "name": "time",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "timerAddress",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "PriceRequestAdded",
+      "inputs": [
+        {
+          "name": "requester",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "time",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "ancillaryData",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "requestId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "PushedPrice",
+      "inputs": [
+        {
+          "name": "pusher",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "time",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "ancillaryData",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "price",
+          "type": "int256",
+          "indexed": false,
+          "internalType": "int256"
+        },
+        {
+          "name": "requestId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "constructorArgs": [
+    "0x781Afa9e4e0Aae32c2B52f7471B897C28a1b72D0",
+    "0xCd8aF2f698547f9666B50dB0668735f47cb5dCEB"
+  ],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x84c4481aab1472d332470916dfedec0314fdc0c3e711cbfa51a1a67533836d00",
+  "deployTxnBlockNumber": "3",
+  "deployTimestamp": "1725839516",
+  "sourceName": "src/UMA/src/MockOracleAncillaryOverride.sol",
+  "contractName": "MockOracleAncillaryOverride",
+  "deployedOn": "deploy.MockOracleAncillary",
+  "gasUsed": 1060208,
+  "gasCost": "1588404337"
+}

@@ -93,13 +93,13 @@ const useGlobalLeaderboard = () => {
       const specificEpochs = [
         {
           chainId: 8453,
-          address: '0x0d70be0ba7d58cd414b01c4e8a1bb5a1dd212bdc',
+          address: '0x497057F1dBdaFBeD7a052dEa366e72c04de7A370',
           epochId: '1',
         },
         {
           chainId: 8453,
-          address: '0x20ba5e24ad8a5b9502d4882607f0c8526a1f3205',
-          epochId: '2',
+          address: '0x914126c7bfa849055be8230975e0665de985f03a',
+          epochId: '1',
         },
       ];
 

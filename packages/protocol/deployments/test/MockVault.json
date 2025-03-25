@@ -1,0 +1,73 @@
+{
+  "address": "0xe58741D3186E423bc97991550B23349336A404D8",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getLastSettlementPrice",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "lastSettlementPrice",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "resolutionCallback",
+      "inputs": [
+        {
+          "name": "previousResolutionSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "supportsInterface",
+      "inputs": [
+        {
+          "name": "interfaceId",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x8b3bbe94153eece0686ec2b44872b804f9de5784a8311c15e23299b6cea5d597",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1729694489",
+  "sourceName": "src/market/ mocks/MockVault.sol",
+  "contractName": "MockVault",
+  "deployedOn": "deploy.MockVault",
+  "gasUsed": 148077,
+  "gasCost": "1000031794"
+}
