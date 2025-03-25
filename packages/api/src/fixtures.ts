@@ -4,7 +4,21 @@ import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import btcIndexer from './resourcePriceFunctions/btcIndexer';
 import { Deployment, MarketInfo } from './interfaces';
+import { zeroAddress } from 'viem';
 
+// TAT = Trailing Average Time
+export const TIME_INTERVALS = {
+  intervals: {
+    INTERVAL_1_MINUTE: 60,
+    INTERVAL_5_MINUTES: 5 * 60,
+    INTERVAL_15_MINUTES: 15 * 60,
+    INTERVAL_30_MINUTES: 30 * 60,
+    INTERVAL_4_HOURS: 4 * 60 * 60,
+    INTERVAL_1_DAY: 24 * 60 * 60,
+    INTERVAL_7_DAYS: 7 * 24 * 60 * 60,
+    INTERVAL_28_DAYS: 28 * 24 * 60 * 60,
+  },
+};
 const safeRequire = async (path: string): Promise<Deployment | null> => {
   try {
     const module = await import(path);
@@ -58,16 +72,16 @@ const addMarketYinYang = async (
   resource = RESOURCES[0] // Default to Ethereum Gas
 ) => {
   const yin = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix || ''}/FoilYin.json`
+    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/FoilYin.json`
   );
   const yang = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix || ''}/FoilYang.json`
+    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/FoilYang.json`
   );
   const yinVault = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix || ''}/VaultYin.json`
+    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/VaultYin.json`
   );
   const yangVault = await safeRequire(
-    `@/protocol/deployments/${chainId}${suffix || ''}/VaultYang.json`
+    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/VaultYang.json`
   );
 
   if (yin && yang && yinVault && yangVault) {
@@ -78,6 +92,7 @@ const addMarketYinYang = async (
         marketChainId: chainId,
         resource,
         isYin: true,
+        isCumulative: false,
       },
       {
         deployment: yang,
@@ -85,8 +100,26 @@ const addMarketYinYang = async (
         marketChainId: chainId,
         resource,
         isYin: false,
+        isCumulative: false,
       }
     );
+  }
+};
+
+const addGasWeekly = async (markets: MarketInfo[]) => {
+  const gasWeekly = await safeRequire(
+    `@/protocol/deployments/outputs/${base.id}-gas-weekly/Foil.json`
+  );
+
+  if (gasWeekly) {
+    markets.push({
+      deployment: gasWeekly,
+      vaultAddress: zeroAddress,
+      marketChainId: base.id,
+      resource: RESOURCES[0],
+      isYin: true,
+      isCumulative: false,
+    });
   }
 };
 
@@ -97,6 +130,9 @@ const initializeMarkets = async () => {
   await addMarketYinYang(FULL_MARKET_LIST, base.id, '-beta'); // Remove after settling feb
   await addMarketYinYang(FULL_MARKET_LIST, base.id);
   await addMarketYinYang(FULL_MARKET_LIST, base.id, '-blobs', RESOURCES[3]); // Use Ethereum Blobspace for -blobs
+
+  // add gas weekly
+  await addGasWeekly(FULL_MARKET_LIST);
 
   // Development Deployments
   if (process.env.NODE_ENV === 'development') {

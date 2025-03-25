@@ -1,3 +1,17 @@
+export type ReducedCandleData = {
+  t: number; // timestamp
+  o: string; // open
+  h: string; // high
+  l: string; // low
+  c: string; // close
+};
+
+export type ReducedIndexData = {
+  t: number; // timestamp
+  v: string; // value
+  c: string; // cumulative
+};
+
 export type CandleData = {
   timestamp: number;
   open: string;
@@ -7,36 +21,41 @@ export type CandleData = {
 };
 
 export type TrailingAvgData = {
-  timestamp: number;
-  used: string;
-  feePaid: string;
+  t: number; // timestamp
+  u: string; // used
+  f: string; // fee
+};
+
+export type MarketPriceData = {
+  v: string; // value
+  t: number; // timestamp
+  e: number; // end timestamp
 };
 
 export type CandleMetadata = {
-  used: bigint;
-  feePaid: bigint;
-  startTimestamp: number;
-  endTimestamp: number;
+  u: string; // used
+  f: string; // fee
+  st: number; // start timestamp
+  et: number; // end timestamp
 };
 
 export type IndexStore = {
-  data: CandleData[];
+  data: (ReducedCandleData | ReducedIndexData)[];
   metadata: CandleMetadata[];
-  pointers: {
-    [closestTimestamp: number]: number;
-  };
   trailingAvgData: TrailingAvgData[];
 };
 
 export type IntervalStore = {
   resourceStore: IndexStore;
-  trailingAvgStore: IndexStore;
+  trailingAvgStore: {
+    [trailingAvgTime: string]: IndexStore;
+  };
   indexStore: {
     [epoch: string]: IndexStore;
   };
-  // marketStore: {
-  //   [market: string]: IndexStore;
-  // };
+  marketStore: {
+    [epoch: string]: IndexStore;
+  };
 };
 
 export type StorageData = {

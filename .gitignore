@@ -2,8 +2,8 @@ node_modules
 .env
 **/.turbo
 
-packages/protocol/deployments/13370
-packages/protocol/deployments/test
+packages/protocol/deployments/outputs/13370
+packages/protocol/deployments/outputs/test
 
 # Hardhat files
 **/cache

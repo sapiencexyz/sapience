@@ -17,11 +17,11 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^18.19.80",
+    "@types/node": "^20.17.6",
     "rimraf": "^4.1.2",
     "ts-node": "^10.9.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.5.4"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.7.0",

@@ -20,6 +20,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   vaultAddress: market.vaultAddress,
   chainId: market.chainId,
   isYin: market.isYin,
+  isCumulative: market.isCumulative,
   epochs: market.epochs?.map(mapEpochToType) || [],
   resource: market.resource ? mapResourceToType(market.resource) : null,
   deployTimestamp: market.deployTimestamp,

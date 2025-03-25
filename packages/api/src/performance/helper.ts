@@ -1,10 +1,14 @@
 import { IntervalStore } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { encode, decode } from '@msgpack/msgpack';
+
+const FILE_VERSION = 4;
 
 export async function saveStorageToFile(
   storage: IntervalStore,
-  latestTimestamp: number,
+  latestResourceTimestamp: number,
+  latestMarketTimestamp: number,
   resourceSlug: string,
   resourceName: string,
   sectionName: string
@@ -27,24 +31,26 @@ export async function saveStorageToFile(
 
   const filename = path.join(
     storageDir,
-    `${resourceSlug}-${sectionName}-storage.json`
+    `${resourceSlug}-${sectionName}-storage.msgpack`
   );
-  await fs.promises.writeFile(
-    filename,
-    JSON.stringify(
-      {
-        latestTimestamp,
-        store: storage,
-      },
-      (key, value) => (typeof value === 'bigint' ? value.toString() : value),
-      2
-    )
-  );
+
+  const data = {
+    fileVersion: FILE_VERSION,
+    latestResourceTimestamp,
+    latestMarketTimestamp,
+    store: storage,
+  };
+
+  // Encode and save
+  const buffer = encode(data);
+  await fs.promises.writeFile(filename, buffer);
 
   console.timeEnd(
     `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
   );
-  console.log(`  ResourcePerformance --> Saved storage to ${filename}`);
+  console.log(
+    `  ResourcePerformance --> Saved storage to ${filename} (${buffer.length} bytes)`
+  );
 }
 
 export async function loadStorageFromFile(
@@ -53,7 +59,8 @@ export async function loadStorageFromFile(
   sectionName: string
 ): Promise<
   | {
-      latestTimestamp: number;
+      latestResourceTimestamp: number;
+      latestMarketTimestamp: number;
       store: IntervalStore;
     }
   | undefined
@@ -72,37 +79,41 @@ export async function loadStorageFromFile(
 
   const filename = path.join(
     storageDir,
-    `${resourceSlug}-${sectionName}-storage.json`
+    `${resourceSlug}-${sectionName}-storage.msgpack`
   );
-  if (!fs.existsSync(filename)) {
-    console.log(`!! Storage file ${filename} does not exist`);
+
+  try {
+    const buffer = await fs.promises.readFile(filename);
+    const data = decode(buffer) as {
+      fileVersion: number;
+      latestResourceTimestamp: number;
+      latestMarketTimestamp: number;
+      store: IntervalStore;
+    };
+
+    if (data.fileVersion !== FILE_VERSION) {
+      console.log(
+        `!! Storage file ${filename} has an unsupported version -${data.fileVersion}-. Expected -${FILE_VERSION}-`
+      );
+      return undefined;
+    }
+
+    console.timeEnd(
+      `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+    );
+    console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
+    return {
+      latestResourceTimestamp: data.latestResourceTimestamp,
+      latestMarketTimestamp: data.latestMarketTimestamp,
+      store: data.store,
+    };
+  } catch (error) {
+    console.log(`  ResourcePerformance - load storage failed: ${error}`);
+    console.timeEnd(
+      `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+    );
     return undefined;
   }
-
-  const fileContent = await fs.promises.readFile(filename, 'utf-8');
-  const storage = JSON.parse(fileContent, (key, value) => {
-    // Convert string numbers that might be bigints back to bigint
-    if (typeof value === 'string' && /^\d+$/.test(value)) {
-      try {
-        return BigInt(value);
-      } catch {
-        return value;
-      }
-    }
-    return value;
-  }) as {
-    latestTimestamp: number;
-    store: IntervalStore;
-  };
-
-  console.timeEnd(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
-  );
-  console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
-  return {
-    latestTimestamp: storage.latestTimestamp,
-    store: storage.store,
-  };
 }
 
 export async function clearStorageFiles(): Promise<void> {
@@ -136,4 +147,25 @@ export function maxBigInt(a: bigint, b: bigint) {
 
 export function minBigInt(a: bigint, b: bigint) {
   return a < b ? a : b;
+}
+
+export function startOfCurrentInterval(
+  timestamp: number,
+  interval: number
+): number {
+  return Math.floor(timestamp / interval) * interval;
+}
+
+export function startOfNextInterval(
+  timestamp: number,
+  interval: number
+): number {
+  return (Math.floor(timestamp / interval) + 1) * interval;
+}
+
+export function getTimeWindow(from: number, to: number, interval: number) {
+  return {
+    from: startOfCurrentInterval(from, interval),
+    to: startOfNextInterval(to, interval),
+  };
 }

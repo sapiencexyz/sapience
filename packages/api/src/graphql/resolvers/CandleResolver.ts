@@ -334,7 +334,8 @@ export class CandleResolver {
     @Arg('slug', () => String) slug: string,
     @Arg('from', () => Int) from: number,
     @Arg('to', () => Int) to: number,
-    @Arg('interval', () => Int) interval: number
+    @Arg('interval', () => Int) interval: number,
+    @Arg('trailingAvgTime', () => Int) trailingAvgTime: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
     const resourcePerformance =
@@ -347,7 +348,8 @@ export class CandleResolver {
     const prices = await resourcePerformance.getTrailingAvgPrices(
       from,
       to,
-      interval
+      interval,
+      trailingAvgTime
     );
 
     return prices;
@@ -569,6 +571,40 @@ export class CandleResolver {
 
   @Query(() => [CandleType])
   async marketCandles(
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('address', () => String) address: string,
+    @Arg('epochId', () => String) epochId: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number
+  ): Promise<CandleType[]> {
+    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
+    const resourcePerformance =
+      resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+        chainId,
+        address
+      );
+
+    if (!resourcePerformance) {
+      throw new Error(
+        `Resource performance not initialized for ${chainId}-${address}`
+      );
+    }
+
+    const prices = await resourcePerformance.getMarketPrices(
+      from,
+      to,
+      interval,
+      chainId,
+      address,
+      epochId
+    );
+
+    return prices;
+  }
+
+  @Query(() => [CandleType])
+  async legacyMarketCandles(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
     @Arg('epochId', () => String) epochId: string,
