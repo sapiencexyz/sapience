@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useContext } from 'react';
 import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
+import { LiaRulerVerticalSolid } from 'react-icons/lia';
 
 import {
   Tooltip,
@@ -101,8 +102,8 @@ const PeriodHeader = () => {
       </a>
 
       <div className="inline-flex items-center">
-        <span className="inline-block mr-1.5">
-          <FaRegChartBar />
+        <span className="inline-block mr-1">
+          <LiaRulerVerticalSolid />
         </span>
         <span className="font-medium mr-1">Market Price Range:</span>
         <NumberDisplay value={minPrice} />
@@ -129,6 +130,16 @@ const PeriodHeader = () => {
             <TooltipContent>{endTimeTooltip}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
+      </div>
+
+      <div className="inline-flex items-center">
+        <span className="inline-block mr-1.5">
+          <FaRegChartBar />
+        </span>
+        <span className="font-medium mr-1">Market Type:</span>
+        <span>
+          {market?.isCumulative ? 'Cumulative Spent' : 'Average Price'}
+        </span>
       </div>
     </>
   );

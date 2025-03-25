@@ -1,27 +1,24 @@
 name="foil"
 version="1.0.2"
-preset="tia-blobs-cum-03-18"
+preset="gas-weekly"
 
 [var.settings]
 deployer="0xdb5af497a73620d881561edb508012a5f84e9ba2"
-owner="0xdb5af497a73620d881561edb508012a5f84e9ba2"
+owner="0x66aB20e98fcACfadB298C0741dFddA92568B5826"
 feeRate = "10000" # 1%
 assertionLiveness = "21600"
-bondAmount = "5000000" # Change for Prod
-claimStatement = "<%= stringToHex('The cumulative sum of blob data in the month of April 2025, as GB (gigabytes), represented with 18 decimal places') %>"
+bondAmount = "5000000000"
+claimStatement = "<%= stringToHex('The sum of gas used divided by the sum of base fees paid on Ethereum Mainnet across all blocks for the specified period, represented with 18 decimal places') %>"
 minTradeSize = "10000"
 
 # Integration addresses
-# Change for Prod
-optimisticOracleV3 = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944" # UMA Optimistic Oracle V3 
-uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52" # Uniswap V3 NonfungiblePositionManager 
-uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12" # Using our deployed SwapRouter // "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" # Uniswap V3 SwapRouter 
-uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3" # Uniswap V3 QuoterV2 
+optimisticOracleV3 = "0x2aBf1Bd76655de80eDB3086114315Eec75AF500c" # UMA Optimistic Oracle V3 
+uniswapPositionManager = "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1" # Uniswap V3 NonfungiblePositionManager 
+uniswapSwapRouter = "0xAf5ead464aFFB12dD4CDFB98c9D2C490194FE5d0" # Using our deployed SwapRouter // "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" # Uniswap V3 SwapRouter 
+uniswapQuoter = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a" # Uniswap V3 QuoterV2 
 
 # tokens
-# Change for Prod
-# USDS = "0x820c137fa70c8691f0e44dc420a5e53c168921dc"
-WETH = "0x7b79995e5f793a07bc00c21412e50ecae098e7f9"
+wstETH = "0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452"
 USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 depends = []
 
@@ -69,7 +66,7 @@ func="initializeMarket"
 from="<%= settings.deployer %>"
 args=[
   "<%= settings.owner %>",
-  "<%= settings.WETH %>",
+  "<%= settings.wstETH %>",
   [],
   "<%= zeroAddress %>",
   "<%= settings.minTradeSize %>",
@@ -77,27 +74,20 @@ args=[
 ]
 depends=["router.Foil"]
 
-# Epoch Settings
-# Change for Prod
-[var.epochSettings]
-startTime="1742341858"
-startingSqrtPriceX96 = "2169752589937389836368162586624"
-duration="604800"
-lowerBound="46000"
-upperBound="76000"
-salt="<%= stringToHex('tia-blob-cum-1') %>"
+# Weekly Epochs
 
-[invoke.createEpoch]
-target="Foil"
-func="createEpoch"
-from="<%= settings.deployer %>"
-args=[
-  "<%= settings.startTime %>",
-  "<%= settings.startTime + settings.duration %>",
-  "<%= settings.startingSqrtPriceX96 %>",
-  "<%= settings.lowerBound %>", # baseAssetMinPriceTick
-  "<%= settings.upperBound %>",  # baseAssetMaxPriceTick
-  "<%= settings.salt %>"
-]
-depends=["invoke.initializeMarket"]
+# Epoch 1
+# [invoke.createEpoch]
+# target="Foil"
+# func="createEpoch"
+# from="<%= settings.owner %>"
+# args=[
+#   "1743465600", # April 1st
+#   "1744070400", # April 7th
+#   "79228162514264337593543950336", # 1
+#   "-9200", # 0.4
+#   "16000", # 4
+#   "<%= stringToHex('april-gas-weekly-epoch-1') %>"
+# ]
+# depends=["invoke.initializeMarket"]
 
