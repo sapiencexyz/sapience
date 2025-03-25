@@ -433,10 +433,14 @@ const SubscribeContent = () => {
         market,
       }))
     );
-    console.log('All Epochs:', allEpochs);
+
+    // Filter for monthly epochs (28 days duration)
+    const monthlyEpochs = allEpochs.filter(
+      (epoch) => epoch.endTimestamp - epoch.startTimestamp === 28 * 24 * 60 * 60
+    );
 
     // Sort epochs by start time
-    const sortedEpochs = allEpochs.sort(
+    const sortedEpochs = monthlyEpochs.sort(
       (a, b) => a.startTimestamp - b.startTimestamp
     );
 
@@ -459,13 +463,16 @@ const SubscribeContent = () => {
       activeEpoch &&
       currentTime - activeEpoch.startTimestamp < 7 * 24 * 60 * 60; // 7 days in seconds
 
-    // Logic for determining which epoch to show
-    if (showActiveEpoch && activeEpoch && isWithin7DaysOfActiveEpochStart) {
-      // Show active epoch if it exists and we're within 7 days of its start
+    // If we're not within 7 days of active epoch start and showActiveEpoch is false,
+    // or if we are within 7 days and showActiveEpoch is true, show active epoch
+    if (
+      (!isWithin7DaysOfActiveEpochStart && !showActiveEpoch) ||
+      (isWithin7DaysOfActiveEpochStart && showActiveEpoch)
+    ) {
       return activeEpoch;
     }
 
-    // Default to next epoch or most recent if no next epoch
+    // Otherwise show next epoch
     return nextEpoch || mostRecentEpoch;
   }, [gasMarkets, currentTime, showActiveEpoch]);
 

@@ -4,6 +4,7 @@ import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import btcIndexer from './resourcePriceFunctions/btcIndexer';
 import { Deployment, MarketInfo } from './interfaces';
+import { zeroAddress } from 'viem';
 
 // TAT = Trailing Average Time
 export const TIME_INTERVALS = {
@@ -105,6 +106,23 @@ const addMarketYinYang = async (
   }
 };
 
+const addGasWeekly = async (markets: MarketInfo[]) => {
+  const gasWeekly = await safeRequire(
+    `@/protocol/deployments/outputs/${base.id}-gas-weekly/Foil.json`
+  );
+
+  if (gasWeekly) {
+    markets.push({
+      deployment: gasWeekly,
+      vaultAddress: zeroAddress,
+      marketChainId: base.id,
+      resource: RESOURCES[0],
+      isYin: true,
+      isCumulative: false,
+    });
+  }
+};
+
 const initializeMarkets = async () => {
   const FULL_MARKET_LIST: MarketInfo[] = [];
 
@@ -112,6 +130,9 @@ const initializeMarkets = async () => {
   await addMarketYinYang(FULL_MARKET_LIST, base.id, '-beta'); // Remove after settling feb
   await addMarketYinYang(FULL_MARKET_LIST, base.id);
   await addMarketYinYang(FULL_MARKET_LIST, base.id, '-blobs', RESOURCES[3]); // Use Ethereum Blobspace for -blobs
+
+  // add gas weekly
+  await addGasWeekly(FULL_MARKET_LIST);
 
   // Development Deployments
   if (process.env.NODE_ENV === 'development') {
