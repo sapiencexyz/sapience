@@ -9,6 +9,7 @@ import {
   ResourceResolver,
   TransactionResolver,
   CandleResolver,
+  PnLResolver,
 } from './resolvers';
 
 export const initializeApolloServer = async () => {
@@ -21,6 +22,7 @@ export const initializeApolloServer = async () => {
       TransactionResolver,
       EpochResolver,
       CandleResolver,
+      PnLResolver,
     ],
     emitSchemaFile: true,
     validate: false,

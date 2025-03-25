@@ -24,6 +24,9 @@ import {
   maxBigInt,
   minBigInt,
   saveStorageToFile,
+  startOfCurrentInterval,
+  startOfNextInterval,
+  getTimeWindow,
 } from './helper';
 
 export class ResourcePerformance {
@@ -209,7 +212,7 @@ export class ResourcePerformance {
       ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
     );
 
-    this.initializeRuntimeData(dbResourcePrices);
+    this.initializeOrCleanupRuntimeData(dbResourcePrices);
 
     // Process all resource prices
     while (this.runtime.currentIdx < this.runtime.dbResourcePricesLength) {
@@ -232,6 +235,8 @@ export class ResourcePerformance {
       }
       this.runtime.currentIdx++;
     }
+    // Cleanup the runtime data
+    this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
 
     // Process all market prices
     let marketIdx = 0;
@@ -397,11 +402,15 @@ export class ResourcePerformance {
     }
   }
 
-  private initializeRuntimeData(dbResourcePrices: ResourcePrice[]) {
-    this.runtime.dbResourcePrices = dbResourcePrices;
-    this.runtime.dbResourcePricesLength = dbResourcePrices.length;
-    this.runtime.currentIdx = 0;
-
+  private initializeOrCleanupRuntimeData(
+    dbResourcePrices: ResourcePrice[],
+    cleanup: boolean = false
+  ) {
+    if (!cleanup) {
+      this.runtime.dbResourcePrices = dbResourcePrices;
+      this.runtime.dbResourcePricesLength = dbResourcePrices.length;
+      this.runtime.currentIdx = 0;
+    }
     // Reset processing data structures
     // We don't need complex initialization anymore since our processing methods
     // will create and update placeholders in-place
@@ -539,7 +548,7 @@ export class ResourcePerformance {
 
     // If this is the first item or we're starting a new interval
     if (!rpd.nextTimestamp) {
-      rpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
+      rpd.nextTimestamp = startOfNextInterval(item.timestamp, interval);
       rpd.open = price;
       rpd.high = price;
       rpd.low = price;
@@ -547,10 +556,7 @@ export class ResourcePerformance {
 
       // Create a placeholder in the store
       const resourceStore = this.persistentStorage[interval].resourceStore;
-      const itemStartTime = this.startOfCurrentInterval(
-        item.timestamp,
-        interval
-      );
+      const itemStartTime = startOfCurrentInterval(item.timestamp, interval);
 
       // Check if we already have an item for this interval
       const existingIndex = resourceStore.data.findIndex(
@@ -603,17 +609,14 @@ export class ResourcePerformance {
       }
 
       // Prepare for next interval
-      rpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
+      rpd.nextTimestamp = startOfNextInterval(item.timestamp, interval);
       rpd.open = price;
       rpd.high = price;
       rpd.low = price;
       rpd.close = price;
 
       // Create a placeholder for the next interval
-      const itemStartTime = this.startOfCurrentInterval(
-        item.timestamp,
-        interval
-      );
+      const itemStartTime = startOfCurrentInterval(item.timestamp, interval);
 
       // Check if we already have an item for this interval
       const existingIndex = resourceStore.data.findIndex(
@@ -679,7 +682,7 @@ export class ResourcePerformance {
 
       // If this is the first item or we're starting a new interval
       if (!ripd.nextTimestamp) {
-        ripd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
+        ripd.nextTimestamp = startOfNextInterval(item.timestamp, interval);
 
         // Initialize index store if needed
         if (!this.persistentStorage[interval].indexStore[epoch.id]) {
@@ -692,10 +695,7 @@ export class ResourcePerformance {
         const piStore = this.persistentStorage[interval].indexStore[epoch.id];
 
         // Create a placeholder in the store
-        const itemStartTime = this.startOfCurrentInterval(
-          item.timestamp,
-          interval
-        );
+        const itemStartTime = startOfCurrentInterval(item.timestamp, interval);
 
         // Check if we already have an item for this interval
         const lastStoreIndex =
@@ -778,12 +778,9 @@ export class ResourcePerformance {
 
         // Prepare and create a placeholder for the next interval if there's a new interval
         if (isNewInterval) {
-          ripd.nextTimestamp = this.startOfNextInterval(
-            item.timestamp,
-            interval
-          );
+          ripd.nextTimestamp = startOfNextInterval(item.timestamp, interval);
 
-          const itemStartTime = this.startOfCurrentInterval(
+          const itemStartTime = startOfCurrentInterval(
             item.timestamp,
             interval
           );
@@ -869,13 +866,10 @@ export class ResourcePerformance {
 
     // First data point processed in this batch. Initialize accumulators and create a placeholder in the pstore if needed for the this data point
     if (!rtpd.nextTimestamp) {
-      rtpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
+      rtpd.nextTimestamp = startOfNextInterval(item.timestamp, interval);
 
       // Create a placeholder in the store if not found
-      const itemStartTime = this.startOfCurrentInterval(
-        item.timestamp,
-        interval
-      );
+      const itemStartTime = startOfCurrentInterval(item.timestamp, interval);
 
       // Check if we already have an item for this interval
       const lastStoreIndex =
@@ -974,13 +968,10 @@ export class ResourcePerformance {
 
       // Prepare and create a placeholder for the next interval if there's a new interval
       if (isNewInterval) {
-        rtpd.nextTimestamp = this.startOfNextInterval(item.timestamp, interval);
+        rtpd.nextTimestamp = startOfNextInterval(item.timestamp, interval);
 
         // Create a placeholder for the next interval
-        const itemStartTime = this.startOfCurrentInterval(
-          item.timestamp,
-          interval
-        );
+        const itemStartTime = startOfCurrentInterval(item.timestamp, interval);
 
         // Check if we already have an item for this interval
         const existingIndex = ptStore.data.findIndex(
@@ -1050,7 +1041,7 @@ export class ResourcePerformance {
       const rmpd = this.runtime.marketProcessData[interval][epoch.id];
 
       if (!rmpd.nextTimestamp) {
-        rmpd.nextTimestamp = this.startOfNextInterval(item.t, interval);
+        rmpd.nextTimestamp = startOfNextInterval(item.t, interval);
         rmpd.open = itemValueBn;
         rmpd.high = itemValueBn;
         rmpd.low = itemValueBn;
@@ -1067,7 +1058,7 @@ export class ResourcePerformance {
         const pmStore = this.persistentStorage[interval].marketStore[epoch.id];
 
         // Create a placeholder in the store
-        const itemStartTime = this.startOfCurrentInterval(item.t, interval);
+        const itemStartTime = startOfCurrentInterval(item.t, interval);
 
         // Check if we already have an item for this interval
         const lastStoreIndex =
@@ -1118,14 +1109,14 @@ export class ResourcePerformance {
           c: itemValueBn.toString(),
         };
         // Prepare the next interval
-        rmpd.nextTimestamp = this.startOfNextInterval(item.t, interval);
+        rmpd.nextTimestamp = startOfNextInterval(item.t, interval);
         rmpd.open = itemValueBn;
         rmpd.high = itemValueBn;
         rmpd.low = itemValueBn;
         rmpd.close = itemValueBn;
 
         // Create a placeholder for the next interval
-        const itemStartTime = this.startOfCurrentInterval(item.t, interval);
+        const itemStartTime = startOfCurrentInterval(item.t, interval);
 
         // Check if we already have an item for this interval
         const existingIndex = pmStore.data.findIndex(
@@ -1309,7 +1300,7 @@ export class ResourcePerformance {
       return [];
     }
 
-    const timeWindow = this.getTimeWindow(from, to, interval);
+    const timeWindow = getTimeWindow(from, to, interval);
 
     // Check if we need to process new data for this requested time range
     await this.updateStoreIfNeeded(prices, timeWindow.to);
@@ -1359,7 +1350,7 @@ export class ResourcePerformance {
     to: number,
     interval: number
   ): CandleData[] {
-    const timeWindow = this.getTimeWindow(from, to, interval);
+    const timeWindow = getTimeWindow(from, to, interval);
 
     const outputEntries = [];
     for (let t = timeWindow.from; t < timeWindow.to; t += interval) {
@@ -1433,32 +1424,5 @@ export class ResourcePerformance {
     }
 
     return outputEntries;
-  }
-
-  startOfCurrentInterval(
-    timestamp: number,
-    interval: number | undefined = undefined
-  ) {
-    if (interval === undefined) {
-      interval = ResourcePerformance.MIN_INTERVAL;
-    }
-    return Math.floor(timestamp / interval) * interval;
-  }
-
-  startOfNextInterval(
-    timestamp: number,
-    interval: number | undefined = undefined
-  ) {
-    if (interval === undefined) {
-      interval = ResourcePerformance.MIN_INTERVAL;
-    }
-    return (Math.floor(timestamp / interval) + 1) * interval;
-  }
-
-  private getTimeWindow(from: number, to: number, interval: number) {
-    return {
-      from: this.startOfCurrentInterval(from, interval),
-      to: this.startOfCurrentInterval(to, interval),
-    };
   }
 }

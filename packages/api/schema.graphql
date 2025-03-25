@@ -38,6 +38,17 @@ type MarketType {
   vaultAddress: String!
 }
 
+type PnLType {
+  epochId: Int!
+  openPositionsPnL: String!
+  owner: String!
+  positionCount: Int!
+  positions: [Int!]!
+  totalDeposits: String!
+  totalPnL: String!
+  totalWithdrawals: String!
+}
+
 type PositionType {
   baseToken: String!
   borrowedBaseToken: String
@@ -59,6 +70,7 @@ type PositionType {
 
 type Query {
   epochs(marketId: Int): [EpochType!]!
+  getEpochLeaderboard(address: String!, chainId: Int!, epochId: String!): [PnLType!]!
   indexCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
   indexPriceAtTime(address: String!, chainId: Int!, epochId: String!, timestamp: Int!): CandleType
   legacyMarketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!

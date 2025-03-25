@@ -5,3 +5,4 @@ export { TransactionType } from './TransactionType';
 export { EpochType } from './EpochType';
 export { ResourcePriceType } from './ResourcePriceType';
 export { CandleType } from './CandleType';
+export { PnLType } from './PnLType';
