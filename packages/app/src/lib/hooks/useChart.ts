@@ -215,7 +215,7 @@ export const useChart = ({
   const hasSetTimeScale = useRef(false);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
-  const { stEthPerToken } = useFoil();
+  const { stEthPerToken, markets } = useFoil();
   const [hoverData, setHoverData] = useState<{
     price: number | null;
     timestamp: number | null;
@@ -234,6 +234,24 @@ export const useChart = ({
 
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > now;
+
+  // Find the full market data from markets array
+  const hasRequiredMarketProps = (m: {
+    chainId?: number;
+    address?: string;
+  }): m is { chainId: number; address: string } => {
+    return typeof m.chainId === 'number' && typeof m.address === 'string';
+  };
+
+  const fullMarket =
+    market && hasRequiredMarketProps(market)
+      ? markets.find((m) => {
+          return (
+            m.chainId === market.chainId &&
+            m.address.toLowerCase() === market.address.toLowerCase()
+          );
+        })
+      : null;
 
   const { data: marketPrices, isLoading: isMarketPricesLoading } = useQuery<
     PriceChartData[]
@@ -378,6 +396,18 @@ export const useChart = ({
         const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
         const interval = getIntervalSeconds(selectedInterval);
 
+        // Calculate duration in days from full market data
+        let durationInDays = 28; // Default to 28 days
+        if (
+          fullMarket?.currentEpoch?.startTimestamp &&
+          fullMarket?.currentEpoch?.endTimestamp
+        ) {
+          const durationInSeconds =
+            fullMarket.currentEpoch.endTimestamp -
+            fullMarket.currentEpoch.startTimestamp;
+          durationInDays = Math.ceil(durationInSeconds / (24 * 60 * 60));
+        }
+
         const { data } = await foilApi.post('/graphql', {
           query: print(TRAILING_RESOURCE_CANDLES_QUERY),
           variables: {
@@ -385,7 +415,7 @@ export const useChart = ({
             from,
             to: now,
             interval,
-            trailingAvgTime: 28 * 24 * 60 * 60,
+            trailingAvgTime: durationInDays * 24 * 60 * 60,
           },
         });
 
