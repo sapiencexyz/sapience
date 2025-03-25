@@ -77,17 +77,17 @@ depends=["router.Foil"]
 # Weekly Epochs
 
 # Epoch 1
-[invoke.createEpoch]
-target="Foil"
-func="createEpoch"
-from="<%= settings.owner %>"
-args=[
-  "1743465600", # April 1st
-  "1744070400", # April 7th
-  "79228162514264337593543950336", # 1
-  "-9200", # 0.4
-  "16000", # 4
-  "<%= stringToHex('april-gas-weekly-epoch-1') %>"
-]
-depends=["invoke.initializeMarket"]
+# [invoke.createEpoch]
+# target="Foil"
+# func="createEpoch"
+# from="<%= settings.owner %>"
+# args=[
+#   "1743465600", # April 1st
+#   "1744070400", # April 7th
+#   "79228162514264337593543950336", # 1
+#   "-9200", # 0.4
+#   "16000", # 4
+#   "<%= stringToHex('april-gas-weekly-epoch-1') %>"
+# ]
+# depends=["invoke.initializeMarket"]
 

@@ -74,17 +74,17 @@ args=[
 ]
 depends=["router.Foil"]
 
-[invoke.createEpoch]
-target="Foil"
-func="createEpoch"
-from="<%= settings.owner %>"
-args=[
-  "1743465600", # April 1st
-  "1746057600", # April 30th
-  "2505414483750479251915866636288", # Starting price: 1000
-  "46000", # baseAssetMinPriceTick: 100
-  "76000", # baseAssetMaxPriceTick: 2000
-  "<%= stringToHex('tia-blob-cumulative-april-2025') %>"
-]
-depends=["invoke.initializeMarket"]
+# [invoke.createEpoch]
+# target="Foil"
+# func="createEpoch"
+# from="<%= settings.owner %>"
+# args=[
+#   "1743465600", # April 1st
+#   "1746057600", # April 30th
+#   "2505414483750479251915866636288", # Starting price: 1000
+#   "46000", # baseAssetMinPriceTick: 100
+#   "76000", # baseAssetMaxPriceTick: 2000
+#   "<%= stringToHex('tia-blob-cumulative-april-2025') %>"
+# ]
+# depends=["invoke.initializeMarket"]
 
