@@ -285,7 +285,7 @@ const GlobalLeaderboard = () => {
         <p className="text-center text-muted-foreground mb-6">
           Check out the{' '}
           <a
-            href="https://mirror.xyz"
+            href="https://mirror.xyz/0xC388FBA22945B103496f0B89E47cd332229514b8/TcndUPsVxJ9nPRqTnTWeVEvtbz4qnTisAxocAGsgEpw"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary border-b border-current hover:opacity-80"
