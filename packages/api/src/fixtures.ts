@@ -13,26 +13,26 @@ const EVM_RESOURCES = [
     slug: 'ethereum-gas',
     priceIndexer: new evmIndexer(mainnet.id),
   },
-  {
-    name: 'Base Gas',
-    slug: 'base-gas',
-    priceIndexer: new evmIndexer(base.id),
-  },
-  {
-    name: 'Arbitrum Gas',
-    slug: 'arbitrum-gas',
-    priceIndexer: new evmIndexer(arbitrum.id),
-  },
-  {
-    name: 'Ethereum Blobspace',
-    slug: 'ethereum-blobspace',
-    priceIndexer: new ethBlobsIndexer(mainnet.id),
-  },
-  {
-    name: 'Bitcoin Fees',
-    slug: 'bitcoin-fees',
-    priceIndexer: new btcIndexer(),
-  },
+  // {
+  //   name: 'Base Gas',
+  //   slug: 'base-gas',
+  //   priceIndexer: new evmIndexer(base.id),
+  // },
+  // {
+  //   name: 'Arbitrum Gas',
+  //   slug: 'arbitrum-gas',
+  //   priceIndexer: new evmIndexer(arbitrum.id),
+  // },
+  // {
+  //   name: 'Ethereum Blobspace',
+  //   slug: 'ethereum-blobspace',
+  //   priceIndexer: new ethBlobsIndexer(mainnet.id),
+  // },
+  // {
+  //   name: 'Bitcoin Fees',
+  //   slug: 'bitcoin-fees',
+  //   priceIndexer: new btcIndexer(),
+  // },
 ];
 
 const OTHER_RESOURCES = [
@@ -45,18 +45,23 @@ const OTHER_RESOURCES = [
         },
       ]
     : []),
-  ...(process.env.CELENIUM_API_KEY
-    ? [
-        {
-          name: 'Celestia Blobspace',
-          slug: 'celestia-blobspace',
-          priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
-        },
-      ]
-    : []),
+  // ...(process.env.CELENIUM_API_KEY
+  //   ? [
+  //       {
+  //         name: 'Celestia Blobspace',
+  //         slug: 'celestia-blobspace',
+  //         priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
+  //       },
+  //     ]
+  //   : []),
 ];
 
-const addMarketYinYang = async (markets: MarketInfo[], chainId: number) => {
+export const RESOURCES = [
+  ...EVM_RESOURCES,
+  ...OTHER_RESOURCES
+]
+
+const addMarketYinYang = async (markets: MarketInfo[], chainId: number, suffix?: string, resource = RESOURCES[0]) => {
   const yin = await safeRequire(
     `@/protocol/deployments/${chainId}${suffix || ''}/FoilYin.json`
   );

@@ -9,7 +9,6 @@ interface SolanaBlock {
   blockhash: string;
   parentSlot: number;
   blockTime: number | null;
-  slot: number;
   transactions: Array<{
     meta: {
       fee: number;
@@ -39,11 +38,6 @@ class SvmIndexer implements IResourcePriceIndexer {
       return;
     }
 
-    // Check if we've already processed this slot
-    if (this.processedSlots.has(block.slot)) {
-      return;
-    }
-
     try {
       let totalComputeUnits = 0n;
       let totalFees = 0n;
@@ -61,7 +55,7 @@ class SvmIndexer implements IResourcePriceIndexer {
       // Skip if no transactions or compute units
       if (totalComputeUnits === 0n || block.transactions.length === 0) {
         console.log(
-          `[svmIndexer] Block ${block.slot}: No compute units or transactions found`
+          `[svmIndexer] Block ${block}: No compute units or transactions found`
         );
         return;
       }
@@ -73,7 +67,7 @@ class SvmIndexer implements IResourcePriceIndexer {
       ).toString();
 
       console.log(
-        `[svmIndexer] Block ${block.slot} (${block.blockTime}): ${totalComputeUnits} CU, ${totalFees} lamports, fee/CU: ${avgFeePerCU}`
+        `[svmIndexer] Block ${block.parentSlot} (${block.blockTime}): ${totalComputeUnits} CU, ${totalFees} lamports, fee/CU: ${avgFeePerCU}`
       );
 
       const price = {
@@ -84,23 +78,13 @@ class SvmIndexer implements IResourcePriceIndexer {
         value: avgFeePerCU,
         used: totalComputeUnits.toString(),
         feePaid: totalFees.toString(),
-        blockNumber: block.slot,
+        blockNumber: block.parentSlot,
       };
 
       await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
 
-      // Mark slot as processed and remove from processing
-      this.processedSlots.add(block.slot);
-      this.processingSlots.delete(block.slot);
-
-      // Maintain a reasonable size for the processed slots set
-      if (this.processedSlots.size > 1000) {
-        this.processedSlots = new Set(
-          Array.from(this.processedSlots).slice(500, 1000)
-        );
-      }
     } catch (error) {
-      this.processingSlots.delete(block.slot);
+      this.processingSlots.delete(block.parentSlot);
       console.error('Error storing block price:', error);
       throw error;
     }
@@ -273,56 +257,40 @@ class SvmIndexer implements IResourcePriceIndexer {
       this.isWatching = true;
 
       // Initialize with current slot
-      const currentSlot = await this.connection.getSlot('finalized');
-      let lastProcessedSlot = currentSlot;
-      console.log(`[svmIndexer] Starting to watch from slot ${currentSlot}`);
+      let lastFinalizedBlockSlot = await this.connection.getBlockHeight('finalized') ;
+      console.log(`[svmIndexer] Starting to watch from block ${lastFinalizedBlockSlot}`);
 
-      // Subscribe to new slots but only process when we can get a block
-      const subscription = this.connection.onSlotChange(async (slotInfo) => {
+      while (this.isWatching) {
         try {
-          // Wait for a few slots to ensure finalization
-          const targetSlot = slotInfo.slot - 8; // Process blocks 8 slots behind
+          const targetBlockSlot = lastFinalizedBlockSlot + 1;
 
           // Skip if we've already processed this slot or if it's too recent
-          if (targetSlot <= lastProcessedSlot || targetSlot <= 0) {
-            return;
-          }
-
-          // Process all slots between last processed and current target
-          for (let slot = lastProcessedSlot + 1; slot <= targetSlot; slot++) {
-            // Skip if already processed or currently being processed
-            if (
-              this.processedSlots.has(slot) ||
-              this.processingSlots.has(slot)
-            ) {
-              continue;
-            }
-
-            // Mark slot as being processed
-            this.processingSlots.add(slot);
+          // if (targetSlot <= lastProcessedSlot || targetSlot <= 0) {
+          //   await new Promise(resolve => setTimeout(resolve, 100));
+          //   continue;
+          // }
 
             try {
-              const block = await this.connection.getBlock(slot, {
+              console.time("GetBlockTimer")
+              const block = await this.connection.getBlock(targetBlockSlot, {
                 maxSupportedTransactionVersion: 0,
                 commitment: 'finalized',
                 transactionDetails: 'full',
                 rewards: false,
               });
+              console.timeEnd("GetBlockTimer")
 
               if (block) {
+                console.log(`Number of txs in a block: ${block.transactions.length}`);
+                console.time("DbTimer")
                 await this.storeBlockPrice(
-                  { ...block, slot } as SolanaBlock,
+                  { ...block} as SolanaBlock,
                   resource
                 );
-              } else {
-                // Remove from processing if no block found
-                this.processingSlots.delete(slot);
+                console.timeEnd("DbTimer")
               }
             } catch (error: unknown) {
-              // Remove from processing on error
-              this.processingSlots.delete(slot);
-
-              // TODO(?): handle 429 => -32429 error code
+              
               if (
                 error &&
                 typeof error === 'object' &&
@@ -334,10 +302,17 @@ class SvmIndexer implements IResourcePriceIndexer {
               }
               throw error;
             }
-          }
+          // }
 
-          lastProcessedSlot = targetSlot;
+          lastFinalizedBlockSlot = targetBlockSlot;
           this.reconnectAttempts = 0;
+          
+          console.time("ResolveTimer")
+          // Sleep for 100ms before next iteration
+          await new Promise(resolve => setTimeout(resolve, 100));
+          console.timeEnd("ResolveTimer"); // Outputs: myTimer: X ms
+
+          
         } catch (error: unknown) {
           console.error('[svmIndexer] Error processing block:', error);
 
@@ -346,7 +321,7 @@ class SvmIndexer implements IResourcePriceIndexer {
             console.log(
               `[svmIndexer] Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})...`
             );
-            setTimeout(startWatching, this.reconnectDelay);
+            await new Promise(resolve => setTimeout(resolve, this.reconnectDelay));
           } else {
             console.error(
               '[svmIndexer] Max reconnection attempts reached. Stopping watch.'
@@ -354,14 +329,10 @@ class SvmIndexer implements IResourcePriceIndexer {
             Sentry.captureMessage(
               'Max reconnection attempts reached for block watcher'
             );
+            this.isWatching = false;
           }
         }
-      });
-
-      return () => {
-        this.connection.removeSlotChangeListener(subscription);
-        this.isWatching = false;
-      };
+      }
     };
 
     await startWatching();
