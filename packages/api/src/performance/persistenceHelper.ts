@@ -89,7 +89,7 @@ export async function persistToFile(
 async function persistStore(store: Store, filename: string): Promise<void> {
   // Input validation
   if (!store  ) {
-    throw new Error('Invalid store data provided');
+    return;
   }
 
   if (!filename) {
