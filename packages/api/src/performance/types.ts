@@ -1,18 +1,4 @@
-export type ReducedCandleData = {
-  t: number; // timestamp
-  o: string; // open
-  h: string; // high
-  l: string; // low
-  c: string; // close
-};
-
-export type ReducedIndexData = {
-  t: number; // timestamp
-  v: string; // value
-  c: string; // cumulative
-};
-
-export type CandleData = {
+export type RessponseCandleData = {
   timestamp: number;
   open: string;
   high: string;
@@ -20,10 +6,40 @@ export type CandleData = {
   close: string;
 };
 
-export type TrailingAvgData = {
+export type StorageData = {
+  [interval: string]: IntervalStore;
+};
+
+export type IntervalStore = {
+  resourceStore: Store;
+  marketStore: {
+    [epoch: string]: Store;
+  };
+  indexStore: {
+    [epoch: string]: Store;
+  };
+  trailingAvgStore: {
+    [trailingAvgTime: string]: Store;
+  };
+};
+
+export type Store = {
+  data: (CandleData | IndexData)[];
+  metadata: CandleMetadata[];
+};
+
+export type CandleData = {
   t: number; // timestamp
-  u: string; // used
-  f: string; // fee
+  o: string; // open
+  h: string; // high
+  l: string; // low
+  c: string; // close
+};
+
+export type IndexData = {
+  t: number; // timestamp
+  v: string; // value
+  c: string; // cumulative
 };
 
 export type MarketPriceData = {
@@ -39,25 +55,11 @@ export type CandleMetadata = {
   et: number; // end timestamp
 };
 
-export type IndexStore = {
-  data: (ReducedCandleData | ReducedIndexData)[];
-  metadata: CandleMetadata[];
-  trailingAvgData: TrailingAvgData[];
-};
+// TrailingAvg related types (now separate)
+export type TrailingAvgStorage = TrailingAvgData[];
 
-export type IntervalStore = {
-  resourceStore: IndexStore;
-  trailingAvgStore: {
-    [trailingAvgTime: string]: IndexStore;
-  };
-  indexStore: {
-    [epoch: string]: IndexStore;
-  };
-  marketStore: {
-    [epoch: string]: IndexStore;
-  };
-};
-
-export type StorageData = {
-  [interval: string]: IntervalStore;
+export type TrailingAvgData = {
+  t: number; // timestamp
+  u: string; // used
+  f: string; // fee
 };

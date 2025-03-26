@@ -1,6 +1,7 @@
 import { ResourcePerformance } from './resourcePerformance';
 import { Resource } from 'src/models/Resource';
-import { clearStorageFiles } from './helper';
+import { clearStorageFiles } from './persistenceHelper';
+
 export class ResourcePerformanceManager {
   private static _instance: ResourcePerformanceManager;
   private static _initialized: boolean = false;
