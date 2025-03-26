@@ -555,10 +555,34 @@ const getTransactions = {
   },
 };
 
-// Price Tools
+// Helper function to convert interval string to seconds
+function intervalToSeconds(interval: string): number {
+  if (!isNaN(Number(interval))) {
+    return Number(interval);
+  }
+
+  const match = interval.match(/^(\d+)(s|m|h|d|w)$/);
+  if (!match) {
+    throw new Error('Invalid interval format. Use a number for seconds or format like "1d", "4h", "30m", "45s", "1w"');
+  }
+
+  const value = parseInt(match[1]);
+  const unit = match[2];
+
+  const multipliers: Record<string, number> = {
+    's': 1,
+    'm': 60,
+    'h': 3600,
+    'd': 86400,
+    'w': 604800
+  };
+
+  return value * multipliers[unit];
+}
+
 const getMarketCandles = {
   name: "get_foil_market_candles",
-  description: "Gets price candle data (OHLC) for a specific market over a time period",
+  description: "Gets price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.",
   parameters: {
     properties: {
       address: {
@@ -596,6 +620,8 @@ const getMarketCandles = {
     to: string;
     interval: string;
   }) => {
+    const intervalSeconds = intervalToSeconds(interval);
+    
     const query = `
       query GetMarketCandles($address: String!, $chainId: Int!, $epochId: String!, $from: Int!, $to: Int!, $interval: Int!) {
         marketCandles(address: $address, chainId: $chainId, epochId: $epochId, from: $from, to: $to, interval: $interval) {
@@ -614,7 +640,7 @@ const getMarketCandles = {
       epochId,
       from: parseInt(from),
       to: parseInt(to),
-      interval: parseInt(interval),
+      interval: intervalSeconds,
     });
     return {
       content: [{
@@ -627,7 +653,7 @@ const getMarketCandles = {
 
 const getResourceCandles = {
   name: "get_foil_resource_candles",
-  description: "Gets price candle data (OHLC) for a specific resource over a time period",
+  description: "Gets price candle data (OHLC) for a specific resource over a time period. To, from, and interval should be specified in seconds.",
   parameters: {
     properties: {
       slug: {
@@ -655,6 +681,8 @@ const getResourceCandles = {
     to: string;
     interval: string;
   }) => {
+    const intervalSeconds = intervalToSeconds(interval);
+
     const query = `
       query GetResourceCandles($slug: String!, $from: Int!, $to: Int!, $interval: Int!) {
         resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
@@ -671,7 +699,7 @@ const getResourceCandles = {
       slug,
       from: parseInt(from),
       to: parseInt(to),
-      interval: parseInt(interval),
+      interval: intervalSeconds,
     });
     return {
       content: [{
@@ -684,7 +712,7 @@ const getResourceCandles = {
 
 const getResourceTrailingAverageCandles = {
   name: "get_foil_resource_trailing_average_candles",
-  description: "Gets trailing average price candle data (OHLC) for a specific resource over a time period",
+  description: "Gets trailing average price candle data (OHLC) for a specific resource over a time period. To, from, interval, and trailingAvgTime should be specified in seconds.",
   parameters: {
     properties: {
       slug: {
@@ -717,6 +745,9 @@ const getResourceTrailingAverageCandles = {
     interval: string;
     trailingAvgTime: string;
   }) => {
+    const intervalSeconds = intervalToSeconds(interval);
+    const trailingAvgSeconds = intervalToSeconds(trailingAvgTime);
+
     const query = `
       query GetResourceTrailingAverageCandles($slug: String!, $from: Int!, $to: Int!, $interval: Int!, $trailingAvgTime: Int!) {
         resourceTrailingAverageCandles(slug: $slug, from: $from, to: $to, interval: $interval, trailingAvgTime: $trailingAvgTime) {
@@ -733,8 +764,8 @@ const getResourceTrailingAverageCandles = {
       slug,
       from: parseInt(from),
       to: parseInt(to),
-      interval: parseInt(interval),
-      trailingAvgTime: parseInt(trailingAvgTime),
+      interval: intervalSeconds,
+      trailingAvgTime: trailingAvgSeconds,
     });
     return {
       content: [{
@@ -747,7 +778,7 @@ const getResourceTrailingAverageCandles = {
 
 const getIndexCandles = {
   name: "get_foil_index_candles",
-  description: "Gets index price candle data (OHLC) for a specific market over a time period",
+  description: "Gets index price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.",
   parameters: {
     properties: {
       address: {
@@ -785,6 +816,8 @@ const getIndexCandles = {
     to: string;
     interval: string;
   }) => {
+    const intervalSeconds = intervalToSeconds(interval);
+
     const query = `
       query GetIndexCandles($address: String!, $chainId: Int!, $epochId: String!, $from: Int!, $to: Int!, $interval: Int!) {
         indexCandles(address: $address, chainId: $chainId, epochId: $epochId, from: $from, to: $to, interval: $interval) {
@@ -803,7 +836,7 @@ const getIndexCandles = {
       epochId,
       from: parseInt(from),
       to: parseInt(to),
-      interval: parseInt(interval),
+      interval: intervalSeconds,
     });
     return {
       content: [{
