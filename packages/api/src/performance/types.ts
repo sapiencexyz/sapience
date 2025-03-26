@@ -1,4 +1,4 @@
-export type RessponseCandleData = {
+export type ResponseCandleData = {
   timestamp: number;
   open: string;
   high: string;

@@ -13,7 +13,7 @@ import {
   MarketPriceData,
   StorageData,
   TrailingAvgData,
-  RessponseCandleData,
+  ResponseCandleData,
   IndexData,
   TrailingAvgStorage,
 } from './types';
@@ -28,7 +28,7 @@ import {
   getTimeWindow,
 } from './helper';
 
-import { loadStorageFromFile, saveStorageToFile } from './persistenceHelper';
+import { loadStorageFromFile, persistToFile, saveStorageToFile } from './persistenceHelper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
@@ -483,6 +483,21 @@ export class ResourcePerformance {
     const resourceSlug = this.resource.slug;
     const resourceName = this.resource.name;
 
+    console.log('LLL ResourcePerformance.persistStorage');
+    console.time('LLL ResourcePerformance.persistStorage');
+
+    // Persist 
+    await persistToFile(
+      this.persistentStorage,
+      this.persistentTrailingAvgStorage,
+      this.resource,
+      this.intervals,
+      this.trailingAvgTime,
+      this.epochs
+    );
+    console.timeEnd('LLL ResourcePerformance.persistStorage');
+
+    return;
     for (const interval of this.intervals) {
       // Interval resource store
       await saveStorageToFile(
@@ -1276,7 +1291,7 @@ export class ResourcePerformance {
     to: number,
     interval: number,
     fillInitialDatapoints: boolean = true
-  ): Promise<RessponseCandleData[]> {
+  ): Promise<ResponseCandleData[]> {
     if (prices.length === 0) {
       return [];
     }
@@ -1326,11 +1341,11 @@ export class ResourcePerformance {
   }
 
   private fillMissingCandles(
-    prices: RessponseCandleData[],
+    prices: ResponseCandleData[],
     from: number,
     to: number,
     interval: number
-  ): RessponseCandleData[] {
+  ): ResponseCandleData[] {
     const timeWindow = getTimeWindow(from, to, interval);
 
     const outputEntries = [];
