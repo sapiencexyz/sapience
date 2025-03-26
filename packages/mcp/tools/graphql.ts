@@ -558,7 +558,7 @@ const getTransactions = {
 // Price Tools
 const getMarketCandles = {
   name: "get_foil_market_candles",
-  description: "Gets price candles for a specific market over a time period",
+  description: "Gets price candle data (OHLC) for a specific market over a time period",
   parameters: {
     properties: {
       address: {
@@ -627,7 +627,7 @@ const getMarketCandles = {
 
 const getResourceCandles = {
   name: "get_foil_resource_candles",
-  description: "Gets price candles for a specific resource over a time period",
+  description: "Gets price candle data (OHLC) for a specific resource over a time period",
   parameters: {
     properties: {
       slug: {
@@ -684,7 +684,7 @@ const getResourceCandles = {
 
 const getResourceTrailingAverageCandles = {
   name: "get_foil_resource_trailing_average_candles",
-  description: "Gets trailing average price candles for a specific resource over a time period",
+  description: "Gets trailing average price candle data (OHLC) for a specific resource over a time period",
   parameters: {
     properties: {
       slug: {
@@ -747,7 +747,7 @@ const getResourceTrailingAverageCandles = {
 
 const getIndexCandles = {
   name: "get_foil_index_candles",
-  description: "Gets index price candles for a specific market over a time period",
+  description: "Gets index price candle data (OHLC) for a specific market over a time period",
   parameters: {
     properties: {
       address: {

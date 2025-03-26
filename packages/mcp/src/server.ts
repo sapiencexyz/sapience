@@ -17,7 +17,8 @@ interface ToolDefinition {
 // Create an MCP server
 const server = new McpServer({
   name: "foil-mcp-server",
-  version: "1.0.0"
+  version: "1.0.0",
+  description: "Note: While the codebase may reference 'epochs', users should refer to these as 'periods' in their queries. These terms are interchangeable in this context."
 });
 
 // Debug log the available tools

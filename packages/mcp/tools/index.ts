@@ -5,7 +5,11 @@ import {
   getResource,
   listResources,
   getEpochs,
-  getTransactions
+  getTransactions,
+  getMarketCandles,
+  getResourceCandles,
+  getResourceTrailingAverageCandles,
+  getIndexCandles
 } from './graphql';
 
 import {
@@ -35,7 +39,11 @@ export const graphql = {
   getResource,
   listResources,
   getEpochs,
-  getTransactions
+  getTransactions,
+  getMarketCandles,
+  getResourceCandles,
+  getResourceTrailingAverageCandles,
+  getIndexCandles
 };
 
 export const readFoilContracts = {
