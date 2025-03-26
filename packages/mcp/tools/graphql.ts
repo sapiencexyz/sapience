@@ -399,12 +399,6 @@ const getResource = {
             chainId
             id
           }
-          resourcePrices {
-            id
-            timestamp
-            value
-            blockNumber
-          }
         }
       }
     `;

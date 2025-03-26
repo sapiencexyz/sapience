@@ -34,15 +34,7 @@ for (const [moduleName, moduleTools] of Object.entries(tools)) {
     for (const [toolName, tool] of Object.entries(toolsObj)) {
       try {
         // Format the tool name to be more descriptive
-        const formattedToolName = `foil_${toolName}`
-          .replace(/([A-Z])/g, '_$1') // Add underscore before capital letters
-          .toLowerCase() // Convert to lowercase
-          .replace(/^foil_get_/, 'get_foil_') // Move "foil" after "get"
-          .replace(/^foil_list_/, 'list_foil_') // Move "foil" after "list"
-          .replace(/epoch/g, 'period') // Replace "epoch" with "period"
-          .replace(/[^a-z0-9_-]/g, '_') // Replace any invalid characters with underscore
-          .replace(/_+/g, '_') // Replace multiple underscores with single underscore
-          .replace(/^_+|_+$/g, ''); // Remove leading/trailing underscores
+        const formattedToolName = toolName;  // Use original tool name without transformation
 
         console.error(`Registering tool: ${formattedToolName}`);
         

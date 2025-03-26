@@ -74,6 +74,10 @@ export const createTraderPosition = {
         type: "string",
         description: "The address of the market to create the position in"
       },
+      epochId: {
+        type: "string",
+        description: "The period ID to create the position in"
+      },
       collateralAmount: {
         type: "string",
         description: "The amount of collateral to use"
@@ -81,15 +85,21 @@ export const createTraderPosition = {
       size: {
         type: "string",
         description: "The size of the position"
+      },
+      deadline: {
+        type: "string",
+        description: "The deadline for the transaction (timestamp in seconds)"
       }
     },
-    required: ["marketAddress", "collateralAmount", "size"],
+    required: ["marketAddress", "epochId", "collateralAmount", "size", "deadline"],
   },
-  function: async (args: { marketAddress: string; collateralAmount: string; size: string }) => {
+  function: async (args: { marketAddress: string; epochId: string; collateralAmount: string; size: string; deadline: string }) => {
     try {
       const calldata = encodeFunction('createTraderPosition', [
+        BigInt(args.epochId),
+        BigInt(args.size),
         BigInt(args.collateralAmount),
-        Number(args.size)
+        BigInt(args.deadline)
       ]);
 
       return {
@@ -178,22 +188,28 @@ export const modifyTraderPosition = {
         type: "string",
         description: "The ID of the position to modify"
       },
-      newCollateralAmount: {
-        type: "string",
-        description: "The new amount of collateral to use"
-      },
       newSize: {
         type: "string",
         description: "The new size of the position"
+      },
+      deltaCollateralLimit: {
+        type: "string",
+        description: "The change in the collateral limit. Positive for adding collateral, negative for removing. If 0, no limit."
+      },
+      deadline: {
+        type: "string",
+        description: "The deadline for the transaction (timestamp in seconds)"
       }
     },
-    required: ["marketAddress", "positionId", "newCollateralAmount", "newSize"],
+    required: ["marketAddress", "positionId", "newSize", "deltaCollateralLimit", "deadline"],
   },
-  function: async (args: { marketAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
+  function: async (args: { marketAddress: string; positionId: string; newSize: string; deltaCollateralLimit: string; deadline: string }) => {
     try {
       const calldata = encodeFunction('modifyTraderPosition', [
         BigInt(args.positionId),
-        BigInt(args.newCollateralAmount)
+        BigInt(args.newSize),
+        BigInt(args.deltaCollateralLimit),
+        BigInt(args.deadline)
       ]);
 
       return {
