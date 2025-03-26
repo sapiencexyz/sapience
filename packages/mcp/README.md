@@ -10,6 +10,10 @@
   * `getEpochs` - Gets information about epochs (periods) in the system, optionally filtered by market ID
   * `getPositions` - Gets information about positions, optionally filtered by chain ID, market address, or owner
   * `getTransactions` - Gets transaction history, optionally filtered by position ID
+  * `getMarketCandles` - Gets price candles for a specific market over a time period
+  * `getResourceCandles` - Gets price candles for a specific resource over a time period
+  * `getResourceTrailingAverageCandles` - Gets trailing average price candles for a specific resource over a time period
+  * `getIndexCandles` - Gets index price candles for a specific market over a time period
 * `writeFoilContracts` returns the call data to sign for the following functions:
   * `quoteCreateTraderPosition` - Gets a quote for creating a new trader position
   * `createTraderPosition` - Creates a new trader position with specified parameters

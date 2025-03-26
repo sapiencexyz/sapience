@@ -102,25 +102,31 @@ export const getEpochInfo = {
         args: [BigInt(args.epochId)]
       });
 
+      // Handle the case where epochInfo might be undefined or null
+      if (!epochInfo) {
+        throw new Error('No epoch info returned');
+      }
+
+      // Safely extract values with type checking
       const formattedInfo = {
-        epochData: {
-          startTime: epochInfo[0].startTime.toString(),
-          endTime: epochInfo[0].endTime.toString(),
-          startingSqrtPriceX96: epochInfo[0].startingSqrtPriceX96.toString(),
-          settled: epochInfo[0].settled,
-          settlementPriceX96: epochInfo[0].settlementPriceX96.toString()
-        },
-        marketParams: {
-          feeRate: Number(epochInfo[1].feeRate),
-          assertionLiveness: Number(epochInfo[1].assertionLiveness),
-          bondAmount: epochInfo[1].bondAmount.toString(),
-          bondCurrency: epochInfo[1].bondCurrency,
-          uniswapPositionManager: epochInfo[1].uniswapPositionManager,
-          uniswapSwapRouter: epochInfo[1].uniswapSwapRouter,
-          uniswapQuoter: epochInfo[1].uniswapQuoter,
-          optimisticOracleV3: epochInfo[1].optimisticOracleV3,
-          claimStatement: epochInfo[1].claimStatement
-        }
+        epochData: epochInfo[0] ? {
+          startTime: epochInfo[0].startTime?.toString() || '0',
+          endTime: epochInfo[0].endTime?.toString() || '0',
+          startingSqrtPriceX96: epochInfo[0].startingSqrtPriceX96?.toString() || '0',
+          settled: Boolean(epochInfo[0].settled),
+          settlementPriceX96: epochInfo[0].settlementPriceX96?.toString() || '0'
+        } : null,
+        marketParams: epochInfo[1] ? {
+          feeRate: Number(epochInfo[1].feeRate || 0),
+          assertionLiveness: Number(epochInfo[1].assertionLiveness || 0),
+          bondAmount: (epochInfo[1].bondAmount || 0).toString(),
+          bondCurrency: epochInfo[1].bondCurrency || '',
+          uniswapPositionManager: epochInfo[1].uniswapPositionManager || '',
+          uniswapSwapRouter: epochInfo[1].uniswapSwapRouter || '',
+          uniswapQuoter: epochInfo[1].uniswapQuoter || '',
+          optimisticOracleV3: epochInfo[1].optimisticOracleV3 || '',
+          claimStatement: epochInfo[1].claimStatement || ''
+        } : null
       };
 
       return {
@@ -161,25 +167,31 @@ export const getLatestEpochInfo = {
         functionName: 'getLatestEpoch'
       });
 
+      // Handle the case where epochInfo might be undefined or null
+      if (!epochInfo) {
+        throw new Error('No epoch info returned');
+      }
+
+      // Safely extract values with type checking
       const formattedInfo = {
-        epochData: {
-          startTime: epochInfo[0].startTime.toString(),
-          endTime: epochInfo[0].endTime.toString(),
-          startingSqrtPriceX96: epochInfo[0].startingSqrtPriceX96.toString(),
-          settled: epochInfo[0].settled,
-          settlementPriceX96: epochInfo[0].settlementPriceX96.toString()
-        },
-        marketParams: {
-          feeRate: Number(epochInfo[1].feeRate),
-          assertionLiveness: Number(epochInfo[1].assertionLiveness),
-          bondAmount: epochInfo[1].bondAmount.toString(),
-          bondCurrency: epochInfo[1].bondCurrency,
-          uniswapPositionManager: epochInfo[1].uniswapPositionManager,
-          uniswapSwapRouter: epochInfo[1].uniswapSwapRouter,
-          uniswapQuoter: epochInfo[1].uniswapQuoter,
-          optimisticOracleV3: epochInfo[1].optimisticOracleV3,
-          claimStatement: epochInfo[1].claimStatement
-        }
+        epochData: epochInfo[0] ? {
+          startTime: epochInfo[0].startTime?.toString() || '0',
+          endTime: epochInfo[0].endTime?.toString() || '0',
+          startingSqrtPriceX96: epochInfo[0].startingSqrtPriceX96?.toString() || '0',
+          settled: Boolean(epochInfo[0].settled),
+          settlementPriceX96: epochInfo[0].settlementPriceX96?.toString() || '0'
+        } : null,
+        marketParams: epochInfo[1] ? {
+          feeRate: Number(epochInfo[1].feeRate || 0),
+          assertionLiveness: Number(epochInfo[1].assertionLiveness || 0),
+          bondAmount: (epochInfo[1].bondAmount || 0).toString(),
+          bondCurrency: epochInfo[1].bondCurrency || '',
+          uniswapPositionManager: epochInfo[1].uniswapPositionManager || '',
+          uniswapSwapRouter: epochInfo[1].uniswapSwapRouter || '',
+          uniswapQuoter: epochInfo[1].uniswapQuoter || '',
+          optimisticOracleV3: epochInfo[1].optimisticOracleV3 || '',
+          claimStatement: epochInfo[1].claimStatement || ''
+        } : null
       };
 
       return {
@@ -286,16 +298,21 @@ export const getReferencePrice = {
       marketAddress: {
         type: "string",
         description: "The address of the market to get the reference price for"
+      },
+      epochId: {
+        type: "string",
+        description: "The ID of the period to get the reference price for"
       }
     },
-    required: ["marketAddress"],
+    required: ["marketAddress", "epochId"],
   },
-  function: async (args: { marketAddress: string }) => {
+  function: async (args: { marketAddress: string; epochId: string }) => {
     try {
       const referencePrice = await client.readContract({
         address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
-        functionName: 'getReferencePrice'
+        functionName: 'getReferencePrice',
+        args: [BigInt(args.epochId)]
       });
 
       return {

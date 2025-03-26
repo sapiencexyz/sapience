@@ -555,6 +555,265 @@ const getTransactions = {
   },
 };
 
+// Price Tools
+const getMarketCandles = {
+  name: "get_foil_market_candles",
+  description: "Gets price candles for a specific market over a time period",
+  parameters: {
+    properties: {
+      address: {
+        type: 'string',
+        description: 'The address of the market',
+      },
+      chainId: {
+        type: 'string',
+        description: 'The chain ID where the market exists',
+      },
+      epochId: {
+        type: 'string',
+        description: 'The epoch ID to get candles for',
+      },
+      from: {
+        type: 'string',
+        description: 'Start timestamp in seconds',
+      },
+      to: {
+        type: 'string',
+        description: 'End timestamp in seconds',
+      },
+      interval: {
+        type: 'string',
+        description: 'Interval between candles in seconds',
+      },
+    },
+    required: ['address', 'chainId', 'epochId', 'from', 'to', 'interval'],
+  },
+  function: async ({ address, chainId, epochId, from, to, interval }: { 
+    address: string; 
+    chainId: string; 
+    epochId: string;
+    from: string;
+    to: string;
+    interval: string;
+  }) => {
+    const query = `
+      query GetMarketCandles($address: String!, $chainId: Int!, $epochId: String!, $from: Int!, $to: Int!, $interval: Int!) {
+        marketCandles(address: $address, chainId: $chainId, epochId: $epochId, from: $from, to: $to, interval: $interval) {
+          timestamp
+          open
+          high
+          low
+          close
+        }
+      }
+    `;
+
+    const result = await executeGraphQLQuery(query, {
+      address,
+      chainId: parseInt(chainId),
+      epochId,
+      from: parseInt(from),
+      to: parseInt(to),
+      interval: parseInt(interval),
+    });
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify(result.data?.marketCandles, null, 2)
+      }]
+    };
+  },
+};
+
+const getResourceCandles = {
+  name: "get_foil_resource_candles",
+  description: "Gets price candles for a specific resource over a time period",
+  parameters: {
+    properties: {
+      slug: {
+        type: 'string',
+        description: 'The slug of the resource',
+      },
+      from: {
+        type: 'string',
+        description: 'Start timestamp in seconds',
+      },
+      to: {
+        type: 'string',
+        description: 'End timestamp in seconds',
+      },
+      interval: {
+        type: 'string',
+        description: 'Interval between candles in seconds',
+      },
+    },
+    required: ['slug', 'from', 'to', 'interval'],
+  },
+  function: async ({ slug, from, to, interval }: { 
+    slug: string; 
+    from: string;
+    to: string;
+    interval: string;
+  }) => {
+    const query = `
+      query GetResourceCandles($slug: String!, $from: Int!, $to: Int!, $interval: Int!) {
+        resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
+          timestamp
+          open
+          high
+          low
+          close
+        }
+      }
+    `;
+
+    const result = await executeGraphQLQuery(query, {
+      slug,
+      from: parseInt(from),
+      to: parseInt(to),
+      interval: parseInt(interval),
+    });
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify(result.data?.resourceCandles, null, 2)
+      }]
+    };
+  },
+};
+
+const getResourceTrailingAverageCandles = {
+  name: "get_foil_resource_trailing_average_candles",
+  description: "Gets trailing average price candles for a specific resource over a time period",
+  parameters: {
+    properties: {
+      slug: {
+        type: 'string',
+        description: 'The slug of the resource',
+      },
+      from: {
+        type: 'string',
+        description: 'Start timestamp in seconds',
+      },
+      to: {
+        type: 'string',
+        description: 'End timestamp in seconds',
+      },
+      interval: {
+        type: 'string',
+        description: 'Interval between candles in seconds',
+      },
+      trailingAvgTime: {
+        type: 'string',
+        description: 'Time window for trailing average in seconds',
+      },
+    },
+    required: ['slug', 'from', 'to', 'interval', 'trailingAvgTime'],
+  },
+  function: async ({ slug, from, to, interval, trailingAvgTime }: { 
+    slug: string; 
+    from: string;
+    to: string;
+    interval: string;
+    trailingAvgTime: string;
+  }) => {
+    const query = `
+      query GetResourceTrailingAverageCandles($slug: String!, $from: Int!, $to: Int!, $interval: Int!, $trailingAvgTime: Int!) {
+        resourceTrailingAverageCandles(slug: $slug, from: $from, to: $to, interval: $interval, trailingAvgTime: $trailingAvgTime) {
+          timestamp
+          open
+          high
+          low
+          close
+        }
+      }
+    `;
+
+    const result = await executeGraphQLQuery(query, {
+      slug,
+      from: parseInt(from),
+      to: parseInt(to),
+      interval: parseInt(interval),
+      trailingAvgTime: parseInt(trailingAvgTime),
+    });
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify(result.data?.resourceTrailingAverageCandles, null, 2)
+      }]
+    };
+  },
+};
+
+const getIndexCandles = {
+  name: "get_foil_index_candles",
+  description: "Gets index price candles for a specific market over a time period",
+  parameters: {
+    properties: {
+      address: {
+        type: 'string',
+        description: 'The address of the market',
+      },
+      chainId: {
+        type: 'string',
+        description: 'The chain ID where the market exists',
+      },
+      epochId: {
+        type: 'string',
+        description: 'The epoch ID to get candles for',
+      },
+      from: {
+        type: 'string',
+        description: 'Start timestamp in seconds',
+      },
+      to: {
+        type: 'string',
+        description: 'End timestamp in seconds',
+      },
+      interval: {
+        type: 'string',
+        description: 'Interval between candles in seconds',
+      },
+    },
+    required: ['address', 'chainId', 'epochId', 'from', 'to', 'interval'],
+  },
+  function: async ({ address, chainId, epochId, from, to, interval }: { 
+    address: string; 
+    chainId: string; 
+    epochId: string;
+    from: string;
+    to: string;
+    interval: string;
+  }) => {
+    const query = `
+      query GetIndexCandles($address: String!, $chainId: Int!, $epochId: String!, $from: Int!, $to: Int!, $interval: Int!) {
+        indexCandles(address: $address, chainId: $chainId, epochId: $epochId, from: $from, to: $to, interval: $interval) {
+          timestamp
+          open
+          high
+          low
+          close
+        }
+      }
+    `;
+
+    const result = await executeGraphQLQuery(query, {
+      address,
+      chainId: parseInt(chainId),
+      epochId,
+      from: parseInt(from),
+      to: parseInt(to),
+      interval: parseInt(interval),
+    });
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify(result.data?.indexCandles, null, 2)
+      }]
+    };
+  },
+};
+
 export {
   introspectSchema,
   executeQuery,
@@ -564,5 +823,9 @@ export {
   getResource,
   listResources,
   getEpochs,
-  getTransactions
+  getTransactions,
+  getMarketCandles,
+  getResourceCandles,
+  getResourceTrailingAverageCandles,
+  getIndexCandles
 };

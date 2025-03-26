@@ -26,6 +26,10 @@ export const quoteCreateTraderPosition = {
         type: "string",
         description: "The address of the market to create the position in"
       },
+      epochId: {
+        type: "string",
+        description: "The period ID to create the position in"
+      },
       collateralAmount: {
         type: "string",
         description: "The amount of collateral to use"
@@ -35,21 +39,25 @@ export const quoteCreateTraderPosition = {
         description: "The size of the position"
       }
     },
-    required: ["marketAddress", "collateralAmount", "size"],
+    required: ["marketAddress", "epochId", "collateralAmount", "size"],
   },
-  function: async (args: { marketAddress: string; collateralAmount: string; size: string }) => {
+  function: async (args: { marketAddress: string; epochId: string; collateralAmount: string; size: string }) => {
     try {
-      const calldata = encodeFunction('quoteCreateTraderPosition', [
-        BigInt(args.collateralAmount),
-        Number(args.size)
-      ]);
+      const result = await client.simulateContract({
+        address: args.marketAddress as `0x${string}`,
+        abi: FoilABI.abi,
+        functionName: 'quoteCreateTraderPosition',
+        args: [BigInt(args.epochId), Number(args.size)]
+      });
+
+      const [requiredCollateral, fillPrice] = result.result as [bigint, bigint];
 
       return {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
-            data: calldata
+            requiredCollateral: requiredCollateral.toString(),
+            fillPrice: fillPrice.toString()
           }, null, 2)
         }]
       };
@@ -57,7 +65,7 @@ export const quoteCreateTraderPosition = {
       return {
         content: [{
           type: "text" as const,
-          text: `Error encoding quoteCreateTraderPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error getting quote for createTraderPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
@@ -149,17 +157,22 @@ export const quoteModifyTraderPosition = {
   },
   function: async (args: { marketAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
     try {
-      const calldata = encodeFunction('quoteModifyTraderPosition', [
-        BigInt(args.positionId),
-        BigInt(args.newCollateralAmount)
-      ]);
+      const result = await client.simulateContract({
+        address: args.marketAddress as `0x${string}`,
+        abi: FoilABI.abi,
+        functionName: 'quoteModifyTraderPosition',
+        args: [BigInt(args.positionId), Number(args.newSize)]
+      });
+
+      const [expectedCollateralDelta, closePnL, fillPrice] = result.result as [bigint, bigint, bigint];
 
       return {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
-            data: calldata
+            expectedCollateralDelta: expectedCollateralDelta.toString(),
+            closePnL: closePnL.toString(),
+            fillPrice: fillPrice.toString()
           }, null, 2)
         }]
       };
@@ -167,7 +180,7 @@ export const quoteModifyTraderPosition = {
       return {
         content: [{
           type: "text" as const,
-          text: `Error encoding quoteModifyTraderPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error getting quote for modifyTraderPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
@@ -242,6 +255,10 @@ export const quoteLiquidityPosition = {
         type: "string",
         description: "The address of the market to create the position in"
       },
+      epochId: {
+        type: "string",
+        description: "The period ID to create the position in"
+      },
       collateralAmount: {
         type: "string",
         description: "The amount of collateral to use"
@@ -251,21 +268,26 @@ export const quoteLiquidityPosition = {
         description: "The size of the position"
       }
     },
-    required: ["marketAddress", "collateralAmount", "size"],
+    required: ["marketAddress", "epochId", "collateralAmount", "size"],
   },
-  function: async (args: { marketAddress: string; collateralAmount: string; size: string }) => {
+  function: async (args: { marketAddress: string; epochId: string; collateralAmount: string; size: string }) => {
     try {
-      const calldata = encodeFunction('quoteLiquidityPosition', [
-        BigInt(args.collateralAmount),
-        Number(args.size)
-      ]);
+      const result = await client.simulateContract({
+        address: args.marketAddress as `0x${string}`,
+        abi: FoilABI.abi,
+        functionName: 'quoteLiquidityPositionTokens',
+        args: [BigInt(args.epochId), BigInt(args.collateralAmount), Number(args.size)]
+      });
+
+      const [amount0, amount1, liquidity] = result.result as [bigint, bigint, bigint];
 
       return {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
-            data: calldata
+            amount0: amount0.toString(),
+            amount1: amount1.toString(),
+            liquidity: liquidity.toString()
           }, null, 2)
         }]
       };
@@ -273,7 +295,7 @@ export const quoteLiquidityPosition = {
       return {
         content: [{
           type: "text" as const,
-          text: `Error encoding quoteLiquidityPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error getting quote for liquidityPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
@@ -355,17 +377,20 @@ export const quoteModifyLiquidityPosition = {
   },
   function: async (args: { marketAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
     try {
-      const calldata = encodeFunction('quoteModifyLiquidityPosition', [
-        BigInt(args.positionId),
-        BigInt(args.newCollateralAmount)
-      ]);
+      const result = await client.simulateContract({
+        address: args.marketAddress as `0x${string}`,
+        abi: FoilABI.abi,
+        functionName: 'quoteRequiredCollateral',
+        args: [BigInt(args.positionId), Number(args.newSize)]
+      });
+
+      const requiredCollateral = result.result as bigint;
 
       return {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
-            data: calldata
+            requiredCollateral: requiredCollateral.toString()
           }, null, 2)
         }]
       };
@@ -373,7 +398,7 @@ export const quoteModifyLiquidityPosition = {
       return {
         content: [{
           type: "text" as const,
-          text: `Error encoding quoteModifyLiquidityPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error getting quote for modifyLiquidityPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
