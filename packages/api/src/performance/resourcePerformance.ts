@@ -28,7 +28,7 @@ import {
   getTimeWindow,
 } from './helper';
 
-import { loadStorageFromFile, persistToFile, saveStorageToFile } from './persistenceHelper';
+import { loadStorageFromFile, saveStorageToFile, persist, PersistMode } from './persistenceHelper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
@@ -487,7 +487,8 @@ export class ResourcePerformance {
     console.time('LLL ResourcePerformance.persistStorage');
 
     // Persist 
-    await persistToFile(
+    await persist(
+      PersistMode.FILE,
       this.persistentStorage,
       this.persistentTrailingAvgStorage,
       this.resource,

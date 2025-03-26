@@ -7,14 +7,19 @@ import {
 } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
-import { encode, decode } from '@msgpack/msgpack';
 import { Resource } from 'src/models/Resource';
 import { Epoch } from 'src/models/Epoch';
 import { Store } from './types';
 
-const FILE_VERSION = 5;
+const FORMAT_VERSION = 5;
 
-export async function persistToFile(
+export enum PersistMode {
+  FILE = 'FILE',
+  DATABASE = 'DATABASE',
+}
+
+export async function persist(
+  mode: PersistMode,
   storage: StorageData,
   trailingAvgStore: TrailingAvgStorage,
   resource: Resource,
@@ -25,86 +30,26 @@ export async function persistToFile(
   if (process.env.SAVE_STORAGE !== 'true') {
     return;
   }
-
-  const storageDir = process.env.STORAGE_PATH;
-  if (!storageDir) {
-    throw new Error('STORAGE_PATH is not set');
+  // Common validations
+  if (
+    !storage ||
+    !trailingAvgStore ||
+    !resource ||
+    !intervals ||
+    !trailingAvgTimes ||
+    !epochs
+  ) {
+    throw new Error('Invalid data provided');
   }
 
-  if (!fs.existsSync(storageDir)) {
-    fs.mkdirSync(storageDir, { recursive: true });
-  }
-
-  let filename;
-  for (const interval of intervals) {
-    // persist resourceStore
-    filename = path.join(
-      storageDir,
-      `${resource.slug}-${interval}-resourceStore.csv`
-    );
-    await persistStore(storage[interval.toString()].resourceStore, filename);
-
-    // persist marketStore
-    for (const epoch of epochs) {
-      filename = path.join(
-        storageDir,
-        `${resource.slug}-${interval}-${epoch.id}-marketStore.csv`
-      );
-      await persistStore(
-        storage[interval.toString()].marketStore[epoch.id],
-        filename
-      );
-    }
-    // persist indexStore
-    for (const epoch of epochs) {
-      filename = path.join(
-        storageDir,
-        `${resource.slug}-${interval}-${epoch.id}-indexStore.csv`
-      );
-      await persistStore(
-        storage[interval.toString()].indexStore[epoch.id],
-        filename
-      );
+  // per mode specific validations
+  if (mode === PersistMode.FILE) {
+    const dir = process.env.STORAGE_PATH;
+    if (!dir) {
+      throw new Error('STORAGE_PATH is not set');
     }
 
-    // persist trailingAvgStore
-    for (const trailingAvgTime of trailingAvgTimes) {
-      filename = path.join(
-        storageDir,
-        `${resource.slug}-${interval}-${trailingAvgTime}-trailingAvgStore.csv`
-      );
-      await persistStore(
-        storage[interval.toString()].trailingAvgStore[
-          trailingAvgTime.toString()
-        ],
-        filename
-      );
-    }
-  }
-  // persist trailingAvgStore
-  filename = path.join(storageDir, `${resource.slug}-trailingAvgStore.csv`);
-  await persistTrailingAvgStore(trailingAvgStore, filename);
-}
-
-async function persistStore(store: Store, filename: string): Promise<void> {
-  // Input validation
-  if (!store  ) {
-    return;
-  }
-
-  if (!filename) {
-    throw new Error('Filename is required');
-  }
-
-  // if (store.data.length !== store.metadata.length) {
-  //   throw new Error('Data and metadata length mismatch');
-  // }
-
-  let writeStream: fs.WriteStream | null = null;
-
-  try {
     // Ensure directory exists
-    const dir = path.dirname(filename);
     if (!fs.existsSync(dir)) {
       await fs.promises.mkdir(dir, { recursive: true });
     }
@@ -113,9 +58,123 @@ async function persistStore(store: Store, filename: string): Promise<void> {
     await fs.promises.access(dir, fs.constants.W_OK).catch(() => {
       throw new Error(`Directory ${dir} is not writable`);
     });
+  }
 
+  for (const interval of intervals) {
+    // persist resourceStore
+    await storeRecords(
+      mode,
+      resource.slug,
+      'resource',
+      interval,
+      undefined,
+      undefined,
+      storage[interval].resourceStore
+    );
+
+    for (const epoch of epochs) {
+      // persist marketStore
+      await storeRecords(
+        mode,
+        resource.slug,
+        'market',
+        interval,
+        epoch.id,
+        undefined,
+        storage[interval].marketStore[epoch.id]
+      );
+      // persist indexStore
+      await storeRecords(
+        mode,
+        resource.slug,
+        'index',
+        interval,
+        epoch.id,
+        undefined,
+        storage[interval].indexStore[epoch.id]
+      );
+    }
+
+    // persist trailingAvgStore
+    for (const trailingAvgTime of trailingAvgTimes) {
+      await storeRecords(
+        mode,
+        resource.slug,
+        'trailingAvg',
+        interval,
+        undefined,
+        trailingAvgTime,
+        storage[interval].trailingAvgStore[trailingAvgTime]
+      );
+    }
+  }
+
+  // persist trailingAvgStore
+  // await persistTrailingAvgStore(
+  //   trailingAvgStore,
+  //   path.join(process.env.STORAGE_PATH!, `${resource.slug}-trailingAvg-store.csv`)
+  // );
+}
+
+async function storeRecords(
+  mode: PersistMode,
+  resourceSlug: string,
+  kind: string,
+  interval: number,
+  epochId: number | undefined,
+  trailingAvgTime: number | undefined,
+  store: Store
+) {
+  if (mode == PersistMode.FILE) {
+    await storeRecordsFile(
+      resourceSlug,
+      kind,
+      interval,
+      epochId,
+      trailingAvgTime,
+      store
+    );
+  } else if (mode == PersistMode.DATABASE) {
+    await storeRecordsDatabase(
+      resourceSlug,
+      kind,
+      interval,
+      epochId,
+      trailingAvgTime,
+      store
+    );
+  }
+}
+
+async function storeRecordsFile(
+  resourceSlug: string,
+  kind: string,
+  interval: number,
+  epochId: number | undefined,
+  trailingAvgTime: number | undefined,
+  store: Store
+) {
+  if (!store) {
+    return;
+  }
+  const length = store.data ? store.data.length : 0;
+  const dir = process.env.STORAGE_PATH!; // Notice, dir is already checked when this function is called
+
+  let writeStream: fs.WriteStream | null = null;
+  let filepath: string = '';
+  let filename = `${resourceSlug}-${interval}`;
+  if (epochId) {
+    filename += `-${epochId}`;
+  }
+  if (trailingAvgTime) {
+    filename += `-${trailingAvgTime}`;
+  }
+  filename += `-${kind}-store.csv`;
+  filepath = path.join(dir, filename);
+
+  try {
     // Open file to write (overwrite)
-    writeStream = fs.createWriteStream(filename, {
+    writeStream = fs.createWriteStream(filepath, {
       flags: 'w',
       encoding: 'utf8',
       mode: 0o666,
@@ -126,57 +185,70 @@ async function persistStore(store: Store, filename: string): Promise<void> {
       throw new Error(`Stream error: ${error.message}`);
     });
 
-    // Write CSV header
-    const headerWritten = writeStream.write(
-      'timestamp,open,high,low,close,startTimestamp,endTimestamp,used,feePaid\n'
-    );
-    if (!headerWritten) {
-      await new Promise((resolve) => writeStream!.once('drain', resolve));
-    }
+    // Don't use header, because it's not needed for the file
+    // // Write CSV header 
+    // const headerWritten = writeStream.write(
+    //   'version,timestamp,open,high,low,close,value,cumulative,startTimestamp,endTimestamp,used,feePaid\n'
+    // );
+    // if (!headerWritten) {
+    //   await new Promise((resolve) => writeStream!.once('drain', resolve));
+    // }
 
-    // For each item in the store
-    for (let i = 0; i < store.data.length; i++) {
-      const data = store.data[i];
-      const metadata = store.metadata && store.metadata.length > i ? store.metadata[i] : undefined;
+  for (let i = 0; i < length; i++) {
+    const data = store.data[i];
+    const metadata = store.metadata ? store.metadata[i] : undefined;
+    // const record = {
+    //   version: FORMAT_VERSION,
+    //   interval,
+    //   epochId,
+    //   trailingAvgTime,
+    //   resourceSlug,
+    //   timestamp: data.t ?? '', // timestamp
+    //   open: (data as CandleData).o ?? '', // open
+    //   high: (data as CandleData).h ?? '', // high
+    //   low: (data as CandleData).l ?? '', // low
+    //   close: (data as CandleData).c ?? '', // close
+    //   value: (data as IndexData).v ?? '', // value
+    //   cumulative: (data as IndexData).c ?? '', // cumulative
+    //   startTimestamp: metadata?.st ?? '', // startTimestamp
+    //   endTimestamp: metadata?.et ?? '', // endTimestamp
+    //   used: metadata?.u ?? '', // used
+    //   feePaid: metadata?.f ?? '', // feePaid
+    // };
 
-      // Validate data
-      if (!data ) {
-        throw new Error(`Invalid data at index ${i}`);
-      }
+    try {
+      const fileRecord = [
+        FORMAT_VERSION,
+        data.t ?? '', // timestamp
+        (data as CandleData).o ?? '', // open
+        (data as CandleData).h ?? '', // high
+        (data as CandleData).l ?? '', // low
+        (data as CandleData).c ?? '', // close
+        (data as IndexData).v ?? '', // value
+        (data as IndexData).c ?? '', // cumulative
+        metadata?.st ?? '', // startTimestamp
+        metadata?.et ?? '', // endTimestamp
+        metadata?.u ?? '', // used
+        metadata?.f ?? '', // feePaid
+      ]
+        .map((value) => {
+          // Escape commas and quotes in values
+          const stringValue = String(value);
+          return stringValue.includes(',') ? `"${stringValue}"` : stringValue;
+        })
+        .join(',');
 
-      try {
-        // Create a csv record with all the data and metadata
-        const record = [
-          data.t ?? '', // timestamp (both candle and index)
-          (data as CandleData).o ?? '', // open
-          (data as CandleData).h ?? '', // high
-          (data as CandleData).l ?? '', // low
-          (data as CandleData).c ?? '', // close
-          (data as IndexData).v ?? '', // value
-          (data as IndexData).c ?? '', // cumulative
-          metadata?.st ?? '', // startTimestamp
-          metadata?.et ?? '', // endTimestamp
-          metadata?.u ?? '', // used
-          metadata?.f ?? '', // feePaid
-        ]
-          .map((value) => {
-            // Escape commas and quotes in values
-            const stringValue = String(value);
-            return stringValue.includes(',') ? `"${stringValue}"` : stringValue;
-          })
-          .join(',');
-
-        // Write the record with backpressure handling
-        const recordWritten = writeStream.write(record + '\n');
+      // Write the record with backpressure handling
+        const recordWritten = writeStream!.write(fileRecord + '\n');
         if (!recordWritten) {
           await new Promise((resolve) => writeStream!.once('drain', resolve));
         }
-      } catch (error) {
+      } catch (error: any) {
         throw new Error(
           `Error processing record at index ${i}: ${error.message}`
         );
       }
-    }
+  }
 
     // Close the file properly
     await new Promise<void>((resolve, reject) => {
@@ -187,11 +259,11 @@ async function persistStore(store: Store, filename: string): Promise<void> {
     });
 
     // Verify file was written
-    const stats = await fs.promises.stat(filename);
+    const stats = await fs.promises.stat(filepath);
     if (stats.size === 0) {
       throw new Error('File was created but no data was written');
     }
-  } catch (error) {
+  } catch (error: any) {
     // Clean up on error
     if (writeStream) {
       writeStream.destroy();
@@ -199,15 +271,15 @@ async function persistStore(store: Store, filename: string): Promise<void> {
 
     // Try to remove incomplete file
     try {
-      if (fs.existsSync(filename)) {
-        await fs.promises.unlink(filename);
+      if (fs.existsSync(filepath)) {
+        await fs.promises.unlink(filepath);
       }
     } catch (cleanupError) {
       console.error('Error cleaning up failed file:', cleanupError);
     }
 
     // Log and rethrow
-    console.error(`Error persisting store to ${filename}:`, error);
+    console.error(`Error persisting store to ${filepath}:`, error);
     throw new Error(`Failed to persist store: ${error.message}`);
   } finally {
     // Ensure stream is closed
@@ -216,6 +288,15 @@ async function persistStore(store: Store, filename: string): Promise<void> {
     }
   }
 }
+
+function storeRecordsDatabase(
+  resourceSlug: string,
+  kind: string,
+  interval: number,
+  epochId: number | undefined,
+  trailingAvgTime: number | undefined,
+  store: Store
+) {}
 
 async function persistTrailingAvgStore(
   store: TrailingAvgStorage,
@@ -257,9 +338,7 @@ async function persistTrailingAvgStore(
     });
 
     // Write CSV header
-    const headerWritten = writeStream.write(
-      'timestamp,used,feePaid\n'
-    );
+    const headerWritten = writeStream.write('timestamp,used,feePaid\n');
     if (!headerWritten) {
       await new Promise((resolve) => writeStream!.once('drain', resolve));
     }
@@ -366,7 +445,7 @@ export async function saveStorageToFile(
   );
 
   const data = {
-    fileVersion: FILE_VERSION,
+    fileVersion: FORMAT_VERSION,
     latestResourceTimestamp,
     latestMarketTimestamp,
     store: storage,
@@ -422,9 +501,9 @@ export async function loadStorageFromFile(
       store: IntervalStore;
     };
 
-    if (data.fileVersion !== FILE_VERSION) {
+    if (data.fileVersion !== FORMAT_VERSION) {
       console.log(
-        `!! Storage file ${filename} has an unsupported version -${data.fileVersion}-. Expected -${FILE_VERSION}-`
+        `!! Storage file ${filename} has an unsupported version -${data.fileVersion}-. Expected -${FORMAT_VERSION}-`
       );
       return undefined;
     }
@@ -461,7 +540,11 @@ export async function clearStorageFiles(): Promise<void> {
 
   const files = await fs.promises.readdir(storageDir);
   for (const file of files) {
-    if (file.endsWith('-storage.msgpack')) {
+    if (
+      file.endsWith('-storage.json') ||
+      file.endsWith('-storage.msgpack') ||
+      file.endsWith('-store.csv')
+    ) {
       await fs.promises.unlink(path.join(storageDir, file));
     }
   }
