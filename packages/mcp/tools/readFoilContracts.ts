@@ -21,20 +21,22 @@ interface PositionData {
   isSettled: boolean;
 }
 
-const getMarketInfo = {
+export const getMarketInfo = {
+  name: "get_foil_market_info",
+  description: "Gets detailed information about a market's configuration",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
-      },
+      marketAddress: {
+        type: "string",
+        description: "The address of the market to get information about"
+      }
     },
-    required: ['address'],
+    required: ["marketAddress"],
   },
-  function: async ({ address }: { address: string }) => {
+  function: async (args: { marketAddress: string }) => {
     try {
       const marketInfo = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getMarket'
       });
@@ -75,27 +77,29 @@ const getMarketInfo = {
   },
 };
 
-const getEpochInfo = {
+export const getEpochInfo = {
+  name: "get_foil_period_info",
+  description: "Gets detailed information about a specific period",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
       },
       epochId: {
-        type: 'string',
-        description: 'The period ID to query',
-      },
+        type: "string",
+        description: "The ID of the period to get information about"
+      }
     },
-    required: ['address', 'epochId'],
+    required: ["marketAddress", "epochId"],
   },
-  function: async ({ address, epochId }: { address: string; epochId: string }) => {
+  function: async (args: { marketAddress: string; epochId: string }) => {
     try {
       const epochInfo = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getEpoch',
-        args: [BigInt(epochId)]
+        args: [BigInt(args.epochId)]
       });
 
       const formattedInfo = {
@@ -137,20 +141,22 @@ const getEpochInfo = {
   },
 };
 
-const getLatestEpochInfo = {
+export const getLatestEpochInfo = {
+  name: "get_foil_latest_period_info",
+  description: "Gets information about the most recent period",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
-      },
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
+      }
     },
-    required: ['address'],
+    required: ["marketAddress"],
   },
-  function: async ({ address }: { address: string }) => {
+  function: async (args: { marketAddress: string }) => {
     try {
       const epochInfo = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getLatestEpoch'
       });
@@ -194,27 +200,25 @@ const getLatestEpochInfo = {
   },
 };
 
-const getTokenOwner = {
+export const getTokenOwner = {
+  name: "get_foil_token_owner",
+  description: "Gets the owner address of a specific position token",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
-      },
       tokenId: {
-        type: 'string',
-        description: 'The position ID to query',
-      },
+        type: "string",
+        description: "The ID of the position token"
+      }
     },
-    required: ['address', 'tokenId'],
+    required: ["tokenId"],
   },
-  function: async ({ address, tokenId }: { address: string; tokenId: string }) => {
+  function: async (args: { tokenId: string }) => {
     try {
       const owner = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.tokenId as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'ownerOf',
-        args: [BigInt(tokenId)]
+        args: [BigInt(args.tokenId)]
       });
 
       return {
@@ -235,27 +239,25 @@ const getTokenOwner = {
   },
 };
 
-const getTokenByIndex = {
+export const getTokenByIndex = {
+  name: "get_foil_token_by_index",
+  description: "Gets a position token ID by its index",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
-      },
       index: {
-        type: 'string',
-        description: 'The index to query',
-      },
+        type: "string",
+        description: "The index of the token to get"
+      }
     },
-    required: ['address', 'index'],
+    required: ["index"],
   },
-  function: async ({ address, index }: { address: string; index: string }) => {
+  function: async (args: { index: string }) => {
     try {
       const tokenId = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.index as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'tokenByIndex',
-        args: [BigInt(index)]
+        args: [BigInt(args.index)]
       });
 
       return {
@@ -276,20 +278,22 @@ const getTokenByIndex = {
   },
 };
 
-const getReferencePrice = {
+export const getReferencePrice = {
+  name: "get_foil_reference_price",
+  description: "Gets the reference price for a market",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
-      },
+      marketAddress: {
+        type: "string",
+        description: "The address of the market to get the reference price for"
+      }
     },
-    required: ['address'],
+    required: ["marketAddress"],
   },
-  function: async ({ address }: { address: string }) => {
+  function: async (args: { marketAddress: string }) => {
     try {
       const referencePrice = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getReferencePrice'
       });
@@ -312,27 +316,29 @@ const getReferencePrice = {
   },
 };
 
-const getPosition = {
+export const getPosition = {
+  name: "get_foil_position",
+  description: "Gets detailed information about a specific position",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
       },
       positionId: {
-        type: 'string',
-        description: 'The position ID to query',
-      },
+        type: "string",
+        description: "The ID of the position to get information about"
+      }
     },
-    required: ['address', 'positionId'],
+    required: ["marketAddress", "positionId"],
   },
-  function: async ({ address, positionId }: { address: string; positionId: string }) => {
+  function: async (args: { marketAddress: string; positionId: string }) => {
     try {
       const position = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getPosition',
-        args: [BigInt(positionId)]
+        args: [BigInt(args.positionId)]
       }) as PositionData;
 
       return {
@@ -364,27 +370,29 @@ const getPosition = {
   },
 };
 
-const getPositionCollateralValue = {
+export const getPositionCollateralValue = {
+  name: "get_foil_position_collateral_value",
+  description: "Gets the collateral value of a specific position",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
       },
       positionId: {
-        type: 'string',
-        description: 'The position ID to query',
-      },
+        type: "string",
+        description: "The ID of the position to get collateral value for"
+      }
     },
-    required: ['address', 'positionId'],
+    required: ["marketAddress", "positionId"],
   },
-  function: async ({ address, positionId }: { address: string; positionId: string }) => {
+  function: async (args: { marketAddress: string; positionId: string }) => {
     try {
       const collateralValue = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getPositionCollateralValue',
-        args: [BigInt(positionId)]
+        args: [BigInt(args.positionId)]
       });
 
       return {
@@ -405,27 +413,29 @@ const getPositionCollateralValue = {
   },
 };
 
-const getPositionPnl = {
+export const getPositionPnl = {
+  name: "get_foil_position_pnl",
+  description: "Gets the profit and loss (PnL) of a specific position",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
       },
       positionId: {
-        type: 'string',
-        description: 'The position ID to query',
-      },
+        type: "string",
+        description: "The ID of the position to get PnL for"
+      }
     },
-    required: ['address', 'positionId'],
+    required: ["marketAddress", "positionId"],
   },
-  function: async ({ address, positionId }: { address: string; positionId: string }) => {
+  function: async (args: { marketAddress: string; positionId: string }) => {
     try {
       const pnl = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getPositionPnl',
-        args: [BigInt(positionId)]
+        args: [BigInt(args.positionId)]
       });
 
       return {
@@ -446,27 +456,29 @@ const getPositionPnl = {
   },
 };
 
-const getPositionSize = {
+export const getPositionSize = {
+  name: "get_foil_position_size",
+  description: "Gets the size of a specific position",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
       },
       positionId: {
-        type: 'string',
-        description: 'The position ID to query',
-      },
+        type: "string",
+        description: "The ID of the position to get size for"
+      }
     },
-    required: ['address', 'positionId'],
+    required: ["marketAddress", "positionId"],
   },
-  function: async ({ address, positionId }: { address: string; positionId: string }) => {
+  function: async (args: { marketAddress: string; positionId: string }) => {
     try {
       const size = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getPositionSize',
-        args: [BigInt(positionId)]
+        args: [BigInt(args.positionId)]
       });
 
       return {
@@ -487,27 +499,29 @@ const getPositionSize = {
   },
 };
 
-const getSqrtPriceX96 = {
+export const getSqrtPriceX96 = {
+  name: "get_foil_sqrt_price",
+  description: "Gets the sqrt price for a specific period",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
       },
       epochId: {
-        type: 'string',
-        description: 'The epoch ID to query',
-      },
+        type: "string",
+        description: "The ID of the period to get sqrt price for"
+      }
     },
-    required: ['address', 'epochId'],
+    required: ["marketAddress", "epochId"],
   },
-  function: async ({ address, epochId }: { address: string; epochId: string }) => {
+  function: async (args: { marketAddress: string; epochId: string }) => {
     try {
       const sqrtPriceX96 = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getSqrtPriceX96',
-        args: [BigInt(epochId)]
+        args: [BigInt(args.epochId)]
       });
 
       return {
@@ -528,27 +542,29 @@ const getSqrtPriceX96 = {
   },
 };
 
-const getDecimalPriceFromSqrtPriceX96 = {
+export const getDecimalPriceFromSqrtPriceX96 = {
+  name: "get_foil_decimal_price_from_sqrt_price",
+  description: "Converts a sqrt price to a decimal price",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
       },
       sqrtPriceX96: {
-        type: 'string',
-        description: 'The sqrt price to convert',
-      },
+        type: "string",
+        description: "The sqrt price to convert"
+      }
     },
-    required: ['address', 'sqrtPriceX96'],
+    required: ["marketAddress", "sqrtPriceX96"],
   },
-  function: async ({ address, sqrtPriceX96 }: { address: string; sqrtPriceX96: string }) => {
+  function: async (args: { marketAddress: string; sqrtPriceX96: string }) => {
     try {
       const decimalPrice = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getDecimalPriceFromSqrtPriceX96',
-        args: [BigInt(sqrtPriceX96)]
+        args: [BigInt(args.sqrtPriceX96)]
       });
 
       return {
@@ -569,20 +585,22 @@ const getDecimalPriceFromSqrtPriceX96 = {
   },
 };
 
-const getMarketTickSpacing = {
+export const getMarketTickSpacing = {
+  name: "get_foil_market_tick_spacing",
+  description: "Gets the tick spacing for a market",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
-      },
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
+      }
     },
-    required: ['address'],
+    required: ["marketAddress"],
   },
-  function: async ({ address }: { address: string }) => {
+  function: async (args: { marketAddress: string }) => {
     try {
       const tickSpacing = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getMarketTickSpacing'
       });
@@ -605,20 +623,22 @@ const getMarketTickSpacing = {
   },
 };
 
-const getTotalSupply = {
+export const getTotalSupply = {
+  name: "get_foil_total_supply",
+  description: "Gets the total supply of Foil tokens",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
-      },
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
+      }
     },
-    required: ['address'],
+    required: ["marketAddress"],
   },
-  function: async ({ address }: { address: string }) => {
+  function: async (args: { marketAddress: string }) => {
     try {
       const totalSupply = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'totalSupply'
       });
@@ -641,27 +661,29 @@ const getTotalSupply = {
   },
 };
 
-const getBalanceOf = {
+export const getBalanceOf = {
+  name: "get_foil_balance_of",
+  description: "Gets the balance of Foil tokens for a specific holder",
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The Foil market contract address',
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
       },
       holder: {
-        type: 'string',
-        description: 'The address to query balance for',
-      },
+        type: "string",
+        description: "The address to query balance for"
+      }
     },
-    required: ['address', 'holder'],
+    required: ["marketAddress", "holder"],
   },
-  function: async ({ address, holder }: { address: string; holder: string }) => {
+  function: async (args: { marketAddress: string; holder: string }) => {
     try {
       const balance = await client.readContract({
-        address: address as `0x${string}`,
+        address: args.marketAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'balanceOf',
-        args: [holder as `0x${string}`]
+        args: [args.holder as `0x${string}`]
       });
 
       return {
@@ -680,22 +702,4 @@ const getBalanceOf = {
       };
     }
   },
-};
-
-export {
-  getMarketInfo,
-  getEpochInfo,
-  getLatestEpochInfo,
-  getTokenOwner,
-  getTokenByIndex,
-  getReferencePrice,
-  getPosition,
-  getPositionCollateralValue,
-  getPositionPnl,
-  getPositionSize,
-  getSqrtPriceX96,
-  getDecimalPriceFromSqrtPriceX96,
-  getMarketTickSpacing,
-  getTotalSupply,
-  getBalanceOf
 }; 

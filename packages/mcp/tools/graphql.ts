@@ -201,15 +201,17 @@ const executeQuery = {
 
 // Market Tools
 const getMarket = {
+  name: "get_foil_market",
+  description: "Gets detailed information about a specific market by its address and chain ID",
   parameters: {
     properties: {
       address: {
         type: 'string',
-        description: 'The market address',
+        description: 'The address of the market',
       },
       chainId: {
         type: 'string',
-        description: 'The chain ID',
+        description: 'The chain ID where the market exists',
       },
     },
     required: ['address', 'chainId'],
@@ -255,6 +257,8 @@ const getMarket = {
 };
 
 const listMarkets = {
+  name: "list_foil_markets",
+  description: "Lists all markets available in the Foil system",
   parameters: {
     properties: {},
     required: [],
@@ -301,19 +305,21 @@ const listMarkets = {
 
 // Position Tools
 const getPositions = {
+  name: "get_foil_positions",
+  description: "Gets information about positions, optionally filtered by chain ID, market address, or owner",
   parameters: {
     properties: {
       chainId: {
         type: 'string',
-        description: 'Optional chain ID filter',
+        description: 'Optional chain ID to filter positions by',
       },
       marketAddress: {
         type: 'string',
-        description: 'Optional market address filter',
+        description: 'Optional market address to filter positions by',
       },
       owner: {
         type: 'string',
-        description: 'Optional owner address filter',
+        description: 'Optional owner address to filter positions by',
       },
     },
     required: [],
@@ -370,11 +376,13 @@ const getPositions = {
 
 // Resource Tools
 const getResource = {
+  name: "get_foil_resource",
+  description: "Gets detailed information about a specific resource by its slug",
   parameters: {
     properties: {
       slug: {
         type: 'string',
-        description: 'The resource slug',
+        description: 'The slug of the resource to get information about',
       },
     },
     required: ['slug'],
@@ -412,6 +420,8 @@ const getResource = {
 };
 
 const listResources = {
+  name: "list_foil_resources",
+  description: "Lists all resources available in the Foil system",
   parameters: {
     properties: {},
     required: [],
@@ -450,11 +460,13 @@ const listResources = {
 
 // Period Tools (previously Epoch Tools)
 const getEpochs = {
+  name: "get_foil_periods",
+  description: "Gets information about epochs (periods) in the system, optionally filtered by market ID",
   parameters: {
     properties: {
       marketId: {
         type: 'string',
-        description: 'Optional market ID filter',
+        description: 'Optional market ID to filter epochs by',
       },
     },
     required: [],
@@ -499,11 +511,13 @@ const getEpochs = {
 
 // Transaction Tools
 const getTransactions = {
+  name: "get_foil_transactions",
+  description: "Gets transaction history, optionally filtered by position ID",
   parameters: {
     properties: {
       positionId: {
         type: 'string',
-        description: 'Optional position ID filter',
+        description: 'Optional position ID to filter transactions by',
       },
     },
     required: [],

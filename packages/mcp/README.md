@@ -22,15 +22,15 @@
 * `readFoilContracts` returns information from a given Foil contract via the following functions:
   * `getReferencePrice` - Gets the reference price for a market
   * `getMarketInfo` - Gets detailed information about a market's configuration
-  * `getEpochInfo` - Gets detailed information about a specific epoch
-  * `getLatestEpochInfo` - Gets information about the most recent epoch
+  * `getEpochInfo` - Gets detailed information about a specific period
+  * `getLatestEpochInfo` - Gets information about the most recent period
   * `getTokenOwner` - Gets the owner address of a specific position token
   * `getTokenByIndex` - Gets a position token ID by its index
-  * `getPosition` - Gets detailed position data including kind, epoch, collateral amounts, borrowed amounts, etc.
+  * `getPosition` - Gets detailed position data including kind, period, collateral amounts, borrowed amounts, etc.
   * `getPositionCollateralValue` - Gets the collateral value of a position
   * `getPositionPnl` - Gets the PnL of a position
   * `getPositionSize` - Gets the size of a position
-  * `getSqrtPriceX96` - Gets the square root price for an epoch
+  * `getSqrtPriceX96` - Gets the square root price for an period
   * `getDecimalPriceFromSqrtPriceX96` - Converts sqrt price to decimal price
   * `getMarketTickSpacing` - Gets the tick spacing for the market
   * `totalSupply` - Gets total number of positions
