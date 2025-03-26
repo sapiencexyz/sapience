@@ -1,14 +1,59 @@
-// Generated MCP Tools Index
+import {
+  getMarket,
+  listMarkets,
+  getPositions,
+  getResource,
+  listResources,
+  getEpochs,
+  getTransactions
+} from './graphql';
 
-export * from './IViewsModuleTools';
-export * from './IUMASettlementModuleTools';
-export * from './ITradeModuleTools';
-export * from './ISettlementModuleTools';
-export * from './ILiquidityModuleTools';
-export * from './IFoilTools';
-export * from './IFoilStructsTools';
-export * from './IFoilPositionEventsTools';
-export * from './IERC721Tools';
-export * from './IERC721EnumerableTools';
-export * from './IERC165ModuleTools';
-export * from './IConfigurationModuleTools';
+import {
+  getMarketInfo,
+  getEpochInfo,
+  getLatestEpochInfo,
+  getTokenOwner,
+  getTokenByIndex,
+  getReferencePrice
+} from './readFoilContracts';
+
+import {
+  quoteCreateTraderPosition,
+  createTraderPosition,
+  quoteModifyTraderPosition,
+  modifyTraderPosition,
+  quoteLiquidityPosition,
+  createLiquidityPosition,
+  quoteModifyLiquidityPosition,
+  modifyLiquidityPosition
+} from './writeFoilContracts';
+
+export const graphql = {
+  getMarket,
+  listMarkets,
+  getPositions,
+  getResource,
+  listResources,
+  getEpochs,
+  getTransactions
+};
+
+export const readFoilContracts = {
+  getMarketInfo,
+  getEpochInfo,
+  getLatestEpochInfo,
+  getTokenOwner,
+  getTokenByIndex,
+  getReferencePrice
+};
+
+export const writeFoilContracts = {
+  quoteCreateTraderPosition,
+  createTraderPosition,
+  quoteModifyTraderPosition,
+  modifyTraderPosition,
+  quoteLiquidityPosition,
+  createLiquidityPosition,
+  quoteModifyLiquidityPosition,
+  modifyLiquidityPosition
+};
