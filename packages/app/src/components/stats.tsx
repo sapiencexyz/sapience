@@ -62,14 +62,16 @@ const IndexPriceDisplay = ({
   latestIndexPrice,
   useMarketUnits,
   stEthPerToken,
+  unitDisplay,
 }: {
   isBeforeStart: boolean;
   startTimeRelative: string;
   isLoadingIndexPrice: boolean;
-  market: any;
+  market: Market;
   latestIndexPrice: any;
   useMarketUnits: boolean;
   stEthPerToken: number | undefined;
+  unitDisplay: string;
 }) => {
   if (isBeforeStart) {
     return (
@@ -91,22 +93,30 @@ const IndexPriceDisplay = ({
   return (
     <>
       <NumberDisplay value={value} />{' '}
-      <span className="text-sm">{useMarketUnits ? 'Ggas/wstETH' : 'gwei'}</span>
+      <span className="text-sm">{unitDisplay}</span>
     </>
   );
 };
 
 const Stats = () => {
-  const { endTime, startTime, pool, liquidity, useMarketUnits, market } =
-    useContext(PeriodContext);
-  const { stEthPerToken, markets } = useFoil();
+  const {
+    endTime,
+    startTime,
+    pool,
+    liquidity,
+    useMarketUnits,
+    market,
+    resource,
+    unitDisplay,
+  } = useContext(PeriodContext);
+  const { stEthPerToken } = useFoil();
   const { data: latestIndexPrice, isLoading: isLoadingIndexPrice } =
     useLatestIndexPrice(
       market
         ? {
             address: market.address,
             chainId: market.chainId,
-            epochId: market.epochId,
+            epochId: market.currentEpoch!.epochId,
           }
         : {
             address: '',
@@ -115,12 +125,7 @@ const Stats = () => {
           }
     );
 
-  const resourceName =
-    markets
-      .find(
-        (m: Market) => m.address.toLowerCase() === market?.address.toLowerCase()
-      )
-      ?.resource?.name?.toLowerCase() || 'resource';
+  const resourceName = resource?.name?.toLowerCase() || 'resource';
 
   const currentTime = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > currentTime;
@@ -150,10 +155,11 @@ const Stats = () => {
                 isBeforeStart={isBeforeStart}
                 startTimeRelative={startTimeRelative}
                 isLoadingIndexPrice={isLoadingIndexPrice}
-                market={market}
+                market={market!}
                 latestIndexPrice={latestIndexPrice}
                 useMarketUnits={useMarketUnits}
                 stEthPerToken={stEthPerToken}
+                unitDisplay={unitDisplay}
               />
             }
           />
@@ -174,23 +180,23 @@ const Stats = () => {
                         )
                   }
                 />{' '}
-                <span className="text-sm">
-                  {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-                </span>
+                <span className="text-sm">{unitDisplay}</span>
               </>
             }
           />
 
-          <StatBox
-            title="Liquidity"
-            tooltipContent="The largest long position that can be opened right now"
-            value={
-              <>
-                <NumberDisplay value={liquidity} />{' '}
-                <span className="text-sm">Ggas</span>
-              </>
-            }
-          />
+          {!market!.isCumulative && (
+            <StatBox
+              title="Liquidity"
+              tooltipContent="The largest long position that can be opened right now"
+              value={
+                <>
+                  <NumberDisplay value={liquidity} />{' '}
+                  <span className="text-sm">Ggas</span>
+                </>
+              }
+            />
+          )}
 
           <StatBox title="Ends in" value={getRelativeTime()} />
         </div>

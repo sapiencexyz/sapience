@@ -88,6 +88,7 @@ export default function AddEditTrade() {
     liquidity,
     refetchUniswapData,
     useMarketUnits,
+    unitDisplay,
   } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
 
@@ -984,7 +985,7 @@ export default function AddEditTrade() {
                         ) * convertGgasPerWstEthToGwei(1, stEthPerToken)
                   }
                 />{' '}
-                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+                {unitDisplay}
               </p>
             </div>
           )}
