@@ -1,5 +1,23 @@
 # Foil MCP Server
 
+## Use with Claude Desktop
+
+After pulling this repo and running `pnpm install`, add the following to your configuration file:
+* macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+* Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```
+{
+    "mcpServers": {
+        "foil": {
+            "command": "<PATH_TO_REPO>/foil/packages/mcp/node_modules/.bin/tsx",
+            "args": ["<PATH_TO_REPO>/foil/packages/mcp/src/server.ts"],
+            "cwd": "<PATH_TO_REPO>/foil/packages/mcp"
+        }
+    }
+}
+```
+
 ## Tools
 
 * `graphql` queries the Foil API for information about each entity in the database:
@@ -23,6 +41,7 @@
   * `createLiquidityPosition` - Creates a new liquidity position with specified parameters
   * `quoteModifyLiquidityPosition` - Gets a quote for modifying an existing liquidity position
   * `modifyLiquidityPosition` - Modifies an existing liquidity position with new parameters
+  * `settlePosition` - Settles a position, closing it and returning any remaining collateral, after the market/period has ended and settled
 * `readFoilContracts` returns information from a given Foil contract via the following functions:
   * `getReferencePrice` - Gets the reference price for a market
   * `getMarketInfo` - Gets detailed information about a market's configuration

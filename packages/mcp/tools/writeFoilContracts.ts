@@ -456,4 +456,47 @@ export const modifyLiquidityPosition = {
       };
     }
   },
+};
+
+export const settlePosition = {
+  name: "settle_foil_position",
+  description: "Settles a position, closing it and returning any remaining collateral, after the market/period has ended and settled",
+  parameters: {
+    properties: {
+      marketAddress: {
+        type: "string",
+        description: "The address of the market"
+      },
+      positionId: {
+        type: "string",
+        description: "The ID of the position to settle"
+      }
+    },
+    required: ["marketAddress", "positionId"],
+  },
+  function: async (args: { marketAddress: string; positionId: string }) => {
+    try {
+      const calldata = encodeFunction('settlePosition', [
+        BigInt(args.positionId)
+      ]);
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            to: args.marketAddress,
+            data: calldata
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error encoding settlePosition: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  },
 }; 

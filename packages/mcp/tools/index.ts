@@ -29,7 +29,8 @@ import {
   quoteLiquidityPosition,
   createLiquidityPosition,
   quoteModifyLiquidityPosition,
-  modifyLiquidityPosition
+  modifyLiquidityPosition,
+  settlePosition
 } from './writeFoilContracts';
 
 export const graphql = {
@@ -63,5 +64,6 @@ export const writeFoilContracts = {
   quoteLiquidityPosition,
   createLiquidityPosition,
   quoteModifyLiquidityPosition,
-  modifyLiquidityPosition
+  modifyLiquidityPosition,
+  settlePosition
 };
