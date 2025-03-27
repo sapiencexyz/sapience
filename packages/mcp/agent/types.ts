@@ -39,6 +39,9 @@ export interface AgentConfig {
   maxCollateral: string;
   targetLeverage: number;
   openaiApiKey: string;
+  useOllama?: boolean;
+  ollamaModel?: string;
+  ollamaBaseUrl?: string;
 }
 
 // Import the actual tool types from the MCP tools

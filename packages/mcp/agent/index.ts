@@ -16,6 +16,9 @@ const config: AgentConfig = {
   maxCollateral: "1000000000000000000", // 1 ETH
   targetLeverage: 2,
   openaiApiKey: process.env.OPENAI_API_KEY || "",
+  useOllama: process.env.NODE_ENV === "development",
+  ollamaModel: "mistral", // Fast and capable model for development
+  ollamaBaseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
 };
 
 // Use the actual MCP tools

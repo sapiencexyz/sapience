@@ -8,8 +8,8 @@
   "types": "mcp-server.ts",
   "scripts": {
     "start": "tsx agent/index.ts 300000",
-    "dev": "tsx watch agent/index.ts 60000",
-    "once": "tsx agent/index.ts 0",
+    "dev": "NODE_ENV=development tsx watch agent/index.ts 60000",
+    "once": "NODE_ENV=development tsx agent/index.ts 0",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rimraf dist"
   },
