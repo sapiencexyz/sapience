@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "tools/**/*"],
+  "include": ["agent/**/*", "mcp-server.ts"],
   "exclude": ["node_modules", "dist"]
 }
 

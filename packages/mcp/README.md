@@ -11,7 +11,7 @@ After pulling this repo and running `pnpm install`, add the following to your co
     "mcpServers": {
         "foil": {
             "command": "<PATH_TO_REPO>/foil/packages/mcp/node_modules/.bin/tsx",
-            "args": ["<PATH_TO_REPO>/foil/packages/mcp/src/server.ts"],
+            "args": ["<PATH_TO_REPO>/foil/packages/mcp/mcp-server.ts"],
             "cwd": "<PATH_TO_REPO>/foil/packages/mcp"
         }
     }

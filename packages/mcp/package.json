@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "description": "",
-  "main": "src/server.ts",
-  "types": "src/server.ts",
+  "main": "mcp-server.ts",
+  "types": "mcp-server.ts",
   "scripts": {
-    "start": "tsx src/server.ts",
-    "dev": "tsx watch src/server.ts",
+    "start": "tsx agent/index.ts 300000",
+    "dev": "tsx watch agent/index.ts 60000",
+    "once": "tsx agent/index.ts 0",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rimraf dist"
   },
@@ -16,13 +17,17 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^20.17.6",
+    "@types/node": "^20.17.24",
     "rimraf": "^4.1.2",
     "ts-node": "^10.9.1",
     "tsx": "^4.19.2",
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "@langchain/community": "^0.3.37",
+    "@langchain/core": "^0.3.43",
+    "@langchain/langgraph": "^0.2.60",
+    "@langchain/openai": "^0.5.0",
     "@modelcontextprotocol/sdk": "^1.7.0",
     "graphql": "^16.8.1",
     "viem": "^2.23.12",
