@@ -32,6 +32,11 @@ export class PublishSummaryNode extends BaseNode {
     const formattedContent = this.formatMessageContent(response.content);
     const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
+    // Generate tweet-thread style summary
+    const tweetPrompt = "Great! Now summarize everything that happened in this chat in a succinct and fun way that could fit in a five tweet thread.";
+    const tweetResponse = await this.invokeModel(state, tweetPrompt);
+    Logger.info(`[Summary] Tweet Thread Summary: ${tweetResponse.content}`);
+
     return {
       messages: [...state.messages, agentResponse],
       currentStep: 'publish_summary',
