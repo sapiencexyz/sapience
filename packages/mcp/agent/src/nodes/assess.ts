@@ -1,13 +1,13 @@
-import { SystemMessage } from "@langchain/core/messages";
 import { AgentState } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
+import { AgentAIMessage } from '../types/message';
 
 export class AssessPositionsNode extends BaseNode {
   async execute(state: AgentState): Promise<AgentState> {
     Logger.step('[Assess] Evaluating current positions...');
     
-    const prompt = `You are a Foil trading agent. Your task is to assess and modify positions using the provided tools.
+    const prompt = `Assess and modify positions using the provided tools.
       You have access to these tools:
       - get_foil_position: Get information about a specific position
       - get_foil_position_pnl: Get the PnL of a position
@@ -28,18 +28,12 @@ export class AssessPositionsNode extends BaseNode {
       
       Respond with your analysis and planned actions.`;
     
-    const response = await this.model.invoke([
-      ...state.messages,
-      new SystemMessage(prompt)
-    ]);
-
-    Logger.messageBlock([
-      { role: 'system', content: prompt },
-      { role: 'agent', content: response.content }
-    ]);
+    const response = await this.invokeModel(state, prompt);
+    const formattedContent = this.formatMessageContent(response.content);
+    const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
     return {
-      messages: [...state.messages, response],
+      messages: [...state.messages, agentResponse],
       currentStep: 'assess_positions',
       lastAction: 'analyze_positions',
       positions: state.positions,
@@ -57,7 +51,8 @@ export class AssessPositionsNode extends BaseNode {
       return "tools";
     }
 
-    const result = lastMessage.content.includes("Action taken") ? "assess_positions" : "discover_markets";
+    const content = this.formatMessageContent(lastMessage.content);
+    const result = typeof content === 'string' && content.includes("Action taken") ? "assess_positions" : "discover_markets";
     Logger.info(`Assessment check result: ${result}`);
     return result;
   }

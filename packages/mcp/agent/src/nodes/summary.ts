@@ -1,13 +1,13 @@
-import { SystemMessage } from "@langchain/core/messages";
 import { AgentState } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
+import { AgentAIMessage } from '../types/message';
 
 export class PublishSummaryNode extends BaseNode {
   async execute(state: AgentState): Promise<AgentState> {
     Logger.step('[Summary] Generating trading session summary...');
     
-    const prompt = `You are a Foil trading agent. Create a comprehensive summary of the trading session.
+    const prompt = `Create a comprehensive summary of the trading session.
       Use these tools to gather information:
       - get_foil_position: Get information about positions
       - get_foil_position_pnl: Get PnL information
@@ -28,18 +28,12 @@ export class PublishSummaryNode extends BaseNode {
       
       Provide a detailed summary of the trading session.`;
     
-    const response = await this.model.invoke([
-      ...state.messages,
-      new SystemMessage(prompt)
-    ]);
-
-    Logger.messageBlock([
-      { role: 'system', content: prompt },
-      { role: 'agent', content: response.content }
-    ]);
+    const response = await this.invokeModel(state, prompt);
+    const formattedContent = this.formatMessageContent(response.content);
+    const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
     return {
-      messages: [...state.messages, response],
+      messages: [...state.messages, agentResponse],
       currentStep: 'publish_summary',
       lastAction: 'generate_summary',
       positions: state.positions,

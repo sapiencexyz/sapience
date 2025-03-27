@@ -8,6 +8,7 @@ export class FoilAgent {
   private interval: ReturnType<typeof setInterval> | null = null;
   private isRunning: boolean = false;
   private isIterationRunning: boolean = false;
+  private state: AgentState | null = null;
 
   constructor(
     private config: AgentConfig,
@@ -19,6 +20,17 @@ export class FoilAgent {
   }
 
   private async initializeState(): Promise<AgentState> {
+    if (this.state) {
+      // Keep existing messages but update other state
+      return {
+        ...this.state,
+        currentStep: 'initialize',
+        positions: [],
+        markets: [],
+        actions: []
+      };
+    }
+
     Logger.step('[Initialize] Starting new trading session...');
     
     const systemMessage = new AgentSystemMessage(
@@ -52,6 +64,7 @@ export class FoilAgent {
       const state = await this.initializeState();
       
       const finalState = await this.graphManager.invoke(state);
+      this.state = finalState; // Store the final state for next iteration
       Logger.success("Trading iteration completed");
       
       // Only log the final summary message

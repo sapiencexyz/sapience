@@ -8,6 +8,8 @@ import { DiscoverMarketsNode } from '../nodes/discover';
 import { PublishSummaryNode } from '../nodes/summary';
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { DynamicTool } from "@langchain/core/tools";
+import { AgentToolMessage, AgentSystemMessage } from '../types/message';
+import { SystemMessage } from "@langchain/core/messages";
 
 export class GraphManager {
   private graph: any;
@@ -89,14 +91,11 @@ export class GraphManager {
     stateGraph.addConditionalEdges("tools", this.shouldUseTools.bind(this));
     Logger.success("Conditional edges added");
 
-    // Add regular edges
+    // Add regular edges for the main flow
     Logger.info("Adding regular edges...");
     stateGraph.addEdge("settle_positions", "assess_positions");
     stateGraph.addEdge("assess_positions", "discover_markets");
     stateGraph.addEdge("discover_markets", "publish_summary");
-    stateGraph.addEdge("tools", "settle_positions");
-    stateGraph.addEdge("tools", "assess_positions");
-    stateGraph.addEdge("tools", "discover_markets");
     Logger.success("Regular edges added");
 
     // Set up entry and final nodes
@@ -116,24 +115,62 @@ export class GraphManager {
     Logger.step('[Tools] Checking if tools are needed...');
     const lastMessage = state.messages[state.messages.length - 1];
     
-    if (lastMessage.tool_calls?.length > 0) {
-      Logger.info("Tool calls found, continuing with tools");
-      return "tools";
+    if (lastMessage?.tool_calls?.length > 0) {
+      Logger.info("Tool calls found, executing tools");
+      // Execute each tool call
+      for (const toolCall of lastMessage.tool_calls) {
+        Logger.info(`Executing tool: ${toolCall.name}`);
+        
+        try {
+          const result = await this.toolNode.invoke({
+            messages: state.messages,
+            tool_calls: [toolCall]
+          });
+          
+          // Add tool result to messages
+          const toolMessage = new AgentToolMessage(result, toolCall.id);
+          state.messages = [...state.messages, toolMessage];
+        } catch (error) {
+          Logger.error(`Error executing tool ${toolCall.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+      // Return to the calling node
+      return state.currentStep;
     }
 
-    const previousNode = state.messages[state.messages.length - 2]?.content;
-    let result;
-    if (previousNode?.includes("settle_positions")) result = "settle_positions";
-    else if (previousNode?.includes("assess_positions")) result = "assess_positions";
-    else if (previousNode?.includes("discover_markets")) result = "discover_markets";
-    else result = "publish_summary";
-    
-    Logger.info(`Tools check result: ${result}`);
-    return result;
+    // If no tool calls, continue to the next step
+    Logger.info("No tool calls found, continuing to next step");
+    return "assess_positions";
   }
 
   public async invoke(state: AgentState): Promise<AgentState> {
-    return this.graph.invoke(state);
+    // Add initial system message if not present
+    if (!state.messages.some(m => m.type === 'system')) {
+      const systemPrompt = `You are a Foil trading agent responsible for analyzing market conditions and managing trading positions. Your tasks include:
+        1. Settling positions when appropriate
+        2. Assessing and modifying existing positions
+        3. Discovering new market opportunities
+        4. Publishing trading summaries
+        
+        Use the available tools to interact with the Foil protocol and make trading decisions.`;
+      
+      state.messages = [new AgentSystemMessage(systemPrompt), ...state.messages];
+    }
+
+    const result = await this.graph.invoke(state);
+    
+    // Ensure we only have one set of messages
+    const messages = Array.isArray(result.messages) ? result.messages : [result.messages];
+    
+    return {
+      ...result,
+      messages: messages.map(msg => {
+        if (msg.type === 'tool') {
+          return new AgentToolMessage(msg.content, msg.tool_call_id);
+        }
+        return msg;
+      })
+    };
   }
 }
 
