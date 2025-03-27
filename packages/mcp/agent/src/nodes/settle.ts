@@ -13,11 +13,6 @@ export class SettlePositionsNode extends BaseNode {
       - get_foil_position_pnl: Get the PnL of a position
       - settle_foil_position: Settle a position
       
-      Current state:
-      - Step: ${state.currentStep}
-      - Last action: ${state.lastAction || 'None'}
-      - Number of positions: ${state.positions?.length || 0}
-      
       Instructions:
       1. Use get_foil_position to check existing positions
       2. For each position, use get_foil_position_pnl to assess if it should be settled

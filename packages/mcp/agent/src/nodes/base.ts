@@ -37,10 +37,10 @@ export abstract class BaseNode {
 
   protected async invokeModel(state: AgentState, prompt: string): Promise<any> {
     // Log the full state before model invocation
-    console.log(chalk.gray('\nCurrent State:'));
+    console.log(chalk.gray('\nState:'));
     console.log(chalk.gray(JSON.stringify(state, null, 2)));
-    console.log(chalk.gray('\nPrompt:'));
-    console.log(chalk.gray(prompt));
+    console.log(chalk.gray('\n') + chalk.gray.bold('Prompt:'));
+    console.log(chalk.gray.bold(prompt));
     console.log(chalk.gray('\n'));
 
     const response = await this.model.invoke([

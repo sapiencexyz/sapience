@@ -13,12 +13,6 @@ export class PublishSummaryNode extends BaseNode {
       - get_foil_position_pnl: Get PnL information
       - get_foil_market_info: Get market information
       
-      Current state:
-      - Step: ${state.currentStep}
-      - Last action: ${state.lastAction || 'None'}
-      - Number of positions: ${state.positions?.length || 0}
-      - Number of markets: ${state.markets?.length || 0}
-      
       Instructions:
       1. Use the tools to gather current state information
       2. Summarize all actions taken in the session

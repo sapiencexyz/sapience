@@ -117,36 +117,56 @@ export class GraphManager {
     return { graph, stateGraph };
   }
 
+  private getNextStep(currentStep: string, state: AgentState): string {
+    // Define the main flow between nodes
+    const flow = {
+      'settle_positions': 'assess_positions',
+      'assess_positions': 'discover_markets',
+      'discover_markets': 'publish_summary',
+      'publish_summary': 'delay',
+      'delay': 'settle_positions'
+    };
+
+    // If we're in the tools node, we should return to the node that called us
+    if (currentStep === 'tools') {
+      // Find the last non-tool message to determine where we came from
+      const lastNonToolMessage = state.messages
+        .slice()
+        .reverse()
+        .find(msg => msg.type !== 'tool');
+      
+      if (lastNonToolMessage) {
+        // Convert message content to string if it's not already
+        const content = typeof lastNonToolMessage.content === 'string' 
+          ? lastNonToolMessage.content 
+          : JSON.stringify(lastNonToolMessage.content);
+        
+        // Extract the step from the message content
+        const stepMatch = content.match(/Step: (\w+)/);
+        if (stepMatch) {
+          return stepMatch[1];
+        }
+      }
+      // Fallback to settle_positions if we can't determine the previous step
+      return 'settle_positions';
+    }
+
+    return flow[currentStep as keyof typeof flow] || 'settle_positions';
+  }
+
   private async shouldUseTools(state: AgentState): Promise<string> {
     Logger.step('[Tools] Checking if tools are needed...');
     const lastMessage = state.messages[state.messages.length - 1];
     
     if (lastMessage?.tool_calls?.length > 0) {
-      Logger.info("Tool calls found, executing tools");
-      // Execute each tool call
-      for (const toolCall of lastMessage.tool_calls) {
-        Logger.info(`Executing tool: ${toolCall.name}`);
-        
-        try {
-          const result = await this.toolNode.invoke({
-            messages: state.messages,
-            tool_calls: [toolCall]
-          });
-          
-          // Add tool result to messages
-          const toolMessage = new AgentToolMessage(result, toolCall.id);
-          state.messages = [...state.messages, toolMessage];
-        } catch (error) {
-          Logger.error(`Error executing tool ${toolCall.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-      }
-      // Return to the calling node
-      return state.currentStep;
+      Logger.info("Tool calls found, routing to tools node");
+      return "tools";
     }
 
-    // If no tool calls, continue to the next step
+    // If no tool calls, continue to the next step in the flow
     Logger.info("No tool calls found, continuing to next step");
-    return state.currentStep;
+    const nextStep = this.getNextStep(state.currentStep, state);
+    return nextStep;
   }
 
   public async invoke(state: AgentState): Promise<AgentState> {

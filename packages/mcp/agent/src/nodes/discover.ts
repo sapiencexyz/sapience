@@ -15,11 +15,6 @@ export class DiscoverMarketsNode extends BaseNode {
       - quoteCreateTraderPosition: Get a quote for creating a new position
       - createTraderPosition: Create a new position
       
-      Current state:
-      - Step: ${state.currentStep}
-      - Last action: ${state.lastAction || 'None'}
-      - Number of markets: ${state.markets?.length || 0}
-      
       Instructions:
       1. Use getMarketInfo to analyze available markets
       2. For promising markets, use getLatestEpochInfo to check current conditions

@@ -14,11 +14,6 @@ export class AssessPositionsNode extends BaseNode {
       - quote_modify_foil_trader_position: Get a quote for modifying a position
       - modify_foil_trader_position: Modify an existing position
       
-      Current state:
-      - Step: ${state.currentStep}
-      - Last action: ${state.lastAction || 'None'}
-      - Number of positions: ${state.positions?.length || 0}
-      
       Instructions:
       1. Use get_foil_position to check existing positions
       2. For each position, use get_foil_position_pnl to assess if it needs modification
