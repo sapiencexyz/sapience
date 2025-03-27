@@ -38,7 +38,13 @@ export class FoilAgent {
       3. Discovering new market opportunities
       4. Publishing trading summaries
       
-      Use the available tools to interact with the Foil protocol and make trading decisions.`
+      You have access to the following tools:
+      - readFoilContracts: Tools for reading market data, positions, and contract state
+      - writeFoilContracts: Tools for modifying positions, settling trades, and interacting with the protocol
+      - graphql: Tools for querying additional protocol data and market information
+      
+      Each tool has specific parameters and requirements. Always check the tool descriptions before using them.
+      The current state (positions, markets, actions) will be provided in each message to help you make informed decisions.`
     );
 
     return {

@@ -2,8 +2,12 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio';
 import * as tools from './tools';
 import { z } from 'zod';
+import { DynamicTool } from "@langchain/core/tools";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 interface ToolDefinition {
+  name: string;
+  description: string;
   parameters: {
     properties: Record<string, { type: string; description: string }>;
     required: string[];
@@ -22,7 +26,18 @@ const server = new McpServer({
 * While the codebase may reference 'epochs', users should refer to these as 'periods' in their queries. These terms are interchangeable in this context.
 * Not all markets involved ETH and gas. vETH is the quote token and vGas is the base token.
 * Some markets may resolve a question with a yes (represented as 1e18 vGas) or a no (0 vGas).
-* Some markets may resolve a question with an arbitrary number of base tokens (average or cumulative) representing somethin unrelated to gas.`
+* Some markets may resolve a question with an arbitrary number of base tokens (average or cumulative) representing somethin unrelated to gas.`,
+  model: {
+    provider: "ollama",
+    model: process.env.OLLAMA_MODEL || "mistral",
+    baseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
+    systemPrompt: `You are a helpful assistant with access to the following tools:
+${Object.entries(tools).map(([moduleName, moduleTools]) => 
+  Object.entries(moduleTools as Record<string, ToolDefinition>)
+    .map(([toolName, tool]) => `${toolName}: ${tool.description}`)
+    .join('\n')
+).join('\n')}`
+  }
 });
 
 // Debug log the available tools
@@ -39,7 +54,7 @@ for (const [moduleName, moduleTools] of Object.entries(tools)) {
     for (const [toolName, tool] of Object.entries(toolsObj)) {
       try {
         // Format the tool name to be more descriptive
-        const formattedToolName = toolName;  // Use original tool name without transformation
+        const formattedToolName = toolName;
 
         console.error(`Registering tool: ${formattedToolName}`);
         
@@ -62,6 +77,7 @@ for (const [moduleName, moduleTools] of Object.entries(tools)) {
           )
         );
         
+        // Register tool with MCP server
         server.tool(
           formattedToolName,
           paramsSchema.shape,

@@ -12,6 +12,64 @@ importers:
         specifier: ^8.2.2
         version: 8.2.2
 
+  packages/agent:
+    dependencies:
+      '@langchain/anthropic':
+        specifier: ^0.3.15
+        version: 0.3.15(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13)
+      '@langchain/community':
+        specifier: ^0.3.37
+        version: 0.3.37(n3tfors6ehrrdk637vodzj2mpi)
+      '@langchain/core':
+        specifier: ^0.3.43
+        version: 0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))
+      '@langchain/langgraph':
+        specifier: ^0.2.60
+        version: 0.2.60(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(react@19.0.0)(zod-to-json-schema@3.24.5(zod@3.23.8))
+      '@langchain/openai':
+        specifier: ^0.5.0
+        version: 0.5.0(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.7.0
+        version: 1.7.0
+      chalk:
+        specifier: ^5.3.0
+        version: 5.3.0
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.4.5
+      graphql:
+        specifier: ^16.8.1
+        version: 16.10.0
+      node-fetch:
+        specifier: ^2.7.0
+        version: 2.7.0(encoding@0.1.13)
+      viem:
+        specifier: ^2.23.12
+        version: 2.23.15(bufferutil@4.0.8)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.23.8)
+      zod:
+        specifier: ^3.22.4
+        version: 3.23.8
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.24
+        version: 20.17.24
+      '@types/node-fetch':
+        specifier: ^2.6.11
+        version: 2.6.12
+      rimraf:
+        specifier: ^4.1.2
+        version: 4.4.1
+      ts-node:
+        specifier: ^10.9.1
+        version: 10.9.2(@types/node@20.17.24)(typescript@5.7.2)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.19.2
+      typescript:
+        specifier: ^5.5.4
+        version: 5.7.2
+
   packages/api:
     dependencies:
       '@apollo/server':
@@ -341,9 +399,12 @@ importers:
 
   packages/mcp:
     dependencies:
+      '@langchain/anthropic':
+        specifier: ^0.3.15
+        version: 0.3.15(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13)
       '@langchain/community':
         specifier: ^0.3.37
-        version: 0.3.37(tb7ls7lilcj3x6zm63sgqbmuzu)
+        version: 0.3.37(n3tfors6ehrrdk637vodzj2mpi)
       '@langchain/core':
         specifier: ^0.3.43
         version: 0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))
@@ -359,6 +420,9 @@ importers:
       chalk:
         specifier: ^5.3.0
         version: 5.3.0
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.4.5
       graphql:
         specifier: ^16.8.1
         version: 16.10.0
@@ -603,6 +667,9 @@ packages:
 
   '@anthropic-ai/sdk@0.27.3':
     resolution: {integrity: sha512-IjLt0gd3L4jlOfilxVXTifn42FnVffMgDC04RJK1KDZpmkBWLv0XC92MVVmkxrFZNS/7l3xWgP/I3nqtX1sQHw==}
+
+  '@anthropic-ai/sdk@0.37.0':
+    resolution: {integrity: sha512-tHjX2YbkUBwEgg0JZU3EFSSAQPoK4qQR/NFYa8Vtzd5UAyXzZksCw2In69Rml4R/TyHPBfRYaLK35XiOe33pjw==}
 
   '@apideck/better-ajv-errors@0.3.6':
     resolution: {integrity: sha512-P+ZygBLZtkp0qqOAJJVX4oX/sFo5JR3eBWwwuqHHhK0GIgQOKWrAfiAaWX0aArHkRWHMuggFEgAZNxVPwPZYaA==}
@@ -2801,6 +2868,12 @@ packages:
   '@jsdoc/salty@0.2.8':
     resolution: {integrity: sha512-5e+SFVavj1ORKlKaKr2BmTOekmXbelU7dC0cDkQLqag7xfuTPuGMUFx7KWJuv4bYZrTsoL2Z18VVCOKYxzoHcg==}
     engines: {node: '>=v12.0.0'}
+
+  '@langchain/anthropic@0.3.15':
+    resolution: {integrity: sha512-Ar2viYcZ64idgV7EtCBCb36tIkNtPAhQRxSaMTWPHGspFgMfvwRoleVri9e90sCpjpS9xhlHsIQ0LlUS/Atsrw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@langchain/core': '>=0.2.21 <0.4.0'
 
   '@langchain/community@0.3.37':
     resolution: {integrity: sha512-Ifug3Gc6JHOFNWr0bxT1ie0AUKn3hWkZ4PG+EGqVz8MyeNr68lOhchY4oj51pQCC65KryfZ5CPhXrvbd5Il1GQ==}
@@ -9267,10 +9340,6 @@ packages:
   fast-uri@3.0.1:
     resolution: {integrity: sha512-MWipKbbYiYI0UC7cl8m/i/IWTqfC8YXsqjzybjddLsFjStroQzsHXkc73JutMvBiXmOvapk+axIl79ig5t55Bw==}
 
-  fast-xml-parser@4.5.0:
-    resolution: {integrity: sha512-/PlTQCI96+fZMAOLMZK4CWG1ItCbfZ/0jx7UIJFChPNrx7tcEgerUgWbeieCM9MfHInUDyK8DWYZ+YrywDJuTg==}
-    hasBin: true
-
   fast-xml-parser@4.5.3:
     resolution: {integrity: sha512-RKihhV+SHsIUGXObeVy9AXiBbFwkVk7Syp8XgwN5U3JV416+Gwp/GO9i0JYKmikykgz/UHRrrV4ROuZEo/T0ig==}
     hasBin: true
@@ -14785,9 +14854,6 @@ packages:
     resolution: {integrity: sha512-0fk9zBqO67Nq5M/m45qHCJxylV/DhBlIOVExqgOMiCCrzrhU6tCibRXNqE3jwJLftzE9SNuZtYbpzcO+i9FiKw==}
     engines: {node: '>=14.16'}
 
-  strnum@1.0.5:
-    resolution: {integrity: sha512-J8bbNyKKXl5qYcR36TIO8W3mVGVHrmmxsd5PAItGkmyzwJvybiw2IVq5nqd0i4LSNSkB/sx9VHllbfFdr9k1JA==}
-
   strnum@1.1.2:
     resolution: {integrity: sha512-vrN+B7DBIoTTZjnPNewwhx6cBA/H+IS7rfW68n7XxC1y7uoiGQBxaKzqucGUgavX15dJgiGztLJ8vxuEzwqBdA==}
 
@@ -16822,6 +16888,18 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.25
 
   '@anthropic-ai/sdk@0.27.3(encoding@0.1.13)':
+    dependencies:
+      '@types/node': 18.19.84
+      '@types/node-fetch': 2.6.12
+      abort-controller: 3.0.0
+      agentkeepalive: 4.6.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0(encoding@0.1.13)
+    transitivePeerDependencies:
+      - encoding
+
+  '@anthropic-ai/sdk@0.37.0(encoding@0.1.13)':
     dependencies:
       '@types/node': 18.19.84
       '@types/node-fetch': 2.6.12
@@ -19554,7 +19632,7 @@ snapshots:
       duplexify: 4.1.3
       ent: 2.2.1
       extend: 3.0.2
-      fast-xml-parser: 4.5.0
+      fast-xml-parser: 4.5.3
       gaxios: 5.1.3(encoding@0.1.13)
       google-auth-library: 8.9.0(encoding@0.1.13)
       mime: 3.0.0
@@ -19830,7 +19908,17 @@ snapshots:
     dependencies:
       lodash: 4.17.21
 
-  '@langchain/community@0.3.37(tb7ls7lilcj3x6zm63sgqbmuzu)':
+  '@langchain/anthropic@0.3.15(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13)':
+    dependencies:
+      '@anthropic-ai/sdk': 0.37.0(encoding@0.1.13)
+      '@langchain/core': 0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))
+      fast-xml-parser: 4.5.3
+      zod: 3.23.8
+      zod-to-json-schema: 3.24.5(zod@3.23.8)
+    transitivePeerDependencies:
+      - encoding
+
+  '@langchain/community@0.3.37(n3tfors6ehrrdk637vodzj2mpi)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.47.1)(bufferutil@4.0.8)(deepmerge@4.3.1)(dotenv@16.4.5)(encoding@0.1.13)(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))(utf-8-validate@5.0.10)(zod@3.23.8)
       '@ibm-cloud/watsonx-ai': 1.6.3(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))
@@ -19841,7 +19929,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.19(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(axios@1.8.4)(cheerio@1.0.0)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))(typeorm@0.3.20(pg@8.13.1)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.17.24)(typescript@5.7.2)))(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
+      langchain: 0.3.19(@langchain/anthropic@0.3.15(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13))(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(axios@1.8.4)(cheerio@1.0.0)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))(typeorm@0.3.20(pg@8.13.1)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.17.24)(typescript@5.7.2)))(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
       langsmith: 0.3.15(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))
       openai: 4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)
       uuid: 10.0.0
@@ -23475,7 +23563,7 @@ snapshots:
 
   '@types/cors@2.8.17':
     dependencies:
-      '@types/node': 20.17.10
+      '@types/node': 20.17.24
 
   '@types/d3-array@3.2.1': {}
 
@@ -28787,10 +28875,6 @@ snapshots:
 
   fast-uri@3.0.1: {}
 
-  fast-xml-parser@4.5.0:
-    dependencies:
-      strnum: 1.0.5
-
   fast-xml-parser@4.5.3:
     dependencies:
       strnum: 1.1.2
@@ -31206,7 +31290,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.19(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(axios@1.8.4)(cheerio@1.0.0)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))(typeorm@0.3.20(pg@8.13.1)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.17.24)(typescript@5.7.2)))(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)):
+  langchain@0.3.19(@langchain/anthropic@0.3.15(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13))(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(axios@1.8.4)(cheerio@1.0.0)(encoding@0.1.13)(handlebars@4.7.8)(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))(typeorm@0.3.20(pg@8.13.1)(sqlite3@5.1.7)(ts-node@10.9.2(@types/node@20.17.24)(typescript@5.7.2)))(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10)):
     dependencies:
       '@langchain/core': 0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))
       '@langchain/openai': 0.4.9(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
@@ -31222,6 +31306,7 @@ snapshots:
       zod: 3.23.8
       zod-to-json-schema: 3.24.5(zod@3.23.8)
     optionalDependencies:
+      '@langchain/anthropic': 0.3.15(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13)
       axios: 1.8.4(debug@4.4.0)
       cheerio: 1.0.0
       handlebars: 4.7.8
@@ -35915,8 +36000,6 @@ snapshots:
 
   strip-json-comments@5.0.1: {}
 
-  strnum@1.0.5: {}
-
   strnum@1.1.2: {}
 
   strtok3@6.3.0:
@@ -36573,7 +36656,7 @@ snapshots:
   type-graphql@2.0.0-rc.2(class-validator@0.14.1)(graphql-scalars@1.24.0(graphql@16.10.0))(graphql@16.10.0):
     dependencies:
       '@graphql-yoga/subscription': 5.0.2
-      '@types/node': 20.17.10
+      '@types/node': 20.17.24
       '@types/semver': 7.5.8
       graphql: 16.10.0
       graphql-query-complexity: 0.12.0(graphql@16.10.0)
@@ -37615,17 +37698,17 @@ snapshots:
 
   web3-eth-abi@1.10.0:
     dependencies:
-      '@ethersproject/abi': 5.7.0
+      '@ethersproject/abi': 5.8.0
       web3-utils: 1.10.0
 
   web3-eth-abi@1.10.4:
     dependencies:
-      '@ethersproject/abi': 5.7.0
+      '@ethersproject/abi': 5.8.0
       web3-utils: 1.10.4
 
   web3-eth-abi@1.7.4:
     dependencies:
-      '@ethersproject/abi': 5.7.0
+      '@ethersproject/abi': 5.8.0
       web3-utils: 1.7.4
 
   web3-eth-abi@1.8.2:
