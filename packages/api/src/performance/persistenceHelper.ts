@@ -1,16 +1,18 @@
 import {
   CandleData,
+  Datapoint,
   IndexData,
   StorageData,
   TrailingAvgStorage,
-  CandleMetadata,
+  // CandleMetadata,
 } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { Resource } from 'src/models/Resource';
 import { Epoch } from 'src/models/Epoch';
-import { Store } from './types';
+import { Store, GenericMetadata, IndexMetadata, TrailingAvgMetadata } from './types';
+
 
 const FORMAT_VERSION = 5;
 
@@ -194,8 +196,7 @@ export async function restore(
     // restore from persisted resourceStore
     storage[interval] = {
       resourceStore:  {
-        data: [],
-        metadata: []
+        datapoints: []
       },
       marketStore: {},
       indexStore: {},
@@ -216,12 +217,10 @@ export async function restore(
 
     for (const epoch of epochs) {
       storage[interval].marketStore[epoch.id] = {
-        data: [],
-        metadata: []
+        datapoints: []
       };
       storage[interval].indexStore[epoch.id] = {
-        data: [],
-        metadata: []
+        datapoints: []
       };
       // restore marketStore
       records = await restoreRecords(
@@ -252,8 +251,7 @@ export async function restore(
     }
     for (const trailingAvgTime of trailingAvgTimes) {
       storage[interval].trailingAvgStore[trailingAvgTime] = {
-        data: [],
-        metadata: []
+        datapoints: []
       };
       records = await restoreRecords(
         mode,
@@ -354,6 +352,7 @@ async function restoreResourceMetadata(
     console.error('Database persistence is not implemented');
   }
 }
+
 async function storeRecords(
   mode: PersistMode,
   resourceSlug: string,
@@ -412,7 +411,7 @@ async function storeRecordsToFile(
   if (!store) {
     return;
   }
-  const length = store.data ? store.data.length : 0;
+  const length = store.datapoints ? store.datapoints.length : 0;
 
   let writeStream: fs.WriteStream | null = null;
   const filename = constructFilename(resourceSlug, kind, interval, epochId, trailingAvgTime);
@@ -440,40 +439,22 @@ async function storeRecordsToFile(
     // }
 
     for (let i = 0; i < length; i++) {
-      const data = store.data[i];
-      const metadata = store.metadata ? store.metadata[i] : undefined;
-      // const record = {
-      //   version: FORMAT_VERSION,
-      //   interval,
-      //   epochId,
-      //   trailingAvgTime,
-      //   resourceSlug,
-      //   timestamp: data.t ?? '', // timestamp
-      //   open: (data as CandleData).o ?? '', // open
-      //   high: (data as CandleData).h ?? '', // high
-      //   low: (data as CandleData).l ?? '', // low
-      //   close: (data as CandleData).c ?? '', // close
-      //   value: (data as IndexData).v ?? '', // value
-      //   cumulative: (data as IndexData).c ?? '', // cumulative
-      //   startTimestamp: metadata?.st ?? '', // startTimestamp
-      //   endTimestamp: metadata?.et ?? '', // endTimestamp
-      //   used: metadata?.u ?? '', // used
-      //   feePaid: metadata?.f ?? '', // feePaid
-      // };
-
+      const datapoint = store.datapoints[i];
+      
       try {
         const fileRecord = [
-          data.t ?? '', // timestamp
-          (data as CandleData).o ?? '', // open
-          (data as CandleData).h ?? '', // high
-          (data as CandleData).l ?? '', // low
-          (data as CandleData).c ?? '', // close
-          (data as IndexData).v ?? '', // value
-          (data as IndexData).c ?? '', // cumulative
-          metadata?.st ?? '', // startTimestamp
-          metadata?.et ?? '', // endTimestamp
-          metadata?.u ?? '', // used
-          metadata?.f ?? '', // feePaid
+          datapoint.timestamp ?? '', // timestamp
+          datapoint.endTimestamp ?? '', // endTimestamp
+          (datapoint.data as CandleData).o ?? '', // open
+          (datapoint.data as CandleData).h ?? '', // high
+          (datapoint.data as CandleData).l ?? '', // low
+          (datapoint.data as CandleData).c ?? '', // close
+          (datapoint.data as IndexData).v ?? '', // value
+          (datapoint.data as IndexData).c ?? '', // cumulative
+          (datapoint.metadata as GenericMetadata).lastIncludedTimestamp ?? '', // lastIncludedTimestamp
+          (datapoint.metadata as IndexMetadata).sumUsed ?? '', // sumUsed
+          (datapoint.metadata as IndexMetadata).sumPaid ?? '', // sumPaid
+          (datapoint.metadata as TrailingAvgMetadata).trailingStartTimestamp ?? '', // trailingStartTimestamp
         ]
           .map((value) => {
             // Escape commas and quotes in values
@@ -553,8 +534,7 @@ async function restoreRecordsFromFile(
 
     // Initialize store structure
     const store: Store = {
-      data: [],
-      metadata: []
+      datapoints: []
     };
 
     // Create readline interface
@@ -578,54 +558,62 @@ async function restoreRecordsFromFile(
 
       // Parse CSV line
       const values = parseCsvLine(line);
-      if (values.length !== 11) { // Expected number of columns
+      if (values.length !== 12) { // Expected number of columns
         console.warn(`Invalid line format: ${line}`);
         continue;
       }
 
       const [
         timestamp,
+        endTimestamp,
         open,
         high,
         low,
         close,
         value,
         cumulative,
-        startTimestamp,
-        endTimestamp,
-        used,
-        feePaid
+        lastIncludedTimestamp,
+        sumUsed,
+        sumPaid,
+        trailingStartTimestamp
       ] = values;
 
-      // Create candle data
-      let candleData: CandleData | IndexData;
+
+      // Create datapoint
+      let data: CandleData | IndexData;
       if(value || cumulative) {
-        candleData = {
-          t: parseInt(timestamp),
-          v: value,
-          c: cumulative
-        };
+        data = { v: value, c: cumulative };
       } else {
-        candleData = {
-          t: parseInt(timestamp),
-          o: open,
-          h: high,
-          l: low,
-          c: close
-        };
+        data = { o: open, h: high, l: low, c: close };
       }
 
-      // Create metadata
-      const metadata: CandleMetadata = {
-        st: parseInt(startTimestamp),
-        et: parseInt(endTimestamp),
-        u: used,
-        f: feePaid
+      let metadata: GenericMetadata | IndexMetadata | TrailingAvgMetadata;
+
+      if(trailingAvgTime) {
+        metadata = { 
+          lastIncludedTimestamp: parseInt(lastIncludedTimestamp), 
+          sumUsed: sumUsed,
+          sumPaid: sumPaid,
+          trailingStartTimestamp: parseInt(trailingStartTimestamp) 
+        };
+      } else if(sumUsed || sumPaid) {
+        metadata = { lastIncludedTimestamp: parseInt(lastIncludedTimestamp), 
+          sumUsed: sumUsed, 
+          sumPaid: sumPaid 
+        };
+      } else {
+        metadata = { lastIncludedTimestamp: parseInt(lastIncludedTimestamp) };
+      }
+
+      const datapoint: Datapoint = {
+        timestamp: parseInt(timestamp),
+        endTimestamp: parseInt(endTimestamp),
+        data: data,
+        metadata: metadata
       };
 
       // Add to store
-      store.data.push(candleData);
-      store.metadata.push(metadata);
+      store.datapoints.push(datapoint);
     }
 
     // Close the file stream
@@ -637,7 +625,7 @@ async function restoreRecordsFromFile(
     }
 
     // Validate restored data
-    if (store.data.length === 0) {
+    if (store.datapoints.length === 0) {
       console.log(`No valid data found in ${filename}`);
       return undefined;
     }
@@ -798,117 +786,6 @@ async function restoreTrailingAvgRecords(
   return undefined;
 }
 
-// export async function saveStorageToFile(
-//   storage: IntervalStore,
-//   latestResourceTimestamp: number,
-//   latestMarketTimestamp: number,
-//   resourceSlug: string,
-//   resourceName: string,
-//   sectionName: string
-// ): Promise<undefined> {
-//   if (process.env.SAVE_STORAGE !== 'true') {
-//     return;
-//   }
-
-//   console.time(
-//     `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
-//   );
-//   const storageDir = process.env.STORAGE_PATH;
-//   if (!storageDir) {
-//     throw new Error('STORAGE_PATH is not set');
-//   }
-
-//   if (!fs.existsSync(storageDir)) {
-//     fs.mkdirSync(storageDir, { recursive: true });
-//   }
-
-//   const filename = path.join(
-//     storageDir,
-//     `${resourceSlug}-${sectionName}-storage.msgpack`
-//   );
-
-//   const data = {
-//     fileVersion: FORMAT_VERSION,
-//     latestResourceTimestamp,
-//     latestMarketTimestamp,
-//     store: storage,
-//   };
-
-//   // Encode and save
-//   const buffer = encode(data);
-//   await fs.promises.writeFile(filename, buffer);
-
-//   console.timeEnd(
-//     `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
-//   );
-//   console.log(
-//     `  ResourcePerformance --> Saved storage to ${filename} (${buffer.length} bytes)`
-//   );
-// }
-
-// export async function loadStorageFromFile(
-//   resourceSlug: string,
-//   resourceName: string,
-//   sectionName: string
-// ): Promise<
-//   | {
-//       latestResourceTimestamp: number;
-//       latestMarketTimestamp: number;
-//       store: IntervalStore;
-//     }
-//   | undefined
-// > {
-//   if (process.env.SAVE_STORAGE !== 'true') {
-//     return undefined;
-//   }
-
-//   console.time(
-//     `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
-//   );
-//   const storageDir = process.env.STORAGE_PATH;
-//   if (!storageDir) {
-//     throw new Error('STORAGE_PATH is not set');
-//   }
-
-//   const filename = path.join(
-//     storageDir,
-//     `${resourceSlug}-${sectionName}-storage.msgpack`
-//   );
-
-//   try {
-//     const buffer = await fs.promises.readFile(filename);
-//     const data = decode(buffer) as {
-//       fileVersion: number;
-//       latestResourceTimestamp: number;
-//       latestMarketTimestamp: number;
-//       store: IntervalStore;
-//     };
-
-//     if (data.fileVersion !== FORMAT_VERSION) {
-//       console.log(
-//         `!! Storage file ${filename} has an unsupported version -${data.fileVersion}-. Expected -${FORMAT_VERSION}-`
-//       );
-//       return undefined;
-//     }
-
-//     console.timeEnd(
-//       `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
-//     );
-//     console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
-//     return {
-//       latestResourceTimestamp: data.latestResourceTimestamp,
-//       latestMarketTimestamp: data.latestMarketTimestamp,
-//       store: data.store,
-//     };
-//   } catch (error) {
-//     console.log(`  ResourcePerformance - load storage failed: ${error}`);
-//     console.timeEnd(
-//       `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
-//     );
-//     return undefined;
-//   }
-// }
-
 // Helper function to construct filename
 function constructFilename(
   resourceSlug: string,
@@ -961,4 +838,3 @@ function parseCsvLine(line: string): string[] {
 
   return values;
 }
-

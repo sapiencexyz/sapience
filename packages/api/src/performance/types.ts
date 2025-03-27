@@ -24,12 +24,18 @@ export type IntervalStore = {
 };
 
 export type Store = {
-  data: (CandleData | IndexData)[];
-  metadata: CandleMetadata[];
+  datapoints: Datapoint[];
 };
 
+export type Datapoint = {
+  timestamp: number; // datapoint timestamp
+	endTimestamp: number;
+  data: CandleData | IndexData;
+  metadata: GenericMetadata | IndexMetadata | TrailingAvgMetadata;
+}
+
 export type CandleData = {
-  t: number; // timestamp
+  // t: number; // timestamp
   o: string; // open
   h: string; // high
   l: string; // low
@@ -37,7 +43,7 @@ export type CandleData = {
 };
 
 export type IndexData = {
-  t: number; // timestamp
+  // t: number; // timestamp
   v: string; // value
   c: string; // cumulative
 };
@@ -48,13 +54,24 @@ export type MarketPriceData = {
   e: number; // end timestamp
 };
 
-export type CandleMetadata = {
-  u: string; // used
-  f: string; // fee
-  st: number; // start timestamp
-  et: number; // end timestamp
-};
+// export type CandleMetadata = {
+//   u: string; // used
+//   f: string; // fee
+//   st: number; // start timestamp
+//   et: number; // end timestamp
+// };
 
+export type GenericMetadata = {
+	// Datapoint metadata for all
+	lastIncludedTimestamp: number;
+}
+export type IndexMetadata = GenericMetadata & {
+  sumUsed: string;
+	sumPaid: string;
+};
+export type TrailingAvgMetadata = IndexMetadata & {
+  trailingStartTimestamp: number
+};
 // TrailingAvg related types (now separate)
 export type TrailingAvgStorage = TrailingAvgData[];
 
