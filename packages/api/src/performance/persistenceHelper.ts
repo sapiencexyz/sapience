@@ -1,12 +1,13 @@
 import {
   CandleData,
   IndexData,
-  IntervalStore,
   StorageData,
   TrailingAvgStorage,
+  CandleMetadata,
 } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as readline from 'readline';
 import { Resource } from 'src/models/Resource';
 import { Epoch } from 'src/models/Epoch';
 import { Store } from './types';
@@ -22,6 +23,8 @@ export async function persist(
   mode: PersistMode,
   storage: StorageData,
   trailingAvgStore: TrailingAvgStorage,
+  latestResourceTimestamp: number,
+  latestMarketTimestamp: number,
   resource: Resource,
   intervals: number[],
   trailingAvgTimes: number[],
@@ -54,11 +57,25 @@ export async function persist(
       await fs.promises.mkdir(dir, { recursive: true });
     }
 
-    // Check if file is writable
-    await fs.promises.access(dir, fs.constants.W_OK).catch(() => {
-      throw new Error(`Directory ${dir} is not writable`);
-    });
+    // Check if directory has read and write permissions
+    await fs.promises
+      .access(dir, fs.constants.R_OK | fs.constants.W_OK)
+      .catch(() => {
+        throw new Error(`Directory ${dir} is not readable and writable`);
+      });
+  } else if (mode === PersistMode.DATABASE) {
+    // TODO: Implement database persistence
+    console.error('Database persistence is not implemented');
+    return;
   }
+
+  await persistResourceMetadata(
+    mode,
+    resource.slug,
+    FORMAT_VERSION,
+    latestResourceTimestamp,
+    latestMarketTimestamp,
+  );
 
   for (const interval of intervals) {
     // persist resourceStore
@@ -116,6 +133,227 @@ export async function persist(
   // );
 }
 
+export async function restore(
+  mode: PersistMode,
+  resource: Resource,
+  intervals: number[],
+  trailingAvgTimes: number[],
+  epochs: Epoch[]
+): Promise<
+  { storage: StorageData; trailingAvgStore: TrailingAvgStorage; latestResourceTimestamp: number, latestMarketTimestamp: number}  | undefined
+> {
+  if (process.env.SAVE_STORAGE !== 'true') {
+    return;
+  }
+  // Common validations
+  if (!resource || !intervals || !trailingAvgTimes || !epochs) {
+    throw new Error('Invalid request data provided');
+  }
+
+  // per mode specific validations
+  if (mode === PersistMode.FILE) {
+    const dir = process.env.STORAGE_PATH;
+    if (!dir) {
+      throw new Error('STORAGE_PATH is not set');
+    }
+
+    // Ensure directory exists
+    if (!fs.existsSync(dir)) {
+      return undefined;
+    }
+
+    // Check if directory has read and write permissions
+    await fs.promises
+      .access(dir, fs.constants.R_OK | fs.constants.W_OK)
+      .catch(() => {
+        throw new Error(`Directory ${dir} is not readable and writable`);
+      });
+  } else if (mode === PersistMode.DATABASE) {
+    // TODO: Implement database persistence
+    console.error('Database persistence is not implemented');
+    return;
+  }
+
+  const metadata = await restoreResourceMetadata(
+    mode,
+    resource.slug,
+  );
+
+
+  if(!metadata || Number(metadata.version) !== FORMAT_VERSION) {
+    console.warn(`Unsupported version: ${metadata?.version}`);
+    return undefined;
+  }
+
+  let restored = false;
+  const storage: StorageData = {};
+  const trailingAvgStore: TrailingAvgStorage = [];
+
+  let records: Store | undefined;
+  for (const interval of intervals) {
+    // restore from persisted resourceStore
+    storage[interval] = {
+      resourceStore:  {
+        data: [],
+        metadata: []
+      },
+      marketStore: {},
+      indexStore: {},
+      trailingAvgStore: {}
+    };
+    records = await restoreRecords(
+      mode,
+      resource.slug,
+      'resource',
+      interval,
+      undefined,
+      undefined
+    );
+    if (records) {
+      storage[interval].resourceStore = records;
+      restored = true;
+    }
+
+    for (const epoch of epochs) {
+      storage[interval].marketStore[epoch.id] = {
+        data: [],
+        metadata: []
+      };
+      storage[interval].indexStore[epoch.id] = {
+        data: [],
+        metadata: []
+      };
+      // restore marketStore
+      records = await restoreRecords(
+        mode,
+        resource.slug,
+        'market',
+        interval,
+        epoch.id,
+        undefined
+      );
+      if (records) {
+        storage[interval].marketStore[epoch.id] = records;
+        restored = true;
+      }
+      // restore indexStore
+      records = await restoreRecords(
+        mode,
+        resource.slug,
+        'index',
+        interval,
+        epoch.id,
+        undefined
+      );
+      if (records) {
+        storage[interval].indexStore[epoch.id] = records;
+        restored = true;
+      }
+    }
+    for (const trailingAvgTime of trailingAvgTimes) {
+      storage[interval].trailingAvgStore[trailingAvgTime] = {
+        data: [],
+        metadata: []
+      };
+      records = await restoreRecords(
+        mode,
+        resource.slug,
+        'trailingAvg',
+        interval,
+        undefined,
+        trailingAvgTime
+      );
+      if (records) {
+        storage[interval].trailingAvgStore[trailingAvgTime] = records;
+        restored = true;
+      }
+    }
+  }
+
+  // // restore trailingAvgStore
+  // for (const trailingAvgTime of trailingAvgTimes) {
+  //   records = await restoreTrailingAvgRecords(
+  //     mode,
+  //     resource.slug,
+  //     'trailingAvg',
+  //     interval,
+  //     undefined,
+  //     trailingAvgTime,
+  //   );
+  //   if (records) {
+  //     storage[interval].trailingAvgStore[trailingAvgTime] = records;
+  //     restored = true;
+  //   }
+  // }
+  return restored ? { storage, trailingAvgStore, latestResourceTimestamp: metadata.latestResourceTimestamp, latestMarketTimestamp: metadata.latestMarketTimestamp } : undefined;
+}
+
+export async function clearStorageFiles(): Promise<void> {
+  const storageDir = process.env.STORAGE_PATH;
+  if (!storageDir) {
+    throw new Error('STORAGE_PATH is not set');
+  }
+
+  if (!fs.existsSync(storageDir)) {
+    return; // Nothing to clear
+  }
+
+  console.time('  ResourcePerformance - clearStorageFiles');
+
+  const files = await fs.promises.readdir(storageDir);
+  for (const file of files) {
+    if (
+      file.endsWith('-storage.json') ||
+      file.endsWith('-storage.msgpack') ||
+      file.endsWith('-store.csv')
+    ) {
+      await fs.promises.unlink(path.join(storageDir, file));
+    }
+  }
+
+  console.timeEnd('  ResourcePerformance - clearStorageFiles');
+  console.log(
+    `  ResourcePerformance --> Cleared ${files.length} storage files`
+  );
+}
+
+async function persistResourceMetadata(
+  mode: PersistMode,
+  resourceSlug: string,
+  version: number,
+  latestResourceTimestamp: number,
+  latestMarketTimestamp: number
+) {
+  if (mode == PersistMode.FILE) {
+    const filename = path.join(process.env.STORAGE_PATH!, `${resourceSlug}-metadata.json`);
+    const metadata = {
+      version,
+      latestResourceTimestamp,
+      latestMarketTimestamp
+    };
+    await fs.promises.writeFile(filename, JSON.stringify(metadata, null, 2));
+  } else if (mode == PersistMode.DATABASE) {
+    // TODO: Implement database persistence
+    console.error('Database persistence is not implemented');
+  }
+}
+
+async function restoreResourceMetadata(
+  mode: PersistMode,
+  resourceSlug: string
+): Promise<{version: number, latestResourceTimestamp: number, latestMarketTimestamp: number} | undefined> {
+  if (mode == PersistMode.FILE) {
+    const filename = path.join(process.env.STORAGE_PATH!, `${resourceSlug}-metadata.json`);
+    if (!fs.existsSync(filename)) {
+      return undefined;
+    }
+    const metadata = await fs.promises.readFile(filename, 'utf8');
+    return JSON.parse(metadata);
+  } else if (mode == PersistMode.DATABASE) {
+    // TODO: Implement database persistence
+    console.error('Database persistence is not implemented');
+  }
+}
 async function storeRecords(
   mode: PersistMode,
   resourceSlug: string,
@@ -126,7 +364,7 @@ async function storeRecords(
   store: Store
 ) {
   if (mode == PersistMode.FILE) {
-    await storeRecordsFile(
+    await storeRecordsToFile(
       resourceSlug,
       kind,
       interval,
@@ -135,7 +373,7 @@ async function storeRecords(
       store
     );
   } else if (mode == PersistMode.DATABASE) {
-    await storeRecordsDatabase(
+    await storeRecordsToDatabase(
       resourceSlug,
       kind,
       interval,
@@ -146,7 +384,24 @@ async function storeRecords(
   }
 }
 
-async function storeRecordsFile(
+async function restoreRecords(
+  mode: PersistMode,
+  resourceSlug: string,
+  kind: string,
+  interval: number,
+  epochId: number | undefined,
+  trailingAvgTime: number | undefined
+): Promise<Store | undefined> {
+  if (mode === PersistMode.FILE) {
+    return restoreRecordsFromFile(resourceSlug, kind, interval, epochId, trailingAvgTime);
+  } else if (mode === PersistMode.DATABASE) {
+    // TODO: Implement database persistence
+    console.error('Database persistence is not implemented');
+    return undefined;
+  }
+}
+
+async function storeRecordsToFile(
   resourceSlug: string,
   kind: string,
   interval: number,
@@ -158,23 +413,13 @@ async function storeRecordsFile(
     return;
   }
   const length = store.data ? store.data.length : 0;
-  const dir = process.env.STORAGE_PATH!; // Notice, dir is already checked when this function is called
 
   let writeStream: fs.WriteStream | null = null;
-  let filepath: string = '';
-  let filename = `${resourceSlug}-${interval}`;
-  if (epochId) {
-    filename += `-${epochId}`;
-  }
-  if (trailingAvgTime) {
-    filename += `-${trailingAvgTime}`;
-  }
-  filename += `-${kind}-store.csv`;
-  filepath = path.join(dir, filename);
+  const filename = constructFilename(resourceSlug, kind, interval, epochId, trailingAvgTime);
 
   try {
     // Open file to write (overwrite)
-    writeStream = fs.createWriteStream(filepath, {
+    writeStream = fs.createWriteStream(filename, {
       flags: 'w',
       encoding: 'utf8',
       mode: 0o666,
@@ -186,7 +431,7 @@ async function storeRecordsFile(
     });
 
     // Don't use header, because it's not needed for the file
-    // // Write CSV header 
+    // // Write CSV header
     // const headerWritten = writeStream.write(
     //   'version,timestamp,open,high,low,close,value,cumulative,startTimestamp,endTimestamp,used,feePaid\n'
     // );
@@ -194,51 +439,50 @@ async function storeRecordsFile(
     //   await new Promise((resolve) => writeStream!.once('drain', resolve));
     // }
 
-  for (let i = 0; i < length; i++) {
-    const data = store.data[i];
-    const metadata = store.metadata ? store.metadata[i] : undefined;
-    // const record = {
-    //   version: FORMAT_VERSION,
-    //   interval,
-    //   epochId,
-    //   trailingAvgTime,
-    //   resourceSlug,
-    //   timestamp: data.t ?? '', // timestamp
-    //   open: (data as CandleData).o ?? '', // open
-    //   high: (data as CandleData).h ?? '', // high
-    //   low: (data as CandleData).l ?? '', // low
-    //   close: (data as CandleData).c ?? '', // close
-    //   value: (data as IndexData).v ?? '', // value
-    //   cumulative: (data as IndexData).c ?? '', // cumulative
-    //   startTimestamp: metadata?.st ?? '', // startTimestamp
-    //   endTimestamp: metadata?.et ?? '', // endTimestamp
-    //   used: metadata?.u ?? '', // used
-    //   feePaid: metadata?.f ?? '', // feePaid
-    // };
+    for (let i = 0; i < length; i++) {
+      const data = store.data[i];
+      const metadata = store.metadata ? store.metadata[i] : undefined;
+      // const record = {
+      //   version: FORMAT_VERSION,
+      //   interval,
+      //   epochId,
+      //   trailingAvgTime,
+      //   resourceSlug,
+      //   timestamp: data.t ?? '', // timestamp
+      //   open: (data as CandleData).o ?? '', // open
+      //   high: (data as CandleData).h ?? '', // high
+      //   low: (data as CandleData).l ?? '', // low
+      //   close: (data as CandleData).c ?? '', // close
+      //   value: (data as IndexData).v ?? '', // value
+      //   cumulative: (data as IndexData).c ?? '', // cumulative
+      //   startTimestamp: metadata?.st ?? '', // startTimestamp
+      //   endTimestamp: metadata?.et ?? '', // endTimestamp
+      //   used: metadata?.u ?? '', // used
+      //   feePaid: metadata?.f ?? '', // feePaid
+      // };
 
-    try {
-      const fileRecord = [
-        FORMAT_VERSION,
-        data.t ?? '', // timestamp
-        (data as CandleData).o ?? '', // open
-        (data as CandleData).h ?? '', // high
-        (data as CandleData).l ?? '', // low
-        (data as CandleData).c ?? '', // close
-        (data as IndexData).v ?? '', // value
-        (data as IndexData).c ?? '', // cumulative
-        metadata?.st ?? '', // startTimestamp
-        metadata?.et ?? '', // endTimestamp
-        metadata?.u ?? '', // used
-        metadata?.f ?? '', // feePaid
-      ]
-        .map((value) => {
-          // Escape commas and quotes in values
-          const stringValue = String(value);
-          return stringValue.includes(',') ? `"${stringValue}"` : stringValue;
-        })
-        .join(',');
+      try {
+        const fileRecord = [
+          data.t ?? '', // timestamp
+          (data as CandleData).o ?? '', // open
+          (data as CandleData).h ?? '', // high
+          (data as CandleData).l ?? '', // low
+          (data as CandleData).c ?? '', // close
+          (data as IndexData).v ?? '', // value
+          (data as IndexData).c ?? '', // cumulative
+          metadata?.st ?? '', // startTimestamp
+          metadata?.et ?? '', // endTimestamp
+          metadata?.u ?? '', // used
+          metadata?.f ?? '', // feePaid
+        ]
+          .map((value) => {
+            // Escape commas and quotes in values
+            const stringValue = String(value);
+            return stringValue.includes(',') ? `"${stringValue}"` : stringValue;
+          })
+          .join(',');
 
-      // Write the record with backpressure handling
+        // Write the record with backpressure handling
         const recordWritten = writeStream!.write(fileRecord + '\n');
         if (!recordWritten) {
           await new Promise((resolve) => writeStream!.once('drain', resolve));
@@ -248,7 +492,7 @@ async function storeRecordsFile(
           `Error processing record at index ${i}: ${error.message}`
         );
       }
-  }
+    }
 
     // Close the file properly
     await new Promise<void>((resolve, reject) => {
@@ -259,7 +503,7 @@ async function storeRecordsFile(
     });
 
     // Verify file was written
-    const stats = await fs.promises.stat(filepath);
+    const stats = await fs.promises.stat(filename);
     if (stats.size === 0) {
       throw new Error('File was created but no data was written');
     }
@@ -271,15 +515,15 @@ async function storeRecordsFile(
 
     // Try to remove incomplete file
     try {
-      if (fs.existsSync(filepath)) {
-        await fs.promises.unlink(filepath);
+      if (fs.existsSync(filename)) {
+        await fs.promises.unlink(filename);
       }
     } catch (cleanupError) {
       console.error('Error cleaning up failed file:', cleanupError);
     }
 
     // Log and rethrow
-    console.error(`Error persisting store to ${filepath}:`, error);
+    console.error(`Error persisting store to ${filename}:`, error);
     throw new Error(`Failed to persist store: ${error.message}`);
   } finally {
     // Ensure stream is closed
@@ -289,7 +533,128 @@ async function storeRecordsFile(
   }
 }
 
-function storeRecordsDatabase(
+async function restoreRecordsFromFile(
+  resourceSlug: string,
+  kind: string,
+  interval: number,
+  epochId: number | undefined,
+  trailingAvgTime: number | undefined
+): Promise<Store | undefined> {
+  try {
+    let restored = false;
+    // Construct filename based on parameters
+    const filename = constructFilename(resourceSlug, kind, interval, epochId, trailingAvgTime);
+    
+    // Check if file exists
+    if (!fs.existsSync(filename)) {
+      console.log(`No stored data found at ${filename}`);
+      return undefined;
+    }
+
+    // Initialize store structure
+    const store: Store = {
+      data: [],
+      metadata: []
+    };
+
+    // Create readline interface
+    const fileStream = fs.createReadStream(filename, { encoding: 'utf8' });
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    // No header in the file
+    // let isFirstLine = true; // To skip header
+
+    let invalidVersion = false;
+    // Process file line by line
+    for await (const line of rl) {
+      // Skip header
+      // if (isFirstLine) {
+      //   isFirstLine = false;
+      //   continue;
+      // }
+
+      // Parse CSV line
+      const values = parseCsvLine(line);
+      if (values.length !== 11) { // Expected number of columns
+        console.warn(`Invalid line format: ${line}`);
+        continue;
+      }
+
+      const [
+        timestamp,
+        open,
+        high,
+        low,
+        close,
+        value,
+        cumulative,
+        startTimestamp,
+        endTimestamp,
+        used,
+        feePaid
+      ] = values;
+
+      // Create candle data
+      let candleData: CandleData | IndexData;
+      if(value || cumulative) {
+        candleData = {
+          t: parseInt(timestamp),
+          v: value,
+          c: cumulative
+        };
+      } else {
+        candleData = {
+          t: parseInt(timestamp),
+          o: open,
+          h: high,
+          l: low,
+          c: close
+        };
+      }
+
+      // Create metadata
+      const metadata: CandleMetadata = {
+        st: parseInt(startTimestamp),
+        et: parseInt(endTimestamp),
+        u: used,
+        f: feePaid
+      };
+
+      // Add to store
+      store.data.push(candleData);
+      store.metadata.push(metadata);
+    }
+
+    // Close the file stream
+    fileStream.destroy();
+
+    if(invalidVersion) {
+      console.warn(`Invalid version in ${filename}`);
+      return undefined;
+    }
+
+    // Validate restored data
+    if (store.data.length === 0) {
+      console.log(`No valid data found in ${filename}`);
+      return undefined;
+    }
+
+    // if (store.data.length !== store.metadata.length) {
+    //   throw new Error('Data and metadata length mismatch in restored file');
+    // }
+
+    return store;
+
+  } catch (error) {
+    console.error(`Error restoring records from file: ${error}`);
+    return undefined;
+  }
+}
+
+function storeRecordsToDatabase(
   resourceSlug: string,
   kind: string,
   interval: number,
@@ -297,6 +662,16 @@ function storeRecordsDatabase(
   trailingAvgTime: number | undefined,
   store: Store
 ) {}
+
+async function restoreRecordsFromDatabase(
+  resourceSlug: string,
+  kind: string,
+  interval: number,
+  epochId: number | undefined,
+  trailingAvgTime: number | undefined
+): Promise<Store | undefined> {
+  return undefined;
+}
 
 async function persistTrailingAvgStore(
   store: TrailingAvgStorage,
@@ -320,10 +695,12 @@ async function persistTrailingAvgStore(
       await fs.promises.mkdir(dir, { recursive: true });
     }
 
-    // Check if file is writable
-    await fs.promises.access(dir, fs.constants.W_OK).catch(() => {
-      throw new Error(`Directory ${dir} is not writable`);
-    });
+    // Check if directory has read and write permissions
+    await fs.promises
+      .access(dir, fs.constants.R_OK | fs.constants.W_OK)
+      .catch(() => {
+        throw new Error(`Directory ${dir} is not readable and writable`);
+      });
 
     // Open file to write (overwrite)
     writeStream = fs.createWriteStream(filename, {
@@ -415,142 +792,173 @@ async function persistTrailingAvgStore(
   }
 }
 
-export async function saveStorageToFile(
-  storage: IntervalStore,
-  latestResourceTimestamp: number,
-  latestMarketTimestamp: number,
+async function restoreTrailingAvgRecords(
+  filename: string
+): Promise<TrailingAvgStorage | undefined> {
+  return undefined;
+}
+
+// export async function saveStorageToFile(
+//   storage: IntervalStore,
+//   latestResourceTimestamp: number,
+//   latestMarketTimestamp: number,
+//   resourceSlug: string,
+//   resourceName: string,
+//   sectionName: string
+// ): Promise<undefined> {
+//   if (process.env.SAVE_STORAGE !== 'true') {
+//     return;
+//   }
+
+//   console.time(
+//     `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
+//   );
+//   const storageDir = process.env.STORAGE_PATH;
+//   if (!storageDir) {
+//     throw new Error('STORAGE_PATH is not set');
+//   }
+
+//   if (!fs.existsSync(storageDir)) {
+//     fs.mkdirSync(storageDir, { recursive: true });
+//   }
+
+//   const filename = path.join(
+//     storageDir,
+//     `${resourceSlug}-${sectionName}-storage.msgpack`
+//   );
+
+//   const data = {
+//     fileVersion: FORMAT_VERSION,
+//     latestResourceTimestamp,
+//     latestMarketTimestamp,
+//     store: storage,
+//   };
+
+//   // Encode and save
+//   const buffer = encode(data);
+//   await fs.promises.writeFile(filename, buffer);
+
+//   console.timeEnd(
+//     `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
+//   );
+//   console.log(
+//     `  ResourcePerformance --> Saved storage to ${filename} (${buffer.length} bytes)`
+//   );
+// }
+
+// export async function loadStorageFromFile(
+//   resourceSlug: string,
+//   resourceName: string,
+//   sectionName: string
+// ): Promise<
+//   | {
+//       latestResourceTimestamp: number;
+//       latestMarketTimestamp: number;
+//       store: IntervalStore;
+//     }
+//   | undefined
+// > {
+//   if (process.env.SAVE_STORAGE !== 'true') {
+//     return undefined;
+//   }
+
+//   console.time(
+//     `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+//   );
+//   const storageDir = process.env.STORAGE_PATH;
+//   if (!storageDir) {
+//     throw new Error('STORAGE_PATH is not set');
+//   }
+
+//   const filename = path.join(
+//     storageDir,
+//     `${resourceSlug}-${sectionName}-storage.msgpack`
+//   );
+
+//   try {
+//     const buffer = await fs.promises.readFile(filename);
+//     const data = decode(buffer) as {
+//       fileVersion: number;
+//       latestResourceTimestamp: number;
+//       latestMarketTimestamp: number;
+//       store: IntervalStore;
+//     };
+
+//     if (data.fileVersion !== FORMAT_VERSION) {
+//       console.log(
+//         `!! Storage file ${filename} has an unsupported version -${data.fileVersion}-. Expected -${FORMAT_VERSION}-`
+//       );
+//       return undefined;
+//     }
+
+//     console.timeEnd(
+//       `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+//     );
+//     console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
+//     return {
+//       latestResourceTimestamp: data.latestResourceTimestamp,
+//       latestMarketTimestamp: data.latestMarketTimestamp,
+//       store: data.store,
+//     };
+//   } catch (error) {
+//     console.log(`  ResourcePerformance - load storage failed: ${error}`);
+//     console.timeEnd(
+//       `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
+//     );
+//     return undefined;
+//   }
+// }
+
+// Helper function to construct filename
+function constructFilename(
   resourceSlug: string,
-  resourceName: string,
-  sectionName: string
-): Promise<undefined> {
-  if (process.env.SAVE_STORAGE !== 'true') {
-    return;
-  }
-
-  console.time(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
-  );
+  kind: string,
+  interval: number,
+  epochId?: number,
+  trailingAvgTime?: number
+): string {
   const storageDir = process.env.STORAGE_PATH;
   if (!storageDir) {
     throw new Error('STORAGE_PATH is not set');
   }
 
-  if (!fs.existsSync(storageDir)) {
-    fs.mkdirSync(storageDir, { recursive: true });
+  let filename = `${resourceSlug}-${interval}`;
+  if (epochId) {
+    filename += `-${epochId}`;
   }
-
-  const filename = path.join(
-    storageDir,
-    `${resourceSlug}-${sectionName}-storage.msgpack`
-  );
-
-  const data = {
-    fileVersion: FORMAT_VERSION,
-    latestResourceTimestamp,
-    latestMarketTimestamp,
-    store: storage,
-  };
-
-  // Encode and save
-  const buffer = encode(data);
-  await fs.promises.writeFile(filename, buffer);
-
-  console.timeEnd(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.saveStorage`
-  );
-  console.log(
-    `  ResourcePerformance --> Saved storage to ${filename} (${buffer.length} bytes)`
-  );
+  if (trailingAvgTime) {
+    filename += `-${trailingAvgTime}`;
+  }
+  
+  return path.join(storageDir, `${filename}-${kind}-store.csv`);
 }
 
-export async function loadStorageFromFile(
-  resourceSlug: string,
-  resourceName: string,
-  sectionName: string
-): Promise<
-  | {
-      latestResourceTimestamp: number;
-      latestMarketTimestamp: number;
-      store: IntervalStore;
-    }
-  | undefined
-> {
-  if (process.env.SAVE_STORAGE !== 'true') {
-    return undefined;
-  }
+// Helper function to parse CSV line handling quoted values
+function parseCsvLine(line: string): string[] {
+  const values: string[] = [];
+  let currentValue = '';
+  let insideQuotes = false;
 
-  console.time(
-    `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
-  );
-  const storageDir = process.env.STORAGE_PATH;
-  if (!storageDir) {
-    throw new Error('STORAGE_PATH is not set');
-  }
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
 
-  const filename = path.join(
-    storageDir,
-    `${resourceSlug}-${sectionName}-storage.msgpack`
-  );
-
-  try {
-    const buffer = await fs.promises.readFile(filename);
-    const data = decode(buffer) as {
-      fileVersion: number;
-      latestResourceTimestamp: number;
-      latestMarketTimestamp: number;
-      store: IntervalStore;
-    };
-
-    if (data.fileVersion !== FORMAT_VERSION) {
-      console.log(
-        `!! Storage file ${filename} has an unsupported version -${data.fileVersion}-. Expected -${FORMAT_VERSION}-`
-      );
-      return undefined;
+    if (char === '"') {
+      insideQuotes = !insideQuotes;
+      continue;
     }
 
-    console.timeEnd(
-      `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
-    );
-    console.log(`  ResourcePerformance - -> Loaded storage from ${filename}`);
-    return {
-      latestResourceTimestamp: data.latestResourceTimestamp,
-      latestMarketTimestamp: data.latestMarketTimestamp,
-      store: data.store,
-    };
-  } catch (error) {
-    console.log(`  ResourcePerformance - load storage failed: ${error}`);
-    console.timeEnd(
-      `  ResourcePerformance - processResourceData.${resourceName}.${sectionName}.loadStorage`
-    );
-    return undefined;
+    if (char === ',' && !insideQuotes) {
+      values.push(currentValue.trim());
+      currentValue = '';
+      continue;
+    }
+
+    currentValue += char;
   }
+
+  // Add the last value
+  values.push(currentValue.trim());
+
+  return values;
 }
 
-export async function clearStorageFiles(): Promise<void> {
-  const storageDir = process.env.STORAGE_PATH;
-  if (!storageDir) {
-    throw new Error('STORAGE_PATH is not set');
-  }
-
-  if (!fs.existsSync(storageDir)) {
-    return; // Nothing to clear
-  }
-
-  console.time('  ResourcePerformance - clearStorageFiles');
-
-  const files = await fs.promises.readdir(storageDir);
-  for (const file of files) {
-    if (
-      file.endsWith('-storage.json') ||
-      file.endsWith('-storage.msgpack') ||
-      file.endsWith('-store.csv')
-    ) {
-      await fs.promises.unlink(path.join(storageDir, file));
-    }
-  }
-
-  console.timeEnd('  ResourcePerformance - clearStorageFiles');
-  console.log(
-    `  ResourcePerformance --> Cleared ${files.length} storage files`
-  );
-}

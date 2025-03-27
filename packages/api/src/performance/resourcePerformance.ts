@@ -28,7 +28,7 @@ import {
   getTimeWindow,
 } from './helper';
 
-import { loadStorageFromFile, saveStorageToFile, persist, PersistMode } from './persistenceHelper';
+import { persist, restore,PersistMode } from './persistenceHelper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
@@ -477,11 +477,11 @@ export class ResourcePerformance {
   }
 
   private async persistStorage() {
-    const storage = this.persistentStorage;
-    const lastResourceTimestampProcessed = this.lastResourceTimestampProcessed;
-    const lastMarketTimestampProcessed = this.lastMarketTimestampProcessed;
-    const resourceSlug = this.resource.slug;
-    const resourceName = this.resource.name;
+    // const storage = this.persistentStorage;
+    // const lastResourceTimestampProcessed = this.lastResourceTimestampProcessed;
+    // const lastMarketTimestampProcessed = this.lastMarketTimestampProcessed;
+    // const resourceSlug = this.resource.slug;
+    // const resourceName = this.resource.name;
 
     console.log('LLL ResourcePerformance.persistStorage');
     console.time('LLL ResourcePerformance.persistStorage');
@@ -491,6 +491,8 @@ export class ResourcePerformance {
       PersistMode.FILE,
       this.persistentStorage,
       this.persistentTrailingAvgStorage,
+      this.lastResourceTimestampProcessed,
+      this.lastMarketTimestampProcessed,
       this.resource,
       this.intervals,
       this.trailingAvgTime,
@@ -498,18 +500,18 @@ export class ResourcePerformance {
     );
     console.timeEnd('LLL ResourcePerformance.persistStorage');
 
-    return;
-    for (const interval of this.intervals) {
-      // Interval resource store
-      await saveStorageToFile(
-        storage[interval],
-        lastResourceTimestampProcessed,
-        lastMarketTimestampProcessed,
-        resourceSlug,
-        resourceName,
-        interval.toString()
-      );
-    }
+    // return;
+    // for (const interval of this.intervals) {
+    //   // Interval resource store
+    //   await saveStorageToFile(
+    //     storage[interval],
+    //     lastResourceTimestampProcessed,
+    //     lastMarketTimestampProcessed,
+    //     resourceSlug,
+    //     resourceName,
+    //     interval.toString()
+    //   );
+    // }
   }
 
   private async restorePersistedStorage(): Promise<
@@ -525,25 +527,35 @@ export class ResourcePerformance {
     const restoredStorage: StorageData = {};
     let latestResourceTimestamp = 0;
     let latestMarketTimestamp = 0;
-    for (const interval of this.intervals) {
-      const storageInterval = await loadStorageFromFile(
-        resourceSlug,
-        resourceName,
-        interval.toString()
-      );
-      if (!storageInterval) {
-        return undefined;
-      }
-      restoredStorage[interval] = storageInterval.store;
-      latestResourceTimestamp = storageInterval.latestResourceTimestamp;
-      latestMarketTimestamp = storageInterval.latestMarketTimestamp;
-    }
 
-    return {
-      latestResourceTimestamp,
-      latestMarketTimestamp,
-      store: restoredStorage,
-    };
+    await this.pullMarketsAndEpochs(false);
+    const restored = await restore(
+      PersistMode.FILE,
+      this.resource,
+      this.intervals,
+      this.trailingAvgTime,
+      this.epochs
+    );  
+    // for (const interval of this.intervals) {
+    //   const storageInterval = await loadStorageFromFile(
+    //     resourceSlug,
+    //     resourceName,
+    //     interval.toString()
+    //   );
+    //   if (!storageInterval) {
+    //     return undefined;
+    //   }
+    //   restoredStorage[interval] = storageInterval.store;
+    //   latestResourceTimestamp = storageInterval.latestResourceTimestamp;
+    //   latestMarketTimestamp = storageInterval.latestMarketTimestamp;
+    // }
+
+    
+    return restored ?  {
+      latestResourceTimestamp: restored.latestResourceTimestamp,
+      latestMarketTimestamp: restored.latestMarketTimestamp,
+      store: restored.storage,
+    } : undefined;
   }
 
   private processResourcePriceData(
