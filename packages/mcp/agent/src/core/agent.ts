@@ -5,9 +5,7 @@ import { AgentSystemMessage } from '../types/message.js';
 
 export class FoilAgent {
   private graphManager: GraphManager;
-  private interval: ReturnType<typeof setInterval> | null = null;
   private isRunning: boolean = false;
-  private isIterationRunning: boolean = false;
   private state: AgentState | null = null;
 
   constructor(
@@ -52,36 +50,6 @@ export class FoilAgent {
     };
   }
 
-  private async runIteration() {
-    if (this.isIterationRunning) {
-      Logger.warn("Previous iteration still running, skipping this iteration");
-      return;
-    }
-
-    this.isIterationRunning = true;
-    try {
-      Logger.info("Starting new trading iteration");
-      const state = await this.initializeState();
-      
-      const finalState = await this.graphManager.invoke(state);
-      this.state = finalState; // Store the final state for next iteration
-      Logger.success("Trading iteration completed");
-      
-      // Only log the final summary message
-      const lastMessage = finalState.messages[finalState.messages.length - 1];
-      if (lastMessage) {
-        Logger.step('[Final Summary]');
-        Logger.messageBlock([
-          { role: lastMessage.type, content: lastMessage.content }
-        ]);
-      }
-    } catch (error) {
-      Logger.error(`Error in trading iteration: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      this.isIterationRunning = false;
-    }
-  }
-
   public async start() {
     if (this.isRunning) {
       Logger.warn("Agent is already running");
@@ -91,19 +59,11 @@ export class FoilAgent {
     this.isRunning = true;
     Logger.info("Starting Foil trading agent...");
 
-    // Run immediately on start
-    await this.runIteration();
-
-    // Only set up interval if it's greater than 0
-    if (this.config.interval > 0) {
-      Logger.info(`Setting up trading interval of ${this.config.interval + 'ms'}`);
-      this.interval = setInterval(async () => {
-        if (this.isRunning) {
-          await this.runIteration();
-        }
-      }, this.config.interval);
-    } else {
-      Logger.info("Running in one-time mode");
+    try {
+      const initialState = await this.initializeState();
+      await this.graphManager.invoke(initialState);
+    } catch (error) {
+      Logger.error(`Error in trading agent: ${error instanceof Error ? error.message : 'Unknown error'}`);
       this.stop();
     }
   }
@@ -115,23 +75,6 @@ export class FoilAgent {
     }
 
     this.isRunning = false;
-
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-
-    // Wait for any running iteration to complete
-    if (this.isIterationRunning) {
-      Logger.info("Waiting for current iteration to complete...");
-      const checkInterval = setInterval(() => {
-        if (!this.isIterationRunning) {
-          clearInterval(checkInterval);
-          Logger.success("Stopped Foil trading agent");
-        }
-      }, 100);
-    } else {
-      Logger.success("Stopped Foil trading agent");
-    }
+    Logger.success("Stopped Foil trading agent");
   }
 } 

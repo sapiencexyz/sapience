@@ -6,6 +6,7 @@ import { SettlePositionsNode } from '../nodes/settle';
 import { AssessPositionsNode } from '../nodes/assess';
 import { DiscoverMarketsNode } from '../nodes/discover';
 import { PublishSummaryNode } from '../nodes/summary';
+import { DelayNode } from '../nodes/delay';
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { DynamicTool } from "@langchain/core/tools";
 import { AgentToolMessage, AgentSystemMessage } from '../types/message';
@@ -73,6 +74,7 @@ export class GraphManager {
     const assessNode = new AssessPositionsNode(this.config, this.tools);
     const discoverNode = new DiscoverMarketsNode(this.config, this.tools);
     const summaryNode = new PublishSummaryNode(this.config, this.tools);
+    const delayNode = new DelayNode(this.config, this.tools, this.config.interval);
 
     // Add nodes to the graph
     Logger.info("Adding nodes to graph...");
@@ -80,28 +82,32 @@ export class GraphManager {
     stateGraph.addNode("assess_positions", assessNode.execute.bind(assessNode));
     stateGraph.addNode("discover_markets", discoverNode.execute.bind(discoverNode));
     stateGraph.addNode("publish_summary", summaryNode.execute.bind(summaryNode));
+    stateGraph.addNode("delay", delayNode.execute.bind(delayNode));
     stateGraph.addNode("tools", this.toolNode);
     Logger.success("Nodes added successfully");
 
-    // Add conditional edges
-    Logger.info("Adding conditional edges...");
+    // Add conditional edges to tools
+    Logger.info("Adding conditional edges to tools...");
     stateGraph.addConditionalEdges("settle_positions", settleNode.shouldContinue.bind(settleNode));
     stateGraph.addConditionalEdges("assess_positions", assessNode.shouldContinue.bind(assessNode));
     stateGraph.addConditionalEdges("discover_markets", discoverNode.shouldContinue.bind(discoverNode));
+    stateGraph.addConditionalEdges("publish_summary", summaryNode.shouldContinue.bind(summaryNode));
     stateGraph.addConditionalEdges("tools", this.shouldUseTools.bind(this));
     Logger.success("Conditional edges added");
 
-    // Add regular edges for the main flow
-    Logger.info("Adding regular edges...");
+    // Add regular edges for the main flow (ring)
+    Logger.info("Adding regular edges for main flow...");
     stateGraph.addEdge("settle_positions", "assess_positions");
     stateGraph.addEdge("assess_positions", "discover_markets");
     stateGraph.addEdge("discover_markets", "publish_summary");
+    stateGraph.addEdge("publish_summary", "delay");
+    stateGraph.addEdge("delay", "settle_positions");
     Logger.success("Regular edges added");
 
-    // Set up entry and final nodes
-    Logger.info("Setting up entry and final nodes...");
+    // Set up entry point
+    Logger.info("Setting up entry point...");
     stateGraph.setEntryPoint("settle_positions");
-    stateGraph.setFinishPoint("publish_summary");
+    Logger.success("Entry point set");
 
     // Compile the graph
     Logger.info("Compiling graph...");
@@ -140,7 +146,7 @@ export class GraphManager {
 
     // If no tool calls, continue to the next step
     Logger.info("No tool calls found, continuing to next step");
-    return "assess_positions";
+    return state.currentStep;
   }
 
   public async invoke(state: AgentState): Promise<AgentState> {
@@ -184,4 +190,4 @@ const agentStateSchema = z.object({
   actions: z.array(z.any()).optional()
 });
 
-type NodeName = "settle_positions" | "assess_positions" | "discover_markets" | "publish_summary" | "tools"; 
+type NodeName = "settle_positions" | "assess_positions" | "discover_markets" | "publish_summary" | "delay" | "tools"; 

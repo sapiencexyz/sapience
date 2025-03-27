@@ -3,6 +3,7 @@ import { ChatOllama } from "@langchain/community/chat_models/ollama";
 import { HumanMessage, MessageContent, BaseMessageFields } from "@langchain/core/messages";
 import { AgentState, AgentConfig, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
+import chalk from 'chalk';
 
 // Shared model instance
 let sharedModel: ChatOpenAI | ChatOllama | null = null;
@@ -35,6 +36,13 @@ export abstract class BaseNode {
   }
 
   protected async invokeModel(state: AgentState, prompt: string): Promise<any> {
+    // Log the full state before model invocation
+    console.log(chalk.gray('\nCurrent State:'));
+    console.log(chalk.gray(JSON.stringify(state, null, 2)));
+    console.log(chalk.gray('\nPrompt:'));
+    console.log(chalk.gray(prompt));
+    console.log(chalk.gray('\n'));
+
     const response = await this.model.invoke([
       ...state.messages,
       new HumanMessage(prompt)
