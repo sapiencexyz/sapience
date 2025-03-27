@@ -17,7 +17,7 @@ const config: AgentConfig = {
   targetLeverage: 2,
   openaiApiKey: process.env.OPENAI_API_KEY || "",
   useOllama: process.env.NODE_ENV === "development",
-  ollamaModel: "mistral", // Fast and capable model for development
+  ollamaModel: "llama3.2", // Fast and capable model for development
   ollamaBaseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434",
 };
 
