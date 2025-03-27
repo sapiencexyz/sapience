@@ -7,8 +7,8 @@
   "main": "mcp-server.ts",
   "types": "mcp-server.ts",
   "scripts": {
-    "start": "NODE_OPTIONS='--no-deprecation' tsx agent/src/index.ts 300000",
-    "dev": "NODE_ENV=development NODE_OPTIONS='--no-deprecation' tsx watch agent/src/index.ts 0",
+    "start": "NODE_OPTIONS='--no-deprecation' tsx src/index.ts 300000",
+    "dev": "NODE_ENV=development NODE_OPTIONS='--no-deprecation' tsx watch src/index.ts 0",
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rimraf dist"
   },

@@ -397,64 +397,6 @@ importers:
         specifier: ^5.5.4
         version: 5.6.2
 
-  packages/mcp:
-    dependencies:
-      '@langchain/anthropic':
-        specifier: ^0.3.15
-        version: 0.3.15(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13)
-      '@langchain/community':
-        specifier: ^0.3.37
-        version: 0.3.37(n3tfors6ehrrdk637vodzj2mpi)
-      '@langchain/core':
-        specifier: ^0.3.43
-        version: 0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8))
-      '@langchain/langgraph':
-        specifier: ^0.2.60
-        version: 0.2.60(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(react@19.0.0)(zod-to-json-schema@3.24.5(zod@3.23.8))
-      '@langchain/openai':
-        specifier: ^0.5.0
-        version: 0.5.0(@langchain/core@0.3.43(openai@4.90.0(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))(zod@3.23.8)))(encoding@0.1.13)(ws@8.18.1(bufferutil@4.0.8)(utf-8-validate@5.0.10))
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.7.0
-        version: 1.7.0
-      chalk:
-        specifier: ^5.3.0
-        version: 5.3.0
-      dotenv:
-        specifier: ^16.4.5
-        version: 16.4.5
-      graphql:
-        specifier: ^16.8.1
-        version: 16.10.0
-      node-fetch:
-        specifier: ^2.7.0
-        version: 2.7.0(encoding@0.1.13)
-      viem:
-        specifier: ^2.23.12
-        version: 2.23.15(bufferutil@4.0.8)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.23.8)
-      zod:
-        specifier: ^3.22.4
-        version: 3.23.8
-    devDependencies:
-      '@types/node':
-        specifier: ^20.17.24
-        version: 20.17.24
-      '@types/node-fetch':
-        specifier: ^2.6.11
-        version: 2.6.12
-      rimraf:
-        specifier: ^4.1.2
-        version: 4.4.1
-      ts-node:
-        specifier: ^10.9.1
-        version: 10.9.2(@types/node@20.17.24)(typescript@5.7.2)
-      tsx:
-        specifier: ^4.19.2
-        version: 4.19.2
-      typescript:
-        specifier: ^5.5.4
-        version: 5.7.2
-
   packages/protocol:
     dependencies:
       '@openzeppelin/contracts':

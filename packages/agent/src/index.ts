@@ -19,9 +19,9 @@ const config: AgentConfig = {
 
 // Initialize tools
 const rawTools = {
-  graphql: await import('../../tools/graphql.js'),
-  writeFoilContracts: await import('../../tools/writeFoilContracts.js'),
-  readFoilContracts: await import('../../tools/readFoilContracts.js')
+  graphql: await import('../tools/graphql.js'),
+  writeFoilContracts: await import('../tools/writeFoilContracts.js'),
+  readFoilContracts: await import('../tools/readFoilContracts.js')
 };
 
 // Convert tools to BaseTool format

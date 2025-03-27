@@ -36,9 +36,9 @@ export interface BaseTool {
 }
 
 // Import the actual tool types from the MCP tools
-import * as graphqlTools from '../../../tools/graphql.js';
-import * as readFoilTools from '../../../tools/readFoilContracts.js';
-import * as writeFoilTools from '../../../tools/writeFoilContracts.js';
+import * as graphqlTools from '../../tools/graphql.js';
+import * as readFoilTools from '../../tools/readFoilContracts.js';
+import * as writeFoilTools from '../../tools/writeFoilContracts.js';
 
 export interface AgentTools {
   graphql: Record<string, BaseTool>;
