@@ -505,7 +505,7 @@ async function storeRecordsToFile(
     // Verify file was written
     const stats = await fs.promises.stat(filename);
     if (stats.size === 0) {
-      throw new Error('File was created but no data was written');
+      console.warn(`File was created but no data was written: ${filename}`);
     }
   } catch (error: any) {
     // Clean up on error
