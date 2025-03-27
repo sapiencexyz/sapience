@@ -142,7 +142,8 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
   async indexBlockPriceFromTimestamp(
     resource: Resource,
     startTimestamp: number,
-    endTimestamp?: number
+    endTimestamp?: number,
+    overwriteExisting: boolean = false
   ): Promise<boolean> {
     try {
       const startBlock = Number(
@@ -186,7 +187,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
             },
           });
 
-          if (maybeResourcePrice) {
+          if (!overwriteExisting && maybeResourcePrice) {
             console.log('Skipping block', blockNumber, 'as it already exists');
             continue;
           }

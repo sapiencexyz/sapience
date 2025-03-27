@@ -47,7 +47,8 @@ class EvmIndexer implements IResourcePriceIndexer {
   async indexBlockPriceFromTimestamp(
     resource: Resource,
     timestamp: number,
-    endTimestamp?: number
+    endTimestamp?: number,
+    overwriteExisting: boolean = false
   ): Promise<boolean> {
     const initalBlock = await getBlockByTimestamp(this.client, timestamp);
     if (!initalBlock.number) {
@@ -82,7 +83,7 @@ class EvmIndexer implements IResourcePriceIndexer {
           },
         });
 
-        if (existingPrice) {
+        if (!overwriteExisting && existingPrice) {
           console.log(
             `[EvmIndexer.${resource.slug}] Already have price for block ${blockNumber}, skipping...`
           );

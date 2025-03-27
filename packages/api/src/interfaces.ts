@@ -163,7 +163,8 @@ export interface IResourcePriceIndexer {
   indexBlockPriceFromTimestamp(
     resource: Resource,
     startTimestamp: number,
-    endTimestamp?: number
+    endTimestamp?: number,
+    overwriteExisting?: boolean
   ): Promise<boolean>;
   indexBlocks(resource: Resource, blocks: number[]): Promise<boolean>;
   watchBlocksForResource(resource: Resource): Promise<void>;
