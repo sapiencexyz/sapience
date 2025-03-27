@@ -1346,10 +1346,10 @@ export class ResourcePerformance {
     const pricesInRange = prices.slice(startIndex, endIndex);
     return pricesInRange.map((price) => ({
       timestamp: price.t,
-      open: price.o.toString(),
-      high: price.h.toString(),
-      low: price.l.toString(),
-      close: price.c.toString(),
+      open: price.o,
+      high: price.h,
+      low: price.l,
+      close: price.c,
     }));
   }
 
