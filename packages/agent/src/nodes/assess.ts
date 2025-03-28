@@ -24,9 +24,7 @@ export class AssessPositionsNode extends BaseNode {
       4. If the quote looks good, use modify_foil_trader_position
       5. Explain your reasoning and actions clearly
       
-      IMPORTANT: Use the exact tool names as shown above. Do not use variations like "getPositions" or "getPositionsById".
-      
-      Respond with your analysis and planned actions.`;
+      IMPORTANT: Use the exact tool names as shown above. Do not use variations like "getPositions" or "getPositionsById".`;
   }
 
   async execute(state: AgentState): Promise<AgentState> {
@@ -44,7 +42,8 @@ export class AssessPositionsNode extends BaseNode {
       positions: state.positions,
       markets: state.markets,
       actions: state.actions,
-      toolResults: state.toolResults
+      toolResults: state.toolResults,
+      agentAddress: state.agentAddress
     };
   }
 

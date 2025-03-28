@@ -2,6 +2,8 @@ import { AgentConfig, AgentState, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
 import { SystemMessage } from '@langchain/core/messages';
+import chalk from 'chalk';
+import { AgentAIMessage } from '../types/message';
 
 export class EvaluateMarketNode extends BaseNode {
   constructor(config: AgentConfig, tools: AgentTools) {
@@ -36,16 +38,7 @@ Available tools:
 - getReferencePrice: Get the current reference price
 - getSqrtPriceX96: Get the current sqrt price
 - getResourceCandles: Get resource price history
-- getResourceTrailingAverageCandles: Get trailing average prices
-
-When using tools, format your response as:
-Thought: I need to [describe what you're going to do]
-Action: [tool name]
-Action Input: [tool parameters as JSON]
-Observation: [tool result]
-... (repeat if needed)
-Thought: I now know [what you learned]
-Final Answer: [summary and recommendation]`;
+- getResourceTrailingAverageCandles: Get trailing average prices`;
   }
 
   async execute(state: AgentState): Promise<AgentState> {
@@ -53,10 +46,21 @@ Final Answer: [summary and recommendation]`;
     const currentItem = isAssessingPosition ? state.positions[0] : state.markets[0];
     
     Logger.info(`Evaluating ${isAssessingPosition ? 'position' : 'market'}: ${JSON.stringify(currentItem)}`);
+    
+    // Get model's evaluation
+    const response = await this.invokeModel(state, this.getPrompt(state));
+    const formattedContent = this.formatMessageContent(response.content);
+    const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+    
+    // Log the evaluation results
+    Logger.info(chalk.green('AGENT: <thinking>'));
+    Logger.info(chalk.green(formattedContent));
+    Logger.info(chalk.green('</thinking>'));
 
     // Create new state with updated arrays (remove current item)
     const newState = {
       ...state,
+      messages: [...state.messages, agentResponse],
       [isAssessingPosition ? 'positions' : 'markets']: 
         state[isAssessingPosition ? 'positions' : 'markets'].slice(1),
       currentStep: 'evaluate_market'
@@ -64,6 +68,7 @@ Final Answer: [summary and recommendation]`;
 
     // If this was the last item to evaluate, update the step
     if (newState[isAssessingPosition ? 'positions' : 'markets'].length === 0) {
+      Logger.info(`Finished evaluating all ${isAssessingPosition ? 'positions' : 'markets'}`);
       newState.currentStep = isAssessingPosition ? 'discover_markets' : 'publish_summary';
     }
 

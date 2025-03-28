@@ -60,6 +60,15 @@ export abstract class BaseNode {
         
         IMPORTANT: Use the exact tool names as shown in the tool descriptions. Do not use variations or camelCase versions.
         
+        When using tools, format your response as:
+        Thought: I need to [describe what you're going to do]
+        Action: [tool name]
+        Action Input: [tool parameters as JSON]
+        Observation: [tool result]
+        ... (repeat if needed)
+        Thought: I now know [what you learned]
+        Final Answer: [summary of what was done]
+        
         Current State:
         - Step: ${state.currentStep}
         - Positions: ${JSON.stringify(state.positions, null, 2)}
@@ -122,15 +131,15 @@ export abstract class BaseNode {
                     Object.values(this.tools.graphql).find(t => t.name === toolCall.name);
 
         if (tool) {
-          Logger.info(chalk.magenta(`Calling ${toolCall.name}`));
+          Logger.info(chalk.magenta(`🛠️ Calling ${toolCall.name}`));
           const result = await tool.function(toolCall.args);
-          Logger.info(chalk.magenta(`Tool ${toolCall.name} completed`));
+          Logger.info(chalk.magenta(`✓ Tool ${toolCall.name} completed`));
           
           // Format tool input/output for logging in purple
           const inputStr = JSON.stringify(toolCall.args);
           const outputStr = JSON.stringify(result);
-          Logger.info(chalk.magenta(`Tool ${toolCall.name} input: ${inputStr}`));
-          Logger.info(chalk.magenta(`Tool ${toolCall.name} output: ${outputStr.length > 200 ? outputStr.substring(0, 200) + '...' : outputStr}`));
+          Logger.info(chalk.magenta(`📥 Input: ${inputStr}`));
+          Logger.info(chalk.magenta(`📤 Output: ${outputStr.length > 200 ? outputStr.substring(0, 200) + '...' : outputStr}`));
           
           results.push(new ToolMessage(JSON.stringify(result), toolCall.id));
         }
@@ -180,9 +189,11 @@ export abstract class BaseNode {
 
       // Handle tool calls if present
       if (response.tool_calls?.length > 0) {
+        Logger.info(chalk.cyan('🔄 Processing tool calls...'));
         const toolResults = await this.handleToolCalls(response.tool_calls);
         
         // Get the model's response to the tool results
+        Logger.info(chalk.cyan('🤔 Analyzing tool results...'));
         const toolResponse = await this.model.invoke([
           ...state.messages,
           agentResponse,
@@ -190,12 +201,23 @@ export abstract class BaseNode {
         ]);
 
         // Log the agent's response to the tool output
-        Logger.info(chalk.green('AGENT: <thinking>'));
+        Logger.info(chalk.green('🧠 AGENT: '));
         const content = typeof toolResponse.content === 'string' 
           ? toolResponse.content 
           : JSON.stringify(toolResponse.content);
-        const reasoning = content.match(/Thought: (.*?)(?:\n|$)/)?.[1] || content;
-        Logger.info(chalk.green(reasoning));
+        
+        // Extract and log each thought and action
+        const thoughts = content.match(/Thought: (.*?)(?:\n|$)/g) || [];
+        const actions = content.match(/Action: (.*?)(?:\n|$)/g) || [];
+        
+        thoughts.forEach(thought => {
+          Logger.info(chalk.green(`💭 ${thought.replace('Thought:', '').trim()}`));
+        });
+        
+        actions.forEach(action => {
+          Logger.info(chalk.yellow(`⚡ ${action.replace('Action:', '').trim()}`));
+        });
+        
         Logger.info(chalk.green('</thinking>'));
 
         return this.createStateUpdate(state, [agentResponse, toolResponse, ...toolResults], toolResults);

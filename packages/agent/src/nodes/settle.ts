@@ -16,9 +16,7 @@ export class SettlePositionsNode extends BaseNode {
       1. Use get_foil_position to check existing positions
       2. For each position, use get_foil_position_pnl to assess if it should be settled
       3. If a position should be settled, use settle_foil_position
-      4. Explain your reasoning and actions clearly
-      
-      Respond with your analysis and planned actions.`;
+      4. Explain your reasoning and actions clearly`;
   }
 
   async execute(state: AgentState): Promise<AgentState> {

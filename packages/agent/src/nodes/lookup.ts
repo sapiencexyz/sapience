@@ -96,16 +96,7 @@ export class LookupNode extends BaseNode {
       3. Update state with found positions
       
       IMPORTANT: The agent's address is already available in the state as agentAddress. Use this exact address to filter positions.
-      Do not try to use placeholder addresses or modify the address in any way.
-      
-      When using tools, format your response as:
-      Thought: I need to [describe what you're going to do]
-      Action: [tool name]
-      Action Input: [tool parameters as JSON]
-      Observation: [tool result]
-      ... (repeat if needed)
-      Thought: I now know [what you learned]
-      Final Answer: [summary of what was done]`;
+      Do not try to use placeholder addresses or modify the address in any way.`;
   }
 
   public async execute(state: AgentState): Promise<AgentState> {

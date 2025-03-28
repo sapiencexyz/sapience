@@ -10,7 +10,7 @@ import { DelayNode } from '../nodes/delay';
 import { LookupNode } from '../nodes/lookup';
 import { EvaluateMarketNode } from '../nodes/evaluate';
 import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { ToolMessage, BaseMessage } from "@langchain/core/messages";
+import { BaseMessage } from "@langchain/core/messages";
 import { GraphVisualizer } from '../utils/graphVisualizer';
 
 // Define the state schema for LangGraph

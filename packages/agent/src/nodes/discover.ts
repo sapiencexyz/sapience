@@ -3,6 +3,7 @@ import { AgentState, AgentConfig, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
+import chalk from 'chalk';
 
 export class DiscoverMarketsNode extends BaseNode {
   constructor(
@@ -33,22 +34,13 @@ export class DiscoverMarketsNode extends BaseNode {
       4. Update state with promising markets
       
       IMPORTANT: Focus on finding markets where the agent doesn't already have positions.
-      The agent's current positions are available in the state.
-      
-      When using tools, format your response as:
-      Thought: I need to [describe what you're going to do]
-      Action: [tool name]
-      Action Input: [tool parameters as JSON]
-      Observation: [tool result]
-      ... (repeat if needed)
-      Thought: I now know [what you learned]
-      Final Answer: [summary of what was done]`;
+      The agent's current positions are available in the state.`;
   }
 
   async execute(state: AgentState): Promise<AgentState> {
     try {
       Logger.nodeTransition(state.currentStep, 'Discover');
-      Logger.step('[Discover] Searching for market opportunities...');
+      Logger.step('[Discover] 🔍 Searching for market opportunities...');
       
       const response = await this.invokeModel(state, this.getPrompt(state));
       const formattedContent = this.formatMessageContent(response.content);
@@ -56,15 +48,45 @@ export class DiscoverMarketsNode extends BaseNode {
 
       // Handle tool calls if present
       if (response.tool_calls?.length > 0) {
-        Logger.step('[Discover] Processing tool calls...');
+        Logger.step('[Discover] 🛠️ Processing tool calls...');
         const toolResults = await this.handleToolCalls(response.tool_calls);
         
         // Log thinking state after tool calls
-        Logger.step('[Discover] Analyzing market data...');
-        return this.createStateUpdate(state, [agentResponse, ...toolResults], toolResults);
+        Logger.step('[Discover] 📊 Analyzing market data...');
+        
+        // Extract market data from tool results
+        const marketData = toolResults.map(result => {
+          try {
+            return JSON.parse(result.content as string);
+          } catch (e) {
+            Logger.error(`Error parsing market data: ${e}`);
+            return null;
+          }
+        }).filter(Boolean);
+
+        // Log summary of market analysis
+        if (marketData.length > 0) {
+          Logger.info(chalk.cyan(`📈 Found ${marketData.length} markets to analyze`));
+        } else {
+          Logger.warn(chalk.yellow('⚠️ No market data found in tool results'));
+        }
+
+        // Generate final analysis response
+        const analysisPrompt = `Based on the market data we've gathered, provide a brief analysis of the opportunities found. 
+        Focus on key metrics like liquidity, spreads, and trading activity. Keep it concise but informative.`;
+        
+        const analysisResponse = await this.invokeModel({
+          ...state,
+          messages: [...state.messages, agentResponse, ...toolResults]
+        }, analysisPrompt);
+        
+        const analysisContent = this.formatMessageContent(analysisResponse.content);
+        const analysisMessage = new AgentAIMessage(analysisContent);
+
+        return this.createStateUpdate(state, [agentResponse, ...toolResults, analysisMessage], toolResults);
       }
 
-      Logger.step('[Discover] No tool calls to process, updating state...');
+      Logger.step('[Discover] ℹ️ No tool calls to process, updating state...');
       return this.createStateUpdate(state, [agentResponse]);
     } catch (error) {
       Logger.error(`Error in DiscoverMarketsNode: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -73,29 +95,16 @@ export class DiscoverMarketsNode extends BaseNode {
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('[Discover] Checking if more discovery needed...');
+    Logger.step('[Discover] 🔄 Checking if more discovery needed...');
     const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
     
     if (lastMessage.tool_calls?.length > 0) {
-      Logger.info("[Discover] Tool calls found, continuing with tools");
+      Logger.info(chalk.cyan("[Discover] 🛠️ Tool calls found, continuing with tools"));
       return "tools";
     }
 
-    // Check if we've made any market discoveries in this iteration
-    const hasDiscoveredMarkets = state.markets?.length > 0;
-    const hasNewMarkets = state.markets?.some(market => 
-      !state.previousMarkets?.some(prevMarket => prevMarket.address === market.address)
-    );
-
-    if (hasNewMarkets) {
-      Logger.info("[Discover] New markets discovered, continuing discovery");
-      return "discover_markets";
-    } else if (hasDiscoveredMarkets) {
-      Logger.info("[Discover] No new markets found, moving to summary");
-      return "publish_summary";
-    } else {
-      Logger.info("[Discover] No markets found, continuing discovery");
-      return "discover_markets";
-    }
+    // Always move to summary after discovery
+    Logger.info(chalk.green("[Discover] ✅ Discovery complete, moving to summary"));
+    return "publish_summary";
   }
 } 
