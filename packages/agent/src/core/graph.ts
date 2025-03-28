@@ -10,9 +10,7 @@ import { DelayNode } from '../nodes/delay';
 import { LookupNode } from '../nodes/lookup';
 import { EvaluateMarketNode } from '../nodes/evaluate';
 import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { DynamicTool } from "@langchain/core/tools";
-import { AgentToolMessage, AgentSystemMessage } from '../types/message';
-import { SystemMessage, AIMessage, ToolMessage, BaseMessage } from "@langchain/core/messages";
+import { ToolMessage, BaseMessage } from "@langchain/core/messages";
 import { GraphVisualizer } from '../utils/graphVisualizer';
 
 // Define the state schema for LangGraph
@@ -83,46 +81,40 @@ export class GraphManager {
     stateGraph.addNode("evaluate_market", evaluateNode.execute.bind(evaluateNode));
     stateGraph.addNode("publish_summary", summaryNode.execute.bind(summaryNode));
     stateGraph.addNode("delay", delayNode.execute.bind(delayNode));
-    stateGraph.addNode("tools", this.handleToolExecution.bind(this));
-    Logger.success("Nodes added successfully");
+    stateGraph.addNode("tools", this.toolNode);
 
     // Add conditional edges to tools
     Logger.info("Adding conditional edges to tools...");
-    stateGraph.addConditionalEdges("lookup", lookupNode.shouldContinue.bind(lookupNode));
-    stateGraph.addConditionalEdges("settle_positions", settleNode.shouldContinue.bind(settleNode));
-    stateGraph.addConditionalEdges("assess_positions", assessNode.shouldContinue.bind(assessNode));
-    stateGraph.addConditionalEdges("discover_markets", discoverNode.shouldContinue.bind(discoverNode));
-    stateGraph.addConditionalEdges("evaluate_market", evaluateNode.shouldContinue.bind(evaluateNode));
-    stateGraph.addConditionalEdges("publish_summary", summaryNode.shouldContinue.bind(summaryNode));
-    stateGraph.addConditionalEdges("tools", this.shouldUseTools.bind(this));
-    Logger.success("Conditional edges added");
+    stateGraph.addConditionalEdges("lookup", this.shouldUseTools.bind(this));
+    stateGraph.addConditionalEdges("settle_positions", this.shouldUseTools.bind(this));
+    stateGraph.addConditionalEdges("assess_positions", this.shouldUseTools.bind(this));
+    stateGraph.addConditionalEdges("discover_markets", this.shouldUseTools.bind(this));
+    stateGraph.addConditionalEdges("evaluate_market", this.shouldUseTools.bind(this));
+    stateGraph.addConditionalEdges("publish_summary", this.shouldUseTools.bind(this));
+
+    // Add edges back to the original nodes after tool execution
+    Logger.info("Adding edges back from tools...");
+    stateGraph.addEdge("tools", "lookup");
+    stateGraph.addEdge("tools", "settle_positions");
+    stateGraph.addEdge("tools", "assess_positions");
+    stateGraph.addEdge("tools", "discover_markets");
+    stateGraph.addEdge("tools", "evaluate_market");
+    stateGraph.addEdge("tools", "publish_summary");
 
     // Add regular edges for the main flow
     Logger.info("Adding regular edges for main flow...");
-    // From lookup: either go to settle or discover based on positions found
     stateGraph.addEdge("lookup", "settle_positions");
     stateGraph.addEdge("lookup", "discover_markets");
-    
-    // From settle: either go to assess or discover based on positions to settle
     stateGraph.addEdge("settle_positions", "assess_positions");
     stateGraph.addEdge("settle_positions", "discover_markets");
-    
-    // Assessment evaluation loop
-    stateGraph.addEdge("assess_positions", "evaluate_market"); // Start evaluation for a position
-    stateGraph.addEdge("evaluate_market", "assess_positions"); // Return to assess next position
-    
-    // Discovery evaluation loop
-    stateGraph.addEdge("discover_markets", "evaluate_market"); // Start evaluation for a market
-    stateGraph.addEdge("evaluate_market", "discover_markets"); // Return to discover next market
-    
-    // Exit paths from evaluation loops
-    stateGraph.addEdge("assess_positions", "discover_markets"); // When done assessing all positions
-    stateGraph.addEdge("discover_markets", "publish_summary"); // When done discovering all markets
-    
-    // Complete the cycle
+    stateGraph.addEdge("assess_positions", "evaluate_market");
+    stateGraph.addEdge("evaluate_market", "assess_positions");
+    stateGraph.addEdge("discover_markets", "evaluate_market");
+    stateGraph.addEdge("evaluate_market", "discover_markets");
+    stateGraph.addEdge("assess_positions", "discover_markets");
+    stateGraph.addEdge("discover_markets", "publish_summary");
     stateGraph.addEdge("publish_summary", "delay");
     stateGraph.addEdge("delay", "lookup");
-    Logger.success("Regular edges added");
 
     // Set the entry point
     stateGraph.setEntryPoint("lookup");
@@ -133,85 +125,6 @@ export class GraphManager {
     });
 
     return { graph: stateGraph.compile(), stateGraph };
-  }
-
-  private async handleToolExecution(state: AgentState): Promise<AgentState> {
-    try {
-      const lastMessage = state.messages[state.messages.length - 1] as ToolCallMessage;
-      if (!lastMessage?.tool_calls?.length) {
-        return state;
-      }
-
-      Logger.info(`Processing ${lastMessage.tool_calls.length} tool calls...`);
-
-      // Execute each tool call and create tool result messages
-      const toolResults = await Promise.all(
-        lastMessage.tool_calls.map(async (toolCall, index) => {
-          const tool = this.toolNode.tools.find(t => t.name === toolCall.name);
-          if (!tool) {
-            throw new Error(`Tool ${toolCall.name} not found`);
-          }
-          try {
-            // Parse the input arguments if they're a string
-            const args = typeof toolCall.arguments === 'string' ? JSON.parse(toolCall.arguments) : toolCall.arguments;
-            const result = await tool.invoke(JSON.stringify(args));
-            
-            // Log the tool call with result
-            Logger.toolCall(toolCall.name, args, result);
-            
-            // Create a tool result message in the format LangChain expects
-            const toolMessage = new ToolMessage({
-              content: result,
-              tool_call_id: toolCall.id,
-              name: toolCall.name
-            });
-            
-            return toolMessage;
-          } catch (toolError) {
-            Logger.error(`Tool call ${index + 1} failed:`);
-            Logger.error(`  Tool: ${toolCall.name}`);
-            Logger.error(`  Arguments: ${JSON.stringify(toolCall.arguments, null, 2)}`);
-            if (toolError instanceof Error) {
-              Logger.error(`  Error: ${toolError.message}`);
-              if (toolError.stack) {
-                Logger.error(`  Stack: ${toolError.stack}`);
-              }
-            }
-            throw toolError;
-          }
-        })
-      );
-
-      // Create a new state with the tool results
-      const newState = {
-        ...state,
-        messages: [...state.messages]
-      };
-
-      // Remove the last message (which contains the tool calls)
-      newState.messages.pop();
-
-      // Add the tool call message back followed by its results
-      newState.messages.push(lastMessage);
-      newState.messages.push(...toolResults);
-
-      // Log state update
-      Logger.stateUpdate('tool_execution', {
-        removedMessages: 1,
-        addedMessages: toolResults.length + 1
-      });
-
-      return newState;
-    } catch (error) {
-      Logger.error("Tool execution failed:");
-      if (error instanceof Error) {
-        Logger.error(`Error: ${error.message}`);
-        if (error.stack) {
-          Logger.error(`Stack: ${error.stack}`);
-        }
-      }
-      throw error;
-    }
   }
 
   private shouldUseTools(state: AgentState): NodeName {

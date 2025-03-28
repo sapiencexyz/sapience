@@ -5,14 +5,12 @@ import { Logger } from '../utils/logger';
 import chalk from 'chalk';
 import { DynamicTool } from "@langchain/core/tools";
 import { Runnable } from "@langchain/core/runnables";
-import { ToolNode } from "@langchain/langgraph/prebuilt";
 
 // Shared model instance
 let sharedModel: Runnable | null = null;
 
 export abstract class BaseNode {
   protected model: Runnable;
-  protected toolNode: ToolNode;
 
   constructor(
     protected config: AgentConfig,
@@ -38,7 +36,6 @@ export abstract class BaseNode {
       sharedModel = claudeModel.bindTools(langChainTools);
     }
     this.model = sharedModel;
-    this.toolNode = new ToolNode(convertToLangChainTools(tools.graphql));
   }
 
   protected async invokeModel(state: AgentState, prompt: string): Promise<any> {
