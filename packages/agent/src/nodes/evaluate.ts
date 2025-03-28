@@ -63,7 +63,7 @@ Available tools:
       messages: [...state.messages, agentResponse],
       [isAssessingPosition ? 'positions' : 'markets']: 
         state[isAssessingPosition ? 'positions' : 'markets'].slice(1),
-      currentStep: 'evaluate_market'
+      currentStep: isAssessingPosition ? 'assess_positions' : 'discover_markets'
     };
 
     // If this was the last item to evaluate, update the step

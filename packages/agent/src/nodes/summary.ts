@@ -5,20 +5,7 @@ import { AgentAIMessage } from '../types/message';
 
 export class PublishSummaryNode extends BaseNode {
   public getPrompt(): string {
-    return `Create a comprehensive summary of the trading session.
-      Use these tools to gather information:
-      - get_foil_position: Get information about positions
-      - get_foil_position_pnl: Get PnL information
-      - get_foil_market_info: Get market information
-      
-      Instructions:
-      1. Use the tools to gather current state information
-      2. Summarize all actions taken in the session
-      3. Provide current portfolio state and risk metrics
-      4. Give recommendations for next steps
-      5. Format your response clearly with sections
-      
-      Provide a detailed summary of the trading session.`;
+    return `Create a comprehensive summary of the trading session. Make it a 3-5 tweet thread in the style of Matt Levine.`;
   }
 
   async execute(state: AgentState): Promise<AgentState> {
@@ -29,10 +16,32 @@ export class PublishSummaryNode extends BaseNode {
     const formattedContent = this.formatMessageContent(response.content);
     const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
-    // Generate tweet-thread style summary
-    const tweetPrompt = "Great! Now summarize everything that happened in this chat in a succinct and fun way that could fit in a five tweet thread.";
-    const tweetResponse = await this.invokeModel(state, tweetPrompt);
-    Logger.info(`[Summary] Tweet Thread Summary: ${tweetResponse.content}`);
+    // Handle tool calls if present
+    if (response.tool_calls?.length > 0) {
+      Logger.step('[Summary] 🛠️ Gathering current state information...');
+      const toolResults = await this.handleToolCalls(response.tool_calls);
+      
+      // Get final summary with tool results
+      const finalPrompt = "Based on the current state information gathered, provide a final summary of the trading session.";
+      const finalResponse = await this.invokeModel({
+        ...state,
+        messages: [...state.messages, agentResponse, ...toolResults]
+      }, finalPrompt);
+      
+      const finalContent = this.formatMessageContent(finalResponse.content);
+      const finalMessage = new AgentAIMessage(finalContent);
+
+      return {
+        messages: [...state.messages, agentResponse, ...toolResults, finalMessage],
+        currentStep: 'publish_summary',
+        lastAction: 'generate_summary',
+        positions: state.positions,
+        markets: state.markets,
+        actions: state.actions,
+        toolResults: state.toolResults,
+        agentAddress: state.agentAddress
+      };
+    }
 
     return {
       messages: [...state.messages, agentResponse],
@@ -41,7 +50,8 @@ export class PublishSummaryNode extends BaseNode {
       positions: state.positions,
       markets: state.markets,
       actions: state.actions,
-      toolResults: state.toolResults
+      toolResults: state.toolResults,
+      agentAddress: state.agentAddress
     };
   }
 

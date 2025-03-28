@@ -42,7 +42,8 @@ export class DiscoverMarketsNode extends BaseNode {
       Logger.nodeTransition(state.currentStep, 'Discover');
       Logger.step('[Discover] 🔍 Searching for market opportunities...');
       
-      const response = await this.invokeModel(state, this.getPrompt(state));
+      const initialPrompt = this.getPrompt(state);
+      const response = await this.invokeModel(state, initialPrompt);
       const formattedContent = this.formatMessageContent(response.content);
       const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 

@@ -61,7 +61,7 @@ export class Logger {
         const contentStr = typeof content === 'string' ? content :
                           Array.isArray(content) ? content.map(c => c.text).join('\n') :
                           JSON.stringify(content);
-        console.log(chalk.blue(`Human: ${contentStr}`));
+        console.log(chalk.blue(`PROMPT: ${contentStr}`));
       } else if (role === 'assistant') {
         const contentStr = typeof content === 'string' ? content :
                           Array.isArray(content) ? content.map(c => c.text).join('\n') :
