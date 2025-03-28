@@ -440,7 +440,6 @@ async function storeRecordsToFile(
 
     for (let i = 0; i < length; i++) {
       const datapoint = store.datapoints[i];
-      
       try {
         const fileRecord = [
           datapoint.timestamp ?? '', // timestamp
@@ -577,10 +576,9 @@ async function restoreRecordsFromFile(
         trailingStartTimestamp
       ] = values;
 
-
       // Create datapoint
       let data: CandleData | IndexData;
-      if(value || cumulative) {
+      if(value && cumulative) {
         data = { v: value, c: cumulative };
       } else {
         data = { o: open, h: high, l: low, c: close };

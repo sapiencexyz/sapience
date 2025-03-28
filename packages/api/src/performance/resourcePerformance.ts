@@ -1182,7 +1182,6 @@ export class ResourcePerformance {
   getResourcePrices(from: number, to: number, interval: number) {
     this.checkInterval(interval);
 
-    console.log('LLL ResourcePerformance.getResourcePrices', from, to, interval, this.persistentStorage[interval].resourceStore.datapoints.length, JSON.stringify((this.persistentStorage[interval].resourceStore.datapoints[0] as Datapoint).data));
     return this.getPricesFromArray(
       this.persistentStorage[interval].resourceStore.datapoints.map((d) => ({
         timestamp: d.timestamp,
@@ -1225,7 +1224,6 @@ export class ResourcePerformance {
       close: isCumulative ? (d.data as IndexData).c : (d.data as IndexData).v,
     }));
 
-    console.log('LLL ResourcePerformance.getIndexPrices', from, to, interval, indexDatapoints.length, JSON.stringify(indexDatapoints[0]));
     return this.getPricesFromArray(indexDatapoints, from, to, interval, false);
   }
 
@@ -1242,13 +1240,12 @@ export class ResourcePerformance {
       ].datapoints 
     ).map((d) => ({
       timestamp: d.timestamp,
-      open: (d.data as IndexData).v,
-      high: (d.data as IndexData).v,
-      low: (d.data as IndexData).v,
-      close: (d.data as IndexData).v,
+      open: (d.data as CandleData).o,
+      high: (d.data as CandleData).h,
+      low: (d.data as CandleData).l,
+      close: (d.data as CandleData).c,
     }));
 
-    console.log('LLL ResourcePerformance.getTrailingAvgPrices', from, to, interval, indexDatapoints.length, JSON.stringify(indexDatapoints[0]));
     return this.getPricesFromArray(
       indexDatapoints,
       from,
@@ -1271,7 +1268,6 @@ export class ResourcePerformance {
       return [];
     }
 
-    console.log('LLL ResourcePerformance.getMarketPrices', from, to, interval, this.persistentStorage[interval].marketStore[epochId].datapoints.length, JSON.stringify(this.persistentStorage[interval].marketStore[epochId].datapoints[0]));
     const prices = await this.getPricesFromArray(
       this.persistentStorage[interval].marketStore[epochId]
         .datapoints.map((d) => ({
