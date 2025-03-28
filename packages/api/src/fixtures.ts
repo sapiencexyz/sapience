@@ -125,7 +125,7 @@ const addGasWeekly = async (markets: MarketInfo[]) => {
 
 const addTiaBlobCumulative = async (markets: MarketInfo[]) => {
   const tiaBlobCumulative = await safeRequire(
-    `@/protocol/deployments/outputs/${base.id}-tia-blobs-cumulative/Foil.json`
+    `@/protocol/deployments/outputs/${base.id}-tia-blob-cumulative/Foil.json`
   );
 
   if (tiaBlobCumulative && RESOURCES.length === 6) {
