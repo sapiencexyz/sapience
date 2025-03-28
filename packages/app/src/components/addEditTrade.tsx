@@ -849,6 +849,7 @@ export default function AddEditTrade() {
                 allowCollateralInput
                 collateralAssetTicker={collateralAssetTicker}
                 onCollateralAmountChange={handleCollateralAmountChange}
+                fixedUnit={market?.isCumulative}
                 {...register('size', {
                   onChange: (e) => {
                     const processed = removeLeadingZeros(e.target.value);

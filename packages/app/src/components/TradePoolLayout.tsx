@@ -146,7 +146,14 @@ const TradePoolLayout = ({
   };
 
   if (!market || !resource) {
-    return <div>Market/Resource not found</div>;
+    return (
+      <div className="flex items-center justify-center w-full h-[calc(100dvh-69px)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
+          <p className="text-lg font-medium">Loading market data...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
