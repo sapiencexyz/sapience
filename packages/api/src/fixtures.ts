@@ -125,14 +125,14 @@ const addGasWeekly = async (markets: MarketInfo[]) => {
 
 const addTiaBlobCumulative = async (markets: MarketInfo[]) => {
   const tiaBlobCumulative = await safeRequire(
-    `@/protocol/deployments/outputs/${sepolia.id}-tia-blobs-cum-03-18/Foil.json`
+    `@/protocol/deployments/outputs/${base.id}-tia-blob-cumulative/Foil.json`
   );
 
   if (tiaBlobCumulative && RESOURCES.length === 6) {
     markets.push({
       deployment: tiaBlobCumulative,
       vaultAddress: zeroAddress,
-      marketChainId: sepolia.id,
+      marketChainId: base.id,
       resource: RESOURCES[5], // tia blob cumulative
       isYin: true,
       isCumulative: true,
