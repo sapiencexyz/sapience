@@ -11,11 +11,17 @@ let sharedModel: Runnable | null = null;
 
 export abstract class BaseNode {
   protected model: Runnable;
+  protected nextNode?: string; // Default edge to follow
 
   constructor(
     protected config: AgentConfig,
-    protected tools: AgentTools
+    protected tools: AgentTools,
+    nextNode?: string
   ) {
+    if (nextNode) {
+      this.nextNode = nextNode;
+    }
+    
     if (!sharedModel) {
       // Convert our tools to LangChain tools
       const langChainTools = [
@@ -183,8 +189,21 @@ export abstract class BaseNode {
         lastAction: state.lastAction
       });
 
-      const response = await this.invokeModel(state, this.getPrompt(state));
+      // Log node transition
+      Logger.nodeTransition(state.currentStep, this.constructor.name);
+      Logger.step(`[${this.constructor.name}] Starting execution...`);
+
+      // Get node-specific prompt
+      const prompt = this.getPrompt(state);
+      
+      // Invoke model with prompt
+      const response = await this.invokeModel(state, prompt);
       const formattedContent = this.formatMessageContent(response.content);
+      
+      // Always log the agent's full response
+      Logger.info(chalk.green('AGENT OUTPUT:'));
+      Logger.info(chalk.green(formattedContent));
+      
       const agentResponse = new AIMessage(formattedContent, response.tool_calls);
 
       // Handle tool calls if present
@@ -192,35 +211,40 @@ export abstract class BaseNode {
         Logger.info(chalk.cyan('🔄 Processing tool calls...'));
         const toolResults = await this.handleToolCalls(response.tool_calls);
         
-        // Get the model's response to the tool results
-        Logger.info(chalk.cyan('🤔 Analyzing tool results...'));
-        const toolResponse = await this.model.invoke([
-          ...state.messages,
+        // Clear state messages to prevent tool ID mismatches
+        // We'll still keep all relevant information in our new state
+        const cleanState = {
+          ...state,
+          messages: [] // Clear message history to avoid tool ID conflicts
+        };
+        
+        // Process further tool results if needed (this allows nodes to customize post-tool processing)
+        const processedState = await this.processToolResults(
+          cleanState, 
           agentResponse,
-          ...toolResults
-        ]);
+          toolResults
+        );
+        
+        if (processedState) {
+          return processedState;
+        }
 
-        // Log the agent's response to the tool output
-        Logger.info(chalk.green('🧠 AGENT: '));
-        const content = typeof toolResponse.content === 'string' 
-          ? toolResponse.content 
-          : JSON.stringify(toolResponse.content);
+        // Default behavior: Simply update state with the tool results
+        // This avoids making another model call which could cause tool ID mismatches
+        Logger.info(chalk.cyan('📊 Updating state with tool results'));
         
-        // Extract and log each thought and action
-        const thoughts = content.match(/Thought: (.*?)(?:\n|$)/g) || [];
-        const actions = content.match(/Action: (.*?)(?:\n|$)/g) || [];
+        // Create a simple summary message instead of calling the model again
+        const summaryMessage = new AIMessage(
+          `Analyzed data from ${toolResults.length} tool calls.`
+        );
         
-        thoughts.forEach(thought => {
-          Logger.info(chalk.green(`💭 ${thought.replace('Thought:', '').trim()}`));
-        });
-        
-        actions.forEach(action => {
-          Logger.info(chalk.yellow(`⚡ ${action.replace('Action:', '').trim()}`));
-        });
-        
-        Logger.info(chalk.green('</thinking>'));
+        return this.createStateUpdate(cleanState, [agentResponse, summaryMessage], toolResults);
+      }
 
-        return this.createStateUpdate(state, [agentResponse, toolResponse, ...toolResults], toolResults);
+      // Process the response (allow nodes to customize response handling)
+      const processedState = await this.processResponse(state, agentResponse);
+      if (processedState) {
+        return processedState;
       }
 
       return this.createStateUpdate(state, [agentResponse]);
@@ -236,6 +260,52 @@ export abstract class BaseNode {
     }
   }
 
-  abstract shouldContinue(state: AgentState): Promise<string>;
+  /**
+   * Override this method to customize how regular responses (without tool calls) are processed
+   * Return null/undefined to use default processing behavior
+   */
+  protected async processResponse(
+    state: AgentState, 
+    response: AIMessage
+  ): Promise<AgentState | null> {
+    return null;
+  }
+
+  /**
+   * Override this method to customize how tool results are processed
+   * Return null/undefined to use default processing behavior
+   */
+  protected async processToolResults(
+    state: AgentState, 
+    agentResponse: AIMessage,
+    toolResults: ToolMessage[]
+  ): Promise<AgentState | null> {
+    return null;
+  }
+
+  /**
+   * Determine the next node to execute.
+   * If a node uses tools, it should return "tools".
+   * Otherwise, it can return the next node id or use the default nextNode if defined.
+   */
+  async shouldContinue(state: AgentState): Promise<string> {
+    // Check if the last message has tool calls
+    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
+    
+    if (lastMessage.tool_calls?.length > 0) {
+      Logger.info(chalk.cyan(`[${this.constructor.name}] 🛠️ Tool calls found, continuing with tools`));
+      return "tools";
+    }
+    
+    // If the node has defined a default next node, use it
+    if (this.nextNode) {
+      Logger.info(chalk.green(`[${this.constructor.name}] ✅ Using default edge to ${this.nextNode}`));
+      return this.nextNode;
+    }
+    
+    // Subclasses must implement this method if they don't set nextNode
+    throw new Error(`${this.constructor.name} must implement shouldContinue or set nextNode`);
+  }
+
   abstract getPrompt(state: AgentState): string;
 } 

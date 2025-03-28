@@ -2,16 +2,20 @@ import { StateGraph } from "@langchain/langgraph";
 import { z } from "zod";
 import { AgentState, AgentConfig, AgentTools, convertToLangChainTools } from '../types';
 import { Logger } from '../utils/logger';
-import { SettlePositionsNode } from '../nodes/settle';
-import { AssessPositionsNode } from '../nodes/assess';
-import { DiscoverMarketsNode } from '../nodes/discover';
-import { PublishSummaryNode } from '../nodes/summary';
-import { DelayNode } from '../nodes/delay';
-import { LookupNode } from '../nodes/lookup';
-import { EvaluateMarketNode } from '../nodes/evaluate';
+import { 
+  LookupNode, 
+  SettlePositionsNode, 
+  AssessPositionsNode, 
+  DiscoverMarketsNode, 
+  PublishSummaryNode,
+  DelayNode,
+  ToolsNode
+} from '../nodes';
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { BaseMessage } from "@langchain/core/messages";
 import { GraphVisualizer } from '../utils/graphVisualizer';
+import { BaseNode } from '../nodes/base';
+import chalk from 'chalk';
 
 // Define the state schema for LangGraph
 const agentStateSchema = z.object({
@@ -34,138 +38,140 @@ interface ToolCallMessage extends BaseMessage {
 }
 
 export class GraphManager {
-  private graph: any;
-  private stateGraph: StateGraph<typeof agentStateSchema, any, any, NodeName>;
-  private toolNode: ToolNode;
+  private nodes: Map<string, BaseNode> = new Map();
+  private edges: Map<string, string[]> = new Map();
+  private toolsNode: BaseNode | null = null;
 
   constructor(
     private config: AgentConfig,
     private tools: AgentTools
-  ) {
-    this.toolNode = this.initializeToolNode();
-    const { graph, stateGraph } = this.buildGraph();
-    this.graph = graph;
-    this.stateGraph = stateGraph;
+  ) {}
+
+  /**
+   * Register a node with the graph
+   * @param id Unique identifier for the node
+   * @param node Node implementation
+   * @param edges Possible next nodes
+   */
+  public registerNode(id: string, node: BaseNode, edges: string[] = []): void {
+    this.nodes.set(id, node);
+    this.edges.set(id, edges);
+    Logger.debug(`Registered node: ${id} with edges to ${edges.join(', ')}`);
   }
 
-  private initializeToolNode(): ToolNode {
-    Logger.info("Converting tools to LangChain tools...");
-    const langChainTools = [
-      ...convertToLangChainTools(this.tools.readFoilContracts),
-      ...convertToLangChainTools(this.tools.writeFoilContracts),
-      ...convertToLangChainTools(this.tools.graphql)
-    ];
-    Logger.info(`Tools converted: ${langChainTools.map(t => t.name).join(', ')}`);
-    return new ToolNode(langChainTools);
+  /**
+   * Register a special tools node that handles tool execution
+   * @param node Node implementation for tool execution
+   */
+  public registerToolsNode(node: BaseNode): void {
+    this.toolsNode = node;
+    Logger.debug('Registered tools node');
   }
 
-  private buildGraph(): { graph: any; stateGraph: StateGraph<typeof agentStateSchema, any, any, NodeName> } {
-    Logger.info("Creating new StateGraph...");
-    const stateGraph = new StateGraph<typeof agentStateSchema, any, any, NodeName>(agentStateSchema);
-
-    // Initialize nodes
-    const lookupNode = new LookupNode(this.config, this.tools);
-    const settleNode = new SettlePositionsNode(this.config, this.tools);
-    const assessNode = new AssessPositionsNode(this.config, this.tools);
-    const discoverNode = new DiscoverMarketsNode(this.config, this.tools);
-    const evaluateNode = new EvaluateMarketNode(this.config, this.tools);
-    const summaryNode = new PublishSummaryNode(this.config, this.tools);
-    const delayNode = new DelayNode(this.config, this.tools, this.config.interval);
-
-    // Add nodes to the graph
-    Logger.info("Adding nodes to graph...");
-    stateGraph.addNode("lookup", lookupNode.execute.bind(lookupNode));
-    stateGraph.addNode("settle_positions", settleNode.execute.bind(settleNode));
-    stateGraph.addNode("assess_positions", assessNode.execute.bind(assessNode));
-    stateGraph.addNode("discover_markets", discoverNode.execute.bind(discoverNode));
-    stateGraph.addNode("evaluate_market", evaluateNode.execute.bind(evaluateNode));
-    stateGraph.addNode("publish_summary", summaryNode.execute.bind(summaryNode));
-    stateGraph.addNode("delay", delayNode.execute.bind(delayNode));
-    stateGraph.addNode("tools", this.toolNode);
-
-    // Add conditional edges to tools
-    Logger.info("Adding conditional edges to tools...");
-    stateGraph.addConditionalEdges("lookup", this.shouldUseTools.bind(this));
-    stateGraph.addConditionalEdges("settle_positions", this.shouldUseTools.bind(this));
-    stateGraph.addConditionalEdges("assess_positions", this.shouldUseTools.bind(this));
-    stateGraph.addConditionalEdges("discover_markets", this.shouldUseTools.bind(this));
-    stateGraph.addConditionalEdges("evaluate_market", this.shouldUseTools.bind(this));
-    stateGraph.addConditionalEdges("publish_summary", this.shouldUseTools.bind(this));
-
-    // Add edges back to the original nodes after tool execution
-    Logger.info("Adding edges back from tools...");
-    stateGraph.addEdge("tools", "lookup");
-    stateGraph.addEdge("tools", "settle_positions");
-    stateGraph.addEdge("tools", "assess_positions");
-    stateGraph.addEdge("tools", "discover_markets");
-    stateGraph.addEdge("tools", "evaluate_market");
-    stateGraph.addEdge("tools", "publish_summary");
-
-    // Add regular edges for the main flow
-    Logger.info("Adding regular edges for main flow...");
-    stateGraph.addEdge("lookup", "settle_positions");
-    stateGraph.addEdge("lookup", "discover_markets");
-    stateGraph.addEdge("settle_positions", "assess_positions");
-    stateGraph.addEdge("settle_positions", "discover_markets");
-    stateGraph.addEdge("assess_positions", "evaluate_market");
-    stateGraph.addEdge("evaluate_market", "assess_positions");
-    stateGraph.addEdge("discover_markets", "evaluate_market");
-    stateGraph.addEdge("evaluate_market", "discover_markets");
-    stateGraph.addEdge("assess_positions", "discover_markets");
-    stateGraph.addEdge("discover_markets", "publish_summary");
-    stateGraph.addEdge("publish_summary", "delay");
-    stateGraph.addEdge("delay", "lookup");
-
-    // Set the entry point
-    stateGraph.setEntryPoint("lookup");
-
-    // Generate graph visualization
-    GraphVisualizer.saveDiagram(stateGraph).catch(err => {
-      Logger.error(`Failed to generate graph visualization: ${err.message}`);
-    });
-
-    return { graph: stateGraph.compile(), stateGraph };
+  /**
+   * Create a complete agent workflow graph with all nodes and edges
+   * This is a factory method that creates the entire graph structure
+   */
+  public static createAgentGraph(config: AgentConfig, tools: AgentTools): GraphManager {
+    const graphManager = new GraphManager(config, tools);
+    
+    // Define the default paths for each node
+    const defaultPaths = {
+      'lookup': { 
+        hasPositions: 'settle_positions', 
+        noPositions: 'discover_markets' 
+      },
+      'settle_positions': 'assess_positions',
+      'assess_positions': 'discover_markets',
+      'discover_markets': 'publish_summary',
+      'publish_summary': 'delay',
+      'delay': 'lookup'
+    };
+    
+    // Create all nodes
+    const lookupNode = new LookupNode(config, tools);
+    const settleNode = new SettlePositionsNode(config, tools, defaultPaths['settle_positions']);
+    const assessNode = new AssessPositionsNode(config, tools, defaultPaths['assess_positions']);
+    const discoverNode = new DiscoverMarketsNode(config, tools, defaultPaths['discover_markets']);
+    const summaryNode = new PublishSummaryNode(config, tools, defaultPaths['publish_summary']);
+    const delayNode = new DelayNode(config, tools, config.interval || 60000, defaultPaths['delay']);
+    const toolsNode = new ToolsNode(config, tools);
+    
+    // Register nodes with their possible edges
+    graphManager.registerNode('lookup', lookupNode, ['settle_positions', 'discover_markets', 'tools']);
+    graphManager.registerNode('settle_positions', settleNode, ['assess_positions', 'discover_markets', 'tools']);
+    graphManager.registerNode('assess_positions', assessNode, ['discover_markets', 'tools']);
+    graphManager.registerNode('discover_markets', discoverNode, ['publish_summary', 'tools']);
+    graphManager.registerNode('publish_summary', summaryNode, ['delay', 'tools']);
+    graphManager.registerNode('delay', delayNode, ['lookup']);
+    
+    // Register the tools node
+    graphManager.registerToolsNode(toolsNode);
+    
+    Logger.success("Agent graph created successfully");
+    return graphManager;
   }
 
-  private shouldUseTools(state: AgentState): NodeName {
-    const lastMessage = state.messages[state.messages.length - 1] as ToolCallMessage;
-    if (lastMessage?.tool_calls?.length) {
-      return "tools";
-    }
-    return "__end__";
-  }
-
-  public async invoke(initialState: AgentState) {
-    Logger.info("Starting graph execution...");
-    try {
-      const result = await this.graph.invoke(initialState);
-      Logger.success("Graph execution completed");
-      return result;
-    } catch (error) {
-      if (error instanceof Error) {
-        // Log the full error details
-        Logger.error("Graph execution failed:");
-        Logger.error(`Error name: ${error.name}`);
-        Logger.error(`Error message: ${error.message}`);
-        if ('errors' in error) {
-          Logger.error("Multiple errors occurred:");
-          (error as any).errors.forEach((e: any, index: number) => {
-            Logger.error(`\nError ${index + 1}:`);
-            Logger.error(`  Name: ${e.name}`);
-            Logger.error(`  Message: ${e.message}`);
-            if (e.stack) {
-              Logger.error(`  Stack: ${e.stack}`);
-            }
-          });
-        }
-        if (error.stack) {
-          Logger.error(`\nStack trace: ${error.stack}`);
-        }
-      } else {
-        Logger.error(`Unknown error type: ${typeof error}`);
-        Logger.error(`Error value: ${JSON.stringify(error, null, 2)}`);
+  /**
+   * Execute the workflow starting from the specified node
+   * @param startNodeId ID of the node to start from
+   * @param initialState Initial state for the workflow
+   * @returns Final state after execution
+   */
+  public async execute(startNodeId: string, initialState: AgentState): Promise<AgentState> {
+    let currentNodeId = startNodeId;
+    let state = { ...initialState, currentStep: currentNodeId };
+    
+    Logger.info(chalk.blue(`🚀 Starting execution from node: ${currentNodeId}`));
+    
+    while (currentNodeId !== 'end') {
+      const currentNode = this.nodes.get(currentNodeId);
+      
+      if (!currentNode) {
+        Logger.error(`Node ${currentNodeId} not found in graph`);
+        throw new Error(`Node ${currentNodeId} not found in graph`);
       }
-      throw error;
+      
+      try {
+        // Execute the current node
+        Logger.info(chalk.blue(`▶️ Executing node: ${currentNodeId}`));
+        state = await currentNode.execute(state);
+        
+        // Determine the next node
+        const nextNodeId = await currentNode.shouldContinue(state);
+        
+        // Check if we need to run the tools node
+        if (nextNodeId === 'tools' && this.toolsNode) {
+          Logger.info(chalk.magenta('🔧 Executing tools node'));
+          state = await this.toolsNode.execute(state);
+          
+          // After tools execution, return to the same node
+          Logger.info(chalk.blue(`↩️ Returning to node: ${currentNodeId}`));
+          continue;
+        }
+        
+        // Validate that the edge exists
+        const availableEdges = this.edges.get(currentNodeId) || [];
+        if (!availableEdges.includes(nextNodeId) && nextNodeId !== 'end') {
+          Logger.warn(`Invalid edge from ${currentNodeId} to ${nextNodeId}. Available edges: ${availableEdges.join(', ')}`);
+          Logger.warn('Continuing to end node due to invalid edge');
+          currentNodeId = 'end';
+          continue;
+        }
+        
+        // Log transition
+        Logger.info(chalk.blue(`🔄 Transitioning from ${currentNodeId} to ${nextNodeId}`));
+        
+        // Update current node and state
+        currentNodeId = nextNodeId;
+        state = { ...state, currentStep: currentNodeId };
+      } catch (error) {
+        Logger.error(`Error in node ${currentNodeId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw error;
+      }
     }
+    
+    Logger.success(chalk.green('✅ Execution completed'));
+    return state;
   }
 }

@@ -1,11 +1,19 @@
-import { AgentState } from '../types';
+import { AgentState, AgentConfig, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
 import { AIMessage } from '@langchain/core/messages';
 
 export class SettlePositionsNode extends BaseNode {
-  public getPrompt(): string {
+  constructor(
+    protected config: AgentConfig,
+    protected tools: AgentTools,
+    nextNode?: string
+  ) {
+    super(config, tools, nextNode || "assess_positions");
+  }
+
+  public getPrompt(state: AgentState): string {
     return `Analyze and settle positions using the provided tools.
       You have access to these tools:
       - get_foil_position: Get information about a specific position
@@ -23,7 +31,7 @@ export class SettlePositionsNode extends BaseNode {
     Logger.nodeTransition(state.currentStep, 'Settle');
     Logger.step('[Settle] Analyzing positions for settlement...');
     
-    const response = await this.invokeModel(state, this.getPrompt());
+    const response = await this.invokeModel(state, this.getPrompt(state));
     const formattedContent = this.formatMessageContent(response.content);
     const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
@@ -49,8 +57,13 @@ export class SettlePositionsNode extends BaseNode {
     }
 
     const positions = state.positions?.filter(p => p.isSettleable) || [];
-    const result = positions.length > 0 ? "settle_positions" : "assess_positions";
-    Logger.info(`Settlement check result: ${result}`);
-    return result;
+    // If there are still settleable positions, continue settling
+    if (positions.length > 0) {
+      Logger.info("More positions to settle");
+      return "settle_positions";
+    }
+    
+    // Otherwise, use the default next node
+    return super.shouldContinue(state);
   }
 } 

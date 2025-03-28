@@ -36,9 +36,10 @@ export class LookupNode extends BaseNode {
 
   constructor(
     protected config: AgentConfig,
-    protected tools: AgentTools
+    protected tools: AgentTools,
+    nextNode?: string
   ) {
-    super(config, tools);
+    super(config, tools, nextNode);
     
     Logger.setDebugMode(false);
     Logger.info("Initializing LookupNode...");
@@ -67,12 +68,15 @@ export class LookupNode extends BaseNode {
     // Check if we've found any positions
     const hasPositions = state.positions?.length > 0;
     if (hasPositions) {
-      Logger.info("[Lookup] Positions found, moving to settle");
-      return "settle";
+      Logger.info("[Lookup] Positions found, moving to settle_positions");
+      return "settle_positions";
     } else {
-      Logger.info("[Lookup] No positions found, moving to discover");
-      return "discover";
+      Logger.info("[Lookup] No positions found, moving to discover_markets");
+      return "discover_markets";
     }
+    
+    // If no conditions matched and no default edge is set, let the BaseNode handle it
+    // return super.shouldContinue(state);
   }
 
   private async initializeState(): Promise<LookupState> {
