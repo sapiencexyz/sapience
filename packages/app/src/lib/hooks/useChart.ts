@@ -424,7 +424,7 @@ export const useChart = ({
           price: Number(formatUnits(BigInt(candle.close), 9)),
         }));
       },
-      enabled: !!resourceSlug,
+      enabled: !!resourceSlug && !contextMarket?.isCumulative,
     });
 
   // Fetch the latest index price using the same hook as the stats component
@@ -862,12 +862,19 @@ export const useChart = ({
 
   const loadingStates = useMemo(
     () => ({
-      candles: !marketPrices && !!market,
+      candles: isMarketPricesLoading,
       index: isIndexLoading && !!market,
       resource: isResourceLoading && !!resourceSlug,
       trailing: isTrailingResourceLoading && !!resourceSlug,
     }),
-    [isIndexLoading, isResourceLoading, market, resourceSlug]
+    [
+      isMarketPricesLoading,
+      isIndexLoading,
+      isResourceLoading,
+      market,
+      resourceSlug,
+      isTrailingResourceLoading,
+    ]
   );
 
   // Helper function to set market price time scale
