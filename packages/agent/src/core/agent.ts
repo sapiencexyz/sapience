@@ -24,7 +24,7 @@ export class FoilAgent {
     
     // Initialize Claude model with verbose logging disabled
     this.model = new ChatAnthropic({
-      modelName: "claude-3-opus-20240229",
+      modelName: "claude-3-5-haiku-20241022",
       anthropicApiKey: config.anthropicApiKey,
       verbose: false
     });
@@ -65,7 +65,7 @@ export class FoilAgent {
 
       // Run lookup step
       Logger.info("Starting lookup step");
-      const lookupState = await this.lookupNode.execute();
+      const lookupState = await this.lookupNode.execute(this.state);
       
       // Check if any positions were found
       if (!lookupState.positions || lookupState.positions.length === 0) {

@@ -36,7 +36,8 @@ export class SettlePositionsNode extends BaseNode {
       positions: state.positions,
       markets: state.markets,
       actions: state.actions,
-      toolResults: state.toolResults
+      toolResults: state.toolResults,
+      agentAddress: state.agentAddress
     };
   }
 
