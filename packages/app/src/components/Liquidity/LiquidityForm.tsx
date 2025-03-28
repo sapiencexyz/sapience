@@ -67,6 +67,9 @@ const LiquidityForm: React.FC = () => {
     address: marketAddress,
     marketParams,
     useMarketUnits,
+    valueDisplay,
+    unitDisplay,
+    market,
   } = useContext(PeriodContext);
 
   const { stEthPerToken } = useFoil();
@@ -108,17 +111,13 @@ const LiquidityForm: React.FC = () => {
       const errors: Record<string, { type: string; message: string }> = {};
 
       const lowPriceNum = Number(values.lowPrice);
-      const minPrice = useMarketUnits
-        ? tickToPrice(baseAssetMinPriceTick)
-        : convertGgasPerWstEthToGwei(
-            tickToPrice(baseAssetMinPriceTick),
-            stEthPerToken
-          );
+      const minPrice = valueDisplay(
+        tickToPrice(baseAssetMinPriceTick),
+        stEthPerToken
+      );
       const maxLowPrice = Number(values.highPrice);
       const lowPriceTick = priceToTick(
-        useMarketUnits
-          ? lowPriceNum
-          : lowPriceNum / convertGgasPerWstEthToGwei(1, stEthPerToken),
+        valueDisplay(lowPriceNum, stEthPerToken),
         tickSpacing
       );
 
@@ -141,16 +140,12 @@ const LiquidityForm: React.FC = () => {
 
       const highPriceNum = Number(values.highPrice);
       const minHighPrice = Number(values.lowPrice);
-      const maxPrice = useMarketUnits
-        ? tickToPrice(baseAssetMaxPriceTick)
-        : convertGgasPerWstEthToGwei(
-            tickToPrice(baseAssetMaxPriceTick),
-            stEthPerToken
-          );
+      const maxPrice = valueDisplay(
+        tickToPrice(baseAssetMaxPriceTick),
+        stEthPerToken
+      );
       const highPriceTick = priceToTick(
-        useMarketUnits
-          ? highPriceNum
-          : highPriceNum / convertGgasPerWstEthToGwei(1, stEthPerToken),
+        valueDisplay(highPriceNum, stEthPerToken),
         tickSpacing
       );
 
@@ -1041,7 +1036,7 @@ const LiquidityForm: React.FC = () => {
 
   // Convert price from display units to market units
   const convertDisplayToMarketPrice = (displayPrice: number): number => {
-    if (useMarketUnits) {
+    if (useMarketUnits || market?.isCumulative) {
       return displayPrice;
     }
     // Convert from gwei to Ggas/wstETH
@@ -1050,7 +1045,7 @@ const LiquidityForm: React.FC = () => {
 
   // Convert price from market units to display units
   const convertMarketToDisplayPrice = (marketPrice: number): number => {
-    if (useMarketUnits) {
+    if (useMarketUnits || market?.isCumulative) {
       return marketPrice;
     }
     // Convert from Ggas/wstETH to gwei
@@ -1090,12 +1085,8 @@ const LiquidityForm: React.FC = () => {
     console.log('Market Prices:', { lowMarketPrice, highMarketPrice });
 
     // Convert to display units based on current useMarketUnits setting
-    const lowDisplayPrice = useMarketUnits
-      ? lowMarketPrice
-      : convertGgasPerWstEthToGwei(lowMarketPrice, stEthPerToken);
-    const highDisplayPrice = useMarketUnits
-      ? highMarketPrice
-      : convertGgasPerWstEthToGwei(highMarketPrice, stEthPerToken);
+    const lowDisplayPrice = valueDisplay(lowMarketPrice, stEthPerToken);
+    const highDisplayPrice = valueDisplay(highMarketPrice, stEthPerToken);
 
     console.log('Display Prices:', {
       lowDisplayPrice,
@@ -1224,18 +1215,22 @@ const LiquidityForm: React.FC = () => {
           <PositionSelector />
 
           <div>
-            <p className="text-sm font-semibold mb-0.5">Virtual Ggas</p>
+            <p className="text-sm font-semibold mb-0.5">
+              Virtual {unitDisplay(false)}
+            </p>
             <p className="text-sm mb-0.5">
-              <NumberDisplay value={baseToken} /> vGgas (Min.{' '}
+              <NumberDisplay value={baseToken} /> v${unitDisplay(false)} (Min.{' '}
               <NumberDisplay value={minAmountTokenA} />)
             </p>
           </div>
 
           <div>
-            <p className="text-sm font-semibold mb-0.5">Virtual wstETH</p>
+            <p className="text-sm font-semibold mb-0.5">
+              Virtual {collateralAssetTicker}
+            </p>
             <p className="text-sm mb-0.5">
-              <NumberDisplay value={quoteToken} /> vWstETH (Min.{' '}
-              <NumberDisplay value={minAmountTokenB} />)
+              <NumberDisplay value={quoteToken} /> {`v${collateralAssetTicker}`}{' '}
+              (Min. <NumberDisplay value={minAmountTokenB} />)
             </p>
           </div>
           {isEdit && (

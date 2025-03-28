@@ -640,33 +640,43 @@ export const useChart = ({
           if (!mp) return null;
           return {
             time: (mp.startTimestamp / 1000) as UTCTimestamp,
-            open: useMarketUnits
-              ? Number(formatUnits(BigInt(mp.open), 18))
-              : Number(
-                  convertGgasPerWstEthToGwei(mp.open / 1e18, stEthPerToken)
-                ),
-            high: useMarketUnits
-              ? Number(formatUnits(BigInt(mp.high), 18))
-              : Number(
-                  convertGgasPerWstEthToGwei(mp.high / 1e18, stEthPerToken)
-                ),
-            low: useMarketUnits
-              ? Number(formatUnits(BigInt(mp.low), 18))
-              : Number(
-                  convertGgasPerWstEthToGwei(mp.low / 1e18, stEthPerToken)
-                ),
-            close: useMarketUnits
-              ? Number(formatUnits(BigInt(mp.close), 18))
-              : Number(
-                  convertGgasPerWstEthToGwei(mp.close / 1e18, stEthPerToken)
-                ),
+            open:
+              useMarketUnits || contextMarket?.isCumulative
+                ? Number(formatUnits(BigInt(mp.open), 18))
+                : Number(
+                    convertGgasPerWstEthToGwei(mp.open / 1e18, stEthPerToken)
+                  ),
+            high:
+              useMarketUnits || contextMarket?.isCumulative
+                ? Number(formatUnits(BigInt(mp.high), 18))
+                : Number(
+                    convertGgasPerWstEthToGwei(mp.high / 1e18, stEthPerToken)
+                  ),
+            low:
+              useMarketUnits || contextMarket?.isCumulative
+                ? Number(formatUnits(BigInt(mp.low), 18))
+                : Number(
+                    convertGgasPerWstEthToGwei(mp.low / 1e18, stEthPerToken)
+                  ),
+            close:
+              useMarketUnits || contextMarket?.isCumulative
+                ? Number(formatUnits(BigInt(mp.close), 18))
+                : Number(
+                    convertGgasPerWstEthToGwei(mp.close / 1e18, stEthPerToken)
+                  ),
           };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
 
       candlestickSeriesRef.current.setData(candleSeriesData);
     }
-  }, [marketPrices, isBeforeStart, useMarketUnits, stEthPerToken]);
+  }, [
+    marketPrices,
+    isBeforeStart,
+    useMarketUnits,
+    stEthPerToken,
+    contextMarket,
+  ]);
 
   const updateIndexPriceData = useCallback(() => {
     if (indexPriceSeriesRef.current && !isBeforeStart) {

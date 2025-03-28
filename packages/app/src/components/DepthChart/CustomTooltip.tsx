@@ -7,7 +7,6 @@ import type { TooltipProps } from 'recharts';
 import { useFoil } from '../../lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { BarChartTick } from '~/lib/utils/liquidityUtil';
-import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 interface CustomTooltipProps {
   pool: Pool | null;
@@ -20,7 +19,8 @@ export const CustomTooltip: React.FC<
   TooltipProps<number, string> & CustomTooltipProps
 > = ({ payload, pool, onTickInfo, isTrade, isDragging }) => {
   const { stEthPerToken } = useFoil();
-  const { useMarketUnits } = useContext(PeriodContext);
+  const { collateralAssetTicker, valueDisplay, unitDisplay } =
+    useContext(PeriodContext);
 
   useEffect(() => {
     if (payload && payload[0]) {
@@ -31,12 +31,6 @@ export const CustomTooltip: React.FC<
 
   if (!payload || !payload[0] || !pool || isDragging) return null;
   const tick: BarChartTick = payload[0].payload;
-
-  const displayValue = (value: number) => {
-    return useMarketUnits
-      ? value
-      : convertGgasPerWstEthToGwei(value, stEthPerToken);
-  };
 
   return (
     <AnimatePresence>
@@ -57,21 +51,26 @@ export const CustomTooltip: React.FC<
         {isTrade && tick.isCurrent && (
           <>
             <p>
-              {displayValue(tick.liquidityLockedToken0).toFixed(4)} Virtual Ggas
+              {valueDisplay(tick.liquidityLockedToken0, stEthPerToken).toFixed(
+                4
+              )}{' '}
+              Virtual ${unitDisplay(false)}
             </p>
             <p>
-              {displayValue(tick.liquidityLockedToken1).toFixed(4)} Virtual
-              wstETH
+              {valueDisplay(tick.liquidityLockedToken1, stEthPerToken).toFixed(
+                4
+              )}{' '}
+              {collateralAssetTicker}
             </p>
           </>
         )}
 
         {isTrade && !tick.isCurrent && (
           <p>
-            {displayValue(tick.liquidityActive).toFixed(4)}{' '}
+            {valueDisplay(tick.liquidityActive, stEthPerToken).toFixed(4)}{' '}
             {tick.tickIdx < pool.tickCurrent
-              ? 'Virtual wstETH'
-              : 'Virtual Ggas'}
+              ? `Virtual ${collateralAssetTicker}`
+              : `Virtual ${unitDisplay(false)}`}
           </p>
         )}
 
@@ -79,19 +78,25 @@ export const CustomTooltip: React.FC<
           (tick.isCurrent ? (
             <>
               <p>
-                {displayValue(tick.liquidityLockedToken1).toFixed(4)} Virtual
-                wstETH
+                {valueDisplay(
+                  tick.liquidityLockedToken1,
+                  stEthPerToken
+                ).toFixed(4)}{' '}
+                Virtual {collateralAssetTicker}
               </p>
               <p>
-                {displayValue(tick.liquidityLockedToken0).toFixed(4)} Virtual
-                Ggas
+                {valueDisplay(
+                  tick.liquidityLockedToken0,
+                  stEthPerToken
+                ).toFixed(4)}{' '}
+                Virtual {unitDisplay(false)}
               </p>
             </>
           ) : (
             <p>
               {tick.tickIdx < pool.tickCurrent
-                ? `${displayValue(tick.liquidityLockedToken1).toFixed(4)} Virtual wstETH`
-                : `${displayValue(tick.liquidityLockedToken0).toFixed(4)} Virtual Ggas`}
+                ? `${valueDisplay(tick.liquidityLockedToken1, stEthPerToken).toFixed(4)} Virtual ${collateralAssetTicker}`
+                : `${valueDisplay(tick.liquidityLockedToken0, stEthPerToken).toFixed(4)} Virtual ${unitDisplay(false)}`}
             </p>
           ))}
       </motion.div>

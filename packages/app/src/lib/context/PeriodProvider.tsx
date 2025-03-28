@@ -1,7 +1,13 @@
 import type { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
-import { createContext, useEffect, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
@@ -14,6 +20,7 @@ import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { useToast } from '~/hooks/use-toast';
 import { Market, useFoil } from './FoilProvider';
 import { Resource, useResources } from '../hooks/useResources';
+import { convertGgasPerWstEthToGwei } from '../utils/util';
 
 // Types and Interfaces
 export interface PeriodContextType {
@@ -56,7 +63,8 @@ export interface PeriodContextType {
     resource: boolean;
     trailing: boolean;
   }) => void;
-  unitDisplay: string;
+  unitDisplay: (full?: boolean) => string;
+  valueDisplay: (price: number, stEthPerToken?: number) => number;
 }
 
 interface PeriodProviderProps {
@@ -98,6 +106,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   const market = markets.find(
     (m: Market) => m.address.toLowerCase() === address.toLowerCase()
   );
+  console.log('market', market);
   const resource = resources?.find((r) => r.name === market?.resource?.name);
 
   const marketViewFunctionResult = useReadContract({
@@ -252,20 +261,43 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     }
   }, [collateralDecimalsFunctionResult.data]);
 
-  const unitDisplay = useMemo(() => {
-    if (market?.isCumulative) {
-      return 'GB';
-    }
+  const valueDisplay = useCallback(
+    (price: number, stEthPerToken: number | undefined = 1e9) => {
+      if (market?.isCumulative) {
+        return price;
+      }
 
-    if (useMarketUnits) {
-      return 'Ggas/wstETH';
-    }
-    return 'gwei';
-  }, [useMarketUnits, market]);
+      return useMarketUnits
+        ? price
+        : convertGgasPerWstEthToGwei(price, stEthPerToken);
+    },
+    [market, useMarketUnits]
+  );
+
+  const unitDisplay = useCallback(
+    (full = true) => {
+      if (market?.isCumulative) {
+        return 'GB';
+      }
+
+      if (useMarketUnits) {
+        return full ? `Ggas/${collateralTickerFunctionResult.data}` : 'Ggas';
+      }
+      return 'gwei';
+    },
+    [useMarketUnits, market, collateralTickerFunctionResult.data]
+  );
 
   return (
     <PeriodContext.Provider
-      value={{ ...state, market, resource, unitDisplay, refetchUniswapData }}
+      value={{
+        ...state,
+        market,
+        resource,
+        unitDisplay,
+        valueDisplay,
+        refetchUniswapData,
+      }}
     >
       {children}
     </PeriodContext.Provider>

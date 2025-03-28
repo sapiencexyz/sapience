@@ -14,7 +14,6 @@ import type { Market } from '~/lib/context/FoilProvider';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useLatestIndexPrice } from '~/lib/hooks/useResources';
-import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -108,6 +107,7 @@ const Stats = () => {
     market,
     resource,
     unitDisplay,
+    valueDisplay,
   } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
   const { data: latestIndexPrice, isLoading: isLoadingIndexPrice } =
@@ -142,10 +142,15 @@ const Stats = () => {
     ? formatDistanceToNow(new Date(startTime * 1000))
     : '';
 
+  const isCumulative = market?.isCumulative;
+  const gridColsClass = isCumulative
+    ? 'grid-cols-1 md:grid-cols-3'
+    : 'grid-cols-1 md:grid-cols-4';
+
   return (
     <TooltipProvider>
       <div className="flex w-full flex-col items-center pb-5">
-        <div className="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className={`grid w-full gap-3 ${gridColsClass}`}>
           <StatBox
             title="Index Price"
             tooltipContent={`The estimated settlement price based on the average ${resourceName} price for this period`}
@@ -159,7 +164,7 @@ const Stats = () => {
                 latestIndexPrice={latestIndexPrice}
                 useMarketUnits={useMarketUnits}
                 stEthPerToken={stEthPerToken}
-                unitDisplay={unitDisplay}
+                unitDisplay={unitDisplay()}
               />
             }
           />
@@ -171,28 +176,24 @@ const Stats = () => {
             value={
               <>
                 <NumberDisplay
-                  value={
-                    useMarketUnits
-                      ? pool?.token0Price.toSignificant(18) || 0
-                      : convertGgasPerWstEthToGwei(
-                          Number(pool?.token0Price.toSignificant(18) || 0),
-                          stEthPerToken
-                        )
-                  }
+                  value={valueDisplay(
+                    Number(pool?.token0Price.toSignificant(18) || 0),
+                    stEthPerToken
+                  )}
                 />{' '}
-                <span className="text-sm">{unitDisplay}</span>
+                <span className="text-sm">{unitDisplay()}</span>
               </>
             }
           />
 
-          {!market!.isCumulative && (
+          {!isCumulative && (
             <StatBox
               title="Liquidity"
               tooltipContent="The largest long position that can be opened right now"
               value={
                 <>
                   <NumberDisplay value={liquidity} />{' '}
-                  <span className="text-sm">Ggas</span>
+                  <span className="text-sm">{unitDisplay(false)}</span>
                 </>
               }
             />

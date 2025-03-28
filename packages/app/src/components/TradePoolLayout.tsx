@@ -71,7 +71,6 @@ const TradePoolLayout = ({
   }, [selectedWindow]);
 
   const { startTime } = useContext(PeriodContext);
-  const { data: resources } = useResources();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
 

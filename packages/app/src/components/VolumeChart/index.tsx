@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import {
   type Dispatch,
   type SetStateAction,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -22,6 +23,7 @@ import {
 } from 'recharts';
 
 import NumberDisplay from '~/components/numberDisplay';
+import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { VolumeChartData, TimeWindow } from '~/lib/interfaces/interfaces';
 import { formatXAxisTick, getXTicksToShow } from '~/lib/utils/chartUtil';
 import { getDisplayTextForVolumeWindow, foilApi } from '~/lib/utils/util';
@@ -79,6 +81,7 @@ const CustomTooltip: React.FC<
       setLabel(`${startFormatted} - ${endFormatted}`);
     }
   }, [payload, setLabel, setValue]);
+  const { unitDisplay } = useContext(PeriodContext);
 
   if (!payload || !payload[0]) return null;
 
@@ -95,7 +98,7 @@ const CustomTooltip: React.FC<
       >
         <p className="text-xs font-medium text-gray-500 mb-0.5">Volume</p>
         <p>
-          <NumberDisplay value={volume} /> Ggas
+          <NumberDisplay value={volume} /> {unitDisplay(false)}
         </p>
       </motion.div>
     </AnimatePresence>
@@ -122,6 +125,8 @@ const VolumeChart = ({
     enabled: !!contractId && !!epochId && !!activeWindow,
     retry: 3,
   });
+
+  const { unitDisplay } = useContext(PeriodContext);
 
   useEffect(() => {
     if (volumeError) {
@@ -178,10 +183,10 @@ const VolumeChart = ({
           <p>
             {value ? (
               <>
-                <NumberDisplay value={value} /> Ggas
+                <NumberDisplay value={value} /> {unitDisplay(false)}
               </>
             ) : (
-              '0 Ggas'
+              '0 {unitDisplay(false)}'
             )}
           </p>
         </div>

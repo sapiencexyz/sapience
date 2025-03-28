@@ -14,7 +14,8 @@ interface PriceTogglesProps {
 }
 
 const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
-  const { seriesVisibility, setSeriesVisibility } = useContext(PeriodContext);
+  const { seriesVisibility, setSeriesVisibility, market } =
+    useContext(PeriodContext);
   console.log('seriesVisibility', seriesVisibility);
   const toggleSeries = (series: keyof typeof seriesVisibility) => {
     setSeriesVisibility({
@@ -78,21 +79,23 @@ const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
         Resource Price
       </ToggleGroupItem>
 
-      <ToggleGroupItem
-        value="trailing"
-        variant={seriesVisibility?.trailing ? 'default' : 'outline'}
-        onClick={() => toggleSeries('trailing')}
-        disabled={seriesDisabled.trailing}
-        className="w-full flex-1 sm:flex-initial sm:w-auto whitespace-nowrap"
-      >
-        <Image
-          src="/priceicons/average.svg"
-          alt="Trailing Average Price"
-          width={16}
-          height={16}
-        />
-        Trailing Avg. Price
-      </ToggleGroupItem>
+      {!market?.isCumulative && (
+        <ToggleGroupItem
+          value="trailing"
+          variant={seriesVisibility?.trailing ? 'default' : 'outline'}
+          onClick={() => toggleSeries('trailing')}
+          disabled={seriesDisabled.trailing}
+          className="w-full flex-1 sm:flex-initial sm:w-auto whitespace-nowrap"
+        >
+          <Image
+            src="/priceicons/average.svg"
+            alt="Trailing Average Price"
+            width={16}
+            height={16}
+          />
+          Trailing Avg. Price
+        </ToggleGroupItem>
+      )}
     </ToggleGroup>
   );
 };

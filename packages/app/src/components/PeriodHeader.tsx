@@ -104,7 +104,7 @@ const PeriodHeader = () => {
         <NumberDisplay value={minPrice} />
         <MoveHorizontal className="w-3 h-3 mx-1" />
         <NumberDisplay value={maxPrice} />
-        <span className="ml-1">{unitDisplay}</span>
+        <span className="ml-1">{unitDisplay()}</span>
       </div>
 
       <div className="inline-flex items-center">
