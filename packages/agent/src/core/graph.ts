@@ -8,6 +8,7 @@ import { DiscoverMarketsNode } from '../nodes/discover';
 import { PublishSummaryNode } from '../nodes/summary';
 import { DelayNode } from '../nodes/delay';
 import { LookupNode } from '../nodes/lookup';
+import { EvaluateMarketNode } from '../nodes/evaluate';
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { DynamicTool } from "@langchain/core/tools";
 import { AgentToolMessage, AgentSystemMessage } from '../types/message';
@@ -24,7 +25,7 @@ const agentStateSchema = z.object({
   lastAction: z.string().optional()
 });
 
-type NodeName = "lookup" | "settle_positions" | "assess_positions" | "discover_markets" | "publish_summary" | "delay" | "tools" | "__end__";
+type NodeName = "lookup" | "settle_positions" | "assess_positions" | "discover_markets" | "evaluate_market" | "publish_summary" | "delay" | "tools" | "__end__";
 
 interface ToolCallMessage extends BaseMessage {
   tool_calls?: Array<{
@@ -69,6 +70,7 @@ export class GraphManager {
     const settleNode = new SettlePositionsNode(this.config, this.tools);
     const assessNode = new AssessPositionsNode(this.config, this.tools);
     const discoverNode = new DiscoverMarketsNode(this.config, this.tools);
+    const evaluateNode = new EvaluateMarketNode(this.config, this.tools);
     const summaryNode = new PublishSummaryNode(this.config, this.tools);
     const delayNode = new DelayNode(this.config, this.tools, this.config.interval);
 
@@ -78,6 +80,7 @@ export class GraphManager {
     stateGraph.addNode("settle_positions", settleNode.execute.bind(settleNode));
     stateGraph.addNode("assess_positions", assessNode.execute.bind(assessNode));
     stateGraph.addNode("discover_markets", discoverNode.execute.bind(discoverNode));
+    stateGraph.addNode("evaluate_market", evaluateNode.execute.bind(evaluateNode));
     stateGraph.addNode("publish_summary", summaryNode.execute.bind(summaryNode));
     stateGraph.addNode("delay", delayNode.execute.bind(delayNode));
     stateGraph.addNode("tools", this.handleToolExecution.bind(this));
@@ -89,6 +92,7 @@ export class GraphManager {
     stateGraph.addConditionalEdges("settle_positions", settleNode.shouldContinue.bind(settleNode));
     stateGraph.addConditionalEdges("assess_positions", assessNode.shouldContinue.bind(assessNode));
     stateGraph.addConditionalEdges("discover_markets", discoverNode.shouldContinue.bind(discoverNode));
+    stateGraph.addConditionalEdges("evaluate_market", evaluateNode.shouldContinue.bind(evaluateNode));
     stateGraph.addConditionalEdges("publish_summary", summaryNode.shouldContinue.bind(summaryNode));
     stateGraph.addConditionalEdges("tools", this.shouldUseTools.bind(this));
     Logger.success("Conditional edges added");
@@ -103,9 +107,19 @@ export class GraphManager {
     stateGraph.addEdge("settle_positions", "assess_positions");
     stateGraph.addEdge("settle_positions", "discover_markets");
     
-    // Rest of the flow remains linear
-    stateGraph.addEdge("assess_positions", "discover_markets");
-    stateGraph.addEdge("discover_markets", "publish_summary");
+    // Assessment evaluation loop
+    stateGraph.addEdge("assess_positions", "evaluate_market"); // Start evaluation for a position
+    stateGraph.addEdge("evaluate_market", "assess_positions"); // Return to assess next position
+    
+    // Discovery evaluation loop
+    stateGraph.addEdge("discover_markets", "evaluate_market"); // Start evaluation for a market
+    stateGraph.addEdge("evaluate_market", "discover_markets"); // Return to discover next market
+    
+    // Exit paths from evaluation loops
+    stateGraph.addEdge("assess_positions", "discover_markets"); // When done assessing all positions
+    stateGraph.addEdge("discover_markets", "publish_summary"); // When done discovering all markets
+    
+    // Complete the cycle
     stateGraph.addEdge("publish_summary", "delay");
     stateGraph.addEdge("delay", "lookup");
     Logger.success("Regular edges added");
@@ -113,7 +127,7 @@ export class GraphManager {
     // Set the entry point
     stateGraph.setEntryPoint("lookup");
 
-    // Generate graph visualization after graph is built
+    // Generate graph visualization
     GraphVisualizer.saveDiagram(stateGraph).catch(err => {
       Logger.error(`Failed to generate graph visualization: ${err.message}`);
     });
@@ -241,4 +255,4 @@ export class GraphManager {
       throw error;
     }
   }
-} 
+}
