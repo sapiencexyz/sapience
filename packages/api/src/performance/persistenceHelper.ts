@@ -522,7 +522,6 @@ async function restoreRecordsFromFile(
   trailingAvgTime: number | undefined
 ): Promise<Store | undefined> {
   try {
-    let restored = false;
     // Construct filename based on parameters
     const filename = constructFilename(resourceSlug, kind, interval, epochId, trailingAvgTime);
     
@@ -547,7 +546,7 @@ async function restoreRecordsFromFile(
     // No header in the file
     // let isFirstLine = true; // To skip header
 
-    let invalidVersion = false;
+    const invalidVersion = false;
     // Process file line by line
     for await (const line of rl) {
       // Skip header
@@ -649,7 +648,9 @@ function storeRecordsToDatabase(
   epochId: number | undefined,
   trailingAvgTime: number | undefined,
   store: Store
-) {}
+) {
+  console.log('LLL storeRecordsToDatabase', resourceSlug, kind, interval, epochId, trailingAvgTime, store);
+}
 
 async function restoreRecordsFromDatabase(
   resourceSlug: string,
@@ -658,6 +659,7 @@ async function restoreRecordsFromDatabase(
   epochId: number | undefined,
   trailingAvgTime: number | undefined
 ): Promise<Store | undefined> {
+  console.log('LLL restoreRecordsFromDatabase', resourceSlug, kind, interval, epochId, trailingAvgTime);
   return undefined;
 }
 

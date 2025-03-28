@@ -352,61 +352,13 @@ export class CandleResolver {
       trailingAvgTime
     );
 
+    for (let i = 0; i < prices.length; i++ ) {
+      if (prices[i].close == null) {
+        console.log(`resourceTrailingAverageCandles LLL ${JSON.stringify(prices[i])}, i: ${i}`);
+      }
+    }
     return prices;
 
-    // try {
-    //   const trailingFrom = from - trailingTime;
-    //   const resource = await dataSource.getRepository(Resource).findOne({
-    //     where: { slug },
-    //   });
-
-    //   if (!resource) {
-    //     throw new Error(`Resource not found with slug: ${slug}`);
-    //   }
-
-    //   // First get the most recent price before the trailingFrom timestamp
-    //   const lastPriceBefore = await dataSource
-    //     .getRepository(ResourcePrice)
-    //     .createQueryBuilder('price')
-    //     .where('price.resourceId = :resourceId', { resourceId: resource.id })
-    //     .andWhere('price.timestamp < :from', { from: trailingFrom })
-    //     .orderBy('price.timestamp', 'DESC')
-    //     .take(1)
-    //     .getOne();
-
-    //   // Then get all prices within the range
-    //   const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
-    //     where: {
-    //       resource: { id: resource.id },
-    //       timestamp: Between(trailingFrom, to),
-    //     },
-    //     order: { timestamp: 'ASC' },
-    //   });
-
-    //   const lastKnownPrice =
-    //     lastPriceBefore?.feePaid && lastPriceBefore?.used
-    //       ? (
-    //           BigInt(lastPriceBefore?.feePaid) / BigInt(lastPriceBefore?.used)
-    //         ).toString()
-    //       : lastPriceBefore?.value;
-
-    //   return getTrailingAveragePricesByInterval(
-    //     pricesInRange.map((p) => ({
-    //       timestamp: Number(p.timestamp),
-    //       value: p.value,
-    //       used: p.used,
-    //       feePaid: p.feePaid,
-    //     })),
-    //     trailingTime,
-    //     interval,
-    //     from,
-    //     to,
-    //     lastKnownPrice
-    //   );
-    // } catch (error) {
-    //   console.error('Error fetching resource candles:', error);
-    //   throw new Error('Failed to fetch resource candles');
-    // }
   }
 
   @Query(() => [CandleType])
@@ -600,6 +552,11 @@ export class CandleResolver {
       epochId
     );
 
+    for (let i = 0; i < prices.length; i++ ) {
+      if (prices[i].open == null) {
+        console.log(`marketCandles LLL ${JSON.stringify(prices[i])}, i: ${i}`);
+      }
+    }
     return prices;
   }
 

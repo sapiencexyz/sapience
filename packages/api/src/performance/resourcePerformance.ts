@@ -477,12 +477,6 @@ export class ResourcePerformance {
   }
 
   private async persistStorage() {
-    // const storage = this.persistentStorage;
-    // const lastResourceTimestampProcessed = this.lastResourceTimestampProcessed;
-    // const lastMarketTimestampProcessed = this.lastMarketTimestampProcessed;
-    // const resourceSlug = this.resource.slug;
-    // const resourceName = this.resource.name;
-
     console.log('LLL ResourcePerformance.persistStorage');
     console.time('LLL ResourcePerformance.persistStorage');
 
@@ -499,19 +493,6 @@ export class ResourcePerformance {
       this.epochs
     );
     console.timeEnd('LLL ResourcePerformance.persistStorage');
-
-    // return;
-    // for (const interval of this.intervals) {
-    //   // Interval resource store
-    //   await saveStorageToFile(
-    //     storage[interval],
-    //     lastResourceTimestampProcessed,
-    //     lastMarketTimestampProcessed,
-    //     resourceSlug,
-    //     resourceName,
-    //     interval.toString()
-    //   );
-    // }
   }
 
   private async restorePersistedStorage(): Promise<
@@ -522,12 +503,6 @@ export class ResourcePerformance {
       }
     | undefined
   > {
-    const resourceSlug = this.resource.slug;
-    const resourceName = this.resource.name;
-    const restoredStorage: StorageData = {};
-    let latestResourceTimestamp = 0;
-    let latestMarketTimestamp = 0;
-
     await this.pullMarketsAndEpochs(false);
     const restored = await restore(
       PersistMode.FILE,
@@ -536,20 +511,6 @@ export class ResourcePerformance {
       this.trailingAvgTime,
       this.epochs
     );  
-    // for (const interval of this.intervals) {
-    //   const storageInterval = await loadStorageFromFile(
-    //     resourceSlug,
-    //     resourceName,
-    //     interval.toString()
-    //   );
-    //   if (!storageInterval) {
-    //     return undefined;
-    //   }
-    //   restoredStorage[interval] = storageInterval.store;
-    //   latestResourceTimestamp = storageInterval.latestResourceTimestamp;
-    //   latestMarketTimestamp = storageInterval.latestMarketTimestamp;
-    // }
-
     
     return restored ?  {
       latestResourceTimestamp: restored.latestResourceTimestamp,
@@ -1419,12 +1380,6 @@ export class ResourcePerformance {
 
     // Get slice of prices in time window
     const pricesInRange = prices.slice(startIndex, endIndex);
-    // DEBUG:
-    for (const price of pricesInRange) {
-      if (!price.open || !price.high || !price.low || !price.close) {
-        console.warn(`Invalid price: ${JSON.stringify(price)}`);
-      }
-    }
     return pricesInRange;
   }
 
