@@ -106,7 +106,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   const market = markets.find(
     (m: Market) => m.address.toLowerCase() === address.toLowerCase()
   );
-  console.log('market', market);
   const resource = resources?.find((r) => r.name === market?.resource?.name);
 
   const marketViewFunctionResult = useReadContract({

@@ -155,7 +155,6 @@ export const useLatestIndexPrice = (market: {
   chainId: number;
   epochId: number;
 }) => {
-  console.log('market', market);
   return useQuery({
     queryKey: [
       'indexPrice',

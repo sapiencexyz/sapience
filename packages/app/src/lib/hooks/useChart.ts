@@ -722,7 +722,6 @@ export const useChart = ({
         indexLineData.sort((a, b) => (a.time as number) - (b.time as number));
       }
 
-      // Set the data to the series
       indexPriceSeriesRef.current.setData(indexLineData);
     }
   }, [
@@ -786,9 +785,10 @@ export const useChart = ({
     updateCandlestickData();
     updateIndexPriceData();
     updateResourcePriceData();
-    updateTrailingAverageData();
+    if (!contextMarket?.isCumulative) updateTrailingAverageData();
     updateSeriesVisibility();
   }, [
+    contextMarket?.isCumulative,
     updateCandlestickData,
     updateIndexPriceData,
     updateResourcePriceData,
@@ -848,7 +848,7 @@ export const useChart = ({
       updateCandlestickData();
       updateIndexPriceData();
       updateResourcePriceData();
-      updateTrailingAverageData();
+      if (!contextMarket?.isCumulative) updateTrailingAverageData();
     }
   }, [
     useMarketUnits,
@@ -857,6 +857,7 @@ export const useChart = ({
     updateIndexPriceData,
     updateResourcePriceData,
     updateTrailingAverageData,
+    contextMarket?.isCumulative,
   ]);
 
   const loadingStates = useMemo(
@@ -884,9 +885,10 @@ export const useChart = ({
         from: (firstCandle.startTimestamp / 1000) as UTCTimestamp,
         to: (lastCandle.endTimestamp / 1000) as UTCTimestamp,
       });
-    } else if (trailingResourcePrices?.length) {
+    } else if (trailingResourcePrices?.length && !contextMarket?.isCumulative) {
       const now = Math.floor(Date.now() / 1000);
       const from = now - 28 * 86400;
+
       chartRef.current?.timeScale().setVisibleRange({
         from: from as UTCTimestamp,
         to: now as UTCTimestamp,
