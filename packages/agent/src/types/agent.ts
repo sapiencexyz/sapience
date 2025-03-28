@@ -8,10 +8,12 @@ export interface AgentState {
   messages: BaseMessage[];
   positions: Position[];
   markets: MarketType[];
+  previousMarkets?: MarketType[];
   actions: Action[];
   currentStep: string;
   lastAction?: string;
   toolResults: Record<string, any>;
+  agentAddress: string;
 }
 
 export interface AgentConfig {

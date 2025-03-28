@@ -2,12 +2,11 @@ import { AgentState } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
+import { AIMessage } from '@langchain/core/messages';
 
 export class AssessPositionsNode extends BaseNode {
-  async execute(state: AgentState): Promise<AgentState> {
-    Logger.step('[Assess] Evaluating current positions...');
-    
-    const prompt = `Assess and modify positions using the provided tools.
+  public getPrompt(): string {
+    return `Assess and modify positions using the provided tools.
       You have access to these tools:
       - get_foil_position: Get information about a specific position by its ID
         Example: get_foil_position({"positionId": "123"})
@@ -17,13 +16,6 @@ export class AssessPositionsNode extends BaseNode {
         Example: quote_modify_foil_trader_position({"positionId": "123", "size": 100})
       - modify_foil_trader_position: Modify an existing position
         Example: modify_foil_trader_position({"positionId": "123", "size": 100})
-      
-      Current State:
-      - Step: ${state.currentStep}
-      - Positions: ${JSON.stringify(state.positions)}
-      - Markets: ${JSON.stringify(state.markets)}
-      - Actions: ${JSON.stringify(state.actions)}
-      - Last Action: ${state.lastAction || 'None'}
       
       Instructions:
       1. First, use get_foil_position to check each position in the current state
@@ -35,8 +27,13 @@ export class AssessPositionsNode extends BaseNode {
       IMPORTANT: Use the exact tool names as shown above. Do not use variations like "getPositions" or "getPositionsById".
       
       Respond with your analysis and planned actions.`;
+  }
+
+  async execute(state: AgentState): Promise<AgentState> {
+    Logger.nodeTransition(state.currentStep, 'Assess');
+    Logger.step('[Assess] Evaluating current positions...');
     
-    const response = await this.invokeModel(state, prompt);
+    const response = await this.invokeModel(state, this.getPrompt());
     const formattedContent = this.formatMessageContent(response.content);
     const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
@@ -46,13 +43,14 @@ export class AssessPositionsNode extends BaseNode {
       lastAction: 'analyze_positions',
       positions: state.positions,
       markets: state.markets,
-      actions: state.actions
+      actions: state.actions,
+      toolResults: state.toolResults
     };
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
     Logger.step('[Assess] Checking if more assessment needed...');
-    const lastMessage = state.messages[state.messages.length - 1];
+    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
     
     if (lastMessage.tool_calls?.length > 0) {
       Logger.info("Tool calls found, continuing with tools");

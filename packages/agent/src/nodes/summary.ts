@@ -4,10 +4,8 @@ import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
 
 export class PublishSummaryNode extends BaseNode {
-  async execute(state: AgentState): Promise<AgentState> {
-    Logger.step('[Summary] Generating trading session summary...');
-    
-    const prompt = `Create a comprehensive summary of the trading session.
+  public getPrompt(): string {
+    return `Create a comprehensive summary of the trading session.
       Use these tools to gather information:
       - get_foil_position: Get information about positions
       - get_foil_position_pnl: Get PnL information
@@ -21,8 +19,13 @@ export class PublishSummaryNode extends BaseNode {
       5. Format your response clearly with sections
       
       Provide a detailed summary of the trading session.`;
+  }
+
+  async execute(state: AgentState): Promise<AgentState> {
+    Logger.nodeTransition(state.currentStep, 'Summary');
+    Logger.step('[Summary] Generating trading session summary...');
     
-    const response = await this.invokeModel(state, prompt);
+    const response = await this.invokeModel(state, this.getPrompt());
     const formattedContent = this.formatMessageContent(response.content);
     const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
@@ -37,7 +40,8 @@ export class PublishSummaryNode extends BaseNode {
       lastAction: 'generate_summary',
       positions: state.positions,
       markets: state.markets,
-      actions: state.actions
+      actions: state.actions,
+      toolResults: state.toolResults
     };
   }
 

@@ -18,15 +18,16 @@ export class Logger {
     this.isDebugMode = enabled;
   }
 
-  static info(msg: string | string[]) {
-    const msgStr = Array.isArray(msg) ? msg.join('\n') : msg;
-    if (!msgStr.includes('[llm/start]') && !msgStr.includes('[chain/start]')) {
-      console.log(chalk.blue('ℹ'), chalk.blue(msgStr));
-    }
+  static info(message: string) {
+    console.log(chalk.blue(`ℹ ${message}`));
   }
 
-  static success(msg: string) {
-    console.log(chalk.green('✓'), chalk.green(msg));
+  static nodeTransition(fromNode: string, toNode: string) {
+    console.log(chalk.blue(`ℹ [${fromNode} → ${toNode}]`));
+  }
+
+  static success(message: string) {
+    console.log(chalk.green(`✓ ${message}`));
   }
 
   static warn(msg: string) {

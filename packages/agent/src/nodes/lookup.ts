@@ -78,11 +78,10 @@ export class LookupNode {
   public async execute(): Promise<LookupState> {
     try {
       this.state = await this.initializeState();
+      Logger.nodeTransition('Start', 'Lookup');
       Logger.info("Starting position lookup...");
 
       const systemPrompt = `You are a Foil trading agent responsible for finding positions owned by the agent.
-      
-      Current state: ${JSON.stringify(this.state)}
       
       You have access to the following tools:
       - get_foil_positions: Gets all positions
@@ -91,6 +90,9 @@ export class LookupNode {
       1. Use get_foil_positions to get all positions
       2. Filter positions to find those owned by the agent's address: ${this.agentAddress}
       3. Update state with found positions
+      
+      IMPORTANT: The agent's address is already available in the state as agentAddress. Use this exact address to filter positions.
+      Do not try to use placeholder addresses or modify the address in any way.
       
       When using tools, format your response as:
       Thought: I need to [describe what you're going to do]
@@ -104,7 +106,7 @@ export class LookupNode {
       // Create messages array with system prompt and a human message to trigger the agent
       const messages = [
         new SystemMessage(systemPrompt),
-        new HumanMessage("Please find all positions owned by the agent.")
+        new HumanMessage(`Please find all positions owned by the agent at address: ${this.agentAddress}`)
       ];
 
       let currentMessages = [...messages];
@@ -121,40 +123,83 @@ export class LookupNode {
         ]);
 
         // Process any tool calls
-        if (response.tool_calls) {
-          for (const toolCall of response.tool_calls) {
-            const tool = this.tools.find(t => t.name === toolCall.name);
-            if (tool) {
-              Logger.info(`Calling ${toolCall.name}`);
-              const result = await tool.call(toolCall.args);
-              Logger.info(`Tool ${toolCall.name} completed`);
-              
-              // Format tool input/output for logging
-              const inputStr = JSON.stringify(toolCall.args);
-              const outputStr = JSON.stringify(result);
-              Logger.info(`Tool ${toolCall.name} input: ${inputStr.length > 200 ? inputStr.substring(0, 200) + '...' : inputStr}`);
-              Logger.info(chalk.magenta(`Tool ${toolCall.name} output: ${outputStr.length > 200 ? outputStr.substring(0, 200) + '...' : outputStr}`));
-              
-              // Add the tool result to the conversation with the correct tool call ID
-              currentMessages.push(new ToolMessage(result, toolCall.id));
-              
-              // Update state with tool results
-              if (this.state) {
-                this.state.toolResults = {
-                  ...this.state.toolResults,
-                  [toolCall.name]: result
-                };
+        if (response.tool_calls && response.tool_calls.length > 0) {
+          // Only process the first tool call
+          const toolCall = response.tool_calls[0];
+          const tool = this.tools.find(t => t.name === toolCall.name);
+          
+          if (tool) {
+            // Add the model's response with tool calls first
+            currentMessages.push(response);
+            
+            // Log tool call in purple
+            Logger.info(chalk.magenta(`Calling ${toolCall.name}`));
+            
+            // Execute tool with empty input to get all positions
+            const result = await tool.call({ input: "" });
+            
+            // Log tool completion in purple
+            Logger.info(chalk.magenta(`Tool ${toolCall.name} completed`));
+            
+            // Format tool input/output for logging in purple
+            const inputStr = JSON.stringify({ input: "" });
+            const outputStr = JSON.stringify(result);
+            Logger.info(chalk.magenta(`Tool ${toolCall.name} input: ${inputStr}`));
+            Logger.info(chalk.magenta(`Tool ${toolCall.name} output: ${outputStr.length > 200 ? outputStr.substring(0, 200) + '...' : outputStr}`));
+            
+            // Parse the result to get positions
+            let positions = [];
+            try {
+              const parsedResult = JSON.parse(result);
+              if (Array.isArray(parsedResult)) {
+                positions = parsedResult.filter(pos => pos.owner.toLowerCase() === this.agentAddress.toLowerCase());
+                
+                // Log the agent's reasoning
+                Logger.info(chalk.green('AGENT: <thinking>'));
+                if (positions.length === 0) {
+                  Logger.info(chalk.green('No positions found for the agent address. Will transition to discover step.'));
+                } else {
+                  Logger.info(chalk.green(`Found ${positions.length} positions owned by the agent. Will transition to settle step.`));
+                }
+                Logger.info(chalk.green('</thinking>'));
               }
+            } catch (e) {
+              Logger.error(`Error parsing positions: ${e}`);
             }
+
+            // Update state with filtered positions
+            if (this.state) {
+              this.state.positions = positions;
+              this.state.toolResults = {
+                ...this.state.toolResults,
+                [toolCall.name]: result
+              };
+            }
+
+            // Add the tool result to the conversation with the correct tool call ID
+            currentMessages.push(new ToolMessage(result, toolCall.id));
+            
+            // Get the model's response to the tool result
+            const toolResponse = await this.model.invoke(currentMessages);
+            
+            // Log the agent's response to the tool output
+            Logger.info(chalk.green('AGENT: <thinking>'));
+            // Extract just the reasoning part from the response
+            const content = typeof toolResponse.content === 'string' 
+              ? toolResponse.content 
+              : JSON.stringify(toolResponse.content);
+            const reasoning = content.match(/Thought: (.*?)(?:\n|$)/)?.[1] || content;
+            Logger.info(chalk.green(reasoning));
+            Logger.info(chalk.green('</thinking>'));
+            
+            currentMessages.push(toolResponse);
+
+            // We're done with this tool call
+            shouldContinue = false;
           }
         } else {
           // If no more tool calls, we're done
           shouldContinue = false;
-        }
-
-        // Only add the model's response if we're done with tool calls
-        if (!shouldContinue) {
-          currentMessages.push(response);
         }
       }
 

@@ -1,5 +1,5 @@
 import { ChatAnthropic } from "@langchain/anthropic";
-import { HumanMessage, MessageContent, BaseMessageFields, SystemMessage } from "@langchain/core/messages";
+import { HumanMessage, MessageContent, BaseMessage, SystemMessage, ToolMessage, AIMessage } from "@langchain/core/messages";
 import { AgentState, AgentConfig, AgentTools, convertToLangChainTools } from '../types';
 import { Logger } from '../utils/logger';
 import chalk from 'chalk';
@@ -13,6 +13,7 @@ let sharedModel: Runnable | null = null;
 
 export abstract class BaseNode {
   protected model: Runnable;
+  protected toolNode: ToolNode;
 
   constructor(
     protected config: AgentConfig,
@@ -38,6 +39,7 @@ export abstract class BaseNode {
       sharedModel = claudeModel.bindTools(langChainTools);
     }
     this.model = sharedModel;
+    this.toolNode = new ToolNode(convertToLangChainTools(tools.graphql));
   }
 
   protected async invokeModel(state: AgentState, prompt: string): Promise<any> {
@@ -95,59 +97,82 @@ export abstract class BaseNode {
         new HumanMessage(prompt)
       ]);
 
-      // If the response contains tool calls, ensure they're properly formatted
-      if ('tool_calls' in response) {
-        const toolCalls = (response as any).tool_calls;
-        if (Array.isArray(toolCalls)) {
-          toolCalls.forEach(call => {
-            // Ensure tool names are in snake_case
-            if (call.name && !call.name.includes('_')) {
-              call.name = call.name.replace(/([A-Z])/g, '_$1').toLowerCase();
-            }
-            // Ensure args are properly formatted
-            if (call.args && typeof call.args === 'string') {
-              try {
-                call.args = JSON.parse(call.args);
-              } catch (e) {
-                // If parsing fails, keep the original string
-              }
-            }
-          });
-        }
-      }
+      // Log the agent's reasoning
+      Logger.info(chalk.green('AGENT: <thinking>'));
+      const content = typeof response.content === 'string' 
+        ? response.content 
+        : JSON.stringify(response.content);
+      const reasoning = content.match(/Thought: (.*?)(?:\n|$)/)?.[1] || content;
+      Logger.info(chalk.green(reasoning));
+      Logger.info(chalk.green('</thinking>'));
 
       return response;
     } catch (error) {
-      Logger.error("Model invocation failed:");
-      if (error instanceof Error) {
-        Logger.error(`Error name: ${error.name}`);
-        Logger.error(`Error message: ${error.message}`);
-        if (error.stack) {
-          Logger.error(`Stack trace: ${error.stack}`);
-        }
-        if ('cause' in error) {
-          Logger.error(`Caused by: ${(error as any).cause}`);
-        }
-      } else {
-        Logger.error(`Unknown error type: ${typeof error}`);
-        Logger.error(`Error value: ${JSON.stringify(error, null, 2)}`);
-      }
+      Logger.error(`Error invoking model: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
 
-  protected formatMessageContent(content: any): string | BaseMessageFields {
+  protected formatMessageContent(content: any): string {
     if (typeof content === 'string') {
       return content;
     }
-    if (Array.isArray(content)) {
-      return content.map(c => 
-        'text' in c ? c.text : 
-        'type' in c ? `[${c.type}]` : 
-        JSON.stringify(c)
-      ).join('\n');
-    }
     return JSON.stringify(content);
+  }
+
+  protected async handleToolCalls(toolCalls: any[]): Promise<ToolMessage[]> {
+    const results: ToolMessage[] = [];
+    
+    for (const toolCall of toolCalls) {
+      try {
+        // Find the tool in any of the tool categories
+        const tool = Object.values(this.tools.readFoilContracts).find(t => t.name === toolCall.name) ||
+                    Object.values(this.tools.writeFoilContracts).find(t => t.name === toolCall.name) ||
+                    Object.values(this.tools.graphql).find(t => t.name === toolCall.name);
+
+        if (tool) {
+          Logger.info(chalk.magenta(`Calling ${toolCall.name}`));
+          const result = await tool.function(toolCall.args);
+          Logger.info(chalk.magenta(`Tool ${toolCall.name} completed`));
+          
+          // Format tool input/output for logging in purple
+          const inputStr = JSON.stringify(toolCall.args);
+          const outputStr = JSON.stringify(result);
+          Logger.info(chalk.magenta(`Tool ${toolCall.name} input: ${inputStr}`));
+          Logger.info(chalk.magenta(`Tool ${toolCall.name} output: ${outputStr.length > 200 ? outputStr.substring(0, 200) + '...' : outputStr}`));
+          
+          results.push(new ToolMessage(JSON.stringify(result), toolCall.id));
+        }
+      } catch (error) {
+        Logger.error(`Error executing tool ${toolCall.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        results.push(new ToolMessage(
+          JSON.stringify({ error: 'Tool execution failed' }),
+          toolCall.id
+        ));
+      }
+    }
+    
+    return results;
+  }
+
+  protected createStateUpdate(state: AgentState, messages: BaseMessage[], toolResults: ToolMessage[] = []): AgentState {
+    return {
+      messages: [...state.messages, ...messages],
+      currentStep: state.currentStep,
+      lastAction: state.lastAction,
+      positions: state.positions,
+      markets: state.markets,
+      previousMarkets: state.markets,
+      actions: state.actions,
+      toolResults: {
+        ...state.toolResults,
+        ...toolResults.reduce((acc, msg) => ({
+          ...acc,
+          [msg.name]: msg.content
+        }), {})
+      },
+      agentAddress: state.agentAddress
+    };
   }
 
   async execute(state: AgentState): Promise<AgentState> {
@@ -158,16 +183,34 @@ export abstract class BaseNode {
         lastAction: state.lastAction
       });
 
-      const result = await this.invokeModel(state, this.getPrompt());
-      
-      // Log state update after execution
-      Logger.stateUpdate(this.constructor.name, {
-        step: result.currentStep,
-        lastAction: result.lastAction,
-        messageCount: result.messages.length
-      });
+      const response = await this.invokeModel(state, this.getPrompt(state));
+      const formattedContent = this.formatMessageContent(response.content);
+      const agentResponse = new AIMessage(formattedContent, response.tool_calls);
 
-      return result;
+      // Handle tool calls if present
+      if (response.tool_calls?.length > 0) {
+        const toolResults = await this.handleToolCalls(response.tool_calls);
+        
+        // Get the model's response to the tool results
+        const toolResponse = await this.model.invoke([
+          ...state.messages,
+          agentResponse,
+          ...toolResults
+        ]);
+
+        // Log the agent's response to the tool output
+        Logger.info(chalk.green('AGENT: <thinking>'));
+        const content = typeof toolResponse.content === 'string' 
+          ? toolResponse.content 
+          : JSON.stringify(toolResponse.content);
+        const reasoning = content.match(/Thought: (.*?)(?:\n|$)/)?.[1] || content;
+        Logger.info(chalk.green(reasoning));
+        Logger.info(chalk.green('</thinking>'));
+
+        return this.createStateUpdate(state, [agentResponse, toolResponse, ...toolResults], toolResults);
+      }
+
+      return this.createStateUpdate(state, [agentResponse]);
     } catch (error) {
       Logger.error(`Error in ${this.constructor.name}:`);
       if (error instanceof Error) {
@@ -181,5 +224,5 @@ export abstract class BaseNode {
   }
 
   abstract shouldContinue(state: AgentState): Promise<string>;
-  abstract getPrompt(): string;
+  abstract getPrompt(state: AgentState): string;
 } 

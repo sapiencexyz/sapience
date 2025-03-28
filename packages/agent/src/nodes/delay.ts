@@ -13,6 +13,7 @@ export class DelayNode extends BaseNode {
   }
 
   async execute(state: AgentState): Promise<AgentState> {
+    Logger.nodeTransition(state.currentStep, 'Delay');
     Logger.step(`[Delay] Waiting ${this.delayMs}ms before next iteration...`);
     
     // Add a message about the delay
@@ -25,8 +26,13 @@ export class DelayNode extends BaseNode {
       ...state,
       messages: [...state.messages, delayMessage],
       currentStep: 'delay',
-      lastAction: 'delay'
+      lastAction: 'delay',
+      toolResults: state.toolResults
     };
+  }
+
+  public getPrompt(): string {
+    return `Waiting ${this.delayMs}ms before starting next iteration...`;
   }
 
   async shouldContinue(state: AgentState): Promise<string> {

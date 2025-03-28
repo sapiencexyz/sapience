@@ -2,12 +2,11 @@ import { AgentState } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
+import { AIMessage } from '@langchain/core/messages';
 
 export class SettlePositionsNode extends BaseNode {
-  async execute(state: AgentState): Promise<AgentState> {
-    Logger.step('[Settle] Analyzing positions for settlement...');
-    
-    const prompt = `Analyze and settle positions using the provided tools.
+  public getPrompt(): string {
+    return `Analyze and settle positions using the provided tools.
       You have access to these tools:
       - get_foil_position: Get information about a specific position
       - get_foil_position_pnl: Get the PnL of a position
@@ -20,8 +19,13 @@ export class SettlePositionsNode extends BaseNode {
       4. Explain your reasoning and actions clearly
       
       Respond with your analysis and planned actions.`;
+  }
+
+  async execute(state: AgentState): Promise<AgentState> {
+    Logger.nodeTransition(state.currentStep, 'Settle');
+    Logger.step('[Settle] Analyzing positions for settlement...');
     
-    const response = await this.invokeModel(state, prompt);
+    const response = await this.invokeModel(state, this.getPrompt());
     const formattedContent = this.formatMessageContent(response.content);
     const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
@@ -31,13 +35,14 @@ export class SettlePositionsNode extends BaseNode {
       lastAction: 'analyze_positions',
       positions: state.positions,
       markets: state.markets,
-      actions: state.actions
+      actions: state.actions,
+      toolResults: state.toolResults
     };
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
     Logger.step('[Settle] Checking if more settlement needed...');
-    const lastMessage = state.messages[state.messages.length - 1];
+    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
     
     if (lastMessage.tool_calls?.length > 0) {
       Logger.info("Tool calls found, continuing with tools");
