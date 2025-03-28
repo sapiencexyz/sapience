@@ -45,18 +45,13 @@ Available tools:
     const isAssessingPosition = state.currentStep === 'assess_positions';
     const currentItem = isAssessingPosition ? state.positions[0] : state.markets[0];
     
-    Logger.info(`Evaluating ${isAssessingPosition ? 'position' : 'market'}: ${JSON.stringify(currentItem)}`);
+    Logger.step(`Evaluating ${isAssessingPosition ? 'position' : 'market'}: ${JSON.stringify(currentItem)}`);
     
     // Get model's evaluation
     const response = await this.invokeModel(state, this.getPrompt(state));
     const formattedContent = this.formatMessageContent(response.content);
     const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
     
-    // Log the evaluation results
-    Logger.info(chalk.green('AGENT: <thinking>'));
-    Logger.info(chalk.green(formattedContent));
-    Logger.info(chalk.green('</thinking>'));
-
     // Create new state with updated arrays (remove current item)
     const newState = {
       ...state,
@@ -68,7 +63,7 @@ Available tools:
 
     // If this was the last item to evaluate, update the step
     if (newState[isAssessingPosition ? 'positions' : 'markets'].length === 0) {
-      Logger.info(`Finished evaluating all ${isAssessingPosition ? 'positions' : 'markets'}`);
+      Logger.step(`Finished evaluating all ${isAssessingPosition ? 'positions' : 'markets'}`);
       newState.currentStep = isAssessingPosition ? 'discover_markets' : 'publish_summary';
     }
 

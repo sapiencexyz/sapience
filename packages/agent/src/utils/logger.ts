@@ -29,7 +29,7 @@ export class Logger {
   }
 
   static nodeTransition(fromNode: string, toNode: string) {
-    console.log(chalk.blue.bold(`ℹ ${fromNode} → ${toNode}`));
+    console.log(chalk.cyan(`SYSTEM: [${fromNode} -> ${toNode}]`));
   }
 
   static success(message: string) {
@@ -46,7 +46,7 @@ export class Logger {
 
   static step(message: string) {
     this.currentStep = message;
-    console.log(chalk.cyan(message));
+    console.log(chalk.cyan(`SYSTEM: ${message}`));
   }
 
   static debug(message: string) {
@@ -63,25 +63,39 @@ export class Logger {
                           JSON.stringify(content);
         console.log(chalk.blue(`PROMPT: ${contentStr}`));
       } else if (role === 'assistant') {
-        const contentStr = typeof content === 'string' ? content :
-                          Array.isArray(content) ? content.map(c => c.text).join('\n') :
-                          JSON.stringify(content);
-        console.log(chalk.green(`Agent: ${contentStr}`));
+        if (Array.isArray(content)) {
+          console.log(chalk.green(`AGENT:`));
+          content.forEach(item => {
+            if (item.type === 'text') {
+              console.log(chalk.green(`${item.text}`));
+            } else if (item.type === 'tool_use') {
+              console.log(chalk.yellow(`[Tool: ${item.name}] ${JSON.stringify(item.input)}`));
+            } else {
+              console.log(chalk.green(`${JSON.stringify(item)}`));
+            }
+          });
+        } else {
+          const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
+          console.log(chalk.green(`AGENT: ${contentStr}`));
+        }
       }
     });
   }
 
   static toolCall(toolName: string, args: any, result?: any) {
-    console.log(chalk.magenta(`🛠️ Calling ${toolName}`));
+    const input = typeof args === 'string' ? args : JSON.stringify(args);
+    const output = typeof result === 'string' ? result : JSON.stringify(result);
+    
+    console.log(chalk.magenta(`Tool input: ${input}`));
     if (result !== undefined) {
-      console.log(chalk.magenta('Output:'), typeof result === 'string' ? result : JSON.stringify(result));
+      console.log(chalk.magenta(`Tool output: ${output.length > 200 ? output.substring(0, 200) + '...' : output}`));
     }
   }
 
   static stateUpdate(step: string, changes: Record<string, any>) {
     if (step !== this.currentStep) {
       this.currentStep = step;
-      console.log(chalk.cyan(step));
+      console.log(chalk.cyan(`SYSTEM: ${step}`));
     }
   }
 } 

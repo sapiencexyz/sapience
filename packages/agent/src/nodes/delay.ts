@@ -2,7 +2,6 @@ import { AgentState, AgentConfig, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
-import chalk from 'chalk';
 
 export class DelayNode extends BaseNode {
   constructor(
@@ -15,8 +14,7 @@ export class DelayNode extends BaseNode {
   }
 
   async execute(state: AgentState): Promise<AgentState> {
-    Logger.nodeTransition(state.currentStep, 'Delay');
-    Logger.step(`[Delay] Waiting ${this.delayMs}ms before next iteration...`);
+    Logger.step(`Waiting ${this.delayMs}ms before next iteration...`);
     
     // Add a message about the delay
     const delayMessage = new AgentAIMessage(`Waiting ${this.delayMs}ms before starting next iteration...`);
@@ -24,7 +22,7 @@ export class DelayNode extends BaseNode {
     // Wait for the specified delay
     await new Promise(resolve => setTimeout(resolve, this.delayMs));
     
-    Logger.info(chalk.green(`[Delay] ✅ Delay complete, returning to lookup node`));
+    Logger.step(`Delay complete, returning to lookup node`);
     
     return this.createStateUpdate(state, [delayMessage]);
   }

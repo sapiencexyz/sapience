@@ -43,10 +43,8 @@ export class DiscoverMarketsNode extends BaseNode {
     agentResponse: AIMessage,
     toolResults: ToolMessage[]
   ): Promise<AgentState | null> {
-    // Log thinking state after tool calls
-    Logger.step('[Discover] 📊 Analyzing market data...');
+    Logger.step('Analyzing market data...');
     
-    // Extract market data from tool results
     const marketData = toolResults.map(result => {
       try {
         return JSON.parse(result.content as string);
@@ -58,14 +56,14 @@ export class DiscoverMarketsNode extends BaseNode {
 
     // Log summary of market analysis
     if (marketData.length > 0) {
-      Logger.info(chalk.cyan(`📈 Found ${marketData.length} markets to analyze`));
+      Logger.step(`Found ${marketData.length} markets to analyze`);
       
       // Update the state with identified markets
       if (Array.isArray(marketData[0])) {
         state.markets = marketData[0];
       }
     } else {
-      Logger.warn(chalk.yellow('⚠️ No market data found in tool results'));
+      Logger.warn('No market data found in tool results');
     }
 
     // Instead of creating a new model call, process the data directly
@@ -81,11 +79,11 @@ export class DiscoverMarketsNode extends BaseNode {
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('[Discover] 🔄 Checking if more discovery needed...');
+    Logger.step('Checking if more discovery needed...');
     const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
     
     if (lastMessage.tool_calls?.length > 0) {
-      Logger.info(chalk.cyan("[Discover] 🛠️ Tool calls found, continuing with tools"));
+      Logger.step('Tool calls found, continuing with tools');
       return "tools";
     }
 

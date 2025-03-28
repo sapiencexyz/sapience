@@ -103,15 +103,8 @@ export abstract class BaseNode {
         new HumanMessage(prompt)
       ]);
 
-      // Log the agent's reasoning
-      Logger.info(chalk.green('AGENT: <thinking>'));
-      const content = typeof response.content === 'string' 
-        ? response.content 
-        : JSON.stringify(response.content);
-      const reasoning = content.match(/Thought: (.*?)(?:\n|$)/)?.[1] || content;
-      Logger.info(chalk.green(reasoning));
-      Logger.info(chalk.green('</thinking>'));
-
+      // We no longer log the thinking process separately, it will be part of AGENT OUTPUT
+      
       return response;
     } catch (error) {
       Logger.error(`Error invoking model: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -189,10 +182,6 @@ export abstract class BaseNode {
         lastAction: state.lastAction
       });
 
-      // Log node transition
-      Logger.nodeTransition(state.currentStep, this.constructor.name);
-      Logger.step(`[${this.constructor.name}] Starting execution...`);
-
       // Get node-specific prompt
       const prompt = this.getPrompt(state);
       
@@ -200,15 +189,15 @@ export abstract class BaseNode {
       const response = await this.invokeModel(state, prompt);
       const formattedContent = this.formatMessageContent(response.content);
       
-      // Always log the agent's full response
-      Logger.info(chalk.green('AGENT OUTPUT:'));
+      // Log the agent's response with the updated format
+      Logger.info(chalk.green('AGENT:'));
       Logger.info(chalk.green(formattedContent));
       
       const agentResponse = new AIMessage(formattedContent, response.tool_calls);
 
       // Handle tool calls if present
       if (response.tool_calls?.length > 0) {
-        Logger.info(chalk.cyan('🔄 Processing tool calls...'));
+        Logger.step('Processing tool calls...');
         const toolResults = await this.handleToolCalls(response.tool_calls);
         
         // Clear state messages to prevent tool ID mismatches
@@ -231,14 +220,7 @@ export abstract class BaseNode {
 
         // Default behavior: Simply update state with the tool results
         // This avoids making another model call which could cause tool ID mismatches
-        Logger.info(chalk.cyan('📊 Updating state with tool results'));
-        
-        // Create a simple summary message instead of calling the model again
-        const summaryMessage = new AIMessage(
-          `Analyzed data from ${toolResults.length} tool calls.`
-        );
-        
-        return this.createStateUpdate(cleanState, [agentResponse, summaryMessage], toolResults);
+        return this.createStateUpdate(cleanState, [agentResponse, new AIMessage(`Analyzed data from ${toolResults.length} tool calls.`)], toolResults);
       }
 
       // Process the response (allow nodes to customize response handling)

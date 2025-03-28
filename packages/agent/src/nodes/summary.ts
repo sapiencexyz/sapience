@@ -23,15 +23,15 @@ export class PublishSummaryNode extends BaseNode {
     agentResponse: AIMessage,
     toolResults: ToolMessage[]
   ): Promise<AgentState | null> {
-    Logger.step('[Summary] 📊 Processing summary data...');
+    Logger.step('Processing summary data...');
     
     // Process and log any useful data from tool results
     toolResults.forEach((result, index) => {
       try {
         const data = JSON.parse(result.content as string);
-        Logger.info(chalk.cyan(`📊 Tool ${index + 1} result processed`));
+        Logger.step(`Tool ${index + 1} result processed`);
       } catch (e) {
-        Logger.warn(chalk.yellow(`⚠️ Could not parse tool result ${index + 1}`));
+        Logger.warn(`Could not parse tool result ${index + 1}`);
       }
     });
     
@@ -53,11 +53,11 @@ export class PublishSummaryNode extends BaseNode {
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('[Summary] 🔄 Determining next step...');
+    Logger.step('Determining next step...');
     const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
     
     if (lastMessage.tool_calls?.length > 0) {
-      Logger.info(chalk.cyan("[Summary] 🛠️ Tool calls found, continuing with tools"));
+      Logger.step('Tool calls found, continuing with tools');
       return "tools";
     }
 

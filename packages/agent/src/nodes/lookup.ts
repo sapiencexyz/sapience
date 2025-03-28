@@ -105,7 +105,6 @@ export class LookupNode extends BaseNode {
 
   public async execute(state: AgentState): Promise<AgentState> {
     try {
-      Logger.nodeTransition(state.currentStep, 'Lookup');
       Logger.step('[Lookup] Searching for positions...');
       
       const response = await this.invokeModel(state, this.getPrompt(state));
@@ -114,7 +113,7 @@ export class LookupNode extends BaseNode {
 
       // Handle tool calls if present
       if (response.tool_calls?.length > 0) {
-        Logger.step('[Lookup] Processing tool calls...');
+        Logger.step('Processing tool calls...');
         const toolResults = await this.handleToolCalls(response.tool_calls);
         
         // Parse positions from tool results
@@ -133,19 +132,17 @@ export class LookupNode extends BaseNode {
         const updatedState = this.createStateUpdate(state, [agentResponse, ...toolResults], toolResults);
         updatedState.positions = positions;
         
-        // Log the agent's reasoning
-        Logger.info(chalk.green('AGENT: <thinking>'));
+        // Log positions information
         if (positions.length === 0) {
-          Logger.info(chalk.green('No positions found for the agent address. Will transition to discover step.'));
+          Logger.step(`No positions found for the agent address.`);
         } else {
-          Logger.info(chalk.green(`Found ${positions.length} positions owned by the agent. Will transition to settle step.`));
+          Logger.step(`Found ${positions.length} positions owned by the agent.`);
         }
-        Logger.info(chalk.green('</thinking>'));
 
         return updatedState;
       }
 
-      Logger.step('[Lookup] No tool calls to process, updating state...');
+      Logger.step('No tool calls to process, updating state...');
       return this.createStateUpdate(state, [agentResponse]);
     } catch (error) {
       Logger.error(`Error in LookupNode: ${error instanceof Error ? error.message : 'Unknown error'}`);

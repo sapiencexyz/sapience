@@ -28,7 +28,6 @@ export class SettlePositionsNode extends BaseNode {
   }
 
   async execute(state: AgentState): Promise<AgentState> {
-    Logger.nodeTransition(state.currentStep, 'Settle');
     Logger.step('[Settle] Analyzing positions for settlement...');
     
     const response = await this.invokeModel(state, this.getPrompt(state));
@@ -48,18 +47,18 @@ export class SettlePositionsNode extends BaseNode {
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('[Settle] Checking if more settlement needed...');
+    Logger.step('Checking if more settlement needed...');
     const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
     
     if (lastMessage.tool_calls?.length > 0) {
-      Logger.info("Tool calls found, continuing with tools");
+      Logger.step('Tool calls found, continuing with tools');
       return "tools";
     }
 
     const positions = state.positions?.filter(p => p.isSettleable) || [];
     // If there are still settleable positions, continue settling
     if (positions.length > 0) {
-      Logger.info("More positions to settle");
+      Logger.step('More positions to settle');
       return "settle_positions";
     }
     

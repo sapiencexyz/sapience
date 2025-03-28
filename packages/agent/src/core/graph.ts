@@ -94,7 +94,7 @@ export class GraphManager {
     const assessNode = new AssessPositionsNode(config, tools, defaultPaths['assess_positions']);
     const discoverNode = new DiscoverMarketsNode(config, tools, defaultPaths['discover_markets']);
     const summaryNode = new PublishSummaryNode(config, tools, defaultPaths['publish_summary']);
-    const delayNode = new DelayNode(config, tools, config.interval || 60000, defaultPaths['delay']);
+    const delayNode = new DelayNode(config, tools, config.interval ?? 60000, defaultPaths['delay']);
     const toolsNode = new ToolsNode(config, tools);
     
     // Register nodes with their possible edges
@@ -122,7 +122,7 @@ export class GraphManager {
     let currentNodeId = startNodeId;
     let state = { ...initialState, currentStep: currentNodeId };
     
-    Logger.info(chalk.blue(`🚀 Starting execution from node: ${currentNodeId}`));
+    Logger.step(`[__start__ -> ${currentNodeId}]`);
     
     while (currentNodeId !== 'end') {
       const currentNode = this.nodes.get(currentNodeId);
@@ -134,7 +134,6 @@ export class GraphManager {
       
       try {
         // Execute the current node
-        Logger.info(chalk.blue(`▶️ Executing node: ${currentNodeId}`));
         state = await currentNode.execute(state);
         
         // Determine the next node
@@ -142,11 +141,11 @@ export class GraphManager {
         
         // Check if we need to run the tools node
         if (nextNodeId === 'tools' && this.toolsNode) {
-          Logger.info(chalk.magenta('🔧 Executing tools node'));
+          Logger.step(`[${currentNodeId} -> tools]`);
           state = await this.toolsNode.execute(state);
           
           // After tools execution, return to the same node
-          Logger.info(chalk.blue(`↩️ Returning to node: ${currentNodeId}`));
+          Logger.step(`[tools -> ${currentNodeId}]`);
           continue;
         }
         
@@ -160,7 +159,7 @@ export class GraphManager {
         }
         
         // Log transition
-        Logger.info(chalk.blue(`🔄 Transitioning from ${currentNodeId} to ${nextNodeId}`));
+        Logger.step(`[${currentNodeId} -> ${nextNodeId}]`);
         
         // Update current node and state
         currentNodeId = nextNodeId;
@@ -171,7 +170,7 @@ export class GraphManager {
       }
     }
     
-    Logger.success(chalk.green('✅ Execution completed'));
+    Logger.success(`✅ Execution completed`);
     return state;
   }
 }

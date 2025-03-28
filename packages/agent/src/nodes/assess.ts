@@ -28,7 +28,6 @@ export class AssessPositionsNode extends BaseNode {
   }
 
   async execute(state: AgentState): Promise<AgentState> {
-    Logger.nodeTransition(state.currentStep, 'Assess');
     Logger.step('[Assess] Evaluating current positions...');
     
     const response = await this.invokeModel(state, this.getPrompt());
@@ -48,17 +47,17 @@ export class AssessPositionsNode extends BaseNode {
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('[Assess] Checking if more assessment needed...');
+    Logger.step('Checking if more assessment needed...');
     const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
     
     if (lastMessage.tool_calls?.length > 0) {
-      Logger.info("Tool calls found, continuing with tools");
+      Logger.step('Tool calls found, continuing with tools');
       return "tools";
     }
 
     const content = this.formatMessageContent(lastMessage.content);
     const result = typeof content === 'string' && content.includes("Action taken") ? "assess_positions" : "discover_markets";
-    Logger.info(`Assessment check result: ${result}`);
+    Logger.step(`Assessment check result: ${result}`);
     return result;
   }
 } 
