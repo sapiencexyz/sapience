@@ -11,6 +11,7 @@ export interface AgentState {
   actions: Action[];
   currentStep: string;
   lastAction?: string;
+  toolResults: Record<string, any>;
 }
 
 export interface AgentConfig {

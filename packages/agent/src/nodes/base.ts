@@ -32,7 +32,8 @@ export abstract class BaseNode {
         temperature: 0.1,
         anthropicApiKey: config.anthropicApiKey,
         maxTokens: 4096,
-        streaming: false
+        streaming: false,
+        verbose: false
       });
       sharedModel = claudeModel.bindTools(langChainTools);
     }
