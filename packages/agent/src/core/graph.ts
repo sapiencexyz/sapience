@@ -12,7 +12,7 @@ import {
   ToolsNode
 } from '../nodes';
 import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { BaseMessage } from "@langchain/core/messages";
+import { BaseMessage, AIMessage } from "@langchain/core/messages";
 import { GraphVisualizer } from '../utils/graphVisualizer';
 import { BaseNode } from '../nodes/base';
 import chalk from 'chalk';
@@ -142,10 +142,47 @@ export class GraphManager {
         // Check if we need to run the tools node
         if (nextNodeId === 'tools' && this.toolsNode) {
           Logger.step(`[${currentNodeId} -> tools]`);
-          state = await this.toolsNode.execute(state);
+          
+          try {
+            state = await this.toolsNode.execute(state);
+          } catch (toolError) {
+            // Handle tool execution errors gracefully
+            Logger.error(`Error executing tools: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`);
+            
+            // Reset state messages to avoid ID mismatches
+            state = {
+              ...state,
+              messages: []
+            };
+            
+            // Continue with the current node to let it recover
+            Logger.step(`[tools -> ${currentNodeId}] (with error recovery)`);
+            continue;
+          }
           
           // After tools execution, return to the same node
           Logger.step(`[tools -> ${currentNodeId}]`);
+          
+          // Re-execute the current node with the updated state including tool results
+          // This allows the node to process the tool results with its original prompt
+          Logger.step(`Re-executing ${currentNodeId} to process tool results...`);
+          
+          try {
+            // Execute the node again with the updated state including tool results
+            state = await currentNode.execute(state);
+            
+            // Continue execution in the same node
+            Logger.step(`${currentNodeId} processed tool results`);
+          } catch (reExecError) {
+            Logger.error(`Error re-executing ${currentNodeId}: ${reExecError instanceof Error ? reExecError.message : 'Unknown error'}`);
+            // Reset state messages to avoid ID mismatches on retry
+            state = {
+              ...state,
+              messages: []
+            };
+          }
+          
+          // Continue in the same node instead of proceeding to next
           continue;
         }
         
@@ -161,12 +198,28 @@ export class GraphManager {
         // Log transition
         Logger.step(`[${currentNodeId} -> ${nextNodeId}]`);
         
+        // Reset messages when transitioning between nodes
+        // This prevents tool ID mismatches
+        state = {
+          ...state,
+          messages: []
+        };
+        
         // Update current node and state
         currentNodeId = nextNodeId;
         state = { ...state, currentStep: currentNodeId };
       } catch (error) {
         Logger.error(`Error in node ${currentNodeId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        throw error;
+        
+        // For all errors, we'll reset the message state and try again
+        // This provides a clean slate for the node to work with
+        Logger.warn(`Resetting state for ${currentNodeId} and retrying`);
+        state = {
+          ...state,
+          messages: []
+        };
+        
+        continue;
       }
     }
     

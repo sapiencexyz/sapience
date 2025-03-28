@@ -6,17 +6,16 @@ import { AgentAIMessage } from '../types/message';
 import chalk from 'chalk';
 
 /**
- * Template Node that demonstrates best practices for node implementation
- * This shows how to implement a node with the minimum required code
+ * Template for creating new nodes
+ * Copy this file and customize as needed
  */
 export class TemplateNode extends BaseNode {
   constructor(
     protected config: AgentConfig,
     protected tools: AgentTools,
-    // Add any additional parameters needed by this specific node
-    private customParam?: string
+    nextNode?: string
   ) {
-    super(config, tools);
+    super(config, tools, nextNode || "default_next_node");
   }
 
   /**
@@ -24,19 +23,25 @@ export class TemplateNode extends BaseNode {
    * This is the only method that MUST be implemented for a functioning node
    */
   public getPrompt(state: AgentState): string {
-    return `You are a template node demonstrating best practices.
+    // Create your node-specific prompt here
+    let prompt = `You are a Foil trading agent responsible for [YOUR NODE'S TASK].
     
     You have access to the following tools:
-    - tool_one: Description of tool one
-    - tool_two: Description of tool two
+    - tool_1: Description of tool 1
+    - tool_2: Description of tool 2
     
     Your task is to:
-    1. Review the current state
-    2. Decide on the appropriate action
-    3. Execute the action using available tools
+    1. Task step 1
+    2. Task step 2
+    3. Task step 3
     
-    IMPORTANT: Use tools only when necessary.
-    ${this.customParam ? `Custom parameter: ${this.customParam}` : ''}`;
+    IMPORTANT: Additional instructions or context.`;
+    
+    // Add tool results if available - this will include any tool results from previous steps
+    // This is important for continuing a task after tool calls
+    prompt += this.formatToolResultsForPrompt(state);
+    
+    return prompt;
   }
 
   /**
@@ -86,22 +91,17 @@ export class TemplateNode extends BaseNode {
    * This method controls the flow of the agent's execution graph
    */
   async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('[Template] Determining next step...');
-    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
-    
-    // Check if the AI requested to use tools
-    if (lastMessage.tool_calls?.length > 0) {
-      Logger.info(chalk.cyan("[Template] Tool calls found, continuing with tools"));
+    // Check if model wants to use tools
+    const lastMessage = state.messages[state.messages.length - 1];
+    if ((lastMessage as AIMessage).tool_calls?.length > 0) {
+      Logger.step('[TemplateNode] Tool calls found, continuing with tools');
       return "tools";
     }
-
-    // Example conditional logic to determine next node
-    if (state.positions && state.positions.length > 0) {
-      Logger.info(chalk.green("[Template] Positions found, moving to next step"));
-      return "next_node_with_positions";
-    } else {
-      Logger.info(chalk.yellow("[Template] No positions found, taking alternative path"));
-      return "alternative_node";
-    }
+    
+    // Node-specific logic to determine next step
+    // ...
+    
+    // Use the default next node if no specific condition matches
+    return super.shouldContinue(state);
   }
 } 

@@ -39,7 +39,15 @@ export abstract class BaseNode {
         streaming: false,
         verbose: false
       });
-      sharedModel = claudeModel.bindTools(langChainTools);
+      
+      // Wrap the model binding in a try/catch to handle potential errors
+      try {
+        sharedModel = claudeModel.bindTools(langChainTools);
+      } catch (error) {
+        Logger.error(`Error binding tools to model: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Fallback to model without tools if binding fails
+        sharedModel = claudeModel;
+      }
     }
     this.model = sharedModel;
   }
@@ -83,14 +91,15 @@ export abstract class BaseNode {
         - Last Action: ${state.lastAction || 'none'}`
       });
 
-      // Filter out any existing system messages from state.messages
-      const nonSystemMessages = state.messages.filter(msg => msg._getType() !== 'system');
+      // We expect state.messages to be either empty or contain only relevant messages
+      // from the current node's execution (handled by execute method)
+      const messages = state.messages;
 
       // Log the model interaction
       Logger.modelInteraction(
         [
           { role: 'system', content: systemMessage.content },
-          ...nonSystemMessages.map(msg => ({ role: msg._getType(), content: msg.content })),
+          ...messages.map(msg => ({ role: msg._getType(), content: msg.content })),
           { role: 'human', content: prompt }
         ],
         prompt
@@ -99,11 +108,9 @@ export abstract class BaseNode {
       // Invoke model with messages
       const response = await this.model.invoke([
         systemMessage,
-        ...nonSystemMessages,
+        ...messages,
         new HumanMessage(prompt)
       ]);
-
-      // We no longer log the thinking process separately, it will be part of AGENT OUTPUT
       
       return response;
     } catch (error) {
@@ -156,21 +163,15 @@ export abstract class BaseNode {
 
   protected createStateUpdate(state: AgentState, messages: BaseMessage[], toolResults: ToolMessage[] = []): AgentState {
     return {
-      messages: [...state.messages, ...messages],
-      currentStep: state.currentStep,
-      lastAction: state.lastAction,
-      positions: state.positions,
-      markets: state.markets,
-      previousMarkets: state.markets,
-      actions: state.actions,
+      ...state,
+      messages: messages, // Replace all messages with the new ones
       toolResults: {
         ...state.toolResults,
         ...toolResults.reduce((acc, msg) => ({
           ...acc,
           [msg.name]: msg.content
         }), {})
-      },
-      agentAddress: state.agentAddress
+      }
     };
   }
 
@@ -182,11 +183,26 @@ export abstract class BaseNode {
         lastAction: state.lastAction
       });
 
+      // Start with a fresh message history for each node
+      // This prevents tool ID mismatches between different nodes
+      const cleanState = {
+        ...state,
+        messages: [] // Clear messages from previous nodes
+      };
+
+      // Check if we're returning from a tool call
+      const isReturningFromToolCall = state.messages.some(msg => msg._getType() === 'tool');
+
       // Get node-specific prompt
-      const prompt = this.getPrompt(state);
+      const prompt = this.getPrompt(cleanState);
+      
+      // If we're returning from tool calls, include a note about this in the logs
+      if (isReturningFromToolCall) {
+        Logger.info(chalk.blue(`Re-prompting ${this.constructor.name} with tool results`));
+      }
       
       // Invoke model with prompt
-      const response = await this.invokeModel(state, prompt);
+      const response = await this.invokeModel(cleanState, prompt);
       const formattedContent = this.formatMessageContent(response.content);
       
       // Log the agent's response with the updated format
@@ -200,36 +216,32 @@ export abstract class BaseNode {
         Logger.step('Processing tool calls...');
         const toolResults = await this.handleToolCalls(response.tool_calls);
         
-        // Clear state messages to prevent tool ID mismatches
-        // We'll still keep all relevant information in our new state
-        const cleanState = {
-          ...state,
-          messages: [] // Clear message history to avoid tool ID conflicts
+        // Return a state with only the current conversation
+        // This ensures tool IDs always match their corresponding tool_use
+        return {
+          ...cleanState,
+          messages: [agentResponse, ...toolResults],
+          toolResults: {
+            ...cleanState.toolResults,
+            ...toolResults.reduce((acc, msg) => ({
+              ...acc,
+              [msg.name]: msg.content
+            }), {})
+          }
         };
-        
-        // Process further tool results if needed (this allows nodes to customize post-tool processing)
-        const processedState = await this.processToolResults(
-          cleanState, 
-          agentResponse,
-          toolResults
-        );
-        
-        if (processedState) {
-          return processedState;
-        }
-
-        // Default behavior: Simply update state with the tool results
-        // This avoids making another model call which could cause tool ID mismatches
-        return this.createStateUpdate(cleanState, [agentResponse, new AIMessage(`Analyzed data from ${toolResults.length} tool calls.`)], toolResults);
       }
 
       // Process the response (allow nodes to customize response handling)
-      const processedState = await this.processResponse(state, agentResponse);
+      const processedState = await this.processResponse(cleanState, agentResponse);
       if (processedState) {
         return processedState;
       }
 
-      return this.createStateUpdate(state, [agentResponse]);
+      return {
+        ...cleanState,
+        messages: [agentResponse],
+        toolResults: cleanState.toolResults
+      };
     } catch (error) {
       Logger.error(`Error in ${this.constructor.name}:`);
       if (error instanceof Error) {
@@ -263,6 +275,24 @@ export abstract class BaseNode {
     toolResults: ToolMessage[]
   ): Promise<AgentState | null> {
     return null;
+  }
+  
+  /**
+   * Helper method to format tool results for inclusion in prompts
+   * Nodes can use this in their getPrompt implementation to include tool results
+   */
+  protected formatToolResultsForPrompt(state: AgentState): string {
+    const hasToolResults = Object.keys(state.toolResults || {}).length > 0;
+    
+    if (!hasToolResults) {
+      return '';
+    }
+    
+    return `\n\nYou have the following tool results:
+    ${JSON.stringify(state.toolResults, null, 2)}
+    
+    Review these results carefully before responding. Use the information from these results
+    to inform your response and complete the task requested in the prompt above.`;
   }
 
   /**

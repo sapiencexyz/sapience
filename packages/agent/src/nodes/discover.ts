@@ -15,7 +15,7 @@ export class DiscoverMarketsNode extends BaseNode {
   }
 
   public getPrompt(state: AgentState): string {
-    return `You are a Foil trading agent responsible for discovering market opportunities.
+    let prompt = `You are a Foil trading agent responsible for discovering market opportunities.
       
       You have access to the following tools:
       - list_foil_markets: Lists all available markets
@@ -36,6 +36,11 @@ export class DiscoverMarketsNode extends BaseNode {
       
       IMPORTANT: Focus on finding markets where the agent doesn't already have positions.
       The agent's current positions are available in the state.`;
+    
+    // Add tool results if available
+    prompt += this.formatToolResultsForPrompt(state);
+    
+    return prompt;
   }
 
   protected async processToolResults(

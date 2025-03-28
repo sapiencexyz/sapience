@@ -59,4 +59,50 @@ export class ToolsNode extends BaseNode {
     Logger.info(chalk.magenta("[Tools] Returning to calling node"));
     return state.currentStep;
   }
+
+  async execute(state: AgentState): Promise<AgentState> {
+    try {
+      // If there's no AI message with a tool call in the state, something's wrong
+      // Return the state unchanged
+      const lastMsg = state.messages.find(msg => msg._getType() === 'ai' && (msg as AIMessage).tool_calls?.length > 0);
+      if (!lastMsg) {
+        Logger.warn("[Tools] No AI message with tool calls found in state");
+        return state;
+      }
+
+      // Extract only the AI message with the tool calls and its corresponding tool messages
+      const aiMsg = lastMsg as AIMessage;
+      const toolIds = aiMsg.tool_calls?.map(tc => tc.id) || [];
+      
+      const toolMessages = state.messages.filter(msg => 
+        msg._getType() === 'tool' && 
+        toolIds.includes((msg as ToolMessage).tool_call_id)
+      );
+
+      // Process tool results and update toolResults in state
+      const updatedToolResults = {
+        ...state.toolResults,
+        ...toolMessages.reduce((acc, msg: ToolMessage) => {
+          const toolName = aiMsg.tool_calls?.find(tc => tc.id === msg.tool_call_id)?.name || 'unknown';
+          return {
+            ...acc,
+            [toolName]: msg.content
+          };
+        }, {})
+      };
+      
+      Logger.info(chalk.magenta("[Tools] Updated tool results in state"));
+
+      // Create a clean state with only the relevant messages
+      return {
+        ...state,
+        messages: [aiMsg, ...toolMessages],
+        toolResults: updatedToolResults,
+        currentStep: state.currentStep // Preserve the calling node's step
+      };
+    } catch (error) {
+      Logger.error(`Error in ToolsNode: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  }
 } 
