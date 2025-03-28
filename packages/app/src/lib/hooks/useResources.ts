@@ -174,7 +174,6 @@ export const useLatestIndexPrice = (market: {
           epochId: market.epochId.toString(),
         },
       });
-      console.log('data', data);
 
       const candles = data.indexCandles;
       if (!candles || candles.length === 0) {
