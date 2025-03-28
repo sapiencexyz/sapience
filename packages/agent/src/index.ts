@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { FoilAgent } from './core/agent.js';
 import { AgentConfig, BaseTool } from './types/index.js';
 import { Logger } from './utils/logger.js';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // Get interval from command line args or default to 0 (run once)
 const interval = parseInt(process.argv[2] || '0', 10);
@@ -16,6 +17,16 @@ const config: AgentConfig = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   useOllama: false // Always use Claude
 };
+
+// Get private key from environment
+const privateKey = process.env.ETHEREUM_PRIVATE_KEY;
+if (!privateKey) {
+  throw new Error('ETHEREUM_PRIVATE_KEY environment variable is required');
+}
+
+// Derive agent address from private key
+const account = privateKeyToAccount(privateKey as `0x${string}`);
+const agentAddress = account.address;
 
 // Initialize tools
 const rawTools = {
@@ -56,7 +67,7 @@ const tools = {
 };
 
 // Create and start the agent
-const agent = new FoilAgent(config, tools);
+const agent = new FoilAgent(config, tools, agentAddress);
 
 // Handle process termination
 process.on('SIGINT', async () => {

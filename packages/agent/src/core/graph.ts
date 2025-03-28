@@ -7,10 +7,12 @@ import { AssessPositionsNode } from '../nodes/assess';
 import { DiscoverMarketsNode } from '../nodes/discover';
 import { PublishSummaryNode } from '../nodes/summary';
 import { DelayNode } from '../nodes/delay';
+import { LookupNode } from '../nodes/lookup';
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { DynamicTool } from "@langchain/core/tools";
 import { AgentToolMessage, AgentSystemMessage } from '../types/message';
 import { SystemMessage, AIMessage, ToolMessage, BaseMessage } from "@langchain/core/messages";
+import { GraphVisualizer } from '../utils/graphVisualizer';
 
 // Define the state schema for LangGraph
 const agentStateSchema = z.object({
@@ -22,7 +24,7 @@ const agentStateSchema = z.object({
   lastAction: z.string().optional()
 });
 
-type NodeName = "settle_positions" | "assess_positions" | "discover_markets" | "publish_summary" | "delay" | "tools" | "__end__";
+type NodeName = "lookup" | "settle_positions" | "assess_positions" | "discover_markets" | "publish_summary" | "delay" | "tools" | "__end__";
 
 interface ToolCallMessage extends BaseMessage {
   tool_calls?: Array<{
@@ -63,6 +65,7 @@ export class GraphManager {
     const stateGraph = new StateGraph<typeof agentStateSchema, any, any, NodeName>(agentStateSchema);
 
     // Initialize nodes
+    const lookupNode = new LookupNode(this.config, this.tools);
     const settleNode = new SettlePositionsNode(this.config, this.tools);
     const assessNode = new AssessPositionsNode(this.config, this.tools);
     const discoverNode = new DiscoverMarketsNode(this.config, this.tools);
@@ -71,6 +74,7 @@ export class GraphManager {
 
     // Add nodes to the graph
     Logger.info("Adding nodes to graph...");
+    stateGraph.addNode("lookup", lookupNode.execute.bind(lookupNode));
     stateGraph.addNode("settle_positions", settleNode.execute.bind(settleNode));
     stateGraph.addNode("assess_positions", assessNode.execute.bind(assessNode));
     stateGraph.addNode("discover_markets", discoverNode.execute.bind(discoverNode));
@@ -81,6 +85,7 @@ export class GraphManager {
 
     // Add conditional edges to tools
     Logger.info("Adding conditional edges to tools...");
+    stateGraph.addConditionalEdges("lookup", lookupNode.shouldContinue.bind(lookupNode));
     stateGraph.addConditionalEdges("settle_positions", settleNode.shouldContinue.bind(settleNode));
     stateGraph.addConditionalEdges("assess_positions", assessNode.shouldContinue.bind(assessNode));
     stateGraph.addConditionalEdges("discover_markets", discoverNode.shouldContinue.bind(discoverNode));
@@ -88,17 +93,30 @@ export class GraphManager {
     stateGraph.addConditionalEdges("tools", this.shouldUseTools.bind(this));
     Logger.success("Conditional edges added");
 
-    // Add regular edges for the main flow (ring)
+    // Add regular edges for the main flow
     Logger.info("Adding regular edges for main flow...");
+    // From lookup: either go to settle or discover based on positions found
+    stateGraph.addEdge("lookup", "settle_positions");
+    stateGraph.addEdge("lookup", "discover_markets");
+    
+    // From settle: either go to assess or discover based on positions to settle
     stateGraph.addEdge("settle_positions", "assess_positions");
+    stateGraph.addEdge("settle_positions", "discover_markets");
+    
+    // Rest of the flow remains linear
     stateGraph.addEdge("assess_positions", "discover_markets");
     stateGraph.addEdge("discover_markets", "publish_summary");
     stateGraph.addEdge("publish_summary", "delay");
-    stateGraph.addEdge("delay", "settle_positions");
+    stateGraph.addEdge("delay", "lookup");
     Logger.success("Regular edges added");
 
     // Set the entry point
-    stateGraph.setEntryPoint("settle_positions");
+    stateGraph.setEntryPoint("lookup");
+
+    // Generate graph visualization after graph is built
+    GraphVisualizer.saveDiagram(stateGraph).catch(err => {
+      Logger.error(`Failed to generate graph visualization: ${err.message}`);
+    });
 
     return { graph: stateGraph.compile(), stateGraph };
   }

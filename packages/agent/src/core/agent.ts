@@ -5,6 +5,7 @@ import { Logger } from '../utils/logger.js';
 import { convertToLangChainTools } from '../types/index.js';
 import { LookupNode, DiscoverMarketsNode } from "../nodes";
 import chalk from 'chalk';
+import { GraphManager } from './graph.js';
 
 export class FoilAgent {
   private model: ChatAnthropic;
@@ -13,6 +14,7 @@ export class FoilAgent {
   private tools: any[];
   private lookupNode: LookupNode;
   private discoverNode: DiscoverMarketsNode;
+  private graphManager: GraphManager;
 
   constructor(
     private config: AgentConfig,
@@ -42,6 +44,9 @@ export class FoilAgent {
     // Initialize nodes
     this.lookupNode = new LookupNode(config, agentTools);
     this.discoverNode = new DiscoverMarketsNode(config, agentTools);
+
+    // Initialize graph manager
+    this.graphManager = new GraphManager(config, agentTools);
   }
 
   private async initializeState(): Promise<AgentState> {
