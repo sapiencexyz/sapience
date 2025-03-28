@@ -5,7 +5,6 @@ import { Logger } from '../utils/logger';
 import chalk from 'chalk';
 import { DynamicTool } from "@langchain/core/tools";
 import { Runnable } from "@langchain/core/runnables";
-import { RunnableSequence } from "@langchain/core/runnables";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 
 // Shared model instance
@@ -47,52 +46,47 @@ export abstract class BaseNode {
       // Log state changes in debug mode
       Logger.debug('Current state: ' + JSON.stringify(state, null, 2));
 
-      // Create a system message with just the agent's role and capabilities
+      // Create system message with agent role and capabilities
       const systemMessage = new SystemMessage({
         content: `You are a Foil trading agent responsible for analyzing market conditions and managing trading positions. Your tasks include:
-      1. Settling positions when appropriate
-      2. Assessing and modifying existing positions
-      3. Discovering new market opportunities
-      4. Publishing trading summaries
-      
-      You have access to the following tools:
-      - readFoilContracts: Tools for reading market data, positions, and contract state
-      - writeFoilContracts: Tools for modifying positions, settling trades, and interacting with the protocol
-      - graphql: Tools for querying additional protocol data and market information
-      
-      Each tool has specific parameters and requirements. Always check the tool descriptions before using them.
-      
-      IMPORTANT: Use the exact tool names as shown in the tool descriptions. Do not use variations or camelCase versions.`
+        1. Settling positions when appropriate
+        2. Assessing and modifying existing positions
+        3. Discovering new market opportunities
+        4. Publishing trading summaries
+        
+        You have access to the following tools:
+        - readFoilContracts: Tools for reading market data, positions, and contract state
+        - writeFoilContracts: Tools for modifying positions, settling trades, and interacting with the protocol
+        - graphql: Tools for querying additional protocol data and market information
+        
+        Each tool has specific parameters and requirements. Always check the tool descriptions before using them.
+        
+        IMPORTANT: Use the exact tool names as shown in the tool descriptions. Do not use variations or camelCase versions.
+        
+        Current State:
+        - Step: ${state.currentStep}
+        - Positions: ${JSON.stringify(state.positions, null, 2)}
+        - Markets: ${JSON.stringify(state.markets, null, 2)}
+        - Actions: ${JSON.stringify(state.actions, null, 2)}
+        - Last Action: ${state.lastAction || 'none'}`
       });
 
       // Filter out any existing system messages from state.messages
       const nonSystemMessages = state.messages.filter(msg => msg._getType() !== 'system');
-      
-      // Create a state message that includes the current state
-      const stateMessage = new HumanMessage({
-        content: `Current State:
-      - Step: ${state.currentStep}
-      - Positions: ${JSON.stringify(state.positions, null, 2)}
-      - Markets: ${JSON.stringify(state.markets, null, 2)}
-      - Actions: ${JSON.stringify(state.actions, null, 2)}
-      - Last Action: ${state.lastAction || 'none'}`
-      });
 
       // Log the model interaction
       Logger.modelInteraction(
         [
           { role: 'system', content: systemMessage.content },
-          { role: 'human', content: stateMessage.content },
           ...nonSystemMessages.map(msg => ({ role: msg._getType(), content: msg.content })),
           { role: 'human', content: prompt }
         ],
         prompt
       );
 
-      // Invoke model with the system message first, then state, then other messages
+      // Invoke model with messages
       const response = await this.model.invoke([
         systemMessage,
-        stateMessage,
         ...nonSystemMessages,
         new HumanMessage(prompt)
       ]);

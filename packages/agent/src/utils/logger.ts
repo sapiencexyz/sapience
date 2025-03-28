@@ -4,14 +4,18 @@ export class Logger {
   private static isDebugMode = false;
   private static currentStep: string = '';
 
+  private static readonly SKIP_PATTERNS = [
+    '[llm/start]',
+    'Entering LLM run',
+    'chain:AgentExecutor',
+    'chain:LLMChain',
+    'llm:ChatAnthropic',
+    'additional_kwargs',
+    'response_metadata'
+  ];
+
   private static shouldSkipMessage(msg: string): boolean {
-    return msg.includes('[llm/start]') || 
-           msg.includes('Entering LLM run') ||
-           msg.includes('chain:AgentExecutor') ||
-           msg.includes('chain:LLMChain') ||
-           msg.includes('llm:ChatAnthropic') ||
-           msg.includes('additional_kwargs') ||
-           msg.includes('response_metadata');
+    return this.SKIP_PATTERNS.some(pattern => msg.includes(pattern));
   }
 
   static setDebugMode(enabled: boolean) {
@@ -19,65 +23,65 @@ export class Logger {
   }
 
   static info(message: string) {
-    console.log(chalk.blue(`ℹ ${message}`));
+    if (!this.shouldSkipMessage(message)) {
+      console.log(chalk.blue(`ℹ ${message}`));
+    }
   }
 
   static nodeTransition(fromNode: string, toNode: string) {
-    console.log(chalk.blue(`ℹ [${fromNode} → ${toNode}]`));
+    console.log(chalk.blue.bold(`ℹ ${fromNode} → ${toNode}`));
   }
 
   static success(message: string) {
     console.log(chalk.green(`✓ ${message}`));
   }
 
-  static warn(msg: string) {
-    console.log(chalk.yellow('⚠'), chalk.yellow(msg));
+  static warn(message: string) {
+    console.log(chalk.yellow(`⚠ ${message}`));
   }
 
-  static error(msg: string) {
-    console.log(chalk.red('✖'), chalk.red(msg));
+  static error(message: string) {
+    console.log(chalk.red(`✖ ${message}`));
   }
 
-  static step(msg: string) {
-    this.currentStep = msg;
-    console.log(chalk.cyan(`[${msg}]`));
+  static step(message: string) {
+    this.currentStep = message;
+    console.log(chalk.cyan(message));
   }
 
-  static debug(msg: string) {
-    if (this.isDebugMode) {
-      console.log(chalk.gray('🔍'), chalk.gray(msg));
+  static debug(message: string) {
+    if (this.isDebugMode && !this.shouldSkipMessage(message)) {
+      console.log(chalk.gray(`🔍 ${message}`));
     }
   }
 
   static modelInteraction(messages: { role: string; content: any }[], prompt?: string) {
-    // Show human and assistant messages
     messages.forEach(({ role, content }) => {
       if (role === 'human') {
         const contentStr = typeof content === 'string' ? content :
                           Array.isArray(content) ? content.map(c => c.text).join('\n') :
                           JSON.stringify(content);
-        console.log(chalk.blue('HUMAN:'), chalk.blue(contentStr));
+        console.log(chalk.blue(`Human: ${contentStr}`));
       } else if (role === 'assistant') {
         const contentStr = typeof content === 'string' ? content :
                           Array.isArray(content) ? content.map(c => c.text).join('\n') :
                           JSON.stringify(content);
-        console.log(chalk.green('AGENT:'), chalk.green(contentStr));
+        console.log(chalk.green(`Agent: ${contentStr}`));
       }
     });
   }
 
   static toolCall(toolName: string, args: any, result?: any) {
-    console.log(chalk.magenta(`Calling ${toolName}`));
+    console.log(chalk.magenta(`🛠️ Calling ${toolName}`));
     if (result !== undefined) {
       console.log(chalk.magenta('Output:'), typeof result === 'string' ? result : JSON.stringify(result));
     }
   }
 
   static stateUpdate(step: string, changes: Record<string, any>) {
-    // Only show the step name if it's different from current step
     if (step !== this.currentStep) {
       this.currentStep = step;
-      console.log(chalk.cyan(`[${step}]`));
+      console.log(chalk.cyan(step));
     }
   }
 } 
