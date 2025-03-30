@@ -1219,7 +1219,7 @@ const LiquidityForm: React.FC = () => {
               Virtual {unitDisplay(false)}
             </p>
             <p className="text-sm mb-0.5">
-              <NumberDisplay value={baseToken} /> v${unitDisplay(false)} (Min.{' '}
+              <NumberDisplay value={baseToken} /> v{unitDisplay(false)} (Min.{' '}
               <NumberDisplay value={minAmountTokenA} />)
             </p>
           </div>

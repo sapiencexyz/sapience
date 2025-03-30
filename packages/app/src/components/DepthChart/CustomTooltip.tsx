@@ -54,7 +54,7 @@ export const CustomTooltip: React.FC<
               {valueDisplay(tick.liquidityLockedToken0, stEthPerToken).toFixed(
                 4
               )}{' '}
-              Virtual ${unitDisplay(false)}
+              Virtual {unitDisplay(false)}
             </p>
             <p>
               {valueDisplay(tick.liquidityLockedToken1, stEthPerToken).toFixed(

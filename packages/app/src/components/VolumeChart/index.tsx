@@ -186,7 +186,7 @@ const VolumeChart = ({
                 <NumberDisplay value={value} /> {unitDisplay(false)}
               </>
             ) : (
-              '0 {unitDisplay(false)}'
+              `0 ${unitDisplay(false)}`
             )}
           </p>
         </div>
