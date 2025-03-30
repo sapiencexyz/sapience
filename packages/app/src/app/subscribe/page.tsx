@@ -30,7 +30,7 @@ import {
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertGgasPerWstEthToGwei, foilApi } from '~/lib/utils/util';
+import { foilApi } from '~/lib/utils/util';
 
 const SUBSCRIPTIONS_QUERY = gql`
   query GetSubscriptions($owner: String!) {
@@ -92,7 +92,7 @@ interface Subscription {
 }
 
 const useSubscriptions = (address?: string) => {
-  const { useMarketUnits } = useContext(PeriodContext);
+  const { useMarketUnits, valueDisplay } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
 
   const calculateEntryPrice = (position: any, transactions: any[]) => {
@@ -127,10 +127,8 @@ const useSubscriptions = (address?: string) => {
         entryPrice /= quoteTokenDeltaTotal;
       }
     }
-    const unitsAdjustedEntryPrice = useMarketUnits
-      ? entryPrice
-      : convertGgasPerWstEthToGwei(entryPrice, stEthPerToken);
-    return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
+    const unitsAdjustedEntryPrice = valueDisplay(entryPrice, stEthPerToken);
+    return Number.isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 
   const fetchSubscriptions = async () => {
@@ -205,6 +203,7 @@ function useIsInViewport(ref: React.RefObject<HTMLElement>) {
 }
 
 const SubscriptionsList = () => {
+  const { unitDisplay, collateralAssetTicker } = useContext(PeriodContext);
   const { address } = useAccount();
   const { data: subscriptions, isLoading, error } = useSubscriptions(address);
   const { data: resources, isLoading: isResourcesLoading } = useResources();
@@ -297,7 +296,7 @@ const SubscriptionsList = () => {
                       1e9
                     }
                   />{' '}
-                  Ggas
+                  {unitDisplay(false)}
                 </span>
               </div>
 
@@ -306,7 +305,8 @@ const SubscriptionsList = () => {
                   Entry Price
                 </span>
                 <span className="text-sm font-medium">
-                  {Number(subscription.entryPrice).toFixed(4)} wstETH/Ggas
+                  {Number(subscription.entryPrice).toFixed(4)}{' '}
+                  {collateralAssetTicker}/{unitDisplay(false)}
                 </span>
               </div>
 

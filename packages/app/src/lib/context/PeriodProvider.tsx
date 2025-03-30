@@ -1,7 +1,7 @@
 import type { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
-import { createContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useEffect, useState } from 'react';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
@@ -12,6 +12,9 @@ import erc20ABI from '../erc20abi.json';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { useToast } from '~/hooks/use-toast';
+import { Market, useFoil } from './FoilProvider';
+import { Resource, useResources } from '../hooks/useResources';
+import { convertGgasPerWstEthToGwei } from '../utils/util';
 
 // Types and Interfaces
 export interface PeriodContextType {
@@ -40,11 +43,8 @@ export interface PeriodContextType {
   refetchUniswapData: () => void;
   useMarketUnits: boolean;
   setUseMarketUnits: (useMarketUnits: boolean) => void;
-  market?: {
-    address: string;
-    chainId: number;
-    epochId: number;
-  };
+  market?: Market;
+  resource?: Resource;
   seriesVisibility: {
     candles: boolean;
     index: boolean;
@@ -57,6 +57,8 @@ export interface PeriodContextType {
     resource: boolean;
     trailing: boolean;
   }) => void;
+  unitDisplay: (full?: boolean) => string;
+  valueDisplay: (price: number, stEthPerToken?: number) => number;
 }
 
 interface PeriodProviderProps {
@@ -92,10 +94,17 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   }, [useMarketUnits]);
 
   const { foilData, foilVaultData } = useFoilDeployment(chainId);
+  const { markets } = useFoil();
+  const { data: resources } = useResources();
+
+  const market = markets.find(
+    (m: Market) => m.address.toLowerCase() === address.toLowerCase()
+  );
+  const resource = resources?.find((r) => r.name === market?.resource?.name);
 
   const marketViewFunctionResult = useReadContract({
     chainId,
-    abi: foilData.abi,
+    abi: foilData?.abi,
     address: state.address as `0x${string}`,
     functionName: 'getMarket',
   }) as any;
@@ -155,11 +164,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
       chainId,
       useMarketUnits,
       setUseMarketUnits,
-      market: {
-        address,
-        chainId,
-        epochId: epoch || 0,
-      },
     }));
   }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
 
@@ -171,7 +175,6 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
       seriesVisibility,
       setSeriesVisibility,
     }));
-    console.log('seriesVisibility', seriesVisibility);
   }, [foilData, address, foilVaultData, seriesVisibility, setSeriesVisibility]);
 
   useEffect(() => {
@@ -251,8 +254,44 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     }
   }, [collateralDecimalsFunctionResult.data]);
 
+  const valueDisplay = useCallback(
+    (price: number, stEthPerToken: number | undefined = 1e9) => {
+      if (market?.isCumulative) {
+        return price;
+      }
+
+      return useMarketUnits
+        ? price
+        : convertGgasPerWstEthToGwei(price, stEthPerToken);
+    },
+    [market, useMarketUnits]
+  );
+
+  const unitDisplay = useCallback(
+    (full = true) => {
+      if (market?.isCumulative) {
+        return 'GB';
+      }
+
+      if (useMarketUnits) {
+        return full ? `Ggas/${collateralTickerFunctionResult.data}` : 'Ggas';
+      }
+      return 'gwei';
+    },
+    [useMarketUnits, market, collateralTickerFunctionResult.data]
+  );
+
   return (
-    <PeriodContext.Provider value={{ ...state, refetchUniswapData }}>
+    <PeriodContext.Provider
+      value={{
+        ...state,
+        market,
+        resource,
+        unitDisplay,
+        valueDisplay,
+        refetchUniswapData,
+      }}
+    >
       {children}
     </PeriodContext.Provider>
   );

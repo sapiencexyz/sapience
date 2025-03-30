@@ -88,6 +88,8 @@ export default function AddEditTrade() {
     liquidity,
     refetchUniswapData,
     useMarketUnits,
+    unitDisplay,
+    market,
   } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
 
@@ -847,6 +849,7 @@ export default function AddEditTrade() {
                 allowCollateralInput
                 collateralAssetTicker={collateralAssetTicker}
                 onCollateralAmountChange={handleCollateralAmountChange}
+                fixedUnit={market?.isCumulative}
                 {...register('size', {
                   onChange: (e) => {
                     const processed = removeLeadingZeros(e.target.value);
@@ -885,7 +888,7 @@ export default function AddEditTrade() {
                     TOKEN_DECIMALS
                   )}
                 />{' '}
-                Ggas
+                {unitDisplay(false)}
                 {isNonZeroSizeChange && (
                   <>
                     {' '}
@@ -896,7 +899,7 @@ export default function AddEditTrade() {
                         TOKEN_DECIMALS
                       )}
                     />{' '}
-                    Ggas
+                    {unitDisplay(false)}
                   </>
                 )}
               </p>
@@ -971,7 +974,7 @@ export default function AddEditTrade() {
               <p className="text-sm  mb-0.5">
                 <NumberDisplay
                   value={
-                    useMarketUnits
+                    useMarketUnits || market?.isCumulative
                       ? formatUnits(
                           quotedFillPrice || BigInt(0),
                           TOKEN_DECIMALS
@@ -984,7 +987,7 @@ export default function AddEditTrade() {
                         ) * convertGgasPerWstEthToGwei(1, stEthPerToken)
                   }
                 />{' '}
-                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+                {unitDisplay()}
               </p>
             </div>
           )}
