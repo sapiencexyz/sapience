@@ -24,11 +24,7 @@ const LiquidityPriceInput = <T extends FieldValues>({
   isDisabled = false,
   onBlur: externalOnBlur,
 }: Props<T>) => {
-  const { collateralAssetTicker, useMarketUnits } = useContext(PeriodContext);
-
-  const getCurrentUnit = () => {
-    return useMarketUnits ? `Ggas/${collateralAssetTicker}` : 'gwei';
-  };
+  const { unitDisplay } = useContext(PeriodContext);
 
   return (
     <div className="mb-4">
@@ -61,7 +57,7 @@ const LiquidityPriceInput = <T extends FieldValues>({
                 className="pr-[120px] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <div className="absolute inset-y-0 right-0 flex items-center px-3 border border-input bg-muted rounded-r-md">
-                {getCurrentUnit()}
+                {unitDisplay()}
               </div>
             </div>
             {error && <FormMessage>{error.message}</FormMessage>}

@@ -13,15 +13,13 @@ import {
   TooltipTrigger,
 } from '~/components/ui/tooltip';
 import { useFoil } from '~/lib/context/FoilProvider';
-import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
 const PeriodHeader = () => {
-  const { stEthPerToken, markets } = useFoil();
+  const { stEthPerToken } = useFoil();
   const {
     chain,
     address,
@@ -31,15 +29,10 @@ const PeriodHeader = () => {
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     useMarketUnits,
+    market,
+    resource,
+    unitDisplay,
   } = useContext(PeriodContext);
-  const { data: resources } = useResources();
-
-  const market = markets.find(
-    (market: Market) => market.address.toLowerCase() === address.toLowerCase()
-  );
-
-  const resource = resources?.find((r) => r.name === market?.resource?.name);
-
   let endTimeString = '';
   let startTimeString = '';
   let startTimeTooltip = '';
@@ -57,19 +50,21 @@ const PeriodHeader = () => {
     endTimeTooltip = format(date, 'MMMM do, yyyy h:mm a (O)');
   }
 
-  const minPrice = useMarketUnits
-    ? tickToPrice(baseAssetMinPriceTick)
-    : convertGgasPerWstEthToGwei(
-        tickToPrice(baseAssetMinPriceTick),
-        stEthPerToken
-      );
+  const minPrice =
+    useMarketUnits || market?.isCumulative
+      ? tickToPrice(baseAssetMinPriceTick)
+      : convertGgasPerWstEthToGwei(
+          tickToPrice(baseAssetMinPriceTick),
+          stEthPerToken
+        );
 
-  const maxPrice = useMarketUnits
-    ? tickToPrice(baseAssetMaxPriceTick)
-    : convertGgasPerWstEthToGwei(
-        tickToPrice(baseAssetMaxPriceTick),
-        stEthPerToken
-      );
+  const maxPrice =
+    useMarketUnits || market?.isCumulative
+      ? tickToPrice(baseAssetMaxPriceTick)
+      : convertGgasPerWstEthToGwei(
+          tickToPrice(baseAssetMaxPriceTick),
+          stEthPerToken
+        );
 
   const links = (
     <>
@@ -109,7 +104,7 @@ const PeriodHeader = () => {
         <NumberDisplay value={minPrice} />
         <MoveHorizontal className="w-3 h-3 mx-1" />
         <NumberDisplay value={maxPrice} />
-        <span className="ml-1">{useMarketUnits ? 'Ggas/wstETH' : 'gwei'}</span>
+        <span className="ml-1">{unitDisplay()}</span>
       </div>
 
       <div className="inline-flex items-center">
