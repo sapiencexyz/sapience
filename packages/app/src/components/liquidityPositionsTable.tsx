@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
-import { useState, useMemo, useContext } from 'react';
+import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
 import { Button } from '@/components/ui/button';

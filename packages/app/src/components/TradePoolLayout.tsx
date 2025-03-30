@@ -14,11 +14,8 @@ import Stats from '~/components/stats';
 import VolumeChart from '~/components/VolumeChart';
 import WindowSelector from '~/components/WindowButtons';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
-import { useFoil } from '~/lib/context/FoilProvider';
-import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
-import { useResources } from '~/lib/hooks/useResources';
 import {
   ChartType,
   TimeWindow,

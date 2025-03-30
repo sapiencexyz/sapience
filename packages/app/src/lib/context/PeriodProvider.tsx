@@ -1,13 +1,7 @@
 import type { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
-import {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, useCallback, useEffect, useState } from 'react';
 import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';

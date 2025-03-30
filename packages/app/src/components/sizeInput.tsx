@@ -44,11 +44,13 @@ const SizeInput: React.FC<Props> = ({
   onCollateralAmountChange,
   fixedUnit = false,
 }) => {
-  const defaultInputType = fixedUnit
-    ? InputFormType.Collateral
-    : defaultToGas
-      ? InputFormType.Gas
-      : InputFormType.Ggas;
+  let defaultInputType;
+  if (fixedUnit) {
+    defaultInputType = InputFormType.Collateral;
+  } else {
+    defaultInputType = defaultToGas ? InputFormType.Gas : InputFormType.Ggas;
+  }
+
   const [sizeInput, setSizeInput] = useState<string>('0');
   const [inputType, setInputType] = useState<InputFormType>(defaultInputType);
 

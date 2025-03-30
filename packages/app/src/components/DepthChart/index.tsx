@@ -49,7 +49,6 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
     poolAddress,
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
-    useMarketUnits,
     unitDisplay,
     valueDisplay,
   } = useContext(PeriodContext);

@@ -93,7 +93,6 @@ const Subscribe: FC<SubscribeProps> = ({
     refetchUniswapData,
     startTime,
     endTime,
-    market,
   } = useContext(PeriodContext);
 
   const { stEthPerToken } = useFoil();

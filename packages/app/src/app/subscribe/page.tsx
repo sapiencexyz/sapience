@@ -92,8 +92,7 @@ interface Subscription {
 }
 
 const useSubscriptions = (address?: string) => {
-  const { useMarketUnits, valueDisplay, unitDisplay, collateralAssetTicker } =
-    useContext(PeriodContext);
+  const { useMarketUnits, valueDisplay } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
 
   const calculateEntryPrice = (position: any, transactions: any[]) => {
