@@ -33,6 +33,12 @@ import {
   settlePosition
 } from './writeFoilContracts';
 
+import {
+  stageTransaction,
+  executeTransaction,
+  approveToken
+} from './misc';
+
 export const graphql = {
   get_foil_market: getMarket,
   list_foil_markets: listMarkets,
@@ -66,4 +72,10 @@ export const writeFoilContracts = {
   quote_modify_foil_liquidity_position: quoteModifyLiquidityPosition,
   modify_foil_liquidity_position: modifyLiquidityPosition,
   settle_foil_position: settlePosition
+};
+
+export const transactions = {
+  stage_transaction: stageTransaction,
+  execute_transaction: executeTransaction,
+  approve_token: approveToken
 };

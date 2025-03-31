@@ -1,6 +1,6 @@
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
-import FoilABI from '../Foil.json';
+import FoilABI from '../abi/Foil.json';
 
 // Create a public client for interacting with the blockchain
 const client = createPublicClient({

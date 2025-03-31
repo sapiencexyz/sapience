@@ -81,14 +81,7 @@ export abstract class BaseNode {
         Observation: [tool result]
         ... (repeat if needed)
         Thought: I now know [what you learned]
-        Final Answer: [summary of what was done]
-        
-        Current State:
-        - Step: ${state.currentStep}
-        - Positions: ${JSON.stringify(state.positions, null, 2)}
-        - Markets: ${JSON.stringify(state.markets, null, 2)}
-        - Actions: ${JSON.stringify(state.actions, null, 2)}
-        - Last Action: ${state.lastAction || 'none'}`
+        Final Answer: [summary of what was done]`
       });
 
       // We expect state.messages to be either empty or contain only relevant messages
