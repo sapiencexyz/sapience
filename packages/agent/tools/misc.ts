@@ -1,13 +1,14 @@
 import { createPublicClient, createWalletClient, http, encodeFunctionData } from 'viem';
 import { base } from 'viem/chains';
-import { privateKeyToAccount } from 'viem/accounts';
+import { privateKeyToAccount, signMessage } from 'viem/accounts';
 import ERC20ABI from '../abi/ERC20.json';
 
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
       ETHEREUM_PRIVATE_KEY: string;
-      SAFE_SERVICE_API_KEY: string;
+      TWITTER_API_KEY: string;
+      TWITTER_API_SECRET: string;
     }
   }
 }
@@ -79,26 +80,27 @@ export const stageTransaction = {
         throw new Error(`No Safe service URL configured for chain ID ${args.chainId}`);
       }
 
+      // Create the transaction data
+      const safeTransactionData = {
+        to: args.to,
+        value: args.value,
+        data: args.calldata,
+        operation: 0, // Call operation
+        safeTxGas: "0",
+        baseGas: "0",
+        gasPrice: "0",
+        gasToken: "0x0000000000000000000000000000000000000000",
+        refundReceiver: "0x0000000000000000000000000000000000000000",
+        nonce: "0"
+      };
+
+      // Get the transaction hash
       const response = await fetch(`${safeServiceUrl}/api/v1/safes/${args.safeAddress}/transactions/`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.SAFE_SERVICE_API_KEY}`
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          to: args.to,
-          data: args.calldata,
-          value: args.value,
-          chainId: args.chainId,
-          safeTxGas: "0", // Let the safe service estimate this
-          operation: 0, // Call operation
-          gasToken: "0x0000000000000000000000000000000000000000", // Native token
-          refundReceiver: "0x0000000000000000000000000000000000000000", // No refund receiver
-          nonce: "0", // Let the safe service determine the nonce
-          safeTxHash: "0x", // Will be calculated by the safe service
-          signatures: "0x", // Will be added by the safe service
-          origin: "foil-agent" // Identifier for the transaction origin
-        })
+        body: JSON.stringify(safeTransactionData)
       });
 
       if (!response.ok) {
@@ -107,11 +109,38 @@ export const stageTransaction = {
       }
 
       const result = await response.json();
+      const safeTxHash = result.safeTxHash;
+
+      // Sign the transaction hash using viem
+      const signature = await signMessage({
+        privateKey: process.env.ETHEREUM_PRIVATE_KEY as `0x${string}`,
+        message: { raw: safeTxHash as `0x${string}` }
+      });
+
+      // Send the transaction with the signature
+      const proposeResponse = await fetch(`${safeServiceUrl}/api/v1/safes/${args.safeAddress}/transactions/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...safeTransactionData,
+          safeTxHash,
+          signatures: signature
+        })
+      });
+
+      if (!proposeResponse.ok) {
+        const error = await proposeResponse.json();
+        throw new Error(`Safe service error: ${JSON.stringify(error)}`);
+      }
+
+      const proposeResult = await proposeResponse.json();
 
       return {
         content: [{
           type: "text" as const,
-          text: JSON.stringify(result, null, 2)
+          text: JSON.stringify(proposeResult, null, 2)
         }]
       };
     } catch (error) {
@@ -222,6 +251,101 @@ export const approveToken = {
         content: [{
           type: "text" as const,
           text: `Error encoding approve: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  },
+};
+
+export const tweet = {
+  name: "tweet",
+  description: "Sends a tweet or thread to Twitter",
+  parameters: {
+    properties: {
+      tweets: {
+        type: "array",
+        description: "Array of tweets to send as a thread. If only one tweet, it will be sent as a single tweet.",
+        items: {
+          type: "string"
+        }
+      }
+    },
+    required: ["tweets"],
+  },
+  function: async (args: { tweets: string[] }) => {
+    try {
+      if (!process.env.TWITTER_API_KEY || !process.env.TWITTER_API_SECRET) {
+        throw new Error("Twitter API credentials not configured");
+      }
+
+      if (args.tweets.length === 0) {
+        throw new Error("No tweets provided");
+      }
+
+      if (args.tweets.length > 10) {
+        throw new Error("Maximum of 10 tweets allowed in a thread");
+      }
+
+      // Send the first tweet
+      const response = await fetch('https://api.twitter.com/2/tweets', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.TWITTER_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: args.tweets[0]
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Twitter API error: ${JSON.stringify(error)}`);
+      }
+
+      const result = await response.json();
+      let lastTweetId = result.data.id;
+
+      // If there are more tweets, send them as replies
+      for (let i = 1; i < args.tweets.length; i++) {
+        const replyResponse = await fetch('https://api.twitter.com/2/tweets', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.TWITTER_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            text: args.tweets[i],
+            reply: {
+              in_reply_to_tweet_id: lastTweetId
+            }
+          })
+        });
+
+        if (!replyResponse.ok) {
+          const error = await replyResponse.json();
+          throw new Error(`Twitter API error: ${JSON.stringify(error)}`);
+        }
+
+        const replyResult = await replyResponse.json();
+        lastTweetId = replyResult.data.id;
+      }
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({
+            success: true,
+            message: `Successfully sent ${args.tweets.length} tweet${args.tweets.length > 1 ? 's' : ''}`
+          }, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error sending tweet(s): ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
