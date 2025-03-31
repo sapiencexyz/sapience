@@ -1,0 +1,34 @@
+{
+  "address": "0x7d3D07888E5D8B45D8B6a97e8a2bdc6d21c2d378",
+  "abi": [
+    {
+      "type": "function",
+      "name": "supportsInterface",
+      "inputs": [
+        {
+          "name": "interfaceId",
+          "type": "bytes4",
+          "internalType": "bytes4"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x74768ab0094058de7916716936c2d8c0a57a37c1914f4491972a24a48ed0530c",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1740517911",
+  "sourceName": "src/market/modules/ERC165Module.sol",
+  "contractName": "ERC165Module",
+  "deployedOn": "deploy.ERC165Module",
+  "gasUsed": 108375,
+  "gasCost": "1000207448"
+}

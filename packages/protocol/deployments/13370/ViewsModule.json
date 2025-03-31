@@ -1,0 +1,575 @@
+{
+  "address": "0xaA8Ae5B672Ace5bab490AC4faa3d3e97F1b30040",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getEpoch",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "epochData",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochData",
+          "components": [
+            {
+              "name": "epochId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "startTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "endTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "pool",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "ethToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "gasToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "minPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "maxPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "settled",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "settlementPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "assertionId",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getLatestEpoch",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "epochData",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.EpochData",
+          "components": [
+            {
+              "name": "epochId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "startTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "endTime",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "pool",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "ethToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "gasToken",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "minPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "maxPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "baseAssetMinPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "baseAssetMaxPriceTick",
+              "type": "int24",
+              "internalType": "int24"
+            },
+            {
+              "name": "settled",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "settlementPriceD18",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "assertionId",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        },
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getMarket",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "owner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "feeCollectorNFT",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getMarketTickSpacing",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPosition",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct Position.Data",
+          "components": [
+            {
+              "name": "id",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "kind",
+              "type": "uint8",
+              "internalType": "enum IFoilStructs.PositionKind"
+            },
+            {
+              "name": "epochId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "depositedCollateralAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "borrowedVEth",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "borrowedVGas",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vEthAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "vGasAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "uniswapPositionId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "isSettled",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "getPositionCollateralValue",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "collateralValue",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPositionPnl",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pnl",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getPositionSize",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getReferencePrice",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "price18Digits",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getSqrtPriceX96",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "InvalidPositionId",
+      "inputs": [
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "MathOverflowedMulDiv",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NoEpochsCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OverflowUint256ToInt256",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "T",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x23b733ba8fc59cb7d69054aea783f135ecb5f4c2fb4a806822f1ad2e37c405f7",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1740517911",
+  "sourceName": "src/market/modules/ViewsModule.sol",
+  "contractName": "ViewsModule",
+  "deployedOn": "deploy.ViewsModule",
+  "gasUsed": 1665599,
+  "gasCost": "1000102025"
+}
