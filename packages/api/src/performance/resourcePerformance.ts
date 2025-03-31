@@ -31,7 +31,7 @@ import {
   getTimeWindow,
 } from './helper';
 
-import { persist, restore,PersistMode } from './persistenceHelper';
+import { persist, restore, PersistMode } from './persistenceHelper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
@@ -59,7 +59,8 @@ export class ResourcePerformance {
 
   // Persistent storage. The main storage for the resource performance data and where all the data is pulled when required
   private persistentStorage: StorageData = {};
-  private persistentResourceCacheTrailingAvgStorage: ResourceCacheTrailingAvgStorage = [];
+  private persistentResourceCacheTrailingAvgStorage: ResourceCacheTrailingAvgStorage =
+    [];
 
   // Runtime data. The data that is used to process the resource data on each db pull
   private runtime: {
@@ -450,7 +451,6 @@ export class ResourcePerformance {
           };
         }
 
-        const storedTrailingAvgData = this.persistentResourceCacheTrailingAvgStorage ?? [];
         this.runtime.trailingAvgProcessData[interval][
           trailingAvgTime.toString()
         ] = {
@@ -487,7 +487,7 @@ export class ResourcePerformance {
     console.log('LLL ResourcePerformance.persistStorage');
     console.time('LLL ResourcePerformance.persistStorage');
 
-    // Persist 
+    // Persist
     await persist(
       PersistMode.FILE,
       this.persistentStorage,
@@ -517,13 +517,15 @@ export class ResourcePerformance {
       this.intervals,
       this.trailingAvgTime,
       this.epochs
-    );  
-    
-    return restored ?  {
-      latestResourceTimestamp: restored.latestResourceTimestamp,
-      latestMarketTimestamp: restored.latestMarketTimestamp,
-      store: restored.storage,
-    } : undefined;
+    );
+
+    return restored
+      ? {
+          latestResourceTimestamp: restored.latestResourceTimestamp,
+          latestMarketTimestamp: restored.latestMarketTimestamp,
+          store: restored.storage,
+        }
+      : undefined;
   }
 
   private processResourcePriceData(
@@ -583,17 +585,18 @@ export class ResourcePerformance {
       if (currentPlaceholderIndex >= 0) {
         // Update the placeholder with final values
         resourceStore.datapoints[currentPlaceholderIndex] = {
-          timestamp: resourceStore.datapoints[currentPlaceholderIndex].timestamp,
+          timestamp:
+            resourceStore.datapoints[currentPlaceholderIndex].timestamp,
           endTimestamp: rpd.nextTimestamp,
           data: {
             o: rpd.open.toString(),
             h: isInCurrentInterval
-            ? maxBigInt(rpd.high, price).toString()
-            : rpd.high.toString(),
-          l: isInCurrentInterval
-            ? minBigInt(rpd.low, price).toString()
-            : rpd.low.toString(),
-          c: price.toString(),
+              ? maxBigInt(rpd.high, price).toString()
+              : rpd.high.toString(),
+            l: isInCurrentInterval
+              ? minBigInt(rpd.low, price).toString()
+              : rpd.low.toString(),
+            c: price.toString(),
           },
           metadata: {
             lastIncludedTimestamp: item.timestamp,
@@ -644,7 +647,8 @@ export class ResourcePerformance {
       // Update the placeholder
       if (currentPlaceholderIndex >= 0) {
         resourceStore.datapoints[currentPlaceholderIndex] = {
-          timestamp: resourceStore.datapoints[currentPlaceholderIndex].timestamp,
+          timestamp:
+            resourceStore.datapoints[currentPlaceholderIndex].timestamp,
           endTimestamp: rpd.nextTimestamp,
           data: {
             o: rpd.open.toString(),
@@ -697,11 +701,14 @@ export class ResourcePerformance {
 
         // Check if we already have an item for this interval
         const lastStoreIndex =
-          piStore.datapoints.length > 0 ? piStore.datapoints.length - 1 : undefined;
+          piStore.datapoints.length > 0
+            ? piStore.datapoints.length - 1
+            : undefined;
 
         // Get cached data from the latest stored item
         if (lastStoreIndex !== undefined) {
-          const metadata = piStore.datapoints[lastStoreIndex].metadata as IndexMetadata;
+          const metadata = piStore.datapoints[lastStoreIndex]
+            .metadata as IndexMetadata;
           ripd.used = BigInt(metadata.sumUsed);
           ripd.feePaid = BigInt(metadata.sumPaid);
         }
@@ -727,7 +734,6 @@ export class ResourcePerformance {
             },
           };
           piStore.datapoints.push(datapoint);
-
         }
       }
 
@@ -776,7 +782,6 @@ export class ResourcePerformance {
             sumPaid: fixedFeePaid.toString(),
           },
         };
-
 
         // Prepare and create a placeholder for the next interval if there's a new interval
         if (isNewInterval) {
@@ -876,13 +881,16 @@ export class ResourcePerformance {
 
       // Check if we already have an item for this interval
       const lastStoreIndex =
-        ptStore.datapoints.length > 0 ? ptStore.datapoints.length - 1 : undefined;
+        ptStore.datapoints.length > 0
+          ? ptStore.datapoints.length - 1
+          : undefined;
 
       // Get cached data from the latest stored item
       if (lastStoreIndex !== undefined) {
-        const metadata = ptStore.datapoints[lastStoreIndex].metadata as TrailingAvgMetadata;
+        const metadata = ptStore.datapoints[lastStoreIndex]
+          .metadata as TrailingAvgMetadata;
         rtpd.used = BigInt(metadata.sumUsed);
-        rtpd.feePaid = BigInt(metadata.sumPaid);  
+        rtpd.feePaid = BigInt(metadata.sumPaid);
       }
 
       // Check if we already have an item for this interval
@@ -909,7 +917,6 @@ export class ResourcePerformance {
           },
         };
         ptStore.datapoints.push(datapoint);
-
       }
     }
 
@@ -1067,11 +1074,14 @@ export class ResourcePerformance {
 
         // Check if we already have an item for this interval
         const lastStoreIndex =
-          pmStore.datapoints.length > 0 ? pmStore.datapoints.length - 1 : undefined;
+          pmStore.datapoints.length > 0
+            ? pmStore.datapoints.length - 1
+            : undefined;
 
         // Get cached data from the latest stored item
         if (lastStoreIndex !== undefined) {
-          const previousData = pmStore.datapoints[lastStoreIndex].data as CandleData;
+          const previousData = pmStore.datapoints[lastStoreIndex]
+            .data as CandleData;
           rmpd.open = BigInt(previousData.o);
           rmpd.high = BigInt(previousData.h);
           rmpd.low = BigInt(previousData.l);
@@ -1136,7 +1146,8 @@ export class ResourcePerformance {
 
         // Check if we already have an item for this interval
         const existingIndex = pmStore.datapoints.findIndex(
-          (d) => d.timestamp >= itemStartTime && d.timestamp < rmpd.nextTimestamp
+          (d) =>
+            d.timestamp >= itemStartTime && d.timestamp < rmpd.nextTimestamp
         );
 
         if (existingIndex === -1 && !isEndOfEpoch) {
@@ -1218,7 +1229,8 @@ export class ResourcePerformance {
     }
 
     const indexDatapoints = (
-      this.persistentStorage[interval].indexStore[epochId].datapoints as Datapoint[]
+      this.persistentStorage[interval].indexStore[epochId]
+        .datapoints as Datapoint[]
     ).map((d) => ({
       timestamp: d.timestamp,
       open: isCumulative ? (d.data as IndexData).c : (d.data as IndexData).v,
@@ -1237,11 +1249,9 @@ export class ResourcePerformance {
     trailingAvgTime: number
   ) {
     this.checkInterval(interval);
-    const indexDatapoints = (
-      this.persistentStorage[interval].trailingAvgStore[
-        trailingAvgTime.toString()
-      ].datapoints 
-    ).map((d) => ({
+    const indexDatapoints = this.persistentStorage[interval].trailingAvgStore[
+      trailingAvgTime.toString()
+    ].datapoints.map((d) => ({
       timestamp: d.timestamp,
       open: (d.data as CandleData).o,
       high: (d.data as CandleData).h,
@@ -1249,12 +1259,7 @@ export class ResourcePerformance {
       close: (d.data as CandleData).c,
     }));
 
-    return this.getPricesFromArray(
-      indexDatapoints,
-      from,
-      to,
-      interval
-    );
+    return this.getPricesFromArray(indexDatapoints, from, to, interval);
   }
 
   async getMarketPrices(
@@ -1272,14 +1277,15 @@ export class ResourcePerformance {
     }
 
     const prices = await this.getPricesFromArray(
-      this.persistentStorage[interval].marketStore[epochId]
-        .datapoints.map((d) => ({
+      this.persistentStorage[interval].marketStore[epochId].datapoints.map(
+        (d) => ({
           timestamp: d.timestamp,
           open: (d.data as CandleData).o,
           high: (d.data as CandleData).h,
           low: (d.data as CandleData).l,
           close: (d.data as CandleData).c,
-        })) as ResponseCandleData[],
+        })
+      ) as ResponseCandleData[],
       from,
       to,
       interval,
@@ -1348,7 +1354,6 @@ export class ResourcePerformance {
     // Check if we need to process new data for this requested time range
     await this.updateStoreIfNeeded(prices, timeWindow.to);
 
-
     // If there are no prices or window starts before first price, add zero entries
     if (fillInitialDatapoints && timeWindow.from < prices[0].timestamp) {
       const zeroEntries = [];
@@ -1366,7 +1371,9 @@ export class ResourcePerformance {
 
     // TODO: Use pointer to find the start and end indices
     // Since prices are ordered by timestamp, we can find the start and end indices
-    let startIndex = prices.findIndex((price) => price.timestamp >= timeWindow.from);
+    let startIndex = prices.findIndex(
+      (price) => price.timestamp >= timeWindow.from
+    );
     if (startIndex === -1) startIndex = prices.length;
 
     let endIndex = prices.length;

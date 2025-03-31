@@ -352,13 +352,14 @@ export class CandleResolver {
       trailingAvgTime
     );
 
-    for (let i = 0; i < prices.length; i++ ) {
+    for (let i = 0; i < prices.length; i++) {
       if (prices[i].close == null) {
-        console.log(`resourceTrailingAverageCandles LLL ${JSON.stringify(prices[i])}, i: ${i}`);
+        console.log(
+          `resourceTrailingAverageCandles LLL ${JSON.stringify(prices[i])}, i: ${i}`
+        );
       }
     }
     return prices;
-
   }
 
   @Query(() => [CandleType])
@@ -552,7 +553,7 @@ export class CandleResolver {
       epochId
     );
 
-    for (let i = 0; i < prices.length; i++ ) {
+    for (let i = 0; i < prices.length; i++) {
       if (prices[i].open == null) {
         console.log(`marketCandles LLL ${JSON.stringify(prices[i])}, i: ${i}`);
       }

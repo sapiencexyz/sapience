@@ -29,10 +29,10 @@ export type Store = {
 
 export type Datapoint = {
   timestamp: number; // datapoint timestamp
-	endTimestamp: number;
+  endTimestamp: number;
   data: CandleData | IndexData;
   metadata: GenericMetadata | IndexMetadata | TrailingAvgMetadata;
-}
+};
 
 export type CandleData = {
   // t: number; // timestamp
@@ -55,15 +55,15 @@ export type MarketPriceData = {
 };
 
 export type GenericMetadata = {
-	// Datapoint metadata for all
-	lastIncludedTimestamp: number;
-}
+  // Datapoint metadata for all
+  lastIncludedTimestamp: number;
+};
 export type IndexMetadata = GenericMetadata & {
   sumUsed: string;
-	sumPaid: string;
+  sumPaid: string;
 };
 export type TrailingAvgMetadata = IndexMetadata & {
-  trailingStartTimestamp: number
+  trailingStartTimestamp: number;
 };
 
 // TrailingAvg related types (now separate)
