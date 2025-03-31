@@ -524,14 +524,14 @@ async function storeRecordsToFile(
         }
       } catch (error) {
         throw new Error(
-          `Error processing record at index ${i}: ${error.message}`
+          `Error processing record at index ${i}: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     }
 
     // Close the file properly
     await new Promise<void>((resolve, reject) => {
-      writeStream!.end((err) => {
+      writeStream!.end((err: Error | null) => {
         if (err) reject(new Error(`Error closing file: ${err.message}`));
         else resolve();
       });
@@ -568,7 +568,7 @@ async function storeRecordsToFile(
       error
     );
     throw new Error(
-      `  ResourcePerformance --> Failed to persist store: ${error.message}`
+      `  ResourcePerformance --> Failed to persist store: ${error instanceof Error ? error.message : String(error)}`
     );
   } finally {
     // Ensure stream is closed
@@ -823,14 +823,14 @@ async function persistResourceCacheTrailingAvgStore(
         }
       } catch (error) {
         throw new Error(
-          `Error processing trailing avg record: ${error.message}`
+          `Error processing trailing avg record: ${error instanceof Error ? error.message : String(error)}`
         );
       }
     }
 
     // Close the file properly
     await new Promise<void>((resolve, reject) => {
-      writeStream!.end((err) => {
+      writeStream!.end((err: Error | null) => {
         if (err) reject(new Error(`Error closing file: ${err.message}`));
         else resolve();
       });
@@ -867,7 +867,7 @@ async function persistResourceCacheTrailingAvgStore(
       error
     );
     throw new Error(
-      `  ResourcePerformance --> Failed to persist trailing avg store: ${error.message}`
+      `  ResourcePerformance --> Failed to persist trailing avg store: ${error instanceof Error ? error.message : String(error)}`
     );
   } finally {
     // Ensure stream is closed
