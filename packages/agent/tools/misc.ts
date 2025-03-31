@@ -2,6 +2,15 @@ import { createPublicClient, createWalletClient, http, encodeFunctionData } from
 import { base } from 'viem/chains';
 import { privateKeyToAccount, signMessage } from 'viem/accounts';
 import ERC20ABI from '../abi/ERC20.json';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { config } from 'dotenv';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load .env file from the agent package directory
+config({ path: join(__dirname, '..', '.env') });
 
 declare global {
   namespace NodeJS {
@@ -37,13 +46,6 @@ const SAFE_SERVICE_URLS: Record<string, string> = {
   '1666700000': 'https://safe-transaction-harmony-testnet.safe.global',
   '1337': 'https://safe-transaction-gateway.safe.global' // For local development
 };
-
-// Create a wallet client for executing transactions
-const walletClient = createWalletClient({
-  chain: base,
-  transport: http(),
-  account: privateKeyToAccount(process.env.ETHEREUM_PRIVATE_KEY as `0x${string}`)
-});
 
 export const stageTransaction = {
   name: "stage_transaction",
@@ -181,7 +183,17 @@ export const executeTransaction = {
   },
   function: async (args: { calldata: string; to: string; value: string; chainId: string }) => {
     try {
+      if (!process.env.ETHEREUM_PRIVATE_KEY) {
+        throw new Error("ETHEREUM_PRIVATE_KEY environment variable is not set");
+      }
+
       const account = privateKeyToAccount(process.env.ETHEREUM_PRIVATE_KEY as `0x${string}`);
+      const walletClient = createWalletClient({
+        chain: base,
+        transport: http(),
+        account
+      });
+
       const hash = await walletClient.sendTransaction({
         account,
         chain: base,
