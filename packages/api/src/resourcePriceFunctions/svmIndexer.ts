@@ -4,6 +4,7 @@ import Sentry from '../sentry';
 import { IResourcePriceIndexer } from '../interfaces';
 import { Resource } from 'src/models/Resource';
 import type { Scope } from '@sentry/node';
+import { sleep } from 'src/utils';
 
 interface SolanaBlock {
   blockhash: string;
@@ -248,6 +249,9 @@ class SvmIndexer implements IResourcePriceIndexer {
       console.log('[svmIndexer] Already watching blocks for this resource');
       return;
     }
+    let numberOfBlocksProcessed = 0;
+    const indexingStartTimestamp = new Date();
+
 
     const startWatching = async () => {
       console.log(
@@ -260,56 +264,56 @@ class SvmIndexer implements IResourcePriceIndexer {
       let lastFinalizedBlockSlot = await this.connection.getBlockHeight('finalized') ;
       console.log(`[svmIndexer] Starting to watch from block ${lastFinalizedBlockSlot}`);
 
+      console.log((await this.connection.getParsedBlock(lastFinalizedBlockSlot, {
+        transactionDetails: 'full',
+        maxSupportedTransactionVersion: 0,
+      })).transactions[0].meta?.computeUnitsConsumed);
+  
+
       while (this.isWatching) {
         try {
-          const targetBlockSlot = lastFinalizedBlockSlot + 1;
+          const targetBlockSlot = lastFinalizedBlockSlot;
 
-          // Skip if we've already processed this slot or if it's too recent
-          // if (targetSlot <= lastProcessedSlot || targetSlot <= 0) {
-          //   await new Promise(resolve => setTimeout(resolve, 100));
-          //   continue;
-          // }
-
-            try {
-              console.time("GetBlockTimer")
-              const block = await this.connection.getBlock(targetBlockSlot, {
-                maxSupportedTransactionVersion: 0,
-                commitment: 'finalized',
-                transactionDetails: 'full',
-                rewards: false,
-              });
-              console.timeEnd("GetBlockTimer")
-
+          console.time(`GetBlockTimer_${targetBlockSlot}`)
+          this.connection.getBlock(targetBlockSlot, {
+            maxSupportedTransactionVersion: 0,
+            encoding: 'json',
+            commitment: 'finalized',
+            transactionDetails: 'full',
+            rewards: false,
+          }).then((block) => {
               if (block) {
-                console.log(`Number of txs in a block: ${block.transactions.length}`);
-                console.time("DbTimer")
-                await this.storeBlockPrice(
-                  { ...block} as SolanaBlock,
+                console.log(block)
+                console.time(`DbTimer_${targetBlockSlot}`)
+                this.storeBlockPrice(
+                  { ...block } as SolanaBlock,
                   resource
                 );
-                console.timeEnd("DbTimer")
-              }
-            } catch (error: unknown) {
-              
-              if (
-                error &&
-                typeof error === 'object' &&
-                'code' in error &&
-                error.code === -32004
-              ) {
-                // Skip slots with no blocks
-                continue;
-              }
+                console.timeEnd(`DbTimer_${targetBlockSlot}`)
+              } else {
+                console.log("Skipping block since the slot was empty...");
+              } 
+              console.timeEnd(`GetBlockTimer_${targetBlockSlot}`)
+              numberOfBlocksProcessed++;
+              const now = new Date();
+              const diffMs = now.getTime() - indexingStartTimestamp.getTime();
+              console.log("Avg time to process 1 block:", diffMs / numberOfBlocksProcessed);
+          }).catch((error) => {
+            console.log("Inside error handler");
+            if (error && typeof error === 'object' && 'code' in error && error.code ===  -32009) {
+              console.log("Slot was skipped or is missing in long-term storage...");
+            } else {
+              console.log(error);
               throw error;
             }
-          // }
+          });
 
-          lastFinalizedBlockSlot = targetBlockSlot;
+          lastFinalizedBlockSlot = targetBlockSlot + 1;
           this.reconnectAttempts = 0;
           
           console.time("ResolveTimer")
           // Sleep for 100ms before next iteration
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await sleep(250);
           console.timeEnd("ResolveTimer"); // Outputs: myTimer: X ms
 
           
