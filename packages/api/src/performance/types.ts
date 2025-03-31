@@ -67,9 +67,9 @@ export type TrailingAvgMetadata = IndexMetadata & {
 };
 
 // TrailingAvg related types (now separate)
-export type TrailingAvgStorage = TrailingAvgData[];
+export type ResourceCacheTrailingAvgStorage = ResourceCacheTrailingAvgData[];
 
-export type TrailingAvgData = {
+export type ResourceCacheTrailingAvgData = {
   t: number; // timestamp
   u: string; // used
   f: string; // fee

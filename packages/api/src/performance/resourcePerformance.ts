@@ -12,10 +12,10 @@ import {
   CandleData,
   MarketPriceData,
   StorageData,
-  TrailingAvgData,
+  ResourceCacheTrailingAvgData,
   ResponseCandleData,
   IndexData,
-  TrailingAvgStorage,
+  ResourceCacheTrailingAvgStorage,
   Datapoint,
   IndexMetadata,
   TrailingAvgMetadata,
@@ -59,7 +59,7 @@ export class ResourcePerformance {
 
   // Persistent storage. The main storage for the resource performance data and where all the data is pulled when required
   private persistentStorage: StorageData = {};
-  private persistentTrailingAvgStorage: TrailingAvgStorage = [];
+  private persistentResourceCacheTrailingAvgStorage: ResourceCacheTrailingAvgStorage = [];
 
   // Runtime data. The data that is used to process the resource data on each db pull
   private runtime: {
@@ -215,7 +215,7 @@ export class ResourcePerformance {
       const item = this.runtime.dbResourcePrices[this.runtime.currentIdx];
 
       // Add to trailing avg storage
-      this.persistentTrailingAvgStorage.push({
+      this.persistentResourceCacheTrailingAvgStorage.push({
         t: item.timestamp,
         u: item.value,
         f: item.value,
@@ -228,14 +228,14 @@ export class ResourcePerformance {
           this.runtime.currentIdx,
           interval,
           this.trailingAvgTime[0],
-          this.persistentTrailingAvgStorage
+          this.persistentResourceCacheTrailingAvgStorage
         );
         this.processTrailingAvgPricesData(
           item,
           this.runtime.currentIdx,
           interval,
           this.trailingAvgTime[1],
-          this.persistentTrailingAvgStorage
+          this.persistentResourceCacheTrailingAvgStorage
         );
         this.processIndexPricesData(item, this.runtime.currentIdx, interval);
       }
@@ -450,7 +450,7 @@ export class ResourcePerformance {
           };
         }
 
-        const storedTrailingAvgData = this.persistentTrailingAvgStorage ?? [];
+        const storedTrailingAvgData = this.persistentResourceCacheTrailingAvgStorage ?? [];
         this.runtime.trailingAvgProcessData[interval][
           trailingAvgTime.toString()
         ] = {
@@ -491,7 +491,7 @@ export class ResourcePerformance {
     await persist(
       PersistMode.FILE,
       this.persistentStorage,
-      this.persistentTrailingAvgStorage,
+      this.persistentResourceCacheTrailingAvgStorage,
       this.lastResourceTimestampProcessed,
       this.lastMarketTimestampProcessed,
       this.resource,
@@ -842,7 +842,7 @@ export class ResourcePerformance {
     currentIdx: number,
     interval: number,
     trailingAvgTime: number,
-    persistentTrailingAvgStorage: TrailingAvgData[]
+    persistentTrailingAvgStorage: ResourceCacheTrailingAvgData[]
   ) {
     // Runtime data
     const rtpd =

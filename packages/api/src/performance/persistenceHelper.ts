@@ -1,9 +1,9 @@
-import {TrailingAvgData, 
+import {ResourceCacheTrailingAvgData, 
   CandleData,
   Datapoint,
   IndexData,
   StorageData,
-  TrailingAvgStorage,
+  ResourceCacheTrailingAvgStorage,
 } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,7 +23,7 @@ export enum PersistMode {
 export async function persist(
   mode: PersistMode,
   storage: StorageData,
-  trailingAvgStore: TrailingAvgStorage,
+  persistentResourceCacheTrailingAvgStorage: ResourceCacheTrailingAvgStorage,
   latestResourceTimestamp: number,
   latestMarketTimestamp: number,
   resource: Resource,
@@ -37,7 +37,7 @@ export async function persist(
   // Common validations
   if (
     !storage ||
-    !trailingAvgStore ||
+    !persistentResourceCacheTrailingAvgStorage ||
     !resource ||
     !intervals ||
     !trailingAvgTimes ||
@@ -66,7 +66,7 @@ export async function persist(
       });
   } else if (mode === PersistMode.DATABASE) {
     // TODO: Implement database persistence
-    console.error('Database persistence is not implemented');
+    console.error('  ResourcePerformance --> Database persistence is not implemented');
     return;
   }
 
@@ -128,15 +128,10 @@ export async function persist(
   }
 
   // persist trailingAvgStore
-  for (const trailingAvgTime of trailingAvgTimes) {
-    if(!trailingAvgStore) {
-      continue;
-    }
-    await persistTrailingAvgStore(
-      trailingAvgStore,
-      path.join(process.env.STORAGE_PATH!, `${resource.slug}-${trailingAvgTime}-trailingAvg-store.csv`)
-    );
-  }
+  await persistResourceCacheTrailingAvgStore(
+    persistentResourceCacheTrailingAvgStorage,
+    path.join(process.env.STORAGE_PATH!, `${resource.slug}-resourceCacheTrailingAvgData-store.csv`)
+  );
 }
 
 export async function restore(
@@ -146,7 +141,7 @@ export async function restore(
   trailingAvgTimes: number[],
   epochs: Epoch[]
 ): Promise<
-  { storage: StorageData; trailingAvgStore: TrailingAvgStorage; latestResourceTimestamp: number, latestMarketTimestamp: number}  | undefined
+  { storage: StorageData; persistentResourceCacheTrailingAvgStorage: ResourceCacheTrailingAvgStorage; latestResourceTimestamp: number, latestMarketTimestamp: number}  | undefined
 > {
   if (process.env.SAVE_STORAGE !== 'true') {
     return;
@@ -176,7 +171,7 @@ export async function restore(
       });
   } else if (mode === PersistMode.DATABASE) {
     // TODO: Implement database persistence
-    console.error('Database persistence is not implemented');
+    console.error('  ResourcePerformance --> Database persistence is not implemented');
     return;
   }
 
@@ -187,13 +182,13 @@ export async function restore(
 
 
   if(!metadata || Number(metadata.version) !== FORMAT_VERSION) {
-    console.warn(`Unsupported version: ${metadata?.version}`);
+    console.warn(`  ResourcePerformance --> Unsupported version: ${metadata?.version}`);
     return undefined;
   }
 
   let restored = false;
   const storage: StorageData = {};
-  let trailingAvgStore: TrailingAvgData[] = [];
+  let trailingAvgStore: ResourceCacheTrailingAvgData[] = [];
 
   let records: Store | undefined;
   for (const interval of intervals) {
@@ -273,17 +268,15 @@ export async function restore(
   }
 
   // restore trailingAvgStore
-  for (const trailingAvgTime of trailingAvgTimes) {
-    const records = await restoreTrailingAvgRecords(
-      path.join(process.env.STORAGE_PATH!, `${resource.slug}-${trailingAvgTime}-trailingAvg-store.csv`)
-    );
-    if (records) {
-      trailingAvgStore = records;
-      restored = true;
-    }
+  const persistentResourceCacheTrailingAvgStore = await restoreResourceCacheTrailingAvgStore(
+    path.join(process.env.STORAGE_PATH!, `${resource.slug}-resourceCacheTrailingAvgData-store.csv`)
+  );
+  if (persistentResourceCacheTrailingAvgStore) {
+    trailingAvgStore = persistentResourceCacheTrailingAvgStore;
+    restored = true;
   }
 
-  return restored ? { storage, trailingAvgStore, latestResourceTimestamp: metadata.latestResourceTimestamp, latestMarketTimestamp: metadata.latestMarketTimestamp } : undefined;
+  return restored ? { storage, persistentResourceCacheTrailingAvgStorage: trailingAvgStore, latestResourceTimestamp: metadata.latestResourceTimestamp, latestMarketTimestamp: metadata.latestMarketTimestamp } : undefined;
 }
 
 export async function clearStorageFiles(): Promise<void> {
@@ -332,7 +325,7 @@ async function persistResourceMetadata(
     await fs.promises.writeFile(filename, JSON.stringify(metadata, null, 2));
   } else if (mode == PersistMode.DATABASE) {
     // TODO: Implement database persistence
-    console.error('Database persistence is not implemented');
+    console.error('  ResourcePerformance --> Database persistence is not implemented');
   }
 }
 
@@ -349,7 +342,7 @@ async function restoreResourceMetadata(
     return JSON.parse(metadata);
   } else if (mode == PersistMode.DATABASE) {
     // TODO: Implement database persistence
-    console.error('Database persistence is not implemented');
+    console.error('  ResourcePerformance --> Database persistence is not implemented');
   }
 }
 
@@ -395,7 +388,7 @@ async function restoreRecords(
     return restoreRecordsFromFile(resourceSlug, kind, interval, epochId, trailingAvgTime);
   } else if (mode === PersistMode.DATABASE) {
     // TODO: Implement database persistence
-    console.error('Database persistence is not implemented');
+    console.error('  ResourcePerformance --> Database persistence is not implemented');
     return undefined;
   }
 }
@@ -485,7 +478,7 @@ async function storeRecordsToFile(
     // Verify file was written
     const stats = await fs.promises.stat(filename);
     if (stats.size === 0) {
-      console.warn(`File was created but no data was written: ${filename}`);
+      console.warn(`  ResourcePerformance --> File was created but no data was written: ${filename}`);
     }
   } catch (error: any) {
     // Clean up on error
@@ -499,12 +492,12 @@ async function storeRecordsToFile(
         await fs.promises.unlink(filename);
       }
     } catch (cleanupError) {
-      console.error('Error cleaning up failed file:', cleanupError);
+      console.error('  ResourcePerformance --> Error cleaning up failed file:', cleanupError);
     }
 
     // Log and rethrow
-    console.error(`Error persisting store to ${filename}:`, error);
-    throw new Error(`Failed to persist store: ${error.message}`);
+    console.error(`  ResourcePerformance --> Error persisting store to ${filename}:`, error);
+    throw new Error(`  ResourcePerformance --> Failed to persist store: ${error.message}`);
   } finally {
     // Ensure stream is closed
     if (writeStream && !writeStream.destroyed) {
@@ -526,7 +519,7 @@ async function restoreRecordsFromFile(
     
     // Check if file exists
     if (!fs.existsSync(filename)) {
-      console.log(`No stored data found at ${filename}`);
+      console.log(`  ResourcePerformance --> No stored data found at ${filename}`);
       return undefined;
     }
 
@@ -545,7 +538,6 @@ async function restoreRecordsFromFile(
     // No header in the file
     // let isFirstLine = true; // To skip header
 
-    const invalidVersion = false;
     // Process file line by line
     for await (const line of rl) {
       // Skip header
@@ -557,7 +549,7 @@ async function restoreRecordsFromFile(
       // Parse CSV line
       const values = parseCsvLine(line);
       if (values.length !== 12) { // Expected number of columns
-        console.warn(`Invalid line format: ${line}`);
+        console.warn(`  ResourcePerformance --> Invalid line format: ${line}`);
         continue;
       }
 
@@ -616,14 +608,9 @@ async function restoreRecordsFromFile(
     // Close the file stream
     fileStream.destroy();
 
-    if(invalidVersion) {
-      console.warn(`Invalid version in ${filename}`);
-      return undefined;
-    }
-
     // Validate restored data
     if (store.datapoints.length === 0) {
-      console.log(`No valid data found in ${filename}`);
+      console.log(`  ResourcePerformance --> No valid data found in ${filename}`);
       return undefined;
     }
 
@@ -634,7 +621,7 @@ async function restoreRecordsFromFile(
     return store;
 
   } catch (error) {
-    console.error(`Error restoring records from file: ${error}`);
+    console.error(`  ResourcePerformance --> Error restoring records from file: ${error}`);
     return undefined;
   }
 }
@@ -661,8 +648,8 @@ async function restoreRecordsFromDatabase(
   return undefined;
 }
 
-async function persistTrailingAvgStore(
-  store: TrailingAvgData[],
+async function persistResourceCacheTrailingAvgStore(
+  store: ResourceCacheTrailingAvgStorage,
   filename: string
 ): Promise<void> {
   // Input validation
@@ -752,7 +739,7 @@ async function persistTrailingAvgStore(
     // Verify file was written
     const stats = await fs.promises.stat(filename);
     if (stats.size === 0) {
-      throw new Error('File was created but no data was written');
+      throw new Error('  ResourcePerformance --> File was created but no data was written');
     }
   } catch (error: any) {
     // Clean up on error
@@ -766,12 +753,12 @@ async function persistTrailingAvgStore(
         await fs.promises.unlink(filename);
       }
     } catch (cleanupError) {
-      console.error('Error cleaning up failed file:', cleanupError);
+      console.error('  ResourcePerformance --> Error cleaning up failed file:', cleanupError);
     }
 
     // Log and rethrow
-    console.error(`Error persisting trailing avg store to ${filename}:`, error);
-    throw new Error(`Failed to persist trailing avg store: ${error.message}`);
+    console.error(`  ResourcePerformance --> Error persisting trailing avg store to ${filename}:`, error);
+    throw new Error(`  ResourcePerformance --> Failed to persist trailing avg store: ${error.message}`);
   } finally {
     // Ensure stream is closed
     if (writeStream && !writeStream.destroyed) {
@@ -780,10 +767,80 @@ async function persistTrailingAvgStore(
   }
 }
 
-async function restoreTrailingAvgRecords(
+async function restoreResourceCacheTrailingAvgStore(
   filename: string
-): Promise<TrailingAvgData[] | undefined> {
-  return undefined;
+): Promise<ResourceCacheTrailingAvgData[] | undefined> {
+  if (!filename) {
+    throw new Error('Filename is required');
+  }
+  
+try {
+    // Check if file exists
+    if (!fs.existsSync(filename)) {
+      console.log(`  ResourcePerformance --> No stored data found at ${filename}`);
+      return undefined;
+    }
+
+    // Initialize store structure
+    const store: ResourceCacheTrailingAvgStorage = [];
+
+    // Create readline interface
+    const fileStream = fs.createReadStream(filename, { encoding: 'utf8' });
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    // No header in the file
+    // let isFirstLine = true; // To skip header
+
+    // Process file line by line
+    for await (const line of rl) {
+      // Skip header
+      // if (isFirstLine) {
+      //   isFirstLine = false;
+      //   continue;
+      // }
+
+      // Parse CSV line
+      const values = parseCsvLine(line);
+      if (values.length !== 3) { // Expected number of columns
+        console.warn(`  ResourcePerformance --> Invalid line format: ${line}`);
+        continue;
+      }
+
+      const [
+        timestamp,
+        used,
+        feePaid,
+      ] = values;
+
+      // Create datapoint
+      const datapoint: ResourceCacheTrailingAvgData = {
+        t: parseInt(timestamp),
+        u: used,
+        f: feePaid,
+      };
+
+      // Add to store
+      store.push(datapoint);
+    }
+
+    // Close the file stream
+    fileStream.destroy();
+
+    // Validate restored data
+    if (store.length === 0) {
+      console.log(`  ResourcePerformance --> No valid data found in ${filename}`);
+      return undefined;
+    }
+
+    return store;
+
+  } catch (error) {
+    console.error(`  ResourcePerformance --> Error restoring trailing avg store from file: ${error}`);
+    return undefined;
+  }
 }
 
 // Helper function to construct filename
