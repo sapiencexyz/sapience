@@ -218,8 +218,8 @@ export class ResourcePerformance {
       // Add to trailing avg storage
       this.persistentResourceCacheTrailingAvgStorage.push({
         t: item.timestamp,
-        u: item.value,
-        f: item.value,
+        u: item.used,
+        f: item.feePaid,
       });
 
       for (const interval of this.intervals) {
@@ -876,7 +876,7 @@ export class ResourcePerformance {
     if (!rtpd.nextTimestamp) {
       rtpd.nextTimestamp = startOfNextInterval(item.timestamp, interval);
 
-      rtpd.startTimestampIndex = persistentTrailingAvgStorage.length -1;
+      rtpd.startTimestampIndex = persistentTrailingAvgStorage.length - 1;
 
       // Create a placeholder in the store if not found
       const itemStartTime = startOfCurrentInterval(item.timestamp, interval);
@@ -1251,7 +1251,9 @@ export class ResourcePerformance {
     trailingAvgTime: number
   ) {
     this.checkInterval(interval);
-    console.log(`  ResourcePerformance --> getTrailingAvgPrices --> interval: ${interval}, trailingAvgTime: ${trailingAvgTime}`);
+    console.log(
+      `  ResourcePerformance --> getTrailingAvgPrices --> interval: ${interval}, trailingAvgTime: ${trailingAvgTime}`
+    );
     const indexDatapoints = this.persistentStorage[interval].trailingAvgStore[
       trailingAvgTime.toString()
     ].datapoints.map((d) => ({
@@ -1261,13 +1263,23 @@ export class ResourcePerformance {
       low: (d.data as CandleData).l,
       close: (d.data as CandleData).c,
     }));
-    console.log(`  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints: ${indexDatapoints.length}`);
+    console.log(
+      `  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints: ${indexDatapoints.length}`
+    );
 
     for (let i = 0; i < indexDatapoints.length && i < 3; i++) {
-      console.log(`  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints[${i}]: ${JSON.stringify(indexDatapoints[i])}`);
+      console.log(
+        `  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints[${i}]: ${JSON.stringify(indexDatapoints[i])}`
+      );
     }
-    for (let i = indexDatapoints.length > 3 ? indexDatapoints.length - 3 : 0; i < indexDatapoints.length; i++) {
-      console.log(`  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints[${i}]: ${JSON.stringify(indexDatapoints[i])}`);
+    for (
+      let i = indexDatapoints.length > 3 ? indexDatapoints.length - 3 : 0;
+      i < indexDatapoints.length;
+      i++
+    ) {
+      console.log(
+        `  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints[${i}]: ${JSON.stringify(indexDatapoints[i])}`
+      );
     }
     return this.getPricesFromArray(indexDatapoints, from, to, interval);
   }
