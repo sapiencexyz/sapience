@@ -59,7 +59,7 @@ export class ResourcePerformance {
 
   // Persistent storage. The main storage for the resource performance data and where all the data is pulled when required
   private persistentStorage: StorageData = {};
-  private persistentTrailingAvgStorage: TrailingAvgStorage = [];
+  private persistentTrailingAvgStorage: TrailingAvgStorage = {};
 
   // Runtime data. The data that is used to process the resource data on each db pull
   private runtime: {
@@ -451,7 +451,7 @@ export class ResourcePerformance {
           // startTimestamp: 0,
           endTimestamp: 0,
           trailingAvgData: [
-            ...this.persistentTrailingAvgStorage, // Initialize with stored data
+            ...this.persistentTrailingAvgStorage[trailingAvgTime], // Initialize with stored data
           ],
         };
       }

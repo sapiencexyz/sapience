@@ -1,10 +1,9 @@
-import {
+import {TrailingAvgData, 
   CandleData,
   Datapoint,
   IndexData,
   StorageData,
   TrailingAvgStorage,
-  // CandleMetadata,
 } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -24,7 +23,7 @@ export enum PersistMode {
 export async function persist(
   mode: PersistMode,
   storage: StorageData,
-  trailingAvgStore: TrailingAvgStorage,
+  trailingAvgStores: TrailingAvgStorage,
   latestResourceTimestamp: number,
   latestMarketTimestamp: number,
   resource: Resource,
@@ -38,7 +37,7 @@ export async function persist(
   // Common validations
   if (
     !storage ||
-    !trailingAvgStore ||
+    !trailingAvgStores ||
     !resource ||
     !intervals ||
     !trailingAvgTimes ||
@@ -129,10 +128,15 @@ export async function persist(
   }
 
   // persist trailingAvgStore
-  // await persistTrailingAvgStore(
-  //   trailingAvgStore,
-  //   path.join(process.env.STORAGE_PATH!, `${resource.slug}-trailingAvg-store.csv`)
-  // );
+  for (const trailingAvgTime of trailingAvgTimes) {
+    if(!trailingAvgStores[trailingAvgTime]) {
+      continue;
+    }
+    await persistTrailingAvgStore(
+      trailingAvgStores[trailingAvgTime],
+      path.join(process.env.STORAGE_PATH!, `${resource.slug}-${trailingAvgTime}-trailingAvg-store.csv`)
+    );
+  }
 }
 
 export async function restore(
@@ -142,7 +146,7 @@ export async function restore(
   trailingAvgTimes: number[],
   epochs: Epoch[]
 ): Promise<
-  { storage: StorageData; trailingAvgStore: TrailingAvgStorage; latestResourceTimestamp: number, latestMarketTimestamp: number}  | undefined
+  { storage: StorageData; trailingAvgStores: TrailingAvgStorage; latestResourceTimestamp: number, latestMarketTimestamp: number}  | undefined
 > {
   if (process.env.SAVE_STORAGE !== 'true') {
     return;
@@ -189,7 +193,7 @@ export async function restore(
 
   let restored = false;
   const storage: StorageData = {};
-  const trailingAvgStore: TrailingAvgStorage = [];
+  const trailingAvgStores: TrailingAvgStorage = {};
 
   let records: Store | undefined;
   for (const interval of intervals) {
@@ -268,22 +272,18 @@ export async function restore(
     }
   }
 
-  // // restore trailingAvgStore
-  // for (const trailingAvgTime of trailingAvgTimes) {
-  //   records = await restoreTrailingAvgRecords(
-  //     mode,
-  //     resource.slug,
-  //     'trailingAvg',
-  //     interval,
-  //     undefined,
-  //     trailingAvgTime,
-  //   );
-  //   if (records) {
-  //     storage[interval].trailingAvgStore[trailingAvgTime] = records;
-  //     restored = true;
-  //   }
-  // }
-  return restored ? { storage, trailingAvgStore, latestResourceTimestamp: metadata.latestResourceTimestamp, latestMarketTimestamp: metadata.latestMarketTimestamp } : undefined;
+  // restore trailingAvgStore
+  for (const trailingAvgTime of trailingAvgTimes) {
+    const records = await restoreTrailingAvgRecords(
+      path.join(process.env.STORAGE_PATH!, `${resource.slug}-${trailingAvgTime}-trailingAvg-store.csv`)
+    );
+    if (records) {
+      trailingAvgStores[trailingAvgTime] = records;
+      restored = true;
+    }
+  }
+
+  return restored ? { storage, trailingAvgStores, latestResourceTimestamp: metadata.latestResourceTimestamp, latestMarketTimestamp: metadata.latestMarketTimestamp } : undefined;
 }
 
 export async function clearStorageFiles(): Promise<void> {
@@ -662,7 +662,7 @@ async function restoreRecordsFromDatabase(
 }
 
 async function persistTrailingAvgStore(
-  store: TrailingAvgStorage,
+  store: TrailingAvgData[],
   filename: string
 ): Promise<void> {
   // Input validation
@@ -782,7 +782,7 @@ async function persistTrailingAvgStore(
 
 async function restoreTrailingAvgRecords(
   filename: string
-): Promise<TrailingAvgStorage | undefined> {
+): Promise<TrailingAvgData[] | undefined> {
   return undefined;
 }
 
