@@ -23,7 +23,7 @@ export enum PersistMode {
 export async function persist(
   mode: PersistMode,
   storage: StorageData,
-  trailingAvgStores: TrailingAvgStorage,
+  trailingAvgStore: TrailingAvgStorage,
   latestResourceTimestamp: number,
   latestMarketTimestamp: number,
   resource: Resource,
@@ -37,7 +37,7 @@ export async function persist(
   // Common validations
   if (
     !storage ||
-    !trailingAvgStores ||
+    !trailingAvgStore ||
     !resource ||
     !intervals ||
     !trailingAvgTimes ||
@@ -129,11 +129,11 @@ export async function persist(
 
   // persist trailingAvgStore
   for (const trailingAvgTime of trailingAvgTimes) {
-    if(!trailingAvgStores[trailingAvgTime.toString()]) {
+    if(!trailingAvgStore) {
       continue;
     }
     await persistTrailingAvgStore(
-      trailingAvgStores[trailingAvgTime.toString()],
+      trailingAvgStore,
       path.join(process.env.STORAGE_PATH!, `${resource.slug}-${trailingAvgTime}-trailingAvg-store.csv`)
     );
   }
@@ -146,7 +146,7 @@ export async function restore(
   trailingAvgTimes: number[],
   epochs: Epoch[]
 ): Promise<
-  { storage: StorageData; trailingAvgStores: TrailingAvgStorage; latestResourceTimestamp: number, latestMarketTimestamp: number}  | undefined
+  { storage: StorageData; trailingAvgStore: TrailingAvgStorage; latestResourceTimestamp: number, latestMarketTimestamp: number}  | undefined
 > {
   if (process.env.SAVE_STORAGE !== 'true') {
     return;
@@ -193,7 +193,7 @@ export async function restore(
 
   let restored = false;
   const storage: StorageData = {};
-  const trailingAvgStores: TrailingAvgStorage = {};
+  let trailingAvgStore: TrailingAvgData[] = [];
 
   let records: Store | undefined;
   for (const interval of intervals) {
@@ -278,12 +278,12 @@ export async function restore(
       path.join(process.env.STORAGE_PATH!, `${resource.slug}-${trailingAvgTime}-trailingAvg-store.csv`)
     );
     if (records) {
-      trailingAvgStores[trailingAvgTime.toString()] = records;
+      trailingAvgStore = records;
       restored = true;
     }
   }
 
-  return restored ? { storage, trailingAvgStores, latestResourceTimestamp: metadata.latestResourceTimestamp, latestMarketTimestamp: metadata.latestMarketTimestamp } : undefined;
+  return restored ? { storage, trailingAvgStore, latestResourceTimestamp: metadata.latestResourceTimestamp, latestMarketTimestamp: metadata.latestMarketTimestamp } : undefined;
 }
 
 export async function clearStorageFiles(): Promise<void> {

@@ -65,10 +65,9 @@ export type IndexMetadata = GenericMetadata & {
 export type TrailingAvgMetadata = IndexMetadata & {
   trailingStartTimestamp: number
 };
+
 // TrailingAvg related types (now separate)
-export type TrailingAvgStorage = {
-  [trailingAvgTime: string]: TrailingAvgData[];
-}
+export type TrailingAvgStorage = TrailingAvgData[];
 
 export type TrailingAvgData = {
   t: number; // timestamp

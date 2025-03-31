@@ -59,7 +59,7 @@ export class ResourcePerformance {
 
   // Persistent storage. The main storage for the resource performance data and where all the data is pulled when required
   private persistentStorage: StorageData = {};
-  private persistentTrailingAvgStorage: TrailingAvgStorage = {};
+  private persistentTrailingAvgStorage: TrailingAvgStorage = [];
 
   // Runtime data. The data that is used to process the resource data on each db pull
   private runtime: {
@@ -94,7 +94,7 @@ export class ResourcePerformance {
           startTimestampIndex: number;
           endTimestampIndex: number;
           endTimestamp: number;
-          trailingAvgData: TrailingAvgData[];
+          // trailingAvgData: TrailingAvgData[];
         };
       };
     };
@@ -213,19 +213,29 @@ export class ResourcePerformance {
     // Process all resource prices
     while (this.runtime.currentIdx < this.runtime.dbResourcePricesLength) {
       const item = this.runtime.dbResourcePrices[this.runtime.currentIdx];
+
+      // Add to trailing avg storage
+      this.persistentTrailingAvgStorage.push({
+        t: item.timestamp,
+        u: item.value,
+        f: item.value,
+      });
+
       for (const interval of this.intervals) {
         this.processResourcePriceData(item, this.runtime.currentIdx, interval);
         this.processTrailingAvgPricesData(
           item,
           this.runtime.currentIdx,
           interval,
-          this.trailingAvgTime[0]
+          this.trailingAvgTime[0],
+          this.persistentTrailingAvgStorage
         );
         this.processTrailingAvgPricesData(
           item,
           this.runtime.currentIdx,
           interval,
-          this.trailingAvgTime[1]
+          this.trailingAvgTime[1],
+          this.persistentTrailingAvgStorage
         );
         this.processIndexPricesData(item, this.runtime.currentIdx, interval);
       }
@@ -440,7 +450,7 @@ export class ResourcePerformance {
           };
         }
 
-        const storedTrailingAvgData = this.persistentTrailingAvgStorage[trailingAvgTime.toString()] ?? [];
+        const storedTrailingAvgData = this.persistentTrailingAvgStorage ?? [];
         this.runtime.trailingAvgProcessData[interval][
           trailingAvgTime.toString()
         ] = {
@@ -449,11 +459,7 @@ export class ResourcePerformance {
           nextTimestamp: 0,
           startTimestampIndex: 0,
           endTimestampIndex: 0,
-          // startTimestamp: 0,
           endTimestamp: 0,
-          trailingAvgData: [
-            ...storedTrailingAvgData, // Initialize with stored data
-          ],
         };
       }
 
@@ -835,7 +841,8 @@ export class ResourcePerformance {
     item: ResourcePrice,
     currentIdx: number,
     interval: number,
-    trailingAvgTime: number
+    trailingAvgTime: number,
+    persistentTrailingAvgStorage: TrailingAvgData[]
   ) {
     // Runtime data
     const rtpd =
@@ -917,12 +924,6 @@ export class ResourcePerformance {
     rtpd.used += BigInt(item.used);
     rtpd.feePaid += BigInt(item.feePaid);
 
-    rtpd.trailingAvgData.push({
-      t: item.timestamp,
-      u: item.used,
-      f: item.feePaid,
-    });
-
     // Check if the datapoint is the last item or belongs to a new interval item (not running same interval item)
     if (isNewInterval || isLastItem) {
       let fixedFeePaid: bigint = BigInt(rtpd.feePaid);
@@ -1003,12 +1004,13 @@ export class ResourcePerformance {
       }
     }
 
+    // TODO: Confirm that is not needed to check if the first item is included in the rtpd. before removing old indexes
     // Remove the old items from the trailing avg if they are before the trailing avg timestamp
     let startIdx = rtpd.startTimestampIndex;
-    let oldItem = rtpd.trailingAvgData[startIdx];
-    // TODO Check if is item.timestamp - this.trailingAvgTime or rtpd.nextTimestamp - this.trailingAvgTime
+    let oldItem = persistentTrailingAvgStorage[startIdx];
+
     const trailingAvgTimestamp = item.timestamp - trailingAvgTime;
-    const lastIdx = rtpd.trailingAvgData.length - 1;
+    const lastIdx = persistentTrailingAvgStorage.length - 1;
 
     while (oldItem.t < trailingAvgTimestamp) {
       rtpd.used -= BigInt(oldItem.u);
@@ -1016,7 +1018,7 @@ export class ResourcePerformance {
       startIdx++;
       rtpd.startTimestampIndex = startIdx;
       if (startIdx >= lastIdx) break; // no more items to remove
-      oldItem = rtpd.trailingAvgData[startIdx];
+      oldItem = persistentTrailingAvgStorage[startIdx];
     }
   }
 
