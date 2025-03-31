@@ -1,7 +1,7 @@
 import { ChatAnthropic } from "@langchain/anthropic";
-import { SystemMessage, HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
+import { SystemMessage, HumanMessage, AIMessage, ToolMessage, BaseMessage } from "@langchain/core/messages";
 import { Logger } from "../utils/logger";
-import { AgentConfig, AgentState, AgentTools, convertToLangChainTools } from "../types/agent";
+import { AgentConfig, AgentState, AgentTools } from "../types/agent";
 import { z } from "zod";
 import chalk from 'chalk';
 import { privateKeyToAccount } from 'viem/accounts';
@@ -29,17 +29,14 @@ const lookupStateSchema = z.object({
 type LookupState = z.infer<typeof lookupStateSchema>;
 
 export class LookupNode extends BaseNode {
-  
-  protected model: ChatAnthropic;
   private state: LookupState | null = null;
   private agentAddress: string;
 
   constructor(
     protected config: AgentConfig,
-    protected tools: AgentTools,
-    nextNode?: string
+    protected tools: AgentTools
   ) {
-    super(config, tools, nextNode);
+    super(config, tools);
     
     Logger.setDebugMode(false);
     Logger.info("Initializing LookupNode...");
@@ -56,97 +53,106 @@ export class LookupNode extends BaseNode {
     Logger.info(`Agent address: ${this.agentAddress}`);
   }
 
-  async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('[Lookup] Checking if more lookup needed...');
-    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
-    
-    if (lastMessage.tool_calls?.length > 0) {
-      Logger.info("[Lookup] Tool calls found, continuing with tools");
-      return "tools";
-    }
-
-    // Check if we've found any positions
-    const hasPositions = state.positions?.length > 0;
-    if (hasPositions) {
-      Logger.info("[Lookup] Positions found, moving to settle_positions");
-      return "settle_positions";
-    } else {
-      Logger.info("[Lookup] No positions found, moving to discover_markets");
-      return "discover_markets";
-    }
-    
-    // If no conditions matched and no default edge is set, let the BaseNode handle it
-    // return super.shouldContinue(state);
-  }
-
-  private async initializeState(): Promise<LookupState> {
-    return {
-      messages: [],
-      toolResults: {},
-      positions: [],
-      agentAddress: this.agentAddress
-    };
-  }
-
-  public getPrompt(state: AgentState): string {
-    return `You are a Foil trading agent responsible for finding positions owned by the agent.
+  protected getPrompt(state: AgentState): BaseMessage {
+    return new HumanMessage(`You are a Foil trading agent responsible for finding positions owned by the agent.
       
       You have access to the following tools:
       - get_foil_positions: Gets all positions
       
       Your task is to:
-      1. Use get_foil_positions to get all positions
+      1. Use the get_foil_positions tool to get all positions
       2. Filter positions to find those owned by the agent's address: ${this.agentAddress}
       3. Update state with found positions
       
-      IMPORTANT: The agent's address is already available in the state as agentAddress. Use this exact address to filter positions.
-      Do not try to use placeholder addresses or modify the address in any way.`;
+      IMPORTANT: 
+      - Provide clear text responses explaining what you're doing at each step
+      - Use the tools directly by calling them with the appropriate arguments
+      - Do not write code or pseudo-code
+      - The agent's address is already available in the state as agentAddress
+      - Do not try to use placeholder addresses or modify the address in any way
+      - After using tools, explain what you found and what you're doing next
+      
+      Please proceed with finding all positions owned by the agent.`);
   }
 
   public async execute(state: AgentState): Promise<AgentState> {
     try {
       Logger.step('[Lookup] Searching for positions...');
       
-      const response = await this.invokeModel(state, this.getPrompt(state));
-      const formattedContent = this.formatMessageContent(response.content);
-      const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+      // Use the base class's invoke method which handles the model interaction
+      const updatedState = await this.invoke(state);
 
-      // Handle tool calls if present
-      if (response.tool_calls?.length > 0) {
-        Logger.step('Processing tool calls...');
-        const toolResults = await this.handleToolCalls(response.tool_calls);
-        
-        // Parse positions from tool results
-        let positions = [];
-        try {
-          const lastToolResult = toolResults[toolResults.length - 1];
-          const parsedResult = JSON.parse(lastToolResult.content as string);
-          if (Array.isArray(parsedResult)) {
-            positions = parsedResult.filter(pos => pos.owner.toLowerCase() === this.agentAddress.toLowerCase());
-          }
-        } catch (e) {
-          Logger.error(`Error parsing positions: ${e}`);
+      // Log all messages in the state for debugging
+      Logger.info('Current state messages:');
+      updatedState.messages.forEach((msg, index) => {
+        Logger.info(`Message ${index}: ${msg.constructor.name}`);
+        if (msg instanceof AgentAIMessage) {
+          Logger.info(`Content: ${msg.content}`);
+          Logger.info(`Tool calls: ${JSON.stringify(msg.tool_calls, null, 2)}`);
         }
+      });
 
-        // Update state with filtered positions
-        const updatedState = this.createStateUpdate(state, [agentResponse, ...toolResults], toolResults);
-        updatedState.positions = positions;
-        
-        // Log positions information
-        if (positions.length === 0) {
-          Logger.step(`No positions found for the agent address.`);
+      // Log the agent's text response if present
+      const lastMessage = updatedState.messages[updatedState.messages.length - 1];
+      Logger.info(`Last message type: ${lastMessage.constructor.name}`);
+      
+      if (lastMessage instanceof AgentAIMessage) {
+        // Log any text content from the agent
+        if (lastMessage.content) {
+          Logger.info(`AGENT RESPONSE: ${lastMessage.content}`);
         } else {
-          Logger.step(`Found ${positions.length} positions owned by the agent.`);
+          Logger.info('No content in agent response');
         }
 
-        return updatedState;
+        // If there are tool calls, process them
+        if (lastMessage.tool_calls?.length > 0) {
+          Logger.step('Processing tool calls...');
+          Logger.info(`Number of tool calls: ${lastMessage.tool_calls.length}`);
+          lastMessage.tool_calls.forEach((call, index) => {
+            Logger.info(`Tool call ${index}: ${call.name}`);
+            Logger.info(`Tool call args: ${JSON.stringify(call.args, null, 2)}`);
+          });
+          
+          const toolResults = await this.handleToolCalls(lastMessage.tool_calls);
+          
+          // Parse positions from tool results
+          let positions = [];
+          try {
+            const lastToolResult = toolResults[toolResults.length - 1];
+            const parsedResult = JSON.parse(lastToolResult.content as string);
+            if (Array.isArray(parsedResult)) {
+              positions = parsedResult.filter(pos => pos.owner.toLowerCase() === this.agentAddress.toLowerCase());
+            }
+          } catch (e) {
+            Logger.error(`Error parsing positions: ${e}`);
+          }
+
+          // Update state with filtered positions and tool results
+          const finalState = this.createStateUpdate(updatedState, toolResults);
+          finalState.positions = positions;
+          
+          // Log positions information
+          if (positions.length === 0) {
+            Logger.step(`No positions found for the agent address.`);
+          } else {
+            Logger.step(`Found ${positions.length} positions owned by the agent.`);
+          }
+
+          return finalState;
+        } else {
+          // If there are no tool calls, we're done with this node
+          return updatedState;
+        }
       }
 
-      Logger.step('No tool calls to process, updating state...');
-      return this.createStateUpdate(state, [agentResponse]);
+      return updatedState;
     } catch (error) {
       Logger.error(`Error in LookupNode: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
+  }
+
+  async shouldContinue(state: AgentState): Promise<string> {
+    return super.shouldContinue(state);
   }
 } 

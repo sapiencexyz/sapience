@@ -1,4 +1,4 @@
-import { SystemMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
+import { SystemMessage, HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { AgentState, AgentConfig, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
@@ -8,91 +8,75 @@ import chalk from 'chalk';
 export class DiscoverMarketsNode extends BaseNode {
   constructor(
     protected config: AgentConfig,
-    protected tools: AgentTools,
-    nextNode?: string
+    protected tools: AgentTools
   ) {
-    super(config, tools, nextNode || "publish_summary");
+    super(config, tools);
   }
 
-  public getPrompt(state: AgentState): string {
-    let prompt = `You are a Foil trading agent responsible for discovering market opportunities.
+  protected getPrompt(state: AgentState): BaseMessage {
+    return new HumanMessage(`You are a Foil trading agent responsible for discovering new markets.
       
       You have access to the following tools:
-      - list_foil_markets: Lists all available markets
-      - get_foil_market: Gets detailed information about a specific market
-      - get_foil_market_info: Gets detailed information about a market's configuration
-      - get_foil_latest_period_info: Gets information about the most recent period
+      - get_foil_markets: Gets all available markets
+      - get_foil_market: Gets information about a specific market
       
       Your task is to:
-      1. Use list_foil_markets to get all available markets
-      2. For each market:
-         - Use get_foil_market to get detailed information
-         - Use get_foil_latest_period_info to check current conditions
-      3. Identify markets that are:
-         - Active and trading
-         - Have good liquidity
-         - Have reasonable spreads
-      4. Update state with promising markets
+      1. Get all available markets
+      2. Filter for active markets
+      3. Analyze market conditions
+      4. Identify potential trading opportunities
       
-      IMPORTANT: Focus on finding markets where the agent doesn't already have positions.
-      The agent's current positions are available in the state.`;
-    
-    // Add tool results if available
-    prompt += this.formatToolResultsForPrompt(state);
-    
-    return prompt;
+      IMPORTANT: Consider the agent's risk parameters when evaluating markets.`);
   }
 
-  protected async processToolResults(
-    state: AgentState, 
-    agentResponse: AIMessage,
-    toolResults: ToolMessage[]
-  ): Promise<AgentState | null> {
-    Logger.step('Analyzing market data...');
-    
-    const marketData = toolResults.map(result => {
-      try {
-        return JSON.parse(result.content as string);
-      } catch (e) {
-        Logger.error(`Error parsing market data: ${e}`);
-        return null;
-      }
-    }).filter(Boolean);
-
-    // Log summary of market analysis
-    if (marketData.length > 0) {
-      Logger.step(`Found ${marketData.length} markets to analyze`);
+  public async execute(state: AgentState): Promise<AgentState> {
+    try {
+      Logger.step('[Discover] Searching for markets...');
       
-      // Update the state with identified markets
-      if (Array.isArray(marketData[0])) {
-        state.markets = marketData[0];
+      const response = await this.invokeModel([this.getPrompt(state)]);
+      const formattedContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+      const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+
+      // Handle tool calls if present
+      if (response.tool_calls?.length > 0) {
+        Logger.step('Processing tool calls...');
+        const toolResults = await this.handleToolCalls(response.tool_calls);
+        
+        // Parse markets from tool results
+        let markets = [];
+        try {
+          const lastToolResult = toolResults[toolResults.length - 1];
+          const parsedResult = JSON.parse(lastToolResult.content as string);
+          if (Array.isArray(parsedResult)) {
+            markets = parsedResult.filter(market => market.isActive);
+          }
+        } catch (e) {
+          Logger.error(`Error parsing markets: ${e}`);
+        }
+
+        // Update state with filtered markets
+        const updatedState = this.createStateUpdate(state, [agentResponse, ...toolResults]);
+        updatedState.markets = markets;
+        
+        // Log markets information
+        if (markets.length === 0) {
+          Logger.step(`No active markets found.`);
+        } else {
+          Logger.step(`Found ${markets.length} active markets.`);
+        }
+
+        return updatedState;
       }
-    } else {
-      Logger.warn('No market data found in tool results');
+
+      Logger.step('No tool calls to process, updating state...');
+      return this.createStateUpdate(state, [agentResponse]);
+    } catch (error) {
+      Logger.error(`Error in DiscoverMarketsNode: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
-
-    // Instead of creating a new model call, process the data directly
-    // This avoids tool ID mismatches with Anthropic's API
-    const analysisMessage = new AgentAIMessage(
-      `Based on the market data, I've identified ${state.markets?.length || 0} potential trading opportunities. 
-      These markets appear to have sufficient liquidity and reasonable spreads for potential trading.`
-    );
-
-    // Return updated state with tool results and our analysis
-    // We're not including the toolResults in the message history to avoid ID conflicts
-    return this.createStateUpdate(state, [agentResponse, analysisMessage], toolResults);
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('Checking if more discovery needed...');
-    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
-    
-    if (lastMessage.tool_calls?.length > 0) {
-      Logger.step('Tool calls found, continuing with tools');
-      return "tools";
-    }
-
-    // Use the default next node from BaseNode
     return super.shouldContinue(state);
   }
 } 

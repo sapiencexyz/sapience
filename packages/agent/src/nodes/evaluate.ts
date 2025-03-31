@@ -1,7 +1,7 @@
 import { AgentConfig, AgentState, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
-import { SystemMessage } from '@langchain/core/messages';
+import { SystemMessage, BaseMessage, HumanMessage } from '@langchain/core/messages';
 import chalk from 'chalk';
 import { AgentAIMessage } from '../types/message';
 
@@ -10,76 +10,46 @@ export class EvaluateMarketNode extends BaseNode {
     super(config, tools);
   }
 
-  getPrompt(state: AgentState): string {
-    const isAssessingPosition = state.currentStep === 'assess_positions';
-    const context = isAssessingPosition ? 'existing position' : 'potential new market';
-    
-    return `You are a market evaluator for the Foil trading agent.
-
-Your task is to evaluate the current ${context} and determine if any actions are needed.
-
-${isAssessingPosition ? `
-For position assessment:
-- Analyze the position's current state
-- Check if the position needs adjusting
-- Evaluate market conditions affecting the position
-- Recommend actions (modify, close, or maintain position)
-` : `
-For market discovery:
-- Analyze market conditions and liquidity
-- Evaluate potential trading opportunities
-- Assess risks and potential returns
-- Recommend if we should open a position
-`}
-
-Available tools:
-- getMarketInfo: Get detailed information about a market
-- getMarketCandles: Get historical price data
-- getReferencePrice: Get the current reference price
-- getSqrtPriceX96: Get the current sqrt price
-- getResourceCandles: Get resource price history
-- getResourceTrailingAverageCandles: Get trailing average prices`;
+  protected getPrompt(state: AgentState): BaseMessage {
+    return new HumanMessage(`You are a Foil trading agent responsible for evaluating markets.
+      
+      You have access to the following tools:
+      - get_foil_market: Gets information about a specific market
+      
+      Your task is to:
+      1. Analyze market conditions
+      2. Evaluate trading opportunities
+      3. Make recommendations for market entry/exit
+      
+      IMPORTANT: Consider market conditions and risk parameters when evaluating opportunities.`);
   }
 
-  async execute(state: AgentState): Promise<AgentState> {
-    const isAssessingPosition = state.currentStep === 'assess_positions';
-    const currentItem = isAssessingPosition ? state.positions[0] : state.markets[0];
-    
-    Logger.step(`Evaluating ${isAssessingPosition ? 'position' : 'market'}: ${JSON.stringify(currentItem)}`);
-    
-    // Get model's evaluation
-    const response = await this.invokeModel(state, this.getPrompt(state));
-    const formattedContent = this.formatMessageContent(response.content);
-    const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
-    
-    // Create new state with updated arrays (remove current item)
-    const newState = {
-      ...state,
-      messages: [...state.messages, agentResponse],
-      [isAssessingPosition ? 'positions' : 'markets']: 
-        state[isAssessingPosition ? 'positions' : 'markets'].slice(1),
-      currentStep: isAssessingPosition ? 'assess_positions' : 'discover_markets'
-    };
+  public async execute(state: AgentState): Promise<AgentState> {
+    try {
+      Logger.step('[Evaluate] Analyzing market...');
+      
+      const response = await this.invokeModel([this.getPrompt(state)]);
+      const formattedContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+      const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
 
-    // If this was the last item to evaluate, update the step
-    if (newState[isAssessingPosition ? 'positions' : 'markets'].length === 0) {
-      Logger.step(`Finished evaluating all ${isAssessingPosition ? 'positions' : 'markets'}`);
-      newState.currentStep = isAssessingPosition ? 'discover_markets' : 'publish_summary';
+      // Handle tool calls if present
+      if (response.tool_calls?.length > 0) {
+        Logger.step('Processing tool calls...');
+        const toolResults = await this.handleToolCalls(response.tool_calls);
+        
+        // Update state with tool results
+        return this.createStateUpdate(state, [agentResponse, ...toolResults]);
+      }
+
+      Logger.step('No tool calls to process, updating state...');
+      return this.createStateUpdate(state, [agentResponse]);
+    } catch (error) {
+      Logger.error(`Error in EvaluateMarketNode: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
-
-    return newState;
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
-    const isAssessingPosition = state.currentStep === 'assess_positions';
-    const itemsToEvaluate = isAssessingPosition ? state.positions : state.markets;
-
-    // If there are more items to evaluate, continue the loop
-    if (itemsToEvaluate && itemsToEvaluate.length > 0) {
-      return state.currentStep; // Return to the source node
-    }
-
-    // If no more items to evaluate, move to the next step
-    return isAssessingPosition ? 'discover_markets' : 'publish_summary';
+    return super.shouldContinue(state);
   }
 } 

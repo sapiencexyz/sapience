@@ -1,15 +1,7 @@
 import { AgentConfig, AgentTools, AgentState } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
-import chalk from 'chalk';
 import { GraphManager } from './graph.js';
-import { 
-  LookupNode, 
-  DiscoverMarketsNode, 
-  SettlePositionsNode, 
-  AssessPositionsNode, 
-  PublishSummaryNode,
-  ToolsNode 
-} from "../nodes/index.js";
+import { SystemMessage } from "@langchain/core/messages";
 
 export class FoilAgent {
   private isRunning: boolean = false;
@@ -29,8 +21,13 @@ export class FoilAgent {
   }
 
   private async initializeState(): Promise<AgentState> {
+    const systemMessage = new SystemMessage(`You are a Foil trading agent. You have access to tools and should use them to accomplish your tasks.
+      You are responsible for managing positions and making trading decisions.
+      Always use the provided tools to interact with the blockchain and make decisions.
+      Be precise and careful with your actions.`);
+      
     return {
-      messages: [],
+      messages: [systemMessage],
       positions: [],
       markets: [],
       actions: [],

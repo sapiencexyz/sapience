@@ -10,12 +10,7 @@ const interval = parseInt(process.argv[2] || '0', 10);
 // Initialize agent config
 const config: AgentConfig = {
   interval,
-  maxPositionsPerMarket: 5,
-  minCollateral: "100000000000000000", // 0.1 ETH
-  maxCollateral: "1000000000000000000", // 1 ETH
-  targetLeverage: 2,
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
-  useOllama: false // Always use Claude
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY
 };
 
 // Get private key from environment
@@ -84,5 +79,4 @@ process.on('SIGTERM', async () => {
 
 // Start the agent
 Logger.info(`Starting agent with interval: ${interval}ms`);
-Logger.info(`Using Ollama: ${config.useOllama}`);
 await agent.start(); 

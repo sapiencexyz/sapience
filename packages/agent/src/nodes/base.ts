@@ -1,174 +1,55 @@
 import { ChatAnthropic } from "@langchain/anthropic";
-import { HumanMessage, MessageContent, BaseMessage, SystemMessage, ToolMessage, AIMessage } from "@langchain/core/messages";
-import { AgentState, AgentConfig, AgentTools, convertToLangChainTools } from '../types';
+import { HumanMessage, BaseMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
+import { AgentState, AgentConfig, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import chalk from 'chalk';
+import { AgentAIMessage, AgentToolMessage } from '../types/message';
 import { DynamicTool } from "@langchain/core/tools";
 import { Runnable } from "@langchain/core/runnables";
 
-// Shared model instance
-let sharedModel: Runnable | null = null;
-
 export abstract class BaseNode {
-  protected model: Runnable;
-  protected nextNode?: string; // Default edge to follow
+  protected model: Runnable<BaseMessage[], AIMessage>;
 
   constructor(
     protected config: AgentConfig,
-    protected tools: AgentTools,
-    nextNode?: string
+    protected tools: AgentTools
   ) {
-    if (nextNode) {
-      this.nextNode = nextNode;
-    }
-    
-    if (!sharedModel) {
-      // Convert our tools to LangChain tools
-      const langChainTools = [
-        ...convertToLangChainTools(this.tools.readFoilContracts),
-        ...convertToLangChainTools(this.tools.writeFoilContracts),
-        ...convertToLangChainTools(this.tools.graphql)
-      ];
-
-      Logger.info("Using Claude model");
-      const claudeModel = new ChatAnthropic({
-        modelName: "claude-3-7-sonnet-20250219",
-        temperature: 0.1,
-        anthropicApiKey: config.anthropicApiKey,
-        maxTokens: 4096,
-        streaming: false,
-        verbose: false
-      });
-      
-      // Wrap the model binding in a try/catch to handle potential errors
-      try {
-        sharedModel = claudeModel.bindTools(langChainTools);
-      } catch (error) {
-        Logger.error(`Error binding tools to model: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        // Fallback to model without tools if binding fails
-        sharedModel = claudeModel;
-      }
-    }
-    this.model = sharedModel;
-  }
-
-  protected async invokeModel(state: AgentState, prompt: string): Promise<any> {
-    try {
-      // Log state changes in debug mode
-      Logger.debug('Current state: ' + JSON.stringify(state, null, 2));
-
-      // Create system message with agent role and capabilities
-      const systemMessage = new SystemMessage({
-        content: `You are a Foil trading agent responsible for analyzing market conditions and managing trading positions. Your tasks include:
-        1. Settling positions when appropriate
-        2. Assessing and modifying existing positions
-        3. Discovering new market opportunities
-        4. Publishing trading summaries
-        
-        You have access to the following tools:
-        - readFoilContracts: Tools for reading market data, positions, and contract state
-        - writeFoilContracts: Tools for modifying positions, settling trades, and interacting with the protocol
-        - graphql: Tools for querying additional protocol data and market information
-        
-        Each tool has specific parameters and requirements. Always check the tool descriptions before using them.
-        
-        IMPORTANT: Use the exact tool names as shown in the tool descriptions. Do not use variations or camelCase versions.
-        
-        When using tools, format your response as:
-        Thought: I need to [describe what you're going to do]
-        Action: [tool name]
-        Action Input: [tool parameters as JSON]
-        Observation: [tool result]
-        ... (repeat if needed)
-        Thought: I now know [what you learned]
-        Final Answer: [summary of what was done]`
-      });
-
-      // We expect state.messages to be either empty or contain only relevant messages
-      // from the current node's execution (handled by execute method)
-      const messages = state.messages;
-
-      // Log the model interaction
-      Logger.modelInteraction(
-        [
-          { role: 'system', content: systemMessage.content },
-          ...messages.map(msg => ({ role: msg._getType(), content: msg.content })),
-          { role: 'human', content: prompt }
-        ],
-        prompt
-      );
-
-      // Invoke model with messages
-      const response = await this.model.invoke([
-        systemMessage,
-        ...messages,
-        new HumanMessage(prompt)
-      ]);
-      
-      return response;
-    } catch (error) {
-      Logger.error(`Error invoking model: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      throw error;
-    }
-  }
-
-  protected formatMessageContent(content: any): string {
-    if (typeof content === 'string') {
-      return content;
-    }
-    return JSON.stringify(content);
-  }
-
-  protected async handleToolCalls(toolCalls: any[]): Promise<ToolMessage[]> {
-    const results: ToolMessage[] = [];
-    
-    for (const toolCall of toolCalls) {
-      try {
-        // Find the tool in any of the tool categories
-        const tool = Object.values(this.tools.readFoilContracts).find(t => t.name === toolCall.name) ||
-                    Object.values(this.tools.writeFoilContracts).find(t => t.name === toolCall.name) ||
-                    Object.values(this.tools.graphql).find(t => t.name === toolCall.name);
-
-        if (tool) {
-          Logger.info(chalk.magenta(`🛠️ Calling ${toolCall.name}`));
-          const result = await tool.function(toolCall.args);
-          Logger.info(chalk.magenta(`✓ Tool ${toolCall.name} completed`));
-          
-          // Format tool input/output for logging in purple
-          const inputStr = JSON.stringify(toolCall.args);
-          const outputStr = JSON.stringify(result);
-          Logger.info(chalk.magenta(`📥 Input: ${inputStr}`));
-          Logger.info(chalk.magenta(`📤 Output: ${outputStr.length > 200 ? outputStr.substring(0, 200) + '...' : outputStr}`));
-          
-          results.push(new ToolMessage(JSON.stringify(result), toolCall.id));
+    // Convert our tools to LangChain tools
+    const langChainTools = Object.values(tools.readFoilContracts).concat(
+      Object.values(tools.writeFoilContracts),
+      Object.values(tools.graphql)
+    ).map(tool => new DynamicTool({
+      name: tool.name,
+      description: tool.description,
+      func: async (input: string) => {
+        try {
+          const args = input ? JSON.parse(input) : {};
+          const result = await tool.function(args);
+          return JSON.stringify(result);
+        } catch (error) {
+          return JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' });
         }
-      } catch (error) {
-        Logger.error(`Error executing tool ${toolCall.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        results.push(new ToolMessage(
-          JSON.stringify({ error: 'Tool execution failed' }),
-          toolCall.id
-        ));
       }
-    }
-    
-    return results;
+    }));
+
+    this.model = new ChatAnthropic({
+      modelName: config.model ?? "claude-3-sonnet-20240229",
+      temperature: config.temperature ?? 0,
+      maxTokens: config.maxTokens ?? 4096,
+      anthropicApiKey: process.env.ANTHROPIC_API_KEY
+    }).bindTools(langChainTools);
   }
 
-  protected createStateUpdate(state: AgentState, messages: BaseMessage[], toolResults: ToolMessage[] = []): AgentState {
-    return {
-      ...state,
-      messages: messages, // Replace all messages with the new ones
-      toolResults: {
-        ...state.toolResults,
-        ...toolResults.reduce((acc, msg) => ({
-          ...acc,
-          [msg.name]: msg.content
-        }), {})
-      }
-    };
+  protected async invokeModel(messages: BaseMessage[]): Promise<AIMessage> {
+    return this.model.invoke(messages);
   }
 
-  async execute(state: AgentState): Promise<AgentState> {
+  /**
+   * Execute the node's logic
+   * @param state Current state of the agent
+   * @returns Updated state after execution
+   */
+  async invoke(state: AgentState): Promise<AgentState> {
     try {
       // Log state update at start of execution
       Logger.stateUpdate(this.constructor.name, {
@@ -176,141 +57,186 @@ export abstract class BaseNode {
         lastAction: state.lastAction
       });
 
-      // Start with a fresh message history for each node
-      // This prevents tool ID mismatches between different nodes
-      const cleanState = {
-        ...state,
-        messages: [] // Clear messages from previous nodes
-      };
-
       // Check if we're returning from a tool call
       const isReturningFromToolCall = state.messages.some(msg => msg._getType() === 'tool');
 
       // Get node-specific prompt
-      const prompt = this.getPrompt(cleanState);
+      const prompt = this.getPrompt(state);
       
       // If we're returning from tool calls, include a note about this in the logs
       if (isReturningFromToolCall) {
         Logger.info(chalk.blue(`Re-prompting ${this.constructor.name} with tool results`));
       }
       
-      // Invoke model with prompt
-      const response = await this.invokeModel(cleanState, prompt);
-      const formattedContent = this.formatMessageContent(response.content);
+      // Invoke model with all messages including the new prompt
+      const messages = [...state.messages, prompt];
+      const response = await this.invokeModel(messages);
+      const formattedContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+      
+      // Log the system prompt
+      Logger.info(chalk.blue('SYSTEM:'));
+      Logger.info(chalk.blue(prompt.content));
       
       // Log the agent's response with the updated format
       Logger.info(chalk.green('AGENT:'));
       Logger.info(chalk.green(formattedContent));
       
-      const agentResponse = new AIMessage(formattedContent, response.tool_calls);
-
-      // Handle tool calls if present
+      // Create the agent response message
+      const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+      
+      // If there are tool calls, handle them immediately
       if (response.tool_calls?.length > 0) {
-        Logger.step('Processing tool calls...');
         const toolResults = await this.handleToolCalls(response.tool_calls);
+        // Create new state with both the agent's response and tool results
+        const updatedState = this.createStateUpdate(state, [agentResponse, ...toolResults]);
         
-        // Return a state with only the current conversation
-        // This ensures tool IDs always match their corresponding tool_use
+        // Only re-prompt if we haven't already processed these tool results
+        const lastToolResult = toolResults[toolResults.length - 1];
+        const lastMessage = state.messages[state.messages.length - 1];
+        if (lastMessage instanceof AgentToolMessage && 
+            lastMessage.content === lastToolResult.content) {
+          // We've already processed these results, don't re-prompt
+          return updatedState;
+        }
+        
+        // Add a flag to indicate we should re-prompt this node
         return {
-          ...cleanState,
-          messages: [agentResponse, ...toolResults],
-          toolResults: {
-            ...cleanState.toolResults,
-            ...toolResults.reduce((acc, msg) => ({
-              ...acc,
-              [msg.name]: msg.content
-            }), {})
-          }
+          ...updatedState,
+          shouldRePrompt: true
         };
       }
-
-      // Process the response (allow nodes to customize response handling)
-      const processedState = await this.processResponse(cleanState, agentResponse);
-      if (processedState) {
-        return processedState;
-      }
-
-      return {
-        ...cleanState,
-        messages: [agentResponse],
-        toolResults: cleanState.toolResults
-      };
+      
+      // Create new state with just the agent's response
+      return this.createStateUpdate(state, [agentResponse]);
     } catch (error) {
-      Logger.error(`Error in ${this.constructor.name}:`);
-      if (error instanceof Error) {
-        Logger.error(`Error message: ${error.message}`);
-        if (error.stack) {
-          Logger.error(`Stack trace: ${error.stack}`);
-        }
-      }
+      Logger.error(`Error in ${this.constructor.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
 
   /**
-   * Override this method to customize how regular responses (without tool calls) are processed
-   * Return null/undefined to use default processing behavior
+   * Get the prompt for this node
+   * @param state Current state of the agent
+   * @returns Prompt message
    */
-  protected async processResponse(
-    state: AgentState, 
-    response: AIMessage
-  ): Promise<AgentState | null> {
-    return null;
+  protected abstract getPrompt(state: AgentState): BaseMessage;
+
+  /**
+   * Format the message content for this node
+   * @param content Raw content from the model
+   * @returns Formatted content
+   */
+  protected formatMessageContent(content: string): string {
+    return content;
   }
 
   /**
-   * Override this method to customize how tool results are processed
-   * Return null/undefined to use default processing behavior
+   * Create a new state with updated messages
+   * @param state Current state
+   * @param messages New messages to add
+   * @returns Updated state
    */
-  protected async processToolResults(
-    state: AgentState, 
-    agentResponse: AIMessage,
-    toolResults: ToolMessage[]
-  ): Promise<AgentState | null> {
-    return null;
+  protected createStateUpdate(state: AgentState, messages: BaseMessage[]): AgentState {
+    return {
+      ...state,
+      messages: [...state.messages, ...messages]
+    };
   }
-  
+
   /**
-   * Helper method to format tool results for inclusion in prompts
-   * Nodes can use this in their getPrompt implementation to include tool results
+   * Execute the node's logic
+   * @param state Current state of the agent
+   * @returns Updated state after execution
    */
-  protected formatToolResultsForPrompt(state: AgentState): string {
-    const hasToolResults = Object.keys(state.toolResults || {}).length > 0;
-    
-    if (!hasToolResults) {
-      return '';
+  public async execute(state: AgentState): Promise<AgentState> {
+    try {
+      // Use the base class's invoke method which handles the model interaction
+      const updatedState = await this.invoke(state);
+
+      // Handle tool calls if present in the updated state
+      const lastMessage = updatedState.messages[updatedState.messages.length - 1];
+      if (lastMessage instanceof AgentAIMessage && lastMessage.tool_calls?.length > 0) {
+        Logger.step('Processing tool calls...');
+        const toolResults = await this.handleToolCalls(lastMessage.tool_calls);
+        
+        // Update state with tool results
+        return this.createStateUpdate(updatedState, toolResults);
+      }
+
+      return updatedState;
+    } catch (error) {
+      Logger.error(`Error in ${this.constructor.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
-    
-    return `\n\nYou have the following tool results:
-    ${JSON.stringify(state.toolResults, null, 2)}
-    
-    Review these results carefully before responding. Use the information from these results
-    to inform your response and complete the task requested in the prompt above.`;
   }
 
   /**
-   * Determine the next node to execute.
-   * If a node uses tools, it should return "tools".
-   * Otherwise, it can return the next node id or use the default nextNode if defined.
+   * Handle tool calls from the model
+   * @param toolCalls Array of tool calls to execute
+   * @returns Array of tool result messages
+   */
+  protected async handleToolCalls(toolCalls: any[]): Promise<AgentToolMessage[]> {
+    const toolResults: AgentToolMessage[] = [];
+    
+    for (const toolCall of toolCalls) {
+      const tool = this.tools.readFoilContracts[toolCall.name] || 
+                  this.tools.writeFoilContracts[toolCall.name] ||
+                  this.tools.graphql[toolCall.name];
+
+      if (!tool) {
+        throw new Error(`Tool ${toolCall.name} not found`);
+      }
+
+      // Execute the tool
+      Logger.info(chalk.magenta(`Executing tool: ${toolCall.name}`));
+      Logger.info(chalk.magenta(`Tool args: ${JSON.stringify(toolCall.args, null, 2)}`));
+      
+      const result = await tool.function(toolCall.args);
+      
+      // Log the tool result
+      Logger.info(chalk.magenta(`Tool result: ${JSON.stringify(result, null, 2)}`));
+      
+      // Add tool result to messages with the corresponding tool_call_id
+      toolResults.push(new AgentToolMessage(JSON.stringify(result), toolCall.id));
+    }
+
+    return toolResults;
+  }
+
+  /**
+   * Determine the next node to execute
+   * @param state Current state of the agent
+   * @returns ID of the next node to execute
    */
   async shouldContinue(state: AgentState): Promise<string> {
-    // Check if the last message has tool calls
-    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
-    
-    if (lastMessage.tool_calls?.length > 0) {
-      Logger.info(chalk.cyan(`[${this.constructor.name}] 🛠️ Tool calls found, continuing with tools`));
+    // If we have a flag to re-prompt, stay on the current node
+    if (state.shouldRePrompt) {
+      return state.currentStep;
+    }
+
+    // Check if model wants to use tools
+    const lastMessage = state.messages[state.messages.length - 1];
+    if ((lastMessage as AIMessage).tool_calls?.length > 0) {
+      Logger.step(`[${this.constructor.name}] Tool calls found, continuing with tools`);
       return "tools";
     }
     
-    // If the node has defined a default next node, use it
-    if (this.nextNode) {
-      Logger.info(chalk.green(`[${this.constructor.name}] ✅ Using default edge to ${this.nextNode}`));
-      return this.nextNode;
+    // Default behavior: move to the next node in the sequence
+    switch (state.currentStep) {
+      case "lookup":
+        return state.positions?.length > 0 ? "settle_positions" : "discover_markets";
+      case "settle_positions":
+        return "assess_positions";
+      case "assess_positions":
+        return "discover_markets";
+      case "discover_markets":
+        return "publish_summary";
+      case "publish_summary":
+        return "delay";
+      case "delay":
+        return "lookup";
+      default:
+        return "__end__";
     }
-    
-    // Subclasses must implement this method if they don't set nextNode
-    throw new Error(`${this.constructor.name} must implement shouldContinue or set nextNode`);
   }
-
-  abstract getPrompt(state: AgentState): string;
 } 

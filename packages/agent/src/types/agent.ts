@@ -14,18 +14,18 @@ export interface AgentState {
   lastAction?: string;
   toolResults: Record<string, any>;
   agentAddress: string;
+  shouldRePrompt?: boolean;
 }
 
 export interface AgentConfig {
   interval: number; // in milliseconds
-  maxPositionsPerMarket: number;
-  minCollateral: string;
-  maxCollateral: string;
-  targetLeverage: number;
   anthropicApiKey: string;
   useOllama?: boolean;
   ollamaModel?: string;
   ollamaBaseUrl?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 // Define the base tool interface
@@ -38,11 +38,6 @@ export interface BaseTool {
   };
   function: (args: Record<string, unknown>) => Promise<any>;
 }
-
-// Import the actual tool types from the MCP tools
-import * as graphqlTools from '../../tools/graphql.js';
-import * as readFoilTools from '../../tools/readFoilContracts.js';
-import * as writeFoilTools from '../../tools/writeFoilContracts.js';
 
 export interface AgentTools {
   graphql: Record<string, BaseTool>;

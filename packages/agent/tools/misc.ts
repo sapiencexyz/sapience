@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, encodeFunctionData } from 'viem';
+import { createWalletClient, http, encodeFunctionData } from 'viem';
 import { base } from 'viem/chains';
 import { privateKeyToAccount, signMessage } from 'viem/accounts';
 import ERC20ABI from '../abi/ERC20.json';

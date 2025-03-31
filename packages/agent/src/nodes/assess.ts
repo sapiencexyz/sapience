@@ -1,63 +1,57 @@
-import { AgentState } from '../types';
+import { AgentState, AgentConfig, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
-import { AIMessage } from '@langchain/core/messages';
+import { SystemMessage, BaseMessage, HumanMessage } from '@langchain/core/messages';
 
 export class AssessPositionsNode extends BaseNode {
-  public getPrompt(): string {
-    return `Assess and modify positions using the provided tools.
-      You have access to these tools:
-      - get_foil_position: Get information about a specific position by its ID
-        Example: get_foil_position({"positionId": "123"})
-      - get_foil_position_pnl: Get the PnL of a position by its ID
-        Example: get_foil_position_pnl({"positionId": "123"})
-      - quote_modify_foil_trader_position: Get a quote for modifying a position
-        Example: quote_modify_foil_trader_position({"positionId": "123", "size": 100})
-      - modify_foil_trader_position: Modify an existing position
-        Example: modify_foil_trader_position({"positionId": "123", "size": 100})
-      
-      Instructions:
-      1. First, use get_foil_position to check each position in the current state
-      2. For each position, use get_foil_position_pnl to assess if it needs modification
-      3. If a position needs modification, use quote_modify_foil_trader_position first
-      4. If the quote looks good, use modify_foil_trader_position
-      5. Explain your reasoning and actions clearly
-      
-      IMPORTANT: Use the exact tool names as shown above. Do not use variations like "getPositions" or "getPositionsById".`;
+  constructor(
+    protected config: AgentConfig,
+    protected tools: AgentTools
+  ) {
+    super(config, tools);
   }
 
-  async execute(state: AgentState): Promise<AgentState> {
-    Logger.step('[Assess] Evaluating current positions...');
-    
-    const response = await this.invokeModel(state, this.getPrompt());
-    const formattedContent = this.formatMessageContent(response.content);
-    const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+  protected getPrompt(state: AgentState): BaseMessage {
+    return new HumanMessage(`You are a Foil trading agent responsible for assessing positions.
+      
+      You have access to the following tools:
+      - get_foil_position: Gets information about a specific position
+      
+      Your task is to:
+      1. Analyze each position in the state
+      2. Evaluate risk and potential returns
+      3. Make recommendations for position management
+      
+      IMPORTANT: Consider the agent's risk parameters when evaluating positions.`);
+  }
 
-    return {
-      messages: [...state.messages, agentResponse],
-      currentStep: 'assess_positions',
-      lastAction: 'analyze_positions',
-      positions: state.positions,
-      markets: state.markets,
-      actions: state.actions,
-      toolResults: state.toolResults,
-      agentAddress: state.agentAddress
-    };
+  public async execute(state: AgentState): Promise<AgentState> {
+    try {
+      Logger.step('[Assess] Reviewing positions...');
+      
+      const response = await this.invokeModel([this.getPrompt(state)]);
+      const formattedContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+      const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+
+      // Handle tool calls if present
+      if (response.tool_calls?.length > 0) {
+        Logger.step('Processing tool calls...');
+        const toolResults = await this.handleToolCalls(response.tool_calls);
+        
+        // Update state with tool results
+        return this.createStateUpdate(state, [agentResponse, ...toolResults]);
+      }
+
+      Logger.step('No tool calls to process, updating state...');
+      return this.createStateUpdate(state, [agentResponse]);
+    } catch (error) {
+      Logger.error(`Error in AssessPositionsNode: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
   }
 
   async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('Checking if more assessment needed...');
-    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
-    
-    if (lastMessage.tool_calls?.length > 0) {
-      Logger.step('Tool calls found, continuing with tools');
-      return "tools";
-    }
-
-    const content = this.formatMessageContent(lastMessage.content);
-    const result = typeof content === 'string' && content.includes("Action taken") ? "assess_positions" : "discover_markets";
-    Logger.step(`Assessment check result: ${result}`);
-    return result;
+    return super.shouldContinue(state);
   }
 } 

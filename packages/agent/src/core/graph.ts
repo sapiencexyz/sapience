@@ -1,6 +1,4 @@
-import { StateGraph } from "@langchain/langgraph";
-import { z } from "zod";
-import { AgentState, AgentConfig, AgentTools, convertToLangChainTools } from '../types';
+import { AgentConfig, AgentTools, AgentState } from '../types/agent';
 import { Logger } from '../utils/logger';
 import { 
   LookupNode, 
@@ -9,107 +7,42 @@ import {
   DiscoverMarketsNode, 
   PublishSummaryNode,
   DelayNode,
-  ToolsNode
+  BaseNode
 } from '../nodes';
-import { ToolNode } from "@langchain/langgraph/prebuilt";
-import { BaseMessage, AIMessage } from "@langchain/core/messages";
-import { GraphVisualizer } from '../utils/graphVisualizer';
-import { BaseNode } from '../nodes/base';
-import chalk from 'chalk';
-
-// Define the state schema for LangGraph
-const agentStateSchema = z.object({
-  messages: z.array(z.any()),
-  currentStep: z.string(),
-  positions: z.array(z.any()),
-  markets: z.array(z.any()),
-  actions: z.array(z.any()),
-  lastAction: z.string().optional()
-});
-
-type NodeName = "lookup" | "settle_positions" | "assess_positions" | "discover_markets" | "evaluate_market" | "publish_summary" | "delay" | "tools" | "__end__";
-
-interface ToolCallMessage extends BaseMessage {
-  tool_calls?: Array<{
-    id: string;
-    name: string;
-    arguments: string;
-  }>;
-}
+import { AIMessage } from "@langchain/core/messages";
+import { AgentAIMessage } from '../types/message';
 
 export class GraphManager {
-  private nodes: Map<string, BaseNode> = new Map();
-  private edges: Map<string, string[]> = new Map();
-  private toolsNode: BaseNode | null = null;
+  private nodes: Map<string, BaseNode>;
+  private currentNode: string;
 
-  constructor(
+  private constructor(
     private config: AgentConfig,
     private tools: AgentTools
-  ) {}
+  ) {
+    // Initialize nodes
+    this.nodes = new Map();
+    this.nodes.set("lookup", new LookupNode(config, tools));
+    this.nodes.set("settle_positions", new SettlePositionsNode(config, tools));
+    this.nodes.set("assess_positions", new AssessPositionsNode(config, tools));
+    this.nodes.set("discover_markets", new DiscoverMarketsNode(config, tools));
+    this.nodes.set("publish_summary", new PublishSummaryNode(config, tools));
+    this.nodes.set("delay", new DelayNode(config, tools, config.interval ?? 60000));
+    
+    // Set initial node
+    this.currentNode = "lookup";
 
-  /**
-   * Register a node with the graph
-   * @param id Unique identifier for the node
-   * @param node Node implementation
-   * @param edges Possible next nodes
-   */
-  public registerNode(id: string, node: BaseNode, edges: string[] = []): void {
-    this.nodes.set(id, node);
-    this.edges.set(id, edges);
-    Logger.debug(`Registered node: ${id} with edges to ${edges.join(', ')}`);
+    Logger.success("Agent graph created successfully");
   }
 
   /**
-   * Register a special tools node that handles tool execution
-   * @param node Node implementation for tool execution
-   */
-  public registerToolsNode(node: BaseNode): void {
-    this.toolsNode = node;
-    Logger.debug('Registered tools node');
-  }
-
-  /**
-   * Create a complete agent workflow graph with all nodes and edges
-   * This is a factory method that creates the entire graph structure
+   * Create a new graph manager instance
+   * @param config Agent configuration
+   * @param tools Agent tools
+   * @returns Graph manager instance
    */
   public static createAgentGraph(config: AgentConfig, tools: AgentTools): GraphManager {
-    const graphManager = new GraphManager(config, tools);
-    
-    // Define the default paths for each node
-    const defaultPaths = {
-      'lookup': { 
-        hasPositions: 'settle_positions', 
-        noPositions: 'discover_markets' 
-      },
-      'settle_positions': 'assess_positions',
-      'assess_positions': 'discover_markets',
-      'discover_markets': 'publish_summary',
-      'publish_summary': 'delay',
-      'delay': 'lookup'
-    };
-    
-    // Create all nodes
-    const lookupNode = new LookupNode(config, tools);
-    const settleNode = new SettlePositionsNode(config, tools, defaultPaths['settle_positions']);
-    const assessNode = new AssessPositionsNode(config, tools, defaultPaths['assess_positions']);
-    const discoverNode = new DiscoverMarketsNode(config, tools, defaultPaths['discover_markets']);
-    const summaryNode = new PublishSummaryNode(config, tools, defaultPaths['publish_summary']);
-    const delayNode = new DelayNode(config, tools, config.interval ?? 60000, defaultPaths['delay']);
-    const toolsNode = new ToolsNode(config, tools);
-    
-    // Register nodes with their possible edges
-    graphManager.registerNode('lookup', lookupNode, ['settle_positions', 'discover_markets', 'tools']);
-    graphManager.registerNode('settle_positions', settleNode, ['assess_positions', 'discover_markets', 'tools']);
-    graphManager.registerNode('assess_positions', assessNode, ['discover_markets', 'tools']);
-    graphManager.registerNode('discover_markets', discoverNode, ['publish_summary', 'tools']);
-    graphManager.registerNode('publish_summary', summaryNode, ['delay', 'tools']);
-    graphManager.registerNode('delay', delayNode, ['lookup']);
-    
-    // Register the tools node
-    graphManager.registerToolsNode(toolsNode);
-    
-    Logger.success("Agent graph created successfully");
-    return graphManager;
+    return new GraphManager(config, tools);
   }
 
   /**
@@ -119,111 +52,85 @@ export class GraphManager {
    * @returns Final state after execution
    */
   public async execute(startNodeId: string, initialState: AgentState): Promise<AgentState> {
-    let currentNodeId = startNodeId;
-    let state = { ...initialState, currentStep: currentNodeId };
+    Logger.step(`[__start__ -> ${startNodeId}]`);
     
-    Logger.step(`[__start__ -> ${currentNodeId}]`);
-    
-    while (currentNodeId !== 'end') {
-      const currentNode = this.nodes.get(currentNodeId);
-      
-      if (!currentNode) {
-        Logger.error(`Node ${currentNodeId} not found in graph`);
-        throw new Error(`Node ${currentNodeId} not found in graph`);
+    try {
+      let currentState = {
+        ...initialState,
+        currentStep: startNodeId
+      };
+
+      while (true) {
+        // Get the current node
+        const node = this.nodes.get(currentState.currentStep);
+        if (!node) {
+          throw new Error(`Node ${currentState.currentStep} not found`);
+        }
+
+        // Execute the node using its execute method
+        currentState = await node.execute(currentState);
+
+        // Determine next node based on current state
+        const nextNode = await this.determineNextNode(currentState);
+        if (nextNode === "__end__") {
+          break;
+        }
+        currentState.currentStep = nextNode;
       }
       
-      try {
-        // Execute the current node
-        state = await currentNode.execute(state);
-        
-        // Determine the next node
-        const nextNodeId = await currentNode.shouldContinue(state);
-        
-        // Check if we need to run the tools node
-        if (nextNodeId === 'tools' && this.toolsNode) {
-          Logger.step(`[${currentNodeId} -> tools]`);
-          
-          try {
-            state = await this.toolsNode.execute(state);
-          } catch (toolError) {
-            // Handle tool execution errors gracefully
-            Logger.error(`Error executing tools: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`);
-            
-            // Reset state messages to avoid ID mismatches
-            state = {
-              ...state,
-              messages: []
-            };
-            
-            // Continue with the current node to let it recover
-            Logger.step(`[tools -> ${currentNodeId}] (with error recovery)`);
-            continue;
-          }
-          
-          // After tools execution, return to the same node
-          Logger.step(`[tools -> ${currentNodeId}]`);
-          
-          // Re-execute the current node with the updated state including tool results
-          // This allows the node to process the tool results with its original prompt
-          Logger.step(`Re-executing ${currentNodeId} to process tool results...`);
-          
-          try {
-            // Execute the node again with the updated state including tool results
-            state = await currentNode.execute(state);
-            
-            // Continue execution in the same node
-            Logger.step(`${currentNodeId} processed tool results`);
-          } catch (reExecError) {
-            Logger.error(`Error re-executing ${currentNodeId}: ${reExecError instanceof Error ? reExecError.message : 'Unknown error'}`);
-            // Reset state messages to avoid ID mismatches on retry
-            state = {
-              ...state,
-              messages: []
-            };
-          }
-          
-          // Continue in the same node instead of proceeding to next
-          continue;
-        }
-        
-        // Validate that the edge exists
-        const availableEdges = this.edges.get(currentNodeId) || [];
-        if (!availableEdges.includes(nextNodeId) && nextNodeId !== 'end') {
-          Logger.warn(`Invalid edge from ${currentNodeId} to ${nextNodeId}. Available edges: ${availableEdges.join(', ')}`);
-          Logger.warn('Continuing to end node due to invalid edge');
-          currentNodeId = 'end';
-          continue;
-        }
-        
-        // Log transition
-        Logger.step(`[${currentNodeId} -> ${nextNodeId}]`);
-        
-        // Reset messages when transitioning between nodes
-        // This prevents tool ID mismatches
-        state = {
-          ...state,
-          messages: []
-        };
-        
-        // Update current node and state
-        currentNodeId = nextNodeId;
-        state = { ...state, currentStep: currentNodeId };
-      } catch (error) {
-        Logger.error(`Error in node ${currentNodeId}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        
-        // For all errors, we'll reset the message state and try again
-        // This provides a clean slate for the node to work with
-        Logger.warn(`Resetting state for ${currentNodeId} and retrying`);
-        state = {
-          ...state,
-          messages: []
-        };
-        
-        continue;
-      }
+      Logger.success("✅ Execution completed");
+      return currentState;
+    } catch (error) {
+      Logger.error(`Error in graph execution: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
     }
-    
-    Logger.success(`✅ Execution completed`);
+  }
+
+  /**
+   * Handle tool calls in the current state
+   * @param state Current state
+   * @returns Updated state after tool calls
+   */
+  private async handleToolCalls(state: AgentState): Promise<AgentState> {
+    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
+    if (!lastMessage.tool_calls?.length) {
+      return state;
+    }
+
+    // Execute each tool call
+    for (const toolCall of lastMessage.tool_calls) {
+      const tool = this.tools.readFoilContracts[toolCall.name] || 
+                  this.tools.writeFoilContracts[toolCall.name] ||
+                  this.tools.graphql[toolCall.name];
+
+      if (!tool) {
+        throw new Error(`Tool ${toolCall.name} not found`);
+      }
+
+      // Execute the tool
+      const result = await tool.function(toolCall.args);
+      
+      // Add tool result to messages
+      state.messages.push(new AgentAIMessage(JSON.stringify(result), [toolCall]));
+
+      // Update tool results in state
+      state.toolResults[toolCall.name] = result;
+    }
+
     return state;
+  }
+
+  /**
+   * Determine the next node to execute based on the current state
+   * @param state Current state
+   * @returns ID of the next node to execute
+   */
+  private async determineNextNode(state: AgentState): Promise<string> {
+    const node = this.nodes.get(state.currentStep);
+    if (!node) {
+      throw new Error(`Node ${state.currentStep} not found`);
+    }
+
+    return node.shouldContinue(state);
   }
 }

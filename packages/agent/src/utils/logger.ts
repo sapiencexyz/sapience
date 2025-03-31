@@ -14,6 +14,10 @@ export class Logger {
     'response_metadata'
   ];
 
+  private static truncate(str: string, maxLength: number = 100) {
+    return str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+  }
+
   private static shouldSkipMessage(msg: string): boolean {
     return this.SKIP_PATTERNS.some(pattern => msg.includes(pattern));
   }
@@ -24,7 +28,7 @@ export class Logger {
 
   static info(message: string) {
     if (!this.shouldSkipMessage(message)) {
-      console.log(chalk.blue(`ℹ ${message}`));
+      console.log(chalk.blue(`ℹ ${this.truncate(message)}`));
     }
   }
 
@@ -61,22 +65,22 @@ export class Logger {
         const contentStr = typeof content === 'string' ? content :
                           Array.isArray(content) ? content.map(c => c.text).join('\n') :
                           JSON.stringify(content);
-        console.log(chalk.blue(`PROMPT: ${contentStr}`));
+        console.log(chalk.blue(`PROMPT: ${this.truncate(contentStr)}`));
       } else if (role === 'assistant') {
         if (Array.isArray(content)) {
           console.log(chalk.green(`AGENT:`));
           content.forEach(item => {
             if (item.type === 'text') {
-              console.log(chalk.green(`${item.text}`));
+              console.log(chalk.green(`${this.truncate(item.text)}`));
             } else if (item.type === 'tool_use') {
-              console.log(chalk.yellow(`[Tool: ${item.name}] ${JSON.stringify(item.input)}`));
+              console.log(chalk.yellow(`[Tool: ${item.name}] ${this.truncate(JSON.stringify(item.input))}`));
             } else {
-              console.log(chalk.green(`${JSON.stringify(item)}`));
+              console.log(chalk.green(`${this.truncate(JSON.stringify(item))}`));
             }
           });
         } else {
           const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
-          console.log(chalk.green(`AGENT: ${contentStr}`));
+          console.log(chalk.green(`AGENT: ${this.truncate(contentStr)}`));
         }
       }
     });
@@ -86,9 +90,9 @@ export class Logger {
     const input = typeof args === 'string' ? args : JSON.stringify(args);
     const output = typeof result === 'string' ? result : JSON.stringify(result);
     
-    console.log(chalk.magenta(`Tool input: ${input}`));
+    console.log(chalk.magenta(`Tool input: ${this.truncate(input)}`));
     if (result !== undefined) {
-      console.log(chalk.magenta(`Tool output: ${output.length > 200 ? output.substring(0, 200) + '...' : output}`));
+      console.log(chalk.magenta(`Tool output: ${this.truncate(output)}`));
     }
   }
 
