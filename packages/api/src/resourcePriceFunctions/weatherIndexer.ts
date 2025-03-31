@@ -42,7 +42,6 @@ const sharedWeatherService = new WeatherService();
 
 class WeatherIndexer implements IResourcePriceIndexer {
     private isWatching: boolean = false;
-    private pollInterval: NodeJS.Timeout | null = null;
     private readonly POLL_DELAY = 30 * 60 * 1000; // 30 minutes
     private readonly resourceType: 'temperature' | 'precipitation';
 
