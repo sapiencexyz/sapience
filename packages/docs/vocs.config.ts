@@ -60,6 +60,10 @@ export default defineConfig({
           link: '/price-glossary', 
         },
         { 
+          text: 'Audit Reports',
+          link: '/audit_reports', 
+        },
+        { 
           text: 'Deployments', 
           link: 'https://usecannon.com/packages/foil',
         },
