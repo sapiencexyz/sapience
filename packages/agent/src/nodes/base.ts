@@ -6,6 +6,7 @@ import chalk from 'chalk';
 import { AgentAIMessage, AgentToolMessage } from '../types/message';
 import { DynamicTool } from "@langchain/core/tools";
 import { Runnable } from "@langchain/core/runnables";
+import { END } from "@langchain/langgraph";
 
 export abstract class BaseNode {
   protected model: Runnable<BaseMessage[], AIMessage>;
@@ -57,41 +58,50 @@ export abstract class BaseNode {
         lastAction: state.lastAction
       });
 
-      // Check if we're returning from a tool call
-      const isReturningFromToolCall = state.messages.some(msg => msg._getType() === 'tool');
+      // Check if the last message is a tool result
+      const lastMessage = state.messages.length > 0 ? state.messages[state.messages.length - 1] : null;
+      const isReturningFromToolCall = lastMessage instanceof AgentToolMessage;
 
-      // Get node-specific prompt
-      const prompt = this.getPrompt(state);
-      
-      // If we're returning from tool calls, include a note about this in the logs
+      // Prepare messages for the model
+      let messagesToInvoke: BaseMessage[];
+      let promptForLogging: BaseMessage | null = null; // To track which prompt to log
+
       if (isReturningFromToolCall) {
-        Logger.info(chalk.blue(`Re-prompting ${this.constructor.name} with tool results`));
+        Logger.info(chalk.blue(`Re-invoking ${this.constructor.name} with tool results. Using existing message history.`));
+        // Just use existing messages; the last one is the tool result.
+        messagesToInvoke = [...state.messages]; 
+      } else {
+        // Not returning from a tool call, so get and add the node-specific prompt.
+        const prompt = this.getPrompt(state);
+        promptForLogging = prompt; // Store the prompt for logging
+        Logger.info(chalk.blue(`Invoking ${this.constructor.name} with new prompt.`));
+        messagesToInvoke = [...state.messages, prompt];
       }
       
-      // Invoke model with all messages including the new prompt
-      const messages = [...state.messages, prompt];
-      const response = await this.invokeModel(messages);
+      // Invoke model with the prepared messages
+      const response = await this.invokeModel(messagesToInvoke);
       
       // Log the interaction using the Logger class
-      // Manually construct objects matching the expected Logger structure
-      Logger.modelInteraction([
-        { role: 'human', content: prompt.content },
-        { role: 'assistant', content: response.content }
-      ]);
+      // Log the prompt only if one was added in this invocation
+      const logMessages: { role: string; content: any }[] = [];
+      if (promptForLogging) {
+        logMessages.push({ role: 'human', content: promptForLogging.content });
+      }
+      logMessages.push({ role: 'assistant', content: response.content });
+      Logger.modelInteraction(logMessages);
       
       // Ensure content passed to AgentAIMessage is stringified if it's not already a string
       const agentContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
       const agentResponse = new AgentAIMessage(agentContent, response.tool_calls);
       
-      // If there are tool calls, handle them immediately
+      // Just return the state update with the agent's response.
+      // The graph's routing logic (shouldContinue) will determine the next step
+      // based on whether agentResponse contains tool_calls.
       if (response.tool_calls?.length > 0) {
-        const toolResults = await this.handleToolCalls(response.tool_calls);
-        // Create new state with both the agent's response and tool results
-        return this.createStateUpdate(state, [agentResponse, ...toolResults]);
+        Logger.info(`Agent requested tool calls: ${JSON.stringify(response.tool_calls.map(tc => tc.name))}`);
       }
-      
-      // Create new state with just the agent's response
       return this.createStateUpdate(state, [agentResponse]);
+
     } catch (error) {
       Logger.error(`Error in ${this.constructor.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
@@ -190,21 +200,37 @@ export abstract class BaseNode {
    * @returns ID of the next node to execute
    */
   async shouldContinue(state: AgentState): Promise<string> {
-    // If we have a flag to re-prompt, stay on the current node
-    if (state.shouldRePrompt) {
-      return state.currentStep;
+    const lastMessage = state.messages[state.messages.length - 1];
+
+    // Check if the last message is a tool result. If so, loop back to the agent node for the current step.
+    if (lastMessage instanceof AgentToolMessage) {
+        // The agent needs to process the tool result. Route back to the current node.
+        Logger.info(`Routing back to ${state.currentStep} to process tool results.`);
+        // Assuming the node name matches the currentStep identifier
+        return state.currentStep;
     }
 
-    // Check if model wants to use tools
-    const lastMessage = state.messages[state.messages.length - 1];
-    if ((lastMessage as AIMessage).tool_calls?.length > 0) {
-      Logger.step(`[${this.constructor.name}] Tool calls found, continuing with tools`);
-      return "tools";
+    // If the last message was an AI message requesting tools, the graph should handle routing
+    // to the tool execution mechanism (either implicitly via createReactAgent or explicitly via edges).
+    // We don't need explicit routing *from here* for that specific case if the graph handles it.
+    if ((lastMessage instanceof AIMessage || lastMessage instanceof AgentAIMessage) && lastMessage.tool_calls?.length > 0) {
+        // Let the graph's edges or the ReAct agent's internal logic handle the transition to tool execution.
+        // If using createReactAgent in the node itself, this might not even be hit if the agent handles the loop internally.
+        // If using separate nodes, an edge from this node should handle this condition.
+        // For safety, we can explicitly return the current step to ensure the agent loop continues if graph edges aren't setup for this.
+        // However, returning state.currentStep here might interfere with explicit tool node routing.
+        // Let's assume the graph structure handles tool calls correctly based on AIMessage with tool_calls.
+        // So, we proceed to the logic below only if the last message was NOT a tool result AND NOT an AI call with tools.
     }
     
-    // Default behavior: move to the next node in the sequence
+    // If the last message wasn't a tool result, and wasn't an AI message calling tools,
+    // then the step is conceptually finished from the agent's perspective for this turn.
+    // Now decide the *next* conceptual step based on the state.
+    Logger.info(`Step ${state.currentStep} finished processing for this turn, deciding next step.`);
     switch (state.currentStep) {
       case "lookup":
+        // This logic now only runs after the agent has processed any tool results for 'lookup'
+        // and produced a response *without* further tool calls.
         return state.positions?.length > 0 ? "settle_positions" : "discover_markets";
       case "settle_positions":
         return "assess_positions";
@@ -215,9 +241,11 @@ export abstract class BaseNode {
       case "publish_summary":
         return "delay";
       case "delay":
-        return "lookup";
+        return "lookup"; // Loop back for the next cycle
       default:
-        return "__end__";
+        // If currentStep is unexpected or signifies the end (e.g., from publish_summary)
+        Logger.info(`Finishing graph execution from step: ${state.currentStep}`);
+        return END; // Use END to signal the graph should stop
     }
   }
 } 
