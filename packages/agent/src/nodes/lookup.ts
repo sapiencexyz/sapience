@@ -39,7 +39,6 @@ export class LookupNode extends BaseNode {
     super(config, tools);
     
     Logger.setDebugMode(false);
-    Logger.info("Initializing LookupNode...");
     
     // Get private key from environment variables
     const privateKey = process.env.ETHEREUM_PRIVATE_KEY;
@@ -82,37 +81,12 @@ export class LookupNode extends BaseNode {
       // Use the base class's invoke method which handles the model interaction
       const updatedState = await this.invoke(state);
 
-      // Log all messages in the state for debugging
-      Logger.info('Current state messages:');
-      updatedState.messages.forEach((msg, index) => {
-        Logger.info(`Message ${index}: ${msg.constructor.name}`);
-        if (msg instanceof AgentAIMessage) {
-          Logger.info(`Content: ${msg.content}`);
-          Logger.info(`Tool calls: ${JSON.stringify(msg.tool_calls, null, 2)}`);
-        }
-      });
-
       // Log the agent's text response if present
       const lastMessage = updatedState.messages[updatedState.messages.length - 1];
-      Logger.info(`Last message type: ${lastMessage.constructor.name}`);
       
       if (lastMessage instanceof AgentAIMessage) {
-        // Log any text content from the agent
-        if (lastMessage.content) {
-          Logger.info(`AGENT RESPONSE: ${lastMessage.content}`);
-        } else {
-          Logger.info('No content in agent response');
-        }
-
         // If there are tool calls, process them
         if (lastMessage.tool_calls?.length > 0) {
-          Logger.step('Processing tool calls...');
-          Logger.info(`Number of tool calls: ${lastMessage.tool_calls.length}`);
-          lastMessage.tool_calls.forEach((call, index) => {
-            Logger.info(`Tool call ${index}: ${call.name}`);
-            Logger.info(`Tool call args: ${JSON.stringify(call.args, null, 2)}`);
-          });
-          
           const toolResults = await this.handleToolCalls(lastMessage.tool_calls);
           
           // Parse positions from tool results
@@ -133,9 +107,9 @@ export class LookupNode extends BaseNode {
           
           // Log positions information
           if (positions.length === 0) {
-            Logger.step(`No positions found for the agent address.`);
+            Logger.info(`No positions found for the agent address.`);
           } else {
-            Logger.step(`Found ${positions.length} positions owned by the agent.`);
+            Logger.info(`Found ${positions.length} positions owned by the agent.`);
           }
 
           return finalState;

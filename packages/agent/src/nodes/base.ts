@@ -71,39 +71,23 @@ export abstract class BaseNode {
       // Invoke model with all messages including the new prompt
       const messages = [...state.messages, prompt];
       const response = await this.invokeModel(messages);
-      const formattedContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
       
-      // Log the system prompt
-      Logger.info(chalk.blue('SYSTEM:'));
-      Logger.info(chalk.blue(prompt.content));
+      // Log the interaction using the Logger class
+      // Manually construct objects matching the expected Logger structure
+      Logger.modelInteraction([
+        { role: 'human', content: prompt.content },
+        { role: 'assistant', content: response.content }
+      ]);
       
-      // Log the agent's response with the updated format
-      Logger.info(chalk.green('AGENT:'));
-      Logger.info(chalk.green(formattedContent));
-      
-      // Create the agent response message
-      const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+      // Ensure content passed to AgentAIMessage is stringified if it's not already a string
+      const agentContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+      const agentResponse = new AgentAIMessage(agentContent, response.tool_calls);
       
       // If there are tool calls, handle them immediately
       if (response.tool_calls?.length > 0) {
         const toolResults = await this.handleToolCalls(response.tool_calls);
         // Create new state with both the agent's response and tool results
-        const updatedState = this.createStateUpdate(state, [agentResponse, ...toolResults]);
-        
-        // Only re-prompt if we haven't already processed these tool results
-        const lastToolResult = toolResults[toolResults.length - 1];
-        const lastMessage = state.messages[state.messages.length - 1];
-        if (lastMessage instanceof AgentToolMessage && 
-            lastMessage.content === lastToolResult.content) {
-          // We've already processed these results, don't re-prompt
-          return updatedState;
-        }
-        
-        // Add a flag to indicate we should re-prompt this node
-        return {
-          ...updatedState,
-          shouldRePrompt: true
-        };
+        return this.createStateUpdate(state, [agentResponse, ...toolResults]);
       }
       
       // Create new state with just the agent's response
@@ -188,13 +172,10 @@ export abstract class BaseNode {
       }
 
       // Execute the tool
-      Logger.info(chalk.magenta(`Executing tool: ${toolCall.name}`));
-      Logger.info(chalk.magenta(`Tool args: ${JSON.stringify(toolCall.args, null, 2)}`));
-      
       const result = await tool.function(toolCall.args);
       
-      // Log the tool result
-      Logger.info(chalk.magenta(`Tool result: ${JSON.stringify(result, null, 2)}`));
+      // Log the tool result using the Logger class
+      Logger.toolCall(toolCall.name, toolCall.args, result);
       
       // Add tool result to messages with the corresponding tool_call_id
       toolResults.push(new AgentToolMessage(JSON.stringify(result), toolCall.id));
