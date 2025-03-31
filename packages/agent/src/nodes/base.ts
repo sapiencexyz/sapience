@@ -34,7 +34,7 @@ export abstract class BaseNode {
     }));
 
     this.model = new ChatAnthropic({
-      modelName: config.model ?? "claude-3-sonnet-20240229",
+      modelName: config.model ?? "claude-3-7-sonnet-20250219",
       temperature: config.temperature ?? 0,
       maxTokens: config.maxTokens ?? 4096,
       anthropicApiKey: process.env.ANTHROPIC_API_KEY

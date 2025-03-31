@@ -57,13 +57,6 @@ export class DiscoverMarketsNode extends BaseNode {
         // Update state with filtered markets
         const updatedState = this.createStateUpdate(state, [agentResponse, ...toolResults]);
         updatedState.markets = markets;
-        
-        // Log markets information
-        if (markets.length === 0) {
-          Logger.step(`No active markets found.`);
-        } else {
-          Logger.step(`Found ${markets.length} active markets.`);
-        }
 
         return updatedState;
       }
