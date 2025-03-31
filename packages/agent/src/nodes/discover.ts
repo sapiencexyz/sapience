@@ -4,6 +4,7 @@ import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
 import chalk from 'chalk';
+import { ToolMessage } from '@langchain/core/messages';
 
 export class DiscoverMarketsNode extends BaseNode {
   constructor(
@@ -33,36 +34,68 @@ export class DiscoverMarketsNode extends BaseNode {
     try {
       Logger.step('[Discover] Searching for markets...');
       
-      const response = await this.invokeModel([this.getPrompt(state)]);
-      const formattedContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-      const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+      const updatedState = await this.invoke(state);
 
-      // Handle tool calls if present
-      if (response.tool_calls?.length > 0) {
-        Logger.step('Processing tool calls...');
-        const toolResults = await this.handleToolCalls(response.tool_calls);
-        
-        // Parse markets from tool results
-        let markets = [];
-        try {
-          const lastToolResult = toolResults[toolResults.length - 1];
-          const parsedResult = JSON.parse(lastToolResult.content as string);
-          if (Array.isArray(parsedResult)) {
-            markets = parsedResult.filter(market => market.isActive);
+      const lastMessage = updatedState.messages[updatedState.messages.length - 1];
+      
+      if (lastMessage instanceof AgentAIMessage) {
+        if (lastMessage.tool_calls?.length > 0) {
+          Logger.step('Processing tool calls...');
+          const toolResults = await this.handleToolCalls(lastMessage.tool_calls);
+          
+          let markets = [];
+          try {
+            const lastToolResult = toolResults[toolResults.length - 1];
+            let marketDataJson: string | undefined;
+
+            // Check if content is a string (less common for tool results)
+            if (typeof lastToolResult.content === 'string') {
+              marketDataJson = lastToolResult.content;
+            } 
+            // Check if content is an array (common case)
+            else if (Array.isArray(lastToolResult.content)) {
+              // Use a type predicate to find the text content part safely
+              const textPart = lastToolResult.content.find(
+                (part): part is { type: "text"; text: string } => part.type === "text"
+              );
+              if (textPart) {
+                marketDataJson = textPart.text;
+              }
+            }
+
+            // If we found a JSON string, parse and filter
+            if (marketDataJson) {
+              const parsedResult = JSON.parse(marketDataJson);
+              if (Array.isArray(parsedResult)) {
+                markets = parsedResult.filter(market => market.isActive !== undefined ? market.isActive : true); 
+              }
+            } else {
+              Logger.warn('Could not find parsable market data in tool result content.');
+            }
+
+          } catch (e) {
+            Logger.error(`Error parsing markets: ${e}`);
           }
-        } catch (e) {
-          Logger.error(`Error parsing markets: ${e}`);
+
+          const finalState = this.createStateUpdate(updatedState, toolResults);
+          finalState.markets = markets;
+          
+          if (markets.length === 0) {
+            Logger.info(`No active markets found.`);
+          } else {
+            Logger.info(`Found ${markets.length} active markets.`);
+          }
+
+          return finalState;
+        } else {
+          Logger.step('No tool calls to process, returning state.');
+          return updatedState;
         }
-
-        // Update state with filtered markets
-        const updatedState = this.createStateUpdate(state, [agentResponse, ...toolResults]);
-        updatedState.markets = markets;
-
-        return updatedState;
       }
+      
+      Logger.step('Last message not AgentAIMessage, returning current state.');
+      return updatedState;
 
-      Logger.step('No tool calls to process, updating state...');
-      return this.createStateUpdate(state, [agentResponse]);
     } catch (error) {
       Logger.error(`Error in DiscoverMarketsNode: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
