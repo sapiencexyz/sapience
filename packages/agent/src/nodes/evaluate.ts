@@ -1,7 +1,7 @@
 import { AgentConfig, AgentState, AgentTools } from '../types';
 import { Logger } from '../utils/logger';
 import { BaseNode } from './base';
-import { SystemMessage, BaseMessage, HumanMessage } from '@langchain/core/messages';
+import { SystemMessage, BaseMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import chalk from 'chalk';
 import { AgentAIMessage } from '../types/message';
 
@@ -28,21 +28,23 @@ export class EvaluateMarketNode extends BaseNode {
     try {
       Logger.step('[Evaluate] Analyzing market...');
       
-      const response = await this.invokeModel([this.getPrompt(state)]);
-      const formattedContent = typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-      const agentResponse = new AgentAIMessage(formattedContent, response.tool_calls);
+      const updatedState = await this.invoke(state);
 
-      // Handle tool calls if present
-      if (response.tool_calls?.length > 0) {
-        Logger.step('Processing tool calls...');
-        const toolResults = await this.handleToolCalls(response.tool_calls);
-        
-        // Update state with tool results
-        return this.createStateUpdate(state, [agentResponse, ...toolResults]);
-      }
+      const lastMessage = updatedState.messages[updatedState.messages.length - 1];
 
-      Logger.step('No tool calls to process, updating state...');
-      return this.createStateUpdate(state, [agentResponse]);
+      if (lastMessage instanceof AgentAIMessage) {
+        if (lastMessage.tool_calls?.length > 0) {
+          Logger.step('Tool calls processed by invoke method.');
+          return updatedState;
+        } else {
+          Logger.step('No tool calls made in this step.');
+          return updatedState;
+        }
+      } 
+      
+      Logger.step('Last message not AgentAIMessage or no message found, returning current state.');
+      return updatedState;
+
     } catch (error) {
       Logger.error(`Error in EvaluateMarketNode: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;

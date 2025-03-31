@@ -144,20 +144,18 @@ export abstract class BaseNode {
    */
   public async execute(state: AgentState): Promise<AgentState> {
     try {
-      // Use the base class's invoke method which handles the model interaction
+      Logger.step(`[${this.constructor.name}] Executing...`);
+      
+      // Use the invoke method which handles the full cycle including prompt, model call, and potential re-invocation with tools
       const updatedState = await this.invoke(state);
 
-      // Handle tool calls if present in the updated state
-      const lastMessage = updatedState.messages[updatedState.messages.length - 1];
-      if (lastMessage instanceof AgentAIMessage && lastMessage.tool_calls?.length > 0) {
-        Logger.step('Processing tool calls...');
-        const toolResults = await this.handleToolCalls(lastMessage.tool_calls);
-        
-        // Update state with tool results
-        return this.createStateUpdate(updatedState, toolResults);
-      }
+      // The state returned by invoke should already contain all necessary messages (prompt, AI response, tool calls, tool results, final AI response)
+      // We might need node-specific logic here *after* invoke if the node needs to parse data from the final state.
+      // For the base implementation, we assume the state returned by invoke is sufficient.
 
+      Logger.step(`[${this.constructor.name}] Execution complete.`);
       return updatedState;
+      
     } catch (error) {
       Logger.error(`Error in ${this.constructor.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
