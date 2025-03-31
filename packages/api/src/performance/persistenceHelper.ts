@@ -122,18 +122,18 @@ export async function persist(
         interval,
         undefined,
         trailingAvgTime,
-        storage[interval].trailingAvgStore[trailingAvgTime]
+        storage[interval].trailingAvgStore[trailingAvgTime.toString()]
       );
     }
   }
 
   // persist trailingAvgStore
   for (const trailingAvgTime of trailingAvgTimes) {
-    if(!trailingAvgStores[trailingAvgTime]) {
+    if(!trailingAvgStores[trailingAvgTime.toString()]) {
       continue;
     }
     await persistTrailingAvgStore(
-      trailingAvgStores[trailingAvgTime],
+      trailingAvgStores[trailingAvgTime.toString()],
       path.join(process.env.STORAGE_PATH!, `${resource.slug}-${trailingAvgTime}-trailingAvg-store.csv`)
     );
   }
@@ -254,7 +254,7 @@ export async function restore(
       }
     }
     for (const trailingAvgTime of trailingAvgTimes) {
-      storage[interval].trailingAvgStore[trailingAvgTime] = {
+      storage[interval].trailingAvgStore[trailingAvgTime.toString()] = {
         datapoints: []
       };
       records = await restoreRecords(
@@ -266,7 +266,7 @@ export async function restore(
         trailingAvgTime
       );
       if (records) {
-        storage[interval].trailingAvgStore[trailingAvgTime] = records;
+        storage[interval].trailingAvgStore[trailingAvgTime.toString()] = records;
         restored = true;
       }
     }
@@ -278,7 +278,7 @@ export async function restore(
       path.join(process.env.STORAGE_PATH!, `${resource.slug}-${trailingAvgTime}-trailingAvg-store.csv`)
     );
     if (records) {
-      trailingAvgStores[trailingAvgTime] = records;
+      trailingAvgStores[trailingAvgTime.toString()] = records;
       restored = true;
     }
   }

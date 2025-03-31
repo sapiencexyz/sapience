@@ -440,6 +440,7 @@ export class ResourcePerformance {
           };
         }
 
+        const storedTrailingAvgData = this.persistentTrailingAvgStorage[trailingAvgTime.toString()] ?? [];
         this.runtime.trailingAvgProcessData[interval][
           trailingAvgTime.toString()
         ] = {
@@ -451,7 +452,7 @@ export class ResourcePerformance {
           // startTimestamp: 0,
           endTimestamp: 0,
           trailingAvgData: [
-            ...this.persistentTrailingAvgStorage[trailingAvgTime], // Initialize with stored data
+            ...storedTrailingAvgData, // Initialize with stored data
           ],
         };
       }
