@@ -876,6 +876,8 @@ export class ResourcePerformance {
     if (!rtpd.nextTimestamp) {
       rtpd.nextTimestamp = startOfNextInterval(item.timestamp, interval);
 
+      rtpd.startTimestampIndex = persistentTrailingAvgStorage.length -1;
+
       // Create a placeholder in the store if not found
       const itemStartTime = startOfCurrentInterval(item.timestamp, interval);
 
@@ -912,8 +914,8 @@ export class ResourcePerformance {
           },
           metadata: {
             lastIncludedTimestamp: item.timestamp,
-            sumUsed: '0',
-            sumPaid: '0',
+            sumUsed: rtpd.used.toString(),
+            sumPaid: rtpd.feePaid.toString(),
           },
         };
         ptStore.datapoints.push(datapoint);
@@ -1249,6 +1251,7 @@ export class ResourcePerformance {
     trailingAvgTime: number
   ) {
     this.checkInterval(interval);
+    console.log(`  ResourcePerformance --> getTrailingAvgPrices --> interval: ${interval}, trailingAvgTime: ${trailingAvgTime}`);
     const indexDatapoints = this.persistentStorage[interval].trailingAvgStore[
       trailingAvgTime.toString()
     ].datapoints.map((d) => ({
@@ -1258,7 +1261,14 @@ export class ResourcePerformance {
       low: (d.data as CandleData).l,
       close: (d.data as CandleData).c,
     }));
+    console.log(`  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints: ${indexDatapoints.length}`);
 
+    for (let i = 0; i < indexDatapoints.length && i < 3; i++) {
+      console.log(`  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints[${i}]: ${JSON.stringify(indexDatapoints[i])}`);
+    }
+    for (let i = indexDatapoints.length > 3 ? indexDatapoints.length - 3 : 0; i < indexDatapoints.length; i++) {
+      console.log(`  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints[${i}]: ${JSON.stringify(indexDatapoints[i])}`);
+    }
     return this.getPricesFromArray(indexDatapoints, from, to, interval);
   }
 
@@ -1353,6 +1363,7 @@ export class ResourcePerformance {
 
     // Check if we need to process new data for this requested time range
     await this.updateStoreIfNeeded(prices, timeWindow.to);
+    // TODO: FOIL-318 Fix. This needs to be done before passing the prices array here.
 
     // If there are no prices or window starts before first price, add zero entries
     if (fillInitialDatapoints && timeWindow.from < prices[0].timestamp) {
