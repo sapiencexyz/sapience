@@ -54,6 +54,7 @@ interface UseChartProps {
   };
   useMarketUnits: boolean;
   startTime: number;
+  endTime: number;
   containerRef: React.RefObject<HTMLDivElement>;
   selectedWindow: TimeWindow | null;
   selectedInterval: TimeInterval;
@@ -202,6 +203,7 @@ export const useChart = ({
   seriesVisibility: seriesVisibilityProp,
   useMarketUnits,
   startTime,
+  endTime,
   containerRef,
   selectedWindow,
   selectedInterval,
@@ -680,16 +682,41 @@ export const useChart = ({
 
   const updateIndexPriceData = useCallback(() => {
     if (indexPriceSeriesRef.current && !isBeforeStart) {
+      // Process index data with extrapolation for cumulative markets
+      const processValue = (rawValue: number, timestamp: number) => {
+        let value = useMarketUnits
+          ? Number(rawValue / ((stEthPerToken || 1e9) / 1e9))
+          : rawValue;
+
+        // If market is cumulative, extrapolate the value based on actual epoch duration
+        if (
+          contextMarket?.isCumulative &&
+          startTime > 0 &&
+          endTime > startTime
+        ) {
+          const timestampSec =
+            typeof timestamp === 'number' ? timestamp : timestamp / 1000;
+          const daysSinceStart = Math.max(
+            1,
+            (timestampSec - startTime) / (24 * 60 * 60)
+          );
+
+          // Calculate total epoch duration in days
+          const epochDurationDays = (endTime - startTime) / (24 * 60 * 60);
+
+          // Extrapolate based on actual epoch duration instead of hardcoded 30 days
+          value *= epochDurationDays / daysSinceStart;
+        }
+
+        return value;
+      };
+
       // Start with the existing index prices data
       let indexLineData = indexPrices?.length
-        ? indexPrices.map((ip) => {
-            return {
-              time: (ip.timestamp / 1000) as UTCTimestamp,
-              value: useMarketUnits
-                ? Number(ip.price / ((stEthPerToken || 1e9) / 1e9))
-                : ip.price,
-            };
-          })
+        ? indexPrices.map((ip) => ({
+            time: (ip.timestamp / 1000) as UTCTimestamp,
+            value: processValue(ip.price, ip.timestamp / 1000),
+          }))
         : [];
 
       // If we have the latest index price from the stats component, ensure it's included
@@ -700,11 +727,11 @@ export const useChart = ({
           10
         ) as UTCTimestamp;
 
-        // Calculate the value using the same formula as in the stats component
-        const latestValue = useMarketUnits
-          ? Number(formatUnits(BigInt(latestIndexPrice.value || 0), 9)) /
-            ((stEthPerToken || 1e9) / 1e9)
-          : Number(formatUnits(BigInt(latestIndexPrice.value || 0), 9));
+        // Calculate and process the value
+        const rawValue = Number(
+          formatUnits(BigInt(latestIndexPrice.value || 0), 9)
+        );
+        const latestValue = processValue(rawValue, latestTimestamp);
 
         // Remove any existing data points that are within 60 seconds of the latest timestamp
         indexLineData = indexLineData.filter(
@@ -730,6 +757,9 @@ export const useChart = ({
     useMarketUnits,
     stEthPerToken,
     latestIndexPrice,
+    contextMarket?.isCumulative,
+    startTime,
+    endTime,
   ]);
 
   const updateResourcePriceData = useCallback(() => {
