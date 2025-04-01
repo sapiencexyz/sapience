@@ -2,10 +2,9 @@ import { AgentConfig, AgentTools, AgentState } from '../types/agent';
 import { Logger } from '../utils/logger';
 import { 
   LookupNode, 
-  SettlePositionsNode, 
-  AssessPositionsNode, 
-  DiscoverMarketsNode, 
-  PublishSummaryNode,
+  EvaluateNode, 
+  UpdateNode, 
+  PublishNode,
   DelayNode,
   BaseNode
 } from '../nodes';
@@ -23,10 +22,9 @@ export class GraphManager {
     // Initialize nodes
     this.nodes = new Map();
     this.nodes.set("lookup", new LookupNode(config, tools));
-    this.nodes.set("settle_positions", new SettlePositionsNode(config, tools));
-    this.nodes.set("assess_positions", new AssessPositionsNode(config, tools));
-    this.nodes.set("discover_markets", new DiscoverMarketsNode(config, tools));
-    this.nodes.set("publish_summary", new PublishSummaryNode(config, tools));
+    this.nodes.set("evaluate", new EvaluateNode(config, tools));
+    this.nodes.set("update", new UpdateNode(config, tools));
+    this.nodes.set("publish", new PublishNode(config, tools));
     this.nodes.set("delay", new DelayNode(config, tools, config.interval ?? 60000));
     
     // Set initial node

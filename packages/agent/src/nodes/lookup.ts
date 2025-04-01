@@ -125,8 +125,4 @@ export class LookupNode extends BaseNode {
       throw error;
     }
   }
-
-  async shouldContinue(state: AgentState): Promise<string> {
-    return super.shouldContinue(state);
-  }
 } 

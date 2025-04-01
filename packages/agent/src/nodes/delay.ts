@@ -46,9 +46,4 @@ export class DelayNode extends BaseNode {
       throw error;
     }
   }
-
-  async shouldContinue(state: AgentState): Promise<string> {
-    // Always use the default next node (lookup)
-    return super.shouldContinue(state);
-  }
 } 

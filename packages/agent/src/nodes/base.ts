@@ -120,8 +120,24 @@ export abstract class BaseNode {
    * @param content Raw content from the model
    * @returns Formatted content
    */
-  protected formatMessageContent(content: string): string {
-    return content;
+  protected formatMessageContent(content: string | any): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+    return JSON.stringify(content);
+  }
+
+  /**
+   * Format tool results for inclusion in prompts
+   * @param state Current state
+   * @returns Formatted tool results
+   */
+  protected formatToolResultsForPrompt(state: AgentState): string {
+    if (!state.toolResults || Object.keys(state.toolResults).length === 0) {
+      return '';
+    }
+
+    return `\nPrevious tool results:\n${JSON.stringify(state.toolResults, null, 2)}`;
   }
 
   /**
@@ -200,48 +216,34 @@ export abstract class BaseNode {
   async shouldContinue(state: AgentState): Promise<string> {
     const lastMessage = state.messages[state.messages.length - 1];
 
-    // Check if the last message is a tool result. If so, loop back to the agent node for the current step.
+    // Check if the last message is a tool result. If so, loop back to the current node for the current step.
     if (lastMessage instanceof AgentToolMessage) {
         // The agent needs to process the tool result. Route back to the current node.
         Logger.info(`Routing back to ${state.currentStep} to process tool results.`);
-        // Assuming the node name matches the currentStep identifier
         return state.currentStep;
     }
 
-    // If the last message was an AI message requesting tools, the graph should handle routing
-    // to the tool execution mechanism (either implicitly via createReactAgent or explicitly via edges).
-    // We don't need explicit routing *from here* for that specific case if the graph handles it.
+    // If the last message was an AI message requesting tools, continue with the current node
     if ((lastMessage instanceof AIMessage || lastMessage instanceof AgentAIMessage) && lastMessage.tool_calls?.length > 0) {
-        // Let the graph's edges or the ReAct agent's internal logic handle the transition to tool execution.
-        // If using createReactAgent in the node itself, this might not even be hit if the agent handles the loop internally.
-        // If using separate nodes, an edge from this node should handle this condition.
-        // For safety, we can explicitly return the current step to ensure the agent loop continues if graph edges aren't setup for this.
-        // However, returning state.currentStep here might interfere with explicit tool node routing.
-        // Let's assume the graph structure handles tool calls correctly based on AIMessage with tool_calls.
-        // So, we proceed to the logic below only if the last message was NOT a tool result AND NOT an AI call with tools.
+        return state.currentStep;
     }
     
     // If the last message wasn't a tool result, and wasn't an AI message calling tools,
-    // then the step is conceptually finished from the agent's perspective for this turn.
-    // Now decide the *next* conceptual step based on the state.
+    // then proceed to the next step in the flow
     Logger.info(`Step ${state.currentStep} finished processing for this turn, deciding next step.`);
     switch (state.currentStep) {
       case "lookup":
-        // This logic now only runs after the agent has processed any tool results for 'lookup'
-        // and produced a response *without* further tool calls.
-        return state.positions?.length > 0 ? "settle_positions" : "discover_markets";
-      case "settle_positions":
-        return "assess_positions";
-      case "assess_positions":
-        return "discover_markets";
-      case "discover_markets":
-        return "publish_summary";
-      case "publish_summary":
+        return "evaluate";
+      case "evaluate":
+        return "update";
+      case "update":
+        return "publish";
+      case "publish":
         return "delay";
       case "delay":
         return "lookup"; // Loop back for the next cycle
       default:
-        // If currentStep is unexpected or signifies the end (e.g., from publish_summary)
+        // If currentStep is unexpected or signifies the end
         Logger.info(`Finishing graph execution from step: ${state.currentStep}`);
         return END; // Use END to signal the graph should stop
     }

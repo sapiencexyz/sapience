@@ -34,17 +34,4 @@ export class PublishSummaryNode extends BaseNode {
       .map(msg => `- ${msg.content}`)
       .join('\n');
   }
-
-  async shouldContinue(state: AgentState): Promise<string> {
-    Logger.step('Determining next step...');
-    const lastMessage = state.messages[state.messages.length - 1] as AIMessage;
-    
-    if (lastMessage.tool_calls?.length > 0) {
-      Logger.step('Tool calls found, continuing with tools');
-      return "tools";
-    }
-
-    // Use the default next node from BaseNode
-    return super.shouldContinue(state);
-  }
 } 

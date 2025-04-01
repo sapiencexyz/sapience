@@ -5,7 +5,7 @@ import { BaseNode } from './base';
 import { AgentAIMessage } from '../types/message';
 import chalk from 'chalk';
 
-export class EvaluateNode extends BaseNode {
+export class PublishNode extends BaseNode {
   constructor(
     protected config: AgentConfig,
     protected tools: AgentTools
@@ -14,21 +14,21 @@ export class EvaluateNode extends BaseNode {
   }
 
   protected getPrompt(state: AgentState): AIMessage {
-    return new AIMessage(`You are a Foil trading agent responsible for evaluating market conditions and positions.
-
-You have access to the following tools:
-- readFoilContracts: Read data from Foil contracts
-- writeFoilContracts: Write data to Foil contracts
-- graphql: Query market data
-
-Your task is to:
-1. Analyze current market conditions
-2. Evaluate existing positions
-3. Identify potential opportunities or risks
-
-IMPORTANT: Use the provided tools to gather data and make informed decisions.
-
-${this.formatToolResultsForPrompt(state)}`);
+    return new AIMessage(`You are a Foil trading agent responsible for publishing updates about positions and market conditions.
+    
+    You have access to the following tools:
+    - readFoilContracts: Read data from Foil contracts
+    - writeFoilContracts: Write data to Foil contracts
+    - graphql: Query market data
+    
+    Your task is to:
+    1. Summarize the current state of positions
+    2. Document any changes made
+    3. Publish updates to the appropriate channels
+    
+    IMPORTANT: Ensure all updates are accurate and properly formatted.
+    
+    ${this.formatToolResultsForPrompt(state)}`);
   }
 
   protected async processToolResults(
@@ -36,9 +36,9 @@ ${this.formatToolResultsForPrompt(state)}`);
     agentResponse: AIMessage,
     toolResults: ToolMessage[]
   ): Promise<AgentState | null> {
-    Logger.step('[Evaluate] Processing tool results...');
+    Logger.step('[Publish] Processing tool results...');
     
-    const analysisPrompt = `Based on the market data and position information, what are your findings and recommendations?`;
+    const analysisPrompt = `Based on the published updates, what is the current state and what information was shared?`;
     
     const analysisResponse = await this.invokeModel([
       ...state.messages,
@@ -57,7 +57,7 @@ ${this.formatToolResultsForPrompt(state)}`);
     state: AgentState, 
     response: AIMessage
   ): Promise<AgentState | null> {
-    Logger.step('[Evaluate] Processing response...');
+    Logger.step('[Publish] Processing response...');
     
     const formattedContent = this.formatMessageContent(response.content);
     const formattedMessage = new AgentAIMessage(formattedContent);
