@@ -137,7 +137,7 @@ export abstract class BaseNode {
       return '';
     }
 
-    return `Previous tool results:\n${JSON.stringify(state.toolResults, null, 2)}`;
+    return `\nPrevious tool results:\n${JSON.stringify(state.toolResults, null, 2)}`;
   }
 
   /**

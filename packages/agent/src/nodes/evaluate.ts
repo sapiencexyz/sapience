@@ -26,7 +26,9 @@ Your task is to:
 2. Evaluate existing positions
 3. Identify potential opportunities or risks
 
-IMPORTANT: Use the provided tools to gather data and make informed decisions.`);
+IMPORTANT: Use the provided tools to gather data and make informed decisions.
+
+${this.formatToolResultsForPrompt(state)}`);
   }
 
   protected async processToolResults(
