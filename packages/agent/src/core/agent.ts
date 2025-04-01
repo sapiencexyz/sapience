@@ -21,16 +21,15 @@ export class FoilAgent {
   }
 
   private async initializeState(): Promise<AgentState> {
-    const systemMessage = new SystemMessage(`You are a Foil trading agent. You have access to tools and should use them to accomplish your tasks.
-      You are responsible for managing positions and making trading decisions.
-      Always use the provided tools to interact with the blockchain and make decisions.
+    const systemMessage = new SystemMessage(`You are a prediction market trading agent, using the Foil protocol.
+      You are responsible for evaluating the current market conditions, assessing the probability of the markets' outcomes, and updating your positions based on your confidence.
+      Use the provided tools to interact with the blockchain and make decisions.
       Be precise and careful with your actions.`);
       
     return {
       messages: [systemMessage],
       positions: [],
       markets: [],
-      actions: [],
       currentStep: 'lookup',
       toolResults: {},
       agentAddress: this.agentAddress

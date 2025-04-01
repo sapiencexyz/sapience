@@ -1,20 +1,31 @@
-import { AgentMessage } from './message.js';
-import { Position, Action } from './position.js';
-import { Market as MarketType } from './market.js';
 import { DynamicTool } from "@langchain/core/tools";
 import { BaseMessage } from "@langchain/core/messages";
 
 export interface AgentState {
+  agentAddress: string;
   messages: BaseMessage[];
-  positions: Position[];
-  markets: MarketType[];
-  previousMarkets?: MarketType[];
-  actions: Action[];
+  toolResults: Record<string, any>;
+
+  markets: {
+    address: string;
+    chainId: number;
+    period: number;
+    isActive: boolean;
+    question?: string;
+    currentPrice?: string;
+  }[];
+
+  positions: {
+    id: string;
+    market: string;
+    size: string;
+    collateral: string;
+    pnl: string;
+    isSettleable: boolean;
+  }[];
+  
   currentStep: string;
   lastAction?: string;
-  toolResults: Record<string, any>;
-  agentAddress: string;
-  shouldRePrompt?: boolean;
 }
 
 export interface AgentConfig {
