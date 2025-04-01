@@ -8,6 +8,7 @@ import { DynamicTool } from "@langchain/core/tools";
 import { Runnable } from "@langchain/core/runnables";
 import { END } from "@langchain/langgraph";
 
+// Base class for nodes that use model invocation
 export abstract class BaseNode {
   protected model: Runnable<BaseMessage[], AIMessage>;
 
@@ -248,4 +249,19 @@ export abstract class BaseNode {
         return END; // Use END to signal the graph should stop
     }
   }
+}
+
+// Base class for nodes that don't use model invocation
+export abstract class NonModelBaseNode {
+  constructor(
+    protected config: AgentConfig,
+    protected tools: AgentTools
+  ) {}
+
+  /**
+   * Execute the node's logic
+   * @param state Current state of the agent
+   * @returns Updated state after execution
+   */
+  abstract execute(state: AgentState): Promise<AgentState>;
 } 
