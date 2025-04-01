@@ -89,7 +89,7 @@ export class ResourcePerformance {
     trailingAvgProcessData: {
       [interval: number]: {
         [trailingAvgTime: string]: {
-          used: bigint;
+         used: bigint;
           feePaid: bigint;
           nextTimestamp: number;
           startTimestampIndex: number;
@@ -1251,9 +1251,6 @@ export class ResourcePerformance {
     trailingAvgTime: number
   ) {
     this.checkInterval(interval);
-    console.log(
-      `  ResourcePerformance --> getTrailingAvgPrices --> interval: ${interval}, trailingAvgTime: ${trailingAvgTime}`
-    );
     const indexDatapoints = this.persistentStorage[interval].trailingAvgStore[
       trailingAvgTime.toString()
     ].datapoints.map((d) => ({
@@ -1263,24 +1260,7 @@ export class ResourcePerformance {
       low: (d.data as CandleData).l,
       close: (d.data as CandleData).c,
     }));
-    console.log(
-      `  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints: ${indexDatapoints.length}`
-    );
 
-    for (let i = 0; i < indexDatapoints.length && i < 3; i++) {
-      console.log(
-        `  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints[${i}]: ${JSON.stringify(indexDatapoints[i])}`
-      );
-    }
-    for (
-      let i = indexDatapoints.length > 3 ? indexDatapoints.length - 3 : 0;
-      i < indexDatapoints.length;
-      i++
-    ) {
-      console.log(
-        `  ResourcePerformance --> getTrailingAvgPrices --> indexDatapoints[${i}]: ${JSON.stringify(indexDatapoints[i])}`
-      );
-    }
     return this.getPricesFromArray(indexDatapoints, from, to, interval);
   }
 
