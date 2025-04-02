@@ -23,7 +23,7 @@ const colors = {
 };
 
 // Define the states
-type AgentState = 'Lookup' | 'Evaluate' | 'Update' | 'Summary' | 'Delay';
+type AgentState = 'Lookup' | 'Evaluate' | 'Update' | 'Execute' | 'Summary' | 'Delay';
 
 // Helper to format messages for cleaner logging
 function formatMessagesForLog(messages: BaseMessage[]): string {
@@ -58,6 +58,14 @@ export class FoilAgent {
   private evaluationTasks: { market: any, question: string }[] = [];
   // Define the type for evaluation results explicitly for clarity
   private evaluationResults: ({ market: string; question: string; rawResponse: string; parsed: { answer: string; confidence: number; rationale: string; }; } | { market: string; question: string; error: string; })[] = [];
+
+  // ---> Add these members to store data across steps <---
+  private lastEvaluationResults: typeof this.evaluationResults = [];
+  private lastFetchedPositions: any[] = [];
+  private lastTotalCollateral: number = 0;
+  private lastMarketUpdates: any[] = [];
+  private lastExecutionResult: any = null; // Store results from execute step
+  // ---> End of added members <---
 
   constructor(config: AgentConfig, tools: Record<string, Record<string, Tool>>, agentAddress: string) {
     this.config = config;
@@ -142,6 +150,12 @@ export class FoilAgent {
           break;
         case 'Update':
           await this.update();
+          // Store necessary data from update for execute/summary if needed
+          // e.g., this.transactionsToExecute = marketUpdates;
+          this.currentState = 'Execute'; // Go to Execute next
+          break;
+        case 'Execute': // New Execute state
+          await this.execute();
           this.currentState = 'Summary';
           break;
         case 'Summary':
@@ -187,7 +201,8 @@ export class FoilAgent {
       switch (this.currentState) {
           case 'Evaluate': return 'Lookup';
           case 'Update': return 'Evaluate';
-          case 'Summary': return 'Update';
+          case 'Execute': return 'Update';
+          case 'Summary': return 'Execute';
           case 'Delay': return 'Summary';
           case 'Lookup': return 'Delay'; // After completing a cycle
           default: return 'Lookup'; // Fallback
@@ -350,34 +365,241 @@ export class FoilAgent {
   private async update() {
     Logger.info(`${colors.dim}UPDATE: Processing ${this.evaluationResults.length} evaluation results...${colors.reset}`);
 
+    // Store evaluation results before clearing
+    this.lastEvaluationResults = [...this.evaluationResults];
+
     if (this.evaluationResults.length === 0) {
       Logger.warn(`${colors.yellow}UPDATE: No evaluation results to process. Skipping.${colors.reset}`);
-      this.currentState = 'Summary'; // Move to next state
+      this.currentState = 'Execute'; // Go to Execute even if no results
+      this.evaluationResults = []; // Clear results
+      this.lastMarketUpdates = []; // Clear updates
+      this.lastFetchedPositions = []; // Clear positions
+      this.lastTotalCollateral = 0; // Clear collateral
       return;
     }
 
-    // Process the results stored in this.evaluationResults
-    // Example: Log the confidence levels
+    // 1. Fetch current positions
+    let currentPositions: any[] = []; // Placeholder for positions
+    const getPositionsTool = this.flatTools.find(t => t.name === 'getPositionsByOwner'); // Assuming tool name
+    if (getPositionsTool) {
+      try {
+        Logger.info(`${colors.dim}UPDATE: Fetching current positions for agent ${this.agentAddress}...${colors.reset}`);
+        // TODO: Define the structure needed for the input args (e.g., { owner: this.agentAddress })
+        const positionsResult = await getPositionsTool.func(JSON.stringify({ owner: this.agentAddress }));
+        // TODO: Parse positionsResult similar to how listMarkets is parsed in lookup()
+        // currentPositions = parsedPositions; // Assign parsed results
+        this.lastFetchedPositions = currentPositions; // Store fetched positions
+        Logger.info(`${colors.dim}UPDATE: Successfully fetched positions. (Result needs parsing)${colors.reset}`);
+      } catch (error: any) {
+        Logger.error(`${colors.red}UPDATE: Error fetching positions: ${error.message}${colors.reset}`, error);
+        // Decide how to handle this - maybe proceed without position data or delay?
+        this.lastFetchedPositions = []; // Clear on error
+      }
+    } else {
+      Logger.warn(`${colors.yellow}UPDATE: getPositionsByOwner tool not found. Proceeding without position data.${colors.reset}`);
+      this.lastFetchedPositions = [];
+    }
+
+    // 2. Fetch agent's collateral balance (Example)
+    let collateralBalance = 0; // Placeholder
+    const getBalanceTool = this.flatTools.find(t => t.name === 'getCollateralBalance'); // Assuming tool name
+    if (getBalanceTool) {
+        try {
+            Logger.info(`${colors.dim}UPDATE: Fetching collateral balance for agent ${this.agentAddress}...${colors.reset}`);
+            // TODO: Define input args if needed (e.g., { owner: this.agentAddress, token: 'USDC' })
+            const balanceResult = await getBalanceTool.func(JSON.stringify({ owner: this.agentAddress }));
+            // TODO: Parse balanceResult
+            // collateralBalance = parsedBalance;
+             Logger.info(`${colors.dim}UPDATE: Successfully fetched collateral balance. (Result needs parsing)${colors.reset}`);
+        } catch (error: any) {
+            Logger.error(`${colors.red}UPDATE: Error fetching balance: ${error.message}${colors.reset}`, error);
+        }
+    } else {
+         Logger.warn(`${colors.yellow}UPDATE: getCollateralBalance tool not found. Proceeding without balance data.${colors.reset}`);
+    }
+
+    // 3. Calculate Total Collateral (Example: Sum of balance and collateral in positions)
+    // TODO: Refine this based on actual position data structure (using lastFetchedPositions)
+    const totalCollateralInPositions = this.lastFetchedPositions.reduce((sum, pos) => sum + (pos.collateralAmount || 0), 0);
+    const totalAvailableCollateral = collateralBalance + totalCollateralInPositions;
+    this.lastTotalCollateral = totalAvailableCollateral; // Store total collateral
+    Logger.info(`${colors.dim}UPDATE: Total available collateral estimated at ${totalAvailableCollateral}${colors.reset}`);
+
+
+    // 4. Calculate Target Allocations and Positions
+    const marketUpdates = [];
+    let totalConfidence = 0;
+    const validResults = this.evaluationResults.filter(r => 'parsed' in r && r.parsed.confidence >= 0);
+
+    // Sum total confidence for normalization
+    validResults.forEach(result => {
+        if ('parsed' in result) { // Type guard
+           totalConfidence += result.parsed.confidence;
+        }
+    });
+
+    Logger.info(`${colors.dim}UPDATE: Total confidence sum for allocation: ${totalConfidence}${colors.reset}`);
+
     for (const result of this.evaluationResults) {
-       if ('parsed' in result) {
-           Logger.info(`${colors.dim}UPDATE: Processing Market ${result.market}, Confidence: ${result.parsed.confidence}${colors.reset}`);
+       if ('parsed' in result && result.parsed.confidence >= 0) {
+           const confidence = result.parsed.confidence;
+           const marketIdentifier = result.market; // Use the identifier stored during evaluation
+
+           // Calculate allocation fraction based on confidence
+           const allocationFraction = totalConfidence > 0 ? confidence / totalConfidence : 0;
+           const targetAllocation = totalAvailableCollateral * allocationFraction;
+
+           // Determine target position (using the 'answer' string directly for now)
+           const targetPosition = result.parsed.answer; // e.g., "YES", "NO", outcome description
+
+           Logger.info(`${colors.dim}UPDATE: Market ${marketIdentifier} -> Confidence: ${confidence}, Target Allocation: ${targetAllocation.toFixed(2)}, Target Position: "${targetPosition}"${colors.reset}`);
+
+           // Store the calculated update information
+           marketUpdates.push({
+               marketIdentifier,
+               targetAllocation,
+               targetPosition,
+               confidence,
+               rationale: result.parsed.rationale // Keep rationale for context
+           });
+
            // Placeholder: Add logic here to decide actions based on results (e.g., confidence > threshold)
            // This might involve calling write tools based on `result.market`, `result.parsed.answer`, etc.
+
        } else if ('error' in result) {
            Logger.error(`${colors.red}UPDATE: Skipping market ${result.market} due to evaluation error: ${result.error}${colors.reset}`);
+       } else {
+           // Handle cases where confidence might be invalid (e.g., -1 from parsing error)
+            Logger.warn(`${colors.yellow}UPDATE: Skipping market ${result.market} due to invalid confidence (${'parsed' in result ? result.parsed.confidence : 'N/A'}).${colors.reset}`);
        }
     }
 
-    // Placeholder for actual update logic (e.g., calling write tools)
-    Logger.info(`${colors.dim}UPDATE: Finished processing results. (Placeholder update logic)${colors.reset}`);
+    // TODO: Add logic here to compare targetAllocation/targetPosition with currentPositions
+    // and decide which transactions (e.g., deposit, withdraw, trade) are needed.
+    // This will likely involve calling other tools (write tools).
+    Logger.info(`${colors.dim}UPDATE: Calculated ${marketUpdates.length} potential market updates.${colors.reset}`);
+    this.lastMarketUpdates = marketUpdates; // Store calculated updates
 
-    // Clear the results after processing
+
+    // Placeholder for actual update logic (e.g., calling write tools based on marketUpdates)
+    Logger.info(`${colors.dim}UPDATE: Finished processing results. (Placeholder - Actual contract interactions needed)${colors.reset}`);
+
+    // Clear the results after processing and storing
     this.evaluationResults = [];
+    this.currentState = 'Execute'; // Move to Execute state
+  }
+
+  private async execute() {
+    Logger.info(`${colors.dim}EXECUTE: Signing and submitting transactions... (Placeholder)${colors.reset}`);
+    // TODO: Retrieve the transactions/actions determined in the Update step (using this.lastMarketUpdates and this.lastFetchedPositions).
+    // TODO: Implement logic to sign transactions using the agent's private key.
+    // TODO: Implement logic to submit transactions to the blockchain.
+    // TODO: Handle transaction results (success/failure).
+
+    // Placeholder for execution results
+    this.lastExecutionResult = {
+        success: true, // Assume success for now
+        transactionsAttempted: this.lastMarketUpdates.length, // Example: number of potential updates
+        transactionsSubmitted: 0, // TODO: Update this based on actual submissions
+        errors: [], // TODO: Populate with any errors during execution
+    };
+
+    Logger.info(`${colors.dim}EXECUTE: Finished transaction submission process. Stored placeholder results.${colors.reset}`);
+    this.currentState = 'Summary'; // Move to Summary state
   }
 
   private async summary() {
-    Logger.info(`${colors.dim}SUMMARY: Performing placeholder summary...${colors.reset}`);
+    Logger.info(`${colors.dim}SUMMARY: Generating summary...${colors.reset}`);
+
+    // Gather context for the summary using the persisted data
+    const evaluatedCount = this.lastEvaluationResults.length;
+    const successfulEvaluations = this.lastEvaluationResults.filter(r => 'parsed' in r).length;
+    const errorEvaluations = evaluatedCount - successfulEvaluations;
+    const updatesCalculated = this.lastMarketUpdates.length;
+    const executionStatus = this.lastExecutionResult?.success ? 'successful' : 'failed';
+    const txAttempted = this.lastExecutionResult?.transactionsAttempted ?? 0;
+    const txSubmitted = this.lastExecutionResult?.transactionsSubmitted ?? 0;
+    const executionErrors = this.lastExecutionResult?.errors?.length ?? 0;
+
+    // Construct a more detailed context string
+    let summaryContext = `Cycle Summary:
+- Evaluated ${evaluatedCount} markets (${successfulEvaluations} successful, ${errorEvaluations} errors).
+- Current Positions Fetched: ${this.lastFetchedPositions.length > 0 ? 'Yes' : 'No/Error'} (Count: ${this.lastFetchedPositions.length}).
+- Total Collateral Estimated: ${this.lastTotalCollateral.toFixed(2)}.
+- Calculated ${updatesCalculated} target market updates/allocations.
+- Execution step was ${executionStatus}.
+- Transactions Attempted: ${txAttempted}.
+- Transactions Submitted: ${txSubmitted}.
+- Execution Errors: ${executionErrors}.
+`;
+
+    // Add details from market updates if available
+    if (updatesCalculated > 0) {
+        summaryContext += "\nTarget Updates:\n";
+        this.lastMarketUpdates.slice(0, 5).forEach(upd => { // Limit details for brevity
+            summaryContext += `- Mkt: ${upd.marketIdentifier}, Pos: "${upd.targetPosition}", Alloc: ${upd.targetAllocation.toFixed(2)}, Conf: ${upd.confidence}\n`;
+        });
+        if (updatesCalculated > 5) {
+            summaryContext += `- ... and ${updatesCalculated - 5} more.\n`;
+        }
+    }
+
+
+    const summaryPrompt = `Summarize the agent's recent activity based on the following information. Format the summary as a brief tweet thread (max 3 tweets, each max 280 chars). Output *only* a JSON array of strings, where each string is a tweet. The tone should be cool crypto bro but not too on-the-nose. No hashtags, can use punctation and capitalization sparingly, casual tone, etc.\n\nContext:\n${summaryContext}`;
+
+    // Logger.info(`${colors.cyan}SUMMARY (Prompt):${colors.reset}\n${summaryPrompt}`); // Optional: uncomment to see the full prompt
+
+    try {
+        // Add the summary prompt to the message history temporarily for the call
+        const summaryMessages: BaseMessage[] = [
+            this.messages[0], // System message
+            // Potentially include a condensed history or just the prompt
+            new HumanMessage(summaryPrompt)
+        ];
+
+        // Use the base model for summarization
+        const response = await this.model.invoke(summaryMessages) as AIMessage;
+        const responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+
+        // Attempt to parse the response as a JSON array of strings
+        let tweetThread: string[] = [];
+        try {
+            tweetThread = JSON.parse(responseContent);
+            if (!Array.isArray(tweetThread) || !tweetThread.every(item => typeof item === 'string')) {
+                throw new Error('Parsed result is not an array of strings.');
+            }
+            Logger.info(`${colors.blue}SUMMARY (Result):${colors.reset} Generated ${tweetThread.length} tweets.`);
+            // Log the generated tweets
+            tweetThread.forEach((tweet, index) => {
+                Logger.info(`${colors.cyan}Tweet ${index + 1}/${tweetThread.length}:${colors.reset} ${tweet}`);
+            });
+        } catch (parseError: any) {
+            Logger.error(`${colors.red}SUMMARY: Failed to parse tweet thread JSON: ${parseError.message}${colors.reset}. Raw response: ${responseContent}`);
+            // Log the raw response if parsing fails
+            Logger.warn(`${colors.yellow}SUMMARY Raw Response:${colors.reset}\n${responseContent}`);
+        }
+
+        // Clear last cycle's data after summary is generated
+        this.lastEvaluationResults = [];
+        this.lastFetchedPositions = [];
+        this.lastTotalCollateral = 0;
+        this.lastMarketUpdates = [];
+        this.lastExecutionResult = null;
+
+        // TODO: Decide what to do with the tweetThread (e.g., log it, store it, etc.)
+
+    } catch (error: any) {
+        Logger.error(`${colors.red}SUMMARY: Error during LLM call for summary: ${error.message}${colors.reset}`, error);
+         // Clear potentially partial data on error
+        this.lastEvaluationResults = [];
+        this.lastFetchedPositions = [];
+        this.lastTotalCollateral = 0;
+        this.lastMarketUpdates = [];
+        this.lastExecutionResult = null;
+    }
+
     // Logger.info(`SUMMARY: Final message count: ${this.messages.length}`);
+    this.currentState = 'Delay'; // Move to Delay state
   }
 
   private async delay() {
