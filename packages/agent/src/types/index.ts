@@ -1,12 +1,12 @@
-export * from './agent';
-export * from './market';
-export * from './position';
-export * from './message';
-
 export interface AgentConfig {
-  anthropicApiKey: string;
   interval: number;
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
+  anthropicApiKey?: string;
+  // Add other configuration options as needed
+}
+
+export interface Tool {
+  name: string;
+  description: string;
+  parameters: any; // Define a more specific type if possible
+  function: (...args: any[]) => Promise<any>; // Define more specific args/return if possible
 } 

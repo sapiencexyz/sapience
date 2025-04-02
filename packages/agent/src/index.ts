@@ -1,7 +1,7 @@
 import 'dotenv/config';
-import { FoilAgent } from './core/agent.js';
-import { AgentConfig, BaseTool } from './types/index.js';
-import { Logger } from './utils/logger.js';
+import { FoilAgent } from './core/agent';
+import { AgentConfig, Tool } from './types/index';
+import { Logger } from './utils/logger';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Get interval from command line args or default to 0 (run once)
@@ -38,27 +38,27 @@ const tools = {
       description: tool.description,
       parameters: tool.parameters,
       function: tool.function
-    } as BaseTool;
+    } as Tool;
     return acc;
-  }, {} as Record<string, BaseTool>),
+  }, {} as Record<string, Tool>),
   writeFoilContracts: Object.entries(rawTools.writeFoilContracts as Record<string, any>).reduce((acc, [toolName, tool]) => {
     acc[toolName] = {
       name: toolName,
       description: tool.description,
       parameters: tool.parameters,
       function: tool.function
-    } as BaseTool;
+    } as Tool;
     return acc;
-  }, {} as Record<string, BaseTool>),
+  }, {} as Record<string, Tool>),
   readFoilContracts: Object.entries(rawTools.readFoilContracts as Record<string, any>).reduce((acc, [toolName, tool]) => {
     acc[toolName] = {
       name: toolName,
       description: tool.description,
       parameters: tool.parameters,
       function: tool.function
-    } as BaseTool;
+    } as Tool;
     return acc;
-  }, {} as Record<string, BaseTool>)
+  }, {} as Record<string, Tool>)
 };
 
 // Create and start the agent
