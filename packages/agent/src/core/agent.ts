@@ -1,26 +1,11 @@
+import chalk from 'chalk';
 import { AgentConfig, Tool } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { BaseMessage, HumanMessage, SystemMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { Runnable } from '@langchain/core/runnables';
 import { DynamicTool } from "@langchain/core/tools";
-
-// Define ANSI color codes
-const colors = {
-    reset: "\x1b[0m",
-    // Styles
-    bold: "\x1b[1m",
-    dim: "\x1b[2m",
-    // Colors
-    red: "\x1b[31m",
-    green: "\x1b[32m",
-    yellow: "\x1b[33m",
-    blue: "\x1b[34m",
-    magenta: "\x1b[35m",
-    cyan: "\x1b[36m",
-    white: "\x1b[37m",
-    gray: "\x1b[90m", // Bright black/gray
-};
+import { getSystemPrompt, getSummaryPrompt, getEvaluationPrompt } from './prompts.js';
 
 // Define the states
 type AgentState = 'Lookup' | 'Evaluate' | 'Update' | 'Execute' | 'Summary' | 'Delay';
@@ -92,9 +77,7 @@ export class FoilAgent {
         }))
     );
 
-    this.messages = [
-      new SystemMessage(`You are an autonomous agent designed to analyze on-chain market data, identify opportunities or required actions, and interact with Foil contracts. Your address is ${this.agentAddress}. \nYour primary goal is to process information, proactively use the available tools to gather necessary details or perform actions based on the current context, and eventually trigger contract updates. \nAlways analyze the data provided, decide if tools are needed to fulfill the objective, and use them. Do not ask for permission before using tools if they are necessary to achieve the goal implied by the conversation history. \nAvailable tools: ${this.flatTools.map(t => t.name).join(', ')}`)
-    ];
+    this.messages = []; // Initialize with empty messages
 
     // Bind tools to the model
     this.modelWithTools = this.model.bindTools(this.flatTools);
@@ -107,14 +90,13 @@ export class FoilAgent {
       return;
     }
     this.running = true;
-    Logger.info(`${colors.bold}--- Agent Started ---${colors.reset}`);
+    Logger.info(chalk.bold('--- Agent Started ---'));
     // Reset state and messages for new start
     this.currentState = 'Lookup';
-    this.messages = [
-      new SystemMessage(`You are an autonomous agent designed to analyze on-chain market data, identify opportunities or required actions, and interact with Foil contracts. Your address is ${this.agentAddress}. \nYour primary goal is to process information, proactively use the available tools to gather necessary details or perform actions based on the current context, and eventually trigger contract updates. \nAlways analyze the data provided, decide if tools are needed to fulfill the objective, and use them. Do not ask for permission before using tools if they are necessary to achieve the goal implied by the conversation history. \nAvailable tools: ${this.flatTools.map(t => t.name).join(', ')}`)
-    ];
-    // Log system message on start
-    Logger.info(`${colors.magenta}SYSTEM:${colors.reset} ${this.messages[0].content}`);
+    this.messages = []; // Reset to empty messages
+    // Log system message on start (using the function now)
+    const systemPrompt = getSystemPrompt(this.agentAddress, this.flatTools.map(t => t.name));
+    Logger.info(`${chalk.magenta('SYSTEM:')} ${systemPrompt}`);
     this.runLoop();
   }
 
@@ -128,7 +110,7 @@ export class FoilAgent {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
-    Logger.info(`${colors.bold}--- Agent Stopped ---${colors.reset}`);
+    Logger.info(chalk.bold('--- Agent Stopped ---'));
   }
 
   private async runLoop() {
@@ -168,12 +150,12 @@ export class FoilAgent {
           completedCycle = true; // Mark that a full cycle is potentially complete
           break;
         default:
-          Logger.error(`${colors.red}Unknown state: ${this.currentState}${colors.reset}`);
+          Logger.error(chalk.red(`Unknown state: ${this.currentState}`));
           this.stop(); // Stop on unknown state
           return;
       }
     } catch (error: any) {
-      Logger.error(`${colors.red}Error during state ${previousState}: ${error.message}${colors.reset}`, error);
+      Logger.error(chalk.red(`Error during state ${previousState}: ${error.message}`), error);
       this.currentState = 'Delay';
     }
 
@@ -182,7 +164,7 @@ export class FoilAgent {
     // Check if we should stop (single run and completed a cycle)
     if (this.isSingleRun && completedCycle) {
         this.running = false;
-        Logger.info(`${colors.bold}--- Agent finished single run cycle ---${colors.reset}`);
+        Logger.info(chalk.bold('--- Agent finished single run cycle ---'));
         return; // Stop the loop
     }
 
@@ -210,13 +192,13 @@ export class FoilAgent {
   }
 
   private async lookup() {
-    Logger.info(`${colors.dim}LOOKUP: Fetching markets for evaluation...${colors.reset}`);
+    Logger.info(chalk.dim('LOOKUP: Fetching markets for evaluation...'));
     this.evaluationTasks = []; // Clear previous tasks
 
     const listMarketsTool = this.flatTools.find(t => t.name === 'listMarkets');
 
     if (!listMarketsTool) {
-        Logger.error(`${colors.red}LOOKUP: listMarkets tool not found.${colors.reset}`);
+        Logger.error(chalk.red('LOOKUP: listMarkets tool not found.'));
         this.currentState = 'Delay'; // Skip evaluation if tool is missing
         return;
     }
@@ -231,14 +213,14 @@ export class FoilAgent {
         let rawResultContent = marketsResult; // <<< MOVED DECLARATION HERE
 
         // ---> ADD LOGGING HERE <---
-        Logger.info(`${colors.dim}LOOKUP (Raw Result): ${typeof rawResultContent === 'string' ? rawResultContent : JSON.stringify(rawResultContent)}${colors.reset}`);
+        Logger.info(chalk.dim(`LOOKUP (Raw Result): ${typeof rawResultContent === 'string' ? rawResultContent : JSON.stringify(rawResultContent)}`));
         // ---> END LOGGING <---
 
         if (typeof marketsResult === 'string') { // <<< KEEP USING marketsResult here for initial check
             try {
                 rawResultContent = JSON.parse(marketsResult); // Update rawResultContent if it was a string
             } catch (e) {
-                Logger.error(`${colors.red}LOOKUP: Failed to parse listMarkets result string: ${marketsResult}${colors.reset}`);
+                Logger.error(chalk.red(`LOOKUP: Failed to parse listMarkets result string: ${marketsResult}`));
                 this.currentState = 'Delay';
                 return;
             }
@@ -251,14 +233,14 @@ export class FoilAgent {
                      throw new Error("Parsed market data is not an array.");
                  }
              } catch(e: any) {
-                 Logger.error(`${colors.red}LOOKUP: Failed to parse market array from tool result text: ${e.message}${colors.reset}`);
+                 Logger.error(chalk.red(`LOOKUP: Failed to parse market array from tool result text: ${e.message}`));
                  this.currentState = 'Delay';
                  return;
              }
         } else if (Array.isArray(rawResultContent)) {
              markets = rawResultContent;
         } else {
-            Logger.error(`${colors.red}LOOKUP: Unexpected structure in listMarkets result: ${JSON.stringify(rawResultContent)}${colors.reset}`);
+            Logger.error(chalk.red(`LOOKUP: Unexpected structure in listMarkets result: ${JSON.stringify(rawResultContent)}`));
             this.currentState = 'Delay';
             return;
         }
@@ -266,18 +248,18 @@ export class FoilAgent {
 
 
         if (!markets || markets.length === 0) {
-             Logger.warn(`${colors.yellow}LOOKUP: No markets returned by listMarkets tool.${colors.reset}`);
+             Logger.warn(chalk.yellow(`LOOKUP: No markets returned by listMarkets tool.`));
              this.currentState = 'Delay'; // Skip evaluation if no markets
              return;
         }
 
-        Logger.info(`${colors.dim}LOOKUP: Preparing evaluation tasks for ${markets.length} epoch(s)...${colors.reset}`);
+        Logger.info(chalk.dim(`LOOKUP: Preparing evaluation tasks for ${markets.length} epoch(s)...`));
         for (const epoch of markets) {
             const marketIdentifier = epoch.marketAddress || `EpochID-${epoch.epochId}` || 'Unknown ID';
             const claimStatement = epoch.question;
 
             // Define the standard question for each market, ensuring claimStatement is included
-            const question = `Analyze market ${marketIdentifier} with claim: "${claimStatement || 'N/A'}". What is the current outlook? Provide your best estimate, your confidence in this estimate on a scale of 0 to 100, and a concise 1-3 sentence rationale. Your response should look like\\n\\nANSWER: \\nCONFIDENCE:\\nRATIONALE:`;
+            const question = getEvaluationPrompt(marketIdentifier, claimStatement); // USE PROMPT FUNCTION
             
             // Pass the epoch object and the generated question to the task
             this.evaluationTasks.push({ market: epoch, question: question });
@@ -285,16 +267,16 @@ export class FoilAgent {
 
     } catch (error: any) {
         const errorMessage = `Error during Lookup/listMarkets: ${error.message}`;
-        Logger.error(`${colors.red}LOOKUP: ${errorMessage}${colors.reset}`, error);
+        Logger.error(chalk.red(`LOOKUP: ${errorMessage}`), error);
         this.currentState = 'Delay';
     }
   }
 
   private async evaluate() {
-    Logger.info(`${colors.dim}EVALUATE: Starting parallel market evaluation for ${this.evaluationTasks.length} task(s)...${colors.reset}`);
+    Logger.info(chalk.dim(`EVALUATE: Starting parallel market evaluation for ${this.evaluationTasks.length} task(s)...`));
 
     if (this.evaluationTasks.length === 0) {
-      Logger.warn(`${colors.yellow}EVALUATE: No tasks prepared by Lookup step. Skipping evaluation.${colors.reset}`);
+      Logger.warn(chalk.yellow(`EVALUATE: No tasks prepared by Lookup step. Skipping evaluation.`));
       this.currentState = 'Update'; // Proceed to next step even if no tasks
       return;
     }
@@ -303,32 +285,33 @@ export class FoilAgent {
       const evaluationPromises = this.evaluationTasks.map(async (task) => {
         // Access marketAddress and epochId from the epoch object stored in task.market
         const marketIdentifier = task.market.marketAddress || `EpochID-${task.market.epochId}` || 'Unknown ID';
-        Logger.info(`${colors.dim}EVALUATE: Starting task for market: ${marketIdentifier}${colors.reset}`);
+        Logger.info(chalk.dim(`EVALUATE: Starting task for market: ${marketIdentifier}`));
 
         // Create a minimal message list for this specific task's context
+        const systemPrompt = getSystemPrompt(this.agentAddress, this.flatTools.map(t => t.name)); // GENERATE SYSTEM PROMPT
         const taskMessages: BaseMessage[] = [
-            this.messages[0], // Include the original System Message
+            new SystemMessage(systemPrompt), // PREPEND SYSTEM MESSAGE
             new HumanMessage(task.question) // The specific question for this market
         ];
 
         // Log the prompt being sent
-        Logger.info(`${colors.green}EVALUATE (Prompt):${colors.reset} Market ${marketIdentifier}\n${task.question}`);
+        Logger.info(`${chalk.green('EVALUATE (Prompt):')} Market ${marketIdentifier}\n${task.question}`);
 
         try {
           // Use the base model, no tools needed for the structured answer
           const response = await this.model.invoke(taskMessages) as AIMessage;
           const responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
 
-          Logger.info(`${colors.dim}EVALUATE (Response):${colors.reset} ${responseContent}`);
+          Logger.info(chalk.dim(`EVALUATE (Response): ${responseContent}`));
 
           // Basic parsing attempt
           const answerMatch = responseContent.match(/ANSWER:\s*([\s\S]*?)\s*CONFIDENCE:/);
           const confidenceMatch = responseContent.match(/CONFIDENCE:\s*(\d+)/);
           const rationaleMatch = responseContent.match(/RATIONALE:\s*([\s\S]*)/);
 
-          Logger.info(`${colors.dim}EVALUATE (Answer):${colors.reset} ${answerMatch ? answerMatch[1].trim() : 'Parsing Error'}`);
-          Logger.info(`${colors.dim}EVALUATE (Confidence):${colors.reset} ${confidenceMatch ? parseInt(confidenceMatch[1], 10) : -1}`);
-          Logger.info(`${colors.dim}EVALUATE (Rationale):${colors.reset} ${rationaleMatch ? rationaleMatch[1].trim() : 'Parsing Error'}`);
+          Logger.info(chalk.dim(`EVALUATE (Answer): ${answerMatch ? answerMatch[1].trim() : 'Parsing Error'}`));
+          Logger.info(chalk.dim(`EVALUATE (Confidence): ${confidenceMatch ? parseInt(confidenceMatch[1], 10) : -1}`));
+          Logger.info(chalk.dim(`EVALUATE (Rationale): ${rationaleMatch ? rationaleMatch[1].trim() : 'Parsing Error'}`));
 
           const result = {
             market: marketIdentifier,
@@ -341,13 +324,13 @@ export class FoilAgent {
             }
           };
           // Extract claim for logging
-          const claimForLog = task.market.question || 'N/A'; 
-          Logger.info(`${colors.blue}EVALUATE (Result):${colors.reset} Market ${marketIdentifier}\n  Question (Claim): "${claimForLog}"\n  Answer: ${result.parsed.answer}\n  Confidence: ${result.parsed.confidence}\n  Rationale: ${result.parsed.rationale}`);
+          const claimForLog = task.market.question || 'N/A';
+          Logger.info(`${chalk.blue('EVALUATE (Result):')} Market ${marketIdentifier}\n  Question (Claim): "${claimForLog}"\n  Answer: ${result.parsed.answer}\n  Confidence: ${result.parsed.confidence}\n  Rationale: ${result.parsed.rationale}`);
           return result;
 
         } catch (error: any) {
           const errorMessage = `Error evaluating market ${marketIdentifier}: ${error.message}`;
-          Logger.error(`${colors.red}EVALUATE (Task Error): ${errorMessage}${colors.reset}`, error);
+          Logger.error(chalk.red(`EVALUATE (Task Error): ${errorMessage}`), error);
           return { market: marketIdentifier, question: task.question, error: errorMessage }; // Store the correct identifier in error case
         }
       });
@@ -355,11 +338,11 @@ export class FoilAgent {
       // Wait for all parallel evaluations to complete
       const results = await Promise.all(evaluationPromises);
 
-      Logger.info(`${colors.dim}EVALUATE: Finished all parallel tasks.${colors.reset}`);
+      Logger.info(chalk.dim(`EVALUATE: Finished all parallel tasks.`));
 
       // Store results for the update step
       this.evaluationResults = results;
-      Logger.info(`${colors.dim}EVALUATE: Stored ${this.evaluationResults.length} results for Update step.${colors.reset}`);
+      Logger.info(chalk.dim(`EVALUATE: Stored ${this.evaluationResults.length} results for Update step.`));
 
       // Clear tasks for the next cycle
       this.evaluationTasks = [];
@@ -367,7 +350,7 @@ export class FoilAgent {
     } catch (error: any) {
        // Error handling for Promise.all or overall setup
        const errorMessage = `Error during parallel evaluation phase: ${error.message}`;
-       Logger.error(`${colors.red}EVALUATE (Overall Error): ${errorMessage}${colors.reset}`, error);
+       Logger.error(chalk.red(`EVALUATE (Overall Error): ${errorMessage}`), error);
        this.messages.push(new HumanMessage(errorMessage)); // Add error to main history
        this.currentState = 'Delay';
        this.evaluationTasks = []; // Ensure tasks are cleared even on error
@@ -376,13 +359,13 @@ export class FoilAgent {
   }
 
   private async update() {
-    Logger.info(`${colors.dim}UPDATE: Processing ${this.evaluationResults.length} evaluation results...${colors.reset}`);
+    Logger.info(chalk.dim(`UPDATE: Processing ${this.evaluationResults.length} evaluation results...`));
 
     // Store evaluation results before clearing
     this.lastEvaluationResults = [...this.evaluationResults];
 
     if (this.evaluationResults.length === 0) {
-      Logger.warn(`${colors.yellow}UPDATE: No evaluation results to process. Skipping.${colors.reset}`);
+      Logger.warn(chalk.yellow(`UPDATE: No evaluation results to process. Skipping.`));
       this.currentState = 'Execute'; // Go to Execute even if no results
       this.evaluationResults = []; // Clear results
       this.lastMarketUpdates = []; // Clear updates
@@ -393,50 +376,120 @@ export class FoilAgent {
 
     // 1. Fetch current positions
     let currentPositions: any[] = []; // Placeholder for positions
-    const getPositionsTool = this.flatTools.find(t => t.name === 'getPositionsByOwner'); // Assuming tool name
+    const getPositionsTool = this.flatTools.find(t => t.name === 'getPositions'); // FIX: Use correct tool name from logs
+
     if (getPositionsTool) {
       try {
-        Logger.info(`${colors.dim}UPDATE: Fetching current positions for agent ${this.agentAddress}...${colors.reset}`);
-        // TODO: Define the structure needed for the input args (e.g., { owner: this.agentAddress })
-        const positionsResult = await getPositionsTool.func(JSON.stringify({ owner: this.agentAddress }));
-        // TODO: Parse positionsResult similar to how listMarkets is parsed in lookup()
-        // currentPositions = parsedPositions; // Assign parsed results
-        this.lastFetchedPositions = currentPositions; // Store fetched positions
-        Logger.info(`${colors.dim}UPDATE: Successfully fetched positions. (Result needs parsing)${colors.reset}`);
+        Logger.info(chalk.dim(`UPDATE: Fetching current positions for agent ${this.agentAddress}...`));
+        const positionsResultRaw = await getPositionsTool.func(JSON.stringify({ owner: this.agentAddress }));
+        Logger.info(chalk.dim(`UPDATE (Raw Positions Result): ${typeof positionsResultRaw === 'string' ? positionsResultRaw : JSON.stringify(positionsResultRaw)}`));
+
+        // --- ADD: Parse positionsResult ---
+        let parsedPositions: any[] = [];
+        if (typeof positionsResultRaw === 'string') {
+            try {
+                parsedPositions = JSON.parse(positionsResultRaw);
+            } catch (e) {
+                 Logger.error(chalk.red(`UPDATE: Failed to parse positions result string: ${positionsResultRaw}`));
+                 parsedPositions = []; // Keep empty on parse error
+            }
+        } else if (Array.isArray(positionsResultRaw)) {
+             parsedPositions = positionsResultRaw;
+        } else if (typeof positionsResultRaw === 'object' && positionsResultRaw !== null && Array.isArray(positionsResultRaw.content) && positionsResultRaw.content.length > 0 && positionsResultRaw.content[0].type === 'text') {
+             try {
+                 parsedPositions = JSON.parse(positionsResultRaw.content[0].text);
+             } catch(e: any) {
+                  Logger.error(chalk.red(`UPDATE: Failed to parse positions array from tool result text: ${e.message}`));
+                  parsedPositions = [];
+             }
+        } else {
+             Logger.warn(chalk.yellow(`UPDATE: Unexpected structure in positions result: ${JSON.stringify(positionsResultRaw)}`));
+             parsedPositions = [];
+        }
+
+        if (!Array.isArray(parsedPositions)) {
+            Logger.warn(chalk.yellow(`UPDATE: Parsed positions data is not an array. Using empty array.`));
+            parsedPositions = [];
+        }
+        // --- END: Parse positionsResult ---
+
+        // --- ADD: Filter for active positions (assuming collateralAmount > 0 means active) ---
+        const activePositions = parsedPositions.filter(pos => pos && typeof pos.collateralAmount === 'number' && pos.collateralAmount > 0);
+        Logger.info(chalk.dim(`UPDATE: Fetched ${parsedPositions.length} positions, found ${activePositions.length} active positions.`));
+        // --- END: Filter ---
+
+        this.lastFetchedPositions = activePositions; // Store FILTERED positions
       } catch (error: any) {
-        Logger.error(`${colors.red}UPDATE: Error fetching positions: ${error.message}${colors.reset}`, error);
-        // Decide how to handle this - maybe proceed without position data or delay?
+        Logger.error(chalk.red(`UPDATE: Error fetching or processing positions: ${error.message}`), error);
         this.lastFetchedPositions = []; // Clear on error
       }
     } else {
-      Logger.warn(`${colors.yellow}UPDATE: getPositionsByOwner tool not found. Proceeding without position data.${colors.reset}`);
+      Logger.warn(chalk.yellow(`UPDATE: getPositions tool not found. Proceeding without position data.`)); // FIX: Update log message
       this.lastFetchedPositions = [];
     }
 
     // 2. Fetch agent's collateral balance (Example)
     let collateralBalance = 0; // Placeholder
-    const getBalanceTool = this.flatTools.find(t => t.name === 'getCollateralBalance'); // Assuming tool name
+    const getBalanceTool = this.flatTools.find(t => t.name === 'getBalanceOf'); // FIX: Use correct tool name from logs
     if (getBalanceTool) {
         try {
-            Logger.info(`${colors.dim}UPDATE: Fetching collateral balance for agent ${this.agentAddress}...${colors.reset}`);
-            // TODO: Define input args if needed (e.g., { owner: this.agentAddress, token: 'USDC' })
-            const balanceResult = await getBalanceTool.func(JSON.stringify({ owner: this.agentAddress }));
-            // TODO: Parse balanceResult
-            // collateralBalance = parsedBalance;
-             Logger.info(`${colors.dim}UPDATE: Successfully fetched collateral balance. (Result needs parsing)${colors.reset}`);
+            Logger.info(chalk.dim(`UPDATE: Fetching collateral balance for agent ${this.agentAddress}...`));
+            const balanceResultRaw = await getBalanceTool.func(JSON.stringify({ owner: this.agentAddress }));
+             Logger.info(chalk.dim(`UPDATE (Raw Balance Result): ${typeof balanceResultRaw === 'string' ? balanceResultRaw : JSON.stringify(balanceResultRaw)}`));
+
+            // --- ADD: Parse balanceResult ---
+             let parsedBalance = 0;
+             if (typeof balanceResultRaw === 'string') {
+                 try {
+                     // Assuming the result is a simple number or an object containing the balance
+                     const parsedJson = JSON.parse(balanceResultRaw);
+                     if (typeof parsedJson === 'number') {
+                         parsedBalance = parsedJson;
+                     } else if (typeof parsedJson === 'object' && parsedJson !== null && typeof parsedJson.balance === 'number') {
+                         parsedBalance = parsedJson.balance;
+                     } else if (typeof parsedJson === 'object' && parsedJson !== null && Array.isArray(parsedJson.content) && parsedJson.content.length > 0 && parsedJson.content[0].type === 'text') {
+                         // Handle cases where the result might be wrapped, similar to listMarkets
+                         try {
+                             const innerParsed = JSON.parse(parsedJson.content[0].text);
+                              if (typeof innerParsed === 'number') {
+                                 parsedBalance = innerParsed;
+                             } else if (typeof innerParsed === 'object' && innerParsed !== null && typeof innerParsed.balance === 'number') {
+                                parsedBalance = innerParsed.balance;
+                             } else {
+                                 Logger.warn(chalk.yellow(`UPDATE: Unexpected inner structure in balance result text: ${parsedJson.content[0].text}`));
+                             }
+                         } catch (e: any) {
+                             Logger.error(chalk.red(`UPDATE: Failed to parse balance from tool result text: ${e.message}`));
+                         }
+                     } else {
+                         Logger.warn(chalk.yellow(`UPDATE: Unexpected structure in parsed balance result JSON: ${balanceResultRaw}`));
+                     }
+                 } catch (e) {
+                      Logger.error(chalk.red(`UPDATE: Failed to parse balance result string: ${balanceResultRaw}`));
+                 }
+             } else if (typeof balanceResultRaw === 'number') {
+                parsedBalance = balanceResultRaw;
+             } else {
+                  Logger.warn(chalk.yellow(`UPDATE: Unexpected type for balance result: ${typeof balanceResultRaw}`));
+             }
+            // --- END: Parse balanceResult ---
+
+            collateralBalance = parsedBalance; // Assign parsed balance
+            Logger.info(chalk.dim(`UPDATE: Successfully fetched and parsed collateral balance: ${collateralBalance}`));
         } catch (error: any) {
-            Logger.error(`${colors.red}UPDATE: Error fetching balance: ${error.message}${colors.reset}`, error);
+            Logger.error(chalk.red(`UPDATE: Error fetching or processing balance: ${error.message}`), error);
+             collateralBalance = 0; // Reset on error
         }
     } else {
-         Logger.warn(`${colors.yellow}UPDATE: getCollateralBalance tool not found. Proceeding without balance data.${colors.reset}`);
+         Logger.warn(chalk.yellow(`UPDATE: getBalanceOf tool not found. Proceeding without balance data.`)); // FIX: Update log message
     }
 
-    // 3. Calculate Total Collateral (Example: Sum of balance and collateral in positions)
-    // TODO: Refine this based on actual position data structure (using lastFetchedPositions)
+    // 3. Calculate Total Collateral (Sum of balance and collateral in ACTIVE positions)
+    // Use the filtered this.lastFetchedPositions
     const totalCollateralInPositions = this.lastFetchedPositions.reduce((sum, pos) => sum + (pos.collateralAmount || 0), 0);
     const totalAvailableCollateral = collateralBalance + totalCollateralInPositions;
     this.lastTotalCollateral = totalAvailableCollateral; // Store total collateral
-    Logger.info(`${colors.dim}UPDATE: Total available collateral estimated at ${totalAvailableCollateral}${colors.reset}`);
+    Logger.info(chalk.dim(`UPDATE: Agent Balance: ${collateralBalance}, Collateral in Active Positions: ${totalCollateralInPositions}, Total Available: ${totalAvailableCollateral}`));
 
 
     // 4. Calculate Target Allocations and Positions
@@ -451,7 +504,7 @@ export class FoilAgent {
         }
     });
 
-    Logger.info(`${colors.dim}UPDATE: Total confidence sum for allocation: ${totalConfidence}${colors.reset}`);
+    Logger.info(chalk.dim(`UPDATE: Total confidence sum for allocation: ${totalConfidence}`));
 
     for (const result of this.evaluationResults) {
        if ('parsed' in result && result.parsed.confidence >= 0) {
@@ -465,7 +518,7 @@ export class FoilAgent {
            // Determine target position (using the 'answer' string directly for now)
            const targetPosition = result.parsed.answer; // e.g., "YES", "NO", outcome description
 
-           Logger.info(`${colors.dim}UPDATE: Market ${marketIdentifier} -> Confidence: ${confidence}, Target Allocation: ${targetAllocation.toFixed(2)}, Target Position: "${targetPosition}"${colors.reset}`);
+           Logger.info(chalk.dim(`UPDATE: Market ${marketIdentifier} -> Confidence: ${confidence}, Target Allocation: ${targetAllocation.toFixed(2)}, Target Position: "${targetPosition}"`));
 
            // Store the calculated update information
            marketUpdates.push({
@@ -480,22 +533,22 @@ export class FoilAgent {
            // This might involve calling write tools based on `result.market`, `result.parsed.answer`, etc.
 
        } else if ('error' in result) {
-           Logger.error(`${colors.red}UPDATE: Skipping market ${result.market} due to evaluation error: ${result.error}${colors.reset}`);
+           Logger.error(chalk.red(`UPDATE: Skipping market ${result.market} due to evaluation error: ${result.error}`));
        } else {
            // Handle cases where confidence might be invalid (e.g., -1 from parsing error)
-            Logger.warn(`${colors.yellow}UPDATE: Skipping market ${result.market} due to invalid confidence (${'parsed' in result ? result.parsed.confidence : 'N/A'}).${colors.reset}`);
+            Logger.warn(chalk.yellow(`UPDATE: Skipping market ${result.market} due to invalid confidence (${'parsed' in result ? result.parsed.confidence : 'N/A'}).`));
        }
     }
 
     // TODO: Add logic here to compare targetAllocation/targetPosition with currentPositions
     // and decide which transactions (e.g., deposit, withdraw, trade) are needed.
     // This will likely involve calling other tools (write tools).
-    Logger.info(`${colors.dim}UPDATE: Calculated ${marketUpdates.length} potential market updates.${colors.reset}`);
+    Logger.info(chalk.dim(`UPDATE: Calculated ${marketUpdates.length} potential market updates.`));
     this.lastMarketUpdates = marketUpdates; // Store calculated updates
 
 
     // Placeholder for actual update logic (e.g., calling write tools based on marketUpdates)
-    Logger.info(`${colors.dim}UPDATE: Finished processing results. (Placeholder - Actual contract interactions needed)${colors.reset}`);
+    Logger.info(chalk.dim(`UPDATE: Finished processing results. (Placeholder - Actual contract interactions needed)`));
 
     // Clear the results after processing and storing
     this.evaluationResults = [];
@@ -503,7 +556,7 @@ export class FoilAgent {
   }
 
   private async execute() {
-    Logger.info(`${colors.dim}EXECUTE: Signing and submitting transactions... (Placeholder)${colors.reset}`);
+    Logger.info(chalk.dim('EXECUTE: Signing and submitting transactions... (Placeholder)'));
     // TODO: Retrieve the transactions/actions determined in the Update step (using this.lastMarketUpdates and this.lastFetchedPositions).
     // TODO: Implement logic to sign transactions using the agent's private key.
     // TODO: Implement logic to submit transactions to the blockchain.
@@ -517,12 +570,12 @@ export class FoilAgent {
         errors: [], // TODO: Populate with any errors during execution
     };
 
-    Logger.info(`${colors.dim}EXECUTE: Finished transaction submission process. Stored placeholder results.${colors.reset}`);
+    Logger.info(chalk.dim('EXECUTE: Finished transaction submission process. Stored placeholder results.'));
     this.currentState = 'Summary'; // Move to Summary state
   }
 
   private async summary() {
-    Logger.info(`${colors.dim}SUMMARY: Generating summary...${colors.reset}`);
+    Logger.info(chalk.dim('SUMMARY: Generating summary...'));
 
     // Gather context for the summary using the persisted data
     const evaluatedCount = this.lastEvaluationResults.length;
@@ -557,17 +610,19 @@ export class FoilAgent {
         }
     }
 
+    const summaryPromptText = getSummaryPrompt(summaryContext); // USE PROMPT FUNCTION
+    // const summaryPrompt = `Summarize the agent's recent activity based on the following information. Format the summary as a brief tweet thread (max 3 tweets, each max 280 chars). Output *only one*  JSON array of strings, where each string is a tweet. The tone should be sort of schizo, like a savant 20-year-old crypto trader who's been on drugs. No hashtags, can use punctation and capitalization sparingly, casual tone, etc.\n\nContext:\n${summaryContext}`;
 
-    const summaryPrompt = `Summarize the agent's recent activity based on the following information. Format the summary as a brief tweet thread (max 3 tweets, each max 280 chars). Output *only one*  JSON array of strings, where each string is a tweet. The tone should be sort of schizo, like a savant 20-year-old crypto trader who's been on drugs. No hashtags, can use punctation and capitalization sparingly, casual tone, etc.\n\nContext:\n${summaryContext}`;
-
-    // Logger.info(`${colors.cyan}SUMMARY (Prompt):${colors.reset}\n${summaryPrompt}`); // Optional: uncomment to see the full prompt
+    // Logger.info(chalk.cyan(`SUMMARY (Prompt):\n${summaryPromptText}`)); // Optional: uncomment to see the full prompt
 
     try {
         // Add the summary prompt to the message history temporarily for the call
+        const systemPrompt = getSystemPrompt(this.agentAddress, this.flatTools.map(t => t.name)); // GENERATE SYSTEM PROMPT
         const summaryMessages: BaseMessage[] = [
-            this.messages[0], // System message
+            new SystemMessage(systemPrompt), // PREPEND SYSTEM MESSAGE
+            // this.messages[0], // REMOVE OLD SYSTEM MESSAGE ACCESS
             // Potentially include a condensed history or just the prompt
-            new HumanMessage(summaryPrompt)
+            new HumanMessage(summaryPromptText)
         ];
 
         // Use the base model for summarization
@@ -581,15 +636,15 @@ export class FoilAgent {
             if (!Array.isArray(tweetThread) || !tweetThread.every(item => typeof item === 'string')) {
                 throw new Error('Parsed result is not an array of strings.');
             }
-            Logger.info(`${colors.blue}SUMMARY (Result):${colors.reset} Generated ${tweetThread.length} tweets.`);
+            Logger.info(chalk.blue(`SUMMARY (Result): Generated ${tweetThread.length} tweets.`));
             // Log the generated tweets
             tweetThread.forEach((tweet, index) => {
-                Logger.info(`${colors.cyan}Tweet ${index + 1}/${tweetThread.length}:${colors.reset} ${tweet}`);
+                Logger.info(`${chalk.cyan(`Tweet ${index + 1}/${tweetThread.length}:`)} ${tweet}`);
             });
         } catch (parseError: any) {
-            Logger.error(`${colors.red}SUMMARY: Failed to parse tweet thread JSON: ${parseError.message}${colors.reset}. Raw response: ${responseContent}`);
+            Logger.error(chalk.red(`SUMMARY: Failed to parse tweet thread JSON: ${parseError.message}. Raw response: ${responseContent}`));
             // Log the raw response if parsing fails
-            Logger.warn(`${colors.yellow}SUMMARY Raw Response:${colors.reset}\n${responseContent}`);
+            Logger.warn(chalk.yellow(`SUMMARY Raw Response:\n${responseContent}`));
         }
 
         // Clear last cycle's data after summary is generated
@@ -602,7 +657,7 @@ export class FoilAgent {
         // TODO: Decide what to do with the tweetThread (e.g., log it, store it, etc.)
 
     } catch (error: any) {
-        Logger.error(`${colors.red}SUMMARY: Error during LLM call for summary: ${error.message}${colors.reset}`, error);
+        Logger.error(chalk.red(`SUMMARY: Error during LLM call for summary: ${error.message}`), error);
          // Clear potentially partial data on error
         this.lastEvaluationResults = [];
         this.lastFetchedPositions = [];
@@ -620,7 +675,7 @@ export class FoilAgent {
     if (this.isSingleRun && this.currentState === 'Lookup') { // Check if we just completed a cycle
         // Log handled by runLoop
     } else if (this.config.interval > 0) {
-        Logger.info(`${colors.dim}DELAY: Waiting ${this.config.interval}ms...${colors.reset}`);
+        Logger.info(chalk.dim(`DELAY: Waiting ${this.config.interval}ms...`));
     } else {
         // Logger.info(`DELAY: Interval is 0, proceeding immediately.`);
     }
