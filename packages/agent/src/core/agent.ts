@@ -286,6 +286,9 @@ export class FoilAgent {
             new HumanMessage(task.question) // The specific question for this market
         ];
 
+        // Log the prompt being sent
+        Logger.info(`${colors.green}EVALUATE (Prompt):${colors.reset} Market ${marketIdentifier}\n${task.question}`);
+
         try {
           // Use the base model, no tools needed for the structured answer
           const response = await this.model.invoke(taskMessages) as AIMessage;
@@ -382,4 +385,4 @@ export class FoilAgent {
         // Logger.info(`DELAY: Interval is 0, proceeding immediately.`);
     }
   }
-} 
+}
