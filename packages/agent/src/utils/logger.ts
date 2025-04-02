@@ -1,13 +1,16 @@
 export class Logger {
   static info(message: string, ...optionalParams: any[]) {
-    console.log(`[INFO] ${message}`, ...optionalParams);
+    console.log();
+    console.log(message, ...optionalParams);
   }
 
   static warn(message: string, ...optionalParams: any[]) {
-    console.warn(`[WARN] ${message}`, ...optionalParams);
+    console.log();
+    console.warn(message, ...optionalParams);
   }
 
   static error(message: string, ...optionalParams: any[]) {
-    console.error(`[ERROR] ${message}`, ...optionalParams);
+    console.log();
+    console.error(message, ...optionalParams);
   }
 } 

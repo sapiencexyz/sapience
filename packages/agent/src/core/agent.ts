@@ -55,6 +55,9 @@ export class FoilAgent {
   private timeoutId: NodeJS.Timeout | null = null;
   private model: ChatAnthropic;
   private modelWithTools: Runnable;
+  private evaluationTasks: { market: any, question: string }[] = [];
+  // Define the type for evaluation results explicitly for clarity
+  private evaluationResults: ({ market: string; question: string; rawResponse: string; parsed: { answer: string; confidence: number; rationale: string; }; } | { market: string; question: string; error: string; })[] = [];
 
   constructor(config: AgentConfig, tools: Record<string, Record<string, Tool>>, agentAddress: string) {
     this.config = config;
@@ -88,9 +91,6 @@ export class FoilAgent {
     // Bind tools to the model
     this.modelWithTools = this.model.bindTools(this.flatTools);
 
-    // Log initial system message with color
-    Logger.info(`${colors.magenta}SYSTEM:${colors.reset} ${this.messages[0].content}`);
-
   }
 
   async start() {
@@ -105,7 +105,7 @@ export class FoilAgent {
     this.messages = [
       new SystemMessage(`You are an autonomous agent designed to analyze on-chain market data, identify opportunities or required actions, and interact with Foil contracts. Your address is ${this.agentAddress}. \nYour primary goal is to process information, proactively use the available tools to gather necessary details or perform actions based on the current context, and eventually trigger contract updates. \nAlways analyze the data provided, decide if tools are needed to fulfill the objective, and use them. Do not ask for permission before using tools if they are necessary to achieve the goal implied by the conversation history. \nAvailable tools: ${this.flatTools.map(t => t.name).join(', ')}`)
     ];
-    // Log system message on restart too
+    // Log system message on start
     Logger.info(`${colors.magenta}SYSTEM:${colors.reset} ${this.messages[0].content}`);
     this.runLoop();
   }
@@ -195,145 +195,176 @@ export class FoilAgent {
   }
 
   private async lookup() {
-    Logger.info(`${colors.dim}LOOKUP: Performing initial data lookup...${colors.reset}`);
-    const graphqlToolSet = this.tools.graphql;
-    if (!graphqlToolSet) {
-        Logger.error(`${colors.red}LOOKUP: GraphQL toolset not found.${colors.reset}`);
-        this.currentState = 'Delay';
-        return;
-    }
-    const queryToolEntry = Object.values(graphqlToolSet)[0];
-    if (!queryToolEntry || typeof queryToolEntry.function !== 'function') {
-        Logger.error(`${colors.red}LOOKUP: GraphQL query function not found or invalid.${colors.reset}`);
-        this.currentState = 'Delay';
+    Logger.info(`${colors.dim}LOOKUP: Fetching markets for evaluation...${colors.reset}`);
+    this.evaluationTasks = []; // Clear previous tasks
+
+    const listMarketsTool = this.flatTools.find(t => t.name === 'listMarkets');
+
+    if (!listMarketsTool) {
+        Logger.error(`${colors.red}LOOKUP: listMarkets tool not found.${colors.reset}`);
+        this.currentState = 'Delay'; // Skip evaluation if tool is missing
         return;
     }
 
     try {
-        const queryString = '{ getEpochs { id epochId startTimestamp endTimestamp settled settlementPriceD18 public market { id } positions { id } } }';
-        // Logger.info(`LOOKUP: Calling ${queryToolEntry.name} with query: ${queryString}`);
-        const lookupResult = await queryToolEntry.function({ query: queryString });
-        // Logger.info('LOOKUP: Raw Result:', JSON.stringify(lookupResult, null, 2));
-        const humanMessageContent = `Initial Lookup Result: ${JSON.stringify(lookupResult)} \nAnalyze this epoch data and use tools to find detailed information about the latest unsettled epoch.`;
-        this.messages.push(new HumanMessage(humanMessageContent));
-        // Truncate long human message for log view
-        const logHumanContent = humanMessageContent.length > 300 ? humanMessageContent.substring(0, 297) + '...' : humanMessageContent;
-        Logger.info(`${colors.green}HUMAN:${colors.reset} ${logHumanContent}`);
+        // Assuming listMarkets returns an array of market objects
+        // And the function exists within the tool definition
+        const marketsResult = await listMarketsTool.func({}); // Call listMarkets tool
+        let markets: any[] = [];
+
+        // --- Result Parsing Logic ---
+        let rawResultContent = marketsResult;
+        if (typeof marketsResult === 'string') {
+            try {
+                rawResultContent = JSON.parse(marketsResult);
+            } catch (e) {
+                Logger.error(`${colors.red}LOOKUP: Failed to parse listMarkets result string: ${marketsResult}${colors.reset}`);
+                this.currentState = 'Delay';
+                return;
+            }
+        }
+
+        if (Array.isArray(rawResultContent?.content) && rawResultContent.content.length > 0 && rawResultContent.content[0].type === 'text') {
+             try {
+                 markets = JSON.parse(rawResultContent.content[0].text);
+                 if (!Array.isArray(markets)) {
+                     throw new Error("Parsed market data is not an array.");
+                 }
+             } catch(e: any) {
+                 Logger.error(`${colors.red}LOOKUP: Failed to parse market array from tool result text: ${e.message}${colors.reset}`);
+                 this.currentState = 'Delay';
+                 return;
+             }
+        } else if (Array.isArray(rawResultContent)) {
+             markets = rawResultContent;
+        } else {
+            Logger.error(`${colors.red}LOOKUP: Unexpected structure in listMarkets result: ${JSON.stringify(rawResultContent)}${colors.reset}`);
+            this.currentState = 'Delay';
+            return;
+        }
+        // --- End Result Parsing Logic ---
+
+
+        if (!markets || markets.length === 0) {
+             Logger.warn(`${colors.yellow}LOOKUP: No markets returned by listMarkets tool.${colors.reset}`);
+             this.currentState = 'Delay'; // Skip evaluation if no markets
+             return;
+        }
+
+        Logger.info(`${colors.dim}LOOKUP: Preparing evaluation tasks for ${markets.length} market(s)...${colors.reset}`);
+        for (const market of markets) {
+            const marketIdentifier = market.address || market.id || 'Unknown ID';
+            // Define the standard question for each market
+            const question = `Analyze market ${marketIdentifier}. What is the current outlook? Provide your best estimate, your confidence in this estimate on a scale of 0 to 100, and a rationale. Your response should look like\n\nANSWER: \nCONFIDENCE:\nRATIONALE:`;
+            this.evaluationTasks.push({ market: market, question: question });
+        }
+
     } catch (error: any) {
-        const errorMessage = `Error during Lookup: ${error.message}`;
+        const errorMessage = `Error during Lookup/listMarkets: ${error.message}`;
         Logger.error(`${colors.red}LOOKUP: ${errorMessage}${colors.reset}`, error);
-        this.messages.push(new HumanMessage(errorMessage));
         this.currentState = 'Delay';
     }
   }
 
   private async evaluate() {
-    Logger.info(`${colors.dim}EVALUATE: Starting...${colors.reset}`);
+    Logger.info(`${colors.dim}EVALUATE: Starting parallel market evaluation for ${this.evaluationTasks.length} task(s)...${colors.reset}`);
+
+    if (this.evaluationTasks.length === 0) {
+      Logger.warn(`${colors.yellow}EVALUATE: No tasks prepared by Lookup step. Skipping evaluation.${colors.reset}`);
+      this.currentState = 'Update'; // Proceed to next step even if no tasks
+      return;
+    }
+
     try {
-      // Log the message that triggered this evaluation
-      const triggeringMessage = this.messages[this.messages.length - 1];
-      if (triggeringMessage) {
-        const type = triggeringMessage._getType().toUpperCase();
-        const color = type === "HUMAN" ? colors.green : colors.gray; // Color based on type
-        let content = triggeringMessage.content;
-        if (typeof content !== 'string') content = JSON.stringify(content);
-        const logContent = content.length > 300 ? content.substring(0, 297) + '...' : content; // Truncate
-        Logger.info(`${color}${type}:${colors.reset} ${logContent}`);
-      }
+      const evaluationPromises = this.evaluationTasks.map(async (task) => {
+        const marketIdentifier = task.market.address || task.market.id || JSON.stringify(task.market).substring(0, 50) + '...'; // Get a readable identifier
+        Logger.info(`${colors.dim}EVALUATE: Starting task for market: ${marketIdentifier}${colors.reset}`);
 
-      let response: AIMessage = await this.modelWithTools.invoke(this.messages) as AIMessage;
-      let responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-      // Log AI response, indicating if tool calls are present
-      const toolCallInfo = (response.tool_calls && response.tool_calls.length > 0)
-          ? `${colors.gray} | Requesting Tools: ${response.tool_calls.map(tc => tc.name).join(', ')}${colors.reset}`
-          : '';
-      Logger.info(`${colors.blue}AI:${colors.reset} ${responseContent}${toolCallInfo}`);
+        // Create a minimal message list for this specific task's context
+        const taskMessages: BaseMessage[] = [
+            this.messages[0], // Include the original System Message
+            new HumanMessage(task.question) // The specific question for this market
+        ];
 
-      while (response.tool_calls && response.tool_calls.length > 0) {
-          this.messages.push(response); // Add the AI message requesting the tool call
-          const toolMessages: ToolMessage[] = [];
+        try {
+          // Use the base model, no tools needed for the structured answer
+          const response = await this.model.invoke(taskMessages) as AIMessage;
+          const responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
 
-          for (const toolCall of response.tool_calls) {
-              let args = toolCall.args;
-              // Logger.info(`EVALUATE: Attempting tool call: ${toolCall.name} with raw args: ${JSON.stringify(args)}`);
-              
-              // Attempt to parse args if they are nested in an 'input' JSON string
-              if (typeof args?.input === 'string') {
-                  try {
-                      args = JSON.parse(args.input);
-                      // Logger.info(`EVALUATE: Parsed args from nested input: ${JSON.stringify(args)}`);
-                  } catch (e) {
-                      // Logger.warn(`EVALUATE: Failed to parse args.input JSON string: ${args.input}. Using raw args.`);
-                  }
-              }
-              Logger.info(`${colors.cyan}TOOL_CALL:${colors.reset} ${toolCall.name} with args: ${JSON.stringify(args)}`);
+          // Basic parsing attempt
+          const answerMatch = responseContent.match(/ANSWER:\\s*([\\s\\S]*?)\\s*CONFIDENCE:/);
+          const confidenceMatch = responseContent.match(/CONFIDENCE:\\s*(\\d+)/);
+          const rationaleMatch = responseContent.match(/RATIONALE:\\s*([\\s\\S]*)/);
 
-              let foundTool: Tool | undefined;
-              for (const category in this.tools) {
-                  foundTool = this.tools[category][toolCall.name];
-                  if (foundTool) break;
-              }
+          const result = {
+            market: marketIdentifier,
+            question: task.question,
+            rawResponse: responseContent,
+            parsed: {
+              answer: answerMatch ? answerMatch[1].trim() : 'Parsing Error',
+              confidence: confidenceMatch ? parseInt(confidenceMatch[1], 10) : -1,
+              rationale: rationaleMatch ? rationaleMatch[1].trim() : 'Parsing Error'
+            }
+          };
+          Logger.info(`${colors.blue}EVALUATE (Result):${colors.reset} Market ${marketIdentifier} -> Confidence: ${result.parsed.confidence}`);
+          return result;
 
-              let toolResultContent: string;
-              let logResult: string;
-              if (foundTool && typeof foundTool.function === 'function') {
-                  try {
-                      const result = await foundTool.function(args);
-                      toolResultContent = JSON.stringify(result);
-                      logResult = toolResultContent.length > 200 ? toolResultContent.substring(0, 197) + '...' : toolResultContent; // Truncate long results for logging
-                      Logger.info(`${colors.yellow}TOOL_RESULT:${colors.reset} ${toolCall.name} => ${logResult}`);
-                  } catch (error: any) {
-                      const errorMessage = `Error executing tool ${toolCall.name}: ${error.message}`;
-                      Logger.error(`${colors.red}TOOL_ERROR:${colors.reset} ${errorMessage}`, error);
-                      toolResultContent = errorMessage;
-                  }
-              } else {
-                  const errorMessage = `Error: Tool ${toolCall.name} not found.`;
-                  Logger.warn(`${colors.red}TOOL_ERROR:${colors.reset} ${errorMessage}`); // Use warn level but red color
-                  toolResultContent = errorMessage;
-              }
+        } catch (error: any) {
+          const errorMessage = `Error evaluating market ${marketIdentifier}: ${error.message}`;
+          Logger.error(`${colors.red}EVALUATE (Task Error): ${errorMessage}${colors.reset}`, error);
+          return { market: marketIdentifier, question: task.question, error: errorMessage }; // Return error state
+        }
+      });
 
-              toolMessages.push(new ToolMessage({
-                  content: toolResultContent,
-                  tool_call_id: toolCall.id!,
-              }));
-          }
+      // Wait for all parallel evaluations to complete
+      const results = await Promise.all(evaluationPromises);
 
-          // Add all tool results to messages
-          this.messages.push(...toolMessages);
+      Logger.info(`${colors.dim}EVALUATE: Finished all parallel tasks.${colors.reset}`);
 
-          // Re-invoke the model with the tool results
-          // Logger.info(`EVALUATE: Re-invoking model. Current messages: ${formatMessagesForLog(this.messages)}`);
-          response = await this.modelWithTools.invoke(this.messages) as AIMessage;
-          responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
-          const subsequentToolCallInfo = (response.tool_calls && response.tool_calls.length > 0)
-              ? `${colors.gray} | Requesting Tools: ${response.tool_calls.map(tc => tc.name).join(', ')}${colors.reset}`
-              : '';
-          Logger.info(`${colors.blue}AI:${colors.reset} ${responseContent}${subsequentToolCallInfo}`);
-      }
+      // Store results for the update step
+      this.evaluationResults = results;
+      Logger.info(`${colors.dim}EVALUATE: Stored ${this.evaluationResults.length} results for Update step.${colors.reset}`);
 
-      // Add the final AI response (without tool calls) to messages
-      this.messages.push(response);
-      Logger.info(`${colors.dim}EVALUATE: Finished.${colors.reset}`);
-      // Logger.info(`EVALUATE: Final message list: ${formatMessagesForLog(this.messages)}`);
+      // Clear tasks for the next cycle
+      this.evaluationTasks = [];
 
     } catch (error: any) {
-       const errorMessage = `Error during Evaluation: ${error.message}`;
-       Logger.error(`${colors.red}EVALUATE: ${errorMessage}${colors.reset}`, error);
-       this.messages.push(new HumanMessage(errorMessage));
+       // Error handling for Promise.all or overall setup
+       const errorMessage = `Error during parallel evaluation phase: ${error.message}`;
+       Logger.error(`${colors.red}EVALUATE (Overall Error): ${errorMessage}${colors.reset}`, error);
+       this.messages.push(new HumanMessage(errorMessage)); // Add error to main history
        this.currentState = 'Delay';
+       this.evaluationTasks = []; // Ensure tasks are cleared even on error
+       this.evaluationResults = []; // Clear results on error too
     }
   }
 
   private async update() {
-    Logger.info(`${colors.dim}UPDATE: Performing placeholder update...${colors.reset}`);
-    const lastMessage = this.messages[this.messages.length - 1];
-    if (lastMessage && lastMessage._getType() === 'ai') {
-        let content = lastMessage.content;
-        if (typeof content !== 'string') content = JSON.stringify(content);
-        Logger.info(`${colors.dim}UPDATE: Considering last AI message: ${content.substring(0, 150)}${content.length > 150 ? '...' : ''}${colors.reset}`);
-        // Placeholder: Add logic here to parse message and potentially call write tools
+    Logger.info(`${colors.dim}UPDATE: Processing ${this.evaluationResults.length} evaluation results...${colors.reset}`);
+
+    if (this.evaluationResults.length === 0) {
+      Logger.warn(`${colors.yellow}UPDATE: No evaluation results to process. Skipping.${colors.reset}`);
+      this.currentState = 'Summary'; // Move to next state
+      return;
     }
+
+    // Process the results stored in this.evaluationResults
+    // Example: Log the confidence levels
+    for (const result of this.evaluationResults) {
+       if ('parsed' in result) {
+           Logger.info(`${colors.dim}UPDATE: Processing Market ${result.market}, Confidence: ${result.parsed.confidence}${colors.reset}`);
+           // Placeholder: Add logic here to decide actions based on results (e.g., confidence > threshold)
+           // This might involve calling write tools based on `result.market`, `result.parsed.answer`, etc.
+       } else if ('error' in result) {
+           Logger.error(`${colors.red}UPDATE: Skipping market ${result.market} due to evaluation error: ${result.error}${colors.reset}`);
+       }
+    }
+
+    // Placeholder for actual update logic (e.g., calling write tools)
+    Logger.info(`${colors.dim}UPDATE: Finished processing results. (Placeholder update logic)${colors.reset}`);
+
+    // Clear the results after processing
+    this.evaluationResults = [];
   }
 
   private async summary() {
