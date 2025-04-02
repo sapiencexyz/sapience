@@ -319,10 +319,16 @@ export class FoilAgent {
           const response = await this.model.invoke(taskMessages) as AIMessage;
           const responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
 
+          Logger.info(`${colors.dim}EVALUATE (Response):${colors.reset} ${responseContent}`);
+
           // Basic parsing attempt
           const answerMatch = responseContent.match(/ANSWER:\s*([\s\S]*?)\s*CONFIDENCE:/);
           const confidenceMatch = responseContent.match(/CONFIDENCE:\s*(\d+)/);
           const rationaleMatch = responseContent.match(/RATIONALE:\s*([\s\S]*)/);
+
+          Logger.info(`${colors.dim}EVALUATE (Answer):${colors.reset} ${answerMatch ? answerMatch[1].trim() : 'Parsing Error'}`);
+          Logger.info(`${colors.dim}EVALUATE (Confidence):${colors.reset} ${confidenceMatch ? parseInt(confidenceMatch[1], 10) : -1}`);
+          Logger.info(`${colors.dim}EVALUATE (Rationale):${colors.reset} ${rationaleMatch ? rationaleMatch[1].trim() : 'Parsing Error'}`);
 
           const result = {
             market: marketIdentifier,
