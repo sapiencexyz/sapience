@@ -5,7 +5,7 @@ import FoilABI from '../abi/Foil.json';
 // Create a public client for interacting with the blockchain
 const client = createPublicClient({
   chain: base,
-  transport: http()
+  transport: process.env.TRANSPORT_URL ? http(process.env.TRANSPORT_URL) : http()
 });
 
 interface PositionData {

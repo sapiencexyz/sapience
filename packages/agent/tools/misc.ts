@@ -405,7 +405,7 @@ export const balanceOfToken = {
 
       const publicClient = createPublicClient({
         chain: chain,
-        transport: http()
+        transport: process.env.TRANSPORT_URL ? http(process.env.TRANSPORT_URL) : http()
       });
 
       const balance = await publicClient.readContract({
