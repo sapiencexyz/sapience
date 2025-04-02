@@ -277,7 +277,7 @@ export class FoilAgent {
             const claimStatement = epoch.question;
 
             // Define the standard question for each market, ensuring claimStatement is included
-            const question = `Analyze market ${marketIdentifier} with claim: "${claimStatement || 'N/A'}". What is the current outlook? Provide your best estimate, your confidence in this estimate on a scale of 0 to 100, and a rationale. Your response should look like\\n\\nANSWER: \\nCONFIDENCE:\\nRATIONALE:`;
+            const question = `Analyze market ${marketIdentifier} with claim: "${claimStatement || 'N/A'}". What is the current outlook? Provide your best estimate, your confidence in this estimate on a scale of 0 to 100, and a concise 1-3 sentence rationale. Your response should look like\\n\\nANSWER: \\nCONFIDENCE:\\nRATIONALE:`;
             
             // Pass the epoch object and the generated question to the task
             this.evaluationTasks.push({ market: epoch, question: question });
@@ -552,7 +552,7 @@ export class FoilAgent {
     }
 
 
-    const summaryPrompt = `Summarize the agent's recent activity based on the following information. Format the summary as a brief tweet thread (max 3 tweets, each max 280 chars). Output *only* a JSON array of strings, where each string is a tweet. The tone should be cool crypto bro but not too on-the-nose. No hashtags, can use punctation and capitalization sparingly, casual tone, etc.\n\nContext:\n${summaryContext}`;
+    const summaryPrompt = `Summarize the agent's recent activity based on the following information. Format the summary as a brief tweet thread (max 3 tweets, each max 280 chars). Output *only one*  JSON array of strings, where each string is a tweet. The tone should be sort of schizo, like a savant 20-year-old crypto trader who's been on drugs. No hashtags, can use punctation and capitalization sparingly, casual tone, etc.\n\nContext:\n${summaryContext}`;
 
     // Logger.info(`${colors.cyan}SUMMARY (Prompt):${colors.reset}\n${summaryPrompt}`); // Optional: uncomment to see the full prompt
 

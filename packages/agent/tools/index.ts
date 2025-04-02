@@ -36,7 +36,9 @@ import {
 import {
   stageTransaction,
   executeTransaction,
-  approveToken
+  approveToken,
+  tweet,
+  balanceOfToken
 } from './misc';
 
 export const graphql = {
@@ -77,5 +79,7 @@ export const writeFoilContracts = {
 export const transactions = {
   stage_transaction: stageTransaction,
   execute_transaction: executeTransaction,
-  approve_token: approveToken
+  approve_token: approveToken,
+  tweet: tweet,
+  balance_of_token: balanceOfToken
 };

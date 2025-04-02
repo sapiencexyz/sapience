@@ -1,5 +1,5 @@
-import { createWalletClient, http, encodeFunctionData } from 'viem';
-import { base } from 'viem/chains';
+import { createWalletClient, http, encodeFunctionData, createPublicClient } from 'viem';
+import { base, mainnet, optimism, polygon, arbitrum, goerli } from 'viem/chains';
 import { privateKeyToAccount, signMessage } from 'viem/accounts';
 import ERC20ABI from '../abi/ERC20.json';
 import { fileURLToPath } from 'url';
@@ -45,6 +45,17 @@ const SAFE_SERVICE_URLS: Record<string, string> = {
   '43113': 'https://safe-transaction-avalanche-fuji.safe.global',
   '1666700000': 'https://safe-transaction-harmony-testnet.safe.global',
   '1337': 'https://safe-transaction-gateway.safe.global' // For local development
+};
+
+// Map chain IDs to viem chain objects
+const CHAIN_MAP: Record<string, any> = {
+  '1': mainnet,
+  '5': goerli,
+  '10': optimism,
+  '137': polygon,
+  '8453': base,
+  '42161': arbitrum,
+  // Add other chains supported by viem/chains as needed
 };
 
 export const stageTransaction = {
@@ -358,6 +369,63 @@ export const tweet = {
         content: [{
           type: "text" as const,
           text: `Error sending tweet(s): ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  },
+};
+
+export const balanceOfToken = {
+  name: "balance_of_token",
+  description: "Reads the ERC-20 token balance of an owner",
+  parameters: {
+    properties: {
+      tokenAddress: {
+        type: "string",
+        description: "The address of the ERC-20 token"
+      },
+      ownerAddress: {
+        type: "string",
+        description: "The address of the owner"
+      },
+      chainId: {
+        type: "string",
+        description: "The chain ID to read the balance from"
+      }
+    },
+    required: ["tokenAddress", "ownerAddress", "chainId"],
+  },
+  function: async (args: { tokenAddress: string; ownerAddress: string; chainId: string }) => {
+    try {
+      const chain = CHAIN_MAP[args.chainId];
+      if (!chain) {
+        throw new Error(`Unsupported chain ID: ${args.chainId}`);
+      }
+
+      const publicClient = createPublicClient({
+        chain: chain,
+        transport: http()
+      });
+
+      const balance = await publicClient.readContract({
+        address: args.tokenAddress as `0x${string}`,
+        abi: ERC20ABI.abi,
+        functionName: 'balanceOf',
+        args: [args.ownerAddress as `0x${string}`]
+      });
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({ balance: balance.toString() }, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error reading token balance: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
