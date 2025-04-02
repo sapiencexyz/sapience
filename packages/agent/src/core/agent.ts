@@ -5,8 +5,43 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { Runnable } from '@langchain/core/runnables';
 import { DynamicTool } from "@langchain/core/tools";
 
+// Define ANSI color codes
+const colors = {
+    reset: "\x1b[0m",
+    // Styles
+    bold: "\x1b[1m",
+    dim: "\x1b[2m",
+    // Colors
+    red: "\x1b[31m",
+    green: "\x1b[32m",
+    yellow: "\x1b[33m",
+    blue: "\x1b[34m",
+    magenta: "\x1b[35m",
+    cyan: "\x1b[36m",
+    white: "\x1b[37m",
+    gray: "\x1b[90m", // Bright black/gray
+};
+
 // Define the states
 type AgentState = 'Lookup' | 'Evaluate' | 'Update' | 'Summary' | 'Delay';
+
+// Helper to format messages for cleaner logging
+function formatMessagesForLog(messages: BaseMessage[]): string {
+    return messages.map(m => {
+        const type = m._getType().toUpperCase();
+        let content = '';
+        if (m.content && typeof m.content === 'string') {
+            content = m.content;
+        } else if (m.content) {
+            content = JSON.stringify(m.content); // Basic fallback for non-string content
+        }
+        // Special handling for AIMessage with tool calls
+        if (m._getType() === 'ai' && (m as AIMessage).tool_calls && (m as AIMessage).tool_calls.length > 0) {
+            content += ` | Tool Calls: ${JSON.stringify((m as AIMessage).tool_calls)}`;
+        }
+        return `\n  ${type}: ${content}`;
+    }).join('');
+}
 
 export class FoilAgent {
   private config: AgentConfig;
@@ -43,11 +78,6 @@ export class FoilAgent {
             name: tool.name,
             description: tool.description,
             func: tool.function
-            // Omitting schema key to try and satisfy linter
-            // Assumes the underlying LangChain implementation might still correctly associate
-            // the Zod schema provided in tool.parameters, or that it's not strictly required
-            // by the specific Anthropic integration being used if parameters are simple.
-            // This relies on the assumption that your `tool.parameters` IS a Zod schema.
         }))
     );
 
@@ -58,7 +88,8 @@ export class FoilAgent {
     // Bind tools to the model
     this.modelWithTools = this.model.bindTools(this.flatTools);
 
-    Logger.info('Agent initialized with tools:', this.flatTools.map(t => t.name));
+    // Log initial system message with color
+    Logger.info(`${colors.magenta}SYSTEM:${colors.reset} ${this.messages[0].content}`);
 
   }
 
@@ -68,12 +99,14 @@ export class FoilAgent {
       return;
     }
     this.running = true;
-    Logger.info('Agent started.');
-    // Reset state for new start, especially important for single runs
+    Logger.info(`${colors.bold}--- Agent Started ---${colors.reset}`);
+    // Reset state and messages for new start
     this.currentState = 'Lookup';
     this.messages = [
       new SystemMessage(`You are an autonomous agent. Your address is ${this.agentAddress}. Your goal is to process information and update contracts based on your findings. Use the available tools when necessary. Available tools: ${this.flatTools.map(t => t.name).join(', ')}`)
     ];
+    // Log system message on restart too
+    Logger.info(`${colors.magenta}SYSTEM:${colors.reset} ${this.messages[0].content}`);
     this.runLoop();
   }
 
@@ -87,16 +120,17 @@ export class FoilAgent {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
-    Logger.info('Agent stopped.');
+    Logger.info(`${colors.bold}--- Agent Stopped ---${colors.reset}`);
   }
 
   private async runLoop() {
     if (!this.running) return;
 
     let completedCycle = false;
+    const previousState = this.getPreviousState(); // Store state before execution
 
     try {
-      Logger.info(`--- Entering State: ${this.currentState} ---`);
+      // Logger.info(`--- Entering State: ${this.currentState} ---`); // Reduced verbosity
       switch (this.currentState) {
         case 'Lookup':
           await this.lookup();
@@ -120,39 +154,32 @@ export class FoilAgent {
           completedCycle = true; // Mark that a full cycle is potentially complete
           break;
         default:
-          Logger.error(`Unknown state: ${this.currentState}`);
+          Logger.error(`${colors.red}Unknown state: ${this.currentState}${colors.reset}`);
           this.stop(); // Stop on unknown state
           return;
       }
     } catch (error: any) {
-      Logger.error('Error in agent loop:', error);
-      // Decide on error handling, e.g., stop or retry?
-      // For now, let's transition to Delay to avoid tight loops on errors
+      Logger.error(`${colors.red}Error during state ${previousState}: ${error.message}${colors.reset}`, error);
       this.currentState = 'Delay';
     }
 
-    Logger.info(`--- Exiting State: ${this.currentState === 'Lookup' && completedCycle ? 'Delay' : this.getPreviousState()} ---`);
+    // Logger.info(`--- Exiting State: ${previousState} ---`); // Reduced verbosity
 
     // Check if we should stop (single run and completed a cycle)
     if (this.isSingleRun && completedCycle) {
         this.running = false;
-        Logger.info('Agent finished single run cycle.');
+        Logger.info(`${colors.bold}--- Agent finished single run cycle ---${colors.reset}`);
         return; // Stop the loop
     }
 
-    // Continue the loop if running and interval is set
-    if (this.running && this.config.interval > 0) {
-        this.timeoutId = setTimeout(() => this.runLoop(), this.config.interval);
-    }
-    // If not a single run or interval > 0, continue immediately
-    else if (this.running && !this.isSingleRun) {
-        // SetImmediate could be used here for non-blocking continuation
-        // Or just call runLoop directly for immediate processing
-        this.runLoop();
-    }
-    // If it IS a single run but we HAVEN'T completed a cycle yet, continue immediately
-    else if (this.running && this.isSingleRun && !completedCycle) {
-        this.runLoop();
+    // Continue the loop if running
+    if (this.running) {
+        if (this.config.interval > 0) {
+            this.timeoutId = setTimeout(() => this.runLoop(), this.config.interval);
+        } else {
+            // If interval is 0, continue immediately (non-blocking)
+            setImmediate(() => this.runLoop());
+        }
     }
   }
 
@@ -168,40 +195,50 @@ export class FoilAgent {
   }
 
   private async lookup() {
-    Logger.info('Performing Lookup...');
+    Logger.info(`${colors.dim}LOOKUP: Performing initial data lookup...${colors.reset}`);
     const graphqlToolSet = this.tools.graphql;
     if (!graphqlToolSet) {
-        Logger.error('GraphQL toolset not found.');
+        Logger.error(`${colors.red}LOOKUP: GraphQL toolset not found.${colors.reset}`);
         this.currentState = 'Delay';
         return;
     }
     const queryToolEntry = Object.values(graphqlToolSet)[0];
     if (!queryToolEntry || typeof queryToolEntry.function !== 'function') {
-        Logger.error('Lookup function (graphql) not found or invalid.');
+        Logger.error(`${colors.red}LOOKUP: GraphQL query function not found or invalid.${colors.reset}`);
         this.currentState = 'Delay';
         return;
     }
 
     try {
-        const lookupResult = await queryToolEntry.function({ query: '{ getEpochs { id epochId startTimestamp endTimestamp settled settlementPriceD18 public market { id } positions { id } } }' });
-        Logger.info('Lookup Result:', JSON.stringify(lookupResult, null, 2));
-        this.messages.push(new HumanMessage(`Initial Lookup Result: ${JSON.stringify(lookupResult)} Please evaluate this data.`));
+        const queryString = '{ getEpochs { id epochId startTimestamp endTimestamp settled settlementPriceD18 public market { id } positions { id } } }';
+        // Logger.info(`LOOKUP: Calling ${queryToolEntry.name} with query: ${queryString}`);
+        const lookupResult = await queryToolEntry.function({ query: queryString });
+        // Logger.info('LOOKUP: Raw Result:', JSON.stringify(lookupResult, null, 2));
+        const humanMessageContent = `Initial Lookup Result: ${JSON.stringify(lookupResult)} Please evaluate this data.`;
+        this.messages.push(new HumanMessage(humanMessageContent));
+        // Truncate long human message for log view
+        const logHumanContent = humanMessageContent.length > 300 ? humanMessageContent.substring(0, 297) + '...' : humanMessageContent;
+        Logger.info(`${colors.green}HUMAN:${colors.reset} ${logHumanContent}`);
     } catch (error: any) {
-        Logger.error('Error during Lookup:', error);
-        this.messages.push(new HumanMessage(`Error during Lookup: ${error.message}`));
+        const errorMessage = `Error during Lookup: ${error.message}`;
+        Logger.error(`${colors.red}LOOKUP: ${errorMessage}${colors.reset}`, error);
+        this.messages.push(new HumanMessage(errorMessage));
         this.currentState = 'Delay';
     }
   }
 
   private async evaluate() {
+    Logger.info(`${colors.dim}EVALUATE: Starting...${colors.reset}`);
     try {
-      Logger.info(`Starting evaluation. Current messages: ${this.messages.map(m => `\n  [${m._getType()}] ${m.content}`).join('')}`);
+      // Logger.info(`EVALUATE: Invoking model. Current messages: ${formatMessagesForLog(this.messages)}`);
 
       let response: AIMessage = await this.modelWithTools.invoke(this.messages) as AIMessage;
-      Logger.info(`Initial model response: ${JSON.stringify(response.content)}`);
-      if (response.tool_calls && response.tool_calls.length > 0) {
-        Logger.info(`Model requested tool calls: ${JSON.stringify(response.tool_calls)}`);
-      }
+      let responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+      // Log AI response, indicating if tool calls are present
+      const toolCallInfo = (response.tool_calls && response.tool_calls.length > 0)
+          ? `${colors.gray} | Requesting Tools: ${response.tool_calls.map(tc => tc.name).join(', ')}${colors.reset}`
+          : '';
+      Logger.info(`${colors.blue}AI:${colors.reset} ${responseContent}${toolCallInfo}`);
 
       while (response.tool_calls && response.tool_calls.length > 0) {
           this.messages.push(response); // Add the AI message requesting the tool call
@@ -209,17 +246,19 @@ export class FoilAgent {
 
           for (const toolCall of response.tool_calls) {
               let args = toolCall.args;
-              Logger.info(`Attempting tool call: ${toolCall.name} with raw args: ${JSON.stringify(args)}`);
+              // Logger.info(`EVALUATE: Attempting tool call: ${toolCall.name} with raw args: ${JSON.stringify(args)}`);
               
               // Attempt to parse args if they are nested in an 'input' JSON string
               if (typeof args?.input === 'string') {
                   try {
                       args = JSON.parse(args.input);
-                      Logger.info(`Parsed args from nested input: ${JSON.stringify(args)}`);
+                      // Logger.info(`EVALUATE: Parsed args from nested input: ${JSON.stringify(args)}`);
                   } catch (e) {
-                      Logger.warn(`Failed to parse args.input JSON string: ${args.input}. Using raw args.`);
+                      // Logger.warn(`EVALUATE: Failed to parse args.input JSON string: ${args.input}. Using raw args.`);
                   }
               }
+              Logger.info(`${colors.cyan}TOOL_CALL:${colors.reset} ${toolCall.name} with args: ${JSON.stringify(args)}`);
+
               let foundTool: Tool | undefined;
               for (const category in this.tools) {
                   foundTool = this.tools[category][toolCall.name];
@@ -227,20 +266,21 @@ export class FoilAgent {
               }
 
               let toolResultContent: string;
+              let logResult: string;
               if (foundTool && typeof foundTool.function === 'function') {
                   try {
-                      // Use the potentially parsed args
                       const result = await foundTool.function(args);
                       toolResultContent = JSON.stringify(result);
-                      Logger.info(`Tool ${toolCall.name} successful. Result: ${toolResultContent}`);
+                      logResult = toolResultContent.length > 200 ? toolResultContent.substring(0, 197) + '...' : toolResultContent; // Truncate long results for logging
+                      Logger.info(`${colors.yellow}TOOL_RESULT:${colors.reset} ${toolCall.name} => ${logResult}`);
                   } catch (error: any) {
                       const errorMessage = `Error executing tool ${toolCall.name}: ${error.message}`;
-                      Logger.error(errorMessage, error);
+                      Logger.error(`${colors.red}TOOL_ERROR:${colors.reset} ${errorMessage}`, error);
                       toolResultContent = errorMessage;
                   }
               } else {
                   const errorMessage = `Error: Tool ${toolCall.name} not found.`;
-                  Logger.warn(errorMessage);
+                  Logger.warn(`${colors.red}TOOL_ERROR:${colors.reset} ${errorMessage}`); // Use warn level but red color
                   toolResultContent = errorMessage;
               }
 
@@ -254,52 +294,52 @@ export class FoilAgent {
           this.messages.push(...toolMessages);
 
           // Re-invoke the model with the tool results
-          Logger.info(`Re-invoking model with tool results. Current messages: ${this.messages.map(m => `\n  [${m._getType()}] ${m.content}`).join('')}`);
+          // Logger.info(`EVALUATE: Re-invoking model. Current messages: ${formatMessagesForLog(this.messages)}`);
           response = await this.modelWithTools.invoke(this.messages) as AIMessage;
-          Logger.info(`Subsequent model response: ${JSON.stringify(response.content)}`);
-          if (response.tool_calls && response.tool_calls.length > 0) {
-            Logger.info(`Model requested tool calls: ${JSON.stringify(response.tool_calls)}`);
-          }
+          responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+          const subsequentToolCallInfo = (response.tool_calls && response.tool_calls.length > 0)
+              ? `${colors.gray} | Requesting Tools: ${response.tool_calls.map(tc => tc.name).join(', ')}${colors.reset}`
+              : '';
+          Logger.info(`${colors.blue}AI:${colors.reset} ${responseContent}${subsequentToolCallInfo}`);
       }
 
       // Add the final AI response (without tool calls) to messages
       this.messages.push(response);
-      Logger.info(`Evaluation complete. Final response: ${JSON.stringify(response.content)}`);
-      Logger.info(`Final message list: ${this.messages.map(m => `\n  [${m._getType()}] ${m.content}`).join('')}`);
+      Logger.info(`${colors.dim}EVALUATE: Finished.${colors.reset}`);
+      // Logger.info(`EVALUATE: Final message list: ${formatMessagesForLog(this.messages)}`);
 
     } catch (error: any) {
        const errorMessage = `Error during Evaluation: ${error.message}`;
-       Logger.error(errorMessage, error);
+       Logger.error(`${colors.red}EVALUATE: ${errorMessage}${colors.reset}`, error);
        this.messages.push(new HumanMessage(errorMessage));
        this.currentState = 'Delay';
     }
   }
 
   private async update() {
-    Logger.info('Performing Update (Placeholder)...');
-    // Placeholder: Add logic using tools like 'createTraderPosition' based on evaluation.
-    // Example: Check messages for instructions from Evaluate step.
+    Logger.info(`${colors.dim}UPDATE: Performing placeholder update...${colors.reset}`);
     const lastMessage = this.messages[this.messages.length - 1];
     if (lastMessage && lastMessage._getType() === 'ai') {
-        Logger.info(`Update step considering last AI message: ${lastMessage.content}`);
-        // Add logic here to parse message and potentially call write tools
+        let content = lastMessage.content;
+        if (typeof content !== 'string') content = JSON.stringify(content);
+        Logger.info(`${colors.dim}UPDATE: Considering last AI message: ${content.substring(0, 150)}${content.length > 150 ? '...' : ''}${colors.reset}`);
+        // Placeholder: Add logic here to parse message and potentially call write tools
     }
   }
 
   private async summary() {
-    Logger.info('Performing Summary (Placeholder)...');
-    // Placeholder: Summarize the cycle's actions or final state.
-    Logger.info(`Summary of cycle. Final message count: ${this.messages.length}`);
+    Logger.info(`${colors.dim}SUMMARY: Performing placeholder summary...${colors.reset}`);
+    // Logger.info(`SUMMARY: Final message count: ${this.messages.length}`);
   }
 
   private async delay() {
-    // Delay is handled by the runLoop logic (setTimeout or immediate continuation)
-    if (this.config.interval > 0) {
-        Logger.info(`Delaying for ${this.config.interval}ms before next cycle...`);
-    } else if (this.isSingleRun) {
-        Logger.info(`Cycle complete for single run. Proceeding to stop.`);
+    // Logger.info('DELAY: Handling delay/cycle end...');
+    if (this.isSingleRun && this.currentState === 'Lookup') { // Check if we just completed a cycle
+        // Log handled by runLoop
+    } else if (this.config.interval > 0) {
+        Logger.info(`${colors.dim}DELAY: Waiting ${this.config.interval}ms...${colors.reset}`);
     } else {
-        Logger.info(`Interval is 0, proceeding immediately to next cycle.`);
+        // Logger.info(`DELAY: Interval is 0, proceeding immediately.`);
     }
   }
 } 
