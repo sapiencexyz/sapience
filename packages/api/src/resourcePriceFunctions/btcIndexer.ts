@@ -208,7 +208,9 @@ class BtcIndexer implements IResourcePriceIndexer {
 
   async indexBlockPriceFromTimestamp(
     resource: Resource,
-    timestamp: number
+    startTimestamp: number,
+    endTimestamp?: number, // TODO: add support for endTimestamp
+    overwriteExisting: boolean = false
   ): Promise<boolean> {
     try {
       // Get current block height from mempool.space
@@ -233,7 +235,7 @@ class BtcIndexer implements IResourcePriceIndexer {
           continue;
         }
 
-        if (block.time < timestamp) {
+        if (block.time < startTimestamp) {
           low = mid + 1;
         } else {
           startBlock = mid;
@@ -265,7 +267,7 @@ class BtcIndexer implements IResourcePriceIndexer {
             },
           });
 
-          if (existingPrice) {
+          if (!overwriteExisting && existingPrice) {
             console.log(
               `[BtcIndexer] Already have price for block ${blockNumber}, skipping...`
             );
@@ -283,7 +285,7 @@ class BtcIndexer implements IResourcePriceIndexer {
           Sentry.withScope((scope) => {
             scope.setExtra('blockNumber', blockNumber);
             scope.setExtra('resource', resource.slug);
-            scope.setExtra('timestamp', timestamp);
+            scope.setExtra('timestamp', startTimestamp);
             Sentry.captureException(error);
           });
         }

@@ -14,7 +14,6 @@ import type { Market } from '~/lib/context/FoilProvider';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useLatestIndexPrice } from '~/lib/hooks/useResources';
-import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
@@ -62,14 +61,16 @@ const IndexPriceDisplay = ({
   latestIndexPrice,
   useMarketUnits,
   stEthPerToken,
+  unitDisplay,
 }: {
   isBeforeStart: boolean;
   startTimeRelative: string;
   isLoadingIndexPrice: boolean;
-  market: any;
+  market: Market;
   latestIndexPrice: any;
   useMarketUnits: boolean;
   stEthPerToken: number | undefined;
+  unitDisplay: string;
 }) => {
   if (isBeforeStart) {
     return (
@@ -91,22 +92,31 @@ const IndexPriceDisplay = ({
   return (
     <>
       <NumberDisplay value={value} />{' '}
-      <span className="text-sm">{useMarketUnits ? 'Ggas/wstETH' : 'gwei'}</span>
+      <span className="text-sm">{unitDisplay}</span>
     </>
   );
 };
 
 const Stats = () => {
-  const { endTime, startTime, pool, liquidity, useMarketUnits, market } =
-    useContext(PeriodContext);
-  const { stEthPerToken, markets } = useFoil();
+  const {
+    endTime,
+    startTime,
+    pool,
+    liquidity,
+    useMarketUnits,
+    market,
+    resource,
+    unitDisplay,
+    valueDisplay,
+  } = useContext(PeriodContext);
+  const { stEthPerToken } = useFoil();
   const { data: latestIndexPrice, isLoading: isLoadingIndexPrice } =
     useLatestIndexPrice(
       market
         ? {
             address: market.address,
             chainId: market.chainId,
-            epochId: market.epochId,
+            epochId: market.currentEpoch!.epochId,
           }
         : {
             address: '',
@@ -115,12 +125,7 @@ const Stats = () => {
           }
     );
 
-  const resourceName =
-    markets
-      .find(
-        (m: Market) => m.address.toLowerCase() === market?.address.toLowerCase()
-      )
-      ?.resource?.name?.toLowerCase() || 'resource';
+  const resourceName = resource?.name?.toLowerCase() || 'resource';
 
   const currentTime = Math.floor(Date.now() / 1000);
   const isBeforeStart = startTime > currentTime;
@@ -137,10 +142,15 @@ const Stats = () => {
     ? formatDistanceToNow(new Date(startTime * 1000))
     : '';
 
+  const isCumulative = market?.isCumulative;
+  const gridColsClass = isCumulative
+    ? 'grid-cols-1 md:grid-cols-3'
+    : 'grid-cols-1 md:grid-cols-4';
+
   return (
     <TooltipProvider>
       <div className="flex w-full flex-col items-center pb-5">
-        <div className="grid w-full grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className={`grid w-full gap-3 ${gridColsClass}`}>
           <StatBox
             title="Index Price"
             tooltipContent={`The estimated settlement price based on the average ${resourceName} price for this period`}
@@ -150,10 +160,11 @@ const Stats = () => {
                 isBeforeStart={isBeforeStart}
                 startTimeRelative={startTimeRelative}
                 isLoadingIndexPrice={isLoadingIndexPrice}
-                market={market}
+                market={market!}
                 latestIndexPrice={latestIndexPrice}
                 useMarketUnits={useMarketUnits}
                 stEthPerToken={stEthPerToken}
+                unitDisplay={unitDisplay()}
               />
             }
           />
@@ -165,32 +176,28 @@ const Stats = () => {
             value={
               <>
                 <NumberDisplay
-                  value={
-                    useMarketUnits
-                      ? pool?.token0Price.toSignificant(18) || 0
-                      : convertGgasPerWstEthToGwei(
-                          Number(pool?.token0Price.toSignificant(18) || 0),
-                          stEthPerToken
-                        )
-                  }
+                  value={valueDisplay(
+                    Number(pool?.token0Price.toSignificant(18) || 0),
+                    stEthPerToken
+                  )}
                 />{' '}
-                <span className="text-sm">
-                  {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-                </span>
+                <span className="text-sm">{unitDisplay()}</span>
               </>
             }
           />
 
-          <StatBox
-            title="Liquidity"
-            tooltipContent="The largest long position that can be opened right now"
-            value={
-              <>
-                <NumberDisplay value={liquidity} />{' '}
-                <span className="text-sm">Ggas</span>
-              </>
-            }
-          />
+          {!isCumulative && (
+            <StatBox
+              title="Liquidity"
+              tooltipContent="The largest long position that can be opened right now"
+              value={
+                <>
+                  <NumberDisplay value={liquidity} />{' '}
+                  <span className="text-sm">{unitDisplay(false)}</span>
+                </>
+              }
+            />
+          )}
 
           <StatBox title="Ends in" value={getRelativeTime()} />
         </div>
