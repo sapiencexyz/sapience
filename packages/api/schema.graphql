@@ -26,6 +26,7 @@ type EpochType {
 type MarketType {
   address: String!
   chainId: Int!
+  claimStatement: String
   collateralAsset: String
   deployTimestamp: Int
   deployTxnBlockNumber: Int

@@ -27,6 +27,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   deployTxnBlockNumber: market.deployTxnBlockNumber,
   owner: market.owner,
   collateralAsset: market.collateralAsset,
+  claimStatement: market.marketParams?.claimStatement,
 });
 
 export const mapResourceToType = (resource: Resource): ResourceType => ({

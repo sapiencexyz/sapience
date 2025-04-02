@@ -209,7 +209,7 @@ export class FoilAgent {
     try {
         // Assuming listMarkets returns an array of market objects
         // And the function exists within the tool definition
-        const marketsResult = await listMarketsTool.func({}); // Call listMarkets tool
+        const marketsResult = await listMarketsTool.func('{}'); // Pass empty JSON string
         let markets: any[] = [];
 
         // --- Result Parsing Logic ---
@@ -251,12 +251,16 @@ export class FoilAgent {
              return;
         }
 
-        Logger.info(`${colors.dim}LOOKUP: Preparing evaluation tasks for ${markets.length} market(s)...${colors.reset}`);
-        for (const market of markets) {
-            const marketIdentifier = market.address || market.id || 'Unknown ID';
-            // Define the standard question for each market
-            const question = `Analyze market ${marketIdentifier}. What is the current outlook? Provide your best estimate, your confidence in this estimate on a scale of 0 to 100, and a rationale. Your response should look like\n\nANSWER: \nCONFIDENCE:\nRATIONALE:`;
-            this.evaluationTasks.push({ market: market, question: question });
+        Logger.info(`${colors.dim}LOOKUP: Preparing evaluation tasks for ${markets.length} epoch(s)...${colors.reset}`);
+        for (const epoch of markets) {
+            const marketIdentifier = epoch.marketAddress || `EpochID-${epoch.epochId}` || 'Unknown ID';
+            const claimStatement = epoch.question;
+
+            // Define the standard question for each market, ensuring claimStatement is included
+            const question = `Analyze market ${marketIdentifier} with claim: "${claimStatement || 'N/A'}". What is the current outlook? Provide your best estimate, your confidence in this estimate on a scale of 0 to 100, and a rationale. Your response should look like\\n\\nANSWER: \\nCONFIDENCE:\\nRATIONALE:`;
+            
+            // Pass the epoch object and the generated question to the task
+            this.evaluationTasks.push({ market: epoch, question: question });
         }
 
     } catch (error: any) {
@@ -277,7 +281,8 @@ export class FoilAgent {
 
     try {
       const evaluationPromises = this.evaluationTasks.map(async (task) => {
-        const marketIdentifier = task.market.address || task.market.id || JSON.stringify(task.market).substring(0, 50) + '...'; // Get a readable identifier
+        // Access marketAddress and epochId from the epoch object stored in task.market
+        const marketIdentifier = task.market.marketAddress || `EpochID-${task.market.epochId}` || 'Unknown ID';
         Logger.info(`${colors.dim}EVALUATE: Starting task for market: ${marketIdentifier}${colors.reset}`);
 
         // Create a minimal message list for this specific task's context
@@ -315,7 +320,7 @@ export class FoilAgent {
         } catch (error: any) {
           const errorMessage = `Error evaluating market ${marketIdentifier}: ${error.message}`;
           Logger.error(`${colors.red}EVALUATE (Task Error): ${errorMessage}${colors.reset}`, error);
-          return { market: marketIdentifier, question: task.question, error: errorMessage }; // Return error state
+          return { market: marketIdentifier, question: task.question, error: errorMessage }; // Store the correct identifier in error case
         }
       });
 

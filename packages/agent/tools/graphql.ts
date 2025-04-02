@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { parse } from 'graphql/language';
 
-const FOIL_GRAPHQL_ENDPOINT = 'https://api.foil.xyz/graphql';
+const FOIL_GRAPHQL_ENDPOINT = 'http://localhost:3001/graphql'; //'https://api.foil.xyz/graphql';
 
 interface GraphQLResponse {
   data?: any;
@@ -28,7 +28,14 @@ async function executeGraphQLQuery(query: string, variables?: Record<string, any
   });
 
   if (!response.ok) {
-    throw new Error(`GraphQL request failed: ${response.statusText}`);
+    let errorBody = '';
+    try {
+      errorBody = await response.text(); // Try to get the response body for more details
+    } catch (e) {
+      // Ignore error if reading body fails
+    }
+    // Include status, statusText, and the body in the error
+    throw new Error(`GraphQL request failed: ${response.status} ${response.statusText}. Response body: ${errorBody}`);
   }
 
   return response.json();
@@ -93,48 +100,72 @@ const getMarket = {
 
 const listMarkets = {
   name: "list_foil_markets",
-  description: "Lists all markets available in the Foil system",
+  description: "Lists all markets available in the Foil system, optionally filtering for the active periods (end time in the future).",
   parameters: {
-    properties: {},
-    required: [],
+    properties: {
+      inputString: {
+        type: 'string',
+        description: 'Input string to parse for isActive boolean',
+      },
+    },
+    required: ['inputString'],
   },
-  function: async () => {
+  function: async (inputString: string) => {
+    let isActive: boolean | undefined = undefined;
+    try {
+      // Parse the string input as JSON
+      const parsedArgs = JSON.parse(inputString);
+      isActive = parsedArgs?.isActive; // Extract isActive if provided
+      if (isActive !== undefined && typeof isActive !== 'boolean') {
+          throw new Error('isActive parameter must be a boolean if provided.');
+      }
+    } catch (e) {
+      // Ignore parsing errors if inputString is not valid JSON or doesn't contain isActive
+      // Proceed with isActive as undefined
+      console.warn(`Could not parse input for list_foil_markets or missing isActive: ${inputString}`, e);
+    }
+
     const query = `
-      query ListMarkets {
-        markets {
-          address
-          chainId
-          collateralAsset
-          deployTimestamp
-          deployTxnBlockNumber
-          id
-          isCumulative
-          isYin
-          owner
-          vaultAddress
-          epochs {
-            epochId
-            startTimestamp
-            endTimestamp
-            settled
-            settlementPriceD18
-          }
-          resource {
-            id
-            name
-            slug
+      query ListPeriods {
+        epochs {
+          epochId
+          startTimestamp
+          endTimestamp
+          settled
+          settlementPriceD18
+          public
+          market {
+            address
+            chainId
+            claimStatement
+            resource {
+              name
+            }
           }
         }
       }
     `;
 
     const result = await executeGraphQLQuery(query);
-    return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.markets, null, 2)
-      }]
-    };
+    let periods = result.data?.epochs || [];
+
+    if (isActive) {
+      const nowInSeconds = Date.now() / 1000;
+      periods = periods.filter((period: any) => period.endTimestamp > nowInSeconds);
+    }
+
+    // Map periods to include the market address and claim statement (as question)
+    const formattedPeriods = periods.map((period: any) => {
+      const { market, ...restOfPeriod } = period;
+      return {
+        ...restOfPeriod, // Spread epoch details
+        marketAddress: market?.address || null, // Add market address
+        question: market?.claimStatement || null, // Add claim statement as question
+      };
+    });
+
+    // Return the JSON string directly, as expected by DynamicTool
+    return JSON.stringify(formattedPeriods, null, 2);
   },
 };
 
