@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { parse } from 'graphql/language';
 
-const FOIL_GRAPHQL_ENDPOINT = 'http://localhost:3001/graphql'; //'https://api.foil.xyz/graphql';
+const FOIL_GRAPHQL_ENDPOINT = process.env.FOIL_GRAPHQL_ENDPOINT || 'http://localhost:3001/graphql'; //'https://api.foil.xyz/graphql';
 
 interface GraphQLResponse {
   data?: any;
