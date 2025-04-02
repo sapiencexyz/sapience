@@ -60,4 +60,6 @@ export const BLANK_MARKET: PeriodContextType = {
   },
   refetchUniswapData: () => {},
   market: undefined,
+  unitDisplay: () => '',
+  valueDisplay: () => 0,
 };

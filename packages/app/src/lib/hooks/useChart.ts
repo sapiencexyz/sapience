@@ -54,6 +54,7 @@ interface UseChartProps {
   };
   useMarketUnits: boolean;
   startTime: number;
+  endTime: number;
   containerRef: React.RefObject<HTMLDivElement>;
   selectedWindow: TimeWindow | null;
   selectedInterval: TimeInterval;
@@ -202,6 +203,7 @@ export const useChart = ({
   seriesVisibility: seriesVisibilityProp,
   useMarketUnits,
   startTime,
+  endTime,
   containerRef,
   selectedWindow,
   selectedInterval,
@@ -424,7 +426,7 @@ export const useChart = ({
           price: Number(formatUnits(BigInt(candle.close), 9)),
         }));
       },
-      enabled: !!resourceSlug,
+      enabled: !!resourceSlug && !contextMarket?.isCumulative,
     });
 
   // Fetch the latest index price using the same hook as the stats component
@@ -640,46 +642,81 @@ export const useChart = ({
           if (!mp) return null;
           return {
             time: (mp.startTimestamp / 1000) as UTCTimestamp,
-            open: useMarketUnits
-              ? Number(formatUnits(BigInt(mp.open), 18))
-              : Number(
-                  convertGgasPerWstEthToGwei(mp.open / 1e18, stEthPerToken)
-                ),
-            high: useMarketUnits
-              ? Number(formatUnits(BigInt(mp.high), 18))
-              : Number(
-                  convertGgasPerWstEthToGwei(mp.high / 1e18, stEthPerToken)
-                ),
-            low: useMarketUnits
-              ? Number(formatUnits(BigInt(mp.low), 18))
-              : Number(
-                  convertGgasPerWstEthToGwei(mp.low / 1e18, stEthPerToken)
-                ),
-            close: useMarketUnits
-              ? Number(formatUnits(BigInt(mp.close), 18))
-              : Number(
-                  convertGgasPerWstEthToGwei(mp.close / 1e18, stEthPerToken)
-                ),
+            open:
+              useMarketUnits || contextMarket?.isCumulative
+                ? Number(formatUnits(BigInt(mp.open), 18))
+                : Number(
+                    convertGgasPerWstEthToGwei(mp.open / 1e18, stEthPerToken)
+                  ),
+            high:
+              useMarketUnits || contextMarket?.isCumulative
+                ? Number(formatUnits(BigInt(mp.high), 18))
+                : Number(
+                    convertGgasPerWstEthToGwei(mp.high / 1e18, stEthPerToken)
+                  ),
+            low:
+              useMarketUnits || contextMarket?.isCumulative
+                ? Number(formatUnits(BigInt(mp.low), 18))
+                : Number(
+                    convertGgasPerWstEthToGwei(mp.low / 1e18, stEthPerToken)
+                  ),
+            close:
+              useMarketUnits || contextMarket?.isCumulative
+                ? Number(formatUnits(BigInt(mp.close), 18))
+                : Number(
+                    convertGgasPerWstEthToGwei(mp.close / 1e18, stEthPerToken)
+                  ),
           };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
 
       candlestickSeriesRef.current.setData(candleSeriesData);
     }
-  }, [marketPrices, isBeforeStart, useMarketUnits, stEthPerToken]);
+  }, [
+    marketPrices,
+    isBeforeStart,
+    useMarketUnits,
+    stEthPerToken,
+    contextMarket,
+  ]);
 
   const updateIndexPriceData = useCallback(() => {
     if (indexPriceSeriesRef.current && !isBeforeStart) {
+      // Process index data with extrapolation for cumulative markets
+      const processValue = (rawValue: number, timestamp: number) => {
+        let value = useMarketUnits
+          ? Number(rawValue / ((stEthPerToken || 1e9) / 1e9))
+          : rawValue;
+
+        // If market is cumulative, extrapolate the value based on actual epoch duration
+        if (
+          contextMarket?.isCumulative &&
+          startTime > 0 &&
+          endTime > startTime
+        ) {
+          const timestampSec =
+            typeof timestamp === 'number' ? timestamp : timestamp / 1000;
+          const daysSinceStart = Math.max(
+            1,
+            (timestampSec - startTime) / (24 * 60 * 60)
+          );
+
+          // Calculate total epoch duration in days
+          const epochDurationDays = (endTime - startTime) / (24 * 60 * 60);
+
+          // Extrapolate based on actual epoch duration instead of hardcoded 30 days
+          value *= epochDurationDays / daysSinceStart;
+        }
+
+        return value;
+      };
+
       // Start with the existing index prices data
       let indexLineData = indexPrices?.length
-        ? indexPrices.map((ip) => {
-            return {
-              time: (ip.timestamp / 1000) as UTCTimestamp,
-              value: useMarketUnits
-                ? Number(ip.price / ((stEthPerToken || 1e9) / 1e9))
-                : ip.price,
-            };
-          })
+        ? indexPrices.map((ip) => ({
+            time: (ip.timestamp / 1000) as UTCTimestamp,
+            value: processValue(ip.price, ip.timestamp / 1000),
+          }))
         : [];
 
       // If we have the latest index price from the stats component, ensure it's included
@@ -690,11 +727,11 @@ export const useChart = ({
           10
         ) as UTCTimestamp;
 
-        // Calculate the value using the same formula as in the stats component
-        const latestValue = useMarketUnits
-          ? Number(formatUnits(BigInt(latestIndexPrice.value || 0), 9)) /
-            ((stEthPerToken || 1e9) / 1e9)
-          : Number(formatUnits(BigInt(latestIndexPrice.value || 0), 9));
+        // Calculate and process the value
+        const rawValue = Number(
+          formatUnits(BigInt(latestIndexPrice.value || 0), 9)
+        );
+        const latestValue = processValue(rawValue, latestTimestamp);
 
         // Remove any existing data points that are within 60 seconds of the latest timestamp
         indexLineData = indexLineData.filter(
@@ -712,7 +749,6 @@ export const useChart = ({
         indexLineData.sort((a, b) => (a.time as number) - (b.time as number));
       }
 
-      // Set the data to the series
       indexPriceSeriesRef.current.setData(indexLineData);
     }
   }, [
@@ -721,6 +757,9 @@ export const useChart = ({
     useMarketUnits,
     stEthPerToken,
     latestIndexPrice,
+    contextMarket?.isCumulative,
+    startTime,
+    endTime,
   ]);
 
   const updateResourcePriceData = useCallback(() => {
@@ -776,9 +815,10 @@ export const useChart = ({
     updateCandlestickData();
     updateIndexPriceData();
     updateResourcePriceData();
-    updateTrailingAverageData();
+    if (!contextMarket?.isCumulative) updateTrailingAverageData();
     updateSeriesVisibility();
   }, [
+    contextMarket?.isCumulative,
     updateCandlestickData,
     updateIndexPriceData,
     updateResourcePriceData,
@@ -838,7 +878,7 @@ export const useChart = ({
       updateCandlestickData();
       updateIndexPriceData();
       updateResourcePriceData();
-      updateTrailingAverageData();
+      if (!contextMarket?.isCumulative) updateTrailingAverageData();
     }
   }, [
     useMarketUnits,
@@ -847,16 +887,24 @@ export const useChart = ({
     updateIndexPriceData,
     updateResourcePriceData,
     updateTrailingAverageData,
+    contextMarket?.isCumulative,
   ]);
 
   const loadingStates = useMemo(
     () => ({
-      candles: !marketPrices && !!market,
+      candles: isMarketPricesLoading,
       index: isIndexLoading && !!market,
       resource: isResourceLoading && !!resourceSlug,
       trailing: isTrailingResourceLoading && !!resourceSlug,
     }),
-    [isIndexLoading, isResourceLoading, market, resourceSlug]
+    [
+      isMarketPricesLoading,
+      isIndexLoading,
+      isResourceLoading,
+      market,
+      resourceSlug,
+      isTrailingResourceLoading,
+    ]
   );
 
   // Helper function to set market price time scale
@@ -874,9 +922,10 @@ export const useChart = ({
         from: (firstCandle.startTimestamp / 1000) as UTCTimestamp,
         to: (lastCandle.endTimestamp / 1000) as UTCTimestamp,
       });
-    } else if (trailingResourcePrices?.length) {
+    } else if (trailingResourcePrices?.length && !contextMarket?.isCumulative) {
       const now = Math.floor(Date.now() / 1000);
       const from = now - 28 * 86400;
+
       chartRef.current?.timeScale().setVisibleRange({
         from: from as UTCTimestamp,
         to: now as UTCTimestamp,

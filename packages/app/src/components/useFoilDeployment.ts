@@ -19,6 +19,13 @@ const useFoilDeployment = (chainId?: number) => {
         const foil = await import(
           `@/protocol/deployments/outputs/${chainId}/FoilYin.json`
         );
+        setFoilData(foil);
+      } catch (err) {
+        console.log('ERROR', err);
+        setError(err as any);
+      }
+
+      try {
         const foilYinVault = await import(
           `@/protocol/deployments/outputs/${chainId}/VaultYin.json`
         );
@@ -31,7 +38,6 @@ const useFoilDeployment = (chainId?: number) => {
         const foilYangBlobVault = await import(
           `@/protocol/deployments/outputs/${chainId}-blobs/VaultYang.json`
         );
-        setFoilData(foil);
         setFoilVaultData({
           yin: foilYinVault,
           yang: foilYangVault,
@@ -46,6 +52,7 @@ const useFoilDeployment = (chainId?: number) => {
     };
 
     if (chainId) {
+      console.log('LOAD FOIL CHAIN ID', chainId);
       loadFoilData();
     }
   }, [chainId]);
