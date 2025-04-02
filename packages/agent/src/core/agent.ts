@@ -3,6 +3,7 @@ import { AgentConfig, Tool } from '../types/index.js';
 import { Logger } from '../utils/logger.js';
 import { BaseMessage, HumanMessage, SystemMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import { ChatAnthropic } from '@langchain/anthropic';
+import { ChatOllama } from '@langchain/community/chat_models/ollama';
 import { Runnable } from '@langchain/core/runnables';
 import { DynamicTool } from "@langchain/core/tools";
 import { getSystemPrompt, getSummaryPrompt, getEvaluationPrompt } from './prompts.js';
@@ -38,7 +39,7 @@ export class FoilAgent {
   private running: boolean;
   private isSingleRun: boolean; // Track if it's a single run
   private timeoutId: NodeJS.Timeout | null = null;
-  private model: ChatAnthropic;
+  private model: ChatAnthropic | ChatOllama;
   private modelWithTools: Runnable;
   private evaluationTasks: { market: any, question: string }[] = [];
   // Define the type for evaluation results explicitly for clarity
@@ -60,13 +61,29 @@ export class FoilAgent {
     this.running = false;
     this.isSingleRun = config.interval <= 0; // Determine if it's a single run at init
 
-    if (!config.anthropicApiKey) {
-        throw new Error('ANTHROPIC_API_KEY is required in the agent config');
+    // --- Model Initialization ---
+    const useOllama = process.env.USE_OLLAMA === 'true';
+
+    if (useOllama) {
+        const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'; // Default Ollama URL
+        const ollamaModelName = process.env.OLLAMA_MODEL_NAME || 'llama3.1'; // Default model
+        Logger.info(chalk.yellow(`Using Ollama model: ${ollamaModelName} at ${ollamaBaseUrl}`));
+        this.model = new ChatOllama({
+            baseUrl: ollamaBaseUrl,
+            model: ollamaModelName,
+        });
+    } else {
+        if (!config.anthropicApiKey) {
+            throw new Error('ANTHROPIC_API_KEY is required in the agent config when not using Ollama');
+        }
+        const anthropicModelName = config.anthropicModelName || 'claude-3-5-sonnet-20240620'; // Use from config or default
+        Logger.info(chalk.yellow(`Using Anthropic model: ${anthropicModelName}`));
+        this.model = new ChatAnthropic({ 
+            apiKey: config.anthropicApiKey,
+            modelName: anthropicModelName
+        });
     }
-    this.model = new ChatAnthropic({ 
-        apiKey: config.anthropicApiKey,
-        modelName: 'claude-3-5-sonnet-20240620'
-    });
+    // --- End Model Initialization ---
 
     // Flatten tools using DynamicTool
     this.flatTools = Object.values(tools).flatMap(toolSet =>
@@ -80,7 +97,7 @@ export class FoilAgent {
     this.messages = []; // Initialize with empty messages
 
     // Bind tools to the model
-    this.modelWithTools = this.model.bindTools(this.flatTools);
+    this.modelWithTools = this.model.bind({ tools: this.flatTools });
 
   }
 

@@ -1,6 +1,7 @@
 export interface AgentConfig {
   interval: number;
   anthropicApiKey?: string;
+  anthropicModelName?: string; // Optional model name
   // Add other configuration options as needed
 }
 
