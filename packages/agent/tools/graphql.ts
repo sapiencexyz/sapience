@@ -103,28 +103,14 @@ const listMarkets = {
   description: "Lists all markets available in the Foil system, optionally filtering for the active periods (end time in the future).",
   parameters: {
     properties: {
-      inputString: {
-        type: 'string',
-        description: 'Input string to parse for isActive boolean',
+      isActive: {
+        type: 'boolean',
+        description: 'Optional boolean to filter for markets with active markets (end time in the future). Defaults to false if not provided.',
       },
     },
-    required: ['inputString'],
+    required: [], // isActive is optional
   },
-  function: async (inputString: string) => {
-    let isActive: boolean | undefined = undefined;
-    try {
-      // Parse the string input as JSON
-      const parsedArgs = JSON.parse(inputString);
-      isActive = parsedArgs?.isActive; // Extract isActive if provided
-      if (isActive !== undefined && typeof isActive !== 'boolean') {
-          throw new Error('isActive parameter must be a boolean if provided.');
-      }
-    } catch (e) {
-      // Ignore parsing errors if inputString is not valid JSON or doesn't contain isActive
-      // Proceed with isActive as undefined
-      console.warn(`Could not parse input for list_foil_markets or missing isActive: ${inputString}`, e);
-    }
-
+  function: async ({ isActive }: { isActive?: boolean }) => {
     const query = `
       query ListPeriods {
         epochs {
@@ -149,6 +135,9 @@ const listMarkets = {
     const result = await executeGraphQLQuery(query);
     let periods = result.data?.epochs || [];
 
+    // Filter for public epochs first
+    periods = periods.filter((period: any) => period.public);
+
     if (isActive) {
       const nowInSeconds = Date.now() / 1000;
       periods = periods.filter((period: any) => period.endTimestamp > nowInSeconds);
@@ -160,6 +149,7 @@ const listMarkets = {
       return {
         ...restOfPeriod, // Spread epoch details
         marketAddress: market?.address || null, // Add market address
+        chainId: market?.chainId || null, // Add chain ID
         question: market?.claimStatement || null, // Add claim statement as question
       };
     });

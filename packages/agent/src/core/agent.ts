@@ -228,10 +228,15 @@ export class FoilAgent {
         let markets: any[] = [];
 
         // --- Result Parsing Logic ---
-        let rawResultContent = marketsResult;
-        if (typeof marketsResult === 'string') {
+        let rawResultContent = marketsResult; // <<< MOVED DECLARATION HERE
+
+        // ---> ADD LOGGING HERE <---
+        Logger.info(`${colors.dim}LOOKUP (Raw Result): ${typeof rawResultContent === 'string' ? rawResultContent : JSON.stringify(rawResultContent)}${colors.reset}`);
+        // ---> END LOGGING <---
+
+        if (typeof marketsResult === 'string') { // <<< KEEP USING marketsResult here for initial check
             try {
-                rawResultContent = JSON.parse(marketsResult);
+                rawResultContent = JSON.parse(marketsResult); // Update rawResultContent if it was a string
             } catch (e) {
                 Logger.error(`${colors.red}LOOKUP: Failed to parse listMarkets result string: ${marketsResult}${colors.reset}`);
                 this.currentState = 'Delay';
