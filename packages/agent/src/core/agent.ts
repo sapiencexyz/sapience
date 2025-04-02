@@ -82,7 +82,7 @@ export class FoilAgent {
     );
 
     this.messages = [
-      new SystemMessage(`You are an autonomous agent. Your address is ${this.agentAddress}. Your goal is to process information and update contracts based on your findings. Use the available tools when necessary. Available tools: ${this.flatTools.map(t => t.name).join(', ')}`)
+      new SystemMessage(`You are an autonomous agent designed to analyze on-chain market data, identify opportunities or required actions, and interact with Foil contracts. Your address is ${this.agentAddress}. \nYour primary goal is to process information, proactively use the available tools to gather necessary details or perform actions based on the current context, and eventually trigger contract updates. \nAlways analyze the data provided, decide if tools are needed to fulfill the objective, and use them. Do not ask for permission before using tools if they are necessary to achieve the goal implied by the conversation history. \nAvailable tools: ${this.flatTools.map(t => t.name).join(', ')}`)
     ];
 
     // Bind tools to the model
@@ -103,7 +103,7 @@ export class FoilAgent {
     // Reset state and messages for new start
     this.currentState = 'Lookup';
     this.messages = [
-      new SystemMessage(`You are an autonomous agent. Your address is ${this.agentAddress}. Your goal is to process information and update contracts based on your findings. Use the available tools when necessary. Available tools: ${this.flatTools.map(t => t.name).join(', ')}`)
+      new SystemMessage(`You are an autonomous agent designed to analyze on-chain market data, identify opportunities or required actions, and interact with Foil contracts. Your address is ${this.agentAddress}. \nYour primary goal is to process information, proactively use the available tools to gather necessary details or perform actions based on the current context, and eventually trigger contract updates. \nAlways analyze the data provided, decide if tools are needed to fulfill the objective, and use them. Do not ask for permission before using tools if they are necessary to achieve the goal implied by the conversation history. \nAvailable tools: ${this.flatTools.map(t => t.name).join(', ')}`)
     ];
     // Log system message on restart too
     Logger.info(`${colors.magenta}SYSTEM:${colors.reset} ${this.messages[0].content}`);
@@ -214,7 +214,7 @@ export class FoilAgent {
         // Logger.info(`LOOKUP: Calling ${queryToolEntry.name} with query: ${queryString}`);
         const lookupResult = await queryToolEntry.function({ query: queryString });
         // Logger.info('LOOKUP: Raw Result:', JSON.stringify(lookupResult, null, 2));
-        const humanMessageContent = `Initial Lookup Result: ${JSON.stringify(lookupResult)} Please evaluate this data.`;
+        const humanMessageContent = `Initial Lookup Result: ${JSON.stringify(lookupResult)} \nAnalyze this epoch data and use tools to find detailed information about the latest unsettled epoch.`;
         this.messages.push(new HumanMessage(humanMessageContent));
         // Truncate long human message for log view
         const logHumanContent = humanMessageContent.length > 300 ? humanMessageContent.substring(0, 297) + '...' : humanMessageContent;
@@ -230,7 +230,16 @@ export class FoilAgent {
   private async evaluate() {
     Logger.info(`${colors.dim}EVALUATE: Starting...${colors.reset}`);
     try {
-      // Logger.info(`EVALUATE: Invoking model. Current messages: ${formatMessagesForLog(this.messages)}`);
+      // Log the message that triggered this evaluation
+      const triggeringMessage = this.messages[this.messages.length - 1];
+      if (triggeringMessage) {
+        const type = triggeringMessage._getType().toUpperCase();
+        const color = type === "HUMAN" ? colors.green : colors.gray; // Color based on type
+        let content = triggeringMessage.content;
+        if (typeof content !== 'string') content = JSON.stringify(content);
+        const logContent = content.length > 300 ? content.substring(0, 297) + '...' : content; // Truncate
+        Logger.info(`${color}${type}:${colors.reset} ${logContent}`);
+      }
 
       let response: AIMessage = await this.modelWithTools.invoke(this.messages) as AIMessage;
       let responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
