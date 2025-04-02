@@ -315,13 +315,13 @@ export class FoilAgent {
           const responseContent = response.content && typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
 
           // Basic parsing attempt
-          const answerMatch = responseContent.match(/ANSWER:\\s*([\\s\\S]*?)\\s*CONFIDENCE:/);
-          const confidenceMatch = responseContent.match(/CONFIDENCE:\\s*(\\d+)/);
-          const rationaleMatch = responseContent.match(/RATIONALE:\\s*([\\s\\S]*)/);
+          const answerMatch = responseContent.match(/ANSWER:\s*([\s\S]*?)\s*CONFIDENCE:/);
+          const confidenceMatch = responseContent.match(/CONFIDENCE:\s*(\d+)/);
+          const rationaleMatch = responseContent.match(/RATIONALE:\s*([\s\S]*)/);
 
           const result = {
             market: marketIdentifier,
-            question: task.question,
+            question: task.question, // Keep the full question in the result object
             rawResponse: responseContent,
             parsed: {
               answer: answerMatch ? answerMatch[1].trim() : 'Parsing Error',
@@ -329,7 +329,9 @@ export class FoilAgent {
               rationale: rationaleMatch ? rationaleMatch[1].trim() : 'Parsing Error'
             }
           };
-          Logger.info(`${colors.blue}EVALUATE (Result):${colors.reset} Market ${marketIdentifier} -> Confidence: ${result.parsed.confidence}`);
+          // Extract claim for logging
+          const claimForLog = task.market.question || 'N/A'; 
+          Logger.info(`${colors.blue}EVALUATE (Result):${colors.reset} Market ${marketIdentifier}\n  Question (Claim): "${claimForLog}"\n  Answer: ${result.parsed.answer}\n  Confidence: ${result.parsed.confidence}\n  Rationale: ${result.parsed.rationale}`);
           return result;
 
         } catch (error: any) {
