@@ -64,7 +64,6 @@ class CelestiaIndexer implements IResourcePriceIndexer {
             { headers }
           );
 
-
           if (blobMessagesPayload.ok) {
             blockPayload = await fetch(
               `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${currentBlockToPoll}?stats=true`,
@@ -96,14 +95,11 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         }
       }
 
-
       if (!blobMessagesPayload || !blobMessagesPayload.ok) {
         throw new Error(
           `Failed to fetch block ${currentBlockToPoll} after ${this.MAX_RETRIES} retries`
         );
       }
-
-      
 
       //  https://api-mainnet.celenium.io/v1/block/{height}
       const blobMessages = await blobMessagesPayload.json();
@@ -228,9 +224,8 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   private async storeBlockPrice(block: Block, resource: Resource) {
     const used = block?.stats?.blobs_size;
     const fee = block?.stats?.fee * 10 ** 9; // Increase the fee to 9 digits to be compatible with the EVM indexer and UI (we use 9 decimals for the gwei)
-    
+
     const value = used > 0 ? fee / used : 0;
-    
 
     try {
       const price = {

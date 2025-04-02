@@ -29,9 +29,15 @@ import {
   getTimeWindow,
 } from './helper';
 
+interface ReducedMarketPrice {
+  value: string;
+  timestamp: number;
+  epoch: number;
+}
+
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
-  static readonly BATCH_SIZE = 1000; 
+  static readonly BATCH_SIZE = 1000;
 
   private resource: Resource;
   private markets: Market[];
@@ -194,7 +200,9 @@ export class ResourcePerformance {
 
     this.runtime.processingResourceItems = true;
 
-    const dbResourcePrices = await this.pullResourcePrices(initialResourceTimestamp);
+    const dbResourcePrices = await this.pullResourcePrices(
+      initialResourceTimestamp
+    );
     const dbMarketPrices = await this.pullMarketPrices(initialMarketTimestamp);
 
     if (dbResourcePrices.length === 0 && dbMarketPrices.length === 0) {
@@ -214,8 +222,15 @@ export class ResourcePerformance {
     this.initializeOrCleanupRuntimeData(dbResourcePrices);
 
     // Process all resource prices in batches
-    for (let i = 0; i < dbResourcePrices.length; i += ResourcePerformance.BATCH_SIZE) {
-      const batch = dbResourcePrices.slice(i, i + ResourcePerformance.BATCH_SIZE);
+    for (
+      let i = 0;
+      i < dbResourcePrices.length;
+      i += ResourcePerformance.BATCH_SIZE
+    ) {
+      const batch = dbResourcePrices.slice(
+        i,
+        i + ResourcePerformance.BATCH_SIZE
+      );
       for (const item of batch) {
         for (const interval of this.intervals) {
           this.processResourcePriceData(item, i, interval);
@@ -240,7 +255,11 @@ export class ResourcePerformance {
     this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
 
     // Process all market prices in batches
-    for (let i = 0; i < dbMarketPrices.length; i += ResourcePerformance.BATCH_SIZE) {
+    for (
+      let i = 0;
+      i < dbMarketPrices.length;
+      i += ResourcePerformance.BATCH_SIZE
+    ) {
       const batch = dbMarketPrices.slice(i, i + ResourcePerformance.BATCH_SIZE);
       for (const item of batch) {
         for (const interval of this.intervals) {
@@ -349,7 +368,7 @@ export class ResourcePerformance {
       ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
     );
 
-    let allPrices: any[] = [];
+    let allPrices: ReducedMarketPrice[] = [];
     let skip = 0;
     let hasMore = true;
 
