@@ -18,6 +18,7 @@ export class EpochResolver {
 
       const epochs = await dataSource.getRepository(Epoch).find({
         where,
+        relations: ['market'],
       });
 
       return epochs.map(mapEpochToType);
