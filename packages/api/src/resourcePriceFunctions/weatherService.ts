@@ -386,7 +386,7 @@ export default class WeatherService {
       temperature: {
         location: CONFIG.NYC.NAME,
         records: data.temperature,
-        latest: data.temperature[data.temperature.length - 1] || null,
+        latest: data.temperature[0] || null,
       },
       precipitation: {
         location: CONFIG.SF.NAME,
