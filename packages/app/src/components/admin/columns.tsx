@@ -184,6 +184,12 @@ const getColumns = (
     ),
   },
   {
+    id: 'question',
+    header: 'Question',
+    accessorFn: (row) => row.question || 'Coming soon...',
+    cell: () => <span className="text-gray-500 italic">Coming soon...</span>,
+  },
+  {
     id: 'resource',
     header: 'Resource',
     accessorFn: (row) => {
@@ -342,22 +348,22 @@ const getColumns = (
     ),
   },
   {
-    id: 'isYin',
-    header: 'Yin',
-    accessorFn: (row) => row.market?.isYin,
-    cell: ({ row }) => (
-      <span className={row.original.market.isYin ? 'text-green-500' : 'text-red-500'}>
-        {row.original.market.isYin ? '🟢' : '🔴'}
-      </span>
-    ),
-  },
-  {
     id: 'isCumulative',
     header: 'Cumulative',
     accessorFn: (row) => row.market?.isCumulative,
     cell: ({ row }) => (
-      <span className={row.original.market.isCumulative ? 'text-green-500' : 'text-red-500'}>
-        {row.original.market.isCumulative ? '🟢' : '🔴'}
+      <span className={`text-lg ${row.original.market.isCumulative ? 'text-gray-900' : 'text-gray-500'}`}>
+        {row.original.market.isCumulative ? '●' : '○'}
+      </span>
+    ),
+  },
+  {
+    id: 'isYin',
+    header: 'Yin',
+    accessorFn: (row) => row.market?.isYin,
+    cell: ({ row }) => (
+      <span className={`text-lg ${row.original.market.isYin ? 'text-gray-900' : 'text-gray-500'}`}>
+        {row.original.market.isYin ? '●' : '○'}
       </span>
     ),
   },
@@ -373,7 +379,7 @@ const getColumns = (
       const missingBlocksEntry = missingBlocks[key];
       const blocks = missingBlocksEntry?.resourcePrice;
 
-      // Always provide a way to reload/retry regardless of state
+      // Create reindex button component to reuse
       const reloadButton = (
         <TooltipProvider>
           <Tooltip>
@@ -400,18 +406,18 @@ const getColumns = (
         </TooltipProvider>
       );
 
-      // If entry doesn't exist yet, show loading spinner
+      // If entry doesn't exist yet, show loading spinner without button
       if (missingBlocksEntry === undefined) {
         return (
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />            </div>
-            {reloadButton}
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+            </div>
           </div>
         );
       }
 
-      // If blocks is undefined, that's an error state
+      // If blocks is undefined, that's an error state - show button to retry
       if (blocks === undefined) {
         return (
           <div className="flex items-center gap-2">
@@ -421,11 +427,11 @@ const getColumns = (
         );
       }
 
-      // At this point blocks exists (could be empty array or populated array)
+      // Only show reindex button if there are missing blocks
       return (
         <div className="flex items-center gap-2">
           <span>{blocks.length.toLocaleString()}</span>
-          {reloadButton}
+          {blocks.length > 0 && reloadButton}
         </div>
       );
     },

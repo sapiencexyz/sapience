@@ -198,9 +198,8 @@ const AdminTable: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="mt-2">Loading Markets...</p>
+      <div className="absolute inset-0 flex justify-center items-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin opacity-20" />
       </div>
     );
   }

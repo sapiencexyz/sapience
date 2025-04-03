@@ -183,15 +183,16 @@ const Admin = () => {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full pb-20">
       <AdminTable />
 
-      <div className="flex gap-4 my-4 ml-4">
-        <Button onClick={() => setStatusOpen(true)}>Check Job Status</Button>
-        <Button onClick={() => setIndexResourceOpen(true)}>
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-background pt-4 flex gap-4 pb-4 px-4">
+        <span className="font-normal text-lg flex items-center mr-2">Tools:</span>
+        <Button size="xs" className="text-xs" onClick={() => setStatusOpen(true)}>Check Job Status</Button>
+        <Button size="xs" className="text-xs" onClick={() => setIndexResourceOpen(true)}>
           Index Resource
         </Button>
-        <Button onClick={() => setRefreshCacheOpen(true)}>Refresh Cache</Button>
+        <Button size="xs" className="text-xs" onClick={() => setRefreshCacheOpen(true)}>Refresh Cache</Button>
       </div>
 
       <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
