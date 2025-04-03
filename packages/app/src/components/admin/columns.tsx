@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { Download, Loader2, InfoIcon, Vault } from 'lucide-react';
+import { Download, Loader2, InfoIcon, Vault, Check } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { zeroAddress } from 'viem';
@@ -152,14 +152,32 @@ const BondApproveButton = ({
   const requiresApproval = !allowance || bondAmount > (allowance as bigint);
 
   if (!requiresApproval) {
-    return <span>✓ Approved</span>;
+    // Return null as the button is only shown when approval is needed
+    return null;
   }
 
   return (
-    <Button size="xs" onClick={handleApprove} disabled={isApproving}>
-      {isApproving && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-      Approve Bond
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon"
+            onClick={handleApprove}
+            disabled={isApproving}
+            className="h-5 w-5 p-0 ml-1 bg-black text-white hover:bg-gray-800"
+          >
+            {isApproving ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Check className="h-3 w-3" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Approve {bondAmount?.toString() || 'N/A'} bond</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -667,33 +685,18 @@ const getColumns = (
       return bondAmount ? bondAmount.toString() : '';
     },
     cell: ({ row }) => {
-      const bondAmount = row.original.market.marketParams?.bondAmount;
-      if (!bondAmount) return <span>Loading...</span>;
-
-      return <span>{bondAmount.toString()}</span>;
-    },
-  },
-  {
-    id: 'bondApproved',
-    header: 'Bond Approved',
-    accessorFn: (row) => {
-      // This will be determined at render time
-      return `${row.marketAddress}-${row.chainId}`;
-    },
-    cell: ({ row }) => {
       const { address } = useAccount();
       const { market } = row.original;
       const bondCurrency = market.marketParams?.bondCurrency;
       const bondAmount = market.marketParams?.bondAmount;
 
       // Determine the target address for approval
-      // Use vault address if it exists, otherwise use market address
       const targetAddress =
         market.vaultAddress !== zeroAddress
           ? market.vaultAddress
           : market.address;
 
-      const { data: allowance } = useReadContract({
+      const { data: allowance, isLoading: isLoadingAllowance } = useReadContract({
         abi: erc20ABI,
         address: bondCurrency as `0x${string}`,
         functionName: 'allowance',
@@ -706,36 +709,28 @@ const getColumns = (
         },
       });
 
-      const requiresApproval = !allowance || bondAmount > (allowance as bigint);
-
-      if (requiresApproval) {
-        // If allowance is 0 or undefined, only show the button
-        if (!allowance || (allowance as bigint) === BigInt(0)) {
-          return (
-            <BondApproveButton
-              market={market}
-              bondAmount={bondAmount}
-              bondCurrency={bondCurrency}
-              vaultAddress={market.vaultAddress}
-            />
-          );
-        }
-
-        // Otherwise show both allowance and button
-        return (
-          <div className="flex items-center gap-2">
-            <span>{allowance.toString()}</span>
-            <BondApproveButton
-              market={market}
-              bondAmount={bondAmount}
-              bondCurrency={bondCurrency}
-              vaultAddress={market.vaultAddress}
-            />
-          </div>
-        );
+      if (isLoadingAllowance || bondAmount === undefined) {
+        return <span>Loading...</span>;
       }
 
-      return <span>{allowance?.toString() || '0'}</span>;
+      const requiresApproval = !allowance || bondAmount > (allowance as bigint);
+
+      return (
+        <div className="flex items-center">
+          <span>
+            {allowance ? (allowance as bigint).toString() : '0'} /{' '}
+            {bondAmount.toString()}
+          </span>
+          {requiresApproval && (
+            <BondApproveButton
+              market={market}
+              bondAmount={bondAmount}
+              bondCurrency={bondCurrency}
+              vaultAddress={market.vaultAddress} // Pass vaultAddress explicitly
+            />
+          )}
+        </div>
+      );
     },
   },
   {
