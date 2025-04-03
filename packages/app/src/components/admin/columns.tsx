@@ -1,10 +1,11 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { Download, Loader2, InfoIcon } from 'lucide-react';
+import { Download, Loader2, InfoIcon, Vault } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { zeroAddress } from 'viem';
 import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { base, sepolia } from 'viem/chains';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +27,18 @@ import SettleCell from './SettleCell';
 import type { MissingBlocks, BondCellProps } from './types';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { convertToSqrtPriceX96 } from '~/lib/utils/util';
+
+// Create a mapping of chain IDs to viem chain objects with added color property
+interface ChainWithColor {
+  id: number;
+  name: string;
+  color: string;
+}
+
+const chains: Record<number, ChainWithColor> = {
+  [sepolia.id]: { id: sepolia.id, name: "Sepolia", color: 'bg-gray-100 text-gray-800' },
+  [base.id]: { id: base.id, name: "Base", color: 'bg-blue-100 text-blue-800' },
+};
 
 // ResourceCell component to display resource name and icon
 const ResourceCell = ({ marketAddress, chainId }: { marketAddress: string; chainId: number }) => {
@@ -171,6 +184,20 @@ const getColumns = (
     ),
   },
   {
+    id: 'resource',
+    header: 'Resource',
+    accessorFn: (row) => {
+      // Use marketAddress for sorting but display resource cell
+      return `${row.marketAddress}-${row.chainId}`;
+    },
+    cell: ({ row }) => (
+      <ResourceCell 
+        marketAddress={row.original.marketAddress}
+        chainId={row.original.chainId}
+      />
+    ),
+  },
+  {
     id: 'status',
     header: 'Status',
     accessorFn: (row) => {
@@ -221,20 +248,6 @@ const getColumns = (
     },
   },
   {
-    id: 'resource',
-    header: 'Resource',
-    accessorFn: (row) => {
-      // Use marketAddress for sorting but display resource cell
-      return `${row.marketAddress}-${row.chainId}`;
-    },
-    cell: ({ row }) => (
-      <ResourceCell 
-        marketAddress={row.original.marketAddress}
-        chainId={row.original.chainId}
-      />
-    ),
-  },
-  {
     id: 'endTimestamp',
     header: 'Ends',
     accessorKey: 'endTimestamp',
@@ -242,9 +255,40 @@ const getColumns = (
       const timestamp = getValue() as number;
       const date = new Date(timestamp * 1000);
       const now = new Date();
-      return date < now
-        ? `${formatDistanceToNow(date)} ago`
-        : `in ${formatDistanceToNow(date)}`;
+      return (
+        <div className="flex items-center gap-2">
+          <span>
+            {date < now
+              ? `${formatDistanceToNow(date)} ago`
+              : `in ${formatDistanceToNow(date)}`}
+          </span>
+          <span className="text-xs text-gray-500">4 week period</span>
+        </div>
+      );
+    },
+  },
+  {
+    id: 'chainId',
+    header: 'Chain',
+    accessorKey: 'chainId',
+    cell: ({ row }) => {
+      const chainId = row.original.chainId;
+      const chain = chains[chainId];
+      
+      if (chain) {
+        return (
+          <div className={`px-2 py-1 rounded-md text-xs font-medium inline-block ${chain.color}`}>
+            {chain.name}
+          </div>
+        );
+      }
+      
+      // Fallback for unknown chains
+      return (
+        <div className="px-2 py-1 rounded-md text-xs font-medium inline-block bg-gray-100 text-gray-800">
+          Chain {chainId}
+        </div>
+      );
     },
   },
   {
@@ -258,17 +302,11 @@ const getColumns = (
       
       return (
         <div className="flex items-center gap-2">
-          <AddressCell
-            address={row.original.vaultAddress}
-            chainId={row.original.chainId}
-          />
           {isVault && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <div className="h-5 w-5 rounded bg-blue-500/20 border border-blue-500 flex items-center justify-center">
-                    <span className="text-blue-500 text-xs font-medium">V</span>
-                  </div>
+                  <Vault className="h-4 w-4 text-gray-500" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Vault Contract</p>
@@ -276,6 +314,10 @@ const getColumns = (
               </Tooltip>
             </TooltipProvider>
           )}
+          <AddressCell
+            address={row.original.vaultAddress}
+            chainId={row.original.chainId}
+          />
         </div>
       );
     },
@@ -292,9 +334,12 @@ const getColumns = (
     ),
   },
   {
-    id: 'chainId',
-    header: 'Chain',
-    accessorKey: 'chainId',
+    id: 'epochId',
+    header: 'Period',
+    accessorKey: 'epochId',
+    cell: ({ row }) => (
+      <span>{row.original.epochId}</span>
+    ),
   },
   {
     id: 'isYin',
@@ -317,12 +362,19 @@ const getColumns = (
     ),
   },
   {
-    id: 'epochId',
-    header: 'Period',
-    accessorKey: 'epochId',
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <span>{row.original.epochId}</span>
+    id: 'missingPriceBlocks',
+    header: 'Missing Prices',
+    accessorFn: (row) => {
+      const key = `${row.marketAddress}-${row.epochId}`;
+      return missingBlocks[key]?.resourcePrice?.length || 0;
+    },
+    cell: ({ row }) => {
+      const key = `${row.original.marketAddress}-${row.original.epochId}`;
+      const missingBlocksEntry = missingBlocks[key];
+      const blocks = missingBlocksEntry?.resourcePrice;
+
+      // Always provide a way to reload/retry regardless of state
+      const reloadButton = (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -330,7 +382,7 @@ const getColumns = (
                 size="icon"
                 onClick={() =>
                   handleReindex(
-                    'events',
+                    'price',
                     row.original.marketAddress,
                     row.original.epochId,
                     row.original.chainId
@@ -342,52 +394,38 @@ const getColumns = (
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Reindex Events</p>
+              <p>Load Missing Prices</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      </div>
-    ),
-  },
-  {
-    id: 'missingPriceBlocks',
-    header: 'Missing Prices',
-    accessorFn: (row) => {
-      const key = `${row.marketAddress}-${row.epochId}`;
-      return missingBlocks[key]?.resourcePrice?.length || 0;
-    },
-    cell: ({ row }) => {
-      const key = `${row.original.marketAddress}-${row.original.epochId}`;
-      const blocks = missingBlocks[key]?.resourcePrice;
+      );
 
+      // If entry doesn't exist yet, show loading spinner
+      if (missingBlocksEntry === undefined) {
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />            </div>
+            {reloadButton}
+          </div>
+        );
+      }
+
+      // If blocks is undefined, that's an error state
+      if (blocks === undefined) {
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-amber-500">Error</span>
+            {reloadButton}
+          </div>
+        );
+      }
+
+      // At this point blocks exists (could be empty array or populated array)
       return (
         <div className="flex items-center gap-2">
-          <span>{blocks ? blocks.length.toLocaleString() : 'Loading...'}</span>
-          {blocks && blocks.length > 0 && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="icon"
-                    onClick={() =>
-                      handleReindex(
-                        'price',
-                        row.original.marketAddress,
-                        row.original.epochId,
-                        row.original.chainId
-                      )
-                    }
-                    className="h-5 w-5 p-0"
-                  >
-                    <Download className="h-3 w-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Reindex Missing Prices</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          <span>{blocks.length.toLocaleString()}</span>
+          {reloadButton}
         </div>
       );
     },
@@ -666,6 +704,26 @@ const getColumns = (
         epoch={row.original}
         missingBlocks={missingBlocks}
       />
+    ),
+  },
+  {
+    id: 'reindexEvents',
+    header: 'Reindex',
+    enableSorting: false,
+    cell: ({ row }) => (
+      <Button
+        size="xs"
+        onClick={() =>
+          handleReindex(
+            'events',
+            row.original.marketAddress,
+            row.original.epochId,
+            row.original.chainId
+          )
+        }
+      >
+        Reindex Market Events
+      </Button>
     ),
   },
 ];
