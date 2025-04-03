@@ -1,6 +1,7 @@
 import { ResourcePerformance } from './resourcePerformance';
 import { Resource } from 'src/models/Resource';
-import { clearStorageFiles } from './helper';
+import { clearStorageFiles } from './persistenceHelper';
+
 export class ResourcePerformanceManager {
   private static _instance: ResourcePerformanceManager;
   private static _initialized: boolean = false;
@@ -150,10 +151,18 @@ export class ResourcePerformanceManager {
     this.resourcePerformances = {};
 
     this.resources = resources;
+    // Create all instances of ResourcePerformance
     for (const resource of this.resources) {
       this.resourcePerformances[resource.slug] = new ResourcePerformance(
         resource
       );
+      console.log(
+        `ResourcePerformanceManager Create Resource ${resource.slug} done - op# ${this.actionIdx}`
+      );
+    }
+
+    // Initialize all instances of ResourcePerformance
+    for (const resource of this.resources) {
       await this.updateResourceCache(resource, hardInitialize, 'initialize');
       console.log(
         `ResourcePerformanceManager Initialize Resource ${resource.slug} done - op# ${this.actionIdx}`
