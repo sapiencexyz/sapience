@@ -206,23 +206,23 @@ const AdminTable: React.FC = () => {
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
+    <div className="w-full overflow-x-auto">
+      <Table className="w-fit min-w-full whitespace-nowrap">
+        <TableHeader className="bg-muted/50">
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <TableRow key={headerGroup.id} className="border-b">
               {headerGroup.headers.map((header) => (
                 <TableHead
                   key={header.id}
                   onClick={header.column.getToggleSortingHandler()}
-                  className="cursor-pointer"
+                  className="cursor-pointer px-3 text-xs font-medium h-9"
                 >
                   <span className="flex items-center">
                     {flexRender(
                       header.column.columnDef.header,
                       header.getContext()
                     )}
-                    <span className="ml-2 inline-block">
+                    <span className="ml-1 inline-block">
                       {renderSortIcon(header.column.getIsSorted())}
                     </span>
                   </span>
@@ -233,9 +233,9 @@ const AdminTable: React.FC = () => {
         </TableHeader>
         <TableBody>
           {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
+            <TableRow key={row.id} className="border-b hover:bg-muted/20">
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
+                <TableCell key={cell.id} className="h-9 py-0 px-3 text-xs align-middle">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}
