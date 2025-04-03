@@ -1,6 +1,6 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { Download, Loader2, InfoIcon, Vault } from 'lucide-react';
+import { Download, Loader2, InfoIcon, Vault, Eye, Calendar, HelpCircle, Hash, Globe } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { zeroAddress } from 'viem';
@@ -170,7 +170,7 @@ const getColumns = (
   {
     id: 'isPublic',
     header: 'Public',
-    accessorFn: (row) => row.public,
+    accessorFn: (row) => row.public ? 'true' : 'false',
     cell: ({ row }) => (
       <PublicCell
         isPublic={row.original.public}
@@ -212,10 +212,10 @@ const getColumns = (
       const endTime = row.endTimestamp;
       const settled = row.settled;
       
-      if (now < startTime) return 1; // Pre-Period Trading
-      if (now < endTime) return 2; // Active Trading
-      if (!settled) return row.assertionId ? 3 : 4; // Submitted to UMA or Needs Settlement
-      return 5; // Settled
+      if (now < startTime) return '1'; // Pre-Period Trading
+      if (now < endTime) return '2'; // Active Trading
+      if (!settled) return row.assertionId ? '3' : '4'; // Submitted to UMA or Needs Settlement
+      return '5'; // Settled
     },
     cell: ({ row }) => {
       const now = Math.floor(Date.now() / 1000);

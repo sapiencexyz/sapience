@@ -187,7 +187,7 @@ const Admin = () => {
       <AdminTable />
 
       <div className="fixed bottom-0 left-0 right-0 border-t bg-background pt-4 flex gap-4 pb-4 px-4">
-        <span className="font-normal text-lg flex items-center mr-2">Tools:</span>
+        <span className="font-normal text-lg flex items-center mr-2">Tools</span>
         <Button size="xs" className="text-xs" onClick={() => setStatusOpen(true)}>Check Job Status</Button>
         <Button size="xs" className="text-xs" onClick={() => setIndexResourceOpen(true)}>
           Index Resource
