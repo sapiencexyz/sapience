@@ -34,12 +34,21 @@ export function useMarketPriceData(
   endTimestamp: number
 ) {
   const now = Math.floor(Date.now() / 1000);
+  // Determine if the market is active *before* calculating the timestamp
   const isActive = now < endTimestamp;
+  // Use (current time - 60 seconds) if active, otherwise use current time
+  const timestampToUse = isActive ? now - 60 : now;
+  // Use the lesser of the calculated time (or now-60) and the end time.
+  // This ensures settled markets still use endTimestamp.
+  // Rename this timestamp as it's used for the API call.
+  const timestampForApi = Math.min(timestampToUse, endTimestamp);
 
-  // If the market is active, use the current time minus a 60-second buffer
-  // for fetching estimates, otherwise use the actual endTimestamp.
-  // This might help if the backend has slight delays indexing the absolute latest data.
-  const timestamp = isActive ? Math.max(0, now - 60) : endTimestamp;
+  // Calculate a stable timestamp for the queryKey when the market is active.
+  // Round down to the nearest 5 minutes (300 seconds) to prevent rapid key changes.
+  const queryKeyTimestampInterval = 300;
+  const timestampForKey = isActive
+    ? Math.floor(timestampForApi / queryKeyTimestampInterval) * queryKeyTimestampInterval
+    : timestampForApi; // Use the precise timestamp for the key if not active
 
   const { stEthPerToken: currentStEthPerToken } = useFoil();
   const { data: resources } = useResources();
@@ -55,16 +64,21 @@ export function useMarketPriceData(
   // Fetch historical stEthPerToken if it's an Ethereum resource
   const { data: historicalStEthPerToken = 0, isLoading: isStEthLoading } =
     useQuery({
-      queryKey: ['stEthPerToken', chainId, timestamp],
+      // Use the stabilized timestamp in the query key
+      queryKey: ['stEthPerToken', chainId, timestampForKey],
       queryFn: async () => {
         if (!isEthereumResource) return currentStEthPerToken || 1;
 
         const data = await foilApi.get(
-          `/getStEthPerTokenAtTimestamps?chainId=${chainId}&endTime=${timestamp}`
+          // Use the potentially more precise timestamp for the API call
+          `/getStEthPerTokenAtTimestamps?chainId=${chainId}&endTime=${timestampForApi}`
         );
         return Number(formatEther(BigInt(data.stEthPerToken)));
       },
-      enabled: !!isEthereumResource && !!chainId && !!timestamp,
+      // Use the API timestamp for the enabled check
+      enabled: !!isEthereumResource && !!chainId && !!timestampForApi,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
     });
 
   const {
@@ -72,14 +86,16 @@ export function useMarketPriceData(
     isLoading: isPriceLoading,
     error,
   } = useQuery({
+    // Use the stabilized timestamp in the query key
     queryKey: [
       'marketPriceData',
       `${chainId}:${marketAddress}`,
       epochId,
-      timestamp,
+      timestampForKey,
     ],
     queryFn: async () => {
-      if (!marketAddress || !chainId || !epochId || !timestamp) {
+      // Use the API timestamp for the enabled check
+      if (!marketAddress || !chainId || !epochId || !timestampForApi) {
         return null;
       }
 
@@ -89,7 +105,7 @@ export function useMarketPriceData(
           address: marketAddress,
           chainId,
           epochId: epochId.toString(),
-          timestamp,
+          timestamp: timestampForApi,
         },
       });
 
@@ -116,7 +132,10 @@ export function useMarketPriceData(
         isEthereumResource,
       };
     },
-    enabled: !!marketAddress && !!chainId && !!epochId && !!timestamp,
+    // Use the API timestamp for the enabled check
+    enabled: !!marketAddress && !!chainId && !!epochId && !!timestampForApi,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const isLoading = isPriceLoading || isStEthLoading;
