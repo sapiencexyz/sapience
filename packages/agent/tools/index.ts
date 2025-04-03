@@ -18,7 +18,8 @@ import {
   getLatestEpochInfo,
   getTokenOwner,
   getTokenByIndex,
-  getReferencePrice
+  getReferencePrice,
+  getERC20BalanceOf
 } from './readFoilContracts';
 
 import {
@@ -61,7 +62,8 @@ export const readFoilContracts = {
   get_foil_latest_epoch_info: getLatestEpochInfo,
   get_foil_token_owner: getTokenOwner,
   get_foil_token_by_index: getTokenByIndex,
-  get_foil_reference_price: getReferencePrice
+  get_foil_reference_price: getReferencePrice,
+  get_erc20_balance_of: getERC20BalanceOf,
 };
 
 export const writeFoilContracts = {

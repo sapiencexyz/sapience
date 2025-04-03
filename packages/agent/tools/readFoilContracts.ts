@@ -1,7 +1,7 @@
 import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
 import FoilABI from '../abi/Foil.json';
-
+import ERC20ABI from '../abi/ERC20.json';
 // Create a public client for interacting with the blockchain
 const client = createPublicClient({
   chain: base,
@@ -709,6 +709,92 @@ export const getBalanceOf = {
           text: JSON.stringify({ balance: balance.toString() }, null, 2)
         }]
       };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error fetching balance: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  },
+};
+
+export const getERC20BalanceOf = {
+  name: "get_erc20_balance_of",
+  description: "Gets the balance of an ERC20 token for a specific wallet address",
+  parameters: {
+    properties: {
+      tokenAddress: {
+        type: "string",
+        description: "The address of the ERC20 token"
+      },
+      walletAddress: {
+        type: "string",
+        description: "The address to query balance for"
+      }
+    },
+    required: ["tokenAddress", "walletAddress"],
+  },
+  function: async (args: { tokenAddress: string; walletAddress: string }) => {
+    // Validate required parameters (and handle stringified args)
+    if (!args) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: args required"
+        }], 
+        isError: true
+      };
+    }
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch (error) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: "Error: args must be an object"
+          }],
+          isError: true
+        };
+      }
+    }
+
+    // Validate required parameters
+    if (!args.tokenAddress) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: tokenAddress is required"
+        }],
+        isError: true
+      };
+    }
+    if (!args.walletAddress) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: walletAddress is required"
+        }],
+        isError: true
+      };
+    }
+
+    try {
+      const balance = await client.readContract({
+        address: args.tokenAddress as `0x${string}`,
+        abi: ERC20ABI.abi,
+        functionName: 'balanceOf',
+        args: [args.walletAddress as `0x${string}`]
+      });
+      return JSON.stringify({
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify({ balance: balance.toString() }, null, 2)
+        }]
+      });
     } catch (error) {
       return {
         content: [{

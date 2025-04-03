@@ -11,6 +11,9 @@ import { getSystemPrompt, getSummaryPrompt, getEvaluationPrompt } from './prompt
 // Define the states
 type AgentState = 'Lookup' | 'Evaluate' | 'Update' | 'Execute' | 'Summary' | 'Delay';
 
+// Define the collateral token
+const COLLATERAL_WSTETH = '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452';
+
 // Helper to format messages for cleaner logging
 function formatMessagesForLog(messages: BaseMessage[]): string {
     return messages.map(m => {
@@ -31,6 +34,7 @@ function formatMessagesForLog(messages: BaseMessage[]): string {
 
 export class FoilAgent {
   private config: AgentConfig;
+  private collateralToken: string;
   private tools: Record<string, Record<string, Tool>>;
   private flatTools: DynamicTool[];
   private agentAddress: string;
@@ -57,6 +61,7 @@ export class FoilAgent {
     this.config = config;
     this.tools = tools;
     this.agentAddress = agentAddress;
+    this.collateralToken = COLLATERAL_WSTETH;
     this.currentState = 'Lookup'; // Start with Lookup state
     this.running = false;
     this.isSingleRun = config.interval <= 0; // Determine if it's a single run at init
@@ -447,21 +452,21 @@ export class FoilAgent {
 
     // 2. Fetch agent's collateral balance (Example)
     let collateralBalance = 0; // Placeholder
-    const getBalanceTool = this.flatTools.find(t => t.name === 'getBalanceOf'); // FIX: Use correct tool name from logs
+    const getBalanceTool = this.flatTools.find(t => t.name === 'getERC20BalanceOf'); // FIX: Use correct tool name from logs
     if (getBalanceTool) {
         try {
-            Logger.info(chalk.dim(`UPDATE: Fetching collateral balance for agent ${this.agentAddress}...`));
-            const balanceResultRaw = await getBalanceTool.func(JSON.stringify({ owner: this.agentAddress }));
+            Logger.info(chalk.dim(`UPDATE: Fetching collateral (${this.collateralToken}) balance for agent ${this.agentAddress}...`));
+            const balanceResultRaw = await getBalanceTool.func(JSON.stringify({ tokenAddress: this.collateralToken, walletAddress: this.agentAddress }));
              Logger.info(chalk.dim(`UPDATE (Raw Balance Result): ${typeof balanceResultRaw === 'string' ? balanceResultRaw : JSON.stringify(balanceResultRaw)}`));
 
             // --- ADD: Parse balanceResult ---
-             let parsedBalance = 0;
+             let parsedBalance = '0';
              if (typeof balanceResultRaw === 'string') {
                  try {
                      // Assuming the result is a simple number or an object containing the balance
                      const parsedJson = JSON.parse(balanceResultRaw);
                      if (typeof parsedJson === 'number') {
-                         parsedBalance = parsedJson;
+                         parsedBalance = parsedJson.toString();
                      } else if (typeof parsedJson === 'object' && parsedJson !== null && typeof parsedJson.balance === 'number') {
                          parsedBalance = parsedJson.balance;
                      } else if (typeof parsedJson === 'object' && parsedJson !== null && Array.isArray(parsedJson.content) && parsedJson.content.length > 0 && parsedJson.content[0].type === 'text') {
@@ -469,9 +474,15 @@ export class FoilAgent {
                          try {
                              const innerParsed = JSON.parse(parsedJson.content[0].text);
                               if (typeof innerParsed === 'number') {
-                                 parsedBalance = innerParsed;
-                             } else if (typeof innerParsed === 'object' && innerParsed !== null && typeof innerParsed.balance === 'number') {
+                                 parsedBalance = innerParsed.toString();
+                             } else if (typeof innerParsed === 'object' && innerParsed !== null) {
+                              if (typeof innerParsed.balance === 'string') {
                                 parsedBalance = innerParsed.balance;
+                              } else if (typeof innerParsed.balance === 'number') {
+                                parsedBalance = innerParsed.balance.toString();
+                              } else {
+                                Logger.warn(chalk.yellow(`UPDATE: Unexpected inner structure in balance result text: ${parsedJson.content[0].text}`));
+                              }
                              } else {
                                  Logger.warn(chalk.yellow(`UPDATE: Unexpected inner structure in balance result text: ${parsedJson.content[0].text}`));
                              }
