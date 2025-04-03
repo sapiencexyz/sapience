@@ -244,7 +244,9 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     height={16}
                     className=" "
                   />
-                  {resource.name}
+                  {resource.slug === 'celestia-blobspace'
+                    ? 'Celestia Blob Count'
+                    : resource.name}
                 </div>
               </div>
             ))}
