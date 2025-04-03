@@ -1,7 +1,7 @@
+import { Button } from '@foil/ui/components/ui/button';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
-import { Button } from '@/components/ui/button';
 import { TimeWindow } from '~/lib/interfaces/interfaces';
 
 interface WindowSelectorProps {

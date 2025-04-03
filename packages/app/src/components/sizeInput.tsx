@@ -1,12 +1,12 @@
 'use client';
 
+import { Button } from '@foil/ui/components/ui/button';
+import { FormItem, FormLabel } from '@foil/ui/components/ui/form';
+import { Input } from '@foil/ui/components/ui/input';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
 
-import { Button } from '~/components/ui/button';
-import { FormItem, FormLabel } from '~/components/ui/form';
-import { Input } from '~/components/ui/input';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 interface Props {

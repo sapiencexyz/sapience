@@ -1,8 +1,8 @@
+import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
 import type React from 'react';
 import { useContext } from 'react';
 
 import { PeriodContext } from '../lib/context/PeriodProvider';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const MarketUnitsToggle: React.FC = () => {
   const { useMarketUnits, setUseMarketUnits } = useContext(PeriodContext);

@@ -1,11 +1,11 @@
 'use client';
 
+import { FormItem, FormLabel, FormMessage } from '@foil/ui/components/ui/form';
+import { Input } from '@foil/ui/components/ui/input';
 import { useContext } from 'react';
 import type { Control, Path, FieldValues } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 
-import { FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { removeLeadingZeros } from '~/lib/utils/util';
 

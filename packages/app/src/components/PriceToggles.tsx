@@ -1,6 +1,8 @@
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@foil/ui/components/ui/toggle-group';
 import Image from 'next/image';
-
-import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 
 interface PriceTogglesProps {
   seriesVisibility: {

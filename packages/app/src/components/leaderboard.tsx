@@ -1,3 +1,19 @@
+import { badgeVariants } from '@foil/ui/components/ui/badge';
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@foil/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -11,22 +27,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { getEnsName } from 'viem/ens';
 import { usePublicClient } from 'wagmi';
 
-import { badgeVariants } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { foilApi } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';

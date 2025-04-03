@@ -1,16 +1,14 @@
-import { InfoIcon } from 'lucide-react';
-import { useFormContext } from 'react-hook-form';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-
+import { Button } from '@foil/ui/components/ui/button';
+import { Input } from '@foil/ui/components/ui/input';
+import { Label } from '@foil/ui/components/ui/label';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from './ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import { InfoIcon } from 'lucide-react';
+import { useFormContext } from 'react-hook-form';
 
 const SlippageTolerance: React.FC = () => {
   const { setValue, watch } = useFormContext();

@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Button } from '~/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '~/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
 import { ArrowRight, Bot, Brain, Code, ExternalLink, Github, Search, Shield } from 'lucide-react';
 
 // Bot icon component with gray circle background

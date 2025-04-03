@@ -1,4 +1,12 @@
 import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@foil/ui/components/ui/table';
+import {
   useReactTable,
   flexRender,
   getCoreRowModel,
@@ -9,14 +17,6 @@ import { Loader2, ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 import { useSignMessage } from 'wagmi';
 
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table';
 import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useFoil } from '~/lib/context/FoilProvider';

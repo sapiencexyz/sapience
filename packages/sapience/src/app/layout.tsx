@@ -8,7 +8,7 @@ import InstallDialog from '~/components/InstallDialog';
 import Layout from '~/components/layout';
 import LoadingSpinner from '~/components/loadingSpinner';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster } from '@foil/ui/components/ui/toaster';
 
 type RootLayoutProps = {
   children: React.ReactNode;

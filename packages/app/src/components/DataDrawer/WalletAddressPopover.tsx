@@ -1,15 +1,15 @@
+import { Button } from '@foil/ui/components/ui/button';
+import { Input } from '@foil/ui/components/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@foil/ui/components/ui/popover';
 import { Loader2, WalletIcon, ArrowRightIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
 import { useAccount } from 'wagmi';
 
-import { Button } from '~/components/ui/button';
-import { Input } from '~/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/ui/popover';
 import { mainnetClient, shortenAddress } from '~/lib/utils/util';
 
 interface WalletAddressPopoverProps {

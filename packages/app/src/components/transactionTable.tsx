@@ -1,3 +1,11 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@foil/ui/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -21,14 +29,6 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 
 import { useFoil } from '../lib/context/FoilProvider';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { convertGgasPerWstEthToGwei, foilApi } from '~/lib/utils/util';

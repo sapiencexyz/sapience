@@ -1,7 +1,7 @@
+import { ScrollArea } from '@foil/ui/components/ui/scroll-area';
 import { useSearchParams } from 'next/navigation';
 import { useContext, useEffect } from 'react';
 
-import { ScrollArea } from '~/components/ui/scroll-area';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 

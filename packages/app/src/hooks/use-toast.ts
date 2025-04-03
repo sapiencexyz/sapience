@@ -1,9 +1,11 @@
 'use client';
 
 // Inspired by react-hot-toast library
+import type {
+  ToastActionElement,
+  ToastProps,
+} from '@foil/ui/components/ui/toast';
 import * as React from 'react';
-
-import type { ToastActionElement, ToastProps } from '~/components/ui/toast';
 
 // Add custom styles to the toast props
 interface CustomToastProps extends ToastProps {
