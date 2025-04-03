@@ -184,9 +184,15 @@ const Admin = () => {
 
   const toolButtons = (
     <>
-      <Button size="sm" onClick={() => setStatusOpen(true)}>Check Job Status</Button>
-      <Button size="sm" onClick={() => setIndexResourceOpen(true)}>Index Resource</Button>
-      <Button size="sm" onClick={() => setRefreshCacheOpen(true)}>Refresh Cache</Button>
+      <Button size="sm" onClick={() => setStatusOpen(true)}>
+        Check Job Status
+      </Button>
+      <Button size="sm" onClick={() => setIndexResourceOpen(true)}>
+        Index Resource
+      </Button>
+      <Button size="sm" onClick={() => setRefreshCacheOpen(true)}>
+        Refresh Cache
+      </Button>
     </>
   );
 

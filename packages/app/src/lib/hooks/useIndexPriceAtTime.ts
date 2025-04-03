@@ -1,16 +1,20 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
-import { formatUnits } from 'viem';
 
 import { foilApi, gweiToEther } from '~/lib/utils/util';
 
 const INDEX_PRICE_AT_TIME_QUERY = gql`
-  query IndexPriceAtTime($address: String!, $chainId: Int!, $epochId: String!, $timestamp: Int!) {
+  query IndexPriceAtTime(
+    $address: String!
+    $chainId: Int!
+    $epochId: String!
+    $timestamp: Int!
+  ) {
     indexPriceAtTime(
-      address: $address, 
-      chainId: $chainId, 
-      epochId: $epochId,
+      address: $address
+      chainId: $chainId
+      epochId: $epochId
       timestamp: $timestamp
     ) {
       timestamp
@@ -41,9 +45,9 @@ export function useIndexPriceAtTime(
         query: print(INDEX_PRICE_AT_TIME_QUERY),
         variables: {
           address: marketAddress,
-          chainId: chainId,
+          chainId,
           epochId: epochId.toString(),
-          timestamp: timestamp,
+          timestamp,
         },
       });
 
@@ -66,4 +70,4 @@ export function useIndexPriceAtTime(
     isLoading,
     error,
   };
-} 
+}

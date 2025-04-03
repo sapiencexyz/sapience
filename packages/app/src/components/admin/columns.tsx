@@ -1,11 +1,11 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { Download, Loader2, InfoIcon, Vault, Eye, Calendar, HelpCircle, Hash, Globe } from 'lucide-react';
+import { Download, Loader2, InfoIcon, Vault } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
 import { zeroAddress } from 'viem';
-import { useAccount, useReadContract, useWriteContract } from 'wagmi';
 import { base, sepolia } from 'viem/chains';
+import { useAccount, useReadContract, useWriteContract } from 'wagmi';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -14,19 +14,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
-import erc20ABI from '~/lib/erc20abi.json';
-import type { Market } from '~/lib/context/FoilProvider';
-import { useResources } from '~/lib/hooks/useResources';
 import NumberDisplay from '~/components/numberDisplay';
+import { useToast } from '~/hooks/use-toast';
+import type { Market } from '~/lib/context/FoilProvider';
+import erc20ABI from '~/lib/erc20abi.json';
 import { useMarketPriceData } from '~/lib/hooks/useMarketPriceData';
+import { useResources } from '~/lib/hooks/useResources';
 
 import AddressCell from './AddressCell';
 import PublicCell from './PublicCell';
 import SettleCell from './SettleCell';
 import type { MissingBlocks, BondCellProps } from './types';
-import { useFoil } from '~/lib/context/FoilProvider';
-import { convertToSqrtPriceX96 } from '~/lib/utils/util';
 
 // Create a mapping of chain IDs to viem chain objects with added color property
 interface ChainWithColor {
@@ -36,29 +34,39 @@ interface ChainWithColor {
 }
 
 const chains: Record<number, ChainWithColor> = {
-  [sepolia.id]: { id: sepolia.id, name: "Sepolia", color: 'bg-gray-100 text-gray-800' },
-  [base.id]: { id: base.id, name: "Base", color: 'bg-blue-100 text-blue-800' },
+  [sepolia.id]: {
+    id: sepolia.id,
+    name: 'Sepolia',
+    color: 'bg-gray-100 text-gray-800',
+  },
+  [base.id]: { id: base.id, name: 'Base', color: 'bg-blue-100 text-blue-800' },
 };
 
 // ResourceCell component to display resource name and icon
-const ResourceCell = ({ marketAddress, chainId }: { marketAddress: string; chainId: number }) => {
+const ResourceCell = ({
+  marketAddress,
+  chainId,
+}: {
+  marketAddress: string;
+  chainId: number;
+}) => {
   const { data: resources } = useResources();
-  
+
   if (!resources) {
     return <span>Loading...</span>;
   }
-  
+
   // Find the resource that contains this market
-  const resource = resources.find(resource => 
-    resource.markets.some(market => 
-      market.address === marketAddress && market.chainId === chainId
+  const resource = resources.find((resource) =>
+    resource.markets.some(
+      (market) => market.address === marketAddress && market.chainId === chainId
     )
   );
-  
+
   if (!resource) {
     return <span>Unknown</span>;
   }
-  
+
   return (
     <div className="flex items-center gap-2">
       {resource.iconPath && (
@@ -76,11 +84,11 @@ const ResourceCell = ({ marketAddress, chainId }: { marketAddress: string; chain
 };
 
 // BondApproveButton component to handle bond approval
-const BondApproveButton = ({ 
-  market, 
-  bondAmount, 
-  bondCurrency, 
-  vaultAddress 
+const BondApproveButton = ({
+  market,
+  bondAmount,
+  bondCurrency,
+  vaultAddress,
 }: Omit<BondCellProps, 'epoch'>) => {
   const { address } = useAccount();
   const { toast } = useToast();
@@ -88,9 +96,8 @@ const BondApproveButton = ({
 
   // Determine the target address for approval
   // Use vault address if it exists, otherwise use market address
-  const targetAddress = market.vaultAddress !== zeroAddress 
-    ? market.vaultAddress 
-    : market.address;
+  const targetAddress =
+    market.vaultAddress !== zeroAddress ? market.vaultAddress : market.address;
 
   // Exit early if required props are not available
   if (!bondAmount || !bondCurrency) {
@@ -170,7 +177,7 @@ const getColumns = (
   {
     id: 'isPublic',
     header: 'Public',
-    accessorFn: (row) => row.public ? 'true' : 'false',
+    accessorFn: (row) => (row.public ? 'true' : 'false'),
     cell: ({ row }) => (
       <PublicCell
         isPublic={row.original.public}
@@ -197,7 +204,7 @@ const getColumns = (
       return `${row.marketAddress}-${row.chainId}`;
     },
     cell: ({ row }) => (
-      <ResourceCell 
+      <ResourceCell
         marketAddress={row.original.marketAddress}
         chainId={row.original.chainId}
       />
@@ -210,8 +217,8 @@ const getColumns = (
       const now = Math.floor(Date.now() / 1000);
       const startTime = row.startTimestamp;
       const endTime = row.endTimestamp;
-      const settled = row.settled;
-      
+      const { settled } = row;
+
       if (now < startTime) return '1'; // Pre-Period Trading
       if (now < endTime) return '2'; // Active Trading
       if (!settled) return row.assertionId ? '3' : '4'; // Submitted to UMA or Needs Settlement
@@ -221,12 +228,12 @@ const getColumns = (
       const now = Math.floor(Date.now() / 1000);
       const startTime = row.original.startTimestamp;
       const endTime = row.original.endTimestamp;
-      const settled = row.original.settled;
-      const assertionId = row.original.assertionId;
-      
+      const { settled } = row.original;
+      const { assertionId } = row.original;
+
       let status = '';
       let statusClass = '';
-      
+
       if (now < startTime) {
         status = 'Pre-Period Trading';
         statusClass = 'bg-blue-100 text-blue-800';
@@ -245,9 +252,11 @@ const getColumns = (
         status = 'Settled';
         statusClass = 'bg-gray-100 text-gray-800';
       }
-      
+
       return (
-        <div className={`px-2 py-1 rounded-md text-xs font-medium inline-block ${statusClass}`}>
+        <div
+          className={`px-2 py-1 rounded-md text-xs font-medium inline-block ${statusClass}`}
+        >
           {status}
         </div>
       );
@@ -278,17 +287,19 @@ const getColumns = (
     header: 'Chain',
     accessorKey: 'chainId',
     cell: ({ row }) => {
-      const chainId = row.original.chainId;
+      const { chainId } = row.original;
       const chain = chains[chainId];
-      
+
       if (chain) {
         return (
-          <div className={`px-2 py-1 rounded-md text-xs font-medium inline-block ${chain.color}`}>
+          <div
+            className={`px-2 py-1 rounded-md text-xs font-medium inline-block ${chain.color}`}
+          >
             {chain.name}
           </div>
         );
       }
-      
+
       // Fallback for unknown chains
       return (
         <div className="px-2 py-1 rounded-md text-xs font-medium inline-block bg-gray-100 text-gray-800">
@@ -305,7 +316,7 @@ const getColumns = (
       // Get the actual vaultAddress from the market to compare
       const actualVaultAddress = row.original.market.vaultAddress;
       const isVault = actualVaultAddress !== zeroAddress;
-      
+
       return (
         <div className="flex items-center gap-2">
           {isVault && (
@@ -343,16 +354,16 @@ const getColumns = (
     id: 'epochId',
     header: 'Period',
     accessorKey: 'epochId',
-    cell: ({ row }) => (
-      <span>{row.original.epochId}</span>
-    ),
+    cell: ({ row }) => <span>{row.original.epochId}</span>,
   },
   {
     id: 'isCumulative',
     header: 'Cumulative',
     accessorFn: (row) => row.market?.isCumulative,
     cell: ({ row }) => (
-      <span className={`text-lg ${row.original.market.isCumulative ? 'text-gray-900' : 'text-gray-500'}`}>
+      <span
+        className={`text-lg ${row.original.market.isCumulative ? 'text-gray-900' : 'text-gray-500'}`}
+      >
         {row.original.market.isCumulative ? '●' : '○'}
       </span>
     ),
@@ -362,7 +373,9 @@ const getColumns = (
     header: 'Yin',
     accessorFn: (row) => row.market?.isYin,
     cell: ({ row }) => (
-      <span className={`text-lg ${row.original.market.isYin ? 'text-gray-900' : 'text-gray-500'}`}>
+      <span
+        className={`text-lg ${row.original.market.isYin ? 'text-gray-900' : 'text-gray-500'}`}
+      >
         {row.original.market.isYin ? '●' : '○'}
       </span>
     ),
@@ -447,31 +460,35 @@ const getColumns = (
       return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
     },
     cell: ({ row }) => {
-      const isCumulative = row.original.market.isCumulative;
-      
+      const { isCumulative } = row.original.market;
+
       const { indexPrice, isLoading, error, isActive } = useMarketPriceData(
         row.original.marketAddress,
         row.original.chainId,
         row.original.epochId,
         row.original.endTimestamp
       );
-      
+
       if (isLoading) {
         return <span>Loading...</span>;
       }
-      
+
       if (error) {
         return <span>Error: {error.message}</span>;
       }
-      
-      const tooltipContent = isCumulative 
-        ? "Estimated cumulative value for the period"
-        : "Estimated average price for the period";
-      
+
+      const tooltipContent = isCumulative
+        ? 'Estimated cumulative value for the period'
+        : 'Estimated average price for the period';
+
       if (isActive) {
         return (
           <div className="flex items-center gap-1">
-            {indexPrice !== undefined ? <NumberDisplay value={indexPrice} /> : <span>N/A</span>}
+            {indexPrice !== undefined ? (
+              <NumberDisplay value={indexPrice} />
+            ) : (
+              <span>N/A</span>
+            )}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
@@ -485,8 +502,12 @@ const getColumns = (
           </div>
         );
       }
-      
-      return indexPrice !== undefined ? <NumberDisplay value={indexPrice} /> : <span>N/A</span>;
+
+      return indexPrice !== undefined ? (
+        <NumberDisplay value={indexPrice} />
+      ) : (
+        <span>N/A</span>
+      );
     },
   },
   {
@@ -499,23 +520,24 @@ const getColumns = (
       return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
     },
     cell: ({ row }) => {
-      const { stEthPerToken, isLoading, isEthereumResource } = useMarketPriceData(
-        row.original.marketAddress,
-        row.original.chainId,
-        row.original.epochId,
-        row.original.endTimestamp
-      );
-      
+      const { stEthPerToken, isLoading, isEthereumResource } =
+        useMarketPriceData(
+          row.original.marketAddress,
+          row.original.chainId,
+          row.original.epochId,
+          row.original.endTimestamp
+        );
+
       if (isLoading) {
         return <span>Loading...</span>;
       }
-      
+
       // Only show stEthPerToken for Ethereum resources
       if (!isEthereumResource) {
         return <span>N/A</span>;
       }
-      
-      return <NumberDisplay value={stEthPerToken} />; 
+
+      return <NumberDisplay value={stEthPerToken} />;
     },
   },
   {
@@ -528,31 +550,35 @@ const getColumns = (
       return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
     },
     cell: ({ row }) => {
-      const isCumulative = row.original.market.isCumulative;
-      
+      const { isCumulative } = row.original.market;
+
       const { adjustedPrice, isLoading, error, isActive } = useMarketPriceData(
         row.original.marketAddress,
         row.original.chainId,
         row.original.epochId,
         row.original.endTimestamp
       );
-      
+
       if (isLoading) {
         return <span>Loading...</span>;
       }
-      
+
       if (error) {
         return <span>Error: {error.message}</span>;
       }
-      
-      const tooltipContent = isCumulative 
-        ? "Estimated cumulative value adjusted for ratio"
-        : "Estimated average price adjusted for ratio";
-      
+
+      const tooltipContent = isCumulative
+        ? 'Estimated cumulative value adjusted for ratio'
+        : 'Estimated average price adjusted for ratio';
+
       if (isActive) {
         return (
           <div className="flex items-center gap-1">
-            {adjustedPrice !== undefined ? <NumberDisplay value={adjustedPrice} /> : <span>N/A</span>}
+            {adjustedPrice !== undefined ? (
+              <NumberDisplay value={adjustedPrice} />
+            ) : (
+              <span>N/A</span>
+            )}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
@@ -566,8 +592,12 @@ const getColumns = (
           </div>
         );
       }
-      
-      return adjustedPrice !== undefined ? <NumberDisplay value={adjustedPrice} /> : <span>N/A</span>;
+
+      return adjustedPrice !== undefined ? (
+        <NumberDisplay value={adjustedPrice} />
+      ) : (
+        <span>N/A</span>
+      );
     },
   },
   {
@@ -586,15 +616,15 @@ const getColumns = (
         row.original.epochId,
         row.original.endTimestamp
       );
-      
+
       if (isLoading) {
         return <span>Loading...</span>;
       }
-      
+
       if (error) {
         return <span>Error: {error.message}</span>;
       }
-      
+
       if (isActive) {
         return (
           <div className="flex items-center gap-1">
@@ -612,7 +642,7 @@ const getColumns = (
           </div>
         );
       }
-      
+
       return <span>{sqrtPriceX96 ? sqrtPriceX96.toString() : 'N/A'}</span>;
     },
   },
@@ -623,7 +653,7 @@ const getColumns = (
     cell: ({ row }) => {
       const bondCurrency = row.original.market.marketParams?.bondCurrency;
       if (!bondCurrency) return <span>Loading...</span>;
-      
+
       return (
         <AddressCell address={bondCurrency} chainId={row.original.chainId} />
       );
@@ -639,7 +669,7 @@ const getColumns = (
     cell: ({ row }) => {
       const bondAmount = row.original.market.marketParams?.bondAmount;
       if (!bondAmount) return <span>Loading...</span>;
-      
+
       return <span>{bondAmount.toString()}</span>;
     },
   },
@@ -652,16 +682,17 @@ const getColumns = (
     },
     cell: ({ row }) => {
       const { address } = useAccount();
-      const market = row.original.market;
+      const { market } = row.original;
       const bondCurrency = market.marketParams?.bondCurrency;
       const bondAmount = market.marketParams?.bondAmount;
-      
+
       // Determine the target address for approval
       // Use vault address if it exists, otherwise use market address
-      const targetAddress = market.vaultAddress !== zeroAddress 
-        ? market.vaultAddress 
-        : market.address;
-      
+      const targetAddress =
+        market.vaultAddress !== zeroAddress
+          ? market.vaultAddress
+          : market.address;
+
       const { data: allowance } = useReadContract({
         abi: erc20ABI,
         address: bondCurrency as `0x${string}`,
@@ -670,17 +701,18 @@ const getColumns = (
         account: address || zeroAddress,
         chainId: row.original.chainId,
         query: {
-          enabled: !!address && !!bondAmount && !!targetAddress && !!bondCurrency,
+          enabled:
+            !!address && !!bondAmount && !!targetAddress && !!bondCurrency,
         },
       });
-      
+
       const requiresApproval = !allowance || bondAmount > (allowance as bigint);
-      
+
       if (requiresApproval) {
         // If allowance is 0 or undefined, only show the button
-        if (!allowance || (allowance as bigint) === 0n) {
+        if (!allowance || (allowance as bigint) === BigInt(0)) {
           return (
-            <BondApproveButton 
+            <BondApproveButton
               market={market}
               bondAmount={bondAmount}
               bondCurrency={bondCurrency}
@@ -688,12 +720,12 @@ const getColumns = (
             />
           );
         }
-        
+
         // Otherwise show both allowance and button
         return (
           <div className="flex items-center gap-2">
             <span>{allowance.toString()}</span>
-            <BondApproveButton 
+            <BondApproveButton
               market={market}
               bondAmount={bondAmount}
               bondCurrency={bondCurrency}
@@ -702,7 +734,7 @@ const getColumns = (
           </div>
         );
       }
-      
+
       return <span>{allowance?.toString() || '0'}</span>;
     },
   },

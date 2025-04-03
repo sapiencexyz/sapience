@@ -52,7 +52,6 @@ const useFoilDeployment = (chainId?: number) => {
     };
 
     if (chainId) {
-      console.log('LOAD FOIL CHAIN ID', chainId);
       loadFoilData();
     }
   }, [chainId]);

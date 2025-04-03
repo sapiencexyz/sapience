@@ -7,24 +7,29 @@ import {
   type SortingState,
   type ColumnFiltersState,
 } from '@tanstack/react-table';
-import { Loader2, ChevronDown, ChevronUp, ArrowUpDown, Eye, Filter, FilterX, X, Activity, Share2, Network, Boxes, GitBranch, Layers, CircuitBoard } from 'lucide-react';
+import {
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  Eye,
+  Filter,
+  FilterX,
+  X,
+  Activity,
+  Share2,
+  Network,
+  Boxes,
+  GitBranch,
+  Layers,
+  CircuitBoard,
+} from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSignMessage } from 'wagmi';
 
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Command,
   CommandEmpty,
@@ -34,14 +39,25 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
-import { foilApi } from '~/lib/utils/util';
 import { cn } from '~/lib/utils';
+import { foilApi } from '~/lib/utils/util';
 
 import getColumns from './columns';
 import type { MissingBlocks } from './types';
@@ -91,7 +107,12 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
   const [missingBlocks, setMissingBlocks] = useState<MissingBlocks>({});
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<FilterOption[]>([
-    { id: 'isPublic', label: 'Public', value: 'true', icon: <Eye className="h-4 w-4" /> },
+    {
+      id: 'isPublic',
+      label: 'Public',
+      value: 'true',
+      icon: <Eye className="h-4 w-4" />,
+    },
   ]);
 
   const data = useMemo(() => {
@@ -109,86 +130,99 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
   // Dynamically generate status options based on available data
   const statusOptions = useMemo(() => {
     if (!data.length) return [];
-    
+
     // Get unique status values from data
     const uniqueStatuses = new Set<string>();
     const now = Math.floor(Date.now() / 1000);
-    
+
     data.forEach((item) => {
       const startTime = item.startTimestamp;
       const endTime = item.endTimestamp;
-      
+
       let status = '';
-      if (now < startTime) status = '1'; // Pre-Period Trading
-      else if (now < endTime) status = '2'; // Active Trading
+      if (now < startTime)
+        status = '1'; // Pre-Period Trading
+      else if (now < endTime)
+        status = '2'; // Active Trading
       else {
         // Check for assertionId and settled properties in market data
         const settled = 'settled' in item ? (item as any).settled : false;
-        const assertionId = 'assertionId' in item ? (item as any).assertionId : null;
-        
-        if (!settled) status = assertionId ? '3' : '4'; // Submitted to UMA or Needs Settlement
+        const assertionId =
+          'assertionId' in item ? (item as any).assertionId : null;
+
+        if (!settled)
+          status = assertionId ? '3' : '4'; // Submitted to UMA or Needs Settlement
         else status = '5'; // Settled
       }
-      
+
       uniqueStatuses.add(status);
     });
-    
+
     // Map status codes to display options
     const statusLabels: Record<string, string> = {
       '1': 'Pre-Period Trading',
       '2': 'Active Trading',
       '3': 'Submitted to UMA',
       '4': 'Needs Settlement',
-      '5': 'Settled'
+      '5': 'Settled',
     };
-    
+
     const statusColors: Record<string, string> = {
       '1': 'text-blue-500',
       '2': 'text-green-500',
       '3': 'text-purple-500',
       '4': 'text-orange-500',
-      '5': 'text-gray-500'
+      '5': 'text-gray-500',
     };
-    
-    return Array.from(uniqueStatuses).sort().map(status => ({
-      id: 'status',
-      label: statusLabels[status] || `Status ${status}`,
-      value: status,
-      icon: <Activity className={`h-4 w-4 ${statusColors[status]}`} />
-    }));
+
+    return Array.from(uniqueStatuses)
+      .sort()
+      .map((status) => ({
+        id: 'status',
+        label: statusLabels[status] || `Status ${status}`,
+        value: status,
+        icon: <Activity className={`h-4 w-4 ${statusColors[status]}`} />,
+      }));
   }, [data]);
-  
+
   // Dynamically generate chain options based on available data
   const chainOptions = useMemo(() => {
     if (!data.length) return [];
-    
+
     // Get unique chain IDs from data
     const uniqueChainIds = new Set<number>();
-    data.forEach(item => uniqueChainIds.add(item.chainId));
-    
+    data.forEach((item) => uniqueChainIds.add(item.chainId));
+
     // Map chain IDs to display options
     const chainLabels: Record<number, string> = {
       1: 'Ethereum',
       8453: 'Base',
-      11155111: 'Sepolia'
+      11155111: 'Sepolia',
     };
-    
+
     const chainColors: Record<number, string> = {
       1: '',
       8453: 'text-blue-500',
-      11155111: 'text-gray-500'
+      11155111: 'text-gray-500',
     };
-    
-    return Array.from(uniqueChainIds).sort().map(chainId => ({
-      id: 'chainId',
-      label: chainLabels[chainId] || `Chain ${chainId}`,
-      value: chainId.toString(),
-      icon: <Boxes className={`h-4 w-4 ${chainColors[chainId]}`} />
-    }));
+
+    return Array.from(uniqueChainIds)
+      .sort()
+      .map((chainId) => ({
+        id: 'chainId',
+        label: chainLabels[chainId] || `Chain ${chainId}`,
+        value: chainId.toString(),
+        icon: <Boxes className={`h-4 w-4 ${chainColors[chainId]}`} />,
+      }));
   }, [data]);
 
   // Public filter option
-  const publicFilterOption = { id: 'isPublic', label: 'Public', value: 'true', icon: <Eye className="h-4 w-4" /> };
+  const publicFilterOption = {
+    id: 'isPublic',
+    label: 'Public',
+    value: 'true',
+    icon: <Eye className="h-4 w-4" />,
+  };
 
   const fetchMissingBlocks = async (market: Market, epochId: number) => {
     try {
@@ -318,95 +352,112 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
   const toggleFilter = (filter: FilterOption) => {
     // Check if this filter is already selected
     const isSelected = selectedFilters.some(
-      f => f.id === filter.id && f.value === filter.value
+      (f) => f.id === filter.id && f.value === filter.value
     );
-    
+
     let newFilters: FilterOption[];
     let newColumnFilters: ColumnFiltersState;
-    
+
     if (isSelected) {
       // Remove the filter
       newFilters = selectedFilters.filter(
-        f => !(f.id === filter.id && f.value === filter.value)
+        (f) => !(f.id === filter.id && f.value === filter.value)
       );
-      
+
       // Special handling for multiOption filters like chainId
       if (filter.id === 'chainId') {
-        const existingChainFilter = columnFilters.find(f => f.id === 'chainId');
+        const existingChainFilter = columnFilters.find(
+          (f) => f.id === 'chainId'
+        );
         if (existingChainFilter && Array.isArray(existingChainFilter.value)) {
           const newChainValues = (existingChainFilter.value as string[]).filter(
-            v => v !== filter.value
+            (v) => v !== filter.value
           );
-          
-          newColumnFilters = columnFilters.map(f => 
-            f.id === 'chainId' ? { ...f, value: newChainValues } : f
-          ).filter(f => f.id !== 'chainId' || (Array.isArray(f.value) && f.value.length > 0));
+
+          newColumnFilters = columnFilters
+            .map((f) =>
+              f.id === 'chainId' ? { ...f, value: newChainValues } : f
+            )
+            .filter(
+              (f) =>
+                f.id !== 'chainId' ||
+                (Array.isArray(f.value) && f.value.length > 0)
+            );
         } else {
-          newColumnFilters = columnFilters.filter(f => f.id !== filter.id);
+          newColumnFilters = columnFilters.filter((f) => f.id !== filter.id);
         }
       } else {
         // Simple filter
-        newColumnFilters = columnFilters.filter(f => !(f.id === filter.id && f.value === filter.value));
+        newColumnFilters = columnFilters.filter(
+          (f) => !(f.id === filter.id && f.value === filter.value)
+        );
       }
     } else {
       // Add the filter
       if (filter.id === 'isPublic') {
         // Public is exclusive - replace any existing public filter
         newFilters = [
-          ...selectedFilters.filter(f => f.id !== 'isPublic'),
-          filter
+          ...selectedFilters.filter((f) => f.id !== 'isPublic'),
+          filter,
         ];
-        
+
         // Update column filters for public
         newColumnFilters = [
-          ...columnFilters.filter(f => f.id !== 'isPublic'),
-          { id: 'isPublic', value: filter.value }
+          ...columnFilters.filter((f) => f.id !== 'isPublic'),
+          { id: 'isPublic', value: filter.value },
         ];
       } else if (filter.id === 'status') {
         // Status is exclusive - replace any existing status filter
         newFilters = [
-          ...selectedFilters.filter(f => f.id !== 'status'),
-          filter
+          ...selectedFilters.filter((f) => f.id !== 'status'),
+          filter,
         ];
-        
+
         newColumnFilters = [
-          ...columnFilters.filter(f => f.id !== 'status'),
-          { id: 'status', value: filter.value }
+          ...columnFilters.filter((f) => f.id !== 'status'),
+          { id: 'status', value: filter.value },
         ];
       } else if (filter.id === 'chainId') {
         // Chain is multiOption - add to existing chain filters
         newFilters = [
-          ...selectedFilters.filter(f => f.id !== filter.id || f.value !== filter.value),
-          filter
+          ...selectedFilters.filter(
+            (f) => f.id !== filter.id || f.value !== filter.value
+          ),
+          filter,
         ];
-        
+
         // Find existing chain filter
-        const existingChainFilter = columnFilters.find(f => f.id === 'chainId');
+        const existingChainFilter = columnFilters.find(
+          (f) => f.id === 'chainId'
+        );
         if (existingChainFilter && Array.isArray(existingChainFilter.value)) {
           // Add to existing values
           const newChainValues = [...existingChainFilter.value, filter.value];
-          
-          newColumnFilters = columnFilters.map(f => 
+
+          newColumnFilters = columnFilters.map((f) =>
             f.id === 'chainId' ? { ...f, value: newChainValues } : f
           );
         } else {
           // Create new filter
           newColumnFilters = [
-            ...columnFilters.filter(f => f.id !== 'chainId'),
-            { id: 'chainId', value: [filter.value] }
+            ...columnFilters.filter((f) => f.id !== 'chainId'),
+            { id: 'chainId', value: [filter.value] },
           ];
         }
       } else {
         // For any other filter type
         newFilters = [...selectedFilters, filter];
-        newColumnFilters = [...columnFilters, { id: filter.id, value: filter.value }];
+        newColumnFilters = [
+          ...columnFilters,
+          { id: filter.id, value: filter.value },
+        ];
       }
     }
-    
+
     setSelectedFilters(newFilters);
     setColumnFilters(newColumnFilters);
   };
-  
+
   const resetFilters = () => {
     setSelectedFilters([]);
     setColumnFilters([]);
@@ -432,11 +483,9 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
     if (chainOptions.length > 0 && selectedFilters.length === 0) {
       // Set initial selected filters - only public filter
       setSelectedFilters([publicFilterOption]);
-      
+
       // Set initial column filters - only public filter
-      setColumnFilters([
-        { id: 'isPublic', value: 'true' }
-      ]);
+      setColumnFilters([{ id: 'isPublic', value: 'true' }]);
     }
   }, [chainOptions, publicFilterOption]);
 
@@ -455,9 +504,9 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
           <div className="flex items-center flex-wrap gap-4">
             <Popover open={filterOpen} onOpenChange={setFilterOpen}>
               <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="h-8 gap-1 px-3 bg-secondary/80 hover:bg-secondary"
                 >
                   <Filter className="h-4 w-4" />
@@ -469,7 +518,7 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
                   <CommandInput placeholder="Search filters..." />
                   <CommandList>
                     <CommandEmpty>No results found.</CommandEmpty>
-                    
+
                     {/* Public filter option - displayed without a header */}
                     <CommandGroup>
                       <CommandItem
@@ -479,7 +528,9 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
                       >
                         <Checkbox
                           checked={selectedFilters.some(
-                            f => f.id === publicFilterOption.id && f.value === publicFilterOption.value
+                            (f) =>
+                              f.id === publicFilterOption.id &&
+                              f.value === publicFilterOption.value
                           )}
                           className="mr-2 h-4 w-4"
                         />
@@ -487,18 +538,19 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
                         <span className="ml-2">{publicFilterOption.label}</span>
                       </CommandItem>
                     </CommandGroup>
-                    
+
                     <CommandSeparator />
-                    
+
                     {/* Status section */}
                     {statusOptions.length > 0 && (
                       <>
                         <CommandGroup heading="Status">
                           {statusOptions.map((option) => {
                             const isSelected = selectedFilters.some(
-                              f => f.id === option.id && f.value === option.value
+                              (f) =>
+                                f.id === option.id && f.value === option.value
                             );
-                            
+
                             return (
                               <CommandItem
                                 key={`${option.id}-${option.value}`}
@@ -515,21 +567,22 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
                             );
                           })}
                         </CommandGroup>
-                        
+
                         <div className="pt-2">
                           <CommandSeparator />
                         </div>
                       </>
                     )}
-                    
+
                     {/* Chain section */}
                     {chainOptions.length > 0 && (
                       <CommandGroup heading="Chain">
                         {chainOptions.map((option) => {
                           const isSelected = selectedFilters.some(
-                            f => f.id === option.id && f.value === option.value
+                            (f) =>
+                              f.id === option.id && f.value === option.value
                           );
-                          
+
                           return (
                             <CommandItem
                               key={`${option.id}-${option.value}`}
@@ -547,7 +600,7 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
                         })}
                       </CommandGroup>
                     )}
-                    
+
                     {selectedFilters.length > 0 && (
                       <>
                         <CommandSeparator />
@@ -566,11 +619,11 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
                 </Command>
               </PopoverContent>
             </Popover>
-            
+
             <div className="flex flex-wrap gap-4">
               {selectedFilters.map((filter) => (
-                <Badge 
-                  key={`${filter.id}-${filter.value}`} 
+                <Badge
+                  key={`${filter.id}-${filter.value}`}
                   variant="outline"
                   className="h-8 px-3 gap-1 bg-secondary/10"
                 >
@@ -588,11 +641,9 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
               ))}
             </div>
           </div>
-          
+
           {toolButtons && (
-            <div className="flex items-center gap-2">
-              {toolButtons}
-            </div>
+            <div className="flex items-center gap-2">{toolButtons}</div>
           )}
         </div>
       </div>
@@ -631,7 +682,10 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
             table.getRowModel().rows.map((row) => (
               <TableRow key={row.id} className="border-b hover:bg-muted/20">
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="h-9 py-0 px-3 text-xs align-middle">
+                  <TableCell
+                    key={cell.id}
+                    className="h-9 py-0 px-3 text-xs align-middle"
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}

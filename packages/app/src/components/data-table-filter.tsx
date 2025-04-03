@@ -1,8 +1,21 @@
-'use client'
+'use client';
 
-import { Button } from '~/components/ui/button'
-import { Calendar } from '~/components/ui/calendar'
-import { Checkbox } from '~/components/ui/checkbox'
+import type { Column, ColumnMeta, RowData, Table } from '@tanstack/react-table';
+import { format, isEqual } from 'date-fns';
+import { FilterXIcon, ArrowRight, Filter, X, Ellipsis } from 'lucide-react';
+import {
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { DateRange } from 'react-day-picker';
+
+import { Button } from '~/components/ui/button';
+import { Calendar } from '~/components/ui/calendar';
+import { Checkbox } from '~/components/ui/checkbox';
 import {
   Command,
   CommandEmpty,
@@ -10,21 +23,22 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '~/components/ui/command'
-import { Input } from '~/components/ui/input'
+} from '~/components/ui/command';
+import { Input } from '~/components/ui/input';
 import {
   Popover,
   PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover'
-import { Separator } from '~/components/ui/separator'
-import { Slider } from '~/components/ui/slider'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs'
-import { useIsMobile } from '~/hooks/use-mobile'
-import { cn } from '~/lib/utils'
-import { take, uniq } from '~/lib/array'
-import {
+} from '~/components/ui/popover';
+import { Separator } from '~/components/ui/separator';
+import { Slider } from '~/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
+import { useIsMobile } from '~/hooks/use-mobile';
+import { take, uniq } from '~/lib/array';
+import type {
+  ColumnOption,
+  ElementType,
   type ColumnDataType,
   type FilterValue,
   createNumberRange,
@@ -39,31 +53,15 @@ import {
   numberFilterDetails,
   optionFilterDetails,
   textFilterDetails,
-} from '~/lib/filters'
-import type {
-  ColumnOption,
-  ElementType,
-} from '~/lib/filters'
-import type { Column, ColumnMeta, RowData, Table } from '@tanstack/react-table'
-import { format, isEqual } from 'date-fns'
-import { FilterXIcon } from 'lucide-react'
-import { ArrowRight, Filter } from 'lucide-react'
-import { X } from 'lucide-react'
-import { Ellipsis } from 'lucide-react'
-import {
-  cloneElement,
-  isValidElement,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import type { DateRange } from 'react-day-picker'
+} from '~/lib/filters';
+import { cn } from '~/lib/utils';
 
 export function DataTableFilter<TData, TValue>({
   table,
-}: { table: Table<TData> }) {
-  const isMobile = useIsMobile()
+}: {
+  table: Table<TData>;
+}) {
+  const isMobile = useIsMobile();
 
   if (isMobile) {
     return (
@@ -76,7 +74,7 @@ export function DataTableFilter<TData, TValue>({
           <PropertyFilterList table={table} />
         </DataTableFilterMobileContainer>
       </div>
-    )
+    );
   }
 
   return (
@@ -87,30 +85,32 @@ export function DataTableFilter<TData, TValue>({
       </div>
       <TableFilterActions table={table} />
     </div>
-  )
+  );
 }
 
 export function DataTableFilterMobileContainer({
   children,
-}: { children: React.ReactNode }) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const [showLeftBlur, setShowLeftBlur] = useState(false)
-  const [showRightBlur, setShowRightBlur] = useState(true)
+}: {
+  children: React.ReactNode;
+}) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftBlur, setShowLeftBlur] = useState(false);
+  const [showRightBlur, setShowRightBlur] = useState(true);
 
   // Check if there's content to scroll and update blur states
   const checkScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } =
-        scrollContainerRef.current
+        scrollContainerRef.current;
 
       // Show left blur if scrolled to the right
-      setShowLeftBlur(scrollLeft > 0)
+      setShowLeftBlur(scrollLeft > 0);
 
       // Show right blur if there's more content to scroll to the right
       // Add a small buffer (1px) to account for rounding errors
-      setShowRightBlur(scrollLeft + clientWidth < scrollWidth - 1)
+      setShowRightBlur(scrollLeft + clientWidth < scrollWidth - 1);
     }
-  }
+  };
 
   // Log blur states for debugging
   // useEffect(() => {
@@ -121,19 +121,19 @@ export function DataTableFilterMobileContainer({
   useEffect(() => {
     if (scrollContainerRef.current) {
       const resizeObserver = new ResizeObserver(() => {
-        checkScroll()
-      })
-      resizeObserver.observe(scrollContainerRef.current)
+        checkScroll();
+      });
+      resizeObserver.observe(scrollContainerRef.current);
       return () => {
-        resizeObserver.disconnect()
-      }
+        resizeObserver.disconnect();
+      };
     }
-  }, [])
+  }, []);
 
   // Update blur states when children change
   useEffect(() => {
-    checkScroll()
-  }, [children])
+    checkScroll();
+  }, [children]);
 
   return (
     <div className="relative w-full overflow-x-hidden">
@@ -156,15 +156,15 @@ export function DataTableFilterMobileContainer({
         <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none bg-gradient-to-l from-background to-transparent animate-in fade-in-0 " />
       )}
     </div>
-  )
+  );
 }
 
 export function TableFilterActions<TData>({ table }: { table: Table<TData> }) {
-  const hasFilters = table.getState().columnFilters.length > 0
+  const hasFilters = table.getState().columnFilters.length > 0;
 
   function clearFilters() {
-    table.setColumnFilters([])
-    table.setGlobalFilter('')
+    table.setColumnFilters([]);
+    table.setGlobalFilter('');
   }
 
   return (
@@ -176,34 +176,34 @@ export function TableFilterActions<TData>({ table }: { table: Table<TData> }) {
       <FilterXIcon />
       <span className="hidden md:block">Clear</span>
     </Button>
-  )
+  );
 }
 
 export function TableFilter<TData>({ table }: { table: Table<TData> }) {
-  const [open, setOpen] = useState(false)
-  const [value, setValue] = useState('')
-  const [property, setProperty] = useState<string | undefined>(undefined)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const [property, setProperty] = useState<string | undefined>(undefined);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const column = property ? getColumn(table, property) : undefined
-  const columnMeta = property ? getColumnMeta(table, property) : undefined
+  const column = property ? getColumn(table, property) : undefined;
+  const columnMeta = property ? getColumnMeta(table, property) : undefined;
 
   const properties = table
     .getAllColumns()
-    .filter((column) => column.getCanFilter())
+    .filter((column) => column.getCanFilter());
 
-  const hasFilters = table.getState().columnFilters.length > 0
+  const hasFilters = table.getState().columnFilters.length > 0;
 
   useEffect(() => {
     if (property && inputRef) {
-      inputRef.current?.focus()
-      setValue('')
+      inputRef.current?.focus();
+      setValue('');
     }
-  }, [property])
+  }, [property]);
 
   useEffect(() => {
-    if (!open) setTimeout(() => setValue(''), 150)
-  }, [open])
+    if (!open) setTimeout(() => setValue(''), 150);
+  }, [open]);
 
   const content = useMemo(
     () =>
@@ -237,15 +237,15 @@ export function TableFilter<TData>({ table }: { table: Table<TData> }) {
           </CommandList>
         </Command>
       ),
-    [property, column, columnMeta, value, table, properties],
-  )
+    [property, column, columnMeta, value, table, properties]
+  );
 
   return (
     <Popover
       open={open}
       onOpenChange={async (value) => {
-        setOpen(value)
-        if (!value) setTimeout(() => setProperty(undefined), 100)
+        setOpen(value);
+        if (!value) setTimeout(() => setProperty(undefined), 100);
       }}
     >
       <PopoverTrigger asChild>
@@ -265,29 +265,29 @@ export function TableFilter<TData>({ table }: { table: Table<TData> }) {
         {content}
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 export function TableFilterMenuItem<TData>({
   column,
   setProperty,
 }: {
-  column: Column<TData>
-  table: Table<TData>
-  setProperty: (value: string) => void
+  column: Column<TData>;
+  table: Table<TData>;
+  setProperty: (value: string) => void;
 }) {
-  const Icon = column.columnDef.meta?.icon!
+  const Icon = column.columnDef.meta?.icon!;
   return (
     <CommandItem onSelect={() => setProperty(column.id)} className="group">
       <div className="flex w-full items-center justify-between">
         <div className="inline-flex items-center gap-1.5">
-          {<Icon strokeWidth={2.25} className="size-4" />}
+          <Icon strokeWidth={2.25} className="size-4" />
           <span>{column.columnDef.meta?.displayName}</span>
         </div>
         <ArrowRight className="size-4 opacity-0 group-aria-selected:opacity-100" />
       </div>
     </CommandItem>
-  )
+  );
 }
 
 export function DebouncedInput({
@@ -296,23 +296,23 @@ export function DebouncedInput({
   debounce = 500,
   ...props
 }: {
-  value: string | number
-  onChange: (value: string | number) => void
-  debounce?: number
+  value: string | number;
+  onChange: (value: string | number) => void;
+  debounce?: number;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'>) {
-  const [value, setValue] = useState(initialValue)
+  const [value, setValue] = useState(initialValue);
 
   useEffect(() => {
-    setValue(initialValue)
-  }, [initialValue])
+    setValue(initialValue);
+  }, [initialValue]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      onChange(value)
-    }, debounce)
+      onChange(value);
+    }, debounce);
 
-    return () => clearTimeout(timeout)
-  }, [value, onChange, debounce])
+    return () => clearTimeout(timeout);
+  }, [value, onChange, debounce]);
 
   return (
     <Input
@@ -320,22 +320,22 @@ export function DebouncedInput({
       value={value}
       onChange={(e) => setValue(e.target.value)}
     />
-  )
+  );
 }
 
 export function PropertyFilterList<TData>({ table }: { table: Table<TData> }) {
-  const filters = table.getState().columnFilters
+  const filters = table.getState().columnFilters;
 
   return (
     <>
       {filters.map((filter) => {
-        const { id } = filter
+        const { id } = filter;
 
-        const column = getColumn(table, id)
-        const meta = getColumnMeta(table, id)
+        const column = getColumn(table, id);
+        const meta = getColumnMeta(table, id);
 
         // Skip if no filter value
-        if (!filter.value) return null
+        if (!filter.value) return null;
 
         // Narrow the type based on meta.type and cast filter accordingly
         switch (meta.type) {
@@ -344,47 +344,47 @@ export function PropertyFilterList<TData>({ table }: { table: Table<TData> }) {
               filter as { id: string; value: FilterValue<'text', TData> },
               column,
               meta as ColumnMeta<TData, unknown> & { type: 'text' },
-              table,
-            )
+              table
+            );
           case 'number':
             return renderFilter<TData, 'number'>(
               filter as { id: string; value: FilterValue<'number', TData> },
               column,
               meta as ColumnMeta<TData, unknown> & { type: 'number' },
-              table,
-            )
+              table
+            );
           case 'date':
             return renderFilter<TData, 'date'>(
               filter as { id: string; value: FilterValue<'date', TData> },
               column,
               meta as ColumnMeta<TData, unknown> & { type: 'date' },
-              table,
-            )
+              table
+            );
           case 'option':
             return renderFilter<TData, 'option'>(
               filter as { id: string; value: FilterValue<'option', TData> },
               column,
               meta as ColumnMeta<TData, unknown> & { type: 'option' },
-              table,
-            )
+              table
+            );
           case 'multiOption':
             return renderFilter<TData, 'multiOption'>(
               filter as {
-                id: string
-                value: FilterValue<'multiOption', TData>
+                id: string;
+                value: FilterValue<'multiOption', TData>;
               },
               column,
               meta as ColumnMeta<TData, unknown> & {
-                type: 'multiOption'
+                type: 'multiOption';
               },
-              table,
-            )
+              table
+            );
           default:
-            return null // Handle unknown types gracefully
+            return null; // Handle unknown types gracefully
         }
       })}
     </>
-  )
+  );
 }
 
 // Generic render function for a filter with type-safe value
@@ -392,9 +392,9 @@ function renderFilter<TData, T extends ColumnDataType>(
   filter: { id: string; value: FilterValue<T, TData> },
   column: Column<TData, unknown>,
   meta: ColumnMeta<TData, unknown> & { type: T },
-  table: Table<TData>,
+  table: Table<TData>
 ) {
-  const { value } = filter
+  const { value } = filter;
 
   return (
     <div
@@ -424,26 +424,26 @@ function renderFilter<TData, T extends ColumnDataType>(
         <X className="size-4 -translate-x-0.5" />
       </Button>
     </div>
-  )
+  );
 }
 
-/****** Property Filter Subject ******/
+/** **** Property Filter Subject ***** */
 
 export function PropertyFilterSubject<TData>({
   meta,
 }: {
-  meta: ColumnMeta<TData, string>
+  meta: ColumnMeta<TData, string>;
 }) {
-  const hasIcon = !!meta?.icon
+  const hasIcon = !!meta?.icon;
   return (
     <span className="flex select-none items-center gap-1 whitespace-nowrap px-2 font-medium">
       {hasIcon && <meta.icon className="size-4 stroke-[2.25px]" />}
       <span>{meta.displayName}</span>
     </span>
-  )
+  );
 }
 
-/****** Property Filter Operator ******/
+/** **** Property Filter Operator ***** */
 
 // Renders the filter operator display and menu for a given column filter
 // The filter operator display is the label and icon for the filter operator
@@ -456,13 +456,13 @@ export function PropertyFilterOperatorController<
   columnMeta,
   filter,
 }: {
-  column: Column<TData, unknown>
-  columnMeta: ColumnMeta<TData, unknown>
-  filter: FilterValue<T, TData>
+  column: Column<TData, unknown>;
+  columnMeta: ColumnMeta<TData, unknown>;
+  filter: FilterValue<T, TData>;
 }) {
-  const [open, setOpen] = useState<boolean>(false)
+  const [open, setOpen] = useState<boolean>(false);
 
-  const close = () => setOpen(false)
+  const close = () => setOpen(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -493,31 +493,31 @@ export function PropertyFilterOperatorController<
         </Command>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 export function PropertyFilterOperatorDisplay<TData, T extends ColumnDataType>({
   filter,
   filterType,
 }: {
-  filter: FilterValue<T, TData>
-  filterType: T
+  filter: FilterValue<T, TData>;
+  filterType: T;
 }) {
-  const details = filterTypeOperatorDetails[filterType][filter.operator]
+  const details = filterTypeOperatorDetails[filterType][filter.operator];
 
-  return <span>{details.label}</span>
+  return <span>{details.label}</span>;
 }
 
 interface PropertyFilterOperatorMenuProps<TData> {
-  column: Column<TData, unknown>
-  closeController: () => void
+  column: Column<TData, unknown>;
+  closeController: () => void;
 }
 
 export function PropertyFilterOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const { type } = column.columnDef.meta!
+  const { type } = column.columnDef.meta!;
 
   switch (type) {
     case 'option':
@@ -526,37 +526,37 @@ export function PropertyFilterOperatorMenu<TData>({
           column={column}
           closeController={closeController}
         />
-      )
+      );
     case 'multiOption':
       return (
         <PropertyFilterMultiOptionOperatorMenu
           column={column}
           closeController={closeController}
         />
-      )
+      );
     case 'date':
       return (
         <PropertyFilterDateOperatorMenu
           column={column}
           closeController={closeController}
         />
-      )
+      );
     case 'text':
       return (
         <PropertyFilterTextOperatorMenu
           column={column}
           closeController={closeController}
         />
-      )
+      );
     case 'number':
       return (
         <PropertyFilterNumberOperatorMenu
           column={column}
           closeController={closeController}
         />
-      )
+      );
     default:
-      return null
+      return null;
   }
 }
 
@@ -564,17 +564,20 @@ function PropertyFilterOptionOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'option', TData>
-  const filterDetails = optionFilterDetails[filter.operator]
+  const filter = column.getFilterValue() as FilterValue<'option', TData>;
+  const filterDetails = optionFilterDetails[filter.operator];
 
   const relatedFilters = Object.values(optionFilterDetails).filter(
-    (o) => o.target === filterDetails.target,
-  )
+    (o) => o.target === filterDetails.target
+  );
 
   const changeOperator = (value: string) => {
-    column.setFilterValue((old: typeof filter) => ({ ...old, operator: value }))
-    closeController()
-  }
+    column.setFilterValue((old: typeof filter) => ({
+      ...old,
+      operator: value,
+    }));
+    closeController();
+  };
 
   return (
     <CommandGroup heading="Operators">
@@ -583,27 +586,30 @@ function PropertyFilterOptionOperatorMenu<TData>({
           <CommandItem onSelect={changeOperator} value={r.value} key={r.value}>
             {r.label}
           </CommandItem>
-        )
+        );
       })}
     </CommandGroup>
-  )
+  );
 }
 
 function PropertyFilterMultiOptionOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'multiOption', TData>
-  const filterDetails = multiOptionFilterDetails[filter.operator]
+  const filter = column.getFilterValue() as FilterValue<'multiOption', TData>;
+  const filterDetails = multiOptionFilterDetails[filter.operator];
 
   const relatedFilters = Object.values(multiOptionFilterDetails).filter(
-    (o) => o.target === filterDetails.target,
-  )
+    (o) => o.target === filterDetails.target
+  );
 
   const changeOperator = (value: string) => {
-    column.setFilterValue((old: typeof filter) => ({ ...old, operator: value }))
-    closeController()
-  }
+    column.setFilterValue((old: typeof filter) => ({
+      ...old,
+      operator: value,
+    }));
+    closeController();
+  };
 
   return (
     <CommandGroup heading="Operators">
@@ -612,27 +618,30 @@ function PropertyFilterMultiOptionOperatorMenu<TData>({
           <CommandItem onSelect={changeOperator} value={r.value} key={r.value}>
             {r.label}
           </CommandItem>
-        )
+        );
       })}
     </CommandGroup>
-  )
+  );
 }
 
 function PropertyFilterDateOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'date', TData>
-  const filterDetails = dateFilterDetails[filter.operator]
+  const filter = column.getFilterValue() as FilterValue<'date', TData>;
+  const filterDetails = dateFilterDetails[filter.operator];
 
   const relatedFilters = Object.values(dateFilterDetails).filter(
-    (o) => o.target === filterDetails.target,
-  )
+    (o) => o.target === filterDetails.target
+  );
 
   const changeOperator = (value: string) => {
-    column.setFilterValue((old: typeof filter) => ({ ...old, operator: value }))
-    closeController()
-  }
+    column.setFilterValue((old: typeof filter) => ({
+      ...old,
+      operator: value,
+    }));
+    closeController();
+  };
 
   return (
     <CommandGroup>
@@ -641,27 +650,30 @@ function PropertyFilterDateOperatorMenu<TData>({
           <CommandItem onSelect={changeOperator} value={r.value} key={r.value}>
             {r.label}
           </CommandItem>
-        )
+        );
       })}
     </CommandGroup>
-  )
+  );
 }
 
 export function PropertyFilterTextOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'text', TData>
-  const filterDetails = textFilterDetails[filter.operator]
+  const filter = column.getFilterValue() as FilterValue<'text', TData>;
+  const filterDetails = textFilterDetails[filter.operator];
 
   const relatedFilters = Object.values(textFilterDetails).filter(
-    (o) => o.target === filterDetails.target,
-  )
+    (o) => o.target === filterDetails.target
+  );
 
   const changeOperator = (value: string) => {
-    column.setFilterValue((old: typeof filter) => ({ ...old, operator: value }))
-    closeController()
-  }
+    column.setFilterValue((old: typeof filter) => ({
+      ...old,
+      operator: value,
+    }));
+    closeController();
+  };
 
   return (
     <CommandGroup heading="Operators">
@@ -670,34 +682,34 @@ export function PropertyFilterTextOperatorMenu<TData>({
           <CommandItem onSelect={changeOperator} value={r.value} key={r.value}>
             {r.label}
           </CommandItem>
-        )
+        );
       })}
     </CommandGroup>
-  )
+  );
 }
 
 function PropertyFilterNumberOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'number', TData>
+  const filter = column.getFilterValue() as FilterValue<'number', TData>;
 
   // Show all related operators
-  const relatedFilters = Object.values(numberFilterDetails)
-  const relatedFilterOperators = relatedFilters.map((r) => r.value)
+  const relatedFilters = Object.values(numberFilterDetails);
+  const relatedFilterOperators = relatedFilters.map((r) => r.value);
 
   const changeOperator = (value: (typeof relatedFilterOperators)[number]) => {
     column.setFilterValue((old: typeof filter) => {
       // Clear out the second value when switching to single-input operators
-      const target = numberFilterDetails[value].target
+      const { target } = numberFilterDetails[value];
 
       const newValues =
-        target === 'single' ? [old.values[0]] : createNumberRange(old.values)
+        target === 'single' ? [old.values[0]] : createNumberRange(old.values);
 
-      return { ...old, operator: value, values: newValues }
-    })
-    closeController()
-  }
+      return { ...old, operator: value, values: newValues };
+    });
+    closeController();
+  };
 
   return (
     <div>
@@ -713,10 +725,10 @@ function PropertyFilterNumberOperatorMenu<TData>({
         ))}
       </CommandGroup>
     </div>
-  )
+  );
 }
 
-/****** Property Filter Value ******/
+/** **** Property Filter Value ***** */
 
 export function PropertyFilterValueController<TData, TValue>({
   id,
@@ -724,10 +736,10 @@ export function PropertyFilterValueController<TData, TValue>({
   columnMeta,
   table,
 }: {
-  id: string
-  column: Column<TData>
-  columnMeta: ColumnMeta<TData, TValue>
-  table: Table<TData>
+  id: string;
+  column: Column<TData>;
+  columnMeta: ColumnMeta<TData, TValue>;
+  table: Table<TData>;
 }) {
   return (
     <Popover>
@@ -758,14 +770,14 @@ export function PropertyFilterValueController<TData, TValue>({
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 interface PropertyFilterValueDisplayProps<TData, TValue> {
-  id: string
-  column: Column<TData>
-  columnMeta: ColumnMeta<TData, TValue>
-  table: Table<TData>
+  id: string;
+  column: Column<TData>;
+  columnMeta: ColumnMeta<TData, TValue>;
+  table: Table<TData>;
 }
 
 export function PropertyFilterValueDisplay<TData, TValue>({
@@ -783,7 +795,7 @@ export function PropertyFilterValueDisplay<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     case 'multiOption':
       return (
         <PropertyFilterMultiOptionValueDisplay
@@ -792,7 +804,7 @@ export function PropertyFilterValueDisplay<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     case 'date':
       return (
         <PropertyFilterDateValueDisplay
@@ -801,7 +813,7 @@ export function PropertyFilterValueDisplay<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     case 'text':
       return (
         <PropertyFilterTextValueDisplay
@@ -810,7 +822,7 @@ export function PropertyFilterValueDisplay<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     case 'number':
       return (
         <PropertyFilterNumberValueDisplay
@@ -819,9 +831,9 @@ export function PropertyFilterValueDisplay<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     default:
-      return null
+      return null;
   }
 }
 
@@ -831,42 +843,42 @@ export function PropertyFilterOptionValueDisplay<TData, TValue>({
   columnMeta,
   table,
 }: PropertyFilterValueDisplayProps<TData, TValue>) {
-  let options: ColumnOption[]
+  let options: ColumnOption[];
   const columnVals = table
     .getCoreRowModel()
     .rows.flatMap((r) => r.getValue<TValue>(id))
-    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null)
-  const uniqueVals = uniq(columnVals)
+    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null);
+  const uniqueVals = uniq(columnVals);
 
   // If static options are provided, use them
   if (columnMeta.options) {
-    options = columnMeta.options
+    options = columnMeta.options;
   }
 
   // No static options provided,
   // We should dynamically generate them based on the column data
   else if (columnMeta.transformOptionFn) {
-    const transformOptionFn = columnMeta.transformOptionFn
+    const { transformOptionFn } = columnMeta;
 
     options = uniqueVals.map((v) =>
-      transformOptionFn(v as ElementType<NonNullable<TValue>>),
-    )
+      transformOptionFn(v as ElementType<NonNullable<TValue>>)
+    );
   }
 
   // Make sure the column data conforms to ColumnOption type
   else if (isColumnOptionArray(uniqueVals)) {
-    options = uniqueVals
+    options = uniqueVals;
   }
 
   // Invalid configuration
   else {
     throw new Error(
-      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`,
-    )
+      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`
+    );
   }
 
-  const filter = column.getFilterValue() as FilterValue<'option', TData>
-  const selected = options.filter((o) => filter?.values.includes(o.value))
+  const filter = column.getFilterValue() as FilterValue<'option', TData>;
+  const selected = options.filter((o) => filter?.values.includes(o.value));
 
   // We display the selected options based on how many are selected
   //
@@ -876,8 +888,8 @@ export function PropertyFilterOptionValueDisplay<TData, TValue>({
   // 1) up to 3 icons of the selected options
   // 2) the number of selected options
   if (selected.length === 1) {
-    const { label, icon: Icon } = selected[0]
-    const hasIcon = !!Icon
+    const { label, icon: Icon } = selected[0];
+    const hasIcon = !!Icon;
     return (
       <span className="inline-flex items-center gap-1">
         {hasIcon &&
@@ -888,29 +900,29 @@ export function PropertyFilterOptionValueDisplay<TData, TValue>({
           ))}
         <span>{label}</span>
       </span>
-    )
+    );
   }
-  const name = columnMeta.displayName.toLowerCase()
-  const pluralName = name.endsWith('s') ? `${name}es` : `${name}s`
+  const name = columnMeta.displayName.toLowerCase();
+  const pluralName = name.endsWith('s') ? `${name}es` : `${name}s`;
 
-  const hasOptionIcons = !options?.some((o) => !o.icon)
+  const hasOptionIcons = !options?.some((o) => !o.icon);
 
   return (
     <div className="inline-flex items-center gap-0.5">
       {hasOptionIcons &&
         take(selected, 3).map(({ value, icon }) => {
-          const Icon = icon!
+          const Icon = icon!;
           return isValidElement(Icon) ? (
             Icon
           ) : (
             <Icon key={value} className="size-4" />
-          )
+          );
         })}
       <span className={cn(hasOptionIcons && 'ml-1.5')}>
         {selected.length} {pluralName}
       </span>
     </div>
-  )
+  );
 }
 
 export function PropertyFilterMultiOptionValueDisplay<TData, TValue>({
@@ -919,46 +931,46 @@ export function PropertyFilterMultiOptionValueDisplay<TData, TValue>({
   columnMeta,
   table,
 }: PropertyFilterValueDisplayProps<TData, TValue>) {
-  let options: ColumnOption[]
+  let options: ColumnOption[];
   const columnVals = table
     .getCoreRowModel()
     .rows.flatMap((r) => r.getValue<TValue>(id))
-    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null)
-  const uniqueVals = uniq(columnVals)
+    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null);
+  const uniqueVals = uniq(columnVals);
 
   // If static options are provided, use them
   if (columnMeta.options) {
-    options = columnMeta.options
+    options = columnMeta.options;
   }
 
   // No static options provided,
   // We should dynamically generate them based on the column data
   else if (columnMeta.transformOptionFn) {
-    const transformOptionFn = columnMeta.transformOptionFn
+    const { transformOptionFn } = columnMeta;
 
     options = uniqueVals.map((v) =>
-      transformOptionFn(v as ElementType<NonNullable<TValue>>),
-    )
+      transformOptionFn(v as ElementType<NonNullable<TValue>>)
+    );
   }
 
   // Make sure the column data conforms to ColumnOption type
   else if (isColumnOptionArray(uniqueVals)) {
-    options = uniqueVals
+    options = uniqueVals;
   }
 
   // Invalid configuration
   else {
     throw new Error(
-      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`,
-    )
+      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`
+    );
   }
 
-  const filter = column.getFilterValue() as FilterValue<'multiOption', TData>
-  const selected = options.filter((o) => filter?.values[0].includes(o.value))
+  const filter = column.getFilterValue() as FilterValue<'multiOption', TData>;
+  const selected = options.filter((o) => filter?.values[0].includes(o.value));
 
   if (selected.length === 1) {
-    const { label, icon: Icon } = selected[0]
-    const hasIcon = !!Icon
+    const { label, icon: Icon } = selected[0];
+    const hasIcon = !!Icon;
     return (
       <span className="inline-flex items-center gap-1.5">
         {hasIcon &&
@@ -970,24 +982,24 @@ export function PropertyFilterMultiOptionValueDisplay<TData, TValue>({
 
         <span>{label}</span>
       </span>
-    )
+    );
   }
 
-  const name = columnMeta.displayName.toLowerCase()
+  const name = columnMeta.displayName.toLowerCase();
 
-  const hasOptionIcons = !columnMeta.options?.some((o) => !o.icon)
+  const hasOptionIcons = !columnMeta.options?.some((o) => !o.icon);
 
   return (
     <div className="inline-flex items-center gap-1.5">
       {hasOptionIcons && (
         <div key="icons" className="inline-flex items-center gap-0.5">
           {take(selected, 3).map(({ value, icon }) => {
-            const Icon = icon!
+            const Icon = icon!;
             return isValidElement(Icon) ? (
               cloneElement(Icon, { key: value })
             ) : (
               <Icon key={value} className="size-4" />
-            )
+            );
           })}
         </div>
       )}
@@ -995,22 +1007,22 @@ export function PropertyFilterMultiOptionValueDisplay<TData, TValue>({
         {selected.length} {name}
       </span>
     </div>
-  )
+  );
 }
 
 function formatDateRange(start: Date, end: Date) {
-  const sameMonth = start.getMonth() === end.getMonth()
-  const sameYear = start.getFullYear() === end.getFullYear()
+  const sameMonth = start.getMonth() === end.getMonth();
+  const sameYear = start.getFullYear() === end.getFullYear();
 
   if (sameMonth && sameYear) {
-    return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`
+    return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`;
   }
 
   if (sameYear) {
-    return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`
+    return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
   }
 
-  return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`
+  return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`;
 }
 
 export function PropertyFilterDateValueDisplay<TData, TValue>({
@@ -1018,21 +1030,21 @@ export function PropertyFilterDateValueDisplay<TData, TValue>({
 }: PropertyFilterValueDisplayProps<TData, TValue>) {
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'date', TData>)
-    : undefined
+    : undefined;
 
-  if (!filter) return null
-  if (filter.values.length === 0) return <Ellipsis className="size-4" />
+  if (!filter) return null;
+  if (filter.values.length === 0) return <Ellipsis className="size-4" />;
   if (filter.values.length === 1) {
-    const value = filter.values[0]
+    const value = filter.values[0];
 
-    const formattedDateStr = format(value, 'MMM d, yyyy')
+    const formattedDateStr = format(value, 'MMM d, yyyy');
 
-    return <span>{formattedDateStr}</span>
+    return <span>{formattedDateStr}</span>;
   }
 
-  const formattedRangeStr = formatDateRange(filter.values[0], filter.values[1])
+  const formattedRangeStr = formatDateRange(filter.values[0], filter.values[1]);
 
-  return <span>{formattedRangeStr}</span>
+  return <span>{formattedRangeStr}</span>;
 }
 
 export function PropertyFilterTextValueDisplay<TData, TValue>({
@@ -1040,54 +1052,54 @@ export function PropertyFilterTextValueDisplay<TData, TValue>({
 }: PropertyFilterValueDisplayProps<TData, TValue>) {
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'text', TData>)
-    : undefined
+    : undefined;
 
-  if (!filter) return null
+  if (!filter) return null;
   if (filter.values.length === 0 || filter.values[0].trim() === '')
-    return <Ellipsis className="size-4" />
+    return <Ellipsis className="size-4" />;
 
-  const value = filter.values[0]
+  const value = filter.values[0];
 
-  return <span>{value}</span>
+  return <span>{value}</span>;
 }
 
 export function PropertyFilterNumberValueDisplay<TData, TValue>({
   column,
   columnMeta,
 }: PropertyFilterValueDisplayProps<TData, TValue>) {
-  const maxFromMeta = columnMeta.max
-  const cappedMax = maxFromMeta ?? 2147483647
+  const maxFromMeta = columnMeta.max;
+  const cappedMax = maxFromMeta ?? 2147483647;
 
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'number', TData>)
-    : undefined
+    : undefined;
 
-  if (!filter) return null
+  if (!filter) return null;
 
   if (
     filter.operator === 'is between' ||
     filter.operator === 'is not between'
   ) {
-    const minValue = filter.values[0]
+    const minValue = filter.values[0];
     const maxValue =
       filter.values[1] === Number.POSITIVE_INFINITY ||
       filter.values[1] >= cappedMax
         ? `${cappedMax}+`
-        : filter.values[1]
+        : filter.values[1];
 
     return (
       <span className="tabular-nums tracking-tight">
         {minValue} and {maxValue}
       </span>
-    )
+    );
   }
 
   if (!filter.values || filter.values.length === 0) {
-    return null
+    return null;
   }
 
-  const value = filter.values[0]
-  return <span className="tabular-nums tracking-tight">{value}</span>
+  const value = filter.values[0];
+  return <span className="tabular-nums tracking-tight">{value}</span>;
 }
 
 export function PropertyFilterValueMenu<TData, TValue>({
@@ -1096,10 +1108,10 @@ export function PropertyFilterValueMenu<TData, TValue>({
   columnMeta,
   table,
 }: {
-  id: string
-  column: Column<TData>
-  columnMeta: ColumnMeta<TData, TValue>
-  table: Table<TData>
+  id: string;
+  column: Column<TData>;
+  columnMeta: ColumnMeta<TData, TValue>;
+  table: Table<TData>;
 }) {
   switch (columnMeta.type) {
     case 'option':
@@ -1110,7 +1122,7 @@ export function PropertyFilterValueMenu<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     case 'multiOption':
       return (
         <PropertyFilterMultiOptionValueMenu
@@ -1119,7 +1131,7 @@ export function PropertyFilterValueMenu<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     case 'date':
       return (
         <PropertyFilterDateValueMenu
@@ -1128,7 +1140,7 @@ export function PropertyFilterValueMenu<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     case 'text':
       return (
         <PropertyFilterTextValueMenu
@@ -1137,7 +1149,7 @@ export function PropertyFilterValueMenu<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     case 'number':
       return (
         <PropertyFilterNumberValueMenu
@@ -1146,17 +1158,17 @@ export function PropertyFilterValueMenu<TData, TValue>({
           columnMeta={columnMeta}
           table={table}
         />
-      )
+      );
     default:
-      return null
+      return null;
   }
 }
 
 interface ProperFilterValueMenuProps<TData, TValue> {
-  id: string
-  column: Column<TData>
-  columnMeta: ColumnMeta<TData, TValue>
-  table: Table<TData>
+  id: string;
+  column: Column<TData>;
+  columnMeta: ColumnMeta<TData, TValue>;
+  table: Table<TData>;
 }
 
 export function PropertyFilterOptionValueMenu<TData, TValue>({
@@ -1167,53 +1179,53 @@ export function PropertyFilterOptionValueMenu<TData, TValue>({
 }: ProperFilterValueMenuProps<TData, TValue>) {
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'option', TData>)
-    : undefined
+    : undefined;
 
-  let options: ColumnOption[]
+  let options: ColumnOption[];
   const columnVals = table
     .getCoreRowModel()
     .rows.flatMap((r) => r.getValue<TValue>(id))
-    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null)
-  const uniqueVals = uniq(columnVals)
+    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null);
+  const uniqueVals = uniq(columnVals);
 
   // If static options are provided, use them
   if (columnMeta.options) {
-    options = columnMeta.options
+    options = columnMeta.options;
   }
 
   // No static options provided,
   // We should dynamically generate them based on the column data
   else if (columnMeta.transformOptionFn) {
-    const transformOptionFn = columnMeta.transformOptionFn
+    const { transformOptionFn } = columnMeta;
 
     options = uniqueVals.map((v) =>
-      transformOptionFn(v as ElementType<NonNullable<TValue>>),
-    )
+      transformOptionFn(v as ElementType<NonNullable<TValue>>)
+    );
   }
 
   // Make sure the column data conforms to ColumnOption type
   else if (isColumnOptionArray(uniqueVals)) {
-    options = uniqueVals
+    options = uniqueVals;
   }
 
   // Invalid configuration
   else {
     throw new Error(
-      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`,
-    )
+      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`
+    );
   }
 
   const optionsCount: Record<ColumnOption['value'], number> = columnVals.reduce(
     (acc, curr) => {
       const { value } = columnMeta.transformOptionFn
         ? columnMeta.transformOptionFn(curr as ElementType<NonNullable<TValue>>)
-        : { value: curr as string }
+        : { value: curr as string };
 
-      acc[value] = (acc[value] ?? 0) + 1
-      return acc
+      acc[value] = (acc[value] ?? 0) + 1;
+      return acc;
     },
-    {} as Record<ColumnOption['value'], number>,
-  )
+    {} as Record<ColumnOption['value'], number>
+  );
 
   function handleOptionSelect(value: string, check: boolean) {
     if (check)
@@ -1224,30 +1236,30 @@ export function PropertyFilterOptionValueMenu<TData, TValue>({
               operator: 'is',
               values: [value],
               columnMeta: column.columnDef.meta,
-            } satisfies FilterValue<'option', TData>
+            } satisfies FilterValue<'option', TData>;
 
-          const newValues = [...old.values, value]
+          const newValues = [...old.values, value];
 
           return {
             operator: 'is any of',
             values: newValues,
             columnMeta: column.columnDef.meta,
-          } satisfies FilterValue<'option', TData>
-        },
-      )
+          } satisfies FilterValue<'option', TData>;
+        }
+      );
     else
       column?.setFilterValue(
         (old: undefined | FilterValue<'option', TData>) => {
-          if (!old || old.values.length <= 1) return undefined
+          if (!old || old.values.length <= 1) return undefined;
 
-          const newValues = old.values.filter((v) => v !== value)
+          const newValues = old.values.filter((v) => v !== value);
           return {
             operator: newValues.length > 1 ? 'is any of' : 'is',
             values: newValues,
             columnMeta: column.columnDef.meta,
-          } satisfies FilterValue<'option', TData>
-        },
-      )
+          } satisfies FilterValue<'option', TData>;
+        }
+      );
   }
 
   return (
@@ -1257,14 +1269,14 @@ export function PropertyFilterOptionValueMenu<TData, TValue>({
       <CommandList className="max-h-fit">
         <CommandGroup>
           {options.map((v) => {
-            const checked = Boolean(filter?.values.includes(v.value))
-            const count = optionsCount[v.value] ?? 0
+            const checked = Boolean(filter?.values.includes(v.value));
+            const count = optionsCount[v.value] ?? 0;
 
             return (
               <CommandItem
                 key={v.value}
                 onSelect={() => {
-                  handleOptionSelect(v.value, !checked)
+                  handleOptionSelect(v.value, !checked);
                 }}
                 className="group flex items-center justify-between gap-1.5"
               >
@@ -1284,7 +1296,7 @@ export function PropertyFilterOptionValueMenu<TData, TValue>({
                     <sup
                       className={cn(
                         'ml-0.5 tabular-nums tracking-tight text-muted-foreground',
-                        count === 0 && 'slashed-zero',
+                        count === 0 && 'slashed-zero'
                       )}
                     >
                       {count < 100 ? count : '100+'}
@@ -1292,12 +1304,12 @@ export function PropertyFilterOptionValueMenu<TData, TValue>({
                   </span>
                 </div>
               </CommandItem>
-            )
+            );
           })}
         </CommandGroup>
       </CommandList>
     </Command>
-  )
+  );
 }
 
 export function PropertyFilterMultiOptionValueMenu<
@@ -1311,40 +1323,40 @@ export function PropertyFilterMultiOptionValueMenu<
 }: ProperFilterValueMenuProps<TData, TValue>) {
   const filter = column.getFilterValue() as
     | FilterValue<'multiOption', TData>
-    | undefined
+    | undefined;
 
-  let options: ColumnOption[]
+  let options: ColumnOption[];
   const columnVals = table
     .getCoreRowModel()
     .rows.flatMap((r) => r.getValue<TValue>(id))
-    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null)
-  const uniqueVals = uniq(columnVals)
+    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null);
+  const uniqueVals = uniq(columnVals);
 
   // If static options are provided, use them
   if (columnMeta.options) {
-    options = columnMeta.options
+    options = columnMeta.options;
   }
 
   // No static options provided,
   // We should dynamically generate them based on the column data
   else if (columnMeta.transformOptionFn) {
-    const transformOptionFn = columnMeta.transformOptionFn
+    const { transformOptionFn } = columnMeta;
 
     options = uniqueVals.map((v) =>
-      transformOptionFn(v as ElementType<NonNullable<TValue>>),
-    )
+      transformOptionFn(v as ElementType<NonNullable<TValue>>)
+    );
   }
 
   // Make sure the column data conforms to ColumnOption type
   else if (isColumnOptionArray(uniqueVals)) {
-    options = uniqueVals
+    options = uniqueVals;
   }
 
   // Invalid configuration
   else {
     throw new Error(
-      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`,
-    )
+      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`
+    );
   }
 
   const optionsCount: Record<ColumnOption['value'], number> = columnVals.reduce(
@@ -1352,14 +1364,14 @@ export function PropertyFilterMultiOptionValueMenu<
       const value = columnMeta.options
         ? (curr as string)
         : columnMeta.transformOptionFn!(
-            curr as ElementType<NonNullable<TValue>>,
-          ).value
+            curr as ElementType<NonNullable<TValue>>
+          ).value;
 
-      acc[value] = (acc[value] ?? 0) + 1
-      return acc
+      acc[value] = (acc[value] ?? 0) + 1;
+      return acc;
     },
-    {} as Record<ColumnOption['value'], number>,
-  )
+    {} as Record<ColumnOption['value'], number>
+  );
 
   // Handles the selection/deselection of an option
   function handleOptionSelect(value: string, check: boolean) {
@@ -1376,43 +1388,43 @@ export function PropertyFilterMultiOptionValueMenu<
               operator: 'include',
               values: [[value]],
               columnMeta: column.columnDef.meta,
-            } satisfies FilterValue<'multiOption', TData>
+            } satisfies FilterValue<'multiOption', TData>;
 
-          const newValues = [uniq([...old.values[0], value])]
+          const newValues = [uniq([...old.values[0], value])];
 
           return {
             operator: determineNewOperator(
               'multiOption',
               old.values,
               newValues,
-              old.operator,
+              old.operator
             ),
             values: newValues,
             columnMeta: column.columnDef.meta,
-          } satisfies FilterValue<'multiOption', TData>
-        },
-      )
+          } satisfies FilterValue<'multiOption', TData>;
+        }
+      );
     } else
       column.setFilterValue(
         (old: undefined | FilterValue<'multiOption', TData>) => {
-          if (!old?.values[0] || old.values[0].length <= 1) return undefined
+          if (!old?.values[0] || old.values[0].length <= 1) return undefined;
 
           const newValues = [
             uniq([...old.values[0], value]).filter((v) => v !== value),
-          ]
+          ];
 
           return {
             operator: determineNewOperator(
               'multiOption',
               old.values,
               newValues,
-              old.operator,
+              old.operator
             ),
             values: newValues,
             columnMeta: column.columnDef.meta,
-          } satisfies FilterValue<'multiOption', TData>
-        },
-      )
+          } satisfies FilterValue<'multiOption', TData>;
+        }
+      );
   }
 
   return (
@@ -1422,14 +1434,14 @@ export function PropertyFilterMultiOptionValueMenu<
       <CommandList>
         <CommandGroup>
           {options.map((v) => {
-            const checked = Boolean(filter?.values[0]?.includes(v.value))
-            const count = optionsCount[v.value] ?? 0
+            const checked = Boolean(filter?.values[0]?.includes(v.value));
+            const count = optionsCount[v.value] ?? 0;
 
             return (
               <CommandItem
                 key={v.value}
                 onSelect={() => {
-                  handleOptionSelect(v.value, !checked)
+                  handleOptionSelect(v.value, !checked);
                 }}
                 className="group flex items-center justify-between gap-1.5"
               >
@@ -1449,7 +1461,7 @@ export function PropertyFilterMultiOptionValueMenu<
                     <sup
                       className={cn(
                         'ml-0.5 tabular-nums tracking-tight text-muted-foreground',
-                        count === 0 && 'slashed-zero',
+                        count === 0 && 'slashed-zero'
                       )}
                     >
                       {count < 100 ? count : '100+'}
@@ -1457,12 +1469,12 @@ export function PropertyFilterMultiOptionValueMenu<
                   </span>
                 </div>
               </CommandItem>
-            )
+            );
           })}
         </CommandGroup>
       </CommandList>
     </Command>
-  )
+  );
 }
 
 export function PropertyFilterDateValueMenu<TData, TValue>({
@@ -1470,25 +1482,25 @@ export function PropertyFilterDateValueMenu<TData, TValue>({
 }: ProperFilterValueMenuProps<TData, TValue>) {
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'date', TData>)
-    : undefined
+    : undefined;
 
   const [date, setDate] = useState<DateRange | undefined>({
     from: filter?.values[0] ?? new Date(),
     to: filter?.values[1] ?? undefined,
-  })
+  });
 
   function changeDateRange(value: DateRange | undefined) {
-    const start = value?.from
+    const start = value?.from;
     const end =
       start && value && value.to && !isEqual(start, value.to)
         ? value.to
-        : undefined
+        : undefined;
 
-    setDate({ from: start, to: end })
+    setDate({ from: start, to: end });
 
-    const isRange = start && end
+    const isRange = start && end;
 
-    const newValues = isRange ? [start, end] : start ? [start] : []
+    const newValues = isRange ? [start, end] : start ? [start] : [];
 
     column.setFilterValue((old: undefined | FilterValue<'date', TData>) => {
       if (!old || old.values.length === 0)
@@ -1496,7 +1508,7 @@ export function PropertyFilterDateValueMenu<TData, TValue>({
           operator: newValues.length > 1 ? 'is between' : 'is',
           values: newValues,
           columnMeta: column.columnDef.meta,
-        } satisfies FilterValue<'date', TData>
+        } satisfies FilterValue<'date', TData>;
 
       return {
         operator:
@@ -1507,8 +1519,8 @@ export function PropertyFilterDateValueMenu<TData, TValue>({
               : old.operator,
         values: newValues,
         columnMeta: column.columnDef.meta,
-      } satisfies FilterValue<'date', TData>
-    })
+      } satisfies FilterValue<'date', TData>;
+    });
   }
 
   return (
@@ -1530,7 +1542,7 @@ export function PropertyFilterDateValueMenu<TData, TValue>({
         </CommandGroup>
       </CommandList>
     </Command>
-  )
+  );
 }
 
 export function PropertyFilterTextValueMenu<TData, TValue>({
@@ -1538,7 +1550,7 @@ export function PropertyFilterTextValueMenu<TData, TValue>({
 }: ProperFilterValueMenuProps<TData, TValue>) {
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'text', TData>)
-    : undefined
+    : undefined;
 
   const changeText = (value: string | number) => {
     column.setFilterValue((old: undefined | FilterValue<'text', TData>) => {
@@ -1547,10 +1559,10 @@ export function PropertyFilterTextValueMenu<TData, TValue>({
           operator: 'contains',
           values: [String(value)],
           columnMeta: column.columnDef.meta,
-        } satisfies FilterValue<'text', TData>
-      return { operator: old.operator, values: [String(value)] }
-    })
-  }
+        } satisfies FilterValue<'text', TData>;
+      return { operator: old.operator, values: [String(value)] };
+    });
+  };
 
   return (
     <Command>
@@ -1567,7 +1579,7 @@ export function PropertyFilterTextValueMenu<TData, TValue>({
         </CommandGroup>
       </CommandList>
     </Command>
-  )
+  );
 }
 
 export function PropertyFilterNumberValueMenu<TData, TValue>({
@@ -1575,79 +1587,79 @@ export function PropertyFilterNumberValueMenu<TData, TValue>({
   column,
   columnMeta,
 }: ProperFilterValueMenuProps<TData, TValue>) {
-  const maxFromMeta = columnMeta.max
-  const cappedMax = maxFromMeta ?? Number.MAX_SAFE_INTEGER
+  const maxFromMeta = columnMeta.max;
+  const cappedMax = maxFromMeta ?? Number.MAX_SAFE_INTEGER;
 
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'number', TData>)
-    : undefined
+    : undefined;
 
   const isNumberRange =
-    !!filter && numberFilterDetails[filter.operator].target === 'multiple'
+    !!filter && numberFilterDetails[filter.operator].target === 'multiple';
 
-  const [datasetMin] = column.getFacetedMinMaxValues() ?? [0, 0]
+  const [datasetMin] = column.getFacetedMinMaxValues() ?? [0, 0];
 
   const initialValues = () => {
     if (filter?.values) {
       return filter.values.map((val) =>
-        val >= cappedMax ? `${cappedMax}+` : val.toString(),
-      )
+        val >= cappedMax ? `${cappedMax}+` : val.toString()
+      );
     }
-    return [datasetMin.toString()]
-  }
+    return [datasetMin.toString()];
+  };
 
-  const [inputValues, setInputValues] = useState<string[]>(initialValues)
+  const [inputValues, setInputValues] = useState<string[]>(initialValues);
 
   const changeNumber = (value: number[]) => {
-    const sortedValues = [...value].sort((a, b) => a - b)
+    const sortedValues = [...value].sort((a, b) => a - b);
 
     column.setFilterValue((old: undefined | FilterValue<'number', TData>) => {
       if (!old || old.values.length === 0) {
         return {
           operator: 'is',
           values: sortedValues,
-        }
+        };
       }
 
-      const operator = numberFilterDetails[old.operator]
-      let newValues: number[]
+      const operator = numberFilterDetails[old.operator];
+      let newValues: number[];
 
       if (operator.target === 'single') {
-        newValues = [sortedValues[0]]
+        newValues = [sortedValues[0]];
       } else {
         newValues = [
           sortedValues[0] >= cappedMax ? cappedMax : sortedValues[0],
           sortedValues[1] >= cappedMax
             ? Number.POSITIVE_INFINITY
             : sortedValues[1],
-        ]
+        ];
       }
 
       return {
         operator: old.operator,
         values: newValues,
-      }
-    })
-  }
+      };
+    });
+  };
 
   const handleInputChange = (index: number, value: string) => {
-    const newValues = [...inputValues]
+    const newValues = [...inputValues];
     if (isNumberRange && Number.parseInt(value, 10) >= cappedMax) {
-      newValues[index] = `${cappedMax}+`
+      newValues[index] = `${cappedMax}+`;
     } else {
-      newValues[index] = value
+      newValues[index] = value;
     }
 
-    setInputValues(newValues)
+    setInputValues(newValues);
 
     const parsedValues = newValues.map((val) => {
-      if (val.trim() === '') return 0
-      if (val === `${cappedMax}+`) return cappedMax
-      return Number.parseInt(val, 10)
-    })
+      if (val.trim() === '') return 0;
+      if (val === `${cappedMax}+`) return cappedMax;
+      return Number.parseInt(val, 10);
+    });
 
-    changeNumber(parsedValues)
-  }
+    changeNumber(parsedValues);
+  };
 
   const changeType = (type: 'single' | 'range') => {
     column.setFilterValue((old: undefined | FilterValue<'number', TData>) => {
@@ -1655,37 +1667,37 @@ export function PropertyFilterNumberValueMenu<TData, TValue>({
         return {
           operator: 'is',
           values: [old?.values[0] ?? 0],
-        }
+        };
       }
-      const newMaxValue = old?.values[0] ?? cappedMax
+      const newMaxValue = old?.values[0] ?? cappedMax;
       return {
         operator: 'is between',
         values: [0, newMaxValue],
-      }
-    })
+      };
+    });
 
     if (type === 'single') {
-      setInputValues([inputValues[0]])
+      setInputValues([inputValues[0]]);
     } else {
-      const maxValue = inputValues[0] || cappedMax.toString()
-      setInputValues(['0', maxValue])
+      const maxValue = inputValues[0] || cappedMax.toString();
+      setInputValues(['0', maxValue]);
     }
-  }
+  };
 
   const slider = {
     value: inputValues.map((val) =>
       val === '' || val === `${cappedMax}+`
         ? cappedMax
-        : Number.parseInt(val, 10),
+        : Number.parseInt(val, 10)
     ),
     onValueChange: (value: number[]) => {
-      const values = value.map((val) => (val >= cappedMax ? cappedMax : val))
+      const values = value.map((val) => (val >= cappedMax ? cappedMax : val));
       setInputValues(
-        values.map((v) => (v >= cappedMax ? `${cappedMax}+` : v.toString())),
-      )
-      changeNumber(values)
+        values.map((v) => (v >= cappedMax ? `${cappedMax}+` : v.toString()))
+      );
+      changeNumber(values);
     },
-  }
+  };
 
   return (
     <Command>
@@ -1706,7 +1718,7 @@ export function PropertyFilterNumberValueMenu<TData, TValue>({
                 <Slider
                   value={[Number(inputValues[0])]}
                   onValueChange={(value) => {
-                    handleInputChange(0, value[0].toString())
+                    handleInputChange(0, value[0].toString());
                   }}
                   min={datasetMin}
                   max={cappedMax}
@@ -1760,5 +1772,5 @@ export function PropertyFilterNumberValueMenu<TData, TValue>({
         </CommandGroup>
       </CommandList>
     </Command>
-  )
+  );
 }
