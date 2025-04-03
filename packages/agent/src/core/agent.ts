@@ -54,6 +54,17 @@ export class FoilAgent {
   private lastFetchedPositions: any[] = [];
   private lastTotalCollateral: number = 0;
   private lastMarketUpdates: any[] = [];
+  private lastMergeData: {
+    positionsToClose: any[];
+    positionsToIncrease: any[];
+    positionsToReduce: any[];
+    positionsToOpen: any[];
+  } = {
+    positionsToClose: [],
+    positionsToIncrease: [],
+    positionsToReduce: [],
+    positionsToOpen: []
+  };
   private lastExecutionResult: any = null; // Store results from execute step
   // ---> End of added members <---
 
@@ -391,6 +402,12 @@ export class FoilAgent {
       this.currentState = 'Execute'; // Go to Execute even if no results
       this.evaluationResults = []; // Clear results
       this.lastMarketUpdates = []; // Clear updates
+      this.lastMergeData = {
+        positionsToClose: [],
+        positionsToIncrease: [],
+        positionsToReduce: [],
+        positionsToOpen: []
+      };
       this.lastFetchedPositions = []; // Clear positions
       this.lastTotalCollateral = 0; // Clear collateral
       return;
@@ -450,7 +467,7 @@ export class FoilAgent {
       this.lastFetchedPositions = [];
     }
 
-    // 2. Fetch agent's collateral balance (Example)
+    // 2. Fetch agent's collateral balance
     let collateralBalance = 0; // Placeholder
     const getBalanceTool = this.flatTools.find(t => t.name === 'getERC20BalanceOf'); // FIX: Use correct tool name from logs
     if (getBalanceTool) {
@@ -496,13 +513,13 @@ export class FoilAgent {
                       Logger.error(chalk.red(`UPDATE: Failed to parse balance result string: ${balanceResultRaw}`));
                  }
              } else if (typeof balanceResultRaw === 'number') {
-                parsedBalance = balanceResultRaw;
+                parsedBalance = balanceResultRaw.toString();
              } else {
                   Logger.warn(chalk.yellow(`UPDATE: Unexpected type for balance result: ${typeof balanceResultRaw}`));
              }
             // --- END: Parse balanceResult ---
 
-            collateralBalance = parsedBalance; // Assign parsed balance
+            collateralBalance = parseInt(parsedBalance, 10); // Convert parsedBalance to number TODO check if we need to use BigInt
             Logger.info(chalk.dim(`UPDATE: Successfully fetched and parsed collateral balance: ${collateralBalance}`));
         } catch (error: any) {
             Logger.error(chalk.red(`UPDATE: Error fetching or processing balance: ${error.message}`), error);
@@ -573,6 +590,8 @@ export class FoilAgent {
     // This will likely involve calling other tools (write tools).
     Logger.info(chalk.dim(`UPDATE: Calculated ${marketUpdates.length} potential market updates.`));
     this.lastMarketUpdates = marketUpdates; // Store calculated updates
+    const mergeData = this.getMergeData(this.lastMarketUpdates, this.lastFetchedPositions);
+    this.lastMergeData = mergeData; // Store merge data
 
 
     // Placeholder for actual update logic (e.g., calling write tools based on marketUpdates)
@@ -707,5 +726,132 @@ export class FoilAgent {
     } else {
         // Logger.info(`DELAY: Interval is 0, proceeding immediately.`);
     }
+  }
+
+  private getMergeData(expectedUpdates: any[], fetchedPositions: any[]): {
+    positionsToClose: any[];
+    positionsToIncrease: any[];
+    positionsToReduce: any[];
+    positionsToOpen: any[];
+  } {
+    // Initialize result object with categorized actions
+    const mergeData = {
+      positionsToClose: [] as any[],
+      positionsToIncrease: [] as any[],
+      positionsToReduce: [] as any[],
+      positionsToOpen: [] as any[]
+    };
+
+    // Create a map of current positions by market identifier for easier lookup
+    const currentPositionsMap = new Map();
+    fetchedPositions.forEach(position => {
+      if (position.marketAddress) {
+        currentPositionsMap.set(position.marketAddress, position);
+      }
+    });
+
+    // Process each expected update
+    expectedUpdates.forEach(update => {
+      const marketId = update.marketIdentifier;
+      const targetPosition = update.targetPosition;
+      const targetAllocation = update.targetAllocation;
+      
+      // Check if we already have a position in this market
+      const currentPosition = currentPositionsMap.get(marketId);
+      
+      if (!currentPosition) {
+        // No current position exists, this is a new position to open
+        if (targetAllocation > 0) {
+          mergeData.positionsToOpen.push({
+            marketId,
+            targetPosition,
+            targetAllocation,
+            confidence: update.confidence,
+            rationale: update.rationale
+          });
+        }
+      } else {
+        // We have an existing position, compare with target
+        const currentAllocation = currentPosition.collateralAmount || 0;
+        const currentPositionType = currentPosition.positionType || '';
+        
+        // Check if position type matches target position
+        const positionTypeMatches = currentPositionType.toLowerCase() === targetPosition.toLowerCase();
+        
+        if (!positionTypeMatches) {
+          // Position type doesn't match, we need to close the current position and open a new one
+          mergeData.positionsToClose.push({
+            marketId,
+            currentPosition,
+            reason: `Position type mismatch: current=${currentPositionType}, target=${targetPosition}`
+          });
+          
+          if (targetAllocation > 0) {
+            mergeData.positionsToOpen.push({
+              marketId,
+              targetPosition,
+              targetAllocation,
+              confidence: update.confidence,
+              rationale: update.rationale
+            });
+          }
+        } else {
+          // Position type matches, check allocation
+          if (targetAllocation === 0) {
+            // Target allocation is zero, close the position
+            mergeData.positionsToClose.push({
+              marketId,
+              currentPosition,
+              reason: 'Target allocation is zero'
+            });
+          } else if (targetAllocation > currentAllocation) {
+            // Need to increase position
+            mergeData.positionsToIncrease.push({
+              marketId,
+              currentPosition,
+              currentAllocation,
+              targetAllocation,
+              increaseAmount: targetAllocation - currentAllocation,
+              confidence: update.confidence,
+              rationale: update.rationale
+            });
+          } else if (targetAllocation < currentAllocation) {
+            // Need to reduce position
+            mergeData.positionsToReduce.push({
+              marketId,
+              currentPosition,
+              currentAllocation,
+              targetAllocation,
+              reduceAmount: currentAllocation - targetAllocation,
+              confidence: update.confidence,
+              rationale: update.rationale
+            });
+          }
+          // If targetAllocation === currentAllocation, no action needed
+        }
+      }
+    });
+    
+    // Check for positions that need to be closed (not in expected updates)
+    currentPositionsMap.forEach((position, marketId) => {
+      const isInExpectedUpdates = expectedUpdates.some(update => update.marketIdentifier === marketId);
+      if (!isInExpectedUpdates) {
+        mergeData.positionsToClose.push({
+          marketId,
+          currentPosition: position,
+          reason: 'Position not in expected updates'
+        });
+      }
+    });
+    
+    // Log summary of actions
+    Logger.info(chalk.dim(`UPDATE: Action summary:
+      - Positions to close: ${mergeData.positionsToClose.length}
+      - Positions to increase: ${mergeData.positionsToIncrease.length}
+      - Positions to reduce: ${mergeData.positionsToReduce.length}
+      - Positions to open: ${mergeData.positionsToOpen.length}
+    `));
+    
+    return mergeData;
   }
 }
