@@ -71,7 +71,11 @@ interface FilterOption {
   icon?: React.ReactNode;
 }
 
-const AdminTable: React.FC = () => {
+interface AdminTableProps {
+  toolButtons?: React.ReactNode;
+}
+
+const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
   const { markets, isLoading, refetchMarkets } = useFoil();
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
@@ -81,7 +85,6 @@ const AdminTable: React.FC = () => {
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([
     { id: 'isPublic', value: 'true' },
-    { id: 'chainId', value: ['8453'] }, // Default to showing only Base
   ]);
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
@@ -89,7 +92,6 @@ const AdminTable: React.FC = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<FilterOption[]>([
     { id: 'isPublic', label: 'Public', value: 'true', icon: <Eye className="h-4 w-4" /> },
-    { id: 'chainId', label: 'Base', value: '8453', icon: <Boxes className="h-4 w-4 text-blue-500" /> },
   ]);
 
   const data = useMemo(() => {
@@ -428,22 +430,13 @@ const AdminTable: React.FC = () => {
   useEffect(() => {
     // Only run if we have chain options but no selected filters at all
     if (chainOptions.length > 0 && selectedFilters.length === 0) {
-      // Set default chains - for now we just want Base
-      const baseChain = chainOptions.find(option => option.value === '8453');
+      // Set initial selected filters - only public filter
+      setSelectedFilters([publicFilterOption]);
       
-      if (baseChain) {
-        // Set initial selected filters
-        setSelectedFilters([
-          publicFilterOption,
-          baseChain
-        ]);
-        
-        // Set initial column filters
-        setColumnFilters([
-          { id: 'isPublic', value: 'true' },
-          { id: 'chainId', value: ['8453'] }
-        ]);
-      }
+      // Set initial column filters - only public filter
+      setColumnFilters([
+        { id: 'isPublic', value: 'true' }
+      ]);
     }
   }, [chainOptions, publicFilterOption]);
 
@@ -458,7 +451,7 @@ const AdminTable: React.FC = () => {
   return (
     <div className="w-full overflow-x-auto">
       <div className="flex flex-col">
-        <div className="flex items-center gap-2 border-b py-4 px-4 mb-0">
+        <div className="flex items-center justify-between gap-2 border-b py-4 px-4 mb-0">
           <div className="flex items-center flex-wrap gap-4">
             <Popover open={filterOpen} onOpenChange={setFilterOpen}>
               <PopoverTrigger asChild>
@@ -595,6 +588,12 @@ const AdminTable: React.FC = () => {
               ))}
             </div>
           </div>
+          
+          {toolButtons && (
+            <div className="flex items-center gap-2">
+              {toolButtons}
+            </div>
+          )}
         </div>
       </div>
       <Table className="w-fit min-w-full whitespace-nowrap">

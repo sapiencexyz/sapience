@@ -674,30 +674,36 @@ const getColumns = (
         },
       });
       
-      return <span>{allowance?.toString() || '0'}</span>;
-    },
-  },
-  {
-    id: 'bondApprove',
-    header: 'Bond Action',
-    enableSorting: false,
-    cell: ({ row }) => {
-      const market = row.original.market;
-      const bondAmount = market.marketParams?.bondAmount;
-      const bondCurrency = market.marketParams?.bondCurrency;
+      const requiresApproval = !allowance || bondAmount > (allowance as bigint);
       
-      if (!bondAmount || !bondCurrency) {
-        return <span>Loading...</span>;
+      if (requiresApproval) {
+        // If allowance is 0 or undefined, only show the button
+        if (!allowance || (allowance as bigint) === 0n) {
+          return (
+            <BondApproveButton 
+              market={market}
+              bondAmount={bondAmount}
+              bondCurrency={bondCurrency}
+              vaultAddress={market.vaultAddress}
+            />
+          );
+        }
+        
+        // Otherwise show both allowance and button
+        return (
+          <div className="flex items-center gap-2">
+            <span>{allowance.toString()}</span>
+            <BondApproveButton 
+              market={market}
+              bondAmount={bondAmount}
+              bondCurrency={bondCurrency}
+              vaultAddress={market.vaultAddress}
+            />
+          </div>
+        );
       }
       
-      return (
-        <BondApproveButton 
-          market={market}
-          bondAmount={bondAmount}
-          bondCurrency={bondCurrency}
-          vaultAddress={market.vaultAddress} // Pass the actual vault address
-        />
-      );
+      return <span>{allowance?.toString() || '0'}</span>;
     },
   },
   {

@@ -182,21 +182,20 @@ const Admin = () => {
     }
   };
 
+  const toolButtons = (
+    <>
+      <Button size="sm" onClick={() => setStatusOpen(true)}>Check Job Status</Button>
+      <Button size="sm" onClick={() => setIndexResourceOpen(true)}>Index Resource</Button>
+      <Button size="sm" onClick={() => setRefreshCacheOpen(true)}>Refresh Cache</Button>
+    </>
+  );
+
   return (
     <div className="w-full h-full pb-20">
-      <AdminTable />
-
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-background pt-4 flex gap-4 pb-4 px-4">
-        <span className="font-normal text-lg flex items-center mr-2">Tools</span>
-        <Button size="xs" className="text-xs" onClick={() => setStatusOpen(true)}>Check Job Status</Button>
-        <Button size="xs" className="text-xs" onClick={() => setIndexResourceOpen(true)}>
-          Index Resource
-        </Button>
-        <Button size="xs" className="text-xs" onClick={() => setRefreshCacheOpen(true)}>Refresh Cache</Button>
-      </div>
+      <AdminTable toolButtons={toolButtons} />
 
       <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Check Job Status</DialogTitle>
           </DialogHeader>
