@@ -18,7 +18,6 @@ export class VolumeResolver {
   ): Promise<number> {
 
     // 1. Get epoch start and end timestamps (Needs implementation or existing function)
-    // TODO: Replace with actual logic to fetch epoch times
     const { startTimestamp, endTimestamp } = await getEpochStartEndTimestamps(epochId, chainId, marketAddress);
 
     if (!startTimestamp || !endTimestamp) {

@@ -535,10 +535,17 @@ const getColumns = (
     id: 'endTimestamp',
     header: 'Ends',
     accessorKey: 'endTimestamp',
-    cell: ({ getValue }) => {
-      const timestamp = getValue() as number;
+    cell: ({ row }) => {
+      const timestamp = row.original.endTimestamp;
       const date = new Date(timestamp * 1000);
       const now = new Date();
+
+      // Calculate period duration in weeks
+      const { startTimestamp } = row.original;
+      const weeks = Math.round(
+        (timestamp - startTimestamp) / (7 * 24 * 60 * 60)
+      );
+
       return (
         <div className="flex items-center gap-2">
           <span>
@@ -546,7 +553,7 @@ const getColumns = (
               ? `${formatDistanceToNow(date)} ago`
               : `in ${formatDistanceToNow(date)}`}
           </span>
-          <span className="text-xs text-gray-500">4 week period</span>
+          <span className="text-xs text-gray-500">{weeks} week period</span>
         </div>
       );
     },
