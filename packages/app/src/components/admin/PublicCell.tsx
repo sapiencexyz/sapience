@@ -1,7 +1,6 @@
+import { Switch } from '@foil/ui/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import type React from 'react';
-
-import { Switch } from '@/components/ui/switch';
 
 import type { PublicCellProps } from './types';
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { Button } from '@foil/ui/components/ui/button';
+import { Label } from '@foil/ui/components/ui/label';
 import { CircleHelp, DatabaseIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';
@@ -28,8 +30,6 @@ import {
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
 import MarketUnitsToggle from './marketUnitsToggle';
-import { Button } from './ui/button';
-import { Label } from './ui/label';
 
 const AdvancedView = ({
   params,

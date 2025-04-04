@@ -1,3 +1,4 @@
+import { Button } from '@foil/ui/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { formatUnits } from 'viem';
@@ -8,7 +9,6 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
-import { Button } from '~/components/ui/button';
 import { useToast } from '~/hooks/use-toast';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';

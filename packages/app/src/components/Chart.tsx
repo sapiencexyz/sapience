@@ -1,17 +1,17 @@
-import { Loader2 } from 'lucide-react';
-import { useRef, useContext, useMemo, useEffect, useState } from 'react';
-import type React from 'react';
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '~/components/ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import { cn } from '@foil/ui/lib/utils';
+import { Loader2 } from 'lucide-react';
+import { useRef, useContext, useMemo, useEffect, useState } from 'react';
+import type React from 'react';
+
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useChart } from '~/lib/hooks/useChart';
 import type { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
-import { cn } from '~/lib/utils';
 
 interface Props {
   resourceSlug?: string;

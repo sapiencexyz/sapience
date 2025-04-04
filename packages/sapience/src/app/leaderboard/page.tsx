@@ -5,10 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Trophy, ArrowRight, Info, Loader2 } from 'lucide-react';
 
-import { Button } from '~/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { ScrollArea } from '~/components/ui/scroll-area';
-import { Separator } from '~/components/ui/separator';
+import { ScrollArea } from '@foil/ui/components/ui/scroll-area';
+import { Separator } from '@foil/ui/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -21,8 +21,8 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { Badge } from '~/components/ui/badge';
+} from '@foil/ui/components/ui/tooltip';
+import { Badge } from '@foil/ui/components/ui/badge';
 import { useResources } from '~/lib/hooks/useResources';
 import NumberDisplay from '../../components/numberDisplay';
 

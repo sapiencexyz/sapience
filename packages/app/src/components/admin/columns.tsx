@@ -1,14 +1,14 @@
-import type { ColumnDef } from '@tanstack/react-table';
-import { formatDistanceToNow } from 'date-fns';
-import { Download } from 'lucide-react';
-
-import { Button } from '@/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import type { ColumnDef } from '@tanstack/react-table';
+import { formatDistanceToNow } from 'date-fns';
+import { Download } from 'lucide-react';
+
 import type { Market } from '~/lib/context/FoilProvider';
 
 import AddressCell from './AddressCell';

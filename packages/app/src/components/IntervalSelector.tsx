@@ -1,14 +1,14 @@
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { useState } from 'react';
-
-import { Button } from '~/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '~/components/ui/popover';
+} from '@foil/ui/components/ui/popover';
+import { cn } from '@foil/ui/lib/utils';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { useState } from 'react';
+
 import { TimeInterval } from '~/lib/interfaces/interfaces';
-import { cn } from '~/lib/utils';
 
 const intervals = [
   { value: TimeInterval.I5M, label: '5m' },

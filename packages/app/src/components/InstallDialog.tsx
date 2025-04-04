@@ -1,16 +1,15 @@
 'use client';
 
-import { Share, PlusSquare } from 'lucide-react';
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
-
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@foil/ui/components/ui/dialog';
+import { Share, PlusSquare } from 'lucide-react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
 const InstallDialog = () => {
   const [isOpen, setIsOpen] = useState(false);

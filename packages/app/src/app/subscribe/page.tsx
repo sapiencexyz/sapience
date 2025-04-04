@@ -1,6 +1,13 @@
 'use client';
 
 import { gql } from '@apollo/client';
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@foil/ui/components/ui/dialog';
 import Spline from '@splinetool/react-spline';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,13 +27,6 @@ import { useAccount } from 'wagmi';
 
 import NumberDisplay from '~/components/numberDisplay';
 import Subscribe from '~/components/subscribe';
-import { Button } from '~/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui/dialog';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';

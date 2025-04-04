@@ -1,11 +1,10 @@
-import type React from 'react';
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import type React from 'react';
 
 interface PositionDisplayProps {
   positionId: string | number;
