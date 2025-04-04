@@ -26,6 +26,21 @@ import PublicCell from './PublicCell';
 import SettleCell from './SettleCell';
 import type { MissingBlocks } from './types';
 
+// Extend the Market type with missing properties
+declare module '~/lib/context/FoilProvider' {
+  interface Market {
+    marketParams?: {
+      bondCurrency: `0x${string}`;
+      bondAmount: bigint;
+    };
+    collateral?: {
+      symbol: string;
+    };
+    isYin: boolean;
+    isCumulative: boolean;
+  }
+}
+
 // Create a mapping of chain IDs to viem chain objects with added color property
 interface ChainWithColor {
   id: number;
@@ -324,11 +339,9 @@ const MarketPriceCell = ({
   );
 };
 
-// BondCell component to handle bond information and approval
+// BondCell component with fixed comparison
 const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
-  const bondCurrency = market.marketParams?.bondCurrency as
-    | `0x${string}`
-    | undefined;
+  const bondCurrency = market.marketParams?.bondCurrency;
   const bondAmount = market.marketParams?.bondAmount;
   const spenderAddress =
     market.vaultAddress !== zeroAddress ? market.vaultAddress : market.address;
@@ -345,7 +358,7 @@ const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
   // 1. Fetch the owner of the spender contract
   const { data: ownerOfSpender, isLoading: isLoadingOwner } = useReadContract({
     abi: ownerAbi,
-    address: spenderAddress,
+    address: spenderAddress as `0x${string}`,
     functionName: 'owner',
     chainId,
     query: {
@@ -358,7 +371,7 @@ const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
     abi: erc20ABI,
     address: bondCurrency,
     functionName: 'allowance',
-    args: [ownerOfSpender as `0x${string}`, spenderAddress],
+    args: [ownerOfSpender as `0x${string}`, spenderAddress as `0x${string}`],
     chainId,
     query: {
       enabled:
@@ -380,7 +393,12 @@ const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
   }
 
   const currentAllowance = allowance ?? BigInt(0);
-  const requiresApproval = bondAmount > currentAllowance;
+
+  // Compare as strings to avoid TypeScript type issues
+  const currentAllowanceStr = currentAllowance.toString();
+  const bondAmountStr = bondAmount?.toString() || '0';
+  const requiresApproval =
+    bondAmount !== undefined && currentAllowanceStr < bondAmountStr;
 
   // Construct the explorer link URL using viem chain data
   const blockExplorerLink =
@@ -391,7 +409,7 @@ const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
   return (
     <div className="flex items-center">
       <span className="mr-1">
-        {currentAllowance.toString()} / {bondAmount.toString()}
+        {currentAllowance.toString()} / {bondAmount?.toString() || '0'}
       </span>
 
       {/* Only show button if owner needs approval AND we have a valid explorer link */}
@@ -417,6 +435,7 @@ export interface TableRow {
   public: boolean;
   market: Market;
   question?: string;
+  id?: number;
 }
 
 const getColumns = (
@@ -838,7 +857,13 @@ const getColumns = (
     cell: ({ row }) => (
       <SettleCell
         market={row.original.market}
-        epoch={row.original}
+        epoch={{
+          id: row.original.id ?? row.original.epochId, // Use id if available, fall back to epochId
+          epochId: row.original.epochId,
+          startTimestamp: row.original.startTimestamp,
+          endTimestamp: row.original.endTimestamp,
+          public: row.original.public,
+        }}
         missingBlocks={missingBlocks}
       />
     ),
