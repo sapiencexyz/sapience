@@ -35,13 +35,18 @@ interface ChainWithColor {
   color: string;
 }
 
+// Revert the chains mapping to its original state (without explorerUrl)
 const chains: Record<number, ChainWithColor> = {
   [sepolia.id]: {
     id: sepolia.id,
     name: 'Sepolia',
     color: 'bg-gray-100 text-gray-800',
   },
-  [base.id]: { id: base.id, name: 'Base', color: 'bg-blue-100 text-blue-800' },
+  [base.id]: {
+    id: base.id,
+    name: 'Base',
+    color: 'bg-blue-100 text-blue-800',
+  },
 };
 
 // ResourceCell component to display resource name and icon
@@ -97,10 +102,12 @@ const VolumeCell = ({
   marketAddress,
   chainId,
   epochId,
+  collateralSymbol,
 }: {
   marketAddress: string;
   chainId: number;
   epochId: number;
+  collateralSymbol?: string;
 }) => {
   const { data, isLoading, error } = useQuery({
     queryKey: ['totalVolumeByEpoch', chainId, marketAddress, epochId],
@@ -136,101 +143,56 @@ const VolumeCell = ({
     return <span className="text-red-500">Error</span>; // Simplified error display
   }
 
-  return data !== undefined ? <NumberDisplay value={data} /> : <span>N/A</span>;
+  // Display volume and symbol once loaded
+  return data !== undefined ? (
+    <span>
+      <NumberDisplay value={data} /> {collateralSymbol || ''}
+    </span>
+  ) : (
+    <span>N/A</span>
+  );
 };
+
+// Define minimal ABI for owner() view function
+const ownerAbi = [
+  {
+    inputs: [],
+    name: 'owner',
+    outputs: [{ internalType: 'address', name: '', type: 'address' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
 
 // BondApproveButton component to handle bond approval
 const BondApproveButton = ({
-  market,
   bondAmount,
-  bondCurrency,
-  vaultAddress,
-}: Omit<BondCellProps, 'epoch'>) => {
-  const { address } = useAccount();
-  const { toast } = useToast();
-  const [isApproving, setIsApproving] = useState(false);
-
-  // Determine the target address for approval
-  // Use vault address if it exists, otherwise use market address
-  const targetAddress =
-    market.vaultAddress !== zeroAddress ? market.vaultAddress : market.address;
-
-  // Exit early if required props are not available
-  if (!bondAmount || !bondCurrency) {
-    return <span>Loading...</span>;
-  }
-
-  const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    abi: erc20ABI,
-    address: bondCurrency as `0x${string}`,
-    functionName: 'allowance',
-    args: [address, targetAddress],
-    account: address || zeroAddress,
-    chainId: market.chainId,
-    query: {
-      enabled: !!address && !!bondCurrency,
-    },
-  });
-
-  const { writeContract: approveWrite } = useWriteContract({
-    mutation: {
-      onError: (error) => {
-        console.error('Failed to approve: ', error);
-        setIsApproving(false);
-        toast({
-          variant: 'destructive',
-          title: 'Failed to approve',
-          description: (error as Error).message,
-        });
-      },
-      onSuccess: () => {
-        toast({
-          title: 'Approval successful',
-          description: 'Bond amount has been approved',
-        });
-        setIsApproving(false);
-        refetchAllowance();
-      },
-    },
-  });
-
-  const handleApprove = () => {
-    setIsApproving(true);
-    approveWrite({
-      abi: erc20ABI,
-      address: bondCurrency as `0x${string}`,
-      functionName: 'approve',
-      args: [targetAddress, bondAmount],
-      chainId: market.chainId,
-    });
-  };
-
-  const requiresApproval = !allowance || bondAmount > (allowance as bigint);
-
-  if (!requiresApproval) {
-    // Return null as the button is only shown when approval is needed
-    return null;
-  }
+  explorerLink,
+}: {
+  bondAmount: bigint | undefined;
+  explorerLink: string;
+}) => {
+  const ButtonContent = (
+    <Button
+      size="icon"
+      disabled={false}
+      className="h-5 w-5 p-0 ml-1 bg-black text-white hover:bg-gray-800"
+      asChild
+    >
+      <Check className="h-3 w-3" />
+    </Button>
+  );
 
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="icon"
-            onClick={handleApprove}
-            disabled={isApproving}
-            className="h-5 w-5 p-0 ml-1 bg-black text-white hover:bg-gray-800"
-          >
-            {isApproving ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Check className="h-3 w-3" />
-            )}
-          </Button>
-        </TooltipTrigger>
+        <a href={explorerLink} target="_blank" rel="noopener noreferrer">
+          <TooltipTrigger asChild>
+            {ButtonContent}
+          </TooltipTrigger>
+        </a>
         <TooltipContent>
-          <p>Approve {bondAmount?.toString() || 'N/A'} bond</p>
+          <p>Approve {bondAmount?.toString() || 'N/A'} on Explorer</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -279,6 +241,7 @@ const getColumns = (
         marketAddress={row.original.marketAddress}
         chainId={row.original.chainId}
         epochId={row.original.epochId}
+        collateralSymbol={row.original.market?.collateral?.symbol}
       />
     ),
   },
@@ -753,48 +716,90 @@ const getColumns = (
       return bondAmount ? bondAmount.toString() : '';
     },
     cell: ({ row }) => {
-      const { address } = useAccount();
+      // Get market, bond details, and chain info
       const { market } = row.original;
       const bondCurrency = market.marketParams?.bondCurrency;
       const bondAmount = market.marketParams?.bondAmount;
+      const { chainId } = row.original;
 
-      // Determine the target address for approval
-      const targetAddress =
+      // Get the viem chain object based on chainId
+      const getViemChain = (id: number) => {
+        if (id === base.id) return base;
+        if (id === sepolia.id) return sepolia;
+        return undefined; // Handle unknown chains
+      };
+      const viemChain = getViemChain(chainId);
+      const explorerUrl = viemChain?.blockExplorers?.default?.url;
+
+      // Determine the spender address
+      const spenderAddress =
         market.vaultAddress !== zeroAddress
           ? market.vaultAddress
           : market.address;
 
+      // 1. Fetch the owner of the spender contract
+      const { data: ownerOfSpender, isLoading: isLoadingOwner } = useReadContract({
+        abi: ownerAbi,
+        address: spenderAddress,
+        functionName: 'owner',
+        chainId: row.original.chainId,
+        query: {
+          enabled: !!spenderAddress && spenderAddress !== zeroAddress,
+        },
+      });
+
+      // 2. Fetch the allowance granted BY ownerOfSpender TO spenderAddress
       const { data: allowance, isLoading: isLoadingAllowance } = useReadContract({
         abi: erc20ABI,
         address: bondCurrency as `0x${string}`,
         functionName: 'allowance',
-        args: [address, targetAddress],
-        account: address || zeroAddress,
+        args: [ownerOfSpender as `0x${string}`, spenderAddress],
         chainId: row.original.chainId,
         query: {
           enabled:
-            !!address && !!bondAmount && !!targetAddress && !!bondCurrency,
+            !!ownerOfSpender &&
+            !!spenderAddress &&
+            !!bondAmount &&
+            !!bondCurrency,
         },
       });
 
-      if (isLoadingAllowance || bondAmount === undefined) {
+      // Combined loading state
+      if (isLoadingOwner || isLoadingAllowance || bondAmount === undefined || !bondCurrency) {
+        if (!isLoadingOwner && !ownerOfSpender && spenderAddress !== zeroAddress) {
+          return <span className="text-red-500">No owner found</span>;
+        }
         return <span>Loading...</span>;
       }
 
-      const requiresApproval = !allowance || bondAmount > (allowance as bigint);
+      const currentAllowance = allowance ?? BigInt(0);
+      const requiresApproval = bondAmount > currentAllowance;
+
+      // Construct the explorer link URL using viem chain data
+      const blockExplorerLink = explorerUrl && bondCurrency
+        ? `${explorerUrl}/address/${bondCurrency}#writeProxyContract`
+        : undefined;
+
+      // Component to display the allowance text
+      const AllowanceDisplay = () => (
+        <span>
+          {currentAllowance.toString()} /{' '}
+          {bondAmount.toString()}
+        </span>
+      );
 
       return (
         <div className="flex items-center">
-          <span>
-            {allowance ? (allowance as bigint).toString() : '0'} /{' '}
-            {bondAmount.toString()}
+          <span className="mr-1">
+            <AllowanceDisplay />
           </span>
-          {requiresApproval && (
+
+          {/* Only show button if owner needs approval AND we have a valid explorer link */}
+          {requiresApproval && blockExplorerLink && (
             <BondApproveButton
-              market={market}
+              // Pass only necessary props
               bondAmount={bondAmount}
-              bondCurrency={bondCurrency}
-              vaultAddress={market.vaultAddress} // Pass vaultAddress explicitly
+              explorerLink={blockExplorerLink}
             />
           )}
         </div>

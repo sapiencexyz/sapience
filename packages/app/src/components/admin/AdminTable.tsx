@@ -643,7 +643,7 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
           </div>
 
           {toolButtons && (
-            <div className="flex items-center gap-2">{toolButtons}</div>
+            <div className="flex items-center gap-4">{toolButtons}</div>
           )}
         </div>
       </div>
