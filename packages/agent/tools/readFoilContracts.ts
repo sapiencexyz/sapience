@@ -721,6 +721,95 @@ export const getBalanceOf = {
   },
 };
 
+export const getMarketReferencePrice = {
+  name: "get_foil_market_reference_price",
+  description: "Gets the reference price for a market",
+  parameters: {
+    properties: {
+      marketAddress: {
+        type: "string",
+        description: "The address of the market to get reference price for"
+      },
+      epochId: {
+        type: "string",
+        description: "The ID of the epoch to get reference price for"
+      }
+    },
+    required: ["marketAddress", "epochId"],
+  },
+  function: async (args: { marketAddress: string; epochId: string }) => {
+    // Validate required parameters (and handle stringified args)
+    if (!args) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: args required"
+        }], 
+        isError: true
+      };
+    }
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch (error) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: "Error: args must be an object"
+          }],
+          isError: true
+        };
+      }
+    }
+
+    // Validate required parameters
+    if (!args.marketAddress) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: marketAddress is required"
+        }],
+        isError: true
+      };
+    }
+    if (!args.epochId) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: epochId is required"
+        }],
+        isError: true
+      };
+    }
+
+    try {
+      const marketInfo = await client.readContract({
+        address: args.marketAddress as `0x${string}`,
+        abi: FoilABI.abi,
+        functionName: 'getReferencePrice',
+        args: [BigInt(args.epochId)]
+      });
+
+      const formattedInfo = marketInfo.toString();
+
+      return {
+        content: [{
+          type: "text" as const,
+          text: JSON.stringify(formattedInfo, null, 2)
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error fetching market info: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  },
+};
+
 export const getERC20BalanceOf = {
   name: "get_erc20_balance_of",
   description: "Gets the balance of an ERC20 token for a specific wallet address",

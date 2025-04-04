@@ -56,13 +56,11 @@ export class FoilAgent {
   private lastMarketUpdates: any[] = [];
   private lastMergeData: {
     positionsToClose: any[];
-    positionsToIncrease: any[];
-    positionsToReduce: any[];
+    positionsToUpdate: any[];
     positionsToOpen: any[];
   } = {
     positionsToClose: [],
-    positionsToIncrease: [],
-    positionsToReduce: [],
+    positionsToUpdate: [],
     positionsToOpen: []
   };
   private lastExecutionResult: any = null; // Store results from execute step
@@ -288,7 +286,7 @@ export class FoilAgent {
 
         Logger.info(chalk.dim(`LOOKUP: Preparing evaluation tasks for ${markets.length} epoch(s)...`));
         for (const epoch of markets) {
-            const marketIdentifier = epoch.marketAddress || `EpochID-${epoch.epochId}` || 'Unknown ID';
+            const marketIdentifier = this.generateMarketIdentifier(epoch);
             const claimStatement = epoch.question;
 
             // Define the standard question for each market, ensuring claimStatement is included
@@ -317,7 +315,7 @@ export class FoilAgent {
     try {
       const evaluationPromises = this.evaluationTasks.map(async (task) => {
         // Access marketAddress and epochId from the epoch object stored in task.market
-        const marketIdentifier = task.market.marketAddress || `EpochID-${task.market.epochId}` || 'Unknown ID';
+        const marketIdentifier = this.generateMarketIdentifier(task.market);
         Logger.info(chalk.dim(`EVALUATE: Starting task for market: ${marketIdentifier}`));
 
         // Create a minimal message list for this specific task's context
@@ -348,6 +346,7 @@ export class FoilAgent {
 
           const result = {
             market: marketIdentifier,
+            fullMarket: task.market,
             question: task.question, // Keep the full question in the result object
             rawResponse: responseContent,
             parsed: {
@@ -404,8 +403,7 @@ export class FoilAgent {
       this.lastMarketUpdates = []; // Clear updates
       this.lastMergeData = {
         positionsToClose: [],
-        positionsToIncrease: [],
-        positionsToReduce: [],
+        positionsToUpdate: [],
         positionsToOpen: []
       };
       this.lastFetchedPositions = []; // Clear positions
@@ -417,6 +415,7 @@ export class FoilAgent {
     let currentPositions: any[] = []; // Placeholder for positions
     const getPositionsTool = this.flatTools.find(t => t.name === 'getPositions'); // FIX: Use correct tool name from logs
 
+    // TODO: Fix getPositions tool to return market and chainId in the response as well
     if (getPositionsTool) {
       try {
         Logger.info(chalk.dim(`UPDATE: Fetching current positions for agent ${this.agentAddress}...`));
@@ -457,7 +456,10 @@ export class FoilAgent {
         Logger.info(chalk.dim(`UPDATE: Fetched ${parsedPositions.length} positions, found ${activePositions.length} active positions.`));
         // --- END: Filter ---
 
-        this.lastFetchedPositions = activePositions; // Store FILTERED positions
+        this.lastFetchedPositions = activePositions.map(pos => ({
+          ...pos,
+          marketIdentifier: this.generateMarketIdentifier(pos)
+        })); // Store FILTERED positions
       } catch (error: any) {
         Logger.error(chalk.red(`UPDATE: Error fetching or processing positions: ${error.message}`), error);
         this.lastFetchedPositions = []; // Clear on error
@@ -590,7 +592,7 @@ export class FoilAgent {
     // This will likely involve calling other tools (write tools).
     Logger.info(chalk.dim(`UPDATE: Calculated ${marketUpdates.length} potential market updates.`));
     this.lastMarketUpdates = marketUpdates; // Store calculated updates
-    const mergeData = this.getMergeData(this.lastMarketUpdates, this.lastFetchedPositions);
+    const mergeData = await this.getMergeData(this.lastMarketUpdates, this.lastFetchedPositions);
     this.lastMergeData = mergeData; // Store merge data
 
 
@@ -728,19 +730,24 @@ export class FoilAgent {
     }
   }
 
-  private getMergeData(expectedUpdates: any[], fetchedPositions: any[]): {
+  private async getMergeData(expectedUpdates: any[], fetchedPositions: any[]): Promise<{
     positionsToClose: any[];
-    positionsToIncrease: any[];
-    positionsToReduce: any[];
+    positionsToUpdate: any[];
     positionsToOpen: any[];
-  } {
+  }> {
     // Initialize result object with categorized actions
     const mergeData = {
       positionsToClose: [] as any[],
-      positionsToIncrease: [] as any[],
-      positionsToReduce: [] as any[],
+      positionsToUpdate: [] as any[],
       positionsToOpen: [] as any[]
     };
+
+    // From expectedUpdates, create a map of market identifiers and the current price of the market
+    const marketPriceMap = new Map();
+    for (const update of expectedUpdates) {
+      const currentReferencePrice = await this.getMarketPrice(update.marketIdentifier);
+      marketPriceMap.set(update.marketIdentifier, currentReferencePrice);
+    }
 
     // Create a map of current positions by market identifier for easier lookup
     const currentPositionsMap = new Map();
@@ -756,6 +763,9 @@ export class FoilAgent {
       const targetPosition = update.targetPosition;
       const targetAllocation = update.targetAllocation;
       
+      // Determine the expected position type based on the target position and market price
+      const expectedPositionType = (targetPosition > marketPriceMap.get(marketId)) ? 'long' : 'short';
+
       // Check if we already have a position in this market
       const currentPosition = currentPositionsMap.get(marketId);
       
@@ -764,6 +774,7 @@ export class FoilAgent {
         if (targetAllocation > 0) {
           mergeData.positionsToOpen.push({
             marketId,
+            positionType: expectedPositionType,
             targetPosition,
             targetAllocation,
             confidence: update.confidence,
@@ -806,7 +817,7 @@ export class FoilAgent {
             });
           } else if (targetAllocation > currentAllocation) {
             // Need to increase position
-            mergeData.positionsToIncrease.push({
+            mergeData.positionsToUpdate.push({
               marketId,
               currentPosition,
               currentAllocation,
@@ -817,7 +828,7 @@ export class FoilAgent {
             });
           } else if (targetAllocation < currentAllocation) {
             // Need to reduce position
-            mergeData.positionsToReduce.push({
+            mergeData.positionsToUpdate.push({
               marketId,
               currentPosition,
               currentAllocation,
@@ -847,11 +858,74 @@ export class FoilAgent {
     // Log summary of actions
     Logger.info(chalk.dim(`UPDATE: Action summary:
       - Positions to close: ${mergeData.positionsToClose.length}
-      - Positions to increase: ${mergeData.positionsToIncrease.length}
-      - Positions to reduce: ${mergeData.positionsToReduce.length}
+      - Positions to update: ${mergeData.positionsToUpdate.length}
       - Positions to open: ${mergeData.positionsToOpen.length}
     `));
     
     return mergeData;
+  }
+
+  private generateMarketIdentifier(market: any): string {
+    return market.marketAddress + (`-EpochID-${market.epochId}` || '-EpochID-Unknown_ID') + `-ChainID-${market.chainId}`;
+  }
+
+  private parseMarketIdentifier(marketIdentifier: string): {
+    marketAddress: string;
+    epochId: string;
+    chainId: string;
+  } {
+    const [marketAddress, ,epochId, ,chainId] = marketIdentifier.split('-');
+    return {
+      marketAddress,
+      epochId,
+      chainId
+    };
+  }
+
+  private async getMarketPrice(marketIdentifier: string): Promise<number> {
+    const { marketAddress, epochId, chainId } = this.parseMarketIdentifier(marketIdentifier);
+
+    const getMarketPriceTool = this.flatTools.find(t => t.name === 'getMarketReferencePrice'); // FIX: Use correct tool name from logs
+
+    if (getMarketPriceTool) {
+      try {
+        Logger.info(chalk.dim(`HELPER: Fetching current market price for ${marketIdentifier}...`));
+        const marketPriceResultRaw = await getMarketPriceTool.func(JSON.stringify({ marketAddress, epochId, chainId }));
+        Logger.info(chalk.dim(`HELPER (Raw Market Price Result): ${typeof marketPriceResultRaw === 'string' ? marketPriceResultRaw : JSON.stringify(marketPriceResultRaw)}`));
+
+        // --- ADD: Parse marketPriceResult ---
+        let parsedMarketPrice: number = 0;
+        if (typeof marketPriceResultRaw === 'string') {
+            try {
+                parsedMarketPrice = JSON.parse(marketPriceResultRaw);
+            } catch (e) {
+                 Logger.error(chalk.red(`HELPER: Failed to parse market price result string: ${marketPriceResultRaw}`));
+                 parsedMarketPrice = 0; // Keep empty on parse error
+            }
+        } else if (Array.isArray(marketPriceResultRaw) && marketPriceResultRaw.length > 0) {
+             parsedMarketPrice = marketPriceResultRaw[0];
+        } else if (typeof marketPriceResultRaw === 'object' && marketPriceResultRaw !== null && Array.isArray(marketPriceResultRaw.content) && marketPriceResultRaw.content.length > 0 && marketPriceResultRaw.content[0].type === 'text') {
+             try {
+                 parsedMarketPrice = JSON.parse(marketPriceResultRaw.content[0].text);
+             } catch(e: any) {
+                  Logger.error(chalk.red(`HELPER: Failed to parse market price from tool result text: ${e.message}`));
+                  parsedMarketPrice = 0;
+             }
+        } else {
+             Logger.warn(chalk.yellow(`HELPER: Unexpected structure in market price result: ${JSON.stringify(marketPriceResultRaw)}`));
+             parsedMarketPrice = 0;
+        }
+        // --- END: Parse marketPriceResult ---
+
+        Logger.info(chalk.dim(`HELPER: Parsed market price: ${JSON.stringify(parsedMarketPrice) }`));
+        return parsedMarketPrice;
+      } catch (error: any) {
+        Logger.error(chalk.red(`HELPER: Error fetching or processing market price: ${error.message}`), error);
+        return -1; // Clear on error
+      }
+    } else {
+      Logger.warn(chalk.yellow(`HELPER: getMarketPrice tool not found. Proceeding with 0.`)); // FIX: Update log message
+      return -1;
+    }
   }
 }
