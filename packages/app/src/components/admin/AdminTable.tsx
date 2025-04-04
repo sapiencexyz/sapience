@@ -17,12 +17,7 @@ import {
   FilterX,
   X,
   Activity,
-  Share2,
-  Network,
   Boxes,
-  GitBranch,
-  Layers,
-  CircuitBoard,
 } from 'lucide-react';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSignMessage } from 'wagmi';
@@ -56,10 +51,10 @@ import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
-import { cn } from '~/lib/utils';
 import { foilApi } from '~/lib/utils/util';
 
 import getColumns from './columns';
+import type { TableRow as AdminTableRowData } from './columns';
 import type { MissingBlocks } from './types';
 
 const renderSortIcon = (isSorted: string | false) => {
@@ -71,14 +66,6 @@ const renderSortIcon = (isSorted: string | false) => {
   }
   return <ArrowUpDown className="h-3 w-3" aria-label="sortable" />;
 };
-
-// Filter option types
-interface FilterCategory {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  options: FilterOption[];
-}
 
 interface FilterOption {
   id: string;
@@ -349,113 +336,133 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
     [loadingAction, missingBlocks]
   );
 
+  const handleAddFilter = (
+    filter: FilterOption,
+    currentSelected: FilterOption[],
+    currentColumn: ColumnFiltersState
+  ): { newSelected: FilterOption[]; newColumn: ColumnFiltersState } => {
+    let newSelected = [...currentSelected];
+    let newColumn = [...currentColumn];
+
+    switch (filter.id) {
+      case 'isPublic':
+        newSelected = [
+          ...currentSelected.filter((f) => f.id !== 'isPublic'),
+          filter,
+        ];
+        newColumn = [
+          ...currentColumn.filter((f) => f.id !== 'isPublic'),
+          { id: 'isPublic', value: filter.value },
+        ];
+        break;
+      case 'status':
+        newSelected = [
+          ...currentSelected.filter((f) => f.id !== 'status'),
+          filter,
+        ];
+        newColumn = [
+          ...currentColumn.filter((f) => f.id !== 'status'),
+          { id: 'status', value: filter.value },
+        ];
+        break;
+      case 'chainId': {
+        // Ensure filter isn't already present before adding
+        if (
+          !currentSelected.some(
+            (f) => f.id === filter.id && f.value === filter.value
+          )
+        ) {
+          newSelected = [...currentSelected, filter];
+        }
+        const existingChainFilter = newColumn.find((f) => f.id === 'chainId');
+        if (existingChainFilter && Array.isArray(existingChainFilter.value)) {
+          // Ensure value isn't already present before adding
+          if (!existingChainFilter.value.includes(filter.value)) {
+            const newChainValues = [...existingChainFilter.value, filter.value];
+            newColumn = newColumn.map((f) =>
+              f.id === 'chainId' ? { ...f, value: newChainValues } : f
+            );
+          }
+        } else {
+          // Remove any non-array chainId filter before adding the new array one
+          newColumn = [
+            ...newColumn.filter((f) => f.id !== 'chainId'),
+            { id: 'chainId', value: [filter.value] },
+          ];
+        }
+        break;
+      }
+      default:
+        // For any other filter type, only add if not already selected
+        if (
+          !currentSelected.some(
+            (f) => f.id === filter.id && f.value === filter.value
+          )
+        ) {
+          newSelected = [...currentSelected, filter];
+          newColumn = [
+            ...currentColumn,
+            { id: filter.id, value: filter.value },
+          ];
+        }
+        break;
+    }
+    return { newSelected, newColumn };
+  };
+
+  const handleRemoveFilter = (
+    filter: FilterOption,
+    currentSelected: FilterOption[],
+    currentColumn: ColumnFiltersState
+  ): { newSelected: FilterOption[]; newColumn: ColumnFiltersState } => {
+    const newSelected = currentSelected.filter(
+      (f) => !(f.id === filter.id && f.value === filter.value)
+    );
+    let newColumn = [...currentColumn];
+
+    if (filter.id === 'chainId') {
+      const existingChainFilter = newColumn.find((f) => f.id === 'chainId');
+      if (existingChainFilter && Array.isArray(existingChainFilter.value)) {
+        const newChainValues = (existingChainFilter.value as string[]).filter(
+          (v) => v !== filter.value
+        );
+        // Update or remove the filter based on whether values remain
+        if (newChainValues.length > 0) {
+          newColumn = newColumn.map((f) =>
+            f.id === 'chainId' ? { ...f, value: newChainValues } : f
+          );
+        } else {
+          newColumn = newColumn.filter((f) => f.id !== 'chainId');
+        }
+      } else {
+        // If it's not an array filter, remove it directly (handles potential inconsistencies)
+        newColumn = newColumn.filter((f) => f.id !== filter.id);
+      }
+    } else {
+      // Simple filter removal for non-chainId filters
+      newColumn = newColumn.filter(
+        (f) => !(f.id === filter.id && f.value === filter.value)
+      );
+    }
+
+    return { newSelected, newColumn };
+  };
+
   const toggleFilter = (filter: FilterOption) => {
-    // Check if this filter is already selected
     const isSelected = selectedFilters.some(
       (f) => f.id === filter.id && f.value === filter.value
     );
 
-    let newFilters: FilterOption[];
-    let newColumnFilters: ColumnFiltersState;
+    let result: { newSelected: FilterOption[]; newColumn: ColumnFiltersState };
 
     if (isSelected) {
-      // Remove the filter
-      newFilters = selectedFilters.filter(
-        (f) => !(f.id === filter.id && f.value === filter.value)
-      );
-
-      // Special handling for multiOption filters like chainId
-      if (filter.id === 'chainId') {
-        const existingChainFilter = columnFilters.find(
-          (f) => f.id === 'chainId'
-        );
-        if (existingChainFilter && Array.isArray(existingChainFilter.value)) {
-          const newChainValues = (existingChainFilter.value as string[]).filter(
-            (v) => v !== filter.value
-          );
-
-          newColumnFilters = columnFilters
-            .map((f) =>
-              f.id === 'chainId' ? { ...f, value: newChainValues } : f
-            )
-            .filter(
-              (f) =>
-                f.id !== 'chainId' ||
-                (Array.isArray(f.value) && f.value.length > 0)
-            );
-        } else {
-          newColumnFilters = columnFilters.filter((f) => f.id !== filter.id);
-        }
-      } else {
-        // Simple filter
-        newColumnFilters = columnFilters.filter(
-          (f) => !(f.id === filter.id && f.value === filter.value)
-        );
-      }
+      result = handleRemoveFilter(filter, selectedFilters, columnFilters);
     } else {
-      // Add the filter
-      if (filter.id === 'isPublic') {
-        // Public is exclusive - replace any existing public filter
-        newFilters = [
-          ...selectedFilters.filter((f) => f.id !== 'isPublic'),
-          filter,
-        ];
-
-        // Update column filters for public
-        newColumnFilters = [
-          ...columnFilters.filter((f) => f.id !== 'isPublic'),
-          { id: 'isPublic', value: filter.value },
-        ];
-      } else if (filter.id === 'status') {
-        // Status is exclusive - replace any existing status filter
-        newFilters = [
-          ...selectedFilters.filter((f) => f.id !== 'status'),
-          filter,
-        ];
-
-        newColumnFilters = [
-          ...columnFilters.filter((f) => f.id !== 'status'),
-          { id: 'status', value: filter.value },
-        ];
-      } else if (filter.id === 'chainId') {
-        // Chain is multiOption - add to existing chain filters
-        newFilters = [
-          ...selectedFilters.filter(
-            (f) => f.id !== filter.id || f.value !== filter.value
-          ),
-          filter,
-        ];
-
-        // Find existing chain filter
-        const existingChainFilter = columnFilters.find(
-          (f) => f.id === 'chainId'
-        );
-        if (existingChainFilter && Array.isArray(existingChainFilter.value)) {
-          // Add to existing values
-          const newChainValues = [...existingChainFilter.value, filter.value];
-
-          newColumnFilters = columnFilters.map((f) =>
-            f.id === 'chainId' ? { ...f, value: newChainValues } : f
-          );
-        } else {
-          // Create new filter
-          newColumnFilters = [
-            ...columnFilters.filter((f) => f.id !== 'chainId'),
-            { id: 'chainId', value: [filter.value] },
-          ];
-        }
-      } else {
-        // For any other filter type
-        newFilters = [...selectedFilters, filter];
-        newColumnFilters = [
-          ...columnFilters,
-          { id: filter.id, value: filter.value },
-        ];
-      }
+      result = handleAddFilter(filter, selectedFilters, columnFilters);
     }
 
-    setSelectedFilters(newFilters);
-    setColumnFilters(newColumnFilters);
+    setSelectedFilters(result.newSelected);
+    setColumnFilters(result.newColumn);
   };
 
   const resetFilters = () => {
@@ -463,7 +470,7 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
     setColumnFilters([]);
   };
 
-  const table = useReactTable({
+  const table = useReactTable<AdminTableRowData>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),

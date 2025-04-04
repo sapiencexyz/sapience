@@ -6,10 +6,16 @@ import { FilterXIcon, ArrowRight, Filter, X, Ellipsis } from 'lucide-react';
 import {
   cloneElement,
   isValidElement,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
+} from 'react';
+import type {
+  ComponentType,
+  ReactElement,
+  ElementType as ReactElementType,
 } from 'react';
 import type { DateRange } from 'react-day-picker';
 
@@ -27,27 +33,28 @@ import {
 import { Input } from '~/components/ui/input';
 import {
   Popover,
-  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from '~/components/ui/popover';
 import { Separator } from '~/components/ui/separator';
-import { Slider } from '~/components/ui/slider';
+import Slider from '~/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useIsMobile } from '~/hooks/use-mobile';
 import { take, uniq } from '~/lib/array';
 import type {
   ColumnOption,
   ElementType,
-  type ColumnDataType,
-  type FilterValue,
+  ColumnDataType,
+  FilterValue,
+  NumberFilterOperator,
+} from '~/lib/filters';
+import {
   createNumberRange,
   dateFilterDetails,
   determineNewOperator,
   filterTypeOperatorDetails,
   getColumn,
   getColumnMeta,
-  isColumnOption,
   isColumnOptionArray,
   multiOptionFilterDetails,
   numberFilterDetails,
@@ -56,11 +63,68 @@ import type {
 } from '~/lib/filters';
 import { cn } from '~/lib/utils';
 
-export function DataTableFilter<TData, TValue>({
-  table,
+// Constants for commonly used values
+const SIZE_4_CLASS = 'size-4';
+const OPACITY_CLASS =
+  'opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100';
+const COUNT_CLASS = 'ml-0.5 tabular-nums tracking-tight text-muted-foreground';
+const TEXT_XS_CLASS = 'text-xs';
+const MAX_H_FIT_CLASS = 'max-h-fit';
+const GROUP_FLEX_CLASS = 'group flex items-center justify-between gap-1.5';
+const FLEX_ITEMS_CENTER_GAP_1_5 = 'flex items-center gap-1.5';
+const POPOVER_CONTENT_ORIGIN =
+  'origin-(--radix-popover-content-transform-origin)';
+const SLASHED_ZERO_CLASS = 'slashed-zero';
+const H_7_CLASS = 'h-7';
+const PLACEHOLDER_SEARCH = 'Search...';
+const NO_RESULTS_MESSAGE = 'No results.';
+const INVALID_FILTER_CONFIG_ERROR = (id: string) =>
+  `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`;
+const TABULAR_NUMS_TRACKING_TIGHT = 'tabular-nums tracking-tight';
+const BUTTON_GHOST_VARIANT = 'ghost';
+const COMMAND_GROUP_HEADING_OPERATORS = 'Operators';
+const COUNT_DISPLAY_LIMIT = '100+';
+const NUMBER_FILTER_TYPE_RANGE = 'range';
+const NUMBER_FILTER_TYPE_SINGLE = 'single';
+const CAPPED_MAX_DISPLAY_SUFFIX = '+';
+const CAPPED_MAX_DISPLAY = (max: number) =>
+  `${max}${CAPPED_MAX_DISPLAY_SUFFIX}`;
+const FONT_MEDIUM_CLASS = 'font-medium';
+const MULTI_OPTION_TYPE = 'multiOption';
+const MULTI_OPTION_DEFAULT_OPERATOR = 'include';
+
+// Create a PopoverAnchor component since it's missing from the import
+const PopoverAnchor = ({
+  className,
+  children,
 }: {
-  table: Table<TData>;
-}) {
+  className?: string;
+  children?: React.ReactNode;
+}) => <div className={className}>{children}</div>;
+
+// Type definition for icon components with more specific types
+type IconType =
+  | ComponentType<React.SVGProps<SVGSVGElement>>
+  | ReactElement
+  | ReactElementType;
+
+// Type guard for safe icon rendering
+const renderIcon = (icon: IconType, props: Record<string, unknown> = {}) => {
+  if (!icon) return null;
+  if (isValidElement(icon)) return cloneElement(icon, props);
+
+  try {
+    // Attempt to render as a component
+    const IconComponent = icon as ReactElementType;
+    return <IconComponent {...props} />;
+  } catch (e) {
+    // Fallback in case rendering fails
+    console.error('Failed to render icon:', e);
+    return null;
+  }
+};
+
+export function DataTableFilter<TData>({ table }: { table: Table<TData> }) {
   const isMobile = useIsMobile();
 
   if (isMobile) {
@@ -98,7 +162,7 @@ export function DataTableFilterMobileContainer({
   const [showRightBlur, setShowRightBlur] = useState(true);
 
   // Check if there's content to scroll and update blur states
-  const checkScroll = () => {
+  const checkScroll = useCallback(() => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } =
         scrollContainerRef.current;
@@ -110,30 +174,27 @@ export function DataTableFilterMobileContainer({
       // Add a small buffer (1px) to account for rounding errors
       setShowRightBlur(scrollLeft + clientWidth < scrollWidth - 1);
     }
-  };
-
-  // Log blur states for debugging
-  // useEffect(() => {
-  //   console.log('left:', showLeftBlur, '  right:', showRightBlur)
-  // }, [showLeftBlur, showRightBlur])
+  }, []);
 
   // Set up ResizeObserver to monitor container size
   useEffect(() => {
-    if (scrollContainerRef.current) {
+    const currentRef = scrollContainerRef.current;
+    if (currentRef) {
       const resizeObserver = new ResizeObserver(() => {
         checkScroll();
       });
-      resizeObserver.observe(scrollContainerRef.current);
+      resizeObserver.observe(currentRef);
       return () => {
         resizeObserver.disconnect();
       };
     }
-  }, []);
+    return undefined;
+  }, [checkScroll]);
 
   // Update blur states when children change
   useEffect(() => {
     checkScroll();
-  }, [children]);
+  }, [children, checkScroll]);
 
   return (
     <div className="relative w-full overflow-x-hidden">
@@ -162,14 +223,14 @@ export function DataTableFilterMobileContainer({
 export function TableFilterActions<TData>({ table }: { table: Table<TData> }) {
   const hasFilters = table.getState().columnFilters.length > 0;
 
-  function clearFilters() {
+  const clearFilters = useCallback(() => {
     table.setColumnFilters([]);
     table.setGlobalFilter('');
-  }
+  }, [table]);
 
   return (
     <Button
-      className={cn('h-7 !px-2', !hasFilters && 'hidden')}
+      className={cn(H_7_CLASS, '!px-2', !hasFilters && 'hidden')}
       variant="destructive"
       onClick={clearFilters}
     >
@@ -185,82 +246,103 @@ export function TableFilter<TData>({ table }: { table: Table<TData> }) {
   const [property, setProperty] = useState<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const column = property ? getColumn(table, property) : undefined;
-  const columnMeta = property ? getColumnMeta(table, property) : undefined;
+  const column = useMemo(
+    () => (property ? getColumn(table, property) : undefined),
+    [property, table]
+  );
+  const columnMeta = useMemo(
+    () => (property ? getColumnMeta(table, property) : undefined),
+    [property, table]
+  );
 
-  const properties = table
-    .getAllColumns()
-    .filter((column) => column.getCanFilter());
+  const properties = useMemo(
+    () => table.getAllColumns().filter((col) => col.getCanFilter()),
+    [table]
+  );
 
   const hasFilters = table.getState().columnFilters.length > 0;
 
   useEffect(() => {
-    if (property && inputRef) {
-      inputRef.current?.focus();
+    if (property && inputRef.current) {
+      inputRef.current.focus();
       setValue('');
     }
   }, [property]);
+
+  const handleOpenChange = useCallback((newOpenState: boolean) => {
+    setOpen(newOpenState);
+    if (!newOpenState) {
+      setTimeout(() => setProperty(undefined), 100);
+    }
+  }, []);
+
+  const handleValueChange = useCallback((newValue: string) => {
+    setValue(newValue);
+  }, []);
 
   useEffect(() => {
     if (!open) setTimeout(() => setValue(''), 150);
   }, [open]);
 
-  const content = useMemo(
-    () =>
-      property && column && columnMeta ? (
+  const content = useMemo(() => {
+    if (property && column && columnMeta) {
+      return (
         <PropertyFilterValueMenu
           id={property}
           column={column}
           columnMeta={columnMeta}
           table={table}
         />
-      ) : (
-        <Command loop>
-          <CommandInput
-            value={value}
-            onValueChange={setValue}
-            ref={inputRef}
-            placeholder="Search..."
-          />
-          <CommandEmpty>No results.</CommandEmpty>
-          <CommandList className="max-h-fit">
-            <CommandGroup>
-              {properties.map((column) => (
-                <TableFilterMenuItem
-                  key={column.id}
-                  column={column}
-                  table={table}
-                  setProperty={setProperty}
-                />
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      ),
-    [property, column, columnMeta, value, table, properties]
-  );
+      );
+    }
+
+    return (
+      <Command loop>
+        <CommandInput
+          value={value}
+          onValueChange={handleValueChange}
+          ref={inputRef}
+          placeholder={PLACEHOLDER_SEARCH}
+        />
+        <CommandEmpty>{NO_RESULTS_MESSAGE}</CommandEmpty>
+        <CommandList className={MAX_H_FIT_CLASS}>
+          <CommandGroup>
+            {properties.map((propColumn) => (
+              <TableFilterMenuItem
+                key={propColumn.id}
+                column={propColumn}
+                setProperty={setProperty}
+              />
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </Command>
+    );
+  }, [
+    property,
+    column,
+    columnMeta,
+    table,
+    value,
+    handleValueChange,
+    properties,
+  ]);
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={async (value) => {
-        setOpen(value);
-        if (!value) setTimeout(() => setProperty(undefined), 100);
-      }}
-    >
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className={cn('h-7', hasFilters && 'w-fit !px-2')}
+          className={cn(H_7_CLASS, hasFilters && 'w-fit !px-2')}
         >
-          <Filter className="size-4" />
+          <Filter className={SIZE_4_CLASS} />
           {!hasFilters && <span>Filter</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         side="bottom"
-        className="w-fit p-0 origin-(--radix-popover-content-transform-origin)"
+        className={cn('w-fit p-0', POPOVER_CONTENT_ORIGIN)}
       >
         {content}
       </PopoverContent>
@@ -273,18 +355,26 @@ export function TableFilterMenuItem<TData>({
   setProperty,
 }: {
   column: Column<TData>;
-  table: Table<TData>;
   setProperty: (value: string) => void;
 }) {
-  const Icon = column.columnDef.meta?.icon!;
+  const Icon = column.columnDef.meta?.icon;
+
+  const handleSelect = useCallback(
+    () => setProperty(column.id),
+    [column.id, setProperty]
+  );
+
   return (
-    <CommandItem onSelect={() => setProperty(column.id)} className="group">
+    <CommandItem onSelect={handleSelect} className="group">
       <div className="flex w-full items-center justify-between">
-        <div className="inline-flex items-center gap-1.5">
-          <Icon strokeWidth={2.25} className="size-4" />
+        <div className={FLEX_ITEMS_CENTER_GAP_1_5}>
+          {Icon &&
+            renderIcon(Icon, { strokeWidth: 2.25, className: SIZE_4_CLASS })}
           <span>{column.columnDef.meta?.displayName}</span>
         </div>
-        <ArrowRight className="size-4 opacity-0 group-aria-selected:opacity-100" />
+        <ArrowRight
+          className={`${SIZE_4_CLASS} opacity-0 group-aria-selected:opacity-100`}
+        />
       </div>
     </CommandItem>
   );
@@ -300,27 +390,25 @@ export function DebouncedInput({
   onChange: (value: string | number) => void;
   debounce?: number;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'>) {
-  const [value, setValue] = useState(initialValue);
+  const [inputValue, setInputValue] = useState(initialValue);
 
   useEffect(() => {
-    setValue(initialValue);
+    setInputValue(initialValue);
   }, [initialValue]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      onChange(value);
+      onChange(inputValue);
     }, debounce);
 
     return () => clearTimeout(timeout);
-  }, [value, onChange, debounce]);
+  }, [inputValue, onChange, debounce]);
 
-  return (
-    <Input
-      {...props}
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-    />
-  );
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  }, []);
+
+  return <Input {...props} value={inputValue} onChange={handleChange} />;
 }
 
 export function PropertyFilterList<TData>({ table }: { table: Table<TData> }) {
@@ -329,46 +417,49 @@ export function PropertyFilterList<TData>({ table }: { table: Table<TData> }) {
   return (
     <>
       {filters.map((filter) => {
-        const { id } = filter;
+        const { id, value } = filter;
 
         const column = getColumn(table, id);
         const meta = getColumnMeta(table, id);
 
         // Skip if no filter value
-        if (!filter.value) return null;
+        if (!value) return null;
+
+        // Ensure meta exists before proceeding
+        if (!meta) return null;
 
         // Narrow the type based on meta.type and cast filter accordingly
         switch (meta.type) {
           case 'text':
-            return renderFilter<TData, 'text'>(
+            return RenderFilter<TData, 'text'>(
               filter as { id: string; value: FilterValue<'text', TData> },
               column,
               meta as ColumnMeta<TData, unknown> & { type: 'text' },
               table
             );
           case 'number':
-            return renderFilter<TData, 'number'>(
+            return RenderFilter<TData, 'number'>(
               filter as { id: string; value: FilterValue<'number', TData> },
               column,
               meta as ColumnMeta<TData, unknown> & { type: 'number' },
               table
             );
           case 'date':
-            return renderFilter<TData, 'date'>(
+            return RenderFilter<TData, 'date'>(
               filter as { id: string; value: FilterValue<'date', TData> },
               column,
               meta as ColumnMeta<TData, unknown> & { type: 'date' },
               table
             );
           case 'option':
-            return renderFilter<TData, 'option'>(
+            return RenderFilter<TData, 'option'>(
               filter as { id: string; value: FilterValue<'option', TData> },
               column,
               meta as ColumnMeta<TData, unknown> & { type: 'option' },
               table
             );
           case 'multiOption':
-            return renderFilter<TData, 'multiOption'>(
+            return RenderFilter<TData, 'multiOption'>(
               filter as {
                 id: string;
                 value: FilterValue<'multiOption', TData>;
@@ -388,18 +479,25 @@ export function PropertyFilterList<TData>({ table }: { table: Table<TData> }) {
 }
 
 // Generic render function for a filter with type-safe value
-function renderFilter<TData, T extends ColumnDataType>(
+function RenderFilter<TData, T extends ColumnDataType>(
   filter: { id: string; value: FilterValue<T, TData> },
   column: Column<TData, unknown>,
   meta: ColumnMeta<TData, unknown> & { type: T },
   table: Table<TData>
 ) {
-  const { value } = filter;
+  const { value, id } = filter;
+
+  const handleRemoveFilter = useCallback(() => {
+    table.getColumn(id)?.setFilterValue(undefined);
+  }, [table, id]);
 
   return (
     <div
-      key={`filter-${filter.id}`}
-      className="flex h-7 items-center rounded-2xl border border-border bg-background shadow-xs text-xs"
+      key={`filter-${id}`}
+      className={cn(
+        'flex h-7 items-center rounded-2xl border border-border bg-background shadow-xs',
+        TEXT_XS_CLASS
+      )}
     >
       <PropertyFilterSubject meta={meta} />
       <Separator orientation="vertical" />
@@ -410,16 +508,16 @@ function renderFilter<TData, T extends ColumnDataType>(
       />
       <Separator orientation="vertical" />
       <PropertyFilterValueController
-        id={filter.id}
+        id={id}
         column={column}
         columnMeta={meta}
         table={table}
       />
       <Separator orientation="vertical" />
       <Button
-        variant="ghost"
-        className="rounded-none rounded-r-2xl text-xs w-7 h-full"
-        onClick={() => table.getColumn(filter.id)?.setFilterValue(undefined)}
+        variant={BUTTON_GHOST_VARIANT}
+        className={cn('rounded-none rounded-r-2xl w-7 h-full', TEXT_XS_CLASS)}
+        onClick={handleRemoveFilter}
       >
         <X className="size-4 -translate-x-0.5" />
       </Button>
@@ -432,12 +530,14 @@ function renderFilter<TData, T extends ColumnDataType>(
 export function PropertyFilterSubject<TData>({
   meta,
 }: {
+  // eslint-disable-next-line react/no-unused-prop-types
   meta: ColumnMeta<TData, string>;
 }) {
   const hasIcon = !!meta?.icon;
   return (
     <span className="flex select-none items-center gap-1 whitespace-nowrap px-2 font-medium">
-      {hasIcon && <meta.icon className="size-4 stroke-[2.25px]" />}
+      {hasIcon &&
+        renderIcon(meta.icon, { className: 'size-4 stroke-[2.25px]' })}
       <span>{meta.displayName}</span>
     </span>
   );
@@ -462,14 +562,21 @@ export function PropertyFilterOperatorController<
 }) {
   const [open, setOpen] = useState<boolean>(false);
 
-  const close = () => setOpen(false);
+  const close = useCallback(() => setOpen(false), []);
+  const handleOpenChange = useCallback(
+    (newOpenState: boolean) => setOpen(newOpenState),
+    []
+  );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
-          className="m-0 h-full w-fit whitespace-nowrap rounded-none p-0 px-2 text-xs"
+          variant={BUTTON_GHOST_VARIANT}
+          className={cn(
+            'm-0 h-full w-fit whitespace-nowrap rounded-none p-0 px-2',
+            TEXT_XS_CLASS
+          )}
         >
           <PropertyFilterOperatorDisplay
             filter={filter}
@@ -479,12 +586,13 @@ export function PropertyFilterOperatorController<
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-fit p-0 origin-(--radix-popover-content-transform-origin)"
+        side="bottom"
+        className={cn('w-fit p-0', POPOVER_CONTENT_ORIGIN)}
       >
         <Command loop>
-          <CommandInput placeholder="Search..." />
-          <CommandEmpty>No results.</CommandEmpty>
-          <CommandList className="max-h-fit">
+          <CommandInput placeholder={PLACEHOLDER_SEARCH} />
+          <CommandEmpty>{NO_RESULTS_MESSAGE}</CommandEmpty>
+          <CommandList className={MAX_H_FIT_CLASS}>
             <PropertyFilterOperatorMenu
               column={column}
               closeController={close}
@@ -508,18 +616,16 @@ export function PropertyFilterOperatorDisplay<TData, T extends ColumnDataType>({
   return <span>{details.label}</span>;
 }
 
-interface PropertyFilterOperatorMenuProps<TData> {
-  column: Column<TData, unknown>;
-  closeController: () => void;
-}
-
+// Re-introduce PropertyFilterOperatorMenu switch
 export function PropertyFilterOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const { type } = column.columnDef.meta!;
+  const { meta } = column.columnDef;
 
-  switch (type) {
+  if (!meta?.type) return null;
+
+  switch (meta.type) {
     case 'option':
       return (
         <PropertyFilterOptionOperatorMenu
@@ -560,35 +666,91 @@ export function PropertyFilterOperatorMenu<TData>({
   }
 }
 
+interface PropertyFilterOperatorMenuProps<TData> {
+  column: Column<TData, unknown>;
+  closeController: () => void;
+}
+
+// Helper to render a command item for operator selection
+const renderOperatorCommandItem = (
+  r: { value: string; label: string },
+  changeOperator: (value: string) => void
+) => (
+  <CommandItem
+    onSelect={() => changeOperator(r.value)}
+    value={r.value}
+    key={r.value}
+  >
+    {r.label}
+  </CommandItem>
+);
+
+// Generic filter operator menu change handler
+function useCreateOperatorChangeHandler<TData, T extends ColumnDataType>(
+  column: Column<TData>,
+  closeController: () => void
+) {
+  return useCallback(
+    (value: string) => {
+      column.setFilterValue((old: FilterValue<T, TData> | undefined) => {
+        // Ensure the operator is valid for the type T
+        // This might require more specific type handling or validation
+        const typedOperator = value as FilterValue<T, TData>['operator'];
+        return {
+          ...(old as FilterValue<T, TData>),
+          operator: typedOperator,
+        };
+      });
+      closeController();
+    },
+    [column, closeController]
+  );
+}
+
+// Generic component to render operator menus
+function GenericPropertyFilterOperatorMenu<TData, T extends ColumnDataType>({
+  column,
+  closeController,
+  filterDetailsMap,
+}: {
+  column: Column<TData>;
+  closeController: () => void;
+  filterDetailsMap: Record<
+    string,
+    { target: string; value: string; label: string }
+  >;
+}) {
+  const filter = column.getFilterValue() as FilterValue<T, TData>;
+  const changeOperator = useCreateOperatorChangeHandler<TData, T>(
+    column,
+    closeController
+  );
+
+  const filterDetails = filterDetailsMap[filter.operator];
+  // Handle cases where filter or operator might not exist yet
+  if (!filterDetails) return null;
+
+  const relatedFilters = Object.values(filterDetailsMap).filter(
+    (o) => o.target === filterDetails.target
+  );
+
+  return (
+    <CommandGroup heading={COMMAND_GROUP_HEADING_OPERATORS}>
+      {relatedFilters.map((r) => renderOperatorCommandItem(r, changeOperator))}
+    </CommandGroup>
+  );
+}
+
 function PropertyFilterOptionOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'option', TData>;
-  const filterDetails = optionFilterDetails[filter.operator];
-
-  const relatedFilters = Object.values(optionFilterDetails).filter(
-    (o) => o.target === filterDetails.target
-  );
-
-  const changeOperator = (value: string) => {
-    column.setFilterValue((old: typeof filter) => ({
-      ...old,
-      operator: value,
-    }));
-    closeController();
-  };
-
   return (
-    <CommandGroup heading="Operators">
-      {relatedFilters.map((r) => {
-        return (
-          <CommandItem onSelect={changeOperator} value={r.value} key={r.value}>
-            {r.label}
-          </CommandItem>
-        );
-      })}
-    </CommandGroup>
+    <GenericPropertyFilterOperatorMenu<TData, 'option'>
+      column={column}
+      closeController={closeController}
+      filterDetailsMap={optionFilterDetails}
+    />
   );
 }
 
@@ -596,31 +758,12 @@ function PropertyFilterMultiOptionOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'multiOption', TData>;
-  const filterDetails = multiOptionFilterDetails[filter.operator];
-
-  const relatedFilters = Object.values(multiOptionFilterDetails).filter(
-    (o) => o.target === filterDetails.target
-  );
-
-  const changeOperator = (value: string) => {
-    column.setFilterValue((old: typeof filter) => ({
-      ...old,
-      operator: value,
-    }));
-    closeController();
-  };
-
   return (
-    <CommandGroup heading="Operators">
-      {relatedFilters.map((r) => {
-        return (
-          <CommandItem onSelect={changeOperator} value={r.value} key={r.value}>
-            {r.label}
-          </CommandItem>
-        );
-      })}
-    </CommandGroup>
+    <GenericPropertyFilterOperatorMenu<TData, 'multiOption'>
+      column={column}
+      closeController={closeController}
+      filterDetailsMap={multiOptionFilterDetails}
+    />
   );
 }
 
@@ -628,31 +771,12 @@ function PropertyFilterDateOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'date', TData>;
-  const filterDetails = dateFilterDetails[filter.operator];
-
-  const relatedFilters = Object.values(dateFilterDetails).filter(
-    (o) => o.target === filterDetails.target
-  );
-
-  const changeOperator = (value: string) => {
-    column.setFilterValue((old: typeof filter) => ({
-      ...old,
-      operator: value,
-    }));
-    closeController();
-  };
-
   return (
-    <CommandGroup>
-      {relatedFilters.map((r) => {
-        return (
-          <CommandItem onSelect={changeOperator} value={r.value} key={r.value}>
-            {r.label}
-          </CommandItem>
-        );
-      })}
-    </CommandGroup>
+    <GenericPropertyFilterOperatorMenu<TData, 'date'>
+      column={column}
+      closeController={closeController}
+      filterDetailsMap={dateFilterDetails}
+    />
   );
 }
 
@@ -660,31 +784,12 @@ export function PropertyFilterTextOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'text', TData>;
-  const filterDetails = textFilterDetails[filter.operator];
-
-  const relatedFilters = Object.values(textFilterDetails).filter(
-    (o) => o.target === filterDetails.target
-  );
-
-  const changeOperator = (value: string) => {
-    column.setFilterValue((old: typeof filter) => ({
-      ...old,
-      operator: value,
-    }));
-    closeController();
-  };
-
   return (
-    <CommandGroup heading="Operators">
-      {relatedFilters.map((r) => {
-        return (
-          <CommandItem onSelect={changeOperator} value={r.value} key={r.value}>
-            {r.label}
-          </CommandItem>
-        );
-      })}
-    </CommandGroup>
+    <GenericPropertyFilterOperatorMenu<TData, 'text'>
+      column={column}
+      closeController={closeController}
+      filterDetailsMap={textFilterDetails}
+    />
   );
 }
 
@@ -692,35 +797,52 @@ function PropertyFilterNumberOperatorMenu<TData>({
   column,
   closeController,
 }: PropertyFilterOperatorMenuProps<TData>) {
-  const filter = column.getFilterValue() as FilterValue<'number', TData>;
-
-  // Show all related operators
   const relatedFilters = Object.values(numberFilterDetails);
   const relatedFilterOperators = relatedFilters.map((r) => r.value);
 
-  const changeOperator = (value: (typeof relatedFilterOperators)[number]) => {
-    column.setFilterValue((old: typeof filter) => {
-      // Clear out the second value when switching to single-input operators
-      const { target } = numberFilterDetails[value];
+  const changeOperator = useCallback(
+    (value: string) => {
+      // Ensure value is a valid NumberFilterOperator
+      const operatorValue = value as NumberFilterOperator;
+      if (!relatedFilterOperators.includes(operatorValue)) {
+        console.error(`Invalid number filter operator: ${value}`);
+        return;
+      }
 
-      const newValues =
-        target === 'single' ? [old.values[0]] : createNumberRange(old.values);
+      column.setFilterValue((old: FilterValue<'number', TData> | undefined) => {
+        // Ensure old exists and has values
+        if (!old || !old.values) {
+          return {
+            operator: operatorValue,
+            values: createNumberRange([]), // Default or initial range
+          };
+        }
 
-      return { ...old, operator: value, values: newValues };
-    });
-    closeController();
-  };
+        // Clear out the second value when switching to single-input operators
+        const { target } = numberFilterDetails[operatorValue];
+        const newValues =
+          target === 'single'
+            ? [old.values[0] ?? 0] // Provide a default if undefined
+            : createNumberRange(old.values);
+
+        return { operator: operatorValue, values: newValues };
+      });
+      closeController();
+    },
+    [column, closeController, relatedFilterOperators] // Add dependency
+  );
 
   return (
     <div>
-      <CommandGroup heading="Operators">
+      <CommandGroup heading={COMMAND_GROUP_HEADING_OPERATORS}>
+        {/* Use specific handler for number, avoid generic renderOperatorCommandItem due to type mismatch */}
         {relatedFilters.map((r) => (
           <CommandItem
             onSelect={() => changeOperator(r.value)}
             value={r.value}
             key={r.value}
           >
-            {r.label} {/**/}
+            {r.label}
           </CommandItem>
         ))}
       </CommandGroup>
@@ -746,8 +868,11 @@ export function PropertyFilterValueController<TData, TValue>({
       <PopoverAnchor className="h-full" />
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
-          className="m-0 h-full w-fit whitespace-nowrap rounded-none p-0 px-2 text-xs"
+          variant={BUTTON_GHOST_VARIANT}
+          className={cn(
+            'm-0 h-full w-fit whitespace-nowrap rounded-none p-0 px-2',
+            TEXT_XS_CLASS
+          )}
         >
           <PropertyFilterValueDisplay
             id={id}
@@ -760,7 +885,7 @@ export function PropertyFilterValueController<TData, TValue>({
       <PopoverContent
         align="start"
         side="bottom"
-        className="w-fit p-0 origin-(--radix-popover-content-transform-origin)"
+        className={cn('w-fit p-0', POPOVER_CONTENT_ORIGIN)}
       >
         <PropertyFilterValueMenu
           id={id}
@@ -780,12 +905,15 @@ interface PropertyFilterValueDisplayProps<TData, TValue> {
   table: Table<TData>;
 }
 
+// Re-introduce PropertyFilterValueDisplay switch
 export function PropertyFilterValueDisplay<TData, TValue>({
   id,
   column,
   columnMeta,
   table,
 }: PropertyFilterValueDisplayProps<TData, TValue>) {
+  if (!columnMeta?.type) return null;
+
   switch (columnMeta.type) {
     case 'option':
       return (
@@ -806,30 +934,14 @@ export function PropertyFilterValueDisplay<TData, TValue>({
         />
       );
     case 'date':
-      return (
-        <PropertyFilterDateValueDisplay
-          id={id}
-          column={column}
-          columnMeta={columnMeta}
-          table={table}
-        />
-      );
+      return <PropertyFilterDateValueDisplay column={column} />;
     case 'text':
-      return (
-        <PropertyFilterTextValueDisplay
-          id={id}
-          column={column}
-          columnMeta={columnMeta}
-          table={table}
-        />
-      );
+      return <PropertyFilterTextValueDisplay column={column} />;
     case 'number':
       return (
         <PropertyFilterNumberValueDisplay
-          id={id}
           column={column}
           columnMeta={columnMeta}
-          table={table}
         />
       );
     default:
@@ -837,48 +949,52 @@ export function PropertyFilterValueDisplay<TData, TValue>({
   }
 }
 
-export function PropertyFilterOptionValueDisplay<TData, TValue>({
-  id,
-  column,
-  columnMeta,
-  table,
-}: PropertyFilterValueDisplayProps<TData, TValue>) {
-  let options: ColumnOption[];
+// Helper function to get options for Option and MultiOption types
+const getOptions = <TData, TValue>(
+  id: string,
+  columnMeta: ColumnMeta<TData, TValue>,
+  table: Table<TData>
+): ColumnOption[] => {
   const columnVals = table
     .getCoreRowModel()
     .rows.flatMap((r) => r.getValue<TValue>(id))
     .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null);
   const uniqueVals = uniq(columnVals);
 
-  // If static options are provided, use them
   if (columnMeta.options) {
-    options = columnMeta.options;
+    return columnMeta.options;
   }
 
-  // No static options provided,
-  // We should dynamically generate them based on the column data
-  else if (columnMeta.transformOptionFn) {
+  if (columnMeta.transformOptionFn) {
     const { transformOptionFn } = columnMeta;
-
-    options = uniqueVals.map((v) =>
+    return uniqueVals.map((v) =>
       transformOptionFn(v as ElementType<NonNullable<TValue>>)
     );
   }
 
-  // Make sure the column data conforms to ColumnOption type
-  else if (isColumnOptionArray(uniqueVals)) {
-    options = uniqueVals;
+  if (isColumnOptionArray(uniqueVals)) {
+    return uniqueVals;
   }
 
-  // Invalid configuration
-  else {
-    throw new Error(
-      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`
-    );
-  }
+  throw new Error(INVALID_FILTER_CONFIG_ERROR(id));
+};
 
+// ... (PropertyFilterOptionValueDisplay, PropertyFilterMultiOptionValueDisplay, formatDateRange, PropertyFilterDateValueDisplay, PropertyFilterTextValueDisplay, PropertyFilterNumberValueDisplay remain the same)
+export function PropertyFilterOptionValueDisplay<TData, TValue>({
+  id,
+  column,
+  columnMeta,
+  table,
+}: PropertyFilterValueDisplayProps<TData, TValue>) {
+  const options = useMemo(
+    () => getOptions(id, columnMeta, table),
+    [id, columnMeta, table]
+  );
   const filter = column.getFilterValue() as FilterValue<'option', TData>;
-  const selected = options.filter((o) => filter?.values.includes(o.value));
+  const selected = useMemo(
+    () => options.filter((o) => filter?.values.includes(o.value)),
+    [options, filter?.values]
+  );
 
   // We display the selected options based on how many are selected
   //
@@ -888,16 +1004,11 @@ export function PropertyFilterOptionValueDisplay<TData, TValue>({
   // 1) up to 3 icons of the selected options
   // 2) the number of selected options
   if (selected.length === 1) {
-    const { label, icon: Icon } = selected[0];
-    const hasIcon = !!Icon;
+    const { label, icon } = selected[0];
+    const hasIcon = !!icon;
     return (
       <span className="inline-flex items-center gap-1">
-        {hasIcon &&
-          (isValidElement(Icon) ? (
-            Icon
-          ) : (
-            <Icon className="size-4 text-primary" />
-          ))}
+        {hasIcon && renderIcon(icon, { className: 'size-4 text-primary' })}
         <span>{label}</span>
       </span>
     );
@@ -910,14 +1021,11 @@ export function PropertyFilterOptionValueDisplay<TData, TValue>({
   return (
     <div className="inline-flex items-center gap-0.5">
       {hasOptionIcons &&
-        take(selected, 3).map(({ value, icon }) => {
-          const Icon = icon!;
-          return isValidElement(Icon) ? (
-            Icon
-          ) : (
-            <Icon key={value} className="size-4" />
-          );
-        })}
+        take(selected, 3).map(({ value, icon }) =>
+          icon
+            ? renderIcon(icon, { key: value, className: SIZE_4_CLASS })
+            : null
+        )}
       <span className={cn(hasOptionIcons && 'ml-1.5')}>
         {selected.length} {pluralName}
       </span>
@@ -931,76 +1039,41 @@ export function PropertyFilterMultiOptionValueDisplay<TData, TValue>({
   columnMeta,
   table,
 }: PropertyFilterValueDisplayProps<TData, TValue>) {
-  let options: ColumnOption[];
-  const columnVals = table
-    .getCoreRowModel()
-    .rows.flatMap((r) => r.getValue<TValue>(id))
-    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null);
-  const uniqueVals = uniq(columnVals);
-
-  // If static options are provided, use them
-  if (columnMeta.options) {
-    options = columnMeta.options;
-  }
-
-  // No static options provided,
-  // We should dynamically generate them based on the column data
-  else if (columnMeta.transformOptionFn) {
-    const { transformOptionFn } = columnMeta;
-
-    options = uniqueVals.map((v) =>
-      transformOptionFn(v as ElementType<NonNullable<TValue>>)
-    );
-  }
-
-  // Make sure the column data conforms to ColumnOption type
-  else if (isColumnOptionArray(uniqueVals)) {
-    options = uniqueVals;
-  }
-
-  // Invalid configuration
-  else {
-    throw new Error(
-      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`
-    );
-  }
-
-  const filter = column.getFilterValue() as FilterValue<'multiOption', TData>;
-  const selected = options.filter((o) => filter?.values[0].includes(o.value));
+  const options = useMemo(
+    () => getOptions(id, columnMeta, table),
+    [id, columnMeta, table]
+  );
+  const filter = column.getFilterValue() as
+    | FilterValue<'multiOption', TData>
+    | undefined;
+  const selected = useMemo(
+    () => options.filter((o) => filter?.values[0]?.includes(o.value)),
+    [options, filter?.values]
+  );
 
   if (selected.length === 1) {
-    const { label, icon: Icon } = selected[0];
-    const hasIcon = !!Icon;
+    const { label, icon } = selected[0];
+    const hasIcon = !!icon;
     return (
-      <span className="inline-flex items-center gap-1.5">
-        {hasIcon &&
-          (isValidElement(Icon) ? (
-            Icon
-          ) : (
-            <Icon className="size-4 text-primary" />
-          ))}
-
+      <span className={FLEX_ITEMS_CENTER_GAP_1_5}>
+        {hasIcon && renderIcon(icon, { className: 'size-4 text-primary' })}
         <span>{label}</span>
       </span>
     );
   }
 
   const name = columnMeta.displayName.toLowerCase();
-
-  const hasOptionIcons = !columnMeta.options?.some((o) => !o.icon);
+  const hasOptionIcons = !options.some((o) => !o.icon);
 
   return (
-    <div className="inline-flex items-center gap-1.5">
+    <div className={FLEX_ITEMS_CENTER_GAP_1_5}>
       {hasOptionIcons && (
         <div key="icons" className="inline-flex items-center gap-0.5">
-          {take(selected, 3).map(({ value, icon }) => {
-            const Icon = icon!;
-            return isValidElement(Icon) ? (
-              cloneElement(Icon, { key: value })
-            ) : (
-              <Icon key={value} className="size-4" />
-            );
-          })}
+          {take(selected, 3).map(({ value, icon }) =>
+            icon
+              ? renderIcon(icon, { key: value, className: SIZE_4_CLASS })
+              : null
+          )}
         </div>
       )}
       <span>
@@ -1019,44 +1092,48 @@ function formatDateRange(start: Date, end: Date) {
   }
 
   if (sameYear) {
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`;
   }
 
   return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`;
 }
 
-export function PropertyFilterDateValueDisplay<TData, TValue>({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function PropertyFilterDateValueDisplay<TData>({
   column,
-}: PropertyFilterValueDisplayProps<TData, TValue>) {
+}: {
+  column: Column<TData>;
+}) {
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'date', TData>)
     : undefined;
 
   if (!filter) return null;
-  if (filter.values.length === 0) return <Ellipsis className="size-4" />;
+  if (filter.values.length === 0) return <Ellipsis className={SIZE_4_CLASS} />;
   if (filter.values.length === 1) {
     const value = filter.values[0];
-
     const formattedDateStr = format(value, 'MMM d, yyyy');
-
     return <span>{formattedDateStr}</span>;
   }
 
   const formattedRangeStr = formatDateRange(filter.values[0], filter.values[1]);
-
   return <span>{formattedRangeStr}</span>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function PropertyFilterTextValueDisplay<TData, TValue>({
   column,
-}: PropertyFilterValueDisplayProps<TData, TValue>) {
+}: {
+  column: Column<TData>;
+}) {
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'text', TData>)
     : undefined;
 
   if (!filter) return null;
   if (filter.values.length === 0 || filter.values[0].trim() === '')
-    return <Ellipsis className="size-4" />;
+    return <Ellipsis className={SIZE_4_CLASS} />;
 
   const value = filter.values[0];
 
@@ -1066,43 +1143,66 @@ export function PropertyFilterTextValueDisplay<TData, TValue>({
 export function PropertyFilterNumberValueDisplay<TData, TValue>({
   column,
   columnMeta,
-}: PropertyFilterValueDisplayProps<TData, TValue>) {
+}: {
+  column: Column<TData>;
+  columnMeta: ColumnMeta<TData, TValue>;
+}) {
   const maxFromMeta = columnMeta.max;
-  const cappedMax = maxFromMeta ?? 2147483647;
-
+  const cappedMax = useMemo(
+    () => maxFromMeta ?? Number.MAX_SAFE_INTEGER, // Use MAX_SAFE_INTEGER as default
+    [maxFromMeta]
+  );
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'number', TData>)
     : undefined;
 
   if (!filter) return null;
 
-  if (
-    filter.operator === 'is between' ||
-    filter.operator === 'is not between'
-  ) {
-    const minValue = filter.values[0];
-    const maxValue =
-      filter.values[1] === Number.POSITIVE_INFINITY ||
-      filter.values[1] >= cappedMax
-        ? `${cappedMax}+`
-        : filter.values[1];
+  const isRangeOperator =
+    // eslint-disable-next-line sonarjs/no-duplicate-string
+    filter.operator === 'is between' || filter.operator === 'is not between';
+
+  if (isRangeOperator) {
+    const minValue = filter.values[0] ?? 0; // Default to 0 if undefined
+    const maxValue = filter.values[1] ?? Number.POSITIVE_INFINITY; // Default to +Infinity if undefined for range max
+    let displayMaxValue: string | number;
+
+    // Handle max value display
+    if (maxValue >= cappedMax) {
+      displayMaxValue = CAPPED_MAX_DISPLAY(cappedMax);
+    } else {
+      displayMaxValue = maxValue;
+    }
 
     return (
-      <span className="tabular-nums tracking-tight">
-        {minValue} and {maxValue}
+      <span className={TABULAR_NUMS_TRACKING_TIGHT}>
+        {minValue} and {displayMaxValue}
       </span>
     );
   }
 
-  if (!filter.values || filter.values.length === 0) {
+  // Handle single value operators
+  if (
+    !filter.values ||
+    filter.values.length === 0 ||
+    filter.values[0] === undefined ||
+    filter.values[0] === null
+  ) {
+    // Check if it's a single-value operator expecting a value, show ellipsis if empty
+    const operatorDetails = numberFilterDetails[filter.operator];
+    if (operatorDetails && operatorDetails.target === 'single') {
+      return <Ellipsis className={SIZE_4_CLASS} />;
+    }
+    // Otherwise, might be an unset filter or unexpected state
     return null;
   }
 
-  const value = filter.values[0];
-  return <span className="tabular-nums tracking-tight">{value}</span>;
+  const value = filter.values[0]; // Already defaulted/checked above implicitly
+  return <span className={TABULAR_NUMS_TRACKING_TIGHT}>{value}</span>;
 }
 
-export function PropertyFilterValueMenu<TData, TValue>({
+// ... (PropertyFilterValueMenu remains the same, calls specific menus)
+export function PropertyFilterValueMenu<TData extends RowData, TValue>({
   id,
   column,
   columnMeta,
@@ -1133,30 +1233,14 @@ export function PropertyFilterValueMenu<TData, TValue>({
         />
       );
     case 'date':
-      return (
-        <PropertyFilterDateValueMenu
-          id={id}
-          column={column}
-          columnMeta={columnMeta}
-          table={table}
-        />
-      );
+      return <PropertyFilterDateValueMenu column={column} />;
     case 'text':
-      return (
-        <PropertyFilterTextValueMenu
-          id={id}
-          column={column}
-          columnMeta={columnMeta}
-          table={table}
-        />
-      );
+      return <PropertyFilterTextValueMenu column={column} />;
     case 'number':
       return (
         <PropertyFilterNumberValueMenu
-          id={id}
           column={column}
           columnMeta={columnMeta}
-          table={table}
         />
       );
     default:
@@ -1164,146 +1248,161 @@ export function PropertyFilterValueMenu<TData, TValue>({
   }
 }
 
-interface ProperFilterValueMenuProps<TData, TValue> {
+// Keep original props for Option/MultiOption
+interface ProperFilterValueMenuProps<TData extends RowData, TValue> {
   id: string;
   column: Column<TData>;
   columnMeta: ColumnMeta<TData, TValue>;
   table: Table<TData>;
 }
 
-export function PropertyFilterOptionValueMenu<TData, TValue>({
-  id,
-  column,
-  columnMeta,
-  table,
-}: ProperFilterValueMenuProps<TData, TValue>) {
-  const filter = column.getFilterValue()
-    ? (column.getFilterValue() as FilterValue<'option', TData>)
-    : undefined;
+// Specific props for Date menu
+interface PropertyFilterDateValueMenuProps<TData extends RowData> {
+  column: Column<TData>;
+}
 
-  let options: ColumnOption[];
+// Specific props for Text menu
+interface PropertyFilterTextValueMenuProps<TData extends RowData> {
+  column: Column<TData>;
+}
+
+// Specific props for Number menu
+interface PropertyFilterNumberValueMenuProps<TData extends RowData, TValue> {
+  column: Column<TData>;
+  columnMeta: ColumnMeta<TData, TValue>;
+}
+
+// Helper function to get options count
+const getOptionsCount = <TData, TValue>(
+  id: string,
+  columnMeta: ColumnMeta<TData, TValue>,
+  table: Table<TData>
+): Record<ColumnOption['value'], number> => {
   const columnVals = table
     .getCoreRowModel()
     .rows.flatMap((r) => r.getValue<TValue>(id))
     .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null);
-  const uniqueVals = uniq(columnVals);
 
-  // If static options are provided, use them
-  if (columnMeta.options) {
-    options = columnMeta.options;
-  }
-
-  // No static options provided,
-  // We should dynamically generate them based on the column data
-  else if (columnMeta.transformOptionFn) {
-    const { transformOptionFn } = columnMeta;
-
-    options = uniqueVals.map((v) =>
-      transformOptionFn(v as ElementType<NonNullable<TValue>>)
-    );
-  }
-
-  // Make sure the column data conforms to ColumnOption type
-  else if (isColumnOptionArray(uniqueVals)) {
-    options = uniqueVals;
-  }
-
-  // Invalid configuration
-  else {
-    throw new Error(
-      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`
-    );
-  }
-
-  const optionsCount: Record<ColumnOption['value'], number> = columnVals.reduce(
+  return columnVals.reduce(
     (acc, curr) => {
-      const { value } = columnMeta.transformOptionFn
-        ? columnMeta.transformOptionFn(curr as ElementType<NonNullable<TValue>>)
-        : { value: curr as string };
+      let value: string;
+      if (columnMeta.transformOptionFn) {
+        ({ value } = columnMeta.transformOptionFn(
+          curr as ElementType<NonNullable<TValue>>
+        ));
+      } else if (typeof curr === 'string') {
+        value = curr;
+      } else if (
+        typeof curr === 'object' &&
+        curr !== null &&
+        'value' in curr &&
+        typeof curr.value === 'string'
+      ) {
+        value = curr.value;
+      } else {
+        // Skip if the value cannot be determined
+        return acc;
+      }
 
       acc[value] = (acc[value] ?? 0) + 1;
       return acc;
     },
     {} as Record<ColumnOption['value'], number>
   );
+};
 
-  function handleOptionSelect(value: string, check: boolean) {
-    if (check)
-      column?.setFilterValue(
-        (old: undefined | FilterValue<'option', TData>) => {
-          if (!old || old.values.length === 0)
-            return {
-              operator: 'is',
-              values: [value],
-              columnMeta: column.columnDef.meta,
-            } satisfies FilterValue<'option', TData>;
+// Common Component for Option and MultiOption Value Menu Items
+const OptionMenuItem = ({
+  option,
+  checked,
+  count,
+  onSelect,
+}: {
+  option: ColumnOption;
+  checked: boolean;
+  count: number;
+  onSelect: () => void;
+}) => (
+  <CommandItem
+    key={option.value}
+    onSelect={onSelect}
+    className={GROUP_FLEX_CLASS}
+  >
+    <div className={FLEX_ITEMS_CENTER_GAP_1_5}>
+      <Checkbox checked={checked} className={OPACITY_CLASS} />
+      {option.icon &&
+        renderIcon(option.icon, {
+          className: `${SIZE_4_CLASS} text-primary`,
+        })}
+      <span>
+        {option.label}
+        <sup className={cn(COUNT_CLASS, count === 0 && SLASHED_ZERO_CLASS)}>
+          {count < 100 ? count : COUNT_DISPLAY_LIMIT}
+        </sup>
+      </span>
+    </div>
+  </CommandItem>
+);
 
-          const newValues = [...old.values, value];
+// Remove TData from signature and update related types
+export function PropertyFilterOptionValueMenu<TValue>({
+  id,
+  column,
+  columnMeta,
+  table,
+}: ProperFilterValueMenuProps<any, TValue>) {
+  const options = useMemo(
+    () => getOptions(id, columnMeta, table),
+    [id, columnMeta, table]
+  );
+  const filter = column.getFilterValue() as FilterValue<'option', any>;
+  const optionsCount = useMemo(
+    () => getOptionsCount(id, columnMeta, table),
+    [id, columnMeta, table]
+  );
 
-          return {
-            operator: 'is any of',
-            values: newValues,
-            columnMeta: column.columnDef.meta,
-          } satisfies FilterValue<'option', TData>;
+  const handleOptionSelect = useCallback(
+    (value: string, isChecked: boolean) => {
+      column?.setFilterValue((old: FilterValue<'option', any> | undefined) => {
+        const { meta } = column.columnDef;
+        const currentValues = old?.values ?? [];
+
+        if (isChecked) {
+          const newValues = [...currentValues, value];
+          const operator = newValues.length > 1 ? 'is any of' : 'is';
+          return { operator, values: newValues, columnMeta: meta };
         }
-      );
-    else
-      column?.setFilterValue(
-        (old: undefined | FilterValue<'option', TData>) => {
-          if (!old || old.values.length <= 1) return undefined;
 
-          const newValues = old.values.filter((v) => v !== value);
-          return {
-            operator: newValues.length > 1 ? 'is any of' : 'is',
-            values: newValues,
-            columnMeta: column.columnDef.meta,
-          } satisfies FilterValue<'option', TData>;
-        }
-      );
-  }
+        const newValues = currentValues.filter((v) => v !== value);
+        if (newValues.length === 0) return undefined;
+        const operator = newValues.length > 1 ? 'is any of' : 'is';
+        return { operator, values: newValues, columnMeta: meta };
+      });
+    },
+    [column]
+  );
 
   return (
     <Command loop>
-      <CommandInput autoFocus placeholder="Search..." />
-      <CommandEmpty>No results.</CommandEmpty>
-      <CommandList className="max-h-fit">
+      <CommandInput autoFocus placeholder={PLACEHOLDER_SEARCH} />
+      <CommandEmpty>{NO_RESULTS_MESSAGE}</CommandEmpty>
+      <CommandList className={MAX_H_FIT_CLASS}>
         <CommandGroup>
-          {options.map((v) => {
-            const checked = Boolean(filter?.values.includes(v.value));
-            const count = optionsCount[v.value] ?? 0;
+          {options.map((option) => {
+            const checked = Boolean(filter?.values.includes(option.value));
+            const count = optionsCount[option.value] ?? 0;
+            const onSelectHandler = () => {
+              handleOptionSelect(option.value, !checked);
+            };
 
             return (
-              <CommandItem
-                key={v.value}
-                onSelect={() => {
-                  handleOptionSelect(v.value, !checked);
-                }}
-                className="group flex items-center justify-between gap-1.5"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    checked={checked}
-                    className="opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100"
-                  />
-                  {v.icon &&
-                    (isValidElement(v.icon) ? (
-                      v.icon
-                    ) : (
-                      <v.icon className="size-4 text-primary" />
-                    ))}
-                  <span>
-                    {v.label}
-                    <sup
-                      className={cn(
-                        'ml-0.5 tabular-nums tracking-tight text-muted-foreground',
-                        count === 0 && 'slashed-zero'
-                      )}
-                    >
-                      {count < 100 ? count : '100+'}
-                    </sup>
-                  </span>
-                </div>
-              </CommandItem>
+              <OptionMenuItem
+                key={option.value}
+                option={option}
+                checked={checked}
+                count={count}
+                onSelect={onSelectHandler}
+              />
             );
           })}
         </CommandGroup>
@@ -1324,151 +1423,72 @@ export function PropertyFilterMultiOptionValueMenu<
   const filter = column.getFilterValue() as
     | FilterValue<'multiOption', TData>
     | undefined;
-
-  let options: ColumnOption[];
-  const columnVals = table
-    .getCoreRowModel()
-    .rows.flatMap((r) => r.getValue<TValue>(id))
-    .filter((v): v is NonNullable<TValue> => v !== undefined && v !== null);
-  const uniqueVals = uniq(columnVals);
-
-  // If static options are provided, use them
-  if (columnMeta.options) {
-    options = columnMeta.options;
-  }
-
-  // No static options provided,
-  // We should dynamically generate them based on the column data
-  else if (columnMeta.transformOptionFn) {
-    const { transformOptionFn } = columnMeta;
-
-    options = uniqueVals.map((v) =>
-      transformOptionFn(v as ElementType<NonNullable<TValue>>)
-    );
-  }
-
-  // Make sure the column data conforms to ColumnOption type
-  else if (isColumnOptionArray(uniqueVals)) {
-    options = uniqueVals;
-  }
-
-  // Invalid configuration
-  else {
-    throw new Error(
-      `[data-table-filter] [${id}] Either provide static options, a transformOptionFn, or ensure the column data conforms to ColumnOption type`
-    );
-  }
-
-  const optionsCount: Record<ColumnOption['value'], number> = columnVals.reduce(
-    (acc, curr) => {
-      const value = columnMeta.options
-        ? (curr as string)
-        : columnMeta.transformOptionFn!(
-            curr as ElementType<NonNullable<TValue>>
-          ).value;
-
-      acc[value] = (acc[value] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<ColumnOption['value'], number>
+  const options = useMemo(
+    () => getOptions(id, columnMeta, table),
+    [id, columnMeta, table]
+  );
+  const optionsCount = useMemo(
+    () => getOptionsCount(id, columnMeta, table),
+    [id, columnMeta, table]
   );
 
-  // Handles the selection/deselection of an option
-  function handleOptionSelect(value: string, check: boolean) {
-    if (check) {
+  const handleOptionSelect = useCallback(
+    (value: string, isChecked: boolean) => {
       column.setFilterValue(
-        (old: undefined | FilterValue<'multiOption', TData>) => {
-          if (
-            !old ||
-            old.values.length === 0 ||
-            !old.values[0] ||
-            old.values[0].length === 0
-          )
-            return {
-              operator: 'include',
-              values: [[value]],
-              columnMeta: column.columnDef.meta,
-            } satisfies FilterValue<'multiOption', TData>;
+        (old: FilterValue<'multiOption', TData> | undefined) => {
+          const { meta } = column.columnDef;
+          const currentValues = old?.values[0] ?? [];
+          let newValues: string[][];
+          let operator: FilterValue<'multiOption', TData>['operator'];
 
-          const newValues = [uniq([...old.values[0], value])];
-
-          return {
-            operator: determineNewOperator(
-              'multiOption',
-              old.values,
+          if (isChecked) {
+            newValues = [uniq([...currentValues, value])];
+            operator = determineNewOperator(
+              MULTI_OPTION_TYPE,
+              old?.values ?? [],
               newValues,
-              old.operator
-            ),
-            values: newValues,
-            columnMeta: column.columnDef.meta,
-          } satisfies FilterValue<'multiOption', TData>;
+              old?.operator ?? MULTI_OPTION_DEFAULT_OPERATOR
+            );
+          } else {
+            const updatedValues = currentValues.filter((v) => v !== value);
+            if (updatedValues.length === 0) return undefined; // Clear filter if no options left
+            newValues = [updatedValues];
+            operator = determineNewOperator(
+              MULTI_OPTION_TYPE,
+              old?.values ?? [],
+              newValues,
+              old?.operator ?? MULTI_OPTION_DEFAULT_OPERATOR
+            );
+          }
+
+          return { operator, values: newValues, columnMeta: meta };
         }
       );
-    } else
-      column.setFilterValue(
-        (old: undefined | FilterValue<'multiOption', TData>) => {
-          if (!old?.values[0] || old.values[0].length <= 1) return undefined;
-
-          const newValues = [
-            uniq([...old.values[0], value]).filter((v) => v !== value),
-          ];
-
-          return {
-            operator: determineNewOperator(
-              'multiOption',
-              old.values,
-              newValues,
-              old.operator
-            ),
-            values: newValues,
-            columnMeta: column.columnDef.meta,
-          } satisfies FilterValue<'multiOption', TData>;
-        }
-      );
-  }
+    },
+    [column]
+  );
 
   return (
     <Command loop>
-      <CommandInput autoFocus placeholder="Search..." />
-      <CommandEmpty>No results.</CommandEmpty>
+      <CommandInput autoFocus placeholder={PLACEHOLDER_SEARCH} />
+      <CommandEmpty>{NO_RESULTS_MESSAGE}</CommandEmpty>
       <CommandList>
         <CommandGroup>
-          {options.map((v) => {
-            const checked = Boolean(filter?.values[0]?.includes(v.value));
-            const count = optionsCount[v.value] ?? 0;
+          {options.map((option) => {
+            const checked = Boolean(filter?.values[0]?.includes(option.value));
+            const count = optionsCount[option.value] ?? 0;
+            const onSelectHandler = () => {
+              handleOptionSelect(option.value, !checked);
+            };
 
             return (
-              <CommandItem
-                key={v.value}
-                onSelect={() => {
-                  handleOptionSelect(v.value, !checked);
-                }}
-                className="group flex items-center justify-between gap-1.5"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Checkbox
-                    checked={checked}
-                    className="opacity-0 group-hover:opacity-100 data-[state=checked]:opacity-100"
-                  />
-                  {v.icon &&
-                    (isValidElement(v.icon) ? (
-                      v.icon
-                    ) : (
-                      <v.icon className="size-4 text-primary" />
-                    ))}
-                  <span>
-                    {v.label}
-                    <sup
-                      className={cn(
-                        'ml-0.5 tabular-nums tracking-tight text-muted-foreground',
-                        count === 0 && 'slashed-zero'
-                      )}
-                    >
-                      {count < 100 ? count : '100+'}
-                    </sup>
-                  </span>
-                </div>
-              </CommandItem>
+              <OptionMenuItem
+                key={option.value}
+                option={option}
+                checked={checked}
+                count={count}
+                onSelect={onSelectHandler}
+              />
             );
           })}
         </CommandGroup>
@@ -1477,57 +1497,74 @@ export function PropertyFilterMultiOptionValueMenu<
   );
 }
 
-export function PropertyFilterDateValueMenu<TData, TValue>({
+export function PropertyFilterDateValueMenu<TData extends RowData>({
   column,
-}: ProperFilterValueMenuProps<TData, TValue>) {
-  const filter = column.getFilterValue()
-    ? (column.getFilterValue() as FilterValue<'date', TData>)
-    : undefined;
+}: PropertyFilterDateValueMenuProps<TData>) {
+  const filter = column.getFilterValue() as
+    | FilterValue<'date', TData>
+    | undefined;
 
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: filter?.values[0] ?? new Date(),
-    to: filter?.values[1] ?? undefined,
-  });
+  const initialDateRange = useMemo(() => {
+    return {
+      from: filter?.values[0] ?? new Date(),
+      to: filter?.values[1] ?? undefined,
+    };
+  }, [filter?.values]);
 
-  function changeDateRange(value: DateRange | undefined) {
-    const start = value?.from;
-    const end =
-      start && value && value.to && !isEqual(start, value.to)
-        ? value.to
-        : undefined;
+  const [date, setDate] = useState<DateRange | undefined>(initialDateRange);
 
-    setDate({ from: start, to: end });
+  const changeDateRange = useCallback(
+    (value: DateRange | undefined) => {
+      const start = value?.from;
+      const end =
+        start && value?.to && !isEqual(start, value.to) ? value.to : undefined;
 
-    const isRange = start && end;
+      setDate({ from: start, to: end });
 
-    const newValues = isRange ? [start, end] : start ? [start] : [];
+      let newValues: Date[] = [];
+      if (start) {
+        if (end) {
+          newValues = [start, end];
+        } else {
+          newValues = [start];
+        }
+      }
 
-    column.setFilterValue((old: undefined | FilterValue<'date', TData>) => {
-      if (!old || old.values.length === 0)
-        return {
-          operator: newValues.length > 1 ? 'is between' : 'is',
-          values: newValues,
-          columnMeta: column.columnDef.meta,
-        } satisfies FilterValue<'date', TData>;
+      column.setFilterValue((old: FilterValue<'date', TData> | undefined) => {
+        const { meta } = column.columnDef;
+        if (!old && newValues.length === 0) return undefined;
 
-      return {
-        operator:
-          old.values.length < newValues.length
-            ? 'is between'
-            : old.values.length > newValues.length
-              ? 'is'
-              : old.operator,
-        values: newValues,
-        columnMeta: column.columnDef.meta,
-      } satisfies FilterValue<'date', TData>;
-    });
-  }
+        const oldValues = old?.values ?? [];
+        let operator: FilterValue<'date', TData>['operator'];
+
+        if (newValues.length > 1) {
+          operator = 'is between';
+        } else if (newValues.length === 1) {
+          operator = 'is';
+        } else {
+          return undefined; // Clear filter if no dates
+        }
+
+        // Determine operator based on transition if old value exists
+        if (old) {
+          if (oldValues.length < newValues.length) {
+            operator = 'is between';
+          } else if (oldValues.length > newValues.length) {
+            operator = 'is';
+          } else {
+            operator = old.operator; // Keep existing operator if length is same
+          }
+        }
+
+        return { operator, values: newValues, columnMeta: meta };
+      });
+    },
+    [column]
+  );
 
   return (
     <Command>
-      {/* <CommandInput placeholder="Search..." /> */}
-      {/* <CommandEmpty>No results.</CommandEmpty> */}
-      <CommandList className="max-h-fit">
+      <CommandList className={MAX_H_FIT_CLASS}>
         <CommandGroup>
           <div>
             <Calendar
@@ -1545,32 +1582,48 @@ export function PropertyFilterDateValueMenu<TData, TValue>({
   );
 }
 
-export function PropertyFilterTextValueMenu<TData, TValue>({
+export function PropertyFilterTextValueMenu<TData extends RowData>({
   column,
-}: ProperFilterValueMenuProps<TData, TValue>) {
-  const filter = column.getFilterValue()
-    ? (column.getFilterValue() as FilterValue<'text', TData>)
-    : undefined;
+}: PropertyFilterTextValueMenuProps<TData>) {
+  const filter = column.getFilterValue() as
+    | FilterValue<'text', TData>
+    | undefined;
 
-  const changeText = (value: string | number) => {
-    column.setFilterValue((old: undefined | FilterValue<'text', TData>) => {
-      if (!old || old.values.length === 0)
+  const changeText = useCallback(
+    (value: string | number) => {
+      column.setFilterValue((old: FilterValue<'text', TData> | undefined) => {
+        const { meta } = column.columnDef;
+        const stringValue = String(value);
+
+        // Clear filter if input is empty
+        if (stringValue.trim() === '') {
+          return undefined;
+        }
+
+        if (!old) {
+          return {
+            operator: 'contains',
+            values: [stringValue],
+            columnMeta: meta,
+          };
+        }
         return {
-          operator: 'contains',
-          values: [String(value)],
-          columnMeta: column.columnDef.meta,
-        } satisfies FilterValue<'text', TData>;
-      return { operator: old.operator, values: [String(value)] };
-    });
-  };
+          operator: old.operator,
+          values: [stringValue],
+          columnMeta: meta,
+        };
+      });
+    },
+    [column]
+  );
 
   return (
     <Command>
-      <CommandList className="max-h-fit">
+      <CommandList className={MAX_H_FIT_CLASS}>
         <CommandGroup>
           <CommandItem>
             <DebouncedInput
-              placeholder="Search..."
+              placeholder={PLACEHOLDER_SEARCH}
               autoFocus
               value={filter?.values[0] ?? ''}
               onChange={changeText}
@@ -1582,187 +1635,324 @@ export function PropertyFilterTextValueMenu<TData, TValue>({
   );
 }
 
-export function PropertyFilterNumberValueMenu<TData, TValue>({
-  table,
+export function PropertyFilterNumberValueMenu<TData extends RowData, TValue>({
   column,
   columnMeta,
-}: ProperFilterValueMenuProps<TData, TValue>) {
+}: PropertyFilterNumberValueMenuProps<TData, TValue>) {
   const maxFromMeta = columnMeta.max;
-  const cappedMax = maxFromMeta ?? Number.MAX_SAFE_INTEGER;
-
+  const cappedMax = useMemo(
+    () => maxFromMeta ?? Number.MAX_SAFE_INTEGER,
+    [maxFromMeta]
+  );
   const filter = column.getFilterValue()
     ? (column.getFilterValue() as FilterValue<'number', TData>)
     : undefined;
 
-  const isNumberRange =
-    !!filter && numberFilterDetails[filter.operator].target === 'multiple';
+  const isNumberRange = useMemo(
+    () =>
+      !!filter && numberFilterDetails[filter.operator].target === 'multiple',
+    [filter]
+  );
 
-  const [datasetMin] = column.getFacetedMinMaxValues() ?? [0, 0];
+  const [datasetMin] = useMemo(
+    () => column.getFacetedMinMaxValues() ?? [0, cappedMax], // Use cappedMax as default max if unknown
+    [column, cappedMax]
+  );
 
-  const initialValues = () => {
+  const initialInputValues = useMemo(() => {
     if (filter?.values) {
       return filter.values.map((val) =>
-        val >= cappedMax ? `${cappedMax}+` : val.toString()
+        val >= cappedMax ? CAPPED_MAX_DISPLAY(cappedMax) : val.toString()
       );
     }
-    return [datasetMin.toString()];
-  };
+    // Default single value to datasetMin, range to [datasetMin, cappedMax]
+    return isNumberRange
+      ? [datasetMin.toString(), CAPPED_MAX_DISPLAY(cappedMax)]
+      : [datasetMin.toString()];
+  }, [filter?.values, cappedMax, datasetMin, isNumberRange]);
 
-  const [inputValues, setInputValues] = useState<string[]>(initialValues);
+  const [inputValues, setInputValues] = useState<string[]>(initialInputValues);
 
-  const changeNumber = (value: number[]) => {
-    const sortedValues = [...value].sort((a, b) => a - b);
+  // Update inputValues if the filter changes externally or tab changes
+  useEffect(() => {
+    setInputValues(initialInputValues);
+  }, [initialInputValues]);
 
-    column.setFilterValue((old: undefined | FilterValue<'number', TData>) => {
-      if (!old || old.values.length === 0) {
+  const changeNumberFilter = useCallback(
+    (
+      newValues: number[],
+      newOperator?: FilterValue<'number', TData>['operator']
+    ) => {
+      column.setFilterValue((old: FilterValue<'number', TData> | undefined) => {
+        const { meta } = column.columnDef;
+        // Use newOperator if provided, otherwise old, default to 'is'
+        const operator = newOperator ?? old?.operator ?? 'is';
+        // Ensure operator is a valid key for numberFilterDetails
+        const currentOperator = Object.keys(numberFilterDetails).includes(
+          operator
+        )
+          ? (operator as NumberFilterOperator)
+          : 'is'; // Default to 'is' if invalid
+        const operatorDetails = numberFilterDetails[currentOperator];
+        let finalValues: number[];
+
+        const sortedValues = [...newValues].sort((a, b) => a - b);
+
+        if (operatorDetails.target === 'single') {
+          finalValues = [sortedValues[0] ?? datasetMin]; // Default to min if undefined
+        } else {
+          const minVal =
+            sortedValues[0] >= cappedMax
+              ? cappedMax
+              : (sortedValues[0] ?? datasetMin);
+          const maxVal =
+            sortedValues[1] >= cappedMax
+              ? Number.POSITIVE_INFINITY
+              : (sortedValues[1] ?? cappedMax); // Use cappedMax for default max range
+          finalValues = [minVal, maxVal];
+        }
+
+        // Don't create filter if values are default/empty for range
+        if (
+          operatorDetails.target === 'multiple' &&
+          finalValues[0] === datasetMin &&
+          finalValues[1] === Number.POSITIVE_INFINITY
+        ) {
+          // Potentially clear filter here if desired, or keep default range
+          // return undefined;
+        }
+
         return {
-          operator: 'is',
-          values: sortedValues,
-        };
-      }
-
-      const operator = numberFilterDetails[old.operator];
-      let newValues: number[];
-
-      if (operator.target === 'single') {
-        newValues = [sortedValues[0]];
-      } else {
-        newValues = [
-          sortedValues[0] >= cappedMax ? cappedMax : sortedValues[0],
-          sortedValues[1] >= cappedMax
-            ? Number.POSITIVE_INFINITY
-            : sortedValues[1],
-        ];
-      }
-
-      return {
-        operator: old.operator,
-        values: newValues,
-      };
-    });
-  };
-
-  const handleInputChange = (index: number, value: string) => {
-    const newValues = [...inputValues];
-    if (isNumberRange && Number.parseInt(value, 10) >= cappedMax) {
-      newValues[index] = `${cappedMax}+`;
-    } else {
-      newValues[index] = value;
-    }
-
-    setInputValues(newValues);
-
-    const parsedValues = newValues.map((val) => {
-      if (val.trim() === '') return 0;
-      if (val === `${cappedMax}+`) return cappedMax;
-      return Number.parseInt(val, 10);
-    });
-
-    changeNumber(parsedValues);
-  };
-
-  const changeType = (type: 'single' | 'range') => {
-    column.setFilterValue((old: undefined | FilterValue<'number', TData>) => {
-      if (type === 'single') {
-        return {
-          operator: 'is',
-          values: [old?.values[0] ?? 0],
-        };
-      }
-      const newMaxValue = old?.values[0] ?? cappedMax;
-      return {
-        operator: 'is between',
-        values: [0, newMaxValue],
-      };
-    });
-
-    if (type === 'single') {
-      setInputValues([inputValues[0]]);
-    } else {
-      const maxValue = inputValues[0] || cappedMax.toString();
-      setInputValues(['0', maxValue]);
-    }
-  };
-
-  const slider = {
-    value: inputValues.map((val) =>
-      val === '' || val === `${cappedMax}+`
-        ? cappedMax
-        : Number.parseInt(val, 10)
-    ),
-    onValueChange: (value: number[]) => {
-      const values = value.map((val) => (val >= cappedMax ? cappedMax : val));
-      setInputValues(
-        values.map((v) => (v >= cappedMax ? `${cappedMax}+` : v.toString()))
-      );
-      changeNumber(values);
+          operator: currentOperator,
+          values: finalValues,
+          columnMeta: meta,
+        } satisfies FilterValue<'number', TData>; // Add satisfies for type check
+      });
     },
-  };
+    [column, datasetMin, cappedMax]
+  );
+
+  const handleInputChange = useCallback(
+    (index: number, value: string) => {
+      const newValues = [...inputValues];
+      let processedValue = value;
+
+      // Handle '+ ' suffix for max value in range input
+      if (
+        isNumberRange &&
+        index === 1 &&
+        value.endsWith(CAPPED_MAX_DISPLAY_SUFFIX)
+      ) {
+        processedValue = value.slice(0, -1 * CAPPED_MAX_DISPLAY_SUFFIX.length); // Keep the '+' for display if desired, parse number
+      }
+
+      const numValue = Number.parseInt(processedValue, 10);
+
+      // Special handling for the max capped value display
+      if (numValue >= cappedMax) {
+        newValues[index] = CAPPED_MAX_DISPLAY(cappedMax);
+      } else {
+        newValues[index] = value; // Store raw input for controlled component
+      }
+
+      setInputValues(newValues);
+
+      const parsedValues = newValues.map((val) => {
+        if (val.trim() === '') return datasetMin; // Default empty input to min
+        if (val === CAPPED_MAX_DISPLAY(cappedMax)) return cappedMax; // Use cappedMax for parsing
+        const parsed = Number.parseInt(val, 10);
+        return Number.isNaN(parsed) ? datasetMin : parsed; // Default NaN to min
+      });
+
+      changeNumberFilter(parsedValues);
+    },
+    [inputValues, isNumberRange, cappedMax, datasetMin, changeNumberFilter]
+  );
+
+  const changeTabType = useCallback(
+    (tabValue: string) => {
+      const type = tabValue === NUMBER_FILTER_TYPE_RANGE ? 'range' : 'single';
+      const newOperator = type === 'range' ? 'is between' : 'is';
+      const currentNumValues = inputValues.map((v) => {
+        if (v === CAPPED_MAX_DISPLAY(cappedMax)) return cappedMax;
+        const parsed = Number.parseInt(v, 10);
+        return Number.isNaN(parsed) ? datasetMin : parsed;
+      });
+
+      let newValuesForFilter: number[];
+      let newValuesForInput: string[];
+
+      if (type === 'single') {
+        newValuesForFilter = [currentNumValues[0] ?? datasetMin];
+        newValuesForInput = [newValuesForFilter[0].toString()];
+      } else {
+        // Default range: [currentMin or datasetMin, cappedMax]
+        const minVal = currentNumValues[0] ?? datasetMin;
+        newValuesForFilter = [minVal, Number.POSITIVE_INFINITY]; // Use infinity for filter logic
+        newValuesForInput = [minVal.toString(), CAPPED_MAX_DISPLAY(cappedMax)]; // Use display string for input
+      }
+
+      setInputValues(newValuesForInput);
+      changeNumberFilter(newValuesForFilter, newOperator);
+    },
+    [inputValues, cappedMax, datasetMin, changeNumberFilter]
+  );
+
+  const handleSliderChange = useCallback(
+    (newSliderValues: number[]) => {
+      // Ensure slider values don't exceed cappedMax visually
+      const adjustedValues = newSliderValues.map((val) =>
+        Math.min(val, cappedMax)
+      );
+
+      setInputValues(
+        adjustedValues.map((v) =>
+          v >= cappedMax ? CAPPED_MAX_DISPLAY(cappedMax) : v.toString()
+        )
+      );
+      // Use potentially infinite value for the actual filter if max is hit
+      const filterValues = adjustedValues.map((v) =>
+        v >= cappedMax ? Number.POSITIVE_INFINITY : v
+      );
+      changeNumberFilter(filterValues);
+    },
+    [cappedMax, changeNumberFilter]
+  );
+
+  const currentTab = isNumberRange
+    ? NUMBER_FILTER_TYPE_RANGE
+    : NUMBER_FILTER_TYPE_SINGLE;
+  const sliderValue = useMemo(
+    () =>
+      inputValues.map((val) => {
+        if (val === '' || val === CAPPED_MAX_DISPLAY(cappedMax)) {
+          return cappedMax;
+        }
+        const parsed = Number.parseInt(val, 10);
+        if (Number.isNaN(parsed)) {
+          return datasetMin;
+        }
+        return Math.min(parsed, cappedMax); // Cap slider max visually
+      }),
+    [inputValues, cappedMax, datasetMin]
+  );
+
+  const handleSingleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      handleInputChange(0, e.target.value),
+    [handleInputChange]
+  );
+  const handleMinInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      handleInputChange(0, e.target.value),
+    [handleInputChange]
+  );
+  const handleMaxInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      handleInputChange(1, e.target.value),
+    [handleInputChange]
+  );
+  const handleSingleSliderChange = useCallback(
+    (value: number[]) => handleSliderChange([value[0]]),
+    [handleSliderChange]
+  );
+
+  // Constant for the capped max placeholder string
+  const cappedMaxPlaceholder = useMemo(
+    () => CAPPED_MAX_DISPLAY(cappedMax),
+    [cappedMax]
+  );
+
+  // Define pattern constant for max input
+  const maxInputPattern = useMemo(() => {
+    // eslint-disable-next-line no-useless-escape
+    return `^\\d*\\${CAPPED_MAX_DISPLAY_SUFFIX}?|^${cappedMax}\\${CAPPED_MAX_DISPLAY_SUFFIX}?`;
+  }, [cappedMax]);
+
+  // Calculate max value for the 'Min' input clearly
+  const maxForMinInput = useMemo(() => {
+    const maxInputValue = inputValues[1];
+    if (maxInputValue === cappedMaxPlaceholder) {
+      return cappedMax - 1;
+    }
+    // Default to cappedMax if parsing fails or input is empty
+    const parsedMaxValue =
+      parseInt(maxInputValue || cappedMax.toString(), 10) || cappedMax;
+    return parsedMaxValue - 1;
+  }, [inputValues, cappedMax, cappedMaxPlaceholder]);
 
   return (
     <Command>
       <CommandList className="w-[300px] px-2 py-2">
         <CommandGroup>
           <div className="flex flex-col w-full">
-            <Tabs
-              value={isNumberRange ? 'range' : 'single'}
-              onValueChange={(v) =>
-                changeType(v === 'range' ? 'range' : 'single')
-              }
-            >
-              <TabsList className="w-full *:text-xs">
-                <TabsTrigger value="single">Single</TabsTrigger>
-                <TabsTrigger value="range">Range</TabsTrigger>
+            <Tabs value={currentTab} onValueChange={changeTabType}>
+              <TabsList className={cn('w-full', TEXT_XS_CLASS)}>
+                <TabsTrigger value={NUMBER_FILTER_TYPE_SINGLE}>
+                  Single
+                </TabsTrigger>
+                <TabsTrigger value={NUMBER_FILTER_TYPE_RANGE}>
+                  Range
+                </TabsTrigger>
               </TabsList>
-              <TabsContent value="single" className="flex flex-col gap-4 mt-4">
+              <TabsContent
+                value={NUMBER_FILTER_TYPE_SINGLE}
+                className="flex flex-col gap-4 mt-4"
+              >
                 <Slider
-                  value={[Number(inputValues[0])]}
-                  onValueChange={(value) => {
-                    handleInputChange(0, value[0].toString());
-                  }}
+                  value={[sliderValue[0]]} // Slider expects array
+                  onValueChange={handleSingleSliderChange}
                   min={datasetMin}
-                  max={cappedMax}
-                  step={1}
-                  aria-orientation="horizontal"
+                  max={cappedMax} // Input max validation
                 />
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium">Value</span>
+                  <span className={cn(TEXT_XS_CLASS, FONT_MEDIUM_CLASS)}>
+                    Value
+                  </span>
                   <Input
                     id="single"
                     type="number"
                     value={inputValues[0]}
-                    onChange={(e) => handleInputChange(0, e.target.value)}
-                    max={cappedMax}
+                    onChange={handleSingleInputChange}
+                    min={datasetMin}
+                    max={cappedMax} // Input max validation
                   />
                 </div>
               </TabsContent>
-              <TabsContent value="range" className="flex flex-col gap-4 mt-4">
+              <TabsContent
+                value={NUMBER_FILTER_TYPE_RANGE}
+                className="flex flex-col gap-4 mt-4"
+              >
                 <Slider
-                  value={slider.value}
-                  onValueChange={slider.onValueChange}
+                  value={sliderValue}
+                  onValueChange={handleSliderChange}
                   min={datasetMin}
-                  max={cappedMax}
-                  step={1}
-                  aria-orientation="horizontal"
+                  max={cappedMax} // Visual max for slider
                 />
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium">Min</span>
+                    <span className={cn(TEXT_XS_CLASS, FONT_MEDIUM_CLASS)}>
+                      Min
+                    </span>
                     <Input
                       type="number"
                       value={inputValues[0]}
-                      onChange={(e) => handleInputChange(0, e.target.value)}
-                      max={cappedMax}
+                      onChange={handleMinInputChange}
+                      min={datasetMin}
+                      max={maxForMinInput} // Use calculated max value
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium">Max</span>
+                    <span className={cn(TEXT_XS_CLASS, FONT_MEDIUM_CLASS)}>
+                      Max
+                    </span>
                     <Input
-                      type="text"
+                      type="text" // Use text to allow '+'
                       value={inputValues[1]}
-                      placeholder={`${cappedMax}+`}
-                      onChange={(e) => handleInputChange(1, e.target.value)}
-                      max={cappedMax}
+                      placeholder={cappedMaxPlaceholder}
+                      onChange={handleMaxInputChange}
+                      // Basic pattern validation, more robust validation in handler
+                      pattern={maxInputPattern} // Use constant
                     />
                   </div>
                 </div>

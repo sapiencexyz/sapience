@@ -47,7 +47,8 @@ export function useMarketPriceData(
   // Round down to the nearest 5 minutes (300 seconds) to prevent rapid key changes.
   const queryKeyTimestampInterval = 300;
   const timestampForKey = isActive
-    ? Math.floor(timestampForApi / queryKeyTimestampInterval) * queryKeyTimestampInterval
+    ? Math.floor(timestampForApi / queryKeyTimestampInterval) *
+      queryKeyTimestampInterval
     : timestampForApi; // Use the precise timestamp for the key if not active
 
   const { stEthPerToken: currentStEthPerToken } = useFoil();

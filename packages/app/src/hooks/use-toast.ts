@@ -144,9 +144,9 @@ function dispatch(action: Action) {
   });
 }
 
-type Toast = Omit<ToasterToast, 'id'>;
+type ToastPropsInternal = Omit<ToasterToast, 'id'>;
 
-function toast({ ...props }: Toast & CustomToastProps) {
+function showToast({ ...props }: ToastPropsInternal & CustomToastProps) {
   const id = genId();
 
   // Add default styles for error toasts
@@ -159,12 +159,12 @@ function toast({ ...props }: Toast & CustomToastProps) {
     overflowY: 'scroll',
   };
 
-  const update = (props: ToasterToast) =>
+  const updateToast = (updateProps: ToasterToast) =>
     dispatch({
       type: 'UPDATE_TOAST',
-      toast: { ...props, id },
+      toast: { ...updateProps, id },
     });
-  const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
+  const dismissToast = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
   dispatch({
     type: 'ADD_TOAST',
@@ -177,15 +177,15 @@ function toast({ ...props }: Toast & CustomToastProps) {
         ...props.style,
       },
       onOpenChange: (open) => {
-        if (!open) dismiss();
+        if (!open) dismissToast();
       },
     },
   });
 
   return {
     id,
-    dismiss,
-    update,
+    dismiss: dismissToast,
+    update: updateToast,
   };
 }
 
@@ -204,9 +204,9 @@ function useToast() {
 
   return {
     ...state,
-    toast,
+    toast: showToast,
     dismiss: (toastId?: string) => dispatch({ type: 'DISMISS_TOAST', toastId }),
   };
 }
 
-export { useToast, toast };
+export { useToast, showToast as toast };

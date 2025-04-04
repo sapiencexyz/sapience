@@ -1,12 +1,11 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import '@tanstack/table-core';
 import type {
   AccessorFn,
   Column,
-  DeepKeys,
-  DeepValue,
   Row,
   RowData,
-  ColumnMeta,
+  ColumnMeta as TableColumnMeta,
   Table,
 } from '@tanstack/react-table';
 import {
@@ -23,7 +22,12 @@ import { intersection, uniq } from './array';
 
 export type ElementType<T> = T extends (infer U)[] ? U : T;
 
+// Define constants for target types to reduce duplication
+const TARGET_SINGLE = 'single';
+const TARGET_MULTIPLE = 'multiple';
+
 declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData extends RowData, TValue> {
     /* The display name of the column. */
     displayName: string;
@@ -73,10 +77,10 @@ export function defineMeta<
   TType extends ColumnDataType,
 >(
   accessor: TAccessor,
-  meta: Omit<ColumnMeta<TData, TVal>, 'type'> & {
+  meta: Omit<TableColumnMeta<TData, TVal>, 'type'> & {
     type: TType;
   }
-): ColumnMeta<TData, TVal> {
+): TableColumnMeta<TData, TVal> {
   return meta;
 }
 
@@ -228,7 +232,7 @@ export const optionFilterDetails = {
   is: {
     label: 'is',
     value: 'is',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'is not',
     relativeOf: 'is any of',
     isNegated: false,
@@ -237,7 +241,7 @@ export const optionFilterDetails = {
   'is not': {
     label: 'is not',
     value: 'is not',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'is',
     relativeOf: 'is none of',
     isNegated: true,
@@ -246,7 +250,7 @@ export const optionFilterDetails = {
   'is any of': {
     label: 'is any of',
     value: 'is any of',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     pluralOf: 'is',
     relativeOf: 'is',
     isNegated: false,
@@ -255,7 +259,7 @@ export const optionFilterDetails = {
   'is none of': {
     label: 'is none of',
     value: 'is none of',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     pluralOf: 'is not',
     relativeOf: 'is not',
     isNegated: true,
@@ -268,7 +272,7 @@ export const multiOptionFilterDetails = {
   include: {
     label: 'include',
     value: 'include',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'include any of',
     relativeOf: 'exclude',
     isNegated: false,
@@ -277,7 +281,7 @@ export const multiOptionFilterDetails = {
   exclude: {
     label: 'exclude',
     value: 'exclude',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'exclude if any of',
     relativeOf: 'include',
     isNegated: true,
@@ -286,7 +290,7 @@ export const multiOptionFilterDetails = {
   'include any of': {
     label: 'include any of',
     value: 'include any of',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     pluralOf: 'include',
     relativeOf: ['exclude if all', 'include all of', 'exclude if any of'],
     isNegated: false,
@@ -295,7 +299,7 @@ export const multiOptionFilterDetails = {
   'exclude if all': {
     label: 'exclude if all',
     value: 'exclude if all',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     pluralOf: 'exclude',
     relativeOf: ['include any of', 'include all of', 'exclude if any of'],
     isNegated: true,
@@ -304,7 +308,7 @@ export const multiOptionFilterDetails = {
   'include all of': {
     label: 'include all of',
     value: 'include all of',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     pluralOf: 'include',
     relativeOf: ['include any of', 'exclude if all', 'exclude if any of'],
     isNegated: false,
@@ -313,7 +317,7 @@ export const multiOptionFilterDetails = {
   'exclude if any of': {
     label: 'exclude if any of',
     value: 'exclude if any of',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     pluralOf: 'exclude',
     relativeOf: ['include any of', 'exclude if all', 'include all of'],
     isNegated: true,
@@ -326,7 +330,7 @@ export const dateFilterDetails = {
   is: {
     label: 'is',
     value: 'is',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'is between',
     relativeOf: 'is after',
     isNegated: false,
@@ -335,7 +339,7 @@ export const dateFilterDetails = {
   'is not': {
     label: 'is not',
     value: 'is not',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'is not between',
     relativeOf: [
       'is',
@@ -350,7 +354,7 @@ export const dateFilterDetails = {
   'is before': {
     label: 'is before',
     value: 'is before',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'is between',
     relativeOf: [
       'is',
@@ -365,7 +369,7 @@ export const dateFilterDetails = {
   'is on or after': {
     label: 'is on or after',
     value: 'is on or after',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'is between',
     relativeOf: ['is', 'is not', 'is before', 'is after', 'is on or before'],
     isNegated: false,
@@ -374,7 +378,7 @@ export const dateFilterDetails = {
   'is after': {
     label: 'is after',
     value: 'is after',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'is between',
     relativeOf: [
       'is',
@@ -389,7 +393,7 @@ export const dateFilterDetails = {
   'is on or before': {
     label: 'is on or before',
     value: 'is on or before',
-    target: 'single',
+    target: TARGET_SINGLE,
     singularOf: 'is between',
     relativeOf: ['is', 'is not', 'is after', 'is on or after', 'is before'],
     isNegated: false,
@@ -398,7 +402,7 @@ export const dateFilterDetails = {
   'is between': {
     label: 'is between',
     value: 'is between',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     pluralOf: 'is',
     relativeOf: 'is not between',
     isNegated: false,
@@ -407,7 +411,7 @@ export const dateFilterDetails = {
   'is not between': {
     label: 'is not between',
     value: 'is not between',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     pluralOf: 'is not',
     relativeOf: 'is between',
     isNegated: true,
@@ -420,7 +424,7 @@ export const textFilterDetails = {
   contains: {
     label: 'contains',
     value: 'contains',
-    target: 'single',
+    target: TARGET_SINGLE,
     relativeOf: 'does not contain',
     isNegated: false,
     negation: 'does not contain',
@@ -428,7 +432,7 @@ export const textFilterDetails = {
   'does not contain': {
     label: 'does not contain',
     value: 'does not contain',
-    target: 'single',
+    target: TARGET_SINGLE,
     relativeOf: 'contains',
     isNegated: true,
     negationOf: 'contains',
@@ -440,7 +444,7 @@ export const numberFilterDetails = {
   is: {
     label: 'is',
     value: 'is',
-    target: 'single',
+    target: TARGET_SINGLE,
     relativeOf: [
       'is not',
       'is greater than',
@@ -454,7 +458,7 @@ export const numberFilterDetails = {
   'is not': {
     label: 'is not',
     value: 'is not',
-    target: 'single',
+    target: TARGET_SINGLE,
     relativeOf: [
       'is',
       'is greater than',
@@ -468,7 +472,7 @@ export const numberFilterDetails = {
   'is greater than': {
     label: '>',
     value: 'is greater than',
-    target: 'single',
+    target: TARGET_SINGLE,
     relativeOf: [
       'is',
       'is not',
@@ -482,7 +486,7 @@ export const numberFilterDetails = {
   'is greater than or equal to': {
     label: '>=',
     value: 'is greater than or equal to',
-    target: 'single',
+    target: TARGET_SINGLE,
     relativeOf: [
       'is',
       'is not',
@@ -496,7 +500,7 @@ export const numberFilterDetails = {
   'is less than': {
     label: '<',
     value: 'is less than',
-    target: 'single',
+    target: TARGET_SINGLE,
     relativeOf: [
       'is',
       'is not',
@@ -510,7 +514,7 @@ export const numberFilterDetails = {
   'is less than or equal to': {
     label: '<=',
     value: 'is less than or equal to',
-    target: 'single',
+    target: TARGET_SINGLE,
     relativeOf: [
       'is',
       'is not',
@@ -524,7 +528,7 @@ export const numberFilterDetails = {
   'is between': {
     label: 'is between',
     value: 'is between',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     relativeOf: 'is not between',
     isNegated: false,
     negation: 'is not between',
@@ -532,7 +536,7 @@ export const numberFilterDetails = {
   'is not between': {
     label: 'is not between',
     value: 'is not between',
-    target: 'multiple',
+    target: TARGET_MULTIPLE,
     relativeOf: 'is between',
     isNegated: true,
     negationOf: 'is between',
@@ -667,6 +671,9 @@ export function __optionFilterFn<TData>(
     case 'is not':
     case 'is none of':
       return !found;
+    default:
+      // Should not happen with exhaustive type checking, but return true as a safe default
+      return true;
   }
 }
 
@@ -749,6 +756,9 @@ export function __multiOptionFilterFn<TData>(
       return !(
         intersection(values, filterValues).length === filterValues.length
       );
+    default:
+      // Should not happen with exhaustive type checking, but return true as a safe default
+      return true;
   }
 }
 
@@ -769,7 +779,7 @@ export function __dateFilterFn<TData>(
   if (!filterValue || filterValue.values.length === 0) return true;
 
   if (
-    dateFilterDetails[filterValue.operator].target === 'single' &&
+    dateFilterDetails[filterValue.operator].target === TARGET_SINGLE &&
     filterValue.values.length > 1
   )
     throw new Error('Singular operators require at most one filter value');
@@ -809,6 +819,10 @@ export function __dateFilterFn<TData>(
         start: startOfDay(filterValue.values[0]),
         end: endOfDay(filterValue.values[1]),
       });
+    default:
+      // This case should ideally not be reachable due to the checks above
+      // and exhaustive operator types, but throw an error just in case.
+      throw new Error(`Unknown date filter operator: ${filterValue.operator}`);
   }
 }
 
@@ -840,6 +854,9 @@ export function __textFilterFn<TData>(
       return found;
     case 'does not contain':
       return !found;
+    default:
+      // Should not happen with exhaustive type checking, but return true as a safe default
+      return true;
   }
 }
 
@@ -888,23 +905,22 @@ export function __numberFilterFn<TData>(
       return value < lowerBound || value > upperBound;
     }
     default:
+      // Should not happen with exhaustive type checking, but return true as a safe default
       return true;
   }
 }
 
 export function createNumberRange(values: number[] | undefined) {
-  let a = 0;
-  let b = 0;
+  // Refactored to use destructuring principles and cleaner logic
+  if (!values || values.length === 0) return [0, 0];
 
-  if (!values || values.length === 0) return [a, b];
-  if (values.length === 1) {
-    a = values[0];
-  } else {
-    a = values[0];
-    b = values[1];
+  let min = values[0];
+  let max = values.length > 1 ? values[1] : min; // If only one value, min = max
+
+  // Ensure min <= max
+  if (min > max) {
+    [min, max] = [max, min]; // Swap using destructuring
   }
-
-  const [min, max] = a < b ? [a, b] : [b, a];
 
   return [min, max];
 }
