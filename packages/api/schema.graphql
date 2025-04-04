@@ -18,6 +18,7 @@ type EpochType {
   market: MarketType
   positions: [PositionType!]!
   public: Boolean!
+  question: String!
   settled: Boolean
   settlementPriceD18: String
   startTimestamp: Int

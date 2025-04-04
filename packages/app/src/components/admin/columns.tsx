@@ -459,8 +459,17 @@ const getColumns = (
   {
     id: 'question',
     header: 'Question',
-    accessorFn: (row) => row.question || 'Coming soon...',
-    cell: () => <span className="text-gray-500 italic">Coming soon...</span>,
+    accessorKey: 'question',
+    cell: ({ row }) => {
+      const { question } = row.original;
+      return question ? (
+        <span>{question}</span>
+      ) : (
+        <span className="text-muted-foreground">N/A</span>
+      );
+    },
+    enableColumnFilter: false,
+    filterFn: 'includesString',
   },
   {
     id: 'volume',

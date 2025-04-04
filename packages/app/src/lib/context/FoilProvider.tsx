@@ -29,6 +29,7 @@ export interface Market {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   }>;
   currentEpoch: {
     id: number;
@@ -36,6 +37,7 @@ export interface Market {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   } | null;
   nextEpoch: {
     id: number;
@@ -43,6 +45,7 @@ export interface Market {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   } | null;
 }
 
