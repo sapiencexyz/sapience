@@ -5,3 +5,4 @@ export { TransactionResolver } from './TransactionResolver';
 export { EpochResolver } from './EpochResolver';
 export { CandleResolver } from './CandleResolver';
 export { PnLResolver } from './PnLResolver';
+export { VolumeResolver } from './VolumeResolver';

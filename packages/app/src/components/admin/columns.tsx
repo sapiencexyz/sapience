@@ -2,10 +2,11 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
 import { Download, Loader2, InfoIcon, Vault, Check } from 'lucide-react';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { zeroAddress } from 'viem';
 import { base, sepolia } from 'viem/chains';
 import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { useQuery } from '@tanstack/react-query';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,6 +21,7 @@ import type { Market } from '~/lib/context/FoilProvider';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useMarketPriceData } from '~/lib/hooks/useMarketPriceData';
 import { useResources } from '~/lib/hooks/useResources';
+import { foilApi } from '~/lib/utils/util';
 
 import AddressCell from './AddressCell';
 import PublicCell from './PublicCell';
@@ -81,6 +83,60 @@ const ResourceCell = ({
       <span>{resource.name}</span>
     </div>
   );
+};
+
+// GraphQL Query for Total Volume
+const TOTAL_VOLUME_BY_EPOCH_QUERY = `
+  query GetTotalVolumeByEpoch($chainId: Int!, $marketAddress: String!, $epochId: Int!) {
+    totalVolumeByEpoch(chainId: $chainId, marketAddress: $marketAddress, epochId: $epochId)
+  }
+`;
+
+// Updated VolumeCell component using GraphQL
+const VolumeCell = ({
+  marketAddress,
+  chainId,
+  epochId,
+}: {
+  marketAddress: string;
+  chainId: number;
+  epochId: number;
+}) => {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['totalVolumeByEpoch', chainId, marketAddress, epochId],
+    queryFn: async () => {
+      const response = await foilApi.post('/graphql', {
+        query: TOTAL_VOLUME_BY_EPOCH_QUERY,
+        variables: {
+          chainId,
+          marketAddress,
+          epochId,
+        },
+      });
+
+      if (response.errors) {
+        console.error('GraphQL Errors:', response.errors);
+        throw new Error(response.errors[0].message || 'Failed to fetch volume');
+      }
+      if (!response.data || typeof response.data.totalVolumeByEpoch !== 'number') {
+         throw new Error('Volume data is not in the expected format.');
+      }
+      return response.data.totalVolumeByEpoch;
+    },
+    enabled: !!marketAddress && !!chainId && !!epochId, // Only run query if all params are present
+    staleTime: 5 * 60 * 1000, // Cache data for 5 minutes
+  });
+
+  if (isLoading) {
+    return <span>Loading...</span>;
+  }
+
+  if (error) {
+    console.error('Failed to fetch volume:', error);
+    return <span className="text-red-500">Error</span>; // Simplified error display
+  }
+
+  return data !== undefined ? <NumberDisplay value={data} /> : <span>N/A</span>;
 };
 
 // BondApproveButton component to handle bond approval
@@ -213,6 +269,18 @@ const getColumns = (
     header: 'Question',
     accessorFn: (row) => row.question || 'Coming soon...',
     cell: () => <span className="text-gray-500 italic">Coming soon...</span>,
+  },
+  {
+    id: 'volume',
+    header: 'Volume',
+    accessorFn: (row) => `${row.marketAddress}-${row.epochId}`, // Placeholder for sorting
+    cell: ({ row }) => (
+      <VolumeCell
+        marketAddress={row.original.marketAddress}
+        chainId={row.original.chainId}
+        epochId={row.original.epochId}
+      />
+    ),
   },
   {
     id: 'resource',

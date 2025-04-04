@@ -11,9 +11,9 @@ import {
   groupTransactionsByTimeWindow,
 } from 'src/serviceUtil';
 import { formatUnits } from 'viem';
+import { TOKEN_PRECISION } from 'src/constants';
 
 const router = Router();
-const TOKEN_PRECISION = 18;
 
 router.get(
   '/',
