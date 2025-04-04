@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
 import { Download, Loader2, InfoIcon, Vault, Check } from 'lucide-react';
@@ -19,7 +18,6 @@ import type { Market } from '~/lib/context/FoilProvider';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useMarketPriceData } from '~/lib/hooks/useMarketPriceData';
 import { useResources } from '~/lib/hooks/useResources';
-import { foilApi } from '~/lib/utils/util';
 
 import AddressCell from './AddressCell';
 import PublicCell from './PublicCell';
@@ -103,69 +101,50 @@ const ResourceCell = ({
   );
 };
 
-// GraphQL Query for Total Volume
-const TOTAL_VOLUME_BY_EPOCH_QUERY = `
-  query GetTotalVolumeByEpoch($chainId: Int!, $marketAddress: String!, $epochId: Int!) {
-    totalVolumeByEpoch(chainId: $chainId, marketAddress: $marketAddress, epochId: $epochId)
-  }
-`;
-
-// Updated VolumeCell component using GraphQL
+// Refactored VolumeCell to accept volume prop and useReadContract for symbol
 const VolumeCell = ({
-  marketAddress,
+  volume,
+  collateralAssetAddress,
   chainId,
-  epochId,
-  collateralSymbol,
 }: {
-  marketAddress: string;
+  volume: number | null | undefined; // Volume is now passed as a prop
+  collateralAssetAddress: string;
   chainId: number;
-  epochId: number;
-  collateralSymbol?: string;
 }) => {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['totalVolumeByEpoch', chainId, marketAddress, epochId],
-    queryFn: async () => {
-      const response = await foilApi.post('/graphql', {
-        query: TOTAL_VOLUME_BY_EPOCH_QUERY,
-        variables: {
-          chainId,
-          marketAddress,
-          epochId,
-        },
-      });
+  // Fetch collateral symbol
+  const { data: collateralSymbol, isLoading: isLoadingSymbol } =
+    useReadContract({
+      abi: erc20ABI,
+      address: collateralAssetAddress as `0x${string}`,
+      functionName: 'symbol',
+      chainId,
+      query: {
+        enabled: !!collateralAssetAddress && !!chainId, // Only run if address and chainId are present
+        staleTime: Infinity, // Symbol is unlikely to change, cache indefinitely
+      },
+    });
 
-      if (response.errors) {
-        console.error('GraphQL Errors:', response.errors);
-        throw new Error(response.errors[0].message || 'Failed to fetch volume');
-      }
-      if (
-        !response.data ||
-        typeof response.data.totalVolumeByEpoch !== 'number'
-      ) {
-        throw new Error('Volume data is not in the expected format.');
-      }
-      return response.data.totalVolumeByEpoch;
-    },
-    enabled: !!marketAddress && !!chainId && !!epochId, // Only run query if all params are present
-    staleTime: 5 * 60 * 1000, // Cache data for 5 minutes
-  });
-
-  if (isLoading) {
+  // Handle loading state based on props and symbol fetch
+  if (volume === undefined || isLoadingSymbol) {
     return <span>Loading...</span>;
   }
 
-  if (error) {
-    console.error('Failed to fetch volume:', error);
-    return <span className="text-red-500">Error</span>; // Simplified error display
+  // Display volume and symbol once loaded
+  const displaySymbol =
+    collateralSymbol && typeof collateralSymbol === 'string'
+      ? collateralSymbol
+      : ''; // Fallback if symbol fetch fails or returns unexpected type
+
+  // Show error if volume fetch failed
+  if (volume === null) {
+    // Use null to indicate fetch error from parent
+    return <span className="text-red-500">Error</span>;
   }
 
-  // Display volume and symbol once loaded
-  return data !== undefined ? (
+  return (
     <span>
-      <NumberDisplay value={data} /> {collateralSymbol || ''}
+      <NumberDisplay value={volume} /> {displaySymbol}
     </span>
-  ) : (
-    <span>N/A</span>
   );
 };
 
@@ -218,13 +197,23 @@ const PriceDisplay = ({
   value,
   showTooltip,
   tooltipContent,
+  renderAsString,
 }: {
   value: any;
   showTooltip?: boolean;
   tooltipContent?: string;
+  renderAsString?: boolean;
 }) => {
-  const content =
-    value !== undefined ? <NumberDisplay value={value} /> : <span>N/A</span>;
+  let content;
+  if (value !== undefined) {
+    if (renderAsString) {
+      content = <span>{value}</span>;
+    } else {
+      content = <NumberDisplay value={value} />;
+    }
+  } else {
+    content = <span>N/A</span>;
+  }
 
   if (!showTooltip || !tooltipContent) return content;
 
@@ -301,12 +290,12 @@ const MarketPriceCell = ({
     return <span>Error: {error.message}</span>;
   }
 
-  // Handle stEthPerToken specially (no tooltip needed)
+  // Handle stEthPerToken specially (no tooltip needed, uses NumberDisplay)
   if (type === 'stEthPerToken') {
     return !isEthereumResource ? (
       <span>N/A</span>
     ) : (
-      <NumberDisplay value={stEthPerToken} />
+      <PriceDisplay value={stEthPerToken} />
     );
   }
 
@@ -335,6 +324,7 @@ const MarketPriceCell = ({
       value={value}
       showTooltip={isActive}
       tooltipContent={tooltipContent}
+      renderAsString={type === 'sqrtPriceX96'}
     />
   );
 };
@@ -436,6 +426,7 @@ export interface TableRow {
   market: Market;
   question?: string;
   id?: number;
+  volume?: number | null; // Add volume property
 }
 
 const getColumns = (
@@ -474,27 +465,13 @@ const getColumns = (
   {
     id: 'volume',
     header: 'Volume',
-    accessorFn: (row) => `${row.marketAddress}-${row.epochId}`, // Placeholder for sorting
+    accessorFn: (row) => row.volume ?? null,
+    enableSorting: true,
     cell: ({ row }) => (
       <VolumeCell
-        marketAddress={row.original.marketAddress}
+        volume={row.original.volume}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
-        collateralSymbol={row.original.market?.collateral?.symbol}
-      />
-    ),
-  },
-  {
-    id: 'resource',
-    header: 'Resource',
-    accessorFn: (row) => {
-      // Use marketAddress for sorting but display resource cell
-      return `${row.marketAddress}-${row.chainId}`;
-    },
-    cell: ({ row }) => (
-      <ResourceCell
-        marketAddress={row.original.marketAddress}
-        chainId={row.original.chainId}
+        collateralAssetAddress={row.original.market.collateralAsset}
       />
     ),
   },
@@ -576,6 +553,20 @@ const getColumns = (
         </div>
       );
     },
+  },
+  {
+    id: 'resource',
+    header: 'Resource',
+    accessorFn: (row) => {
+      // Use marketAddress for sorting but display resource cell
+      return `${row.marketAddress}-${row.chainId}`;
+    },
+    cell: ({ row }) => (
+      <ResourceCell
+        marketAddress={row.original.marketAddress}
+        chainId={row.original.chainId}
+      />
+    ),
   },
   {
     id: 'chainId',
