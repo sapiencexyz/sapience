@@ -90,24 +90,6 @@ export class Epoch {
   @Column({ type: 'boolean', default: true })
   public: boolean;
 
-  get question(): string {
-    const statement = this.marketParams?.claimStatement;
-
-    if (!statement) {
-      return 'N/A';
-    }
-
-    if (statement.startsWith('0x')) {
-      try {
-        const hexString = statement.substring(2);
-        const paddedHexString = hexString.length % 2 !== 0 ? '0' + hexString : hexString;
-        return Buffer.from(paddedHexString, 'hex').toString('utf8');
-      } catch (error) {
-        console.error('Failed to decode hex claimStatement:', error);
-        return statement;
-      }
-    }
-
-    return statement;
-  }
+  @Column({ type: 'text', nullable: true })
+  question: string | null;
 }
