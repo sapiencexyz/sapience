@@ -1,4 +1,4 @@
-import type { PeriodContextType } from '../context/PeriodProvider';
+import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 
 export const TOKEN_DECIMALS = 18; // should be retrieved from the contract?
 
@@ -53,4 +53,13 @@ export const BLANK_MARKET: PeriodContextType = {
   },
   refetchUniswapData: () => {},
   market: undefined,
+  seriesVisibility: {
+    candles: true,
+    index: true,
+    resource: true,
+    trailing: true,
+  },
+  setSeriesVisibility: () => {},
+  unitDisplay: () => '',
+  valueDisplay: () => 0,
 };

@@ -109,7 +109,7 @@ export const convertGgasPerWstEthToGwei = (
 export const gweiToEther = (gweiValue: bigint): string => {
   // First, convert gwei to wei (multiply by 10^9)
   const weiValue = gweiValue * BigInt(1e9);
-  // Then use formatEther to convert wei to ether
+  // Then use formatEther to convert wei to ether as a string
   return formatEther(weiValue);
 };
 

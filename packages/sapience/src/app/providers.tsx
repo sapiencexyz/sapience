@@ -50,7 +50,7 @@ const config = createConfig({
   transports,
 });
 
-const Providers = ({ children }: { children: React.ReactNode }) => {
+const Providers = ({ children }: { children: JSX.Element }) => {
   return (
     <ThemeProvider
       attribute="class"

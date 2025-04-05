@@ -223,9 +223,6 @@ const PredictionPreview = ({
   // Generate a yes/no question based on the market name
   const question = `Will the average cost of ${marketName} in ${month} ${year} exceed ${threshold}?`;
 
-  // Calculate the no probability
-  const noProb = 100 - yesProb;
-
   return (
     <Card
       className="overflow-hidden border-t-[6px]"
@@ -438,8 +435,6 @@ const PredictionPreview = ({
         position={position}
         question={question}
         marketName={marketName}
-        yesProb={yesProb}
-        noProb={noProb}
         color={color}
       />
     </Card>
@@ -602,13 +597,8 @@ const PredictionsTable = () => {
                 <PredictionPreview
                   key={`${item.chainId}:${item.marketAddress}:${item.epochId}`}
                   marketName={item.marketName}
-                  iconPath={item.iconPath}
-                  startTimestamp={item.startTimestamp}
                   endTimestamp={item.endTimestamp}
                   settled={item.settled}
-                  chainId={item.chainId}
-                  marketAddress={item.marketAddress}
-                  epochId={item.epochId}
                   color={color}
                 />
               );
