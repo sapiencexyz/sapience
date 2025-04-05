@@ -1,4 +1,10 @@
 /* eslint-disable sonarjs/no-duplicate-string */
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+} from '@foil/ui/components/ui/drawer';
 import { Menu, Globe } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -7,8 +13,6 @@ import { FaDiscord } from 'react-icons/fa';
 
 import ConnectButton from '../ConnectButton';
 import ModeToggle from '../ModeToggle';
-import { Button } from '~/components/ui/button';
-import { Drawer, DrawerContent, DrawerTrigger } from '~/components/ui/drawer';
 
 const isActive = (path: string, pathname: string) => {
   if (path === '/') {
@@ -27,7 +31,7 @@ const NavLinks = ({
   const pathname = usePathname();
 
   const getButtonClasses = (path: string) => {
-    const baseClasses = "text-base md:text-lg font-medium";
+    const baseClasses = 'text-base md:text-lg font-medium';
     return `${baseClasses} ${isActive(path, pathname) ? 'bg-secondary' : ''}`;
   };
 
@@ -134,7 +138,7 @@ const Header = () => {
               Predictions
             </Button>
           </Link>
-          
+
           <Link href="/leaderboard" className="hover:no-underline">
             <Button
               variant="ghost"

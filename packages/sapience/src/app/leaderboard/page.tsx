@@ -1,30 +1,37 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-import { Trophy, ArrowRight, Info, Loader2 } from 'lucide-react';
-
+import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '~/components/ui/card';
-import { ScrollArea } from '@foil/ui/components/ui/scroll-area';
-import { Separator } from '@foil/ui/components/ui/separator';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@foil/ui/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '~/components/ui/select';
+} from '@foil/ui/components/ui/select';
+import { Separator } from '@foil/ui/components/ui/separator';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
-import { Badge } from '@foil/ui/components/ui/badge';
-import { useResources } from '~/lib/hooks/useResources';
+import { Trophy, ArrowRight, Info } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useState } from 'react';
+
 import NumberDisplay from '../../components/numberDisplay';
+import { useResources } from '~/lib/hooks/useResources';
+
+const DEFAULT_ICON_PATH = '/icons/icon-512x512.png';
 
 // Types
 interface LeaderboardEntry {
@@ -37,22 +44,21 @@ interface LeaderboardEntry {
   resourceIcon?: string;
 }
 
-interface Resource {
-  id: number;
-  name: string;
-  iconPath: string;
-  slug: string;
-}
-
 const formatAddress = (address: string): string => {
   if (!address) return '';
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
-const LeaderboardCard = ({ entry, rank }: { entry: LeaderboardEntry; rank: number }) => {
+const LeaderboardCard = ({
+  entry,
+  rank,
+}: {
+  entry: LeaderboardEntry;
+  rank: number;
+}) => {
   const roi = entry.totalPnL / (entry.ownerMaxCollateral || 1);
   const isPositive = entry.totalPnL > 0;
-  
+
   return (
     <Card className="mb-4 overflow-hidden hover:border-primary/50 transition-all">
       <CardContent className="p-0">
@@ -60,18 +66,20 @@ const LeaderboardCard = ({ entry, rank }: { entry: LeaderboardEntry; rank: numbe
           <div className="flex items-center justify-center w-12 h-12 rounded-full bg-secondary mr-4">
             <span className="text-xl font-bold">{rank}</span>
           </div>
-          
+
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-medium">{formatAddress(entry.owner)}</h3>
+              <h3 className="text-lg font-medium">
+                {formatAddress(entry.owner)}
+              </h3>
               {entry.resourceName && (
                 <Badge variant="outline" className="ml-2">
                   <div className="flex items-center gap-1">
-                    <Image 
-                      src={entry.resourceIcon || '/icons/icon-512x512.png'} 
-                      alt={entry.resourceName} 
-                      width={14} 
-                      height={14} 
+                    <Image
+                      src={entry.resourceIcon || DEFAULT_ICON_PATH}
+                      alt={entry.resourceName}
+                      width={14}
+                      height={14}
                       className="rounded-full"
                     />
                     <span className="text-xs">{entry.resourceName}</span>
@@ -79,24 +87,30 @@ const LeaderboardCard = ({ entry, rank }: { entry: LeaderboardEntry; rank: numbe
                 </Badge>
               )}
             </div>
-            
+
             <div className="flex items-center mt-1 gap-4">
               <div>
                 <span className="text-sm text-muted-foreground">ROI</span>
-                <div className={`font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                  {isPositive ? '+' : ''}<NumberDisplay value={roi * 100} /> %
+                <div
+                  className={`font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}
+                >
+                  {isPositive ? '+' : ''}
+                  <NumberDisplay value={roi * 100} /> %
                 </div>
               </div>
-              
+
               <div>
                 <span className="text-sm text-muted-foreground">P/L</span>
-                <div className={`font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                  {isPositive ? '+' : ''}<NumberDisplay value={entry.totalPnL / 1e18} /> wstETH
+                <div
+                  className={`font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}
+                >
+                  {isPositive ? '+' : ''}
+                  <NumberDisplay value={entry.totalPnL / 1e18} /> wstETH
                 </div>
               </div>
             </div>
           </div>
-          
+
           <Link href={`/leaderboard/${entry.marketId}/epochs/${entry.epochId}`}>
             <Button variant="ghost" size="icon">
               <ArrowRight className="h-4 w-4" />
@@ -113,7 +127,8 @@ const EmptyState = () => (
     <Trophy className="h-16 w-16 opacity-20 mb-4" />
     <h3 className="text-xl font-medium mb-2">No leaderboard data available</h3>
     <p className="text-muted-foreground max-w-md">
-      Leaderboard data will appear here once traders start participating in prediction markets.
+      Leaderboard data will appear here once traders start participating in
+      prediction markets.
     </p>
   </div>
 );
@@ -121,7 +136,7 @@ const EmptyState = () => (
 const LeaderboardPage = () => {
   const [selectedResource, setSelectedResource] = useState<string>('all');
   const { data: resources } = useResources();
-  
+
   // Placeholder data
   const leaderboardData: LeaderboardEntry[] = [
     {
@@ -131,7 +146,7 @@ const LeaderboardPage = () => {
       marketId: '1:0xabc',
       epochId: '123',
       resourceName: 'ETH Price',
-      resourceIcon: '/icons/icon-512x512.png'
+      resourceIcon: DEFAULT_ICON_PATH,
     },
     {
       owner: '0x8765...4321',
@@ -140,8 +155,8 @@ const LeaderboardPage = () => {
       marketId: '1:0xdef',
       epochId: '124',
       resourceName: 'BTC Price',
-      resourceIcon: '/icons/icon-512x512.png'
-    }
+      resourceIcon: DEFAULT_ICON_PATH,
+    },
   ];
 
   return (
@@ -150,13 +165,17 @@ const LeaderboardPage = () => {
         <div>
           <h1 className="text-3xl font-light mb-2">Leaderboard</h1>
           <p className="text-muted-foreground">
-            Top performers across all prediction markets, ranked by return on investment.
+            Top performers across all prediction markets, ranked by return on
+            investment.
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <div className="w-[180px]">
-            <Select value={selectedResource} onValueChange={setSelectedResource}>
+            <Select
+              value={selectedResource}
+              onValueChange={setSelectedResource}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Filter by resource" />
               </SelectTrigger>
@@ -170,7 +189,7 @@ const LeaderboardPage = () => {
               </SelectContent>
             </Select>
           </div>
-          
+
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -180,7 +199,8 @@ const LeaderboardPage = () => {
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  Leaderboard rankings are based on Return on Investment (ROI) calculated from trading performance.
+                  Leaderboard rankings are based on Return on Investment (ROI)
+                  calculated from trading performance.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -192,18 +212,16 @@ const LeaderboardPage = () => {
         <Card className="col-span-1 md:col-span-2 lg:col-span-2">
           <CardHeader>
             <CardTitle>Top Performers</CardTitle>
-            <CardDescription>
-              Traders with the highest ROI
-            </CardDescription>
+            <CardDescription>Traders with the highest ROI</CardDescription>
           </CardHeader>
           <CardContent>
             {leaderboardData.length > 0 ? (
               <div className="h-[600px] pr-4 overflow-auto">
                 {leaderboardData.map((entry, index) => (
-                  <LeaderboardCard 
-                    key={`${entry.owner}-${entry.marketId}`} 
-                    entry={entry} 
-                    rank={index + 1} 
+                  <LeaderboardCard
+                    key={`${entry.owner}-${entry.marketId}`}
+                    entry={entry}
+                    rank={index + 1}
                   />
                 ))}
               </div>
@@ -212,7 +230,7 @@ const LeaderboardPage = () => {
             )}
           </CardContent>
         </Card>
-        
+
         <div className="col-span-1">
           <Card className="mb-4">
             <CardHeader>
@@ -223,7 +241,10 @@ const LeaderboardPage = () => {
               {leaderboardData.length > 0 ? (
                 <div className="space-y-4">
                   {leaderboardData.slice(0, 3).map((entry, index) => (
-                    <div key={`fame-${entry.owner}`} className="flex items-center">
+                    <div
+                      key={`fame-${entry.owner}`}
+                      className="flex items-center"
+                    >
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-secondary mr-3">
                         {index === 0 ? (
                           <Trophy className="h-4 w-4 text-amber-400" />
@@ -232,9 +253,22 @@ const LeaderboardPage = () => {
                         )}
                       </div>
                       <div>
-                        <div className="font-medium">{formatAddress(entry.owner)}</div>
+                        <div className="font-medium">
+                          {formatAddress(entry.owner)}
+                        </div>
                         <div className="text-sm text-muted-foreground">
-                          ROI: <span className="text-green-500">+<NumberDisplay value={(entry.totalPnL / (entry.ownerMaxCollateral || 1)) * 100} />%</span>
+                          ROI:{' '}
+                          <span className="text-green-500">
+                            +
+                            <NumberDisplay
+                              value={
+                                (entry.totalPnL /
+                                  (entry.ownerMaxCollateral || 1)) *
+                                100
+                              }
+                            />
+                            %
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -247,22 +281,27 @@ const LeaderboardPage = () => {
               )}
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Prediction Market Stats</CardTitle>
-              <CardDescription>Performance by prediction market</CardDescription>
+              <CardDescription>
+                Performance by prediction market
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {resources?.slice(0, 5).map((resource) => (
-                  <div key={resource.id} className="flex items-center justify-between">
+                  <div
+                    key={resource.id}
+                    className="flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-2">
-                      <Image 
-                        src={resource.iconPath} 
-                        alt={resource.name} 
-                        width={20} 
-                        height={20} 
+                      <Image
+                        src={resource.iconPath}
+                        alt={resource.name}
+                        width={20}
+                        height={20}
                         className="rounded-full"
                       />
                       <span>{resource.name}</span>
@@ -273,11 +312,11 @@ const LeaderboardPage = () => {
                   </div>
                 ))}
               </div>
-              
+
               <div className="my-4">
                 <Separator />
               </div>
-              
+
               <Link href="/markets">
                 <Button variant="outline" className="w-full">
                   View All Prediction Markets
@@ -291,4 +330,4 @@ const LeaderboardPage = () => {
   );
 };
 
-export default LeaderboardPage; 
+export default LeaderboardPage;

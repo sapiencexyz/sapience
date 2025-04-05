@@ -10,6 +10,7 @@ import {
   ToastTitle,
   ToastViewport,
 } from './toast';
+
 import { useToast } from '../../hooks/use-toast';
 
 export function Toaster() {

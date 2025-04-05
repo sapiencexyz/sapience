@@ -1,7 +1,7 @@
+import { Button } from '@foil/ui/components/ui/button';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 import { useConnectWallet } from '../lib/context/ConnectWalletProvider';
-import { Button } from '@/components/ui/button';
 
 export default function CustomConnectButton() {
   const { setIsOpen } = useConnectWallet();

@@ -1,7 +1,7 @@
 'use client';
 
-import Hero from '~/components/Hero';
 import TopicsOfInterest from '~/components/FocusAreas';
+import Hero from '~/components/Hero';
 
 export default function HomePage() {
   return (

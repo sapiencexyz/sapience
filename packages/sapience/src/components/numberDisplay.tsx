@@ -6,11 +6,7 @@ interface NumberDisplayProps {
 }
 
 const NumberDisplay = ({ value, className }: NumberDisplayProps) => {
-  return (
-    <span className={className}>
-      {formatNumber(value)}
-    </span>
-  );
+  return <span className={className}>{formatNumber(value)}</span>;
 };
 
-export default NumberDisplay; 
+export default NumberDisplay;

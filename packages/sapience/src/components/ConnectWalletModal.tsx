@@ -1,20 +1,20 @@
 'use client';
 
-import { useConnectModal } from '@rainbow-me/rainbowkit';
-import { Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
-
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@foil/ui/components/ui/button';
+import { Checkbox } from '@foil/ui/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@foil/ui/components/ui/dialog';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { useAccount, useSignMessage, useDisconnect } from 'wagmi';
+
 import { cn } from '~/lib/utils';
 import { foilApi } from '~/lib/utils/util';
 
