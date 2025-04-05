@@ -21,6 +21,7 @@ export interface Market {
   name: string;
   vaultAddress: string;
   isYin: boolean;
+  isCumulative: boolean;
   epochs: Epoch[];
 }
 
@@ -72,6 +73,7 @@ const RESOURCES_QUERY = gql`
         id
         address
         isYin
+        isCumulative
         vaultAddress
         chainId
         epochs {

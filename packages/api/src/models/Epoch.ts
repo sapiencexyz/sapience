@@ -6,6 +6,7 @@ import {
   ManyToOne,
   OneToMany,
   Unique,
+  Index,
 } from 'typeorm';
 import { Market } from './Market';
 import { Position } from './Position';
@@ -16,6 +17,7 @@ import { MarketParams } from './MarketParams';
 @Unique(['market', 'epochId'])
 export class Epoch {
   @ManyToOne(() => Market, (market) => market.epochs)
+  @Index()
   market: Market;
 
   @OneToMany(() => Position, (position) => position.epoch)
@@ -28,6 +30,7 @@ export class Epoch {
   createdAt: Date;
 
   @Column({ type: 'integer' })
+  @Index()
   epochId: number;
 
   @Column({ type: 'integer', nullable: true })

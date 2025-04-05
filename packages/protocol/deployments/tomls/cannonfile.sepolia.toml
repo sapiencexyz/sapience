@@ -1,0 +1,150 @@
+name="foil"
+version="1.0.1"
+
+[var.settings]
+owner="0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
+baseAssetMinPriceTick = "16000" # 5
+baseAssetMaxPriceTick = "39000" # 50
+feeRate = "10000" # 1%
+startingSqrtPriceX96 = "345347553882095649185803010048" # 19
+assertionLiveness = "21600"
+bondAmount = "5000000000"
+claimStatement = "<%= stringToHex('The sum of gas used divided by the sum of base fees paid on Ethereum Mainnet across all blocks, divided by the wstETH/ETH ratio at the end of the period, represented with 18 decimal places') %>"
+optimisticOracleV3 = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944"
+minTradeSize = "10000"
+# Vaults Settings
+vault1Name="Foil Vault Yin"
+vault1Symbol = "fYIN"
+vault2Name="Foil Vault Yang"
+vault2Symbol = "fYANG"
+lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
+upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
+duration = "31536000" # 1 year in seconds
+totalVaults = "2"
+depends = []
+
+# [pull.Uniswap]
+# source="uniswap"
+
+[pull.wstETH]
+source="wsteth-token"
+
+[pull.USDC]
+source="usdc-token"
+
+[deploy.ConfigurationModule]
+artifact="ConfigurationModule"
+args=["<%= settings.owner %>"]
+
+[deploy.LiquidityModule]
+artifact="LiquidityModule"
+
+[deploy.UMASettlementModule]
+artifact="UMASettlementModule"
+
+[deploy.TradeModule]
+artifact="TradeModule"
+
+[deploy.NftModule]
+artifact="NftModule"
+
+[deploy.ViewsModule]
+artifact="ViewsModule"
+
+[deploy.ERC165Module]
+artifact="ERC165Module"
+
+[deploy.SettlementModule]
+artifact="SettlementModule"
+
+[router.FoilYin]
+contracts=[
+  "ConfigurationModule",
+  "LiquidityModule",
+  "UMASettlementModule",
+  "TradeModule",
+  "NftModule",
+  "ViewsModule",
+  "ERC165Module",
+  "SettlementModule"
+]
+highlight=true
+
+[router.FoilYang]
+contracts=[
+  "ConfigurationModule",
+  "LiquidityModule",
+  "UMASettlementModule",
+  "TradeModule",
+  "NftModule",
+  "ViewsModule",
+  "ERC165Module",
+  "SettlementModule"
+]
+highlight=true
+
+# VAULT 1
+[deploy.VaultYin]
+highlight=true
+artifact="Vault"
+from="<%= settings.owner %>"
+args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>", "<%= settings.owner %>" ]
+depends = ['router.FoilYin', 'pull.wstETH', 'var.settings']
+
+[invoke.initializeMarketForVaultYin]
+target="FoilYin"
+func="initializeMarket"
+from="<%= settings.owner %>"
+args=[
+  "<%= VaultYin.address %>",
+  "<%= imports.wstETH.contracts.Token.address %>",
+  [],
+  "<%= VaultYin.address %>",
+  "<%= settings.minTradeSize %>",
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+]
+depends=["deploy.VaultYin"]
+
+# VAULT 2
+[deploy.VaultYang]
+highlight=true
+artifact="Vault"
+from="<%= settings.owner %>"
+args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>", "<%= settings.owner %>" ]
+depends = ['router.FoilYang', 'pull.wstETH', 'var.settings']
+
+[invoke.initializeMarketForVaultYang]
+target="FoilYang"
+func="initializeMarket"
+from="<%= settings.owner %>"
+args=[
+  "<%= VaultYang.address %>",
+  "<%= imports.wstETH.contracts.Token.address %>",
+  [],
+  "<%= VaultYang.address %>", 
+  "<%= settings.minTradeSize %>",
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+]
+depends=["deploy.VaultYang"]
+
+
+# START EPOCHS
+[invoke.initializeFirstEpochForVaultYin]
+target="VaultYin"
+from = "<%= settings.owner %>"
+func="initializeFirstEpoch"
+args=[
+  "<%= settings.startingSqrtPriceX96 %>",
+  "0"
+]
+depends=["invoke.initializeMarketForVaultYin"]
+
+[invoke.initializeFirstEpochForVaultYang]
+target="VaultYang"
+from = "<%= settings.owner %>"
+func="initializeFirstEpoch"
+args=[
+  "<%= settings.startingSqrtPriceX96 %>",
+  "0"
+]
+depends=["invoke.initializeMarketForVaultYang"]

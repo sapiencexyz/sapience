@@ -3,7 +3,7 @@ import Sentry from '../sentry';
 import { IResourcePriceIndexer } from '../interfaces';
 import { Resource } from 'src/models/Resource';
 import axios from 'axios';
-import { getBlockByTimestamp, getProviderForChain } from 'src/utils';
+import { getBlockByTimestamp, getProviderForChain, sleep } from 'src/utils';
 import { PublicClient } from 'viem';
 
 interface BlobData {
@@ -18,7 +18,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
   private isWatching: boolean = false;
   private blobscanApiUrl: string = 'https://api.blobscan.com';
   private retryDelay: number = 1000; // 1 second
-  private maxRetries: number = 3;
+  private maxRetries: number = Infinity;
 
   constructor(chainId: number) {
     this.client = getProviderForChain(chainId);
@@ -55,11 +55,25 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
             `Rate limited when fetching block ${blockNumber}, retrying in ${this.retryDelay}ms...`
           );
           await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
+          // TODO (Vlad, not urgent): recursion might blow up call stack; rewrite as a while loop
           return this.fetchBlobDataFromBlobscan(blockNumber, retryCount + 1);
         } else if (error.response?.status === 404) {
           console.warn(
             `Seems like no blob data exists for block ${blockNumber}, skipping...`
           );
+        } else {
+          // Log specific error details
+          Sentry.withScope((scope) => {
+            scope.setExtra('blockNumber', blockNumber);
+            if (error instanceof Error) {
+              scope.setExtra('errorMessage', error.message);
+            }
+            if (error.response && error.response?.status >= 500) {
+              scope.setExtra('flakyAPIError', true);
+            }
+            scope.setExtra('status', error.response?.status);
+            Sentry.captureException(error);
+          });
         }
       } else {
         console.warn(
@@ -72,9 +86,6 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
           scope.setExtra('blockNumber', blockNumber);
           if (error instanceof Error) {
             scope.setExtra('errorMessage', error.message);
-            if (axios.isAxiosError(error)) {
-              scope.setExtra('status', error.response?.status);
-            }
           }
           Sentry.captureException(error);
         });
@@ -122,9 +133,6 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         scope.setExtra('resource', resource.slug);
         if (error instanceof Error) {
           scope.setExtra('errorMessage', error.message);
-          if (axios.isAxiosError(error)) {
-            scope.setExtra('status', error.response?.status);
-          }
         }
         Sentry.captureException(error);
       });
@@ -134,7 +142,8 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
   async indexBlockPriceFromTimestamp(
     resource: Resource,
     startTimestamp: number,
-    endTimestamp?: number
+    endTimestamp?: number,
+    overwriteExisting: boolean = false
   ): Promise<boolean> {
     try {
       const startBlock = Number(
@@ -178,7 +187,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
             },
           });
 
-          if (maybeResourcePrice) {
+          if (!overwriteExisting && maybeResourcePrice) {
             console.log('Skipping block', blockNumber, 'as it already exists');
             continue;
           }
@@ -193,9 +202,6 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
             scope.setExtra('timestamp', startTimestamp);
             if (error instanceof Error) {
               scope.setExtra('errorMessage', error.message);
-              if (axios.isAxiosError(error)) {
-                scope.setExtra('status', error.response?.status);
-              }
             }
             Sentry.captureException(error);
           });
@@ -204,22 +210,60 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       return true;
     } catch (error) {
       console.error('Failed to index blocks from timestamp:', error);
+      Sentry.withScope((scope) => {
+        scope.setExtra('resource', resource.slug);
+        scope.setExtra('startTimestamp', startTimestamp);
+        scope.setExtra('endTimestamp', endTimestamp);
+        if (error instanceof Error) {
+          scope.setExtra('errorMessage', error.message);
+          if (axios.isAxiosError(error)) {
+            scope.setExtra('status', error.response?.status);
+          }
+        }
+        Sentry.captureException(error);
+      });
       return false;
     }
   }
 
   private async getLatestBlockNumber(): Promise<number | null> {
-    const response = await axios.get(`${this.blobscanApiUrl}/blocks`, {
-      params: {
-        ps: 1,
-        sort: 'desc',
-      },
-    });
+    let response = null;
 
-    if (!response.data?.blocks?.[0]) {
-      console.log('[EthBlobIndexer] No new blocks found in this poll');
-      return null;
+    while (!response) {
+      try {
+        response = await axios.get(`${this.blobscanApiUrl}/blocks`, {
+          params: {
+            ps: 1,
+            sort: 'desc',
+          },
+        });
+
+        while (!response.data?.blocks?.[0]) {
+          console.log('[EthBlobIndexer] No new blocks found in this poll');
+          return null;
+        }
+      } catch (error) {
+        response = null;
+
+        Sentry.withScope((scope) => {
+          if (error instanceof Error) {
+            scope.setExtra('errorMessage', error.message);
+          }
+          if (axios.isAxiosError(error)) {
+            // handle all 500-level HTTP errors by re-requesting data until we have it
+            // status code >= 500 <=> flaky API
+            if (error.response && error.response?.status >= 500) {
+              scope.setExtra('flakyAPIError', true);
+            }
+            scope.setExtra('status', error.response?.status);
+          }
+          Sentry.captureException(error);
+        });
+
+        sleep(this.retryDelay);
+      }
     }
+
     const latestBlock = response.data.blocks[0];
     return latestBlock.number;
   }

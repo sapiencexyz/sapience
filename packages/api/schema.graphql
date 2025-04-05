@@ -31,10 +31,22 @@ type MarketType {
   deployTxnBlockNumber: Int
   epochs: [EpochType!]!
   id: ID!
+  isCumulative: Boolean!
   isYin: Boolean!
   owner: String
   resource: ResourceType
   vaultAddress: String!
+}
+
+type PnLType {
+  epochId: Int!
+  openPositionsPnL: String!
+  owner: String!
+  positionCount: Int!
+  positions: [Int!]!
+  totalDeposits: String!
+  totalPnL: String!
+  totalWithdrawals: String!
 }
 
 type PositionType {
@@ -58,8 +70,10 @@ type PositionType {
 
 type Query {
   epochs(marketId: Int): [EpochType!]!
+  getEpochLeaderboard(address: String!, chainId: Int!, epochId: String!): [PnLType!]!
   indexCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
   indexPriceAtTime(address: String!, chainId: Int!, epochId: String!, timestamp: Int!): CandleType
+  legacyMarketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
   market(address: String!, chainId: Int!): MarketType
   marketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
   markets: [MarketType!]!
@@ -67,8 +81,9 @@ type Query {
   resource(slug: String!): ResourceType
   resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
   resourcePrices: [ResourcePriceType!]!
-  resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
+  resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): [CandleType!]!
   resources: [ResourceType!]!
+  totalVolumeByEpoch(chainId: Int!, epochId: Int!, marketAddress: String!): Float!
   transactions(positionId: Int): [TransactionType!]!
 }
 

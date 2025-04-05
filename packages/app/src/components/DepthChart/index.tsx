@@ -18,7 +18,6 @@ import NumberDisplay from '~/components/numberDisplay';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
-import { convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import { CustomBar } from './CustomBar';
 import { CustomTooltip } from './CustomTooltip';
@@ -50,7 +49,8 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
     poolAddress,
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
-    useMarketUnits,
+    unitDisplay,
+    valueDisplay,
   } = useContext(PeriodContext);
 
   const { setLowPriceTick, setHighPriceTick, lowPriceTick, highPriceTick } =
@@ -135,28 +135,16 @@ const DepthChart: React.FC<DepthChartProps> = ({ isTrade = false }) => {
         {pool && price0 && (
           <div className="flex items-center">
             <NumberDisplay
-              value={
-                useMarketUnits
-                  ? price0
-                  : convertGgasPerWstEthToGwei(price0, stEthPerToken)
-              }
+              value={valueDisplay(price0, stEthPerToken)}
               precision={4}
             />
-            <span className="ml-1">
-              {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-            </span>
+            <span className="ml-1">{unitDisplay()}</span>
             <MoveHorizontal className="w-3 h-3 mx-1" />
             <NumberDisplay
-              value={
-                useMarketUnits
-                  ? nextPrice
-                  : convertGgasPerWstEthToGwei(nextPrice, stEthPerToken)
-              }
+              value={valueDisplay(nextPrice, stEthPerToken)}
               precision={4}
             />
-            <span className="ml-1">
-              {useMarketUnits ? 'wstETH/Ggas' : 'gwei'}
-            </span>
+            <span className="ml-1">{unitDisplay()}</span>
           </div>
         )}
       </motion.div>

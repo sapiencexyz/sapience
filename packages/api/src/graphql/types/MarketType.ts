@@ -20,6 +20,9 @@ export class MarketType {
   @Field(() => Boolean)
   isYin: boolean;
 
+  @Field(() => Boolean)
+  isCumulative: boolean;
+
   @Field(() => [EpochType])
   epochs: EpochType[];
 

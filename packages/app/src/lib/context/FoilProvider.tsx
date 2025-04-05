@@ -17,6 +17,7 @@ export interface Market {
   vaultAddress: string;
   collateralAsset: string;
   owner: string;
+  isCumulative: boolean;
   resource: {
     id: number;
     name: string;

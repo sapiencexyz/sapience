@@ -152,7 +152,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
 
   if (epochSettled) {
     return (
-      <Button disabled size="sm">
+      <Button disabled size="xs">
         Settled
       </Button>
     );
@@ -162,7 +162,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Button
-          size="sm"
+          size="xs"
           disabled={
             !getEpochData ||
             buttonIsLoading ||

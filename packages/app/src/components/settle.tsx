@@ -27,6 +27,7 @@ export default function Settle() {
     epochSettled,
     settlementPrice,
     collateralAssetTicker,
+    unitDisplay,
   } = useContext(PeriodContext);
   const { nftId, setNftId, positions } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
@@ -151,7 +152,7 @@ export default function Settle() {
             <p className="text-sm font-semibold mb-0.5">Settlement Price</p>
             <p className="text-sm">
               <NumberDisplay value={formatUnits(settlementPrice, 18)} />{' '}
-              wstETH/Ggas
+              {unitDisplay()}
             </p>
           </div>
           <Button

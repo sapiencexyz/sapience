@@ -20,7 +20,7 @@ interface Props {
     chainId: number;
     address: string;
   };
-  seriesVisibility: {
+  seriesVisibility?: {
     candles: boolean;
     index: boolean;
     resource: boolean;
@@ -42,7 +42,7 @@ const Chart: React.FC<Props> = ({
   onHoverChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const { useMarketUnits, startTime } = useContext(PeriodContext);
+  const { useMarketUnits, startTime, endTime } = useContext(PeriodContext);
   const [isHovering, setIsHovering] = useState(false);
 
   const { isLogarithmic, setIsLogarithmic, loadingStates, hoverData } =
@@ -52,6 +52,7 @@ const Chart: React.FC<Props> = ({
       seriesVisibility,
       useMarketUnits,
       startTime,
+      endTime,
       containerRef: chartContainerRef,
       selectedWindow,
       selectedInterval,

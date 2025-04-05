@@ -6,6 +6,7 @@ import {
   Unique,
   OneToMany,
   ManyToOne,
+  Index,
 } from 'typeorm';
 import { Epoch } from './Epoch';
 import { MarketParams } from './MarketParams';
@@ -33,6 +34,7 @@ export class Market {
   createdAt: Date;
 
   @Column({ type: 'varchar' })
+  @Index()
   address: string;
 
   @Column({ type: 'varchar', nullable: true })
@@ -41,7 +43,11 @@ export class Market {
   @Column({ type: 'boolean', default: false })
   isYin: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isCumulative: boolean;
+
   @Column({ type: 'integer' })
+  @Index()
   chainId: number;
 
   @Column({ type: 'integer', nullable: true })

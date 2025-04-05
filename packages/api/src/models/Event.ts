@@ -6,6 +6,7 @@ import {
   OneToOne,
   Unique,
   ManyToOne,
+  Index,
 } from 'typeorm';
 import { Transaction } from './Transaction';
 import { Market } from './Market';
@@ -26,12 +27,14 @@ export class Event {
   createdAt: Date;
 
   @Column({ type: 'integer' })
+  @Index()
   blockNumber: number;
 
   @Column({ type: 'varchar' })
   transactionHash: string;
 
   @Column({ type: 'bigint' })
+  @Index()
   timestamp: string; // In seconds
 
   @Column({ type: 'integer' })

@@ -6,6 +6,7 @@ import {
   CreateDateColumn,
   Unique,
   OneToOne,
+  Index,
 } from 'typeorm';
 import { Transaction } from './Transaction';
 
@@ -22,6 +23,7 @@ export class CollateralTransfer {
   transaction: Transaction;
 
   @Column({ type: 'varchar' })
+  @Index()
   transactionHash: string;
 
   @Column({ type: 'integer' })

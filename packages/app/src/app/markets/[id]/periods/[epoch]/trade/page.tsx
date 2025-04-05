@@ -1,6 +1,6 @@
 'use client';
 
-import AdvancedView from '~/components/AdvancedView';
+import TradePoolLayout from '~/components/TradePoolLayout';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
 
 const Market = ({ params }: { params: { id: string; epoch: string } }) => {
@@ -12,7 +12,7 @@ const Market = ({ params }: { params: { id: string; epoch: string } }) => {
       address={marketAddress}
       epoch={Number(params.epoch)}
     >
-      <AdvancedView params={params} isTrade />
+      <TradePoolLayout params={params} isTrade />
     </PeriodProvider>
   );
 };
