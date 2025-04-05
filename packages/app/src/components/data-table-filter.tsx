@@ -43,7 +43,6 @@ import type {
   ReactElement,
   ElementType as ReactElementType,
 } from 'react';
-import type { DateRange } from 'react-day-picker';
 
 import { useIsMobile } from '~/hooks/use-mobile';
 import { take, uniq } from '~/lib/array';
@@ -67,6 +66,11 @@ import {
   optionFilterDetails,
   textFilterDetails,
 } from '~/lib/filters';
+
+type DateRange = {
+  from: Date | undefined; // from is required but can be undefined
+  to?: Date;
+};
 
 // Constants for commonly used values
 const SIZE_4_CLASS = 'size-4';
