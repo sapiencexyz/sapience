@@ -1,3 +1,10 @@
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
@@ -7,13 +14,6 @@ import { zeroAddress } from 'viem';
 import { base, sepolia } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
-import { Button } from '@foil/ui/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
 import NumberDisplay from '~/components/numberDisplay';
 import type { Market } from '~/lib/context/FoilProvider';
 import erc20ABI from '~/lib/erc20abi.json';

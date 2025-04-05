@@ -1,11 +1,3 @@
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@foil/ui/components/ui/table';
 import { Button } from '@foil/ui/components/ui/button';
 import { Checkbox } from '@foil/ui/components/ui/checkbox';
 import {
@@ -22,6 +14,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@foil/ui/components/ui/popover';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@foil/ui/components/ui/table';
 import {
   useReactTable,
   flexRender,
