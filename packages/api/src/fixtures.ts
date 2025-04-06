@@ -25,7 +25,9 @@ export const TIME_INTERVALS = {
   },
 };
 
-const INDEXERS = {
+export const INDEXERS: {
+  [key: string]: any;
+} = {
   "ethereum-gas": new evmIndexer(mainnet.id),
   "ethereum-blobspace": new ethBlobsIndexer(mainnet.id),
   "celestia-blobspace": new celestiaIndexer('https://api-mainnet.celenium.io'),
@@ -34,23 +36,8 @@ const INDEXERS = {
   "arbitrum-gas": new evmIndexer(arbitrum.id),
 };
 
-type IndexerKey = keyof typeof INDEXERS;
-
-function createResourcePriceIndexers() {
-  return Object.keys(INDEXERS).map(slug => ({
-    slug,
-    indexer: INDEXERS[slug as IndexerKey]
-  }));
-}
-
-async function initializeMarkets() {
-  const markets: Market[] = [];
-  // This will be populated in initializeFixtures
-  return markets;
-}
-
-export const RESOURCES = createResourcePriceIndexers();
-export const MARKETS = await initializeMarkets();
+// Export MARKETS from fixtures.json
+export const MARKETS = fixturesData.MARKETS;
 
 // Helper function to create or update epochs with questions
 async function handleEpochQuestions(market: Market, questions: string[]): Promise<void> {
@@ -86,6 +73,9 @@ async function handleEpochQuestions(market: Market, questions: string[]): Promis
     }
   }
 }
+
+// TODO, bring this in below?
+// import { createOrUpdateEpochFromContract } from '../controllers/marketHelpers';
 
 // Function to initialize fixtures - upsert resources and markets from fixtures.json
 export const initializeFixtures = async (): Promise<void> => {

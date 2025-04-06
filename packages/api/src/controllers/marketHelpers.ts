@@ -26,6 +26,7 @@ import {
 import { MarketPrice } from '../models/MarketPrice';
 import { getBlockByTimestamp, getProviderForChain } from '../utils';
 import { FindOptionsWhere } from 'typeorm';
+import Foil from '@foil/protocol/deployments/Foil.json';
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
@@ -370,18 +371,17 @@ export const createOrUpdateMarketFromContract = async (
 };
 
 export const createOrUpdateEpochFromContract = async (
-  marketInfo: MarketInfo,
   market: Market,
   epochId?: number
 ) => {
   const functionName = epochId ? 'getEpoch' : 'getLatestEpoch';
   const args = epochId ? [epochId] : [];
 
-  const client = getProviderForChain(marketInfo.marketChainId);
+  const client = getProviderForChain(market.chainId);
   // get epoch from contract
   const epochReadResult = await client.readContract({
-    address: marketInfo.deployment.address as `0x${string}`,
-    abi: marketInfo.deployment.abi,
+    address: market.address as `0x${string}`,
+    abi: Foil.abi,
     functionName,
     args,
   });
@@ -392,7 +392,7 @@ export const createOrUpdateEpochFromContract = async (
   // check if epoch already exists in db
   const existingEpoch = await epochRepository.findOne({
     where: {
-      market: { address: marketInfo.deployment.address },
+      market: { address: market.address },
       epochId: _epochId,
     } satisfies FindOptionsWhere<Epoch>,
   });
