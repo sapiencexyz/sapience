@@ -36,9 +36,6 @@ export const INDEXERS: {
   "arbitrum-gas": new evmIndexer(arbitrum.id),
 };
 
-// Export MARKETS from fixtures.json
-export const MARKETS = fixturesData.MARKETS;
-
 // Helper function to create or update epochs with questions
 async function handleEpochQuestions(market: Market, questions: string[]): Promise<void> {
   if (!questions || questions.length === 0) {

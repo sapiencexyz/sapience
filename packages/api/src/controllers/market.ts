@@ -15,7 +15,6 @@ import {
   EpochCreatedEventLog,
   EventType,
   MarketCreatedUpdatedEventLog,
-  MarketInfo,
 } from '../interfaces';
 import {
   getProviderForChain,
@@ -40,7 +39,6 @@ import {
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
-import { MARKETS } from '../fixtures';
 import Foil from '@foil/protocol/deployments/Foil.json';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -65,6 +63,28 @@ interface LogData {
   removed: boolean;
   topics: string[];
   transactionIndex: number;
+}
+
+// Define the MarketInfo interface
+interface MarketInfo {
+  marketChainId: number;
+  deployment: {
+    address: string;
+    deployTxnBlockNumber?: string | number;
+    deployTimestamp?: string | number;
+  };
+  resource: {
+    id?: number | string;
+    slug?: string;
+    priceIndexer: {
+      client: any;
+      indexBlocks: (resource: any, blockNumbers: number[]) => Promise<any>;
+    };
+    [key: string]: any;
+  };
+  vaultAddress?: string;
+  isYin?: boolean;
+  isCumulative?: boolean;
 }
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -99,9 +119,9 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   }
 
   updatedMarket.address = marketInfo.deployment.address;
-  updatedMarket.vaultAddress = marketInfo.vaultAddress;
-  updatedMarket.isYin = marketInfo.isYin;
-  updatedMarket.isCumulative = marketInfo.isCumulative;
+  updatedMarket.vaultAddress = marketInfo.vaultAddress ?? '';
+  updatedMarket.isYin = marketInfo.isYin ?? true;
+  updatedMarket.isCumulative = marketInfo.isCumulative ?? false;
   updatedMarket.deployTxnBlockNumber = Number(
     marketInfo.deployment.deployTxnBlockNumber
   );

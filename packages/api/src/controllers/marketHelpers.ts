@@ -19,7 +19,6 @@ import {
   EpochCreatedEventLog,
   MarketCreatedUpdatedEventLog,
   TradePositionEventLog,
-  MarketInfo,
   EpochData,
   EventType,
 } from '../interfaces';
