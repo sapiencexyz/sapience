@@ -5,7 +5,7 @@ import {
   marketRepository,
 } from '../db';
 import { indexMarketEvents, initializeMarket } from '../controllers/market';
-import { MARKETS, RESOURCES } from '../fixtures';
+import { MARKETS, RESOURCES, initializeFixtures } from '../fixtures';
 import { createOrUpdateEpochFromContract } from '../controllers/marketHelpers';
 import * as Sentry from '@sentry/node';
 import { Resource } from '../models/Resource';
@@ -74,35 +74,13 @@ function createResilientProcess<T>(
   };
 }
 
-async function initializeResources() {
-  console.log('initializing resources');
-  for (const resourceInfo of RESOURCES) {
-    let resource = await resourceRepository.findOne({
-      where: { name: resourceInfo.name },
-    });
-
-    if (!resource) {
-      resource = new Resource();
-      resource.name = resourceInfo.name;
-      resource.slug = resourceInfo.slug;
-      await resourceRepository.save(resource);
-      console.log('created resource:', resourceInfo.name);
-    } else if (!resource.slug) {
-      // Update existing resources with slug if missing
-      resource.slug = resourceInfo.slug;
-      await resourceRepository.save(resource);
-      console.log('updated resource with slug:', resourceInfo.name);
-    }
-  }
-}
-
 async function main() {
   await initializeDataSource();
   const jobs: Promise<void>[] = [];
   console.log('starting worker');
 
-  // Initialize resources first
-  await initializeResources();
+  // Initialize resources from fixtures
+  await initializeFixtures();
 
   for (const marketInfo of MARKETS) {
     const resource = await resourceRepository.findOne({
