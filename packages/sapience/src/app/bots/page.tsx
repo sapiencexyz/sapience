@@ -2,14 +2,6 @@
 
 import { Button } from '@foil/ui/components/ui/button';
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@foil/ui/components/ui/card';
-import {
   ArrowRight,
   Bot,
   Brain,
@@ -19,29 +11,6 @@ import {
   Search,
   Shield,
 } from 'lucide-react';
-import Link from 'next/link';
-
-// Bot icon component with gray circle background
-const BotIcon = ({
-  icon: Icon,
-  language = 'ts',
-}: {
-  icon: React.ElementType;
-  language?: 'py' | 'ts';
-}) => (
-  <div className="rounded-full p-3 w-12 h-12 flex items-center justify-center bg-gray-100 relative">
-    <Icon className="h-5 w-5 text-primary" />
-
-    {/* Language indicator */}
-    <div className="absolute -bottom-1 -right-1 rounded-full w-5 h-5 flex items-center justify-center bg-white border border-gray-200 shadow-sm">
-      {language === 'py' ? (
-        <div className="text-[10px] font-bold text-blue-600">Py</div>
-      ) : (
-        <div className="text-[10px] font-bold text-blue-500">Ts</div>
-      )}
-    </div>
-  </div>
-);
 
 // Hero section for the bots page - smaller than homepage hero but still exciting
 const BotsHero = () => {
@@ -82,76 +51,91 @@ const MCPSection = () => {
   return (
     <section className="py-16 px-4 sm:px-6 bg-muted/30 w-full">
       <div className="max-w-6xl mx-auto w-full">
-        <h2 className="font-sans text-2xl md:text-3xl font-normal mb-12 text-center">
-          Model Context Protocol Server
-        </h2>
+        <div className="flex flex-col md:flex-row gap-8">
+          {/* Left column with text content */}
+          <div className="w-full md:w-1/2 space-y-6">
+            <h2 className="font-sans text-2xl md:text-3xl font-normal">
+              Use Sapience with AI
+            </h2>
 
-        <div className="grid md:grid-cols-3 gap-8 mb-10 w-full">
-          <Card className="border border-gray-500/20">
-            <CardHeader>
-              <div className="flex items-center mb-2">
-                <BotIcon icon={Shield} language="ts" />
-                <CardTitle className="text-xl font-semibold ml-3">
-                  Claude Desktop Integration
-                </CardTitle>
+            <p className="text-lg text-muted-foreground">
+              Connect Claude Desktop with Foil’s prediction markets through
+              Model Context Protocol (MCP), enabling your AI assistant to
+              analyze market conditions and execute trades directly from your
+              desktop.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-primary mt-1" />
+                <div>
+                  <h3 className="font-medium">Claude Desktop Integration</h3>
+                  <p className="text-muted-foreground">
+                    Seamlessly interact with markets through natural language
+                    discussions with Claude.
+                  </p>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Seamlessly connect Claude Desktop with Foil&apos;s prediction
-                markets through MCP, enabling your AI assistant to analyze
-                market conditions and execute trades directly from your desktop.
-              </p>
-            </CardContent>
-          </Card>
 
-          <Card className="border border-gray-500/20">
-            <CardHeader>
-              <div className="flex items-center mb-2">
-                <BotIcon icon={Code} language="ts" />
-                <CardTitle className="text-xl font-semibold ml-3">
-                  Secure Trading Interface
-                </CardTitle>
+              <div className="flex items-start gap-3">
+                <Brain className="h-5 w-5 text-primary mt-1" />
+                <div>
+                  <h3 className="font-medium">Advanced Reasoning</h3>
+                  <p className="text-muted-foreground">
+                    Break down complex market analysis into clear, actionable
+                    trading decisions.
+                  </p>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                MCP provides a secure JSON-RPC interface that allows Claude
-                Desktop to interact with Foil&apos;s markets while maintaining
-                proper authentication and user consent for all trading actions.
-              </p>
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card className="border border-gray-500/20">
-            <CardHeader>
-              <div className="flex items-center mb-2">
-                <BotIcon icon={Brain} language="ts" />
-                <CardTitle className="text-xl font-semibold ml-3">
-                  Advanced Reasoning
-                </CardTitle>
+            <div className="pt-4">
+              <div className="flex items-center">
+                <div className="relative flex-1 max-w-md">
+                  <div className="bg-black text-white py-2 px-4 rounded-l-md font-mono text-sm flex items-center">
+                    <span>npx @foil/agent install</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full rounded-l-none bg-primary/10 hover:bg-primary/20"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        'npm install @foil/sapience-claude'
+                      );
+                    }}
+                  >
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 15 15"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        d="M5 2V1H10V2H5ZM4.75 0C4.33579 0 4 0.335786 4 0.75V1H3.5C2.67157 1 2 1.67157 2 2.5V12.5C2 13.3284 2.67157 14 3.5 14H11.5C12.3284 14 13 13.3284 13 12.5V2.5C13 1.67157 12.3284 1 11.5 1H11V0.75C11 0.335786 10.6642 0 10.25 0H4.75ZM11 2V2.25C11 2.66421 10.6642 3 10.25 3H4.75C4.33579 3 4 2.66421 4 2.25V2H3.5C3.22386 2 3 2.22386 3 2.5V12.5C3 12.7761 3.22386 13 3.5 13H11.5C11.7761 13 12 12.7761 12 12.5V2.5C12 2.22386 11.7761 2 11.5 2H11Z"
+                        fill="currentColor"
+                        fillRule="evenodd"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </Button>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Leverage Claude&apos;s advanced reasoning capabilities with
-                MCP&apos;s sampling feature to break down complex market
-                analysis into clear, actionable trading decisions.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </div>
 
-        <div className="text-center w-full">
-          <Button asChild size="lg">
-            <Link
-              href="https://modelcontextprotocol.io/introduction"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learn More About MCP <ExternalLink className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          {/* Right column for image/video */}
+          <div className="w-full md:w-1/2 bg-gray-100 rounded-lg flex items-center justify-center">
+            {/* Placeholder for Claude image or video */}
+            <div className="text-center p-8">
+              <Bot className="h-16 w-16 mx-auto text-primary/60 mb-2" />
+              <p className="text-muted-foreground">
+                Claude Desktop Integration Video
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -164,140 +148,111 @@ const TemplateSection = () => {
     <section id="templates" className="py-16 px-4 sm:px-6 w-full">
       <div className="max-w-6xl mx-auto w-full">
         <h2 className="font-sans text-2xl md:text-3xl font-normal mb-12 text-center">
-          Sapience Research Agent
+          Sapience Research Agent Boilerplate
         </h2>
 
-        <div className="w-full">
-          <Card className="border border-gray-500/20 shadow-lg hover:shadow-xl transition-all duration-300 w-full">
-            <CardHeader className="pb-2">
-              <div className="flex items-center mb-2">
-                <BotIcon icon={Bot} language="ts" />
-                <CardTitle className="text-xl font-semibold ml-3">
-                  TypeScript Research Agent
-                </CardTitle>
-              </div>
-              <CardDescription>
-                Advanced research agent using multiple search methods and local
-                LLMs
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Workflow visualization with stacked first column */}
-                <div className="my-6 px-4">
-                  {/* Container with relative positioning */}
-                  <div className="relative h-36">
-                    {/* Connecting line - positioned absolutely */}
-                    <div className="absolute top-14 left-0 right-0 h-0.5 bg-gray-200" />
+        <div className="flex flex-col md:flex-row gap-8 items-center">
+          {/* Left side: Flow chart with loop */}
+          <div className="w-full md:w-1/2 p-6 bg-muted/30 rounded-lg">
+            <div className="relative h-[400px] w-full">
+              {/* Large circular connecting line */}
+              <div className="absolute w-[280px] h-[280px] border-2 border-gray-200 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
 
-                    {/* Step 1: Search - Stacked circles */}
-                    <div className="absolute left-0 w-1/4 flex flex-col items-center">
-                      {/* Brave Search */}
-                      <div className="flex flex-col items-center mb-1">
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mb-1 border border-primary/20 shadow-sm">
-                          <Search className="h-4 w-4 text-primary" />
-                        </div>
-                        <p className="text-xs text-center">Brave Search</p>
-                      </div>
-
-                      {/* DuckDuckGo */}
-                      <div className="flex flex-col items-center mb-1">
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mb-1 border border-primary/20 shadow-sm">
-                          <Search className="h-4 w-4 text-orange-500" />
-                        </div>
-                        <p className="text-xs text-center">DuckDuckGo</p>
-                      </div>
-
-                      {/* Web Browser */}
-                      <div className="flex flex-col items-center">
-                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mb-1 border border-primary/20 shadow-sm">
-                          <ExternalLink className="h-4 w-4 text-blue-500" />
-                        </div>
-                        <p className="text-xs text-center">Web Browser</p>
-                      </div>
-                    </div>
-
-                    {/* Step 2: Analyze */}
-                    <div className="absolute left-1/4 w-1/4 flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mb-2 border border-primary/20 shadow-sm">
-                        <Brain className="h-4 w-4 text-primary" />
-                      </div>
-                      <p className="text-xs text-center">
-                        Analyze data and determine certainty
-                      </p>
-                    </div>
-
-                    {/* Step 3: Execute */}
-                    <div className="absolute left-2/4 w-1/4 flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mb-2 border border-primary/20 shadow-sm">
-                        <ArrowRight className="h-4 w-4 text-primary" />
-                      </div>
-                      <p className="text-xs text-center">
-                        Execute trades based on confidence
-                      </p>
-                    </div>
-
-                    {/* Step 4: Leverage */}
-                    <div className="absolute left-3/4 w-1/4 flex flex-col items-center">
-                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center mb-2 border border-primary/20 shadow-sm">
-                        <Bot className="h-4 w-4 text-primary" />
-                      </div>
-                      <p className="text-xs text-center">
-                        Run entirely locally with no API costs
-                      </p>
-                    </div>
-                  </div>
+              {/* Step 1: Research and Forecast - Top */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 text-center">
+                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
+                  <Search className="h-8 w-8 text-black" />
                 </div>
+                <p className="text-sm font-medium">Research and Forecast</p>
+              </div>
 
-                <div className="bg-muted p-4 rounded-md mt-4 overflow-x-auto">
-                  <pre className="text-xs md:text-sm">
-                    <code>
-                      {`// Example code snippet
-import { AgentExecutor, createReactAgent } from "langchain/agents";
-import { BraveSearchAPIWrapper, DuckDuckGoSearchAPI, WebBrowser } from "langchain/tools";
-import { Ollama } from "langchain/llms/ollama";
+              {/* Step 2: Create/Modify Market Positions - Bottom Right */}
+              <div className="absolute bottom-[40px] right-[40px] text-center">
+                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
+                  <ArrowRight className="h-8 w-8 text-black" />
+                </div>
+                <p className="text-sm font-medium">
+                  Create/Modify
+                  <br />
+                  Market Positions
+                </p>
+              </div>
 
-// Initialize the LLM
-const llm = new Ollama({
-  model: "llama3",
-  baseUrl: "http://localhost:11434"
-});
+              {/* Step 3: Update Prediction Journal - Bottom Left */}
+              <div className="absolute bottom-[40px] left-[40px] text-center">
+                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
+                  <Bot className="h-8 w-8 text-black" />
+                </div>
+                <p className="text-sm font-medium">
+                  Update Prediction
+                  <br />
+                  Journal
+                </p>
+              </div>
 
-// Create search tools
-const braveSearch = new BraveSearchAPIWrapper();
-const duckDuckGoSearch = new DuckDuckGoSearchAPI();
-const webBrowser = new WebBrowser();
+              {/* Arrow 1: Research → Create/Modify (Top Right) */}
+              <div className="absolute top-[130px] right-[100px] transform rotate-[45deg]">
+                <ArrowRight className="h-5 w-5 text-black" />
+              </div>
 
-// Initialize the agent
-const agent = await createReactAgent({
-  llm,
-  tools: [braveSearch, duckDuckGoSearch, webBrowser]
-});
+              {/* Arrow 2: Create/Modify → Update (Bottom) */}
+              <div className="absolute bottom-[60px] left-1/2 -translate-x-1/2">
+                <ArrowRight className="h-5 w-5 text-black" />
+              </div>
 
-const executor = AgentExecutor.fromAgentAndTools({
-  agent,
-  tools: [braveSearch, duckDuckGoSearch, webBrowser],
-  verbose: true
-});
+              {/* Arrow 3: Update → Research (Top Left) */}
+              <div className="absolute top-[130px] left-[100px] transform rotate-[-45deg]">
+                <ArrowRight className="h-5 w-5 text-black" />
+              </div>
+            </div>
+          </div>
 
-// Research and trade
-const result = await executor.invoke({
-  input: "Research the latest developments in AI regulation and determine if I should trade on the 'AI Regulation' market."
-});`}
-                    </code>
-                  </pre>
+          {/* Right side: Explanatory text */}
+          <div className="w-full md:w-1/2 space-y-6">
+            <h3 className="text-xl font-medium">
+              Build Your Own Prediction Bot
+            </h3>
+            <p className="text-muted-foreground">
+              Use our boilerplate to create an AI-powered bot that can research,
+              analyze data, and make intelligent predictions on Foil markets
+              autonomously.
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <Code className="h-5 w-5 text-primary mt-1" />
+                <div>
+                  <h4 className="font-medium">Open Source Template</h4>
+                  <p className="text-muted-foreground">
+                    Clone our TypeScript or Python templates to get started with
+                    a fully functional research agent that can execute trades on
+                    your behalf.
+                  </p>
                 </div>
               </div>
-            </CardContent>
-            <CardFooter className="pt-4 flex justify-between">
+
+              <div className="flex items-start gap-3">
+                <ExternalLink className="h-5 w-5 text-primary mt-1" />
+                <div>
+                  <h4 className="font-medium">Learn From the Community</h4>
+                  <p className="text-muted-foreground">
+                    Explore prediction journals from existing bots on Twitter to
+                    see real-world examples of AI-powered market analysis and
+                    decision making.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <Button className="mr-4">
+                <Github className="mr-2 h-4 w-4" /> Get Boilerplate
+              </Button>
               <Button variant="outline">
-                <Github className="mr-2 h-4 w-4" /> View on GitHub
+                View Bot Journals <ExternalLink className="ml-2 h-4 w-4" />
               </Button>
-              <Button>
-                Get Started <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </CardFooter>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </section>

@@ -124,7 +124,7 @@ const BuyPositionDialog = ({
 
         <div className="mt-2">
           <Button
-            className="w-full py-6 text-lg font-medium"
+            className="w-full text-lg font-medium"
             style={{ backgroundColor: color, borderColor: color }}
             onClick={() => {
               // Handle position purchase
@@ -340,7 +340,7 @@ const PredictionPreview = ({
         <div className="grid grid-cols-2 gap-4">
           <Button
             variant="outline"
-            className="w-full py-6 text-lg font-medium"
+            className="w-full text-lg font-medium"
             style={{ borderColor: color, color }}
             onClick={() => {
               setPosition('yes');
@@ -351,7 +351,7 @@ const PredictionPreview = ({
           </Button>
           <Button
             variant="outline"
-            className="w-full py-6 text-lg font-medium"
+            className="w-full text-lg font-medium"
             style={{ borderColor: color, color }}
             onClick={() => {
               setPosition('no');

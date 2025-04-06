@@ -40,8 +40,8 @@ export default function Hero() {
             Biosecurity, Climate Change, International Relations, and more.
           </p>
 
-          <Button asChild size="lg" className="px-8 py-6 text-lg">
-            <Link href="/login">Log in</Link>
+          <Button asChild size="lg">
+            <Link href="/predictions">Explore</Link>
           </Button>
         </div>
       </div>

@@ -7,6 +7,10 @@
     "module": "./dist/index.mjs",
     "types": "./dist/index.d.ts",
     "sideEffects": false,
+    "files": [
+        "dist/",
+        "tailwind-preset.js"
+    ],
     "scripts": {
         "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
         "build": "tsup src/index.ts --format cjs,esm --dts",
