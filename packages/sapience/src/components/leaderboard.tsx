@@ -1,5 +1,3 @@
-import { badgeVariants } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -9,11 +7,10 @@ import {
   TableRow,
 } from '@foil/ui/components/ui/table';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@foil/ui/components/ui/toggle-group';
+import { cn } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -21,142 +18,137 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Loader2, Copy } from 'lucide-react';
-import Link from 'next/link';
-import { useState, useMemo, useEffect } from 'react';
-import { getEnsName } from 'viem/ens';
-import { usePublicClient } from 'wagmi';
+import { Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
 
 import { foilApi } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
-import PositionDisplay from './PositionDisplay';
 
 interface Props {
   params: {
-    id: string;
+    id: string; // Market address
     epoch: string;
   };
 }
 
-interface Position {
-  positionId: string;
-  chain?: {
-    id: string;
-  };
-  address: string;
-  epoch: {
-    market?: {
-      chainId?: string;
-      address?: string;
-      isYin?: boolean;
-    };
-  };
-  isLP: boolean;
+// Interface based on raw GraphQL query response (BigInts as strings)
+interface EpochLeaderboardEntry {
+  epochId: string;
   owner: string;
+  totalDeposits: string; // These are likely strings representing BigInts
+  totalWithdrawals: string; // These are likely strings representing BigInts
+  openPositionsPnL: string; // These are likely strings representing BigInts
+  totalPnL: string; // These are likely strings representing BigInts
+  positions: string[]; // Array of position IDs
 }
 
-interface GroupedPosition {
-  owner: string;
-  positions: Position[];
+// Interface for data after processing (totalPnL as number)
+interface ProcessedEpochLeaderboardEntry
+  extends Omit<EpochLeaderboardEntry, 'totalPnL'> {
   totalPnL: number;
-  totalCollateralFlow: number;
-  ownerMaxCollateral: number;
 }
+
+const GET_EPOCH_LEADERBOARD = `
+  query GetEpochLeaderboard($chainId: Int!, $address: String!, $epochId: String!) {
+    getEpochLeaderboard(chainId: $chainId, address: $address, epochId: $epochId) {
+      epochId
+      owner
+      totalDeposits
+      totalWithdrawals
+      openPositionsPnL
+      totalPnL
+      positions
+    }
+  }
+`;
 
 const useLeaderboard = (marketId: string, epochId: string) => {
-  return useQuery({
+  return useQuery<ProcessedEpochLeaderboardEntry[]>({
     queryKey: ['epochLeaderboard', marketId, epochId],
     queryFn: async () => {
-      // Get leaderboard and positions
-      const leaderboard = await foilApi.get(
-        `/leaderboard?contractId=${marketId}`
+      // Hardcoded values for testing - replace with dynamic values later
+      const chainId = 8453; // Base
+      const address = marketId; // Assuming params.id is the market address
+      const epoch = epochId; // Assuming params.epoch is the epoch ID
+
+      console.log(
+        `Fetching leaderboard for chainId: ${chainId}, address: ${address}, epochId: ${epoch}`
       );
-      return [...leaderboard];
+
+      // Get leaderboard using GraphQL
+      try {
+        const graphqlEndpoint =
+          process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || '/graphql';
+        const response = await foilApi.post(graphqlEndpoint, {
+          query: GET_EPOCH_LEADERBOARD,
+          variables: {
+            chainId,
+            address,
+            epochId: epoch,
+          },
+        });
+        console.log('GraphQL Response:', response);
+
+        if (response.errors) {
+          console.error('GraphQL Errors:', response.errors);
+          throw new Error(
+            `GraphQL error: ${response.errors.map((e: any) => e.message).join(', ')}`
+          );
+        }
+
+        // Ensure leaderboardData is treated as the raw type initially
+        const leaderboardData: EpochLeaderboardEntry[] =
+          response.data?.getEpochLeaderboard;
+        if (!leaderboardData) {
+          console.error(
+            'No leaderboard data found in response:',
+            response.data
+          );
+          return [];
+        }
+
+        // Convert BigInt strings to numbers for sorting/display
+        const processedData: ProcessedEpochLeaderboardEntry[] =
+          leaderboardData.map((entry) => ({
+            ...entry,
+            totalPnL: Number(entry.totalPnL), // Convert totalPnL to number
+          }));
+
+        // Sort by total PnL descending
+        return processedData.sort(
+          (
+            a: ProcessedEpochLeaderboardEntry,
+            b: ProcessedEpochLeaderboardEntry
+          ) => b.totalPnL - a.totalPnL
+        );
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        return [];
+      }
     },
+    // Keep data fresh but avoid excessive refetching
+    staleTime: 60 * 1000, // 1 minute
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
 };
 
-const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
-  <div className="flex flex-wrap gap-1.5">
-    {row.original.positions.map((position) => (
-      <Link
-        key={position.positionId}
-        href={`/positions/${position?.epoch?.market?.chainId}:${position.epoch?.market?.address}/${position.positionId}`}
-        className={`${badgeVariants({ variant: 'outline' })} hover:bg-muted transition-background`}
-      >
-        <PositionDisplay
-          positionId={position.positionId?.toString()}
-          marketType={position.epoch?.market?.isYin ? 'yin' : 'yang'}
-        />
-      </Link>
-    ))}
-  </div>
-);
-
+// Moved component definitions outside of Leaderboard component
 const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
   const value = cell.getValue() as number;
   const prefix = value > 0 ? '+' : '';
   return (
-    <span className="md:text-xl whitespace-nowrap">
+    <span className="whitespace-nowrap text-sm md:text-base">
       {prefix}
       <NumberDisplay value={value / 1e18} /> wstETH
     </span>
   );
 };
 
-const formatAddress = (address: string): string => {
-  if (!address) return '';
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-};
-
 const AddressDisplay = ({ address }: { address: string }) => {
-  const publicClient = usePublicClient();
-  const [ensName, setEnsName] = useState<string | null>(null);
-  const [showCopied, setShowCopied] = useState(false);
-
-  useEffect(() => {
-    const resolveEns = async () => {
-      if (!publicClient) return;
-      try {
-        const ens = await getEnsName(publicClient, {
-          address: address as `0x${string}`,
-        });
-        if (ens) setEnsName(ens);
-      } catch (error) {
-        console.error('Error resolving ENS:', error);
-      }
-    };
-    resolveEns();
-  }, [address, publicClient]);
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await navigator.clipboard.writeText(address);
-    setShowCopied(true);
-    setTimeout(() => setShowCopied(false), 1000);
-  };
-
   return (
-    <div className="flex items-center gap-2 md:text-xl">
-      <span>{ensName || formatAddress(address)}</span>
-      <TooltipProvider>
-        <Tooltip open={showCopied}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 p-0.5"
-              onClick={handleCopy}
-            >
-              <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Copied!</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <div className="flex items-center gap-2 text-sm md:text-base">
+      <span>{address}</span>
     </div>
   );
 };
@@ -166,33 +158,27 @@ const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
 );
 
 const RankCell = ({ row }: { row: { index: number } }) => (
-  <span className="text-xl md:text-4xl font-bold flex justify-center">
+  <span className="text-base md:text-2xl font-heading font-normal flex justify-center">
     {row.index + 1}
   </span>
 );
 
-const RoiCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
-  const value = cell.getValue() as number;
-  const prefix = value > 0 ? '+' : '';
-  return (
-    <span className="md:text-xl whitespace-nowrap">
-      {prefix}
-      <NumberDisplay value={value} /> %
-    </span>
-  );
-};
+// Extract ROI cell component
+const ROICell = () => <span className="text-muted-foreground">--%</span>;
 
 const Leaderboard = ({ params }: Props) => {
-  const { data: leaderboardPositions, isLoading } = useLeaderboard(
+  const { data: leaderboardData, isLoading } = useLeaderboard(
     params.id,
     params.epoch
   );
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('all');
 
-  const columns = useMemo<ColumnDef<GroupedPosition>[]>(
+  // Simplified columns for the basic table
+  const columns = useMemo<ColumnDef<ProcessedEpochLeaderboardEntry>[]>(
     () => [
       {
         id: 'rank',
-        header: 'Rank',
+        header: '',
         cell: RankCell,
       },
       {
@@ -202,59 +188,23 @@ const Leaderboard = ({ params }: Props) => {
         cell: OwnerCell,
       },
       {
-        id: 'roi',
-        header: 'ROI',
-        accessorFn: (row) => row.totalPnL / row.ownerMaxCollateral,
-        cell: RoiCell,
-      },
-      {
         id: 'pnl',
-        header: 'Profit/Loss',
+        header: 'PnL',
         accessorKey: 'totalPnL',
         cell: PnLCell,
       },
       {
-        id: 'positions',
-        header: 'Positions',
-        cell: PositionCell,
+        id: 'roi',
+        header: 'ROI',
+        cell: ROICell,
       },
     ],
     []
   );
 
-  const groupedPositions = useMemo(() => {
-    if (!leaderboardPositions) return [] as GroupedPosition[];
-    console.log('leaderboardPositions', leaderboardPositions);
-
-    // Group leaderboardPositions by owner
-    const groupedByOwner = leaderboardPositions.reduce<
-      Record<string, GroupedPosition>
-    >((acc, position) => {
-      if (!acc[position.owner]) {
-        acc[position.owner] = {
-          owner: position.owner,
-          positions: [],
-          totalPnL: 0,
-          totalCollateralFlow: 0,
-          ownerMaxCollateral: 0,
-        };
-      }
-      acc[position.owner].positions = position.positions;
-      acc[position.owner].totalPnL = position.totalPnL;
-      acc[position.owner].totalCollateralFlow = position.totalCollateralFlow;
-      acc[position.owner].ownerMaxCollateral = position.ownerMaxCollateral;
-      return acc;
-    }, {});
-
-    // Convert to array and sort by total PnL
-    return Object.values(groupedByOwner).sort(
-      (a, b) =>
-        b.totalPnL / b.ownerMaxCollateral - a.totalPnL / a.ownerMaxCollateral
-    );
-  }, [leaderboardPositions]);
-
-  const table = useReactTable<GroupedPosition>({
-    data: groupedPositions,
+  // No need for groupedPositions anymore, use leaderboardData directly
+  const table = useReactTable<ProcessedEpochLeaderboardEntry>({
+    data: leaderboardData ?? [], // Use fetched data or empty array
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -268,39 +218,106 @@ const Leaderboard = ({ params }: Props) => {
   }
 
   return (
-    <div className="container max-w-screen-lg mx-auto flex items-center p-12">
-      <div className="border border-border rounded-lg w-full">
-        <h1 className="text-2xl md:text-5xl font-bold my-4 md:mt-10 md:mb-8 text-center">
-          🏆 Leaderboard 🏆
-        </h1>
+    <div className="container max-w-[860px] mx-auto p-4 md:p-8 lg:p-20">
+      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-10">
+        Leaderboard
+      </h1>
 
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </TableHead>
+      <div className="mb-6">
+        <ToggleGroup
+          type="single"
+          value={selectedTimeframe}
+          onValueChange={(value) => {
+            if (value) setSelectedTimeframe(value);
+          }}
+          aria-label="Select timeframe"
+          className="justify-start flex-wrap"
+        >
+          <ToggleGroupItem value="all" aria-label="All Time" size="sm">
+            All Time
+          </ToggleGroupItem>
+          <ToggleGroupItem value="year" aria-label="Last Year" size="sm">
+            Last Year
+          </ToggleGroupItem>
+          <ToggleGroupItem value="month" aria-label="Last Month" size="sm">
+            Last Month
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      {/* Changed grid layout to accommodate only the main column */}
+      <div className="grid grid-cols-1 gap-8">
+        {/* Main Column (Leaderboard Table) */}
+        <div>
+          {/* Leaderboard Table */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow
+                    key={headerGroup.id}
+                    className="hover:bg-transparent border-b"
+                  >
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={cn(
+                          'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
+                          {
+                            'text-center': header.id === 'rank',
+                            'text-right':
+                              header.id === 'pnl' || header.id === 'roi',
+                          }
+                        )}
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
                 ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} className="hover:bg-transparent">
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows.length > 0 ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="hover:bg-muted/50 border-b last:border-b-0"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={cn('p-3 text-sm md:text-base', {
+                            'text-right font-normal': cell.column.id === 'rank',
+                            'text-right': cell.column.id === 'pnl',
+                            'text-right text-muted-foreground text-sm md:text-base':
+                              cell.column.id === 'roi',
+                          })}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center text-muted-foreground text-sm md:text-base"
+                    >
+                      No results found for this epoch.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </div>
     </div>
   );

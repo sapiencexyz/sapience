@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 const PredictionsPage = () => {
   return (
-    <div className="container mx-auto p-8 max-w-8xl">
+    <div className="container mx-auto p-8 max-w-8xl mt-16">
       <Suspense
         fallback={
           <div className="flex justify-center items-center py-8">

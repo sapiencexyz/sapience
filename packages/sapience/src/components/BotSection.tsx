@@ -10,34 +10,32 @@ export default function BotSection() {
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row items-start gap-8">
           {/* Text content */}
-          <div className="flex-1">
+          <div className="flex-1 lg:max-w-[560px]">
             <h2 className="text-3xl font-heading font-normal mb-6">
-              Automated Agents & Bots
+              Use Sapience with Claude
             </h2>
             <p className="text-lg mb-4">
-              Sapience provides powerful infrastructure for creating and
-              deploying intelligent, autonomous agents that can interact with
-              prediction markets and other data sources.
+              Sapience&apos;s{' '}
+              <strong className="font-medium">model context protocol</strong>{' '}
+              acts as a plug-in for Claude. Have Claude check active prediction
+              markets, research them, and stage transactions to a{' '}
+              <Link
+                target="_blank"
+                className="underline"
+                href="https://safe.global"
+              >
+                Safe
+              </Link>
+              .
             </p>
 
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-2">MCP Server</h3>
-              <p className="text-muted-foreground">
-                The Master Control Program (MCP) server orchestrates agent
-                activities, manages authentication, and coordinates data flow
-                between agents and markets. It serves as the central hub for all
-                automated interactions.
-              </p>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-semibold mb-2">Agent Boilerplate</h3>
-              <p className="text-muted-foreground">
-                Get started quickly with our agent boilerplate templates that
-                provide the foundation for creating custom prediction agents,
-                data collectors, and market-making bots.
-              </p>
-            </div>
+            <p className="text-lg mb-4">
+              Or build an autonomous agent to research and update market
+              positions on your behalf.{' '}
+              <small className="text-muted-foreground">
+                AI is very useful to bot building as well.
+              </small>
+            </p>
 
             <Button
               asChild
