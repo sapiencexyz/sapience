@@ -1,4 +1,3 @@
-import { Button } from '@foil/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -8,11 +7,10 @@ import {
   TableRow,
 } from '@foil/ui/components/ui/table';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@foil/ui/components/ui/toggle-group';
+import { cn } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -20,10 +18,8 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Copy, Loader2 } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
-import { getEnsName } from 'viem/ens';
-import { usePublicClient } from 'wagmi';
+import { Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
 
 import { foilApi } from '~/lib/utils/util';
 
@@ -137,69 +133,22 @@ const useLeaderboard = (marketId: string, epochId: string) => {
   });
 };
 
+// Moved component definitions outside of Leaderboard component
 const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
   const value = cell.getValue() as number;
   const prefix = value > 0 ? '+' : '';
   return (
-    <span className="md:text-xl whitespace-nowrap">
+    <span className="whitespace-nowrap text-sm md:text-base">
       {prefix}
       <NumberDisplay value={value / 1e18} /> wstETH
     </span>
   );
 };
 
-const formatAddress = (address: string): string => {
-  if (!address) return '';
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-};
-
 const AddressDisplay = ({ address }: { address: string }) => {
-  const publicClient = usePublicClient();
-  const [ensName, setEnsName] = useState<string | null>(null);
-  const [showCopied, setShowCopied] = useState(false);
-
-  useEffect(() => {
-    const resolveEns = async () => {
-      if (!publicClient) return;
-      try {
-        const ens = await getEnsName(publicClient, {
-          address: address as `0x${string}`,
-        });
-        if (ens) setEnsName(ens);
-      } catch (error) {
-        console.error('Error resolving ENS:', error);
-      }
-    };
-    resolveEns();
-  }, [address, publicClient]);
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await navigator.clipboard.writeText(address);
-    setShowCopied(true);
-    setTimeout(() => setShowCopied(false), 1000);
-  };
-
   return (
-    <div className="flex items-center gap-2 md:text-xl">
-      <span>{ensName || formatAddress(address)}</span>
-      <TooltipProvider>
-        <Tooltip open={showCopied}>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 p-0.5"
-              onClick={handleCopy}
-            >
-              <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Copied!</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <div className="flex items-center gap-2 text-sm md:text-base">
+      <span>{address}</span>
     </div>
   );
 };
@@ -209,23 +158,27 @@ const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
 );
 
 const RankCell = ({ row }: { row: { index: number } }) => (
-  <span className="text-xl md:text-4xl font-bold flex justify-center">
+  <span className="text-base md:text-2xl font-heading font-normal flex justify-center">
     {row.index + 1}
   </span>
 );
+
+// Extract ROI cell component
+const ROICell = () => <span className="text-muted-foreground">--%</span>;
 
 const Leaderboard = ({ params }: Props) => {
   const { data: leaderboardData, isLoading } = useLeaderboard(
     params.id,
     params.epoch
   );
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('all');
 
   // Simplified columns for the basic table
   const columns = useMemo<ColumnDef<ProcessedEpochLeaderboardEntry>[]>(
     () => [
       {
         id: 'rank',
-        header: 'Rank',
+        header: '',
         cell: RankCell,
       },
       {
@@ -236,11 +189,15 @@ const Leaderboard = ({ params }: Props) => {
       },
       {
         id: 'pnl',
-        header: 'Profit/Loss',
-        accessorKey: 'totalPnL', // Access the processed numeric totalPnL
+        header: 'PnL',
+        accessorKey: 'totalPnL',
         cell: PnLCell,
       },
-      // Removed ROI and Positions columns for simplicity
+      {
+        id: 'roi',
+        header: 'ROI',
+        cell: ROICell,
+      },
     ],
     []
   );
@@ -261,39 +218,106 @@ const Leaderboard = ({ params }: Props) => {
   }
 
   return (
-    <div className="container max-w-screen-lg mx-auto flex items-center p-12">
-      <div className="border border-border rounded-lg w-full">
-        <h1 className="text-2xl md:text-5xl font-bold my-4 md:mt-10 md:mb-8 text-center">
-          🏆 Leaderboard 🏆
-        </h1>
+    <div className="container max-w-[860px] mx-auto p-4 md:p-8 lg:p-20">
+      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-10">
+        Leaderboard
+      </h1>
 
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </TableHead>
+      <div className="mb-6">
+        <ToggleGroup
+          type="single"
+          value={selectedTimeframe}
+          onValueChange={(value) => {
+            if (value) setSelectedTimeframe(value);
+          }}
+          aria-label="Select timeframe"
+          className="justify-start flex-wrap"
+        >
+          <ToggleGroupItem value="all" aria-label="All Time" size="sm">
+            All Time
+          </ToggleGroupItem>
+          <ToggleGroupItem value="year" aria-label="Last Year" size="sm">
+            Last Year
+          </ToggleGroupItem>
+          <ToggleGroupItem value="month" aria-label="Last Month" size="sm">
+            Last Month
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
+
+      {/* Changed grid layout to accommodate only the main column */}
+      <div className="grid grid-cols-1 gap-8">
+        {/* Main Column (Leaderboard Table) */}
+        <div>
+          {/* Leaderboard Table */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow
+                    key={headerGroup.id}
+                    className="hover:bg-transparent border-b"
+                  >
+                    {headerGroup.headers.map((header) => (
+                      <TableHead
+                        key={header.id}
+                        className={cn(
+                          'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
+                          {
+                            'text-center': header.id === 'rank',
+                            'text-right':
+                              header.id === 'pnl' || header.id === 'roi',
+                          }
+                        )}
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
                 ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} className="hover:bg-transparent">
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows.length > 0 ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="hover:bg-muted/50 border-b last:border-b-0"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={cn('p-3 text-sm md:text-base', {
+                            'text-right font-normal': cell.column.id === 'rank',
+                            'text-right': cell.column.id === 'pnl',
+                            'text-right text-muted-foreground text-sm md:text-base':
+                              cell.column.id === 'roi',
+                          })}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center text-muted-foreground text-sm md:text-base"
+                    >
+                      No results found for this epoch.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </div>
     </div>
   );
