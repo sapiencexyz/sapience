@@ -5,7 +5,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
-import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
 import { Download, Loader2, InfoIcon, Vault, Check } from 'lucide-react';
