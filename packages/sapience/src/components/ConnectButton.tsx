@@ -40,15 +40,20 @@ export default function CustomConnectButton() {
                 return (
                   <Button
                     onClick={() => setIsOpen(true)}
-                    className="bg-primary hover:bg-primary/90"
+                    className="bg-primary hover:bg-primary/90 rounded-full"
+                    size="lg"
                   >
-                    Connect Wallet
+                    Log in
                   </Button>
                 );
               }
               if (chain.unsupported) {
                 return (
-                  <Button onClick={openChainModal} variant="destructive">
+                  <Button
+                    onClick={openChainModal}
+                    variant="destructive"
+                    size="lg"
+                  >
                     Wrong network
                   </Button>
                 );
@@ -59,6 +64,7 @@ export default function CustomConnectButton() {
                     onClick={openChainModal}
                     className="flex items-center"
                     variant="outline"
+                    size="lg"
                   >
                     {chain.hasIcon && (
                       <div
@@ -76,7 +82,11 @@ export default function CustomConnectButton() {
                     )}
                     {chain.name}
                   </Button>
-                  <Button onClick={openAccountModal} variant="outline">
+                  <Button
+                    onClick={openAccountModal}
+                    variant="outline"
+                    size="lg"
+                  >
                     {account.displayName}
                     {account.displayBalance
                       ? ` (${account.displayBalance})`

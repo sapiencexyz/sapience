@@ -12,7 +12,12 @@ export default function ModeToggle() {
   };
 
   return (
-    <Button variant="outline" size="icon" onClick={toggleTheme}>
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={toggleTheme}
+      className="rounded-full"
+    >
       <Sun className="dark:hidden" />
       <Moon className="hidden dark:block" />
       <span className="sr-only">Toggle theme</span>

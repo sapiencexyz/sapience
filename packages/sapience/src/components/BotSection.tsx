@@ -6,12 +6,12 @@ import Link from 'next/link';
 
 export default function BotSection() {
   return (
-    <section className="py-16 px-4 bg-secondary/10">
+    <section className="pt-48 pb-24 px-8 bg-secondary/10">
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row items-start gap-8">
           {/* Text content */}
           <div className="flex-1">
-            <h2 className="text-3xl font-heading font-bold mb-6">
+            <h2 className="text-3xl font-heading font-normal mb-6">
               Automated Agents & Bots
             </h2>
             <p className="text-lg mb-4">
@@ -48,45 +48,12 @@ export default function BotSection() {
 
           {/* Visual content */}
           <div className="flex-1 flex items-center justify-center p-8 bg-background rounded-lg border border-border">
-            <div className="relative w-full aspect-square max-w-md">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Bot className="w-24 h-24 text-primary/50" />
-              </div>
-              <div className="absolute inset-0">
-                <div className="w-full h-full flex items-center justify-center">
-                  <code className="text-xs text-muted-foreground overflow-hidden max-h-48 p-4 bg-muted rounded">
-                    <pre>
-                      {`// Agent template
-import { SapienceAgent } from '@sapience/agents';
-
-class PredictionAgent extends SapienceAgent {
-  async analyze(data) {
-    // Process incoming market data
-    const prediction = this.model.predict(data);
-    
-    // Take action based on prediction
-    if (prediction.confidence > 0.7) {
-      await this.placePosition({
-        market: data.marketId,
-        direction: prediction.direction,
-        size: prediction.recommendedSize
-      });
-    }
-  }
-}
-
-// Initialize and connect to MCP
-const agent = new PredictionAgent({
-  name: 'AI Predictor v1',
-  mcpEndpoint: process.env.MCP_SERVER_URL,
-  apiKey: process.env.MCP_API_KEY
-});
-
-agent.start();`}
-                    </pre>
-                  </code>
-                </div>
-              </div>
+            {/* Placeholder for Claude image or video */}
+            <div className="text-center p-8">
+              <Bot className="h-16 w-16 mx-auto text-primary/60 mb-2" />
+              <p className="text-muted-foreground">
+                Claude Desktop Integration Video
+              </p>
             </div>
           </div>
         </div>

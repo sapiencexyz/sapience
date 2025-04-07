@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@foil/ui/components/ui/button';
-import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -121,17 +120,30 @@ export default function TopicsOfInterest() {
   }, [isManualScrolling]);
 
   return (
-    <section className="py-16 px-4 overflow-hidden relative">
+    <section className="pt-72 pb-24 px-8 overflow-hidden relative">
       <div className="container mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-heading font-bold">
+          <h2 className="text-3xl font-heading font-normal">
             Topics of Interest
           </h2>
           <Link
             href="/predictions"
-            className="flex items-center text-primary hover:underline"
+            className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
           >
-            View all <ArrowRight className="ml-1 h-4 w-4" />
+            VIEW ALL
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="ml-0.5"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </Link>
         </div>
 

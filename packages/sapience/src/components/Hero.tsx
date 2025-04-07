@@ -1,17 +1,14 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import Link from 'next/link';
-
 export default function Hero() {
   return (
-    <div className="relative min-h-screen overflow-hidden flex items-center justify-center w-full">
+    <div className="relative h-[100dvh] overflow-hidden w-full flex flex-col justify-end">
       {/* Spline embed background - made larger than viewport */}
       <div
         className="absolute inset-0 z-0"
         style={{
           opacity: 0.5,
-          transform: 'translate(50%, -50%) scale(3.3)',
+          transform: 'translate(50%, -50%) scale(3)',
           transformOrigin: 'center center',
         }}
       >
@@ -25,24 +22,51 @@ export default function Hero() {
         />
       </div>
 
-      {/* Content card */}
-      <div className="z-10 w-full max-w-4xl px-4 sm:px-6">
-        <div className="w-full text-center px-6 sm:px-8 py-12 sm:py-16 md:py-20 bg-background/[0.015] backdrop-blur-[3px] border border-gray-500/20 rounded-xl shadow-sm">
-          <h1 className="font-sans text-4xl md:text-6xl font-normal mb-6">
-            The World&apos;s Frontier
-            <br />
-            Prediction Community
-          </h1>
+      {/* Content container - positioned at bottom, left-aligned */}
+      <div className="w-full z-10">
+        <div className="container px-0 pb-0">
+          <div className="text-left px-8 py-16">
+            <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
+              The World&apos;s Frontier
+              <br />
+              Prediction Community
+            </h1>
 
-          <p className="text-xl md:text-2xl mb-16 text-muted-foreground">
-            Join experts and enthusiasts forecasting the future of AI,
-            <br />
-            Biosecurity, Climate Change, International Relations, and more.
-          </p>
+            <p className="text-xl md:text-2xl mb-6 text-muted-foreground">
+              Join experts and enthusiasts forecasting the future of AI,
+              <br />
+              Biosecurity, Climate Change, International Relations, and more.
+            </p>
 
-          <Button asChild size="lg">
-            <Link href="/predictions">Explore</Link>
-          </Button>
+            <div className="flex justify-start">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault(); // Prevent default link behavior
+                  window.scrollTo({
+                    top: window.innerHeight, // Scroll down by viewport height
+                    behavior: 'smooth',
+                  });
+                }}
+                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
+              >
+                LEARN MORE
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="ml-0.5"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
