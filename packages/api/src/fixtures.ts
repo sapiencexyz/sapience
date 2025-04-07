@@ -50,14 +50,14 @@ async function handleEpochQuestions(market: Market, questions: string[]): Promis
     let epoch = await epochRepository.findOne({
       where: {
         market: { id: market.id },
-        id: epochId,
+        epochId: epochId,
       },
     });
 
     if (!epoch) {
       // Create new epoch
       epoch = new Epoch();
-      epoch.id = epochId;
+      epoch.epochId = epochId;
       epoch.market = market;
       epoch.question = questions[i];
       await epochRepository.save(epoch);
