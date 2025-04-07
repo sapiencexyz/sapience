@@ -10,6 +10,8 @@ import { Market } from './models/Market';
 import { marketRepository } from './db';
 import { Epoch } from './models/Epoch';
 import { epochRepository } from './db';
+import { Category } from './models/Category';
+import { categoryRepository } from './db';
 
 // TAT = Trailing Average Time
 export const TIME_INTERVALS = {
@@ -99,6 +101,21 @@ export const initializeFixtures = async (): Promise<void> => {
     }
   }
 
+  // Initialize categories from fixtures.json
+  for (const categoryData of fixturesData.CATEGORIES) {
+    let category = await categoryRepository.findOne({
+      where: { slug: categoryData.slug },
+    });
+
+    if (!category) {
+      category = new Category();
+      category.name = categoryData.name;
+      category.slug = categoryData.slug;
+      await categoryRepository.save(category);
+      console.log('Created category:', categoryData.name);
+    }
+  }
+
   // Initialize markets from fixtures.json
   for (const marketData of fixturesData.MARKETS) {
     // Find the associated resource
@@ -106,8 +123,17 @@ export const initializeFixtures = async (): Promise<void> => {
       where: { slug: marketData.resource },
     });
 
+    const category = await categoryRepository.findOne({
+      where: { slug: marketData.category },
+    });
+
     if (!resource) {
       console.log(`Resource not found: ${marketData.resource}`);
+      continue;
+    }
+
+    if (!category) {
+      console.log(`Category not found: ${marketData.category}`);
       continue;
     }
 
@@ -126,6 +152,7 @@ export const initializeFixtures = async (): Promise<void> => {
       market.chainId = marketData.chainId;
       market.isYin = marketData.isYin || false;
       market.isCumulative = marketData.isCumulative || false;
+      market.category = category;
       
       // Store questions if the Market model supports it
       if ('questions' in marketData) {
@@ -146,6 +173,7 @@ export const initializeFixtures = async (): Promise<void> => {
       market.resource = resource;
       market.isYin = marketData.isYin || market.isYin || false;
       market.isCumulative = marketData.isCumulative || market.isCumulative || false;
+      market.category = category;
       
       // Update questions if the Market model supports it
       if ('questions' in marketData) {

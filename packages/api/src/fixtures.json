@@ -25,44 +25,87 @@
       "slug": "celestia-blobspace"
     }
   ],
+  "CATEGORIES": [
+    {
+      "name": "Decentralized compute",
+      "slug": "decentralized-compute"
+    },
+    {
+      "name": "Energy + DePIN",
+      "slug": "energy-depin"
+    },
+    {
+      "name": "Climate Change",
+      "slug": "climate-change"
+    },
+    {
+      "name": "Biosecurity",
+      "slug": "biosecurity"
+    },
+    {
+      "name": "International Relations",
+      "slug": "international-relations"
+    },
+    {
+      "name": "Space Exploration",
+      "slug": "space-exploration"
+    },
+    {
+      "name": "Emerging Technologies",
+      "slug": "emerging-technologies"
+    }    
+  ],
   "MARKETS": [
     {
-      "questions": ["How much blob data will be posted to Celestia in April?"],
+      "questions": [
+        "How much blob data will be posted to Celestia in April?"
+      ],
       "resource": "celestia-blobspace",
       "chainId": 8453,
       "address": "0x497057F1dBdaFBeD7a052dEa366e72c04de7A370",
-      "isCumulative": true
+      "isCumulative": true,
+      "category": "decentralized-compute"
     },
     {
-      "questions": ["What will be the average blob gas cost on Ethereum in April?"],
+      "questions": [
+        "What will be the average blob gas cost on Ethereum in April?"
+      ],
       "resource": "ethereum-blobspace",
       "chainId": 8453,
       "address": "0x301f7f583A6850d8D6e0Ea0a86205f905B91e255",
-      "isYin": false
+      "isYin": false,
+      "category": "decentralized-compute"
     },
     {
-      "questions": ["What will be the average gas cost on Ethereum on the week of April 1st?", "What will be the average gas cost on Ethereum on the week of April 7th?" ],
+      "questions": [
+        "What will be the average gas cost on Ethereum on the week of April 1st?",
+        "What will be the average gas cost on Ethereum on the week of April 7th?"
+      ],
       "resource": "ethereum-gas",
       "chainId": 8453,
-      "address": "0x914126c7BFA849055bE8230975e0665De985f03A"
+      "address": "0x914126c7BFA849055bE8230975e0665De985f03A",
+      "category": "decentralized-compute"
     },
     {
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x0D70bE0BA7d58cd414B01C4e8a1bB5A1Dd212bDc",
-      "isYin": true
+      "isYin": true,
+      "category": "decentralized-compute"
     },
     {
       "resource": "ethereum-blobspace",
       "chainId": 8453,
       "address": "0x2883610d2c5A2C2b8EBacfa5c8F8035F60b9C850",
-      "isYin": true
+      "isYin": true,
+      "category": "decentralized-compute"
     },
     {
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x20Ba5e24aD8a5b9502D4882607f0C8526A1F3205",
-      "isYin": true
+      "isYin": true,
+      "category": "decentralized-compute"
     }
   ]
 }
