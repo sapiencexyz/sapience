@@ -84,6 +84,7 @@ type Query {
   resourcePrices: [ResourcePriceType!]!
   resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): [CandleType!]!
   resources: [ResourceType!]!
+  totalVolumeByEpoch(chainId: Int!, epochId: Int!, marketAddress: String!): Float!
   transactions(positionId: Int): [TransactionType!]!
 }
 

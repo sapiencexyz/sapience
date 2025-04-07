@@ -9,12 +9,15 @@ import { useReadContract } from 'wagmi';
 import useFoilDeployment from '../../components/useFoilDeployment';
 import { BLANK_MARKET } from '../constants';
 import erc20ABI from '../erc20abi.json';
+import type { Resource } from '../hooks/useResources';
+import { useResources } from '../hooks/useResources';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
-import { useToast } from '~/hooks/use-toast';
-import { Market, useFoil } from './FoilProvider';
-import { Resource, useResources } from '../hooks/useResources';
 import { convertGgasPerWstEthToGwei } from '../utils/util';
+import { useToast } from '~/hooks/use-toast';
+
+import type { Market } from './FoilProvider';
+import { useFoil } from './FoilProvider';
 
 // Types and Interfaces
 export interface PeriodContextType {

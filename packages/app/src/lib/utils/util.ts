@@ -23,7 +23,7 @@ export const foilApi = {
     return headers;
   },
 
-  async post(path: string, body: any) {
+  async post(path: string, body: unknown) {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: this.getHeaders(),
