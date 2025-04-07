@@ -17,7 +17,14 @@ library Trade {
         uint256 amountInVEth,
         uint256 amountInVGas,
         bool isQuote
-    ) internal returns (uint256 amountOutVEth, uint256 amountOutVGas) {
+    )
+        internal
+        returns (
+            uint256 amountOutVEth,
+            uint256 amountOutVGas,
+            uint160 sqrtPriceX96After
+        )
+    {
         if (amountInVEth > 0 && amountInVGas > 0) {
             revert Errors.InvalidData("Only one token can be traded at a time");
         }
@@ -50,8 +57,9 @@ library Trade {
                     fee: epoch.marketParams.feeRate,
                     sqrtPriceLimitX96: 0
                 });
-            (amountOut, , , ) = IQuoterV2(epoch.marketParams.uniswapQuoter)
-                .quoteExactInputSingle(params);
+            (amountOut, sqrtPriceX96After, , ) = IQuoterV2(
+                epoch.marketParams.uniswapQuoter
+            ).quoteExactInputSingle(params);
         } else {
             ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter
                 .ExactInputSingleParams({
@@ -84,7 +92,11 @@ library Trade {
         bool isQuote
     )
         internal
-        returns (uint256 requiredAmountInVEth, uint256 requiredAmountInVGas)
+        returns (
+            uint256 requiredAmountInVEth,
+            uint256 requiredAmountInVGas,
+            uint160 sqrtPriceX96After
+        )
     {
         if (expectedAmountOutVEth > 0 && expectedAmountOutVGas > 0) {
             revert Errors.InvalidData("Only one token can be traded at a time");
@@ -119,8 +131,9 @@ library Trade {
                     sqrtPriceLimitX96: 0
                 });
 
-            (amountIn, , , ) = IQuoterV2(epoch.marketParams.uniswapQuoter)
-                .quoteExactOutputSingle(params);
+            (amountIn, sqrtPriceX96After, , ) = IQuoterV2(
+                epoch.marketParams.uniswapQuoter
+            ).quoteExactOutputSingle(params);
         } else {
             ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
                 .ExactOutputSingleParams({
