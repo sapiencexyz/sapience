@@ -1,11 +1,11 @@
+import { Button } from '@foil/ui/components/ui/button';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import type React from 'react';
 import { useState } from 'react';
 import { zeroAddress } from 'viem';
 import { useAccount, useReadContract, useWriteContract } from 'wagmi';
 
 import useFoilDeployment from '../useFoilDeployment';
-import { Button } from '@/components/ui/button';
-import { useToast } from '~/hooks/use-toast';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useSettlementPrice } from '~/lib/hooks/useSettlementPrice';
 

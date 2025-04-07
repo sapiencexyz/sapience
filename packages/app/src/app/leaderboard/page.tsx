@@ -1,5 +1,13 @@
 'use client';
 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@foil/ui/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -9,14 +17,6 @@ import {
 } from '@tanstack/react-table';
 import { Loader2 } from 'lucide-react';
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import AddressDisplay from '~/components/AddressDisplay';
 import NumberDisplay from '~/components/numberDisplay';
 import { useResources } from '~/lib/hooks/useResources';

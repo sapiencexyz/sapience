@@ -1,16 +1,16 @@
 'use client';
 
+import { badgeVariants } from '@foil/ui/components/ui/badge';
+import { cn } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Loader2 } from 'lucide-react';
 
 import EpochTiming from '~/components/EpochTiming';
 import NumberDisplay from '~/components/numberDisplay';
 import PositionDisplay from '~/components/PositionDisplay';
-import { badgeVariants } from '~/components/ui/badge';
 import { FoilProvider } from '~/lib/context/FoilProvider';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { cn } from '~/lib/utils';
 import { foilApi, tickToPrice, getExplorerUrl } from '~/lib/utils/util';
 
 const POLLING_INTERVAL = 10000; // Refetch every 10 seconds

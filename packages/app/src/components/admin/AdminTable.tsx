@@ -1,3 +1,28 @@
+import { Button } from '@foil/ui/components/ui/button';
+import { Checkbox } from '@foil/ui/components/ui/checkbox';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@foil/ui/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@foil/ui/components/ui/popover';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@foil/ui/components/ui/table';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import {
   useReactTable,
   flexRender,
@@ -22,32 +47,6 @@ import {
 import React, { useState, useMemo } from 'react';
 import { useSignMessage } from 'wagmi';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table';
-import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
@@ -652,13 +651,12 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
 
             <div className="flex flex-wrap gap-4">
               {selectedFilters.map((filter) => (
-                <Badge
+                <div
                   key={`${filter.id}-${filter.value}`}
-                  variant="outline"
-                  className="h-8 px-3 gap-1 bg-secondary/10"
+                  className="flex items-center h-8 px-3 gap-1 border rounded-full bg-secondary/10 text-foreground"
                 >
                   {filter.icon}
-                  <span>{filter.label}</span>
+                  <span className="text-xs font-semibold">{filter.label}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -667,7 +665,7 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
                   >
                     <X className="h-3 w-3" />
                   </Button>
-                </Badge>
+                </div>
               ))}
             </div>
           </div>

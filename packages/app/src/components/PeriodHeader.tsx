@@ -1,3 +1,9 @@
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { format } from 'date-fns';
 import { MoveHorizontal, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
@@ -6,12 +12,6 @@ import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 import { LiaRulerVerticalSolid } from 'react-icons/lia';
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { tickToPrice, convertGgasPerWstEthToGwei } from '~/lib/utils/util';

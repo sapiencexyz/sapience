@@ -1,3 +1,19 @@
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@foil/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
+import { toast } from '@foil/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -21,22 +37,6 @@ import { useState, useMemo, useContext } from 'react';
 import { useReadContract } from 'wagmi';
 
 import { useFoil } from '../lib/context/FoilProvider';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { toast } from '~/hooks/use-toast';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
