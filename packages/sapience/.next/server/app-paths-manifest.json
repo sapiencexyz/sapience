@@ -1,8 +1,0 @@
-{
-  "/predictions/page": "app/predictions/page.js",
-  "/leaderboard/page": "app/leaderboard/page.js",
-  "/page": "app/page.js",
-  "/futarchy/page": "app/futarchy/page.js",
-  "/predictions/[chainId]/[marketAddress]/[epochId]/page": "app/predictions/[chainId]/[marketAddress]/[epochId]/page.js",
-  "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js"
-}
