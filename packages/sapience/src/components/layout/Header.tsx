@@ -83,7 +83,7 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
           Futarchy
         </Button>
       </Link>
-      <Link href="/community" passHref>
+      <Link href="https://discord.com" passHref>
         <Button
           variant="ghost"
           className={`${linkClass} ${isActive('/community', pathname) ? activeClass : ''}`}

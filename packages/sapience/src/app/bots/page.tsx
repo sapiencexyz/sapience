@@ -4,13 +4,12 @@ import { Button } from '@foil/ui/components/ui/button';
 import {
   ArrowRight,
   Bot,
-  Brain,
   Code,
   ExternalLink,
   Github,
   Search,
-  Shield,
 } from 'lucide-react';
+import Link from 'next/link';
 
 // Hero section for the bots page - smaller than homepage hero but still exciting
 const BotsHero = () => {
@@ -59,73 +58,65 @@ const MCPSection = () => {
           {/* Left column with text content */}
           <div className="w-full md:w-1/2 space-y-6">
             <h2 className="font-sans text-2xl md:text-3xl font-normal">
-              Use Sapience with AI
+              Use Sapience with Claude
             </h2>
 
             <p className="text-lg text-muted-foreground">
-              Connect Claude Desktop with Sapience&apos;s prediction markets
-              through Model Context Protocol (MCP), enabling your AI assistant
-              to analyze market conditions and execute trades directly from your
-              desktop.
+              Give an AI assistant tools to interact with predictions markets
+              using Sapience&apos;s Model Context Protocol server. Connect to
+              any{' '}
+              <Link
+                href="https://modelcontextprotocol.io/clients"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                MCP client
+              </Link>
+              , including{' '}
+              <Link
+                href="https://claude.ai/download"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Claude Desktop
+              </Link>
+              .
             </p>
 
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Shield className="h-5 w-5 text-primary mt-1" />
-                <div>
-                  <h3 className="font-medium">Claude Desktop Integration</h3>
-                  <p className="text-muted-foreground">
-                    Seamlessly interact with markets through natural language
-                    discussions with Claude.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <Brain className="h-5 w-5 text-primary mt-1" />
-                <div>
-                  <h3 className="font-medium">Advanced Reasoning</h3>
-                  <p className="text-muted-foreground">
-                    Break down complex market analysis into clear, actionable
-                    trading decisions.
-                  </p>
-                </div>
-              </div>
-            </div>
-
             <div className="pt-4">
-              <div className="flex items-center">
-                <div className="relative flex-1 max-w-md">
-                  <div className="bg-black text-white py-2 px-4 rounded-l-md font-mono text-sm flex items-center">
-                    <span>npx @foil/agent install</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full rounded-l-none bg-primary/10 hover:bg-primary/20"
-                    onClick={() => {
-                      navigator.clipboard.writeText(
-                        'npm install @foil/sapience-claude'
-                      );
-                    }}
-                  >
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 15 15"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                    >
-                      <path
-                        d="M5 2V1H10V2H5ZM4.75 0C4.33579 0 4 0.335786 4 0.75V1H3.5C2.67157 1 2 1.67157 2 2.5V12.5C2 13.3284 2.67157 14 3.5 14H11.5C12.3284 14 13 13.3284 13 12.5V2.5C13 1.67157 12.3284 1 11.5 1H11V0.75C11 0.335786 10.6642 0 10.25 0H4.75ZM11 2V2.25C11 2.66421 10.6642 3 10.25 3H4.75C4.33579 3 4 2.66421 4 2.25V2H3.5C3.22386 2 3 2.22386 3 2.5V12.5C3 12.7761 3.22386 13 3.5 13H11.5C11.7761 13 12 12.7761 12 12.5V2.5C12 2.22386 11.7761 2 11.5 2H11Z"
-                        fill="currentColor"
-                        fillRule="evenodd"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </Button>
+              <p className="text-sm text-muted-foreground mb-2">
+                Install Sapience for Claude Desktop
+              </p>
+              <div className="flex items-stretch max-w-md">
+                <div className="bg-black text-white px-4 font-mono text-sm flex items-center rounded-l-md flex-grow">
+                  <span>npx @foil/agent install</span>
                 </div>
+                <Button
+                  variant="outline"
+                  size="default"
+                  className="rounded-l-none border-l-0 px-3"
+                  onClick={() => {
+                    navigator.clipboard.writeText('npx @foil/agent install');
+                  }}
+                >
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 15 15"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                  >
+                    <path
+                      d="M5 2V1H10V2H5ZM4.75 0C4.33579 0 4 0.335786 4 0.75V1H3.5C2.67157 1 2 1.67157 2 2.5V12.5C2 13.3284 2.67157 14 3.5 14H11.5C12.3284 14 13 13.3284 13 12.5V2.5C13 1.67157 12.3284 1 11.5 1H11V0.75C11 0.335786 10.6642 0 10.25 0H4.75ZM11 2V2.25C11 2.66421 10.6642 3 10.25 3H4.75C4.33579 3 4 2.66421 4 2.25V2H3.5C3.22386 2 3 2.22386 3 2.5V12.5C3 12.7761 3.22386 13 3.5 13H11.5C11.7761 13 12 12.7761 12 12.5V2.5C12 2.22386 11.7761 2 11.5 2H11Z"
+                      fill="currentColor"
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </Button>
               </div>
             </div>
           </div>
@@ -228,9 +219,9 @@ const TemplateSection = () => {
                 <div>
                   <h4 className="font-medium">Open Source Template</h4>
                   <p className="text-muted-foreground">
-                    Clone our TypeScript or Python templates to get started with
-                    a fully functional research agent that can execute trades on
-                    your behalf.
+                    Clone our TypeScript templates to get started with a fully
+                    functional research agent that can execute trades on your
+                    behalf.
                   </p>
                 </div>
               </div>
