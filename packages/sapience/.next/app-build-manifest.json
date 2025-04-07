@@ -5,10 +5,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/global-error.js"
     ],
-    "/page": [
+    "/futarchy/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/futarchy/page.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -31,20 +31,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/_not-found/page.js"
     ],
-    "/bots/page": [
+    "/predictions/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/bots/page.js"
+      "static/chunks/app/predictions/page.js"
     ],
     "/leaderboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/leaderboard/page.js"
     ],
-    "/predictions/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/predictions/page.js"
+      "static/chunks/app/page.js"
+    ],
+    "/predictions/[chainId]/[marketAddress]/[epochId]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/predictions/[chainId]/[marketAddress]/[epochId]/page.js"
     ]
   }
 }

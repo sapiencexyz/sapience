@@ -1,4 +1,3 @@
-import { badgeVariants } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Table,
@@ -21,8 +20,7 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Loader2, Copy } from 'lucide-react';
-import Link from 'next/link';
+import { Copy, Loader2 } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { getEnsName } from 'viem/ens';
 import { usePublicClient } from 'wagmi';
@@ -30,69 +28,114 @@ import { usePublicClient } from 'wagmi';
 import { foilApi } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
-import PositionDisplay from './PositionDisplay';
 
 interface Props {
   params: {
-    id: string;
+    id: string; // Market address
     epoch: string;
   };
 }
 
-interface Position {
-  positionId: string;
-  chain?: {
-    id: string;
-  };
-  address: string;
-  epoch: {
-    market?: {
-      chainId?: string;
-      address?: string;
-      isYin?: boolean;
-    };
-  };
-  isLP: boolean;
+// Interface based on raw GraphQL query response (BigInts as strings)
+interface EpochLeaderboardEntry {
+  epochId: string;
   owner: string;
+  totalDeposits: string; // These are likely strings representing BigInts
+  totalWithdrawals: string; // These are likely strings representing BigInts
+  openPositionsPnL: string; // These are likely strings representing BigInts
+  totalPnL: string; // These are likely strings representing BigInts
+  positions: string[]; // Array of position IDs
 }
 
-interface GroupedPosition {
-  owner: string;
-  positions: Position[];
+// Interface for data after processing (totalPnL as number)
+interface ProcessedEpochLeaderboardEntry
+  extends Omit<EpochLeaderboardEntry, 'totalPnL'> {
   totalPnL: number;
-  totalCollateralFlow: number;
-  ownerMaxCollateral: number;
 }
+
+const GET_EPOCH_LEADERBOARD = `
+  query GetEpochLeaderboard($chainId: Int!, $address: String!, $epochId: String!) {
+    getEpochLeaderboard(chainId: $chainId, address: $address, epochId: $epochId) {
+      epochId
+      owner
+      totalDeposits
+      totalWithdrawals
+      openPositionsPnL
+      totalPnL
+      positions
+    }
+  }
+`;
 
 const useLeaderboard = (marketId: string, epochId: string) => {
-  return useQuery({
+  return useQuery<ProcessedEpochLeaderboardEntry[]>({
     queryKey: ['epochLeaderboard', marketId, epochId],
     queryFn: async () => {
-      // Get leaderboard and positions
-      const leaderboard = await foilApi.get(
-        `/leaderboard?contractId=${marketId}`
+      // Hardcoded values for testing - replace with dynamic values later
+      const chainId = 8453; // Base
+      const address = marketId; // Assuming params.id is the market address
+      const epoch = epochId; // Assuming params.epoch is the epoch ID
+
+      console.log(
+        `Fetching leaderboard for chainId: ${chainId}, address: ${address}, epochId: ${epoch}`
       );
-      return [...leaderboard];
+
+      // Get leaderboard using GraphQL
+      try {
+        const graphqlEndpoint =
+          process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || '/graphql';
+        const response = await foilApi.post(graphqlEndpoint, {
+          query: GET_EPOCH_LEADERBOARD,
+          variables: {
+            chainId,
+            address,
+            epochId: epoch,
+          },
+        });
+        console.log('GraphQL Response:', response);
+
+        if (response.errors) {
+          console.error('GraphQL Errors:', response.errors);
+          throw new Error(
+            `GraphQL error: ${response.errors.map((e: any) => e.message).join(', ')}`
+          );
+        }
+
+        // Ensure leaderboardData is treated as the raw type initially
+        const leaderboardData: EpochLeaderboardEntry[] =
+          response.data?.getEpochLeaderboard;
+        if (!leaderboardData) {
+          console.error(
+            'No leaderboard data found in response:',
+            response.data
+          );
+          return [];
+        }
+
+        // Convert BigInt strings to numbers for sorting/display
+        const processedData: ProcessedEpochLeaderboardEntry[] =
+          leaderboardData.map((entry) => ({
+            ...entry,
+            totalPnL: Number(entry.totalPnL), // Convert totalPnL to number
+          }));
+
+        // Sort by total PnL descending
+        return processedData.sort(
+          (
+            a: ProcessedEpochLeaderboardEntry,
+            b: ProcessedEpochLeaderboardEntry
+          ) => b.totalPnL - a.totalPnL
+        );
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        return [];
+      }
     },
+    // Keep data fresh but avoid excessive refetching
+    staleTime: 60 * 1000, // 1 minute
+    refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
 };
-
-const PositionCell = ({ row }: { row: { original: GroupedPosition } }) => (
-  <div className="flex flex-wrap gap-1.5">
-    {row.original.positions.map((position) => (
-      <Link
-        key={position.positionId}
-        href={`/positions/${position?.epoch?.market?.chainId}:${position.epoch?.market?.address}/${position.positionId}`}
-        className={`${badgeVariants({ variant: 'outline' })} hover:bg-muted transition-background`}
-      >
-        <PositionDisplay
-          positionId={position.positionId?.toString()}
-          marketType={position.epoch?.market?.isYin ? 'yin' : 'yang'}
-        />
-      </Link>
-    ))}
-  </div>
-);
 
 const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
   const value = cell.getValue() as number;
@@ -171,24 +214,14 @@ const RankCell = ({ row }: { row: { index: number } }) => (
   </span>
 );
 
-const RoiCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
-  const value = cell.getValue() as number;
-  const prefix = value > 0 ? '+' : '';
-  return (
-    <span className="md:text-xl whitespace-nowrap">
-      {prefix}
-      <NumberDisplay value={value} /> %
-    </span>
-  );
-};
-
 const Leaderboard = ({ params }: Props) => {
-  const { data: leaderboardPositions, isLoading } = useLeaderboard(
+  const { data: leaderboardData, isLoading } = useLeaderboard(
     params.id,
     params.epoch
   );
 
-  const columns = useMemo<ColumnDef<GroupedPosition>[]>(
+  // Simplified columns for the basic table
+  const columns = useMemo<ColumnDef<ProcessedEpochLeaderboardEntry>[]>(
     () => [
       {
         id: 'rank',
@@ -202,59 +235,19 @@ const Leaderboard = ({ params }: Props) => {
         cell: OwnerCell,
       },
       {
-        id: 'roi',
-        header: 'ROI',
-        accessorFn: (row) => row.totalPnL / row.ownerMaxCollateral,
-        cell: RoiCell,
-      },
-      {
         id: 'pnl',
         header: 'Profit/Loss',
-        accessorKey: 'totalPnL',
+        accessorKey: 'totalPnL', // Access the processed numeric totalPnL
         cell: PnLCell,
       },
-      {
-        id: 'positions',
-        header: 'Positions',
-        cell: PositionCell,
-      },
+      // Removed ROI and Positions columns for simplicity
     ],
     []
   );
 
-  const groupedPositions = useMemo(() => {
-    if (!leaderboardPositions) return [] as GroupedPosition[];
-    console.log('leaderboardPositions', leaderboardPositions);
-
-    // Group leaderboardPositions by owner
-    const groupedByOwner = leaderboardPositions.reduce<
-      Record<string, GroupedPosition>
-    >((acc, position) => {
-      if (!acc[position.owner]) {
-        acc[position.owner] = {
-          owner: position.owner,
-          positions: [],
-          totalPnL: 0,
-          totalCollateralFlow: 0,
-          ownerMaxCollateral: 0,
-        };
-      }
-      acc[position.owner].positions = position.positions;
-      acc[position.owner].totalPnL = position.totalPnL;
-      acc[position.owner].totalCollateralFlow = position.totalCollateralFlow;
-      acc[position.owner].ownerMaxCollateral = position.ownerMaxCollateral;
-      return acc;
-    }, {});
-
-    // Convert to array and sort by total PnL
-    return Object.values(groupedByOwner).sort(
-      (a, b) =>
-        b.totalPnL / b.ownerMaxCollateral - a.totalPnL / a.ownerMaxCollateral
-    );
-  }, [leaderboardPositions]);
-
-  const table = useReactTable<GroupedPosition>({
-    data: groupedPositions,
+  // No need for groupedPositions anymore, use leaderboardData directly
+  const table = useReactTable<ProcessedEpochLeaderboardEntry>({
+    data: leaderboardData ?? [], // Use fetched data or empty array
     columns,
     getCoreRowModel: getCoreRowModel(),
   });

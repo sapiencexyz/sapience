@@ -399,6 +399,18 @@
       "static/chunks/_app-pages-browser_node_modules_pnpm_walletconnect_modal-ui_2_6_2__types_react_18_3_12_react_-af4edc.js"
     ]
   },
+  "../../../node_modules/.pnpm/viem@2.23.15_bufferutil@4.0.8_typescript@5.7.2_utf-8-validate@5.0.10_zod@3.23.8/node_modules/viem/_esm/actions/public/call.js -> ../../utils/ccip.js": {
+    "id": "../../../node_modules/.pnpm/viem@2.23.15_bufferutil@4.0.8_typescript@5.7.2_utf-8-validate@5.0.10_zod@3.23.8/node_modules/viem/_esm/actions/public/call.js -> ../../utils/ccip.js",
+    "files": []
+  },
+  "../../../node_modules/.pnpm/viem@2.23.15_bufferutil@4.0.8_typescript@5.7.2_utf-8-validate@5.0.10_zod@3.23.8/node_modules/viem/_esm/utils/rpc/webSocket.js -> isows": {
+    "id": "../../../node_modules/.pnpm/viem@2.23.15_bufferutil@4.0.8_typescript@5.7.2_utf-8-validate@5.0.10_zod@3.23.8/node_modules/viem/_esm/utils/rpc/webSocket.js -> isows",
+    "files": []
+  },
+  "../../../node_modules/.pnpm/viem@2.23.15_bufferutil@4.0.8_typescript@5.7.2_utf-8-validate@5.0.10_zod@3.23.8/node_modules/viem/_esm/utils/signature/recoverPublicKey.js -> @noble/curves/secp256k1": {
+    "id": "../../../node_modules/.pnpm/viem@2.23.15_bufferutil@4.0.8_typescript@5.7.2_utf-8-validate@5.0.10_zod@3.23.8/node_modules/viem/_esm/utils/signature/recoverPublicKey.js -> @noble/curves/secp256k1",
+    "files": []
+  },
   "../../../node_modules/.pnpm/viem@2.23.5_bufferutil@4.0.8_typescript@5.7.2_utf-8-validate@5.0.10_zod@3.23.8/node_modules/viem/_esm/actions/public/call.js -> ../../utils/ccip.js": {
     "id": "../../../node_modules/.pnpm/viem@2.23.5_bufferutil@4.0.8_typescript@5.7.2_utf-8-validate@5.0.10_zod@3.23.8/node_modules/viem/_esm/actions/public/call.js -> ../../utils/ccip.js",
     "files": [

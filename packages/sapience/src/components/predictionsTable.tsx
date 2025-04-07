@@ -1,15 +1,6 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
 import { Card } from '@foil/ui/components/ui/card';
-import { Dialog, DialogContent } from '@foil/ui/components/ui/dialog';
-import { Input } from '@foil/ui/components/ui/input';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
 import { format, formatDistance, formatDistanceToNow } from 'date-fns';
 import {
   FrownIcon,
@@ -18,125 +9,12 @@ import {
   ScaleIcon,
   BarChart2Icon,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
 import { DEFAULT_FOCUS_AREA, FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useResources } from '~/lib/hooks/useResources';
-
-// Buy Position Dialog Component
-interface BuyPositionDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  position: 'yes' | 'no' | null;
-  question: string;
-  marketName: string;
-  color: string;
-}
-
-const BuyPositionDialog = ({
-  open,
-  onOpenChange,
-  position,
-  question,
-  marketName,
-  color,
-}: BuyPositionDialogProps) => {
-  const [predictionValue, setPredictionValue] = React.useState('');
-  const [amountValue, setAmountValue] = React.useState('');
-
-  // Extract the unit from the question (e.g., "gwei", "°C", "$", etc.)
-  const getUnit = () => {
-    if (marketName.toLowerCase().includes('gas')) {
-      return 'gwei';
-    }
-    if (marketName.toLowerCase().includes('temperature')) {
-      return '°C';
-    }
-    if (
-      marketName.toLowerCase().includes('price') ||
-      marketName.toLowerCase().includes('cost')
-    ) {
-      return '$';
-    }
-    return 'units';
-  };
-
-  const unit = getUnit();
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[350px]">
-        <div className="mb-2">
-          <p className="font-medium">{question}</p>
-        </div>
-
-        <div>
-          <div className="mb-4">
-            <p className="mb-2 text-sm font-medium">
-              I think it will be {position === 'yes' ? 'at least' : 'at most'}
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                value={predictionValue}
-                onChange={(e) => setPredictionValue(e.target.value)}
-                placeholder="Enter value"
-                className="w-full"
-              />
-              <span className="text-sm">{unit}</span>
-            </div>
-          </div>
-
-          <div className="mb-2">
-            <p className="mb-2 text-sm font-medium flex items-center">
-              Amount of sUSDe
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-blue-100 text-blue-600 w-4 h-4 text-xs cursor-help">
-                      ?
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-[200px]">
-                    <p>
-                      sUSDe is a stablecoin used for prediction markets.
-                      It&apos;s pegged to the US dollar and used to buy
-                      positions.
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                value={amountValue}
-                onChange={(e) => setAmountValue(e.target.value)}
-                placeholder="Enter amount"
-                className="w-full"
-              />
-              <span className="text-sm">sUSDe</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-2">
-          <Button
-            className="w-full text-lg font-medium"
-            style={{ backgroundColor: color, borderColor: color }}
-            onClick={() => {
-              // Handle position purchase
-              onOpenChange(false);
-            }}
-          >
-            Create Prediction
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
 
 // New PredictionPreview component
 interface PredictionPreviewProps {
@@ -144,6 +22,9 @@ interface PredictionPreviewProps {
   endTimestamp: number;
   settled: boolean;
   color: string;
+  chainId: number;
+  marketAddress: string;
+  epochId: string;
 }
 
 const PredictionPreview = ({
@@ -151,11 +32,10 @@ const PredictionPreview = ({
   endTimestamp,
   settled,
   color,
+  chainId,
+  marketAddress,
+  epochId,
 }: PredictionPreviewProps) => {
-  // Dialog state
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [position, setPosition] = React.useState<'yes' | 'no' | null>(null);
-
   // Format dates for display
   const endDate = new Date(endTimestamp * 1000);
   const monthNames = [
@@ -203,220 +83,185 @@ const PredictionPreview = ({
   const question = `Will the average cost of ${marketName} in ${month} ${year} exceed ${threshold}?`;
 
   return (
-    <Card
-      className="overflow-hidden border-t-[6px]"
-      style={{ borderTopColor: color }}
-    >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-b border-gray-100 bg-gray-50/30">
-        {/* Left side - Probability gauge (1/3 width) */}
-        <div className="p-6 pb-0 flex flex-col items-center justify-center">
-          {/* Gauge container with relative positioning */}
-          <div className="relative w-full flex flex-col items-center">
-            {/* Half circle gauge - wider */}
-            <div className="w-full max-w-[200px]">
-              <svg
-                width="100%"
-                viewBox="0 0 100 55"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                {/* Background half circle */}
-                <path
-                  d="M 5 50 A 45 45 0 0 1 95 50"
-                  fill="none"
-                  stroke="#f0f0f0"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                />
-                {/* Colored progress half circle */}
-                <path
-                  d="M 5 50 A 45 45 0 0 1 95 50"
-                  fill="none"
-                  stroke={color}
-                  strokeWidth="4"
-                  strokeDasharray={`${yesProb * 1.41} 141`}
-                  strokeDashoffset="0"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-
-            {/* Percentage - positioned to overlap the bottom of the arc */}
-            <div className="absolute top-[28px] left-0 right-0 flex flex-col items-center">
-              <span
-                style={{
-                  fontSize: '36px',
-                  fontWeight: '500',
-                  letterSpacing: '-0.5px',
-                  borderRadius: '999px',
-                  padding: '0 8px',
-                }}
-              >
-                {yesProb}%
-              </span>
-              <span className="text-gray-500 text-sm mt-0">Chance</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right side - Price chart (2/3 width) */}
-        <div className="p-6 pb-0 flex flex-col md:col-span-2">
-          <div className="h-32 w-full relative">
-            {/* Simplified chart representation */}
-            <div className="absolute inset-0 flex items-end">
-              <div className="w-full h-full relative overflow-hidden">
+    <Link href={`/predictions/${chainId}/${marketAddress}/${epochId}`}>
+      <Card
+        className="overflow-hidden border-t-[6px] hover:shadow-md transition-shadow duration-200 cursor-pointer"
+        style={{ borderTopColor: color }}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-b border-gray-100 bg-gray-50/30">
+          {/* Left side - Probability gauge (1/3 width) */}
+          <div className="p-6 pb-0 flex flex-col items-center justify-center">
+            {/* Gauge container with relative positioning */}
+            <div className="relative w-full flex flex-col items-center">
+              {/* Half circle gauge - wider */}
+              <div className="w-full max-w-[200px]">
                 <svg
-                  viewBox="0 0 100 40"
-                  className="w-full h-full"
-                  preserveAspectRatio="none"
+                  width="100%"
+                  viewBox="0 0 100 55"
+                  preserveAspectRatio="xMidYMid meet"
                 >
-                  {/* Define gradient */}
-                  <defs>
-                    <linearGradient
-                      id="chartGradient"
-                      x1="0%"
-                      y1="0%"
-                      x2="0%"
-                      y2="100%"
-                    >
-                      <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-                      <stop
-                        offset="100%"
-                        stopColor={color}
-                        stopOpacity="0.05"
-                      />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Area fill with gradient */}
+                  {/* Background half circle */}
                   <path
-                    d="M0,35 C10,32 20,25 30,28 C40,31 50,20 60,15 C70,10 80,5 90,8 L100,5 L100,40 L0,40 Z"
-                    fill="url(#chartGradient)"
+                    d="M 5 50 A 45 45 0 0 1 95 50"
+                    fill="none"
+                    stroke="#f0f0f0"
+                    strokeWidth="4"
+                    strokeLinecap="round"
                   />
-
-                  {/* Line with smaller stroke */}
+                  {/* Colored progress half circle */}
                   <path
-                    d="M0,35 C10,32 20,25 30,28 C40,31 50,20 60,15 C70,10 80,5 90,8 L100,5"
+                    d="M 5 50 A 45 45 0 0 1 95 50"
                     fill="none"
                     stroke={color}
-                    strokeWidth="1"
+                    strokeWidth="4"
+                    strokeDasharray={`${yesProb * 1.41} 141`}
+                    strokeDashoffset="0"
+                    strokeLinecap="round"
                   />
                 </svg>
               </div>
+
+              {/* Percentage - positioned to overlap the bottom of the arc */}
+              <div className="absolute top-[28px] left-0 right-0 flex flex-col items-center">
+                <span
+                  style={{
+                    fontSize: '36px',
+                    fontWeight: '500',
+                    letterSpacing: '-0.5px',
+                    borderRadius: '999px',
+                    padding: '0 8px',
+                  }}
+                >
+                  {yesProb}%
+                </span>
+                <span className="text-gray-500 text-sm mt-0">Chance</span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-auto">
-            {/* Removed market badge and liquidity badge */}
+          {/* Right side - Price chart (2/3 width) */}
+          <div className="p-6 pb-0 flex flex-col md:col-span-2">
+            <div className="h-32 w-full relative">
+              {/* Simplified chart representation */}
+              <div className="absolute inset-0 flex items-end">
+                <div className="w-full h-full relative overflow-hidden">
+                  <svg
+                    viewBox="0 0 100 40"
+                    className="w-full h-full"
+                    preserveAspectRatio="none"
+                  >
+                    {/* Define gradient */}
+                    <defs>
+                      <linearGradient
+                        id="chartGradient"
+                        x1="0%"
+                        y1="0%"
+                        x2="0%"
+                        y2="100%"
+                      >
+                        <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+                        <stop
+                          offset="100%"
+                          stopColor={color}
+                          stopOpacity="0.05"
+                        />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Area fill with gradient */}
+                    <path
+                      d="M0,35 C10,32 20,25 30,28 C40,31 50,20 60,15 C70,10 80,5 90,8 L100,5 L100,40 L0,40 Z"
+                      fill="url(#chartGradient)"
+                    />
+
+                    {/* Line with smaller stroke */}
+                    <path
+                      d="M0,35 C10,32 20,25 30,28 C40,31 50,20 60,15 C70,10 80,5 90,8 L100,5"
+                      fill="none"
+                      stroke={color}
+                      strokeWidth="1"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Question and buttons */}
-      <div className="px-6 py-6 rounded-md">
-        <h3 className="text-2xl md:text-3xl font-medium mb-6 text-left leading-tight">
-          {question}
-        </h3>
-        <div className="grid grid-cols-2 gap-4">
-          <Button
-            variant="outline"
-            className="w-full text-lg font-medium"
-            style={{ borderColor: color, color }}
-            onClick={() => {
-              setPosition('yes');
-              setDialogOpen(true);
-            }}
-          >
-            Predict Yes
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full text-lg font-medium"
-            style={{ borderColor: color, color }}
-            onClick={() => {
-              setPosition('no');
-              setDialogOpen(true);
-            }}
-          >
-            Predict No
-          </Button>
+        {/* Question and buttons */}
+        <div className="px-6 py-6 rounded-md">
+          <h3 className="text-2xl md:text-3xl font-medium text-left leading-tight">
+            {question}
+          </h3>
         </div>
-      </div>
 
-      {/* Footer with detailed information */}
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-lg">
-        <div className="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-4 text-sm">
-          <div className="flex items-center text-gray-500">
-            {!settled && (
-              <div className="flex items-center">
-                <ClockIcon className="h-4 w-4 mr-1" />
+        {/* Footer with detailed information */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-lg">
+          <div className="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-4 text-sm">
+            <div className="flex items-center text-gray-500">
+              {!settled && (
+                <div className="flex items-center">
+                  <ClockIcon className="h-4 w-4 mr-1" />
+                  <span>
+                    Closes in{' '}
+                    {formatDistanceToNow(new Date(endTimestamp * 1000))}
+                  </span>
+                </div>
+              )}
+              {settled && (
+                <div className="flex items-center">
+                  <CheckCircleIcon className="h-4 w-4 mr-1" />
+                  <span>
+                    Closed{' '}
+                    {formatDistance(new Date(endTimestamp * 1000), new Date(), {
+                      addSuffix: true,
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center text-gray-500">
+              <ScaleIcon className="h-4 w-4 mr-1" />
+              <span>Liquidity: 1.2M wstETH</span>
+            </div>
+
+            <div className="flex items-center text-gray-500">
+              <BarChart2Icon className="h-4 w-4 mr-1" />
+              <span>Volume: 450K wstETH</span>
+            </div>
+
+            <div className="flex items-center text-gray-500">
+              <span className="flex items-center">
+                {/* Farcaster icon */}
+                <svg
+                  className="h-4 w-4 mr-1"
+                  viewBox="0 0 1000 1000"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M257.778 155.556H742.222V844.445H671.111V528.889H670.414C662.554 441.677 589.258 373.333 500 373.333C410.742 373.333 337.446 441.677 329.586 528.889H328.889V844.445H257.778V155.556Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M128.889 253.333L157.778 351.111H182.222V746.667C169.949 746.667 160 756.616 160 768.889V795.556H155.556C143.283 795.556 133.333 805.505 133.333 817.778V844.445H382.222V817.778C382.222 805.505 372.273 795.556 360 795.556H355.556V768.889C355.556 756.616 345.606 746.667 333.333 746.667H306.667V253.333H128.889Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M675.556 746.667C663.283 746.667 653.333 756.616 653.333 768.889V795.556H648.889C636.616 795.556 626.667 805.505 626.667 817.778V844.445H875.556V817.778C875.556 805.505 865.606 795.556 853.333 795.556H848.889V768.889C848.889 756.616 838.94 746.667 826.667 746.667V351.111H851.111L880 253.333H702.222V746.667H675.556Z"
+                    fill="currentColor"
+                  />
+                </svg>
                 <span>
-                  Closes in {formatDistanceToNow(new Date(endTimestamp * 1000))}
+                  Channel: {marketName.toLowerCase().replace(/\s+/g, '-')}
                 </span>
-              </div>
-            )}
-            {settled && (
-              <div className="flex items-center">
-                <CheckCircleIcon className="h-4 w-4 mr-1" />
-                <span>
-                  Closed{' '}
-                  {formatDistance(new Date(endTimestamp * 1000), new Date(), {
-                    addSuffix: true,
-                  })}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center text-gray-500">
-            <ScaleIcon className="h-4 w-4 mr-1" />
-            <span>Liquidity: 1.2M wstETH</span>
-          </div>
-
-          <div className="flex items-center text-gray-500">
-            <BarChart2Icon className="h-4 w-4 mr-1" />
-            <span>Volume: 450K wstETH</span>
-          </div>
-
-          <div className="flex items-center text-gray-500">
-            <span className="flex items-center">
-              {/* Farcaster icon */}
-              <svg
-                className="h-4 w-4 mr-1"
-                viewBox="0 0 1000 1000"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M257.778 155.556H742.222V844.445H671.111V528.889H670.414C662.554 441.677 589.258 373.333 500 373.333C410.742 373.333 337.446 441.677 329.586 528.889H328.889V844.445H257.778V155.556Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M128.889 253.333L157.778 351.111H182.222V746.667C169.949 746.667 160 756.616 160 768.889V795.556H155.556C143.283 795.556 133.333 805.505 133.333 817.778V844.445H382.222V817.778C382.222 805.505 372.273 795.556 360 795.556H355.556V768.889C355.556 756.616 345.606 746.667 333.333 746.667H306.667V253.333H128.889Z"
-                  fill="currentColor"
-                />
-                <path
-                  d="M675.556 746.667C663.283 746.667 653.333 756.616 653.333 768.889V795.556H648.889C636.616 795.556 626.667 805.505 626.667 817.778V844.445H875.556V817.778C875.556 805.505 865.606 795.556 853.333 795.556H848.889V768.889C848.889 756.616 838.94 746.667 826.667 746.667V351.111H851.111L880 253.333H702.222V746.667H675.556Z"
-                  fill="currentColor"
-                />
-              </svg>
-              <span>
-                Channel: {marketName.toLowerCase().replace(/\s+/g, '-')}
               </span>
-            </span>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Buy Position Dialog */}
-      <BuyPositionDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        position={position}
-        question={question}
-        marketName={marketName}
-        color={color}
-      />
-    </Card>
+      </Card>
+    </Link>
   );
 };
 
@@ -524,7 +369,7 @@ const PredictionsTable = () => {
             No predictions available
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-12 flex flex-col">
             {data.map((item) => {
               // Find the focus area color for this item
               const focusArea =
@@ -543,6 +388,9 @@ const PredictionsTable = () => {
                   endTimestamp={item.endTimestamp}
                   settled={item.settled}
                   color={color}
+                  chainId={item.chainId}
+                  marketAddress={item.marketAddress}
+                  epochId={String(item.epochId)}
                 />
               );
             })}
@@ -551,7 +399,7 @@ const PredictionsTable = () => {
       </div>
 
       {/* Right Sidebar - Navigation */}
-      <div className="border-l p-6 sticky top-0 self-start mt-32">
+      <div className="p-5 sticky top-0 self-start mt-10">
         <div className="pb-2">
           <h3 className="font-medium text-sm mb-3">Focus Areas</h3>
           <div className="space-y-1">
