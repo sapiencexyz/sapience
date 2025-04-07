@@ -15,31 +15,35 @@ import {
 // Hero section for the bots page - smaller than homepage hero but still exciting
 const BotsHero = () => {
   return (
-    <div className="relative min-h-[50vh] overflow-hidden flex items-center justify-center w-full border-b border-gray-500/20">
-      {/* Spline embed background - made larger than viewport */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{ opacity: 0.4, transformOrigin: 'center center' }}
-      >
-        <iframe
-          title="art"
-          src="https://my.spline.design/particlescopy-3815e097877aa631d0301821f63f852c/"
-          width="100%"
-          height="100%"
-        />
-      </div>
+    <div className="relative overflow-hidden flex items-center justify-center w-full">
+      {/* Outer container with padding and iframe background */}
+      <div className="relative z-10 w-full max-w-4xl px-4 sm:px-6 pt-24 pb-12">
+        <div className="relative overflow-hidden rounded-xl shadow-sm shadow-inner p-14 border border-gray-500/20">
+          {/* Iframe as background within the outer box */}
+          <div
+            className="absolute inset-0 z-0 overflow-hidden rounded-xl"
+            style={{ opacity: 0.4, transformOrigin: 'center center' }}
+          >
+            <iframe
+              title="art"
+              src="https://my.spline.design/particlescopy-3815e097877aa631d0301821f63f852c/"
+              width="100%"
+              height="100%"
+              className="rounded-xl"
+            />
+          </div>
 
-      {/* Content card */}
-      <div className="z-10 w-full max-w-4xl px-4 sm:px-6">
-        <div className="w-full text-center px-6 sm:px-8 py-10 sm:py-12 bg-background/[0.25] backdrop-blur-[3px] border border-gray-500/20 rounded-xl shadow-sm">
-          <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
-            Build AI-Powered Bots
-          </h1>
+          {/* Inner Content card overlaid on top */}
+          <div className="relative z-10 w-full text-center px-6 py-10 bg-background/[0.25] backdrop-blur-[3px] border border-gray-500/20 rounded-xl shadow-sm">
+            <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
+              Build AI-Powered Bots
+            </h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Create software leveraging large language models that can conduct
-            research and trade prediction markets with superhuman ability
-          </p>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+              Create software leveraging large language models that can conduct
+              research and trade prediction markets with superhuman ability
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -49,7 +53,7 @@ const BotsHero = () => {
 // MCP Section with more details
 const MCPSection = () => {
   return (
-    <section className="py-16 px-4 sm:px-6 bg-muted/30 w-full">
+    <section className="py-16 px-4 sm:px-6 w-full">
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Left column with text content */}
@@ -59,9 +63,9 @@ const MCPSection = () => {
             </h2>
 
             <p className="text-lg text-muted-foreground">
-              Connect Claude Desktop with Foil’s prediction markets through
-              Model Context Protocol (MCP), enabling your AI assistant to
-              analyze market conditions and execute trades directly from your
+              Connect Claude Desktop with Sapience&apos;s prediction markets
+              through Model Context Protocol (MCP), enabling your AI assistant
+              to analyze market conditions and execute trades directly from your
               desktop.
             </p>
 

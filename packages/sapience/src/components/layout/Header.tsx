@@ -35,8 +35,8 @@ interface NavLinksProps {
 const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
   const pathname = usePathname();
   const linkClass = isMobile
-    ? 'text-xl font-medium w-full justify-start'
-    : 'text-base font-medium w-full justify-start';
+    ? 'text-xl font-medium justify-start rounded-full'
+    : 'text-base font-medium justify-start rounded-full';
   const activeClass = 'bg-secondary';
 
   const handleLinkClick = () => {
@@ -46,7 +46,7 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
   };
 
   return (
-    <nav className="flex flex-col gap-2 w-full my-48 ml-4">
+    <nav className="flex flex-col gap-3 w-full my-48 ml-4">
       <Link href="/predictions" passHref>
         <Button
           variant="ghost"
