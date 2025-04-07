@@ -1,11 +1,11 @@
+import { Button } from '@foil/ui/components/ui/button';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
 import { zeroAddress } from 'viem';
 import { useAccount, useReadContract, useWriteContract } from 'wagmi';
 
-import { Button } from '@/components/ui/button';
-import { useToast } from '~/hooks/use-toast';
 import erc20ABI from '~/lib/erc20abi.json';
 
 import AddressCell from './AddressCell';

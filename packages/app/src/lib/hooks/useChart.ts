@@ -1,4 +1,5 @@
 import { gql } from '@apollo/client';
+import { timeToLocal } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import type {
@@ -24,7 +25,6 @@ import { convertGgasPerWstEthToGwei, foilApi } from '../utils/util';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
-import { timeToLocal } from '~/lib/utils';
 
 import { useLatestIndexPrice } from './useResources';
 

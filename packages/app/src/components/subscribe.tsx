@@ -2,6 +2,27 @@
 
 /* eslint-disable sonarjs/cognitive-complexity */
 
+import {
+  Alert,
+  AlertTitle,
+  AlertDescription,
+} from '@foil/ui/components/ui/alert';
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+} from '@foil/ui/components/ui/form';
+import { Input } from '@foil/ui/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -28,23 +49,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../lib/erc20abi.json';
-import { Alert, AlertTitle, AlertDescription } from '~/components/ui/alert';
-import { Button } from '~/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from '~/components/ui/form';
-import { Input } from '~/components/ui/input';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { mainnetClient, foilApi } from '~/lib/utils/util';

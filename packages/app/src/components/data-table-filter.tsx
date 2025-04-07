@@ -1,5 +1,31 @@
 'use client';
 
+import { Button } from '@foil/ui/components/ui/button';
+import { Calendar } from '@foil/ui/components/ui/calendar';
+import { Checkbox } from '@foil/ui/components/ui/checkbox';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@foil/ui/components/ui/command';
+import { Input } from '@foil/ui/components/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@foil/ui/components/ui/popover';
+import { Separator } from '@foil/ui/components/ui/separator';
+import Slider from '@foil/ui/components/ui/slider';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@foil/ui/components/ui/tabs';
+import { cn } from '@foil/ui/lib/utils';
 import type { Column, ColumnMeta, RowData, Table } from '@tanstack/react-table';
 import { format, isEqual } from 'date-fns';
 import { FilterXIcon, ArrowRight, Filter, X, Ellipsis } from 'lucide-react';
@@ -17,28 +43,7 @@ import type {
   ReactElement,
   ElementType as ReactElementType,
 } from 'react';
-import type { DateRange } from 'react-day-picker';
 
-import { Button } from '~/components/ui/button';
-import { Calendar } from '~/components/ui/calendar';
-import { Checkbox } from '~/components/ui/checkbox';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '~/components/ui/command';
-import { Input } from '~/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/ui/popover';
-import { Separator } from '~/components/ui/separator';
-import Slider from '~/components/ui/slider';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
 import { useIsMobile } from '~/hooks/use-mobile';
 import { take, uniq } from '~/lib/array';
 import type {
@@ -61,7 +66,11 @@ import {
   optionFilterDetails,
   textFilterDetails,
 } from '~/lib/filters';
-import { cn } from '~/lib/utils';
+
+type DateRange = {
+  from: Date | undefined; // from is required but can be undefined
+  to?: Date;
+};
 
 // Constants for commonly used values
 const SIZE_4_CLASS = 'size-4';

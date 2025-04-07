@@ -1,3 +1,4 @@
+import { useToast } from '@foil/ui/hooks/use-toast';
 import type {
   QueryObserverResult,
   RefetchOptions,
@@ -6,7 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 
-import { useToast } from '../../hooks/use-toast';
 import { gweiToEther, mainnetClient, foilApi } from '../utils/util';
 
 export interface Market {

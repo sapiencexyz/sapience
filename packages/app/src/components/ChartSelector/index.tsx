@@ -1,15 +1,15 @@
-import { ChevronUp, ChevronDown, Check } from 'lucide-react';
-import { useContext, useState } from 'react';
-import type React from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-
-import { Button } from '~/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '~/components/ui/dropdown-menu';
+} from '@foil/ui/components/ui/dropdown-menu';
+import { ChevronUp, ChevronDown, Check } from 'lucide-react';
+import { useContext, useState } from 'react';
+import type React from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { ChartType } from '~/lib/interfaces/interfaces';
 

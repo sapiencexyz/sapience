@@ -1,15 +1,15 @@
 /* eslint-disable sonarjs/no-duplicate-string */
-import { formatDistanceToNow } from 'date-fns';
-import { BookTextIcon, InfoIcon } from 'lucide-react';
-import { useContext } from 'react';
-import { formatUnits } from 'viem';
-
 import {
   TooltipProvider,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '~/components/ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import { formatDistanceToNow } from 'date-fns';
+import { BookTextIcon, InfoIcon } from 'lucide-react';
+import { useContext } from 'react';
+import { formatUnits } from 'viem';
+
 import type { Market } from '~/lib/context/FoilProvider';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';

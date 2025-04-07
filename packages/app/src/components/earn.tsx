@@ -1,5 +1,30 @@
 'use client';
 
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@foil/ui/components/ui/form';
+import { Input } from '@foil/ui/components/ui/input';
+import { Label } from '@foil/ui/components/ui/label';
+import { Separator } from '@foil/ui/components/ui/separator';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@foil/ui/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import Decimal from 'decimal.js';
 import { BookTextIcon, HelpCircle, InfoIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
@@ -8,32 +33,12 @@ import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { formatUnits } from 'viem';
 
-import { Button } from '~/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '~/components/ui/form';
-import { Input } from '~/components/ui/input';
-import { Separator } from '~/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
 import { useResources } from '~/lib/hooks/useResources';
 import { useUserVaultData } from '~/lib/hooks/useUserVaultData';
 import { useVaultActions } from '~/lib/hooks/useVaultActions';
 import { useVaultData } from '~/lib/hooks/useVaultData';
 
 import NumberDisplay from './numberDisplay';
-import { Label } from './ui/label';
 import useFoilDeployment from './useFoilDeployment';
 import type { VaultType } from './useFoilDeployment';
 

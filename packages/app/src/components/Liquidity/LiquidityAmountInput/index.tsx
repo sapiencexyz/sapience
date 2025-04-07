@@ -1,10 +1,10 @@
+import { Input } from '@foil/ui/components/ui/input';
+import { Label } from '@foil/ui/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
 import { useState, useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { removeLeadingZeros } from '../../../lib/utils/util';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface LiquidityAmountInputProps {
   isEdit: boolean;
