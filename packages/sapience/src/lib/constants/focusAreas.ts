@@ -14,7 +14,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'compute',
     name: 'Decentralized Compute',
     description:
-      'Explore the frontier where distributed networks are revolutionizing computing power. Track how blockchain infrastructure is democratizing access and reshaping our digital landscape.',
+      'Track the revolution in distributed computing networks. See how blockchain infrastructure is democratizing access and reshaping our digital landscape.',
     resources: [
       'ethereum-gas',
       'base-gas',
@@ -44,7 +44,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'energy',
     name: 'Energy + DePIN',
     description:
-      'Witness the convergence of decentralized physical infrastructure and next-gen energy systems. Discover how nuclear innovation and renewables are creating resilient networks that power our future.',
+      'Witness physical infrastructure meeting decentralized networks. Track how nuclear innovation and renewables are building resilient systems for tomorrow.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -55,7 +55,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'climate',
     name: 'Climate Change',
     description:
-      'Navigate the complex dynamics of our changing planet through cutting-edge climate science. Track temperature shifts, sea-level rise, and extreme weather patterns that will shape our collective future.',
+      'Follow the data on our changing planet. Track global temperature shifts, sea-level rise, and extreme weather patterns shaping our collective future.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 2L4 7L12 12L20 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -68,7 +68,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'biosecurity',
     name: 'Biosecurity',
     description:
-      'Delve into the critical intersection of biology and security. Explore how advanced forecasting helps us anticipate and prevent biological threats, from pandemic risks to emerging biotechnology challenges.',
+      'Monitor the vital intersection of biology and security. Track how advanced forecasting helps prevent biological threats from pandemics to biotech risks.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="12" cy="8" r="2.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -84,7 +84,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'international',
     name: 'International Relations',
     description:
-      'Decode the complex web of global power dynamics and diplomatic chess moves. Gain insights into emerging alliances, potential conflicts, and the shifting tectonic plates of international politics.',
+      'Decode the global power chessboard. Track emerging alliances, conflicts, and pivotal diplomatic moves reshaping international politics.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 21H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -100,7 +100,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'space',
     name: 'Space Exploration',
     description:
-      "Journey to the final frontier where humanity's boldest ambitions unfold. Track breakthroughs in rocket technology, satellite networks, and interplanetary missions that are expanding our cosmic horizons.",
+      "Follow humanity's journey to the stars. Track breakthroughs in rocket tech, satellite networks, and ambitious missions expanding our cosmic reach.",
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -112,7 +112,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     id: 'tech',
     name: 'Emerging Technologies',
     description:
-      'Peer into the technological crystal ball where AI, quantum computing, and biotech converge. Discover which innovations will reshape industries, transform human capabilities, and define our collective future.',
+      'See the future taking shape through AI, quantum computing, and biotech. Track which innovations will redefine industries and transform human capabilities.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M9.5 2C9.5 2 9 6 9 9C9 12 12 12 12 12C12 12 15 12 15 9C15 6 14.5 2 14.5 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

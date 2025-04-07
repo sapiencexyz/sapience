@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@foil/ui/components/ui/button';
-import { ArrowRight, Bot } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import Link from 'next/link';
 
 export default function BotSection() {
@@ -39,10 +39,13 @@ export default function BotSection() {
               </p>
             </div>
 
-            <Button asChild size="lg" variant="outline" className="mt-4">
-              <Link href="/bots">
-                Explore Agents <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="mt-4 rounded-full"
+            >
+              <Link href="/bots">Learn more</Link>
             </Button>
           </div>
 

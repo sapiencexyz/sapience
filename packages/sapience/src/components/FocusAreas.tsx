@@ -168,10 +168,10 @@ export default function TopicsOfInterest() {
               {extendedFocusAreas.map((area, index) => (
                 <div
                   key={index}
-                  className="bg-white rounded-lg overflow-hidden shadow-sm border border-gray-200 flex flex-col w-[320px] flex-shrink-0"
+                  className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 border-t-0 flex flex-col w-[320px] flex-shrink-0"
                 >
                   <div
-                    className="h-2"
+                    className="h-3"
                     style={{ backgroundColor: area.color }}
                   />
                   <div className="p-6 flex-grow">
@@ -187,7 +187,10 @@ export default function TopicsOfInterest() {
                     </p>
                     <div className="mt-auto">
                       <Link href={`/predictions?focus=${area.id}`}>
-                        <Button variant="outline" className="w-full">
+                        <Button
+                          variant="secondary"
+                          className="w-full rounded-full"
+                        >
                           View Predictions
                         </Button>
                       </Link>

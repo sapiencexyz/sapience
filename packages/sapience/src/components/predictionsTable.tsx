@@ -4,7 +4,6 @@ import { Button } from '@foil/ui/components/ui/button';
 import { Card } from '@foil/ui/components/ui/card';
 import { Dialog, DialogContent } from '@foil/ui/components/ui/dialog';
 import { Input } from '@foil/ui/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
@@ -138,26 +137,6 @@ const BuyPositionDialog = ({
     </Dialog>
   );
 };
-
-// Create a component to render the SVG icon from the iconSvg string
-const FocusAreaIcon = ({
-  iconSvg,
-  color,
-}: {
-  iconSvg: string;
-  color: string;
-}) => (
-  <div
-    className="rounded-full p-2 w-8 h-8 flex items-center justify-center"
-    style={{ backgroundColor: `${color}25` }} // Using 25% opacity version of the color
-  >
-    <div
-      className="w-4 h-4 flex items-center justify-center"
-      style={{ color }}
-      dangerouslySetInnerHTML={{ __html: iconSvg }}
-    />
-  </div>
-);
 
 // New PredictionPreview component
 interface PredictionPreviewProps {
@@ -441,6 +420,10 @@ const PredictionPreview = ({
   );
 };
 
+// Constants for button classes
+const selectedStatusClass = 'bg-secondary';
+const hoverStatusClass = 'hover:bg-secondary/50';
+
 const PredictionsTable = () => {
   const { data: resources } = useResources();
   const searchParams = useSearchParams();
@@ -532,51 +515,11 @@ const PredictionsTable = () => {
   };
 
   return (
-    <div className="flex">
-      {/* Left Sidebar */}
-      <div className="w-80 pr-8 border-r">
-        <h3 className="font-medium text-lg mb-6">Focus Areas</h3>
-        <div className="space-y-4">
-          {FOCUS_AREAS.map((area) => (
-            <button
-              type="button"
-              key={area.id}
-              onClick={() => handleFocusAreaClick(area.id)}
-              className={`w-full text-left px-4 py-3 rounded-md flex items-center gap-3 transition-colors ${
-                selectedFocusArea === area.id
-                  ? 'bg-secondary'
-                  : 'hover:bg-secondary/50'
-              }`}
-            >
-              <FocusAreaIcon iconSvg={area.iconSvg} color={area.color} />
-              <span className="font-medium">{area.name}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-8 mb-8">
-          <h3 className="font-medium text-lg mb-4">Status</h3>
-          <Tabs
-            defaultValue="active"
-            value={statusFilter}
-            onValueChange={(value) =>
-              setStatusFilter(value as 'all' | 'active' | 'settled')
-            }
-            className="w-full"
-          >
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              <TabsTrigger value="settled">Settled</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
-
+    <div className="grid grid-cols-[1fr_280px] gap-0">
       {/* Main Content */}
-      <div className="flex-1 pl-8">
+      <div className="pr-6">
         {data.length === 0 ? (
-          <div className="w-full py-24 text-center text-muted-foreground">
+          <div className="w-full pt-48 text-center text-muted-foreground">
             <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
             No predictions available
           </div>
@@ -605,6 +548,67 @@ const PredictionsTable = () => {
             })}
           </div>
         )}
+      </div>
+
+      {/* Right Sidebar - Navigation */}
+      <div className="border-l p-6 sticky top-0 self-start mt-32">
+        <div className="pb-2">
+          <h3 className="font-medium text-sm mb-3">Focus Areas</h3>
+          <div className="space-y-1">
+            {FOCUS_AREAS.map((area) => (
+              <button
+                type="button"
+                key={area.id}
+                onClick={() => handleFocusAreaClick(area.id)}
+                className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors text-xs ${
+                  selectedFocusArea === area.id
+                    ? 'bg-secondary'
+                    : 'hover:bg-secondary/50'
+                }`}
+              >
+                <div
+                  className="rounded-full p-1 w-5 h-5 flex items-center justify-center"
+                  style={{ backgroundColor: `${area.color}25` }}
+                >
+                  {/* eslint-disable-next-line react/no-danger */}
+                  <div
+                    className="w-2.5 h-2.5 flex items-center justify-center"
+                    style={{ color: area.color }}
+                    dangerouslySetInnerHTML={{ __html: area.iconSvg }}
+                  />
+                </div>
+                <span className="font-medium">{area.name}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 mb-6">
+            <h3 className="font-medium text-sm mb-2">Status</h3>
+            <div className="flex space-x-1">
+              <button
+                type="button"
+                className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
+                onClick={() => setStatusFilter('all')}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
+                onClick={() => setStatusFilter('active')}
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'settled' ? selectedStatusClass : hoverStatusClass}`}
+                onClick={() => setStatusFilter('settled')}
+              >
+                Settled
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
