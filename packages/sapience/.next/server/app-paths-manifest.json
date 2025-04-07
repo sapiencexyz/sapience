@@ -1,0 +1,9 @@
+{
+  "/page": "app/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/bots/page": "app/bots/page.js",
+  "/leaderboard/page": "app/leaderboard/page.js",
+  "/manifest.webmanifest/route": "app/manifest.webmanifest/route.js",
+  "/predictions/page": "app/predictions/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js"
+}

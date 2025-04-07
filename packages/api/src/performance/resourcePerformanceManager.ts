@@ -135,6 +135,16 @@ export class ResourcePerformanceManager {
     resources: Resource[],
     hardInitialize: boolean
   ) {
+    console.log(
+      `Checking CACHE_DISABLED in initializeResources. Value: [${process.env.CACHE_DISABLED}]`
+    );
+    if (process.env.CACHE_DISABLED === 'true') {
+      console.log(
+        'CACHE_DISABLED is true, skipping resource initialization.'
+      );
+      return;
+    }
+
     // Clean up existing resource performances
     // await Promise.all(
     //   Object.values(this.resourcePerformances).map(async (rp) => {
@@ -175,6 +185,16 @@ export class ResourcePerformanceManager {
     hardInitialize: boolean,
     logMode: 'initialize' | 'refresh'
   ) {
+    console.log(
+      `Checking CACHE_DISABLED in updateResourceCache for ${resource.slug}. Value: [${process.env.CACHE_DISABLED}]`
+    );
+    if (process.env.CACHE_DISABLED === 'true') {
+      console.log(
+        `CACHE_DISABLED is true, skipping cache update for resource ${resource.slug}.`
+      );
+      return;
+    }
+
     if (hardInitialize) {
       console.log(
         `ResourcePerformanceManager Hard ${logMode} resource ${resource.slug}`
