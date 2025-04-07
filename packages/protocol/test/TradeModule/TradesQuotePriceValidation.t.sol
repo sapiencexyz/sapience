@@ -4,23 +4,12 @@ pragma solidity >=0.8.25 <0.9.0;
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {IFoil} from "../../src/market/interfaces/IFoil.sol";
-import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {TestEpoch} from "../helpers/TestEpoch.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-import {Position} from "../../src/market/storage/Position.sol";
-import {Errors} from "../../src/market/storage/Errors.sol";
-import {Epoch} from "../../src/market/storage/Epoch.sol";
 import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
 import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
-import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
-import {INonfungiblePositionManager} from "../../src/market/interfaces/external/INonfungiblePositionManager.sol";
-import {IQuoterV2} from "../../src/market/interfaces/external/IQuoterV2.sol";
-import {Trade} from "../../src/market/storage/Trade.sol";
 
 contract TradesQuotePriceValidationTest is TestTrade {
     using Cannon for Vm;
