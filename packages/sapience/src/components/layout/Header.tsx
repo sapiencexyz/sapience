@@ -74,6 +74,15 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
           Build Bots
         </Button>
       </Link>
+      <Link href="/futarchy" passHref>
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/futarchy', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          Futarchy
+        </Button>
+      </Link>
       <Link href="/community" passHref>
         <Button
           variant="ghost"
@@ -100,11 +109,11 @@ const Header = () => {
           <div className="flex items-center bg-background/30 p-2 backdrop-blur-sm rounded-full">
             <Link href="/" className="inline-block">
               <div className="flex items-center gap-2">
-                <Globe className="h-6 w-6" />
+                <Globe className="h-6 w-6 opacity-80" strokeWidth={1.25} />
                 <span className="text-2xl font-normal">Sapience</span>
               </div>
             </Link>
-            <SidebarTrigger className="block opacity-40 hover:opacity-90 ml-6" />
+            <SidebarTrigger className="block flex items-center justify-center opacity-40 hover:opacity-90 ml-6" />
           </div>
 
           <div className="flex items-center gap-5">
