@@ -22,6 +22,7 @@ import {
   TableHead,
   TableCell,
 } from '@foil/ui/components/ui/table';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import {
   useReactTable,
   flexRender,
@@ -46,7 +47,6 @@ import {
 import React, { useState, useMemo } from 'react';
 import { useSignMessage } from 'wagmi';
 
-import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';

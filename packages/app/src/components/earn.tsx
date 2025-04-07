@@ -24,6 +24,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import Decimal from 'decimal.js';
 import { BookTextIcon, HelpCircle, InfoIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';
@@ -32,7 +33,6 @@ import { type FC, useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { formatUnits } from 'viem';
 
-import { useToast } from '~/hooks/use-toast';
 import { useResources } from '~/lib/hooks/useResources';
 import { useUserVaultData } from '~/lib/hooks/useUserVaultData';
 import { useVaultActions } from '~/lib/hooks/useVaultActions';

@@ -8,6 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { debounce } from 'lodash';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
@@ -27,7 +28,6 @@ import {
 
 import { useConnectWallet } from '../lib/context/ConnectWalletProvider';
 import erc20ABI from '../lib/erc20abi.json';
-import { useToast } from '~/hooks/use-toast';
 import {
   HIGH_PRICE_IMPACT,
   MIN_BIG_INT_SIZE,

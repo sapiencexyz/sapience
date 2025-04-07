@@ -11,7 +11,7 @@ import {
   ToastViewport,
 } from './toast';
 
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '@foil/ui/hooks/use-toast';
 
 export function Toaster() {
   const { toasts } = useToast();

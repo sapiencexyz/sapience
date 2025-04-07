@@ -1,4 +1,5 @@
 import { Button } from '@foil/ui/components/ui/button';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { formatUnits } from 'viem';
@@ -9,7 +10,6 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
-import { useToast } from '~/hooks/use-toast';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';

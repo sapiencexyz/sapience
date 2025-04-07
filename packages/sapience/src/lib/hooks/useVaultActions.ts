@@ -7,7 +7,7 @@ import {
   useWriteContract,
 } from 'wagmi';
 
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import erc20ABI from '~/lib/erc20abi.json';
 
 type Props = {

@@ -36,7 +36,7 @@ import { useState, useMemo, useContext } from 'react';
 import { useReadContract } from 'wagmi';
 
 import { useFoil } from '../lib/context/FoilProvider';
-import { toast } from '~/hooks/use-toast';
+import { toast } from '@foil/ui/hooks/use-toast';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';

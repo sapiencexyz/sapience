@@ -5,6 +5,7 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Button } from '@foil/ui/components/ui/button';
 import { Form } from '@foil/ui/components/ui/form';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { TickMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { Loader2 } from 'lucide-react';
@@ -28,7 +29,6 @@ import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.Nonfungi
 import NumberDisplay from '../numberDisplay';
 import PositionSelector from '../positionSelector';
 import SlippageTolerance from '../slippageTolerance';
-import { useToast } from '~/hooks/use-toast';
 import {
   CREATE_LIQUIDITY_REDUCTION,
   TICK_SPACING_DEFAULT,

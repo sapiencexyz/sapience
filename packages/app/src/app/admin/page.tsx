@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@foil/ui/components/ui/select';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { Loader2 } from 'lucide-react';
@@ -25,7 +26,6 @@ import { useState } from 'react';
 import { useSignMessage } from 'wagmi';
 
 import AdminTable from '~/components/admin/AdminTable';
-import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 import { foilApi } from '~/lib/utils/util';

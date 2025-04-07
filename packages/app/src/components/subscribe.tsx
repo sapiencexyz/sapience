@@ -22,6 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -48,7 +49,6 @@ import {
 } from 'wagmi';
 
 import erc20ABI from '../lib/erc20abi.json';
-import { useToast } from '~/hooks/use-toast';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { mainnetClient, foilApi } from '~/lib/utils/util';

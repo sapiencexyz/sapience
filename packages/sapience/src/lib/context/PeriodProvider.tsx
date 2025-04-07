@@ -14,7 +14,7 @@ import { useResources } from '../hooks/useResources';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../utils/util';
-import { useToast } from '~/hooks/use-toast';
+import { useToast } from '@foil/ui/hooks/use-toast';
 
 import type { Market } from './FoilProvider';
 import { useFoil } from './FoilProvider';
