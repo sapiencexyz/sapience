@@ -1,7 +1,7 @@
 {
   "name": "@foil/agent",
   "version": "0.0.1",
-  "private": true,
+  "private": false,
   "type": "module",
   "description": "",
   "main": "dist/mcp-server.js",
