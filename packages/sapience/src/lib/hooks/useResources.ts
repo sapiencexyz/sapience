@@ -12,6 +12,7 @@ export interface Epoch {
   endTimestamp: number;
   settled: boolean;
   public: boolean;
+  question: string | null;
 }
 
 export interface Market {
@@ -81,6 +82,7 @@ const RESOURCES_QUERY = gql`
           endTimestamp
           settled
           public
+          question
         }
       }
     }

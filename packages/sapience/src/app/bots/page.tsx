@@ -5,8 +5,9 @@ import { useToast } from '@foil/ui/hooks/use-toast';
 import {
   ArrowRight,
   ArrowLeft,
-  Bot,
+  Megaphone,
   Github,
+  Bot,
   Search,
   TrendingUp,
 } from 'lucide-react';
@@ -220,7 +221,7 @@ const TemplateSection = () => {
               {/* Step 3: Update Prediction Journal - Bottom Left */}
               <div className="absolute bottom-[40px] left-[80px] text-center">
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
-                  <Bot className="h-8 w-8 text-black" />
+                  <Megaphone className="h-8 w-8 text-black" />
                 </div>
                 <p className="text-sm font-medium">
                   Share Prediction
@@ -230,18 +231,18 @@ const TemplateSection = () => {
               </div>
 
               {/* Arrow 1: Research → Create/Modify (Top Right) */}
-              <div className="absolute top-[100px] right-[120px] transform rotate-[45deg]">
-                <ArrowRight className="h-4 w-4 opacity-20" />
+              <div className="absolute top-[110px] right-[110px] transform rotate-[55deg]">
+                <ArrowRight className="h-4 w-4 opacity-50" />
               </div>
 
               {/* Arrow 2: Create/Modify → Update (Bottom) */}
               <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2">
-                <ArrowLeft className="h-4 w-4 opacity-20" />
+                <ArrowLeft className="h-4 w-4 opacity-50" />
               </div>
 
               {/* Arrow 3: Update → Research (Top Left) */}
-              <div className="absolute top-[100px] left-[120px] transform rotate-[-45deg]">
-                <ArrowRight className="h-4 w-4 opacity-20" />
+              <div className="absolute top-[110px] left-[110px] transform rotate-[-55deg]">
+                <ArrowRight className="h-4 w-4 opacity-50" />
               </div>
             </div>
           </div>
@@ -257,10 +258,17 @@ const TemplateSection = () => {
               markets autonomously.
             </p>
 
-            <div className="pt-4">
-              <Button>
-                <Github className="mr-2 h-4 w-4" /> Clone the repo
-              </Button>
+            <div className="pt-2">
+              <Link
+                href="https://github.com/foilxyz/foil/tree/main/packages/agent"
+                target="_blank"
+                rel="noopener noreferrer"
+                passHref
+              >
+                <Button>
+                  <Github className="mr-1 h-4 w-4" /> Clone the repo
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

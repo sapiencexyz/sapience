@@ -8,6 +8,7 @@ import {
   CheckCircleIcon,
   ScaleIcon,
   BarChart2Icon,
+  LayoutGridIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -18,69 +19,29 @@ import { useResources } from '~/lib/hooks/useResources';
 
 // New PredictionPreview component
 interface PredictionPreviewProps {
-  marketName: string;
   endTimestamp: number;
   settled: boolean;
   color: string;
   chainId: number;
   marketAddress: string;
   epochId: string;
+  question?: string;
+  focusAreaSlug: string;
 }
 
 const PredictionPreview = ({
-  marketName,
   endTimestamp,
   settled,
   color,
   chainId,
   marketAddress,
   epochId,
+  question,
+  focusAreaSlug,
 }: PredictionPreviewProps) => {
-  // Format dates for display
-  const endDate = new Date(endTimestamp * 1000);
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  const month = monthNames[endDate.getMonth()];
-  const year = endDate.getFullYear();
-
   // Generate a random probability for demo purposes
   const probability = Math.floor(Math.random() * 100);
   const yesProb = probability;
-
-  // Generate random threshold values based on the market type
-  const getThresholdValue = () => {
-    // Generate different thresholds based on market type
-    if (marketName.toLowerCase().includes('gas')) {
-      return `${(Math.random() * 10).toFixed(2)} gwei`;
-    }
-    if (marketName.toLowerCase().includes('temperature')) {
-      return `${(Math.random() * 5 + 30).toFixed(1)}°C`;
-    }
-    if (
-      marketName.toLowerCase().includes('price') ||
-      marketName.toLowerCase().includes('cost')
-    ) {
-      return `$${(Math.random() * 1000 + 100).toFixed(2)}`;
-    }
-    return `${(Math.random() * 100).toFixed(2)} units`;
-  };
-
-  const threshold = getThresholdValue();
-
-  // Generate a yes/no question based on the market name
-  const question = `Will the average cost of ${marketName} in ${month} ${year} exceed ${threshold}?`;
 
   return (
     <Link href={`/predictions/${chainId}/${marketAddress}/${epochId}`}>
@@ -88,7 +49,7 @@ const PredictionPreview = ({
         className="overflow-hidden border-t-[6px] hover:shadow-md transition-shadow duration-200 cursor-pointer"
         style={{ borderTopColor: color }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-b border-gray-100 bg-gray-50/30">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-b bg-muted">
           {/* Left side - Probability gauge (1/3 width) */}
           <div className="p-6 pb-0 flex flex-col items-center justify-center">
             {/* Gauge container with relative positioning */}
@@ -196,7 +157,7 @@ const PredictionPreview = ({
         </div>
 
         {/* Footer with detailed information */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-lg">
+        <div className="px-6 py-4 bg-muted border-t rounded-b-lg">
           <div className="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-4 text-sm">
             <div className="flex items-center text-gray-500">
               {!settled && (
@@ -253,9 +214,7 @@ const PredictionPreview = ({
                     fill="currentColor"
                   />
                 </svg>
-                <span>
-                  Channel: {marketName.toLowerCase().replace(/\s+/g, '-')}
-                </span>
+                <span>Channel: {focusAreaSlug}</span>
               </span>
             </div>
           </div>
@@ -274,12 +233,14 @@ const PredictionsTable = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Get the focus area from the URL query parameter, or use the default
+  // Get the focus area from the URL query parameter, default to null (all)
   const focusParam = searchParams.get('focus');
-  const [selectedFocusArea, setSelectedFocusArea] = React.useState(
+  const [selectedFocusArea, setSelectedFocusArea] = React.useState<
+    string | null
+  >(
     focusParam && FOCUS_AREAS.some((area) => area.id === focusParam)
       ? focusParam
-      : DEFAULT_FOCUS_AREA.id
+      : null // Default to null (all)
   );
 
   // Add state for the active/settled toggle
@@ -291,6 +252,9 @@ const PredictionsTable = () => {
   React.useEffect(() => {
     if (focusParam && FOCUS_AREAS.some((area) => area.id === focusParam)) {
       setSelectedFocusArea(focusParam);
+    } else {
+      // If no valid focusParam, set to null (all)
+      setSelectedFocusArea(null);
     }
   }, [focusParam]);
 
@@ -299,13 +263,16 @@ const PredictionsTable = () => {
       resources?.flatMap((resource) =>
         resource.markets
           .filter(() => {
-            // Filter by focus area
-            const focusArea = FOCUS_AREAS.find(
-              (area) => area.id === selectedFocusArea
-            );
-            return focusArea
-              ? focusArea.resources.includes(resource.slug)
-              : true;
+            // Filter by focus area ONLY if one is selected
+            if (selectedFocusArea !== null) {
+              const focusArea = FOCUS_AREAS.find(
+                (area) => area.id === selectedFocusArea
+              );
+              return focusArea
+                ? focusArea.resources.includes(resource.slug)
+                : false; // Should not happen if selectedFocusArea is valid
+            }
+            return true; // No focus area selected, include all
           })
           .flatMap((market) =>
             market.epochs
@@ -329,6 +296,16 @@ const PredictionsTable = () => {
               .map((epoch) => {
                 const startDate = new Date(epoch.startTimestamp * 1000);
                 const endDate = new Date(epoch.endTimestamp * 1000);
+                // Find the focus area for color and slug (even if filtering is off)
+                const matchingFocusArea = FOCUS_AREAS.find((area) =>
+                  area.resources.includes(resource.slug)
+                );
+                const color =
+                  matchingFocusArea?.color || DEFAULT_FOCUS_AREA.color;
+                const focusAreaSlug = matchingFocusArea
+                  ? matchingFocusArea.name.toLowerCase().replace(/\s+/g, '-')
+                  : 'unknown'; // Fallback slug
+
                 return {
                   marketName: resource.name,
                   iconPath: resource.iconPath,
@@ -343,19 +320,27 @@ const PredictionsTable = () => {
                   chainId: market.chainId,
                   marketAddress: market.address,
                   settled: epoch.settled,
+                  question: epoch.question,
+                  color, // Add color to the data item
+                  focusAreaSlug, // Add slug to the data item
                 };
               })
+              .filter(Boolean)
           )
       ) ?? [],
     [resources, selectedFocusArea, statusFilter]
   );
 
-  const handleFocusAreaClick = (focusAreaId: string) => {
+  const handleFocusAreaClick = (focusAreaId: string | null) => {
     setSelectedFocusArea(focusAreaId);
 
-    // Update the URL with the selected focus area
+    // Update the URL with the selected focus area or remove it
     const params = new URLSearchParams(searchParams);
-    params.set('focus', focusAreaId);
+    if (focusAreaId === null) {
+      params.delete('focus');
+    } else {
+      params.set('focus', focusAreaId);
+    }
     router.push(`/predictions?${params.toString()}`);
   };
 
@@ -366,31 +351,22 @@ const PredictionsTable = () => {
         {data.length === 0 ? (
           <div className="w-full pt-48 text-center text-muted-foreground">
             <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-            No forecasting available
+            No forecasting available for the selected filters.
           </div>
         ) : (
           <div className="space-y-12 flex flex-col">
             {data.map((item) => {
-              // Find the focus area color for this item
-              const focusArea =
-                FOCUS_AREAS.find(
-                  (area) =>
-                    area.id === selectedFocusArea &&
-                    area.resources.includes(item.resourceSlug)
-                ) || FOCUS_AREAS.find((area) => area.id === selectedFocusArea);
-
-              const color = focusArea?.color || DEFAULT_FOCUS_AREA.color;
-
               return (
                 <PredictionPreview
                   key={`${item.chainId}:${item.marketAddress}:${item.epochId}`}
-                  marketName={item.marketName}
                   endTimestamp={item.endTimestamp}
                   settled={item.settled}
-                  color={color}
+                  color={item.color} // Use color from data item
                   chainId={item.chainId}
                   marketAddress={item.marketAddress}
                   epochId={String(item.epochId)}
+                  question={item.question ?? undefined}
+                  focusAreaSlug={item.focusAreaSlug} // Use slug from data item
                 />
               );
             })}
@@ -403,16 +379,29 @@ const PredictionsTable = () => {
         <div className="pb-2">
           <h3 className="font-medium text-sm mb-3">Focus Areas</h3>
           <div className="space-y-1">
+            {/* Add "All Focus Areas" button */}
+            <button
+              type="button"
+              onClick={() => handleFocusAreaClick(null)}
+              className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors text-xs ${selectedFocusArea === null ? 'bg-secondary' : 'hover:bg-secondary/50'}`}
+            >
+              <div
+                className="rounded-full p-1 w-5 h-5 flex items-center justify-center"
+                style={{ backgroundColor: `${DEFAULT_FOCUS_AREA.color}25` }}
+              >
+                <LayoutGridIcon
+                  className="w-2.5 h-2.5"
+                  style={{ color: DEFAULT_FOCUS_AREA.color }}
+                />
+              </div>
+              <span className="font-medium">All Focus Areas</span>
+            </button>
             {FOCUS_AREAS.map((area) => (
               <button
                 type="button"
                 key={area.id}
                 onClick={() => handleFocusAreaClick(area.id)}
-                className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors text-xs ${
-                  selectedFocusArea === area.id
-                    ? 'bg-secondary'
-                    : 'hover:bg-secondary/50'
-                }`}
+                className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors text-xs ${selectedFocusArea === area.id ? selectedStatusClass : hoverStatusClass}`}
               >
                 <div
                   className="rounded-full p-1 w-5 h-5 flex items-center justify-center"

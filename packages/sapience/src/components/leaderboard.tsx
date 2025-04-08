@@ -211,8 +211,8 @@ const Leaderboard = ({ params }: Props) => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64 w-full">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex justify-center items-center min-h-[100vh] w-full">
+        <Loader2 className="h-8 w-8 animate-spin opacity-50" />
       </div>
     );
   }

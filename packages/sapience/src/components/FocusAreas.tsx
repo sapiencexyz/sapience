@@ -124,7 +124,7 @@ export default function TopicsOfInterest() {
     <section className="pt-72 pb-24 px-8 overflow-hidden relative">
       <div className="container mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-heading font-normal">Interest Topics</h2>
+          <h2 className="text-3xl font-heading font-normal">Focus Areas</h2>
           <Link
             href="/predictions"
             className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1.5 text-xs tracking-widest transition-all duration-300 font-semibold"

@@ -25,7 +25,7 @@ export default function BotSection() {
                 href="https://safe.global"
               >
                 Safe
-              </Link>
+              </Link>{' '}
               for you.
             </p>
 
