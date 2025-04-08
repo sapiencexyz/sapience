@@ -37,7 +37,9 @@ export async function getTransactionsInTimeRange(
       }
     )
     .andWhere('market.chainId = :chainId', { chainId })
-    .andWhere('market.address = :marketAddress', { marketAddress: marketAddress.toLowerCase() })
+    .andWhere('market.address = :marketAddress', {
+      marketAddress: marketAddress.toLowerCase(),
+    })
     .orderBy('CAST(event.timestamp AS BIGINT)', 'ASC')
     .getMany();
 }

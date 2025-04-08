@@ -139,9 +139,7 @@ export class ResourcePerformanceManager {
       `Checking CACHE_DISABLED in initializeResources. Value: [${process.env.CACHE_DISABLED}]`
     );
     if (process.env.CACHE_DISABLED === 'true') {
-      console.log(
-        'CACHE_DISABLED is true, skipping resource initialization.'
-      );
+      console.log('CACHE_DISABLED is true, skipping resource initialization.');
       return;
     }
 

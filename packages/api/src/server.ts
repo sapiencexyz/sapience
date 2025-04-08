@@ -23,7 +23,7 @@ initSentry();
 
 const startServer = async () => {
   await initializeDataSource();
-  
+
   // Initialize fixtures from fixtures.json
   await initializeFixtures();
 

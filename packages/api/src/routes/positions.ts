@@ -22,7 +22,10 @@ router.get(
     const { chainId, address } = parseContractId(contractId);
 
     const market = await marketRepository.findOne({
-      where: { chainId: Number(chainId), address: String(address).toLowerCase() },
+      where: {
+        chainId: Number(chainId),
+        address: String(address).toLowerCase(),
+      },
     });
 
     if (!market) {
@@ -66,7 +69,10 @@ router.get(
     const { chainId, address } = parseContractId(contractId);
 
     const market = await marketRepository.findOne({
-      where: { chainId: Number(chainId), address: String(address).toLowerCase() },
+      where: {
+        chainId: Number(chainId),
+        address: String(address).toLowerCase(),
+      },
     });
 
     if (!market) {

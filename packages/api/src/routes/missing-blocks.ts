@@ -46,11 +46,7 @@ const getMissingBlocks = async (
 
   // Get block numbers using the price indexer client
   const { startBlockNumber, endBlockNumber, error } =
-    await getMarketStartEndBlock(
-      market,
-      epochId,
-      indexer
-    );
+    await getMarketStartEndBlock(market, epochId, indexer);
 
   if (error || !startBlockNumber || !endBlockNumber) {
     return { missingBlockNumbers: null, error };

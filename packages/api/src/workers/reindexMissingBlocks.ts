@@ -1,4 +1,8 @@
-import { initializeDataSource, resourcePriceRepository, marketRepository } from '../db';
+import {
+  initializeDataSource,
+  resourcePriceRepository,
+  marketRepository,
+} from '../db';
 import { initializeMarket } from '../controllers/market';
 import { getMarketStartEndBlock } from '../controllers/marketHelpers';
 import { Between } from 'typeorm';
@@ -16,13 +20,13 @@ export async function reindexMissingBlocks(
     );
 
     await initializeDataSource();
-    
+
     const marketEntity = await marketRepository.findOne({
       where: {
         chainId,
-        address: address.toLowerCase()
+        address: address.toLowerCase(),
       },
-      relations: ['resource']
+      relations: ['resource'],
     });
 
     if (!marketEntity) {
@@ -36,10 +40,10 @@ export async function reindexMissingBlocks(
       deployment: { address: marketEntity.address.toLowerCase() },
       resource: {
         ...marketEntity.resource,
-        priceIndexer: INDEXERS[marketEntity.resource.slug]
-      }
+        priceIndexer: INDEXERS[marketEntity.resource.slug],
+      },
     };
-    
+
     const market = await initializeMarket(marketInfo);
 
     const { startBlockNumber, endBlockNumber, error } =

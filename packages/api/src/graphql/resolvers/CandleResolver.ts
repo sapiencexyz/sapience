@@ -340,7 +340,9 @@ export class CandleResolver {
         .leftJoinAndSelect('transaction.position', 'position')
         .leftJoinAndSelect('position.epoch', 'epoch')
         .where('market.chainId = :chainId', { chainId })
-        .andWhere('market.address = :address', { address: address.toLowerCase() })
+        .andWhere('market.address = :address', {
+          address: address.toLowerCase(),
+        })
         .andWhere('epoch.epochId = :epochId', { epochId: Number(epochId) })
         .andWhere('CAST(marketPrice.timestamp AS bigint) < :from', {
           from: from.toString(),
@@ -359,7 +361,9 @@ export class CandleResolver {
         .leftJoinAndSelect('transaction.position', 'position')
         .leftJoinAndSelect('position.epoch', 'epoch')
         .where('market.chainId = :chainId', { chainId })
-        .andWhere('market.address = :address', { address: address.toLowerCase() })
+        .andWhere('market.address = :address', {
+          address: address.toLowerCase(),
+        })
         .andWhere('epoch.epochId = :epochId', { epochId: Number(epochId) })
         .andWhere(
           'CAST(marketPrice.timestamp AS bigint) BETWEEN :from AND :to',

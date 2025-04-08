@@ -45,4 +45,4 @@ export class CategoryResolver {
       throw new Error('Failed to fetch markets by category');
     }
   }
-} 
+}

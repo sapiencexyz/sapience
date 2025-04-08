@@ -153,7 +153,11 @@ export const createOrModifyPositionFromTransaction = async (
     // Set all required fields explicitly
     position.positionId = positionId;
     position.epoch = epoch;
-    position.owner = ((eventArgs.sender as string) || position.owner || '').toLowerCase();
+    position.owner = (
+      (eventArgs.sender as string) ||
+      position.owner ||
+      ''
+    ).toLowerCase();
     position.isLP = isLpPosition(transaction);
 
     // Initialize transactions array if it doesn't exist
@@ -268,7 +272,9 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   const transfer = new CollateralTransfer();
   transfer.transactionHash = transaction.event.transactionHash;
   transfer.timestamp = Number(transaction.event.timestamp);
-  transfer.owner = (transaction.event.logData.args.sender as string).toLowerCase();
+  transfer.owner = (
+    transaction.event.logData.args.sender as string
+  ).toLowerCase();
   transfer.collateral = eventArgs.deltaCollateral as string;
 
   // Save and assign to transaction
@@ -356,7 +362,9 @@ export const createOrUpdateMarketFromContract = async (
   );
   updatedMarket.deployTimestamp = Number(contractDeployment.deployTimestamp);
   updatedMarket.chainId = chainId;
-  updatedMarket.owner = ((marketReadResult as MarketReadResult)[0] as string).toLowerCase();
+  updatedMarket.owner = (
+    (marketReadResult as MarketReadResult)[0] as string
+  ).toLowerCase();
   updatedMarket.collateralAsset = (marketReadResult as MarketReadResult)[1];
   const marketParamsRaw = (marketReadResult as MarketReadResult)[4];
   const marketParams: MarketParams = {
@@ -733,7 +741,10 @@ export const createEpochFromEvent = async (
   const existingEpoch = await epochRepository.findOne({
     where: {
       epochId: Number(eventArgs.epochId),
-      market: { address: market.address.toLowerCase(), chainId: market.chainId },
+      market: {
+        address: market.address.toLowerCase(),
+        chainId: market.chainId,
+      },
     },
   });
 

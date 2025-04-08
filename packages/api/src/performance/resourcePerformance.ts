@@ -89,7 +89,7 @@ export class ResourcePerformance {
     trailingAvgProcessData: {
       [interval: number]: {
         [trailingAvgTime: string]: {
-         used: bigint;
+          used: bigint;
           feePaid: bigint;
           nextTimestamp: number;
           startTimestampIndex: number;
