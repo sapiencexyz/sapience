@@ -5,13 +5,15 @@
     "module": "esnext",
     "target": "es2017",
     "moduleResolution": "node",
+    "declaration": true,
     "esModuleInterop": true,
     "strict": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": ["node"]
   },
-  "include": ["agent/**/*", "mcp-server.ts", "src"],
+  "include": ["agent/**/*", "mcp-server.ts", "src", "claude-install.ts"],
   "exclude": ["node_modules", "dist"]
 }
 

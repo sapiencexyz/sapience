@@ -34,8 +34,6 @@ import {
 } from './writeFoilContracts';
 
 import {
-  stageTransaction,
-  executeTransaction,
   approveToken,
   balanceOfToken
 } from './misc';
@@ -76,8 +74,6 @@ export const writeFoilContracts = {
 };
 
 export const misc = {
-  stage_transaction: stageTransaction,
-  execute_transaction: executeTransaction,
   approve_token: approveToken,
   balance_of_token: balanceOfToken
 };

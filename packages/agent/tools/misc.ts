@@ -1,236 +1,6 @@
-import { createWalletClient, http, encodeFunctionData, createPublicClient } from 'viem';
-import { base, mainnet, optimism, polygon, arbitrum, goerli } from 'viem/chains';
-import { privateKeyToAccount, signMessage } from 'viem/accounts';
+import { http, encodeFunctionData, createPublicClient } from 'viem';
 import { erc20Abi } from 'viem'
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { config } from 'dotenv';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Load .env file from the agent package directory
-config({ path: join(__dirname, '..', '.env') });
-
-declare global {
-  namespace NodeJS {
-    interface ProcessEnv {
-      ETHEREUM_PRIVATE_KEY: string;
-      TWITTER_API_KEY: string;
-      TWITTER_API_SECRET: string;
-    }
-  }
-}
-
-// Safe service URLs for different chains
-const SAFE_SERVICE_URLS: Record<string, string> = {
-  '1': 'https://safe-transaction-mainnet.safe.global',
-  '5': 'https://safe-transaction-goerli.safe.global',
-  '10': 'https://safe-transaction-optimism.safe.global',
-  '56': 'https://safe-transaction-bsc.safe.global',
-  '100': 'https://safe-transaction-gnosis-chain.safe.global',
-  '137': 'https://safe-transaction-polygon.safe.global',
-  '8453': 'https://safe-transaction-base.safe.global',
-  '42161': 'https://safe-transaction-arbitrum.safe.global',
-  '43114': 'https://safe-transaction-avalanche.safe.global',
-  '1313161554': 'https://safe-transaction-aurora.safe.global',
-  '1666600000': 'https://safe-transaction-harmony.safe.global',
-  '11297108109': 'https://safe-transaction-palm.safe.global',
-  '1284': 'https://safe-transaction-moonbeam.safe.global',
-  '1285': 'https://safe-transaction-moonriver.safe.global',
-  '1287': 'https://safe-transaction-moonbase-alpha.safe.global',
-  '80001': 'https://safe-transaction-mumbai.safe.global',
-  '420': 'https://safe-transaction-optimism-goerli.safe.global',
-  '421613': 'https://safe-transaction-arbitrum-goerli.safe.global',
-  '43113': 'https://safe-transaction-avalanche-fuji.safe.global',
-  '1666700000': 'https://safe-transaction-harmony-testnet.safe.global',
-  '1337': 'https://safe-transaction-gateway.safe.global' // For local development
-};
-
-// Map chain IDs to viem chain objects
-const CHAIN_MAP: Record<string, any> = {
-  '1': mainnet,
-  '5': goerli,
-  '10': optimism,
-  '137': polygon,
-  '8453': base,
-  '42161': arbitrum,
-  // Add other chains supported by viem/chains as needed
-};
-
-export const stageTransaction = {
-  name: "stage_transaction",
-  description: "Stages a transaction to the safe service",
-  parameters: {
-    properties: {
-      calldata: {
-        type: "string",
-        description: "The calldata for the transaction"
-      },
-      to: {
-        type: "string",
-        description: "The address to send the transaction to"
-      },
-      value: {
-        type: "string",
-        description: "The amount of ETH to send with the transaction"
-      },
-      chainId: {
-        type: "string",
-        description: "The chain ID to execute the transaction on"
-      },
-      safeAddress: {
-        type: "string",
-        description: "The address of the safe to stage the transaction to"
-      }
-    },
-    required: ["calldata", "to", "value", "chainId", "safeAddress"],
-  },
-  function: async (args: { calldata: string; to: string; value: string; chainId: string; safeAddress: string }) => {
-    try {
-      const safeServiceUrl = SAFE_SERVICE_URLS[args.chainId];
-      if (!safeServiceUrl) {
-        throw new Error(`No Safe service URL configured for chain ID ${args.chainId}`);
-      }
-
-      // Create the transaction data
-      const safeTransactionData = {
-        to: args.to,
-        value: args.value,
-        data: args.calldata,
-        operation: 0, // Call operation
-        safeTxGas: "0",
-        baseGas: "0",
-        gasPrice: "0",
-        gasToken: "0x0000000000000000000000000000000000000000",
-        refundReceiver: "0x0000000000000000000000000000000000000000",
-        nonce: "0"
-      };
-
-      // Get the transaction hash
-      const response = await fetch(`${safeServiceUrl}/api/v1/safes/${args.safeAddress}/transactions/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(safeTransactionData)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`Safe service error: ${JSON.stringify(error)}`);
-      }
-
-      const result = await response.json();
-      const safeTxHash = result.safeTxHash;
-
-      // Sign the transaction hash using viem
-      const signature = await signMessage({
-        privateKey: process.env.ETHEREUM_PRIVATE_KEY as `0x${string}`,
-        message: { raw: safeTxHash as `0x${string}` }
-      });
-
-      // Send the transaction with the signature
-      const proposeResponse = await fetch(`${safeServiceUrl}/api/v1/safes/${args.safeAddress}/transactions/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...safeTransactionData,
-          safeTxHash,
-          signatures: signature
-        })
-      });
-
-      if (!proposeResponse.ok) {
-        const error = await proposeResponse.json();
-        throw new Error(`Safe service error: ${JSON.stringify(error)}`);
-      }
-
-      const proposeResult = await proposeResponse.json();
-
-      return {
-        content: [{
-          type: "text" as const,
-          text: JSON.stringify(proposeResult, null, 2)
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: `Error staging transaction: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
-      };
-    }
-  },
-};
-
-export const executeTransaction = {
-  name: "execute_transaction",
-  description: "Executes a transaction using viem and the private key from env.ETHEREUM_PRIVATE_KEY",
-  parameters: {
-    properties: {
-      calldata: {
-        type: "string",
-        description: "The calldata for the transaction"
-      },
-      to: {
-        type: "string",
-        description: "The address to send the transaction to"
-      },
-      value: {
-        type: "string",
-        description: "The amount of ETH to send with the transaction"
-      },
-      chainId: {
-        type: "string",
-        description: "The chain ID to execute the transaction on"
-      }
-    },
-    required: ["calldata", "to", "value", "chainId"],
-  },
-  function: async (args: { calldata: string; to: string; value: string; chainId: string }) => {
-    try {
-      if (!process.env.ETHEREUM_PRIVATE_KEY) {
-        throw new Error("ETHEREUM_PRIVATE_KEY environment variable is not set");
-      }
-
-      const account = privateKeyToAccount(process.env.ETHEREUM_PRIVATE_KEY as `0x${string}`);
-      const walletClient = createWalletClient({
-        chain: base,
-        transport: http(),
-        account
-      });
-
-      const hash = await walletClient.sendTransaction({
-        account,
-        chain: base,
-        to: args.to as `0x${string}`,
-        data: args.calldata as `0x${string}`,
-        value: BigInt(args.value),
-        kzg: undefined
-      });
-
-      return {
-        content: [{
-          type: "text" as const,
-          text: JSON.stringify({ hash }, null, 2)
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: `Error executing transaction: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
-      };
-    }
-  },
-};
+import { base } from 'viem/chains';
 
 export const approveToken = {
   name: "approve_token",
@@ -283,7 +53,7 @@ export const approveToken = {
 
 export const balanceOfToken = {
   name: "balance_of_token",
-  description: "Reads the ERC-20 token balance of an owner",
+  description: "Reads the ERC-20 token balance of an owner on the Base chain",
   parameters: {
     properties: {
       tokenAddress: {
@@ -293,23 +63,15 @@ export const balanceOfToken = {
       ownerAddress: {
         type: "string",
         description: "The address of the owner"
-      },
-      chainId: {
-        type: "string",
-        description: "The chain ID to read the balance from"
       }
     },
-    required: ["tokenAddress", "ownerAddress", "chainId"],
+    required: ["tokenAddress", "ownerAddress"],
   },
-  function: async (args: { tokenAddress: string; ownerAddress: string; chainId: string }) => {
+  function: async (args: { tokenAddress: string; ownerAddress: string }) => {
     try {
-      const chain = CHAIN_MAP[args.chainId];
-      if (!chain) {
-        throw new Error(`Unsupported chain ID: ${args.chainId}`);
-      }
 
       const publicClient = createPublicClient({
-        chain: chain,
+        chain: base,
         transport: process.env.TRANSPORT_URL ? http(process.env.TRANSPORT_URL) : http()
       });
 
