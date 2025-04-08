@@ -1182,7 +1182,7 @@ export class ResourcePerformance {
     const theEpoch = this.epochs.find(
       (e) =>
         e.market.chainId === chainId &&
-        e.market.address === address &&
+        e.market.address === address.toLowerCase() &&
         e.epochId === Number(epoch)
     );
     if (!theEpoch) {

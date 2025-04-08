@@ -753,7 +753,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       const epoch = await epochRepository.findOne({
         where: {
           market: {
-            address: event.market.address,
+            address: event.market.address.toLowerCase(),
             chainId: event.market.chainId,
           },
           epochId: Number(event.logData.args.epochId),

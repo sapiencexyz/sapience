@@ -33,7 +33,7 @@ export async function reindexMissingBlocks(
 
     const marketInfo = {
       marketChainId: marketEntity.chainId,
-      deployment: { address: marketEntity.address },
+      deployment: { address: marketEntity.address.toLowerCase() },
       resource: {
         ...marketEntity.resource,
         priceIndexer: INDEXERS[marketEntity.resource.slug]

@@ -52,7 +52,7 @@ export const handleTransferEvent = async (event: Event) => {
     return;
   }
 
-  existingPosition.owner = to as string;
+  existingPosition.owner = to.toLowerCase() as string;
   await positionRepository.save(existingPosition);
   console.log(`Updated owner of position ${tokenId} to ${to}`);
 };
@@ -101,7 +101,7 @@ export const createOrModifyPositionFromTransaction = async (
     const epoch = await epochRepository.findOne({
       where: {
         epochId: Number(epochId),
-        market: { address: transaction.event.market.address },
+        market: { address: transaction.event.market.address.toLowerCase() },
       },
     });
     if (!epoch) {
@@ -127,7 +127,7 @@ export const createOrModifyPositionFromTransaction = async (
       where: {
         epoch: {
           epochId: Number(epochId),
-          market: { address: transaction.event.market.address },
+          market: { address: transaction.event.market.address.toLowerCase() },
         },
         positionId: positionId,
       },
@@ -153,7 +153,7 @@ export const createOrModifyPositionFromTransaction = async (
     // Set all required fields explicitly
     position.positionId = positionId;
     position.epoch = epoch;
-    position.owner = (eventArgs.sender as string) || position.owner || '';
+    position.owner = ((eventArgs.sender as string) || position.owner || '').toLowerCase();
     position.isLP = isLpPosition(transaction);
 
     // Initialize transactions array if it doesn't exist
@@ -268,7 +268,7 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   const transfer = new CollateralTransfer();
   transfer.transactionHash = transaction.event.transactionHash;
   transfer.timestamp = Number(transaction.event.timestamp);
-  transfer.owner = transaction.event.logData.args.sender as string;
+  transfer.owner = (transaction.event.logData.args.sender as string).toLowerCase();
   transfer.collateral = eventArgs.deltaCollateral as string;
 
   // Save and assign to transaction
@@ -350,13 +350,13 @@ export const createOrUpdateMarketFromContract = async (
   }
 
   // update market params appropriately
-  updatedMarket.address = address;
+  updatedMarket.address = address.toLowerCase();
   updatedMarket.deployTxnBlockNumber = Number(
     contractDeployment.deployTxnBlockNumber
   );
   updatedMarket.deployTimestamp = Number(contractDeployment.deployTimestamp);
   updatedMarket.chainId = chainId;
-  updatedMarket.owner = (marketReadResult as MarketReadResult)[0];
+  updatedMarket.owner = ((marketReadResult as MarketReadResult)[0] as string).toLowerCase();
   updatedMarket.collateralAsset = (marketReadResult as MarketReadResult)[1];
   const marketParamsRaw = (marketReadResult as MarketReadResult)[4];
   const marketParams: MarketParams = {
@@ -391,7 +391,7 @@ export const createOrUpdateEpochFromContract = async (
   // check if epoch already exists in db
   const existingEpoch = await epochRepository.findOne({
     where: {
-      market: { address: market.address },
+      market: { address: market.address.toLowerCase() },
       epochId: _epochId,
     } satisfies FindOptionsWhere<Epoch>,
   });
@@ -434,12 +434,12 @@ export const createOrUpdateMarketFromEvent = async (
 ) => {
   const market = originalMarket || new Market();
   market.chainId = chainId;
-  market.address = address;
+  market.address = address.toLowerCase();
   if (eventArgs.collateralAsset) {
     market.collateralAsset = eventArgs.collateralAsset;
   }
   if (eventArgs.initialOwner) {
-    market.owner = eventArgs.initialOwner;
+    market.owner = (eventArgs.initialOwner as string).toLowerCase();
   }
   market.marketParams = {
     ...eventArgs.marketParams,
@@ -680,7 +680,7 @@ export const updateTransactionFromPositionSettledEvent = async (
   const epoch = await epochRepository.findOne({
     where: {
       epochId: Number(epochId),
-      market: { address: event.market.address },
+      market: { address: event.market.address.toLowerCase() },
     } satisfies FindOptionsWhere<Epoch>,
   });
 
@@ -733,7 +733,7 @@ export const createEpochFromEvent = async (
   const existingEpoch = await epochRepository.findOne({
     where: {
       epochId: Number(eventArgs.epochId),
-      market: { address: market.address, chainId: market.chainId },
+      market: { address: market.address.toLowerCase(), chainId: market.chainId },
     },
   });
 
