@@ -2,14 +2,13 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { fileURLToPath } from 'url';
 
 interface ClaudeDesktopConfig {
     mcpServers?: {
         [key: string]: {
             command: string;
             args: string[];
-            cwd: string;
+            cwd?: string;
         };
     };
     // Keep other potential properties
@@ -31,10 +30,6 @@ async function updateClaudeConfig() {
     }
 
     const configDir = path.dirname(configPath);
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const agentPackageDir = path.resolve(__dirname);
-
     console.log(`Checking Claude config at: ${configPath}`);
 
     let config: ClaudeDesktopConfig = {};
@@ -74,11 +69,7 @@ async function updateClaudeConfig() {
     config.mcpServers['sapience'] = {
         command: 'npx', // Use npx to run the globally/locally installed package command
         args: ['@foil/agent', 'run-server'], // The new command defined in package.json
-        cwd: agentPackageDir // Dynamically determined path to the agent package
     };
-
-    console.log('Updated config object:', JSON.stringify(config, null, 2));
-
 
     try {
         await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
@@ -86,7 +77,7 @@ async function updateClaudeConfig() {
         console.log(`\nConfiguration:`);
         console.log(`  Command: ${config.mcpServers["sapience"].command}`);
         console.log(`  Args: ${config.mcpServers["sapience"].args.join(' ')}`);
-        console.log(`  Cwd: ${config.mcpServers["sapience"].cwd}`);
+        console.log("\nSapience is installed for use with Claude Desktop.");
 
     } catch (error) {
         console.error(`Error writing config file: ${error}`);
