@@ -25,6 +25,7 @@
     "typescript": "^5.5.4"
   },
   "dependencies": {
+    "@foil/protocol": "workspace:*",
     "@langchain/anthropic": "^0.3.15",
     "@langchain/community": "^0.3.37",
     "@langchain/core": "^0.3.43",

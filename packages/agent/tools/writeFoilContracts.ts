@@ -1,6 +1,6 @@
 import { createPublicClient, http, encodeFunctionData } from 'viem';
 import { base } from 'viem/chains';
-import FoilABI from '../abi/Foil.json';
+import FoilABI from '@foil/protocol/deployments/Foil.json';
 
 // Create a public client for interacting with the blockchain
 const client = createPublicClient({
@@ -18,7 +18,7 @@ function encodeFunction(functionName: string, args: any[]) {
 }
 
 export const quoteCreateTraderPosition = {
-  name: "quote_create_foil_trader_position",
+  name: "quote_create_sapience_trader_position",
   description: "Gets a quote for creating a new trader position",
   parameters: {
     properties: {
@@ -74,7 +74,7 @@ export const quoteCreateTraderPosition = {
 };
 
 export const createTraderPosition = {
-  name: "create_foil_trader_position",
+  name: "create_sapience_trader_position",
   description: "Creates a new trader position with specified parameters",
   parameters: {
     properties: {
@@ -132,7 +132,7 @@ export const createTraderPosition = {
 };
 
 export const quoteModifyTraderPosition = {
-  name: "quote_modify_foil_trader_position",
+  name: "quote_modify_sapience_trader_position",
   description: "Gets a quote for modifying an existing trader position",
   parameters: {
     properties: {
@@ -189,7 +189,7 @@ export const quoteModifyTraderPosition = {
 };
 
 export const modifyTraderPosition = {
-  name: "modify_foil_trader_position",
+  name: "modify_sapience_trader_position",
   description: "Modifies an existing trader position with new parameters",
   parameters: {
     properties: {
@@ -247,7 +247,7 @@ export const modifyTraderPosition = {
 };
 
 export const quoteLiquidityPosition = {
-  name: "quote_create_foil_liquidity_position",
+  name: "quote_create_sapience_liquidity_position",
   description: "Gets a quote for creating a new liquidity position",
   parameters: {
     properties: {
@@ -304,7 +304,7 @@ export const quoteLiquidityPosition = {
 };
 
 export const createLiquidityPosition = {
-  name: "create_foil_liquidity_position",
+  name: "create_sapience_liquidity_position",
   description: "Creates a new liquidity position with specified parameters",
   parameters: {
     properties: {
@@ -352,7 +352,7 @@ export const createLiquidityPosition = {
 };
 
 export const quoteModifyLiquidityPosition = {
-  name: "quote_modify_foil_liquidity_position",
+  name: "quote_modify_sapience_liquidity_position",
   description: "Gets a quote for modifying an existing liquidity position",
   parameters: {
     properties: {
@@ -407,7 +407,7 @@ export const quoteModifyLiquidityPosition = {
 };
 
 export const modifyLiquidityPosition = {
-  name: "modify_foil_liquidity_position",
+  name: "modify_sapience_liquidity_position",
   description: "Modifies an existing liquidity position with new parameters",
   parameters: {
     properties: {
@@ -459,7 +459,7 @@ export const modifyLiquidityPosition = {
 };
 
 export const settlePosition = {
-  name: "settle_foil_position",
+  name: "settle_sapience_position",
   description: "Settles a position, closing it and returning any remaining collateral, after the market/period has ended and settled",
   parameters: {
     properties: {
