@@ -1,12 +1,11 @@
 'use client';
 
 import { Button } from '@foil/ui/components/ui/button';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import {
   ArrowRight,
   ArrowLeft,
   Bot,
-  Code,
-  ExternalLink,
   Github,
   Search,
   TrendingUp,
@@ -42,7 +41,7 @@ const BotsHero = () => {
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Create software leveraging large language models that can conduct
-              research and trade prediction markets with superhuman ability
+              research and trade prediction markets with superhuman ability.
             </p>
           </div>
         </div>
@@ -53,6 +52,8 @@ const BotsHero = () => {
 
 // MCP Section with more details
 const MCPSection = () => {
+  const { toast } = useToast();
+
   return (
     <section className="py-16 px-4 sm:px-6 w-full">
       <div className="max-w-6xl mx-auto w-full">
@@ -64,9 +65,9 @@ const MCPSection = () => {
             </h2>
 
             <p className="text-lg text-muted-foreground">
-              Give an AI assistant tools to interact with predictions markets
-              using Sapience&apos;s Model Context Protocol server. Connect to
-              any{' '}
+              Use Sapience&apos;s Model Context Protocol server to give an AI
+              assistants the ability to interact with predictions markets.
+              Connect to any{' '}
               <Link
                 href="https://modelcontextprotocol.io/clients"
                 target="_blank"
@@ -92,15 +93,22 @@ const MCPSection = () => {
                 Install Sapience for Claude Desktop
               </p>
               <div className="flex items-stretch max-w-md">
-                <div className="bg-black text-white px-4 font-mono text-sm flex items-center rounded-l-md flex-grow">
-                  <span>npx @foil/agent install</span>
+                <div className="bg-black text-white px-4 font-mono text-sm flex items-center rounded-l-md flex-grow border">
+                  <span>npx @foil/agent claude-install</span>
                 </div>
                 <Button
                   variant="outline"
                   size="default"
                   className="rounded-l-none border-l-0 px-3"
                   onClick={() => {
-                    navigator.clipboard.writeText('npx @foil/agent install');
+                    navigator.clipboard.writeText(
+                      'npx @foil/agent claude-install'
+                    );
+                    toast({
+                      title: 'Copied to clipboard',
+                      description: 'Command copied to clipboard',
+                      duration: 2000,
+                    });
                   }}
                 >
                   <svg
@@ -124,12 +132,12 @@ const MCPSection = () => {
           </div>
 
           {/* Right column for image/video */}
-          <div className="w-full md:w-1/2 bg-gray-100 rounded-lg flex items-center justify-center">
+          <div className="w-full md:w-1/2 bg-muted rounded-lg flex items-center justify-center">
             {/* Placeholder for Claude image or video */}
             <div className="text-center p-8">
               <Bot className="h-16 w-16 mx-auto text-primary/60 mb-2" />
               <p className="text-muted-foreground">
-                Claude Desktop Integration Video
+                Claude Desktop Integration Video Coming Soon
               </p>
             </div>
           </div>
@@ -144,19 +152,15 @@ const TemplateSection = () => {
   return (
     <section id="templates" className="py-32 px-4 sm:px-6 w-full">
       <div className="max-w-6xl mx-auto w-full">
-        <h2 className="font-sans text-2xl md:text-3xl font-normal mb-12 text-center">
-          Build a Research Agent
-        </h2>
-
         <div className="flex flex-col md:flex-row gap-8 items-center">
           {/* Left side: Flow chart with loop */}
           <div className="w-full md:w-1/2 p-6">
             <div className="relative h-[400px] w-full">
               {/* Large circular connecting line */}
-              <div className="absolute w-[280px] h-[280px] border-2 border-gray-200 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+              <div className="absolute w-[280px] h-[280px] border-2 border-muted rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
 
               {/* Step 1: Research and Forecast - Top */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 text-center">
+              <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center">
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
                   <Search className="h-8 w-8 text-black" />
                 </div>
@@ -164,7 +168,7 @@ const TemplateSection = () => {
               </div>
 
               {/* Step 2: Create/Modify Market Positions - Bottom Right */}
-              <div className="absolute bottom-[40px] right-[40px] text-center">
+              <div className="absolute bottom-[40px] right-[80px] text-center">
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
                   <TrendingUp className="h-8 w-8 text-black" />
                 </div>
@@ -176,7 +180,7 @@ const TemplateSection = () => {
               </div>
 
               {/* Step 3: Update Prediction Journal - Bottom Left */}
-              <div className="absolute bottom-[40px] left-[40px] text-center">
+              <div className="absolute bottom-[40px] left-[80px] text-center">
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
                   <Bot className="h-8 w-8 text-black" />
                 </div>
@@ -188,61 +192,36 @@ const TemplateSection = () => {
               </div>
 
               {/* Arrow 1: Research → Create/Modify (Top Right) */}
-              <div className="absolute top-[130px] right-[100px] transform rotate-[45deg]">
-                <ArrowRight className="h-5 w-5 text-black" />
+              <div className="absolute top-[100px] right-[120px] transform rotate-[45deg]">
+                <ArrowRight className="h-4 w-4 opacity-20" />
               </div>
 
               {/* Arrow 2: Create/Modify → Update (Bottom) */}
               <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2">
-                <ArrowLeft className="h-5 w-5 text-black" />
+                <ArrowLeft className="h-4 w-4 opacity-20" />
               </div>
 
               {/* Arrow 3: Update → Research (Top Left) */}
-              <div className="absolute top-[130px] left-[100px] transform rotate-[-45deg]">
-                <ArrowRight className="h-5 w-5 text-black" />
+              <div className="absolute top-[100px] left-[120px] transform rotate-[-45deg]">
+                <ArrowRight className="h-4 w-4 opacity-20" />
               </div>
             </div>
           </div>
 
           {/* Right side: Explanatory text */}
           <div className="w-full md:w-1/2 space-y-6">
-            <h3 className="text-xl font-medium">
-              Build Your Own Prediction Bot
-            </h3>
-            <p className="text-muted-foreground">
-              Use our boilerplate to create an AI-powered bot that can research,
-              analyze data, and make predictions on Sapience markets
-              autonomously.
+            <h2 className="font-sans text-2xl md:text-3xl font-normal">
+              Build a Research Agent
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Use our TypeScript boilerplate to create an AI-powered bot that
+              can research, analyze data, and make predictions on Sapience
+              markets autonomously.
             </p>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Code className="h-5 w-5 text-primary mt-1" />
-                <div>
-                  <h4 className="font-medium">Open Source Template</h4>
-                  <p className="text-muted-foreground">
-                    Clone our TypeScript templates to get started with a fully
-                    functional research agent that can execute trades on your
-                    behalf.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <ExternalLink className="h-5 w-5 text-primary mt-1" />
-                <div>
-                  <h4 className="font-medium">Learn From the Community</h4>
-                  <p className="text-muted-foreground">
-                    Explore prediction journals from existing bots on X to see
-                    trading agents in action.
-                  </p>
-                </div>
-              </div>
-            </div>
 
             <div className="pt-4">
               <Button>
-                <Github className="mr-2 h-4 w-4" /> Get Boilerplate
+                <Github className="mr-2 h-4 w-4" /> Clone the repo
               </Button>
             </div>
           </div>

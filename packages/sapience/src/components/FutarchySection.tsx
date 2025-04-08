@@ -31,7 +31,7 @@ export default function FutarchySection() {
             </p>
             <p className="text-muted-foreground mb-8">
               Sapience forecasters can help guide policy decisions by providing
-              predictions about which strategies will most effectively achieve
+              predictions about which strategies could most effectively achieve
               measurable outcomes.
             </p>
 

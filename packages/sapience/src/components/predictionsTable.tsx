@@ -366,7 +366,7 @@ const PredictionsTable = () => {
         {data.length === 0 ? (
           <div className="w-full pt-48 text-center text-muted-foreground">
             <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-            No predictions available
+            No forecasting available
           </div>
         ) : (
           <div className="space-y-12 flex flex-col">

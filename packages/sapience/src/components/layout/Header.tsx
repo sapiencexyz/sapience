@@ -5,7 +5,7 @@ import {
   SidebarContent,
   SidebarTrigger,
 } from '@foil/ui/components/ui/sidebar';
-import { Globe } from 'lucide-react';
+import { Globe, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -39,7 +39,7 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
 
   return (
     <nav className="flex flex-col gap-3 w-full my-48 ml-4">
-      <Link href="/predictions" passHref>
+      <Link href="/predictions" passHref className="flex w-fit">
         <Button
           variant="ghost"
           className={`${linkClass} ${isActive('/predictions', pathname) ? activeClass : ''}`}
@@ -48,7 +48,7 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
           Forecasting
         </Button>
       </Link>
-      <Link href="/leaderboard" passHref>
+      <Link href="/leaderboard" passHref className="flex w-fit">
         <Button
           variant="ghost"
           className={`${linkClass} ${isActive('/leaderboard', pathname) ? activeClass : ''}`}
@@ -57,7 +57,7 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
           Leaderboard
         </Button>
       </Link>
-      <Link href="/bots" passHref>
+      <Link href="/bots" passHref className="flex w-fit">
         <Button
           variant="ghost"
           className={`${linkClass} ${isActive('/bots', pathname) ? activeClass : ''}`}
@@ -66,7 +66,7 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
           Build Bots
         </Button>
       </Link>
-      <Link href="/futarchy" passHref>
+      <Link href="/futarchy" passHref className="flex w-fit">
         <Button
           variant="ghost"
           className={`${linkClass} ${isActive('/futarchy', pathname) ? activeClass : ''}`}
@@ -75,13 +75,22 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
           Futarchy
         </Button>
       </Link>
-      <Link href="https://discord.com" passHref>
+      <Link
+        href="https://discord.com"
+        passHref
+        className="flex w-fit"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         <Button
           variant="ghost"
           className={`${linkClass} ${isActive('/community', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
-          Community
+          <span className="flex items-center">
+            Community
+            <ExternalLink className="h-4 w-4 ml-1.5 opacity-70" />
+          </span>
         </Button>
       </Link>
     </nav>

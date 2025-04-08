@@ -310,7 +310,7 @@ const Leaderboard = ({ params }: Props) => {
                       colSpan={columns.length}
                       className="h-24 text-center text-muted-foreground text-sm md:text-base"
                     >
-                      No results found for this epoch.
+                      No results found for this period
                     </TableCell>
                   </TableRow>
                 )}

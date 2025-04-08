@@ -17,8 +17,8 @@ export default function BotSection() {
             <p className="text-lg mb-4">
               Sapience&apos;s{' '}
               <strong className="font-medium">model context protocol</strong>{' '}
-              acts as a plug-in for Claude. Have Claude check active prediction
-              markets, research them, and stage transactions to a{' '}
+              server is a plug-in for Claude. Have Claude check active
+              prediction markets, research them, and stage transactions to a{' '}
               <Link
                 target="_blank"
                 className="underline"
@@ -26,15 +26,12 @@ export default function BotSection() {
               >
                 Safe
               </Link>
-              .
+              for you.
             </p>
 
             <p className="text-lg mb-4">
               Or build an autonomous agent to research and update market
-              positions on your behalf.{' '}
-              <small className="text-muted-foreground">
-                AI is very useful to bot building as well.
-              </small>
+              positions on your behalf.
             </p>
 
             <Button
