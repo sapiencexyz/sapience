@@ -183,7 +183,7 @@ const Leaderboard = ({ params }: Props) => {
       },
       {
         id: 'owner',
-        header: 'Wallet Address',
+        header: 'Ethereum Account Address',
         accessorKey: 'owner',
         cell: OwnerCell,
       },

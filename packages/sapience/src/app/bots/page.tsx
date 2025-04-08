@@ -144,7 +144,7 @@ const MCPSection = () => {
                     );
                     toast({
                       title: 'Copied to clipboard',
-                      description: 'Command copied to clipboard',
+                      description: 'Go paste that bad boy in your terminal',
                       duration: 2000,
                     });
                   }}

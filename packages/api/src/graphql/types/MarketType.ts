@@ -11,7 +11,7 @@ export class MarketType {
   @Field(() => String)
   address: string;
 
-  @Field(() => String)
+  @Field(() => String, { nullable: true })
   vaultAddress: string;
 
   @Field(() => Int)
