@@ -1,13 +1,29 @@
+import { ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+
 const FutarchyPage = () => {
   return (
-    <div className="container max-w-[860px] mx-auto p-4 md:p-8 lg:p-20 lg:mt-8">
+    <div className="container max-w-[920px] mx-auto p-4 md:p-8 lg:p-20 flex flex-col justify-center min-h-[calc(100vh-var(--header-height,4rem))]">
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-10">
-        Sapience is ...
+        Vote on values, but bet on beliefs
       </h1>
       <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
-        Futarchy is ...
+        Economist Robin Hanson developed the concept of{' '}
+        <strong className="font-semibold">futarchy</strong>, where elected
+        officials define goals and prediction markets determine which policies
+        could best achieve them.
       </p>
-      <p>placeholder</p>
+      <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
+        Help lay the groundwork for futarchy by building and participating in
+        the most liquid prediction markets for future forecasting on the planet.
+      </p>
+      <Link
+        href="/predictions"
+        className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1.5 text-xs tracking-widest transition-all duration-300 font-semibold mt-4 self-start"
+      >
+        EXPLORE PREDICTIONS
+        <ChevronRight className="h-3.5 w-3.5" />
+      </Link>
     </div>
   );
 };

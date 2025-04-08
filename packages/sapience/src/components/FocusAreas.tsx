@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@foil/ui/components/ui/button';
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -126,22 +127,10 @@ export default function TopicsOfInterest() {
           <h2 className="text-3xl font-heading font-normal">Interest Topics</h2>
           <Link
             href="/predictions"
-            className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
+            className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1.5 text-xs tracking-widest transition-all duration-300 font-semibold"
           >
             VIEW ALL
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="ml-0.5"
-            >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
+            <ChevronRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 

@@ -11,9 +11,34 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useRef } from 'react';
 
 // Hero section for the bots page - smaller than homepage hero but still exciting
 const BotsHero = () => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  useEffect(() => {
+    const handleIframeLoad = () => {
+      const iframe = iframeRef.current;
+      if (iframe && iframe.contentDocument) {
+        try {
+          const style = iframe.contentDocument.createElement('style');
+          style.textContent =
+            'html { color-scheme: light !important; } * { filter: none !important; }';
+          iframe.contentDocument.head.appendChild(style);
+        } catch (e) {
+          console.error('Could not inject styles into iframe:', e);
+        }
+      }
+    };
+
+    const iframe = iframeRef.current;
+    if (iframe) {
+      iframe.addEventListener('load', handleIframeLoad);
+      return () => iframe.removeEventListener('load', handleIframeLoad);
+    }
+  }, []);
+
   return (
     <div className="relative overflow-hidden flex items-center justify-center w-full">
       {/* Outer container with padding and iframe background */}
@@ -21,15 +46,28 @@ const BotsHero = () => {
         <div className="relative overflow-hidden rounded-xl shadow-inner p-16 border border-gray-500/20">
           {/* Iframe as background within the outer box */}
           <div
-            className="absolute inset-0 z-0 overflow-hidden rounded-xl"
-            style={{ opacity: 0.4, transformOrigin: 'center center' }}
+            className="absolute inset-0 z-0 overflow-hidden rounded-xl light"
+            style={{
+              opacity: 0.4,
+              transformOrigin: 'center center',
+              colorScheme: 'light',
+              filter: 'none',
+            }}
           >
             <iframe
+              ref={iframeRef}
               title="art"
               src="https://my.spline.design/particlescopy-3815e097877aa631d0301821f63f852c/"
               width="100%"
               height="100%"
               className="rounded-xl"
+              style={{
+                colorScheme: 'light',
+                filter: 'none',
+              }}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              sandbox="allow-same-origin allow-scripts allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
             />
           </div>
 
