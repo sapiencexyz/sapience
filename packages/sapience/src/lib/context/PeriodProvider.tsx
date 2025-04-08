@@ -1,3 +1,4 @@
+import { useToast } from '@foil/ui/hooks/use-toast';
 import type { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
@@ -14,7 +15,6 @@ import { useResources } from '../hooks/useResources';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../utils/util';
-import { useToast } from '@foil/ui/hooks/use-toast';
 
 import type { Market } from './FoilProvider';
 import { useFoil } from './FoilProvider';

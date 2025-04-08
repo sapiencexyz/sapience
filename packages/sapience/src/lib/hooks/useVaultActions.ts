@@ -1,3 +1,4 @@
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import { zeroAddress } from 'viem';
 import {
@@ -7,7 +8,6 @@ import {
   useWriteContract,
 } from 'wagmi';
 
-import { useToast } from '@foil/ui/hooks/use-toast';
 import erc20ABI from '~/lib/erc20abi.json';
 
 type Props = {

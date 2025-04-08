@@ -15,18 +15,18 @@ type RootLayoutProps = {
   children: React.ReactNode;
 };
 
-const APP_NAME = 'Foil';
-const APP_DESCRIPTION =
-  'Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.';
+const APP_NAME = 'Sapience';
+const APP_DESCRIPTION = 'Sapience Prediction Markets';
 const LARGE_ICON_PATH = '/icons/icon-512x512.png';
 const DEFAULT_OG_IMAGE = 'https://foil.xyz/og-image.png';
+const APP_URL = 'https://foil.xyz';
 
 export const metadata: Metadata = {
-  title: { default: APP_NAME, template: '%s | Foil' },
+  title: { default: APP_NAME, template: `%s | ${APP_NAME}` },
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,
   manifest: '/manifest.json',
-  metadataBase: new URL('https://foil.xyz'),
+  metadataBase: new URL(APP_URL),
   icons: {
     icon: LARGE_ICON_PATH,
     apple: [
@@ -49,10 +49,10 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    url: 'https://foil.xyz',
+    url: APP_URL,
     title: {
       default: APP_NAME,
-      template: '%s | Foil',
+      template: '%s | Sapience',
     },
     description: APP_DESCRIPTION,
     siteName: APP_NAME,
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
         url: DEFAULT_OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: 'Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.',
+        alt: 'Sapience Prediction Markets',
       },
     ],
   },
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: {
       default: APP_NAME,
-      template: '%s | Foil',
+      template: '%s | Sapience',
     },
     description: APP_DESCRIPTION,
     images: [DEFAULT_OG_IMAGE],

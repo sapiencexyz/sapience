@@ -3,11 +3,13 @@
 import { Button } from '@foil/ui/components/ui/button';
 import {
   ArrowRight,
+  ArrowLeft,
   Bot,
   Code,
   ExternalLink,
   Github,
   Search,
+  TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -16,8 +18,8 @@ const BotsHero = () => {
   return (
     <div className="relative overflow-hidden flex items-center justify-center w-full">
       {/* Outer container with padding and iframe background */}
-      <div className="relative z-10 w-full max-w-4xl px-4 sm:px-6 pt-24 pb-12">
-        <div className="relative overflow-hidden rounded-xl shadow-sm shadow-inner p-14 border border-gray-500/20">
+      <div className="relative z-10 w-full max-w-5xl px-4 sm:px-6 pt-36 pb-24">
+        <div className="relative overflow-hidden rounded-xl shadow-inner p-16 border border-gray-500/20">
           {/* Iframe as background within the outer box */}
           <div
             className="absolute inset-0 z-0 overflow-hidden rounded-xl"
@@ -35,7 +37,7 @@ const BotsHero = () => {
           {/* Inner Content card overlaid on top */}
           <div className="relative z-10 w-full text-center px-6 py-10 bg-background/[0.25] backdrop-blur-[3px] border border-gray-500/20 rounded-xl shadow-sm">
             <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
-              Build AI-Powered Bots
+              Trade with Machine Intelligence
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -140,15 +142,15 @@ const MCPSection = () => {
 // Template section renamed to Research Bot Boilerplate
 const TemplateSection = () => {
   return (
-    <section id="templates" className="py-16 px-4 sm:px-6 w-full">
+    <section id="templates" className="py-32 px-4 sm:px-6 w-full">
       <div className="max-w-6xl mx-auto w-full">
         <h2 className="font-sans text-2xl md:text-3xl font-normal mb-12 text-center">
-          Sapience Research Agent Boilerplate
+          Build a Research Agent
         </h2>
 
         <div className="flex flex-col md:flex-row gap-8 items-center">
           {/* Left side: Flow chart with loop */}
-          <div className="w-full md:w-1/2 p-6 bg-muted/30 rounded-lg">
+          <div className="w-full md:w-1/2 p-6">
             <div className="relative h-[400px] w-full">
               {/* Large circular connecting line */}
               <div className="absolute w-[280px] h-[280px] border-2 border-gray-200 rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
@@ -164,10 +166,10 @@ const TemplateSection = () => {
               {/* Step 2: Create/Modify Market Positions - Bottom Right */}
               <div className="absolute bottom-[40px] right-[40px] text-center">
                 <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
-                  <ArrowRight className="h-8 w-8 text-black" />
+                  <TrendingUp className="h-8 w-8 text-black" />
                 </div>
                 <p className="text-sm font-medium">
-                  Create/Modify
+                  Update
                   <br />
                   Market Positions
                 </p>
@@ -179,7 +181,7 @@ const TemplateSection = () => {
                   <Bot className="h-8 w-8 text-black" />
                 </div>
                 <p className="text-sm font-medium">
-                  Update Prediction
+                  Share Prediction
                   <br />
                   Journal
                 </p>
@@ -191,8 +193,8 @@ const TemplateSection = () => {
               </div>
 
               {/* Arrow 2: Create/Modify → Update (Bottom) */}
-              <div className="absolute bottom-[60px] left-1/2 -translate-x-1/2">
-                <ArrowRight className="h-5 w-5 text-black" />
+              <div className="absolute bottom-[30px] left-1/2 -translate-x-1/2">
+                <ArrowLeft className="h-5 w-5 text-black" />
               </div>
 
               {/* Arrow 3: Update → Research (Top Left) */}
@@ -209,7 +211,7 @@ const TemplateSection = () => {
             </h3>
             <p className="text-muted-foreground">
               Use our boilerplate to create an AI-powered bot that can research,
-              analyze data, and make intelligent predictions on Foil markets
+              analyze data, and make predictions on Sapience markets
               autonomously.
             </p>
 
@@ -231,20 +233,16 @@ const TemplateSection = () => {
                 <div>
                   <h4 className="font-medium">Learn From the Community</h4>
                   <p className="text-muted-foreground">
-                    Explore prediction journals from existing bots on Twitter to
-                    see real-world examples of AI-powered market analysis and
-                    decision making.
+                    Explore prediction journals from existing bots on X to see
+                    trading agents in action.
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="pt-4">
-              <Button className="mr-4">
+              <Button>
                 <Github className="mr-2 h-4 w-4" /> Get Boilerplate
-              </Button>
-              <Button variant="outline">
-                View Bot Journals <ExternalLink className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>

@@ -8,7 +8,17 @@ export default function FutarchySection() {
   return (
     <section className="pt-48 pb-64 px-8">
       <div className="container mx-auto">
-        <div className="flex flex-col md:flex-row-reverse items-center gap-12">
+        <div className="flex flex-col md:flex-row items-center gap-12">
+          {/* Visual content - Image */}
+          <div className="flex-1 relative aspect-video min-h-[250px]">
+            <Image
+              src="/futarchy.png"
+              alt="Futarchy prediction market concept"
+              fill
+              className="rounded-lg object-cover"
+            />
+          </div>
+
           {/* Text content */}
           <div className="flex-1">
             <h2 className="text-3xl font-heading font-normal mb-6">
@@ -33,16 +43,6 @@ export default function FutarchySection() {
             >
               <Link href="/futarchy">Learn more</Link>
             </Button>
-          </div>
-
-          {/* Visual content - Replaced with Image */}
-          <div className="flex-1 relative aspect-video">
-            <Image
-              src="/futarchy.png"
-              alt="Futarchy prediction market concept"
-              fill
-              className="rounded-lg object-cover"
-            />
           </div>
         </div>
       </div>

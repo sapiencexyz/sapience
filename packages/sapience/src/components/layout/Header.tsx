@@ -1,21 +1,13 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { Button } from '@foil/ui/components/ui/button';
 import {
-  Drawer,
-  DrawerContent,
-  DrawerTrigger,
-} from '@foil/ui/components/ui/drawer';
-import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarTrigger,
-  useSidebar,
 } from '@foil/ui/components/ui/sidebar';
-import { Menu, Globe } from 'lucide-react';
+import { Globe } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
 
 import ConnectButton from '../ConnectButton';
 import ModeToggle from '../ModeToggle';
@@ -97,9 +89,7 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
 };
 
 const Header = () => {
-  const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const { isMobile } = useSidebar();
 
   return (
     <>
@@ -130,45 +120,7 @@ const Header = () => {
         <SidebarContent>
           <NavLinks />
         </SidebarContent>
-        <SidebarFooter>{/* Optional footer content */}</SidebarFooter>
       </Sidebar>
-
-      {/* Mobile Drawer - only needed if you want a separate drawer in addition to the sidebar */}
-      {isMobile && (
-        <Drawer open={isOpen} onOpenChange={setIsOpen}>
-          <DrawerTrigger
-            asChild
-            className="fixed bottom-4 right-4 z-10 lg:hidden"
-          >
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full shadow-md"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </DrawerTrigger>
-          <DrawerContent className="h-full">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
-                  <span className="font-semibold">Navigation</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsOpen(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  ✕
-                </Button>
-              </div>
-              <NavLinks isMobile onClose={() => setIsOpen(false)} />
-            </div>
-          </DrawerContent>
-        </Drawer>
-      )}
     </>
   );
 };

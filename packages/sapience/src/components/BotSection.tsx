@@ -53,7 +53,7 @@ export default function BotSection() {
             <div className="text-center p-8">
               <Bot className="h-16 w-16 mx-auto text-primary/60 mb-2" />
               <p className="text-muted-foreground">
-                Claude Desktop Integration Video
+                Claude Desktop Integration Video Coming Soon
               </p>
             </div>
           </div>

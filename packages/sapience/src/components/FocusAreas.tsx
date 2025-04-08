@@ -166,7 +166,7 @@ export default function TopicsOfInterest() {
               {extendedFocusAreas.map((area, index) => (
                 <div
                   key={index}
-                  className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 border-t-0 flex flex-col w-[320px] flex-shrink-0"
+                  className="bg-background rounded-2xl overflow-hidden shadow-sm border border-muted border-t-0 flex flex-col w-[320px] flex-shrink-0"
                 >
                   <div
                     className="h-3"

@@ -14,13 +14,10 @@ const ContentArea = ({ children }: { children: ReactNode }) => {
 
   return (
     <SidebarInset
-      className="p-0 m-0 w-full max-w-none transition-all duration-300 ease-in-out"
-      style={{
-        width: `calc(100% - (var(--sidebar-width) * ${
-          state === 'expanded' ? '1' : '0'
-        }))`,
-        marginLeft: state === 'expanded' ? 'var(--sidebar-width)' : '0',
-      }}
+      className={`
+        p-0 m-0 w-full max-w-none transition-all duration-300 ease-in-out
+        ${state === 'expanded' ? 'md:ml-[var(--sidebar-width)] md:w-[calc(100%-var(--sidebar-width))]' : 'ml-0 w-full'}
+      `}
     >
       {children}
     </SidebarInset>
