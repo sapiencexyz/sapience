@@ -87,6 +87,9 @@ importers:
       '@apollo/server-plugin-response-cache':
         specifier: ^4.1.4
         version: 4.1.4(@apollo/server@4.11.3(encoding@0.1.13)(graphql@16.10.0))(graphql@16.10.0)
+      '@foil/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@msgpack/msgpack':
         specifier: ^3.1.1
         version: 3.1.1

@@ -114,6 +114,10 @@ export const gweiToEther = (gweiValue: bigint): string => {
 };
 
 export const shortenAddress = (address: string) => {
+  if (!address) {
+    return '';
+  }
+
   if (address.length < 12) {
     return address;
   }

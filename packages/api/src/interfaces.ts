@@ -121,18 +121,6 @@ export enum TimeWindow {
   M = '1M',
 }
 
-export interface MarketInfo {
-  deployment: Deployment;
-  vaultAddress: string;
-  isYin: boolean;
-  isCumulative: boolean;
-  marketChainId: number;
-  resource: {
-    name: string;
-    priceIndexer: IResourcePriceIndexer;
-  };
-}
-
 export enum EventTransactionType {
   Undefined,
   CreateLiquidityPosition,

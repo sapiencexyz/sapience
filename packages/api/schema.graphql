@@ -11,6 +11,13 @@ type CandleType {
   timestamp: Int!
 }
 
+type CategoryType {
+  id: ID!
+  markets: [MarketType!]!
+  name: String!
+  slug: String!
+}
+
 type EpochType {
   endTimestamp: Int
   epochId: Int!
@@ -18,6 +25,7 @@ type EpochType {
   market: MarketType
   positions: [PositionType!]!
   public: Boolean!
+  question: String!
   settled: Boolean
   settlementPriceD18: String
   startTimestamp: Int
@@ -70,6 +78,7 @@ type PositionType {
 }
 
 type Query {
+  categories: [CategoryType!]!
   epochs(marketId: Int): [EpochType!]!
   getEpochLeaderboard(address: String!, chainId: Int!, epochId: String!): [PnLType!]!
   indexCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
@@ -78,6 +87,7 @@ type Query {
   market(address: String!, chainId: Int!): MarketType
   marketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
   markets: [MarketType!]!
+  marketsByCategory(slug: String!): [MarketType!]!
   positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
   resource(slug: String!): ResourceType
   resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
