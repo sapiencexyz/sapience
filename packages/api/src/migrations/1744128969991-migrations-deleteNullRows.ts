@@ -16,6 +16,7 @@ export class Migrations1744128969991 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Note: We cannot restore deleted rows in the down migration
     // as we don't have the original data
+    queryRunner; // linting
     console.log('Warning: Cannot restore deleted rows in down migration');
   }
 }
