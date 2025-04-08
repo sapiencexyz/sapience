@@ -37,8 +37,8 @@ const BotsHero = () => {
   return (
     <div className="relative overflow-hidden flex items-center justify-center w-full">
       {/* Outer container with padding and iframe background */}
-      <div className="relative z-10 w-full max-w-5xl px-4 sm:px-6 pt-36 pb-24">
-        <div className="relative overflow-hidden rounded-xl shadow-inner p-16 border border-gray-500/20">
+      <div className="relative z-10 w-full px-4 sm:px-6 py-36">
+        <div className="relative overflow-hidden rounded-xl shadow-inner p-20 border border-gray-500/20">
           {/* Iframe as background within the outer box */}
           <div
             className="absolute inset-0 z-0 overflow-hidden rounded-xl light"
@@ -67,7 +67,7 @@ const BotsHero = () => {
           </div>
 
           {/* Inner Content card overlaid on top */}
-          <div className="relative z-10 w-full text-center px-6 py-10 bg-background/[0.25] backdrop-blur-[3px] border border-gray-500/20 rounded-xl shadow-sm">
+          <div className="relative z-10 w-fit mx-auto text-center p-10 bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
             <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
               Trade with Machine Intelligence
             </h1>
