@@ -31,29 +31,13 @@
       "slug": "decentralized-compute"
     },
     {
-      "name": "Energy + DePIN",
-      "slug": "energy-depin"
-    },
-    {
       "name": "Climate Change",
       "slug": "climate-change"
     },
     {
       "name": "Biosecurity",
       "slug": "biosecurity"
-    },
-    {
-      "name": "International Relations",
-      "slug": "international-relations"
-    },
-    {
-      "name": "Space Exploration",
-      "slug": "space-exploration"
-    },
-    {
-      "name": "Emerging Technologies",
-      "slug": "emerging-technologies"
-    }    
+    }
   ],
   "MARKETS": [
     {
