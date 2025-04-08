@@ -19,13 +19,13 @@ export class PositionResolver {
         epoch?: { market: { chainId: number; address: string } };
       } = {};
       if (owner) {
-        where.owner = owner;
+        where.owner = owner.toLowerCase();
       }
       if (chainId && marketAddress) {
         where.epoch = {
           market: {
             chainId,
-            address: marketAddress,
+            address: marketAddress.toLowerCase(),
           },
         };
       }

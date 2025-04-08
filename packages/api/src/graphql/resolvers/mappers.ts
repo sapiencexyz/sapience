@@ -32,7 +32,7 @@ const hexToString = (hex: string | null | undefined): string | null => {
 
 export const mapMarketToType = (market: Market): MarketType => ({
   id: market.id,
-  address: market.address,
+  address: market.address.toLowerCase(),
   vaultAddress: market.vaultAddress,
   chainId: market.chainId,
   isYin: market.isYin,
@@ -41,7 +41,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   resource: market.resource ? mapResourceToType(market.resource) : null,
   deployTimestamp: market.deployTimestamp,
   deployTxnBlockNumber: market.deployTxnBlockNumber,
-  owner: market.owner,
+  owner: market.owner?.toLowerCase() || null,
   collateralAsset: market.collateralAsset,
   claimStatement: hexToString(market.marketParams?.claimStatement),
 });
@@ -70,7 +70,7 @@ export const mapEpochToType = (epoch: Epoch): EpochType => ({
 export const mapPositionToType = (position: Position): PositionType => ({
   id: position.id,
   positionId: position.positionId,
-  owner: position.owner,
+  owner: position.owner?.toLowerCase() || '',
   isLP: position.isLP,
   baseToken: position.baseToken,
   quoteToken: position.quoteToken,

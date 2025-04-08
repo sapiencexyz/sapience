@@ -149,7 +149,7 @@ export const getTimestampsForReindex = async (
   // if no epoch is provided, get the latest one from the contract
   if (!epochId) {
     const latestEpoch = (await client.readContract({
-      address: contractDeployment.address as `0x${string}`,
+      address: contractDeployment.address.toLowerCase() as `0x${string}`,
       abi: contractDeployment.abi,
       functionName: 'getLatestEpoch',
     })) as [number, number, number];
@@ -164,7 +164,7 @@ export const getTimestampsForReindex = async (
   const epoch = await epochRepository.findOne({
     where: {
       epochId,
-      market: { address: contractDeployment.address, chainId },
+      market: { address: contractDeployment.address.toLowerCase(), chainId },
     },
     relations: ['market'],
   });
@@ -173,7 +173,7 @@ export const getTimestampsForReindex = async (
     // get info from contract
     console.log('fetching epoch from contract to get timestamps...');
     const epochContract = (await client.readContract({
-      address: contractDeployment.address as `0x${string}`,
+      address: contractDeployment.address.toLowerCase() as `0x${string}`,
       abi: contractDeployment.abi,
       functionName: 'getEpoch',
       args: [`${epochId}`],

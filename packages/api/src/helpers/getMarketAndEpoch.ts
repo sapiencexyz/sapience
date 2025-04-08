@@ -10,7 +10,7 @@ export const getMarketAndEpoch = async (
   epochId: string
 ): Promise<{ market: Market; epoch: Epoch }> => {
   const market = await marketRepository.findOne({
-    where: { chainId: Number(chainId), address: address },
+    where: { chainId: Number(chainId), address: address.toLowerCase() },
   });
   if (!market) {
     throw new Error(

@@ -57,7 +57,7 @@ export class PnLPerformance {
     let epoch = this.epochs.find(
       (data) =>
         data.epochData.chainId === chainId &&
-        data.epochData.address === address &&
+        data.epochData.address === address.toLowerCase() &&
         data.epochData.epochId === epochId
     );
 
@@ -95,7 +95,7 @@ export class PnLPerformance {
       const openPositionsOwners = new Map<number, string>();
 
       for (const position of positions) {
-        const ownerId = position.owner;
+        const ownerId = position.owner.toLowerCase();
 
         if (!pnlByOwner.has(ownerId)) {
           pnlByOwner.set(ownerId, {
