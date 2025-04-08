@@ -317,6 +317,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
+        epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
+
         return (outputParams.requiredCollateral, outputParams.tradeRatioD18);
     }
 
@@ -341,7 +343,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         Position.Data storage position = Position.loadValid(positionId);
 
         // check if epoch is not settled
-        Epoch.load(position.epochId).validateNotSettled();
+        Epoch.Data storage epoch = Epoch.load(position.epochId);
+        epoch.validateNotSettled();
 
         if (position.kind != IFoilStructs.PositionKind.Trade) {
             revert Errors.InvalidPositionKind();
@@ -364,6 +367,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         QuoteOrTradeOutputParams memory outputParams = _quoteOrTrade(
             inputParams
         );
+
+        epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
 
         return (
             outputParams.expectedDeltaCollateral,
@@ -428,6 +433,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 requiredCollateral;
         int256 expectedDeltaCollateral;
         int256 closePnL; // PnL from initial position to zero
+        uint160 sqrtPriceX96After;
     }
 
     function _quoteOrTrade(
@@ -447,21 +453,23 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         runtime.tradedVGas = params.deltaSize.abs();
         if (runtime.isLongDirection) {
             // Long direction; Quote or Trade
-            (runtime.tradedVEth, ) = Trade.swapOrQuoteTokensExactOut(
-                epoch,
-                0,
-                runtime.tradedVGas,
-                params.isQuote
-            );
+            (runtime.tradedVEth, , output.sqrtPriceX96After) = Trade
+                .swapOrQuoteTokensExactOut(
+                    epoch,
+                    0,
+                    runtime.tradedVGas,
+                    params.isQuote
+                );
             runtime.signedTradedVEth = runtime.tradedVEth.toInt();
         } else {
             // Short direction; Quote or Trade
-            (runtime.tradedVEth, ) = Trade.swapOrQuoteTokensExactIn(
-                epoch,
-                0,
-                runtime.tradedVGas,
-                params.isQuote
-            );
+            (runtime.tradedVEth, , output.sqrtPriceX96After) = Trade
+                .swapOrQuoteTokensExactIn(
+                    epoch,
+                    0,
+                    runtime.tradedVGas,
+                    params.isQuote
+                );
             runtime.signedTradedVEth = runtime.tradedVEth.toInt() * -1;
         }
 
