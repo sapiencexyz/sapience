@@ -2,9 +2,9 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": ".",
-    "module": "nodenext",
+    "module": "esnext",
     "target": "es2017",
-    "moduleResolution": "nodenext",
+    "moduleResolution": "node",
     "declaration": true,
     "esModuleInterop": true,
     "strict": false,

@@ -1,4 +1,4 @@
-# Foil MCP Server
+# Sapience Agent + MCP Server
 
 ## Use with Claude Desktop
 
