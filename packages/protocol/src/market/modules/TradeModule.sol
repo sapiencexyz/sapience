@@ -292,7 +292,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function quoteCreateTraderPosition(
         uint256 epochId,
         int256 size
-    ) external returns (uint256 requiredCollateral, uint256 fillPrice) {
+    ) external returns (uint256 requiredCollateral, uint256 fillPrice, uint256 price18DigitsAfter) {
         if (size == 0) {
             revert Errors.InvalidData("Size cannot be 0");
         }
@@ -318,8 +318,9 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         );
 
         epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
+        price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(outputParams.sqrtPriceX96After);
 
-        return (outputParams.requiredCollateral, outputParams.tradeRatioD18);
+        return (outputParams.requiredCollateral, outputParams.tradeRatioD18, price18DigitsAfter);
     }
 
     /**
@@ -333,7 +334,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         returns (
             int256 expectedCollateralDelta,
             int256 closePnL,
-            uint256 fillPrice
+            uint256 fillPrice,
+            uint256 price18DigitsAfter
         )
     {
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
@@ -369,11 +371,13 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         );
 
         epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
+        price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(outputParams.sqrtPriceX96After);
 
         return (
             outputParams.expectedDeltaCollateral,
             outputParams.closePnL,
-            outputParams.tradeRatioD18
+            outputParams.tradeRatioD18,
+            price18DigitsAfter
         );
     }
 
