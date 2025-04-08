@@ -78,7 +78,7 @@ interface MarketInfo {
     id?: number | string;
     slug?: string;
     priceIndexer: {
-      client: any;
+      client?: any;
       indexBlocks: (resource: any, blockNumbers: number[]) => Promise<any>;
     };
     [key: string]: any;

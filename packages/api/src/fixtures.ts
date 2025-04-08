@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { mainnet, base, arbitrum } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
@@ -13,6 +12,7 @@ import { Epoch } from './models/Epoch';
 import { epochRepository } from './db';
 import { Category } from './models/Category';
 import { categoryRepository } from './db';
+import { IResourcePriceIndexer } from './interfaces';
 
 // TAT = Trailing Average Time
 export const TIME_INTERVALS = {
@@ -29,7 +29,7 @@ export const TIME_INTERVALS = {
 };
 
 export const INDEXERS: {
-  [key: string]: any;
+  [key: string]: IResourcePriceIndexer;
 } = {
   'ethereum-gas': new evmIndexer(mainnet.id),
   'ethereum-blobspace': new ethBlobsIndexer(mainnet.id),
