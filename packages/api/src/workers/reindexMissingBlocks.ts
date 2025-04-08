@@ -48,7 +48,6 @@ export async function reindexMissingBlocks(
       },
     };
 
-    console.log('marketInfo', marketInfo);
     const market = await initializeMarket(marketInfo);
 
     const { startBlockNumber, endBlockNumber, error } =

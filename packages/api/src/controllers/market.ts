@@ -97,7 +97,6 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     },
     relations: ['resource'],
   });
-  console.log('existingMarket', existingMarket);
   const market = existingMarket || new Market();
 
   const client = getProviderForChain(marketInfo.marketChainId);
@@ -109,8 +108,6 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   })) as [string, string, boolean, boolean, MarketParams];
 
   const updatedMarket = market;
-  console.log('updatedMarket', updatedMarket);
-  console.log('marketInfo', marketInfo);
 
   updatedMarket.address = marketInfo.deployment.address.toLowerCase();
   updatedMarket.vaultAddress = marketInfo.vaultAddress ?? '';
