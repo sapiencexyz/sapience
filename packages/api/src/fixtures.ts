@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { mainnet, base, arbitrum } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
@@ -153,12 +154,7 @@ export const initializeFixtures = async (): Promise<void> => {
       market.isYin = marketData.isYin || false;
       market.isCumulative = marketData.isCumulative || false;
       market.category = category;
-      
-      // Store questions if the Market model supports it
-      if ('questions' in marketData) {
-        (market as any).questions = marketData.questions;
-      }
-      
+            
       // Set the resource for the market
       market.resource = resource;
       await marketRepository.save(market);
@@ -174,12 +170,7 @@ export const initializeFixtures = async (): Promise<void> => {
       market.isYin = marketData.isYin || market.isYin || false;
       market.isCumulative = marketData.isCumulative || market.isCumulative || false;
       market.category = category;
-      
-      // Update questions if the Market model supports it
-      if ('questions' in marketData) {
-        (market as any).questions = marketData.questions || (market as any).questions || [];
-      }
-      
+            
       await marketRepository.save(market);
       console.log('Updated market:', market.address, 'on chain', market.chainId);
       
