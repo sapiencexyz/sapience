@@ -52,7 +52,7 @@ export const handleTransferEvent = async (event: Event) => {
     return;
   }
 
-  existingPosition.owner = to.toLowerCase() as string;
+  existingPosition.owner = (to as string).toLowerCase();
   await positionRepository.save(existingPosition);
   console.log(`Updated owner of position ${tokenId} to ${to}`);
 };
