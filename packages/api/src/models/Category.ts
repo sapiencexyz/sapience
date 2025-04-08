@@ -25,4 +25,4 @@ export class Category {
 
   @OneToMany(() => Market, (market) => market.category)
   markets: Market[];
-} 
+}
