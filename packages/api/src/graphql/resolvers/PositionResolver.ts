@@ -25,7 +25,7 @@ export class PositionResolver {
         where.epoch = {
           market: {
             chainId,
-            address: marketAddress,
+            address: marketAddress.toLowerCase(),
           },
         };
       }

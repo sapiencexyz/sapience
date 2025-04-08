@@ -92,7 +92,7 @@ interface MarketInfo {
 export const initializeMarket = async (marketInfo: MarketInfo) => {
   const existingMarket = await marketRepository.findOne({
     where: {
-      address: marketInfo.deployment.address,
+      address: marketInfo.deployment.address.toLowerCase(),
       chainId: marketInfo.marketChainId,
     },
     relations: ['resource'],
@@ -111,7 +111,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   if (!updatedMarket) {
     const existingMarket = await marketRepository.findOne({
       where: {
-        address: marketInfo.deployment.address,
+        address: marketInfo.deployment.address.toLowerCase(),
         chainId: marketInfo.marketChainId,
       },
       relations: ['epochs', 'resource'],
@@ -119,7 +119,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     updatedMarket = existingMarket || new Market();
   }
 
-  updatedMarket.address = marketInfo.deployment.address;
+  updatedMarket.address = marketInfo.deployment.address.toLowerCase();
   updatedMarket.vaultAddress = marketInfo.vaultAddress ?? '';
   updatedMarket.isYin = marketInfo.isYin ?? true;
   updatedMarket.isCumulative = marketInfo.isCumulative ?? false;

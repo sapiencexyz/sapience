@@ -141,7 +141,7 @@ export const initializeFixtures = async (): Promise<void> => {
     // Check if market already exists by address and chainId
     let market = await marketRepository.findOne({
       where: { 
-        address: marketData.address,
+        address: marketData.address.toLowerCase(),
         chainId: marketData.chainId
       },
     });
@@ -149,7 +149,7 @@ export const initializeFixtures = async (): Promise<void> => {
     if (!market) {
       // Create new market
       market = new Market();
-      market.address = marketData.address;
+      market.address = marketData.address.toLowerCase();
       market.chainId = marketData.chainId;
       market.isYin = marketData.isYin || false;
       market.isCumulative = marketData.isCumulative || false;

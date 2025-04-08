@@ -39,7 +39,7 @@ export const handleTransferEvent = async (event: Event) => {
       positionId: Number(tokenId),
       epoch: {
         market: {
-          address: event.market.address,
+          address: event.market.address.toLowerCase(),
           chainId: event.market.chainId,
         },
       },
@@ -343,7 +343,7 @@ export const createOrUpdateMarketFromContract = async (
   if (!updatedMarket) {
     // check if market already exists in db
     const existingMarket = await marketRepository.findOne({
-      where: { address, chainId },
+      where: { address: address.toLowerCase(), chainId },
       relations: ['epochs'],
     });
     updatedMarket = existingMarket || new Market();
