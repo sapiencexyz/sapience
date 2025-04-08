@@ -1,12 +1,11 @@
-import { Minus } from 'lucide-react';
-import type React from 'react';
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import { Minus } from 'lucide-react';
+import type React from 'react';
 
 type NumberDisplayProps = {
   value: number | string | bigint;

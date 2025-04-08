@@ -6,3 +6,4 @@ export { EpochResolver } from './EpochResolver';
 export { CandleResolver } from './CandleResolver';
 export { PnLResolver } from './PnLResolver';
 export { VolumeResolver } from './VolumeResolver';
+export { CategoryResolver } from './CategoryResolver';

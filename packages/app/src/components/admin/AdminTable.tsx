@@ -1,3 +1,28 @@
+import { Button } from '@foil/ui/components/ui/button';
+import { Checkbox } from '@foil/ui/components/ui/checkbox';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from '@foil/ui/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@foil/ui/components/ui/popover';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@foil/ui/components/ui/table';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import {
   useReactTable,
   flexRender,
@@ -19,35 +44,9 @@ import {
   Activity,
   Boxes,
 } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSignMessage } from 'wagmi';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from '@/components/ui/command';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from '@/components/ui/table';
-import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
@@ -56,6 +55,13 @@ import { foilApi } from '~/lib/utils/util';
 import getColumns from './columns';
 import type { TableRow as AdminTableRowData } from './columns';
 import type { MissingBlocks } from './types';
+
+// Define GraphQL Query for Total Volume
+const TOTAL_VOLUME_BY_EPOCH_QUERY = `
+  query GetTotalVolumeByEpoch($chainId: Int!, $marketAddress: String!, $epochId: Int!) {
+    totalVolumeByEpoch(chainId: $chainId, marketAddress: $marketAddress, epochId: $epochId)
+  }
+`;
 
 const renderSortIcon = (isSorted: string | false) => {
   if (isSorted === 'desc') {
@@ -101,22 +107,90 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
       icon: <Eye className="h-4 w-4" />,
     },
   ]);
+  // State for storing fetched volumes
+  const [volumes, setVolumes] = useState<Record<string, number | null>>({}); // Key: marketAddress-chainId-epochId
 
-  const data = useMemo(() => {
+  // Effect to fetch all volumes when markets data is available
+  useEffect(() => {
+    if (!isLoading && markets.length > 0) {
+      const fetchAllVolumes = async () => {
+        const volumePromises = markets.flatMap((market) =>
+          market.epochs.map(async (epoch) => {
+            const key = `${market.address}-${market.chainId}-${epoch.epochId}`;
+            try {
+              const response = await foilApi.post('/graphql', {
+                query: TOTAL_VOLUME_BY_EPOCH_QUERY,
+                variables: {
+                  chainId: market.chainId,
+                  marketAddress: market.address,
+                  epochId: epoch.epochId,
+                },
+              });
+
+              if (response.errors) {
+                console.error(
+                  `GraphQL Errors fetching volume for ${key}:`,
+                  response.errors
+                );
+                return { key, volume: null }; // Mark as error/null
+              }
+              if (
+                !response.data ||
+                typeof response.data.totalVolumeByEpoch !== 'number'
+              ) {
+                console.error(
+                  `Volume data is not in the expected format for ${key}`
+                );
+                return { key, volume: null }; // Mark as error/null
+              }
+              return { key, volume: response.data.totalVolumeByEpoch };
+            } catch (error) {
+              console.error(`Failed to fetch volume for ${key}:`, error);
+              return { key, volume: null }; // Mark as error/null
+            }
+          })
+        );
+
+        const results = await Promise.all(volumePromises);
+        const newVolumes: Record<string, number | null> = {};
+        results.forEach(({ key, volume }) => {
+          newVolumes[key] = volume;
+        });
+        setVolumes(newVolumes);
+      };
+
+      fetchAllVolumes();
+    } else if (!isLoading && markets.length === 0) {
+      // Handle case where there are no markets
+      setVolumes({});
+    }
+    // Intentionally excluding foilApi from dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markets, isLoading]);
+
+  const data: AdminTableRowData[] = useMemo(() => {
     return markets.flatMap((market) =>
-      market.epochs.map((epoch) => ({
-        ...epoch,
-        market,
-        marketAddress: market.address,
-        vaultAddress: market.owner,
-        chainId: market.chainId,
-        settled: 'settled' in epoch ? (epoch as any).settled : false,
-        assertionId:
-          'assertionId' in epoch ? (epoch as any).assertionId : undefined,
-        public: 'public' in epoch ? (epoch as any).public : false,
-      }))
+      market.epochs.map((epoch) => {
+        const volumeKey = `${market.address}-${market.chainId}-${epoch.epochId}`;
+        const volume = volumes[volumeKey]; // Get volume from state
+
+        return {
+          ...epoch,
+          market, // Pass the whole market object
+          marketAddress: market.address,
+          vaultAddress: market.owner, // Use owner as vaultAddress for display logic in columns
+          chainId: market.chainId,
+          settled: 'settled' in epoch ? (epoch as any).settled : false,
+          assertionId:
+            'assertionId' in epoch ? (epoch as any).assertionId : undefined,
+          public: 'public' in epoch ? (epoch as any).public : false,
+          volume, // Pass undefined if loading, null if error, or number if fetched
+          id: 'id' in epoch ? (epoch as any).id : undefined, // Ensure id is passed if available
+          question: 'question' in epoch ? (epoch as any).question : undefined, // Pass question if available
+        };
+      })
     );
-  }, [markets]);
+  }, [markets, volumes]); // Depend on volumes state now
 
   // Dynamically generate status options based on available data
   const statusOptions = useMemo(() => {
@@ -652,13 +726,12 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
 
             <div className="flex flex-wrap gap-4">
               {selectedFilters.map((filter) => (
-                <Badge
+                <div
                   key={`${filter.id}-${filter.value}`}
-                  variant="outline"
-                  className="h-8 px-3 gap-1 bg-secondary/10"
+                  className="flex items-center h-8 px-3 gap-1 border rounded-full bg-secondary/10 text-foreground"
                 >
                   {filter.icon}
-                  <span>{filter.label}</span>
+                  <span className="text-xs font-semibold">{filter.label}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -667,7 +740,7 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
                   >
                     <X className="h-3 w-3" />
                   </Button>
-                </Badge>
+                </div>
               ))}
             </div>
           </div>

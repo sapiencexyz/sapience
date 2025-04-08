@@ -1,10 +1,18 @@
-import { mainnet, sepolia, base, cannon, arbitrum } from 'viem/chains';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { mainnet, base, arbitrum } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import btcIndexer from './resourcePriceFunctions/btcIndexer';
-import { Deployment, MarketInfo } from './interfaces';
-import { zeroAddress } from 'viem';
+import fixturesData from './fixtures.json';
+import { Resource } from './models/Resource';
+import { resourceRepository } from './db';
+import { Market } from './models/Market';
+import { marketRepository } from './db';
+import { Epoch } from './models/Epoch';
+import { epochRepository } from './db';
+import { Category } from './models/Category';
+import { categoryRepository } from './db';
 
 // TAT = Trailing Average Time
 export const TIME_INTERVALS = {
@@ -19,155 +27,157 @@ export const TIME_INTERVALS = {
     INTERVAL_28_DAYS: 28 * 24 * 60 * 60,
   },
 };
-const safeRequire = async (path: string): Promise<Deployment | null> => {
-  try {
-    const module = await import(path);
-    return module.default;
-  } catch {
-    return null;
-  }
+
+export const INDEXERS: {
+  [key: string]: any;
+} = {
+  "ethereum-gas": new evmIndexer(mainnet.id),
+  "ethereum-blobspace": new ethBlobsIndexer(mainnet.id),
+  "celestia-blobspace": new celestiaIndexer('https://api-mainnet.celenium.io'),
+  "bitcoin-fees": new btcIndexer(),
+  "base-gas": new evmIndexer(base.id),
+  "arbitrum-gas": new evmIndexer(arbitrum.id),
 };
 
-export const RESOURCES = [
-  {
-    name: 'Ethereum Gas',
-    slug: 'ethereum-gas',
-    priceIndexer: new evmIndexer(mainnet.id),
-  },
-  {
-    name: 'Base Gas',
-    slug: 'base-gas',
-    priceIndexer: new evmIndexer(base.id),
-  },
-  {
-    name: 'Arbitrum Gas',
-    slug: 'arbitrum-gas',
-    priceIndexer: new evmIndexer(arbitrum.id),
-  },
-  {
-    name: 'Ethereum Blobspace',
-    slug: 'ethereum-blobspace',
-    priceIndexer: new ethBlobsIndexer(mainnet.id),
-  },
-  {
-    name: 'Bitcoin Fees',
-    slug: 'bitcoin-fees',
-    priceIndexer: new btcIndexer(),
-  },
-  ...(process.env.CELENIUM_API_KEY
-    ? [
-        {
-          name: 'Celestia Blobspace',
-          slug: 'celestia-blobspace',
-          priceIndexer: new celestiaIndexer('https://api-mainnet.celenium.io'),
-        },
-      ]
-    : []),
-];
+// Helper function to create or update epochs with questions
+async function handleEpochQuestions(market: Market, questions: string[]): Promise<void> {
+  if (!questions || questions.length === 0) {
+    return;
+  }
 
-const addMarketYinYang = async (
-  markets: MarketInfo[],
-  chainId: number,
-  suffix?: string,
-  resource = RESOURCES[0] // Default to Ethereum Gas
-) => {
-  const yin = await safeRequire(
-    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/FoilYin.json`
-  );
-  const yang = await safeRequire(
-    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/FoilYang.json`
-  );
-  const yinVault = await safeRequire(
-    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/VaultYin.json`
-  );
-  const yangVault = await safeRequire(
-    `@/protocol/deployments/outputs/${chainId}${suffix || ''}/VaultYang.json`
-  );
-
-  if (yin && yang && yinVault && yangVault) {
-    markets.push(
-      {
-        deployment: yin,
-        vaultAddress: yinVault.address,
-        marketChainId: chainId,
-        resource,
-        isYin: true,
-        isCumulative: false,
+  // Create or update epochs for each question
+  for (let i = 0; i < questions.length; i++) {
+    const epochId = i + 1; // Convert 0-index to 1-index for epochId
+    
+    // Check if epoch already exists
+    let epoch = await epochRepository.findOne({
+      where: {
+        market: { id: market.id },
+        epochId: epochId,
       },
-      {
-        deployment: yang,
-        vaultAddress: yangVault.address,
-        marketChainId: chainId,
-        resource,
-        isYin: false,
-        isCumulative: false,
+    });
+
+    if (!epoch) {
+      // Create new epoch
+      epoch = new Epoch();
+      epoch.epochId = epochId;
+      epoch.market = market;
+      epoch.question = questions[i];
+      await epochRepository.save(epoch);
+      console.log(`Created epoch ${epochId} with question: ${questions[i]}`);
+    } else if (epoch.question !== questions[i]) {
+      // Update epoch question if different
+      epoch.question = questions[i];
+      await epochRepository.save(epoch);
+      console.log(`Updated epoch ${epochId} with new question: ${questions[i]}`);
+    }
+  }
+}
+
+// TODO, bring this in below?
+// import { createOrUpdateEpochFromContract } from '../controllers/marketHelpers';
+
+// Function to initialize fixtures - upsert resources and markets from fixtures.json
+export const initializeFixtures = async (): Promise<void> => {
+  console.log('Initializing fixtures from fixtures.json');
+  
+  // Initialize resources from fixtures.json
+  for (const resourceData of fixturesData.RESOURCES) {
+    let resource = await resourceRepository.findOne({
+      where: { name: resourceData.name },
+    });
+
+    if (!resource) {
+      // Create new resource if it doesn't exist
+      resource = new Resource();
+      resource.name = resourceData.name;
+      resource.slug = resourceData.slug;
+      await resourceRepository.save(resource);
+      console.log('Created resource:', resourceData.name);
+    } else if (resource.slug !== resourceData.slug) {
+      // Update resource if slug doesn't match
+      resource.slug = resourceData.slug;
+      await resourceRepository.save(resource);
+      console.log('Updated resource slug for:', resourceData.name);
+    }
+  }
+
+  // Initialize categories from fixtures.json
+  for (const categoryData of fixturesData.CATEGORIES) {
+    let category = await categoryRepository.findOne({
+      where: { slug: categoryData.slug },
+    });
+
+    if (!category) {
+      category = new Category();
+      category.name = categoryData.name;
+      category.slug = categoryData.slug;
+      await categoryRepository.save(category);
+      console.log('Created category:', categoryData.name);
+    }
+  }
+
+  // Initialize markets from fixtures.json
+  for (const marketData of fixturesData.MARKETS) {
+    // Find the associated resource
+    const resource = await resourceRepository.findOne({
+      where: { slug: marketData.resource },
+    });
+
+    const category = await categoryRepository.findOne({
+      where: { slug: marketData.category },
+    });
+
+    if (!resource) {
+      console.log(`Resource not found: ${marketData.resource}`);
+      continue;
+    }
+
+    if (!category) {
+      console.log(`Category not found: ${marketData.category}`);
+      continue;
+    }
+
+    // Check if market already exists by address and chainId
+    let market = await marketRepository.findOne({
+      where: { 
+        address: marketData.address,
+        chainId: marketData.chainId
+      },
+    });
+
+    if (!market) {
+      // Create new market
+      market = new Market();
+      market.address = marketData.address;
+      market.chainId = marketData.chainId;
+      market.isYin = marketData.isYin || false;
+      market.isCumulative = marketData.isCumulative || false;
+      market.category = category;
+            
+      // Set the resource for the market
+      market.resource = resource;
+      await marketRepository.save(market);
+      console.log('Created market:', market.address, 'on chain', market.chainId);
+      
+      // Handle questions for epochs after market is saved
+      if (marketData.questions && market.id) {
+        await handleEpochQuestions(market, marketData.questions);
       }
-    );
+    } else {
+      // Update market if needed
+      market.resource = resource;
+      market.isYin = marketData.isYin || market.isYin || false;
+      market.isCumulative = marketData.isCumulative || market.isCumulative || false;
+      market.category = category;
+            
+      await marketRepository.save(market);
+      console.log('Updated market:', market.address, 'on chain', market.chainId);
+      
+      // Handle questions for epochs after market is updated
+      if (marketData.questions && market.id) {
+        await handleEpochQuestions(market, marketData.questions);
+      }
+    }
   }
 };
-
-const addGasWeekly = async (markets: MarketInfo[]) => {
-  const gasWeekly = await safeRequire(
-    `@/protocol/deployments/outputs/${base.id}-gas-weekly/Foil.json`
-  );
-
-  if (gasWeekly) {
-    markets.push({
-      deployment: gasWeekly,
-      vaultAddress: zeroAddress,
-      marketChainId: base.id,
-      resource: RESOURCES[0],
-      isYin: true,
-      isCumulative: false,
-    });
-  }
-};
-
-const addTiaBlobCumulative = async (markets: MarketInfo[]) => {
-  const tiaBlobCumulative = await safeRequire(
-    `@/protocol/deployments/outputs/${base.id}-tia-blob-cumulative/Foil.json`
-  );
-
-  if (tiaBlobCumulative && RESOURCES.length === 6) {
-    markets.push({
-      deployment: tiaBlobCumulative,
-      vaultAddress: zeroAddress,
-      marketChainId: base.id,
-      resource: RESOURCES[5], // tia blob cumulative
-      isYin: true,
-      isCumulative: true,
-    });
-  }
-};
-
-const initializeMarkets = async () => {
-  const FULL_MARKET_LIST: MarketInfo[] = [];
-
-  // Mainnet Deployments
-  await addMarketYinYang(FULL_MARKET_LIST, base.id, '-beta'); // Remove after settling feb
-  await addMarketYinYang(FULL_MARKET_LIST, base.id);
-  await addMarketYinYang(FULL_MARKET_LIST, base.id, '-blobs', RESOURCES[3]); // Use Ethereum Blobspace for -blobs
-
-  // add gas weekly
-  await addGasWeekly(FULL_MARKET_LIST);
-
-  // add tia blob cumulative
-  await addTiaBlobCumulative(FULL_MARKET_LIST); // Fix abstraction later
-
-  // Development Deployments
-  if (process.env.NODE_ENV === 'development') {
-    await addMarketYinYang(FULL_MARKET_LIST, cannon.id);
-  }
-
-  // Testnet Deployments
-  if (
-    process.env.NODE_ENV === 'staging' ||
-    process.env.NODE_ENV === 'development'
-  ) {
-    await addMarketYinYang(FULL_MARKET_LIST, sepolia.id);
-  }
-
-  return FULL_MARKET_LIST;
-};
-
-export const MARKETS = await initializeMarkets();

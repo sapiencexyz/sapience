@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'tsconfig-paths/register';
 import {
   epochRepository,
@@ -10,12 +11,11 @@ import { MarketParams } from '../models/MarketParams';
 import { Event } from '../models/Event';
 import { Market } from '../models/Market';
 import { Transaction } from '../models/Transaction';
-import { Abi, decodeEventLog, Log, formatUnits } from 'viem';
+import { decodeEventLog, Log, formatUnits } from 'viem';
 import {
   EpochCreatedEventLog,
   EventType,
   MarketCreatedUpdatedEventLog,
-  MarketInfo,
 } from '../interfaces';
 import {
   getProviderForChain,
@@ -40,7 +40,8 @@ import {
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
-import { MARKETS } from '../fixtures';
+import Foil from '@foil/protocol/deployments/Foil.json';
+
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
 const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
@@ -65,6 +66,28 @@ interface LogData {
   transactionIndex: number;
 }
 
+// Define the MarketInfo interface
+interface MarketInfo {
+  marketChainId: number;
+  deployment: {
+    address: string;
+    deployTxnBlockNumber?: string | number;
+    deployTimestamp?: string | number;
+  };
+  resource: {
+    id?: number | string;
+    slug?: string;
+    priceIndexer: {
+      client: any;
+      indexBlocks: (resource: any, blockNumbers: number[]) => Promise<any>;
+    };
+    [key: string]: any;
+  };
+  vaultAddress?: string;
+  isYin?: boolean;
+  isCumulative?: boolean;
+}
+
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
   const existingMarket = await marketRepository.findOne({
@@ -80,7 +103,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 
   const marketReadResult = (await client.readContract({
     address: marketInfo.deployment.address as `0x${string}`,
-    abi: marketInfo.deployment.abi,
+    abi: Foil.abi,
     functionName: 'getMarket',
   })) as [string, string, boolean, boolean, MarketParams];
 
@@ -97,9 +120,9 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   }
 
   updatedMarket.address = marketInfo.deployment.address;
-  updatedMarket.vaultAddress = marketInfo.vaultAddress;
-  updatedMarket.isYin = marketInfo.isYin;
-  updatedMarket.isCumulative = marketInfo.isCumulative;
+  updatedMarket.vaultAddress = marketInfo.vaultAddress ?? '';
+  updatedMarket.isYin = marketInfo.isYin ?? true;
+  updatedMarket.isCumulative = marketInfo.isCumulative ?? false;
   updatedMarket.deployTxnBlockNumber = Number(
     marketInfo.deployment.deployTxnBlockNumber
   );
@@ -119,7 +142,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 };
 
 // Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
-export const indexMarketEvents = async (market: Market, abi: Abi) => {
+export const indexMarketEvents = async (market: Market) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
@@ -168,7 +191,7 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
   );
   client.watchContractEvent({
     address: market.address as `0x${string}`,
-    abi,
+    abi: Foil.abi,
     onLogs: (logs) => processLogs(logs),
     onError: (error) => console.error(error),
   });
@@ -177,7 +200,6 @@ export const indexMarketEvents = async (market: Market, abi: Abi) => {
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
 export const reindexMarketEvents = async (
   market: Market,
-  abi: Abi,
   epochId: number
 ) => {
   await initializeDataSource();
@@ -261,7 +283,7 @@ export const reindexMarketEvents = async (
     for (const log of logs) {
       try {
         const decodedLog = decodeEventLog({
-          abi,
+          abi: Foil.abi,
           data: log.data,
           topics: log.topics,
         });
@@ -491,10 +513,19 @@ const alertEvent = async (
           : `https://etherscan.io/tx/${txHash}`;
       };
 
-      // Get market name from MARKETS
-      const marketName =
-        MARKETS.find((m) => m.deployment.address === address)?.resource.name ||
-        'Foil Market';
+      let marketName = 'Foil Market';
+      try {
+        const marketObj = await marketRepository.findOne({
+          where: { address, chainId },
+          relations: ['resource']
+        });
+        
+        if (marketObj && marketObj.resource && marketObj.resource.name) {
+          marketName = marketObj.resource.name;
+        }
+      } catch (error) {
+        console.error('Failed to fetch market name from database:', error);
+      }
 
       const embed = new EmbedBuilder()
         .setColor('#2b2b2e')
@@ -709,19 +740,11 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       } as EpochCreatedEventLog;
       await createEpochFromEvent(epochCreatedArgs, event.market);
 
-      const marketInfo = MARKETS.find(
-        (m) =>
-          m.marketChainId === event.market.chainId &&
-          m.deployment.address.toLowerCase() ===
-            event.market.address.toLowerCase()
+      // Call createOrUpdateEpochFromContract with the data from the event
+      await createOrUpdateEpochFromContract(
+        event.market,
+        Number(epochCreatedArgs.epochId)
       );
-      if (marketInfo) {
-        await createOrUpdateEpochFromContract(
-          marketInfo,
-          event.market,
-          Number(epochCreatedArgs.epochId)
-        );
-      }
       skipTransaction = true;
       break;
     }

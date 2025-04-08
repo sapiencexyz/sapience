@@ -6,6 +6,7 @@ import {
   ResourceResolver,
   TransactionResolver,
   VolumeResolver,
+  CategoryResolver,
 } from '../graphql/resolvers';
 
 async function generateSchema() {
@@ -18,6 +19,7 @@ async function generateSchema() {
         TransactionResolver,
         EpochResolver,
         VolumeResolver,
+        CategoryResolver,
       ],
       emitSchemaFile: true,
       validate: false,

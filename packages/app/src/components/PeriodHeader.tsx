@@ -1,3 +1,9 @@
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { format } from 'date-fns';
 import { MoveHorizontal, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
@@ -6,12 +12,6 @@ import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 import { LiaRulerVerticalSolid } from 'react-icons/lia';
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { tickToPrice, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
@@ -32,6 +32,7 @@ const PeriodHeader = () => {
     market,
     resource,
     unitDisplay,
+    question,
   } = useContext(PeriodContext);
   let endTimeString = '';
   let startTimeString = '';
@@ -153,9 +154,7 @@ const PeriodHeader = () => {
                 className="w-8 h-8  "
               />
             )}
-            {market?.isCumulative
-              ? 'How much blob data will be posted to Celestia in April?'
-              : `${resource?.name} Market`}
+            {question ?? `${resource?.name} Market`}
           </h1>
           <div className="flex flex-wrap gap-y-1.5 lg:gap-y-2 gap-x-3 lg:gap-x-6 text-xs sm:text-sm">
             {links}

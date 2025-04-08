@@ -12,6 +12,7 @@ import { Epoch } from './Epoch';
 import { MarketParams } from './MarketParams';
 import { Event } from './Event';
 import { Resource } from './Resource';
+import { Category } from './Category';
 
 @Entity()
 @Unique(['address', 'chainId'])
@@ -26,6 +27,9 @@ export class Market {
 
   @ManyToOne(() => Resource, (resource) => resource.markets)
   resource: Resource;
+
+  @ManyToOne(() => Category, (category) => category.markets)
+  category: Category;
 
   @PrimaryGeneratedColumn()
   id: number;

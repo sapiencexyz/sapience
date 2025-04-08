@@ -1,4 +1,15 @@
 import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+} from '@foil/ui/components/ui/drawer';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@foil/ui/components/ui/tabs';
+import {
   TrophyIcon,
   ListIcon,
   ArrowLeftRightIcon,
@@ -10,8 +21,6 @@ import { useAccount } from 'wagmi';
 import LiquidityPositionsTable from '~/components/liquidityPositionsTable';
 import TraderPositionsTable from '~/components/traderPositionsTable';
 import TransactionTable from '~/components/transactionTable';
-import { Drawer, DrawerContent, DrawerTrigger } from '~/components/ui/drawer';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '~/components/ui/tabs';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 import DataDrawerFilter from './DataDrawerFilter';

@@ -1,5 +1,13 @@
 'use client';
 
+import { Card, CardContent } from '@foil/ui/components/ui/card';
+import { Toggle } from '@foil/ui/components/ui/toggle';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Loader2, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
@@ -7,18 +15,10 @@ import Link from 'next/link';
 import React from 'react';
 import { formatUnits } from 'viem';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Toggle } from '@/components/ui/toggle';
 import Chart from '~/components/Chart';
 import EpochTiming from '~/components/EpochTiming';
 import IntervalSelector from '~/components/IntervalSelector';
 import NumberDisplay from '~/components/numberDisplay';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
 import { BLUE } from '~/lib/hooks/useChart';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';

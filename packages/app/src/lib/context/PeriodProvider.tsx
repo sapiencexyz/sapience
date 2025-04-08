@@ -1,3 +1,4 @@
+import { useToast } from '@foil/ui/hooks/use-toast';
 import type { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
@@ -14,7 +15,6 @@ import { useResources } from '../hooks/useResources';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../utils/util';
-import { useToast } from '~/hooks/use-toast';
 
 import type { Market } from './FoilProvider';
 import { useFoil } from './FoilProvider';
@@ -48,6 +48,7 @@ export interface PeriodContextType {
   setUseMarketUnits: (useMarketUnits: boolean) => void;
   market?: Market;
   resource?: Resource;
+  question?: string;
   seriesVisibility: {
     candles: boolean;
     index: boolean;
@@ -103,6 +104,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   const market = markets.find(
     (m: Market) => m.address.toLowerCase() === address.toLowerCase()
   );
+  const currentEpochData = market?.epochs.find((e) => e.epochId === epoch);
   const resource = resources?.find((r) => r.name === market?.resource?.name);
 
   const marketViewFunctionResult = useReadContract({
@@ -224,9 +226,10 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
         settlementPrice: epochData.settlementPriceD18,
         baseAssetMaxPriceTick: epochData.baseAssetMaxPriceTick,
         baseAssetMinPriceTick: epochData.baseAssetMinPriceTick,
+        question: currentEpochData?.question,
       }));
     }
-  }, [epochViewFunctionResult.data]);
+  }, [epochViewFunctionResult.data, currentEpochData]);
 
   useEffect(() => {
     if (pool) {

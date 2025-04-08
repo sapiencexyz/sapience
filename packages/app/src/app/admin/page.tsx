@@ -3,29 +3,29 @@
 'use client';
 
 import { gql } from '@apollo/client';
-import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
-import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { useSignMessage } from 'wagmi';
-
-import { Button } from '@/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+} from '@foil/ui/components/ui/dialog';
+import { Input } from '@foil/ui/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@foil/ui/components/ui/select';
+import { useToast } from '@foil/ui/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { print } from 'graphql';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { useSignMessage } from 'wagmi';
+
 import AdminTable from '~/components/admin/AdminTable';
-import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 import { foilApi } from '~/lib/utils/util';

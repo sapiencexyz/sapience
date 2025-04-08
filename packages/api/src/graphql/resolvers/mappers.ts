@@ -64,6 +64,7 @@ export const mapEpochToType = (epoch: Epoch): EpochType => ({
   settled: epoch.settled,
   settlementPriceD18: epoch.settlementPriceD18,
   public: epoch.public,
+  question: epoch.question || '',
 });
 
 export const mapPositionToType = (position: Position): PositionType => ({

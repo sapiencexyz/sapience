@@ -20,3 +20,5 @@ packages/protocol/deployments/outputs/test
 .DS_Store
 
 .vscode
+
+dump.sql

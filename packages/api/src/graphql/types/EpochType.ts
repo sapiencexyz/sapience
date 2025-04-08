@@ -33,4 +33,7 @@ export class EpochType {
 
   @Field(() => Boolean)
   public: boolean;
+
+  @Field(() => String)
+  question: string;
 }
