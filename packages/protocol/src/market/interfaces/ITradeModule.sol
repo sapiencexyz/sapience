@@ -37,11 +37,12 @@ interface ITradeModule {
      * @param size The position size.
      * @return requiredCollateral The required collateral.
      * @return fillPrice The virtual tokens trade fill price.
+     * @return price18DigitsAfter The price after the trade.
      */
     function quoteCreateTraderPosition(
         uint256 epochId,
         int256 size
-    ) external returns (uint256 requiredCollateral, uint256 fillPrice);
+    ) external returns (uint256 requiredCollateral, uint256 fillPrice, uint256 price18DigitsAfter);
 
     /** @dev Quotes the required collateral to modify an existing trader position.
      * @dev warning: this function shouldn't be called on-chain since it will incur on gas usage. It executes and expect an internal txn to revert
@@ -50,6 +51,7 @@ interface ITradeModule {
      * @return expectedCollateralDelta The expected change in collateral. Negative means sender will receive some collateral back, positive some collateral needs to be collected.
      * @return closePnL The expected profit or loss from the original position.
      * @return fillPrice The virtual tokens trade fill price.
+     * @return price18DigitsAfter The price after the trade.
      */
     function quoteModifyTraderPosition(
         uint256 positionId,
@@ -59,6 +61,7 @@ interface ITradeModule {
         returns (
             int256 expectedCollateralDelta,
             int256 closePnL,
-            uint256 fillPrice
+            uint256 fillPrice,
+            uint256 price18DigitsAfter
         );
 }

@@ -121,7 +121,7 @@ contract TestTrade is TestEpoch {
         uint256 epochId,
         int256 positionSize
     ) internal returns (uint256 positionId) {
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -147,7 +147,7 @@ contract TestTrade is TestEpoch {
         uint256 positionId,
         int256 newSize
     ) internal {
-        (int256 deltaCollateral, , ) = foil.quoteModifyTraderPosition(
+        (int256 deltaCollateral, , , ) = foil.quoteModifyTraderPosition(
             positionId,
             newSize
         );

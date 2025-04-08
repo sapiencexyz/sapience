@@ -216,7 +216,7 @@ contract TradePositionSettlement is TestTrade {
 
     function closeAndRevert(int256 initialPositionSize) internal {
         vm.startPrank(trader1);
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             initialPositionSize
         );
