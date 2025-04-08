@@ -2,6 +2,10 @@
 
 ## Use with Claude Desktop
 
+Run `npx @foil/agent claude-install`
+
+### For Development
+
 After pulling this repo and running `pnpm install`, add the following to your configuration file:
 * macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 * Windows: `%APPDATA%\Claude\claude_desktop_config.json`
