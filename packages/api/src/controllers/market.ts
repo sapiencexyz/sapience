@@ -71,8 +71,8 @@ interface MarketInfo {
   marketChainId: number;
   deployment: {
     address: string;
-    deployTxnBlockNumber?: string | number;
-    deployTimestamp?: string | number;
+    deployTxnBlockNumber?: string | number | null;
+    deployTimestamp?: string | number | null;
   };
   resource: {
     id?: number | string;
@@ -107,17 +107,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     functionName: 'getMarket',
   })) as [string, string, boolean, boolean, MarketParams];
 
-  let updatedMarket = market;
-  if (!updatedMarket) {
-    const existingMarket = await marketRepository.findOne({
-      where: {
-        address: marketInfo.deployment.address.toLowerCase(),
-        chainId: marketInfo.marketChainId,
-      },
-      relations: ['epochs', 'resource'],
-    });
-    updatedMarket = existingMarket || new Market();
-  }
+  const updatedMarket = market;
 
   updatedMarket.address = marketInfo.deployment.address.toLowerCase();
   updatedMarket.vaultAddress = marketInfo.vaultAddress ?? '';
