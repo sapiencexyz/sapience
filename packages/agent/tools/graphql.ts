@@ -1,7 +1,4 @@
-import { z } from 'zod';
-import { parse } from 'graphql/language';
-
-const FOIL_GRAPHQL_ENDPOINT = process.env.FOIL_GRAPHQL_ENDPOINT || 'http://localhost:3001/graphql'; //'https://api.foil.xyz/graphql';
+const FOIL_GRAPHQL_ENDPOINT = 'https://api.foil.xyz/graphql';
 
 interface GraphQLResponse {
   data?: any;
@@ -43,7 +40,7 @@ async function executeGraphQLQuery(query: string, variables?: Record<string, any
 
 // Market Tools
 const getMarket = {
-  name: "get_foil_market",
+  name: "get_sapience_market",
   description: "Gets detailed information about a specific market by its address and chain ID",
   parameters: {
     properties: {
@@ -99,7 +96,7 @@ const getMarket = {
 };
 
 const listMarkets = {
-  name: "list_foil_markets",
+  name: "list_sapience_markets",
   description: "Lists all markets available in the Foil system, optionally filtering for the active periods (end time in the future).",
   parameters: {
     properties: {
@@ -161,7 +158,7 @@ const listMarkets = {
 
 // Position Tools
 const getPositions = {
-  name: "get_foil_positions",
+  name: "get_sapience_positions",
   description: "Gets information about positions, optionally filtered by chain ID, market address, or owner",
   parameters: {
     properties: {
@@ -232,7 +229,7 @@ const getPositions = {
 
 // Resource Tools
 const getResource = {
-  name: "get_foil_resource",
+  name: "get_sapience_resource",
   description: "Gets detailed information about a specific resource by its slug",
   parameters: {
     properties: {
@@ -270,7 +267,7 @@ const getResource = {
 };
 
 const listResources = {
-  name: "list_foil_resources",
+  name: "list_sapience_resources",
   description: "Lists all resources available in the Foil system",
   parameters: {
     properties: {},
@@ -310,7 +307,7 @@ const listResources = {
 
 // Period Tools (previously Epoch Tools)
 const getEpochs = {
-  name: "get_foil_periods",
+  name: "get_sapience_periods",
   description: "Gets information about epochs (periods) in the system, optionally filtered by market ID",
   parameters: {
     properties: {
@@ -361,7 +358,7 @@ const getEpochs = {
 
 // Transaction Tools
 const getTransactions = {
-  name: "get_foil_transactions",
+  name: "get_sapience_transactions",
   description: "Gets transaction history, optionally filtered by position ID",
   parameters: {
     properties: {
@@ -437,7 +434,7 @@ function intervalToSeconds(interval: string): number {
 }
 
 const getMarketCandles = {
-  name: "get_foil_market_candles",
+  name: "get_sapience_market_candles",
   description: "Gets price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.",
   parameters: {
     properties: {
@@ -508,7 +505,7 @@ const getMarketCandles = {
 };
 
 const getResourceCandles = {
-  name: "get_foil_resource_candles",
+  name: "get_sapience_resource_candles",
   description: "Gets price candle data (OHLC) for a specific resource over a time period. To, from, and interval should be specified in seconds.",
   parameters: {
     properties: {
@@ -567,7 +564,7 @@ const getResourceCandles = {
 };
 
 const getResourceTrailingAverageCandles = {
-  name: "get_foil_resource_trailing_average_candles",
+  name: "get_sapience_resource_trailing_average_candles",
   description: "Gets trailing average price candle data (OHLC) for a specific resource over a time period. To, from, interval, and trailingAvgTime should be specified in seconds.",
   parameters: {
     properties: {
@@ -633,7 +630,7 @@ const getResourceTrailingAverageCandles = {
 };
 
 const getIndexCandles = {
-  name: "get_foil_index_candles",
+  name: "get_sapience_index_candles",
   description: "Gets index price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.",
   parameters: {
     properties: {

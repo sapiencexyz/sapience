@@ -9,10 +9,10 @@ After pulling this repo and running `pnpm install`, add the following to your co
 ```
 {
     "mcpServers": {
-        "foil": {
-            "command": "<PATH_TO_REPO>/foil/packages/agent/node_modules/.bin/tsx",
-            "args": ["<PATH_TO_REPO>/foil/packages/agent/mcp-server.ts"],
-            "cwd": "<PATH_TO_REPO>/foil/packages/agent"
+        "sapience": {
+            "command": "<PATH_TO_REPO>/sapience/packages/agent/node_modules/.bin/tsx",
+            "args": ["<PATH_TO_REPO>/sapience/packages/agent/mcp-server.ts"],
+            "cwd": "<PATH_TO_REPO>/sapience/packages/agent"
         }
     }
 }
@@ -58,11 +58,8 @@ After pulling this repo and running `pnpm install`, add the following to your co
   * `getMarketTickSpacing` - Gets the tick spacing for the market
   * `totalSupply` - Gets total number of positions
   * `balanceOf` - Gets number of positions owned by an address
-
-## Misc Tools
-
-* `stage_transaction` - Stages a transaction to the safe service
-* `execute_transaction` - Executes a transaction using viem and the private key from env.ETHEREUM_PRIVATE_KEY
-* `approve_token` - Returns the calldata for an ERC-20 approval
-* `tweet` - Sends a tweet or thread to Twitter
-* `balance_of_token` - Reads the ERC-20 token balance of an owner
+* `misc` handles different 
+  * `stage_transaction` - Stages a transaction to the safe service
+  * `execute_transaction` - Executes a transaction using viem and the private key from env.ETHEREUM_PRIVATE_KEY
+  * `approve_token` - Returns the calldata for an ERC-20 approval
+  * `balance_of_token` - Reads the ERC-20 token balance of an owner

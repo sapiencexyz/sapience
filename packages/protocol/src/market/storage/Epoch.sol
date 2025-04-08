@@ -474,12 +474,18 @@ library Epoch {
     function validateCurrentPoolPriceInRange(Data storage self) internal view {
         (uint160 sqrtPriceX96, , , , , , ) = self.pool.slot0();
 
+        validatePriceInRange(self, sqrtPriceX96);
+    }
+
+    function validatePriceInRange(
+        Data storage self,
+        uint160 priceX96
+    ) internal view {
         if (
-            sqrtPriceX96 < self.sqrtPriceMinX96 ||
-            sqrtPriceX96 > self.sqrtPriceMaxX96
+            priceX96 < self.sqrtPriceMinX96 || priceX96 > self.sqrtPriceMaxX96
         ) {
             revert Errors.PoolPriceOutOfRange(
-                sqrtPriceX96,
+                priceX96,
                 self.sqrtPriceMinX96,
                 self.sqrtPriceMaxX96
             );
