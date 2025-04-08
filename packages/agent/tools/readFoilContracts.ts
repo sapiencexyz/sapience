@@ -1,7 +1,6 @@
 import { createPublicClient, http } from 'viem';
-import { base } from 'viem/chains';
-import FoilABI from '../abi/Foil.json';
-import ERC20ABI from '../abi/ERC20.json';
+import { base } from 'viem/chains';import FoilABI from '@foil/protocol/deployments/Foil.json';
+
 // Create a public client for interacting with the blockchain
 const client = createPublicClient({
   chain: base,
@@ -22,7 +21,7 @@ interface PositionData {
 }
 
 export const getMarketInfo = {
-  name: "get_foil_market_info",
+  name: "get_sapience_market_info",
   description: "Gets detailed information about a market's configuration",
   parameters: {
     properties: {
@@ -78,7 +77,7 @@ export const getMarketInfo = {
 };
 
 export const getEpochInfo = {
-  name: "get_foil_period_info",
+  name: "get_sapience_period_info",
   description: "Gets detailed information about a specific period",
   parameters: {
     properties: {
@@ -148,7 +147,7 @@ export const getEpochInfo = {
 };
 
 export const getLatestEpochInfo = {
-  name: "get_foil_latest_period_info",
+  name: "get_sapience_latest_period_info",
   description: "Gets information about the most recent period",
   parameters: {
     properties: {
@@ -213,7 +212,7 @@ export const getLatestEpochInfo = {
 };
 
 export const getTokenOwner = {
-  name: "get_foil_token_owner",
+  name: "get_sapience_token_owner",
   description: "Gets the owner address of a specific position token",
   parameters: {
     properties: {
@@ -252,7 +251,7 @@ export const getTokenOwner = {
 };
 
 export const getTokenByIndex = {
-  name: "get_foil_token_by_index",
+  name: "get_sapience_token_by_index",
   description: "Gets a position token ID by its index",
   parameters: {
     properties: {
@@ -291,7 +290,7 @@ export const getTokenByIndex = {
 };
 
 export const getReferencePrice = {
-  name: "get_foil_reference_price",
+  name: "get_sapience_reference_price",
   description: "Gets the reference price for a market",
   parameters: {
     properties: {
@@ -334,7 +333,7 @@ export const getReferencePrice = {
 };
 
 export const getPosition = {
-  name: "get_foil_position",
+  name: "get_sapience_position",
   description: "Gets detailed information about a specific position",
   parameters: {
     properties: {
@@ -388,7 +387,7 @@ export const getPosition = {
 };
 
 export const getPositionCollateralValue = {
-  name: "get_foil_position_collateral_value",
+  name: "get_sapience_position_collateral_value",
   description: "Gets the collateral value of a specific position",
   parameters: {
     properties: {
@@ -431,7 +430,7 @@ export const getPositionCollateralValue = {
 };
 
 export const getPositionPnl = {
-  name: "get_foil_position_pnl",
+  name: "get_sapience_position_pnl",
   description: "Gets the profit and loss (PnL) of a specific position",
   parameters: {
     properties: {
@@ -474,7 +473,7 @@ export const getPositionPnl = {
 };
 
 export const getPositionSize = {
-  name: "get_foil_position_size",
+  name: "get_sapience_position_size",
   description: "Gets the size of a specific position",
   parameters: {
     properties: {
@@ -517,7 +516,7 @@ export const getPositionSize = {
 };
 
 export const getSqrtPriceX96 = {
-  name: "get_foil_sqrt_price",
+  name: "get_sapience_sqrt_price",
   description: "Gets the sqrt price for a specific period",
   parameters: {
     properties: {
@@ -560,7 +559,7 @@ export const getSqrtPriceX96 = {
 };
 
 export const getDecimalPriceFromSqrtPriceX96 = {
-  name: "get_foil_decimal_price_from_sqrt_price",
+  name: "get_sapience_decimal_price_from_sqrt_price",
   description: "Converts a sqrt price to a decimal price",
   parameters: {
     properties: {
@@ -603,7 +602,7 @@ export const getDecimalPriceFromSqrtPriceX96 = {
 };
 
 export const getMarketTickSpacing = {
-  name: "get_foil_market_tick_spacing",
+  name: "get_sapience_market_tick_spacing",
   description: "Gets the tick spacing for a market",
   parameters: {
     properties: {
@@ -641,7 +640,7 @@ export const getMarketTickSpacing = {
 };
 
 export const getTotalSupply = {
-  name: "get_foil_total_supply",
+  name: "get_sapience_total_supply",
   description: "Gets the total supply of Foil tokens",
   parameters: {
     properties: {
@@ -679,7 +678,7 @@ export const getTotalSupply = {
 };
 
 export const getBalanceOf = {
-  name: "get_foil_balance_of",
+  name: "get_sapience_balance_of",
   description: "Gets the balance of Foil tokens for a specific holder",
   parameters: {
     properties: {
@@ -722,7 +721,7 @@ export const getBalanceOf = {
 };
 
 export const getMarketReferencePrice = {
-  name: "get_foil_market_reference_price",
+  name: "get_sapience_market_reference_price",
   description: "Gets the reference price for a market",
   parameters: {
     properties: {
@@ -809,89 +808,3 @@ export const getMarketReferencePrice = {
     }
   },
 };
-
-export const getERC20BalanceOf = {
-  name: "get_erc20_balance_of",
-  description: "Gets the balance of an ERC20 token for a specific wallet address",
-  parameters: {
-    properties: {
-      tokenAddress: {
-        type: "string",
-        description: "The address of the ERC20 token"
-      },
-      walletAddress: {
-        type: "string",
-        description: "The address to query balance for"
-      }
-    },
-    required: ["tokenAddress", "walletAddress"],
-  },
-  function: async (args: { tokenAddress: string; walletAddress: string }) => {
-    // Validate required parameters (and handle stringified args)
-    if (!args) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: "Error: args required"
-        }], 
-        isError: true
-      };
-    }
-    if (typeof args === 'string') {
-      try {
-        args = JSON.parse(args);
-      } catch (error) {
-        return {
-          content: [{
-            type: "text" as const,
-            text: "Error: args must be an object"
-          }],
-          isError: true
-        };
-      }
-    }
-
-    // Validate required parameters
-    if (!args.tokenAddress) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: "Error: tokenAddress is required"
-        }],
-        isError: true
-      };
-    }
-    if (!args.walletAddress) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: "Error: walletAddress is required"
-        }],
-        isError: true
-      };
-    }
-
-    try {
-      const balance = await client.readContract({
-        address: args.tokenAddress as `0x${string}`,
-        abi: ERC20ABI.abi,
-        functionName: 'balanceOf',
-        args: [args.walletAddress as `0x${string}`]
-      });
-      return JSON.stringify({
-        content: [{
-          type: "text" as const,
-          text: JSON.stringify({ balance: balance.toString() }, null, 2)
-        }]
-      });
-    } catch (error) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: `Error fetching balance: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
-      };
-    }
-  },
-}; 
