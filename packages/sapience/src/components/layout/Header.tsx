@@ -5,11 +5,12 @@ import {
   SidebarContent,
   SidebarTrigger,
 } from '@foil/ui/components/ui/sidebar';
-import { Globe, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import ConnectButton from '../ConnectButton';
+import LottieIcon from '../LottieIcon';
 import ModeToggle from '../ModeToggle';
 
 const isActive = (path: string, pathname: string) => {
@@ -108,7 +109,12 @@ const Header = () => {
           <div className="flex items-center bg-background/30 p-2 backdrop-blur-sm rounded-full">
             <Link href="/" className="inline-block">
               <div className="flex items-center gap-2">
-                <Globe className="h-6 w-6 opacity-80" strokeWidth={1.25} />
+                <LottieIcon
+                  animationPath="/lottie/logomark.json"
+                  width={32}
+                  height={32}
+                  className="opacity-80"
+                />
                 <span className="text-2xl font-normal">Sapience</span>
               </div>
             </Link>
