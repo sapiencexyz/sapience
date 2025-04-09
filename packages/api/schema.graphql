@@ -36,6 +36,7 @@ type MarketType {
   chainId: Int!
   claimStatement: String
   collateralAsset: String
+  collateralDecimals: Int
   deployTimestamp: Int
   deployTxnBlockNumber: Int
   epochs: [EpochType!]!

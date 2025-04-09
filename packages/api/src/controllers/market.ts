@@ -120,6 +120,31 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   updatedMarket.chainId = marketInfo.marketChainId;
   updatedMarket.owner = marketReadResult[0];
   updatedMarket.collateralAsset = marketReadResult[1];
+  
+  if (updatedMarket.collateralAsset) {
+    try {
+      const decimals = await client.readContract({
+        address: updatedMarket.collateralAsset as `0x${string}`,
+        abi: [
+          {
+            constant: true,
+            inputs: [],
+            name: 'decimals',
+            outputs: [{ name: '', type: 'uint8' }],
+            payable: false,
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
+        functionName: 'decimals',
+      });
+      updatedMarket.collateralDecimals = Number(decimals);
+      console.log(`Set collateralDecimals to ${decimals} for market ${updatedMarket.address}`);
+    } catch (error) {
+      console.error(`Failed to fetch decimals for token ${updatedMarket.collateralAsset}:`, error);
+    }
+  }
+  
   const marketParamsRaw = marketReadResult[4];
   const marketEpochParams: MarketParams = {
     ...marketParamsRaw,

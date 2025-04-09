@@ -41,6 +41,9 @@ export class MarketType {
   @Field(() => String, { nullable: true })
   collateralAsset: string | null;
 
+  @Field(() => Int, { nullable: true })
+  collateralDecimals: number | null;
+
   @Field(() => String, { nullable: true })
   claimStatement: string | null;
 }
