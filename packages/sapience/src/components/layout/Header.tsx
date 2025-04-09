@@ -63,7 +63,7 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
           className={`${linkClass} ${isActive('/bots', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
-          Build Bots
+          Use Bots
         </Button>
       </Link>
       <Link href="/futarchy" passHref className="flex w-fit">
