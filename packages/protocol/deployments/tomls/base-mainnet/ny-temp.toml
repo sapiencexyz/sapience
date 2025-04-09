@@ -5,10 +5,10 @@ preset="ny-temp-april"
 
 [var.settings]
 deployer="0xdb5af497a73620d881561edb508012a5f84e9ba2"
-owner="0xdb5af497a73620d881561edb508012a5f84e9ba2"
+owner="0x66aB20e98fcACfadB298C0741dFddA92568B5826"
 feeRate = "10000" # 1%
 assertionLiveness = "21600"
-bondAmount = "50000000" # Change for Prod
+bondAmount = "500000000"
 claimStatement = "<%= stringToHex('The average temperature in New York City in March 2025, represented with 18 decimal places, as reported by site KNYC') %>"
 minTradeSize = "10000"
 
@@ -66,7 +66,7 @@ target="Foil"
 func="initializeMarket"
 from="<%= settings.deployer %>"
 args=[
-  "<%= settings.owner %>",
+  "<%= settings.deployer %>",
   "<%= settings.sUSDS %>",
   [],
   "<%= zeroAddress %>",
@@ -75,20 +75,10 @@ args=[
 ]
 depends=["router.Foil"]
 
-# Epoch Settings
-# Change for Prod
-[var.epochSettings]
-startTime="1742516000"
-endTime="1743120800"
-startingSqrtPriceX96 = "525540175778231009156997840896" # 44
-lowerBound="29800" # 20
-upperBound="40800" # 65
-salt="<%= stringToHex('ny-temp-march') %>"
-
 [invoke.createEpoch]
 target="Foil"
 func="createEpoch"
-from="<%= settings.owner %>"
+from="<%= settings.deployer %>"
 args=[
   "1744245220", # April 9th 2025
   "1746057600", # May 1st 2025

@@ -5,10 +5,10 @@ preset="house-reps-2026"
 
 [var.settings]
 deployer="0xdb5af497a73620d881561edb508012a5f84e9ba2"
-owner="0xdb5af497a73620d881561edb508012a5f84e9ba2"
+owner="0x66aB20e98fcACfadB298C0741dFddA92568B5826"
 feeRate = "10000" # 1%
 assertionLiveness = "21600"
-bondAmount = "50000000"
+bondAmount = "500000000"
 claimStatement = "<%= stringToHex('Which party will hold a plurality in the US House of Representatives after the 2026 midterm elections?') %>"
 minTradeSize = "10000"
 
@@ -66,7 +66,7 @@ target="Foil"
 func="initializeMarket"
 from="<%= settings.deployer %>"
 args=[
-  "<%= settings.owner %>",
+  "<%= settings.deployer %>",
   "<%= settings.sUSDS %>",
   [],
   "<%= zeroAddress %>",
@@ -79,7 +79,7 @@ depends=["router.Foil"]
 [invoke.createRepublicanEpoch]
 target="Foil"
 func="createEpoch"
-from="<%= settings.owner %>"
+from="<%= settings.deployer %>"
 args=[
   "1744245220", # April 9th 2025
   "1793491200", # Nov 1st 2026
@@ -94,7 +94,7 @@ depends=["invoke.initializeMarket"]
 [invoke.createDemocratEpoch]
 target="Foil"
 func="createEpoch"
-from="<%= settings.owner %>"
+from="<%= settings.deployer %>"
 args=[
   "1744245220", # April 9th 2025
   "1793491200", # Nov 1st 2026

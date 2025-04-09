@@ -5,10 +5,10 @@ preset="novavax-covid"
 
 [var.settings]
 deployer="0xdb5af497a73620d881561edb508012a5f84e9ba2"
-owner="0xdb5af497a73620d881561edb508012a5f84e9ba2"
+owner="0x66aB20e98fcACfadB298C0741dFddA92568B5826"
 feeRate = "10000" # 1%
 assertionLiveness = "21600"
-bondAmount = "50000000"
+bondAmount = "500000000"
 claimStatement = "<%= stringToHex('Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025? 1 for YES; 0 for NO') %>"
 minTradeSize = "10000"
 
@@ -66,7 +66,7 @@ target="Foil"
 func="initializeMarket"
 from="<%= settings.deployer %>"
 args=[
-  "<%= settings.owner %>",
+  "<%= settings.deployer %>",
   "<%= settings.sUSDS %>",
   [],
   "<%= zeroAddress %>",
@@ -78,7 +78,7 @@ depends=["router.Foil"]
 [invoke.createEpoch]
 target="Foil"
 func="createEpoch"
-from="<%= settings.owner %>"
+from="<%= settings.deployer %>"
 args=[
   "1744245220", # April 9th 2025
   "1746057600", # May 1st 2025
