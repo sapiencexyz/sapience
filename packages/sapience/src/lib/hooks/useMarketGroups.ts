@@ -107,7 +107,14 @@ const RESOURCES_QUERY = gql`
 `;
 
 const MARKET_CANDLES_QUERY = gql`
-  query GetMarketCandles($address: String!, $chainId: Int!, $epochId: String!, $from: Int!, $to: Int!, $interval: Int!) {
+  query GetMarketCandles(
+    $address: String!
+    $chainId: Int!
+    $epochId: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
     marketCandles(
       address: $address
       chainId: $chainId
@@ -126,7 +133,11 @@ const MARKET_CANDLES_QUERY = gql`
 `;
 
 const TOTAL_VOLUME_QUERY = gql`
-  query GetTotalVolume($marketAddress: String!, $chainId: Int!, $epochId: Int!) {
+  query GetTotalVolume(
+    $marketAddress: String!
+    $chainId: Int!
+    $epochId: Int!
+  ) {
     totalVolumeByEpoch(
       marketAddress: $marketAddress
       chainId: $chainId
@@ -145,16 +156,18 @@ export const useMarketGroups = () => {
       const resourcesWithMarketNames = data.resources.map((resource: any) => ({
         ...resource,
         markets: resource.markets.map((market: any) => ({
-            ...market,
-            name: resource.name
-        }))
+          ...market,
+          name: resource.name,
+        })),
       }));
 
-      const sortedResources = resourcesWithMarketNames.sort((a: any, b: any) => {
-        const indexA = RESOURCE_ORDER.indexOf(a.slug);
-        const indexB = RESOURCE_ORDER.indexOf(b.slug);
-        return indexA - indexB;
-      });
+      const sortedResources = resourcesWithMarketNames.sort(
+        (a: any, b: any) => {
+          const indexA = RESOURCE_ORDER.indexOf(a.slug);
+          const indexB = RESOURCE_ORDER.indexOf(b.slug);
+          return indexA - indexB;
+        }
+      );
 
       return sortedResources.map((resource: any) => ({
         ...resource,
@@ -184,11 +197,13 @@ export const useLatestResourcePrice = (slug: string) => {
       }
 
       const latestCandle = candles.reduce((latest: any, current: any) => {
-        return (!latest || current.timestamp > latest.timestamp) ? current : latest;
+        return !latest || current.timestamp > latest.timestamp
+          ? current
+          : latest;
       }, null);
 
       if (!latestCandle) {
-         return { timestamp: null, value: null };
+        return { timestamp: null, value: null };
       }
 
       return {
@@ -218,7 +233,7 @@ export const useLatestIndexPrice = (market: {
       }
 
       try {
-         const { data } = await foilApi.post('/graphql', {
+        const { data } = await foilApi.post('/graphql', {
           query: print(LATEST_INDEX_PRICE_QUERY),
           variables: {
             address: market.address,
@@ -232,15 +247,17 @@ export const useLatestIndexPrice = (market: {
 
         const candles = data.indexCandles;
         if (!candles || candles.length === 0) {
-           return { timestamp: null, value: null };
+          return { timestamp: null, value: null };
         }
 
         const latestCandle = candles.reduce((latest: any, current: any) => {
-           return (!latest || current.timestamp > latest.timestamp) ? current : latest;
+          return !latest || current.timestamp > latest.timestamp
+            ? current
+            : latest;
         }, null);
 
         if (!latestCandle) {
-           return { timestamp: null, value: null };
+          return { timestamp: null, value: null };
         }
 
         return {
@@ -248,8 +265,8 @@ export const useLatestIndexPrice = (market: {
           value: latestCandle.close,
         };
       } catch (error) {
-         console.error("Error fetching latest index price:", error);
-         return { timestamp: null, value: null };
+        console.error('Error fetching latest index price:', error);
+        return { timestamp: null, value: null };
       }
     },
     refetchInterval: 12000,
@@ -267,6 +284,9 @@ export const useMarketCandles = (market: {
   const to = now;
   const interval = 3600;
 
+  // Add debugging info
+  console.log('useMarketCandles called with:', market);
+
   return useQuery<Candle[] | null>({
     queryKey: [
       'marketCandles',
@@ -275,10 +295,20 @@ export const useMarketCandles = (market: {
     ],
     queryFn: async () => {
       if (!market.address || !market.chainId || market.epochId === 0) {
+        console.log('useMarketCandles early return - invalid params:', market);
         return null;
       }
 
       try {
+        console.log('Fetching market candles for:', {
+          address: market.address,
+          chainId: market.chainId,
+          epochId: market.epochId,
+          from,
+          to,
+          interval,
+        });
+
         const { data } = await foilApi.post('/graphql', {
           query: print(MARKET_CANDLES_QUERY),
           variables: {
@@ -290,9 +320,15 @@ export const useMarketCandles = (market: {
             interval,
           },
         });
+
+        console.log('Market candles response:', {
+          candlesCount: data.marketCandles?.length || 0,
+          sample: data.marketCandles?.slice(0, 2) || [],
+        });
+
         return data.marketCandles || [];
       } catch (error) {
-        console.error("Error fetching market candles:", error);
+        console.error('Error fetching market candles:', error);
         return null;
       }
     },
@@ -328,7 +364,7 @@ export const useTotalVolume = (market: {
         });
         return data.totalVolumeByEpoch;
       } catch (error) {
-        console.error("Error fetching total volume:", error);
+        console.error('Error fetching total volume:', error);
         return null;
       }
     },
@@ -337,12 +373,14 @@ export const useTotalVolume = (market: {
   });
 };
 
-export const getLatestPriceFromCandles = (candles: Candle[] | null | undefined): number | null => {
+export const getLatestPriceFromCandles = (
+  candles: Candle[] | null | undefined
+): number | null => {
   if (!candles || candles.length === 0) {
     return null;
   }
   const latestCandle = candles.reduce((latest, current) => {
-    return (!latest || current.timestamp > latest.timestamp) ? current : latest;
+    return !latest || current.timestamp > latest.timestamp ? current : latest;
   });
   const price = parseFloat(latestCandle.close);
   return isNaN(price) ? null : price;

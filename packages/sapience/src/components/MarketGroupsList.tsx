@@ -1,25 +1,16 @@
 'use client';
 
-import {
-  FrownIcon,
-  LayoutGridIcon,
-} from 'lucide-react';
+import { Skeleton } from '@foil/ui/components/ui/skeleton';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FrownIcon, LayoutGridIcon } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 import { DEFAULT_FOCUS_AREA, FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { type ResourceSlug } from '~/lib/constants/resources';
-import {
-  useMarketGroups,
-  useMarketCandles,
-  useTotalVolume,
-  getLatestPriceFromCandles,
-  type Epoch,
-} from '~/lib/hooks/useMarketGroups';
+import { useMarketGroups, type Epoch } from '~/lib/hooks/useMarketGroups';
 
-import { MarketGroupPreview, MarketGroupPreviewProps } from './MarketGroupPreview';
-import { Skeleton } from '@foil/ui/components/ui/skeleton';
+import { MarketGroupPreview } from './MarketGroupPreview';
 
 // Constants for button classes
 const selectedStatusClass = 'bg-secondary';
@@ -66,17 +57,17 @@ const PredictionsTable = () => {
   );
 
   // Add state for the active/settled toggle
-  const [statusFilter, setStatusFilter] = React.useState<
-    'all' | 'active'
-  >('active');
+  const [statusFilter, setStatusFilter] = React.useState<'all' | 'active'>(
+    'active'
+  );
 
   // Update the state when the URL parameter changes
   React.useEffect(() => {
     const currentFocus = searchParams.get('focus');
     if (currentFocus && FOCUS_AREAS.some((area) => area.id === currentFocus)) {
-        setSelectedFocusArea(currentFocus);
+      setSelectedFocusArea(currentFocus);
     } else if (!currentFocus) {
-        setSelectedFocusArea(null);
+      setSelectedFocusArea(null);
     } // Else: keep existing state if param is invalid
   }, [searchParams]);
 
@@ -130,41 +121,39 @@ const PredictionsTable = () => {
     });
 
     // 3. Group filtered epochs by market key
-    const groupedByMarket = filteredEpochs.reduce<{ [key: string]: MarketGroup }>(
-      (acc, epoch) => {
-        const marketKey = `${epoch.chainId}:${epoch.marketAddress}`;
-        if (!acc[marketKey]) {
-          // Find the focus area info once per market
-          const matchingFocusArea = FOCUS_AREAS.find((area) =>
-            area.resources.includes(epoch.resourceSlug)
-          );
-          const color = matchingFocusArea?.color || DEFAULT_FOCUS_AREA.color;
-          const focusAreaSlug = matchingFocusArea
-            ? matchingFocusArea.name.toLowerCase().replace(/\s+/g, '-')
-            : 'unknown';
+    const groupedByMarket = filteredEpochs.reduce<{
+      [key: string]: MarketGroup;
+    }>((acc, epoch) => {
+      const marketKey = `${epoch.chainId}:${epoch.marketAddress}`;
+      if (!acc[marketKey]) {
+        // Find the focus area info once per market
+        const matchingFocusArea = FOCUS_AREAS.find((area) =>
+          area.resources.includes(epoch.resourceSlug)
+        );
+        const color = matchingFocusArea?.color || DEFAULT_FOCUS_AREA.color;
+        const focusAreaSlug = matchingFocusArea
+          ? matchingFocusArea.name.toLowerCase().replace(/\s+/g, '-')
+          : 'unknown';
 
-          acc[marketKey] = {
-            key: marketKey,
-            marketAddress: epoch.marketAddress,
-            chainId: epoch.chainId,
-            marketName: epoch.resourceName, // Using resource name as market name
-            iconPath: epoch.iconPath,
-            collateralAsset: epoch.collateralAsset,
-            color: color,
-            focusAreaSlug: focusAreaSlug,
-            isYin: epoch.isYin,
-            epochs: [], // Initialize epochs array for this market
-          };
-        }
-        acc[marketKey].epochs.push(epoch); // Add the epoch to its market group
-        return acc;
-      },
-      {}
-    );
+        acc[marketKey] = {
+          key: marketKey,
+          marketAddress: epoch.marketAddress,
+          chainId: epoch.chainId,
+          marketName: epoch.resourceName, // Using resource name as market name
+          iconPath: epoch.iconPath,
+          collateralAsset: epoch.collateralAsset,
+          color,
+          focusAreaSlug,
+          isYin: epoch.isYin,
+          epochs: [], // Initialize epochs array for this market
+        };
+      }
+      acc[marketKey].epochs.push(epoch); // Add the epoch to its market group
+      return acc;
+    }, {});
 
     // 4. Convert the grouped object back to an array
     return Object.values(groupedByMarket);
-
   }, [resources, selectedFocusArea, statusFilter]);
   // --- End of refactored useMemo ---
 
@@ -193,21 +182,27 @@ const PredictionsTable = () => {
           // Show skeleton loaders for the main list while resources are loading
           <div className="space-y-12 flex flex-col pt-10">
             {[...Array(3)].map((_, i) => (
-                <div key={i} className="space-y-3">
-                    <Skeleton className="h-40 w-full border-t-[6px]" style={{ borderTopColor: DEFAULT_FOCUS_AREA.color }} />
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-5 w-full" />
-                    <Skeleton className="h-5 w-5/6" />
-                </div>
+              <div key={i} className="space-y-3">
+                <Skeleton
+                  className="h-40 w-full border-t-[6px]"
+                  style={{ borderTopColor: DEFAULT_FOCUS_AREA.color }}
+                />
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-5 w-full" />
+                <Skeleton className="h-5 w-5/6" />
+              </div>
             ))}
           </div>
         )}
         {/* Container for list and zero-state using popLayout */}
         {!isLoadingResources && (
-          <div className="relative min-h-[300px] pt-10"> {/* Relative parent, added pt-10 */}
-            <AnimatePresence mode="popLayout"> {/* Use popLayout */}
-
-              {/* Zero State */}         
+          <div className="relative min-h-[300px] pt-10">
+            {' '}
+            {/* Relative parent, added pt-10 */}
+            <AnimatePresence mode="popLayout">
+              {' '}
+              {/* Use popLayout */}
+              {/* Zero State */}
               {groupedMarketData.length === 0 && (
                 <motion.div
                   key="zero-state" // Key needed for AnimatePresence
@@ -222,33 +217,32 @@ const PredictionsTable = () => {
                   No forecasting markets match the selected filters.
                 </motion.div>
               )}
-
-              {/* List Items - Mapped directly inside outer AnimatePresence */}      
+              {/* List Items - Mapped directly inside outer AnimatePresence */}
               {groupedMarketData.map((marketGroup) => (
-                  <motion.div
-                    layout // Keep layout for item positioning
-                    key={marketGroup.key}
-                    initial={{ opacity: 0, scale: 0.98, y: 0 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.98, y: 0 }}
-                    transition={{ duration: 0.15, ease: "easeInOut" }}
-                    className="mb-12" // Added margin-bottom for spacing
-                  >
-                    <MarketGroupPreview
-                      chainId={marketGroup.chainId}
-                      marketAddress={marketGroup.marketAddress}
-                      marketCategorySlug={marketGroup.focusAreaSlug}
-                      epochs={marketGroup.epochs}
-                      color={marketGroup.color}
-                      iconPath={marketGroup.iconPath}
-                      marketName={marketGroup.marketName}
-                      collateralAsset={marketGroup.collateralAsset}
-                      totalLiquidity={0}
-                      minTick={0}
-                      maxTick={100}
-                    />
-                  </motion.div>
-                ))}
+                <motion.div
+                  layout // Keep layout for item positioning
+                  key={marketGroup.key}
+                  initial={{ opacity: 0, scale: 0.98, y: 0 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.98, y: 0 }}
+                  transition={{ duration: 0.15, ease: 'easeInOut' }}
+                  className="mb-12" // Added margin-bottom for spacing
+                >
+                  <MarketGroupPreview
+                    chainId={marketGroup.chainId}
+                    marketAddress={marketGroup.marketAddress}
+                    marketCategorySlug={marketGroup.focusAreaSlug}
+                    epochs={marketGroup.epochs}
+                    color={marketGroup.color}
+                    iconPath={marketGroup.iconPath}
+                    marketName={marketGroup.marketName}
+                    collateralAsset={marketGroup.collateralAsset}
+                    totalLiquidity={0}
+                    minTick={0}
+                    maxTick={100}
+                  />
+                </motion.div>
+              ))}
             </AnimatePresence>
           </div>
         )}
@@ -264,7 +258,9 @@ const PredictionsTable = () => {
               type="button"
               onClick={() => handleFocusAreaClick(null)}
               className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors text-xs ${
-                selectedFocusArea === null ? selectedStatusClass : hoverStatusClass
+                selectedFocusArea === null
+                  ? selectedStatusClass
+                  : hoverStatusClass
               }`}
             >
               <div
@@ -285,10 +281,12 @@ const PredictionsTable = () => {
                 key={area.id}
                 onClick={() => handleFocusAreaClick(area.id)}
                 className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors text-xs ${
-                  selectedFocusArea === area.id ? selectedStatusClass : hoverStatusClass
+                  selectedFocusArea === area.id
+                    ? selectedStatusClass
+                    : hoverStatusClass
                 }`}
               >
-                 <div
+                <div
                   className="rounded-full p-1 w-5 h-5 flex items-center justify-center"
                   style={{ backgroundColor: `${area.color}25` }}
                 >
@@ -307,7 +305,7 @@ const PredictionsTable = () => {
           <div className="mt-6 mb-6">
             <h3 className="font-medium text-sm mb-2">Status</h3>
             <div className="flex space-x-1">
-               <button
+              <button
                 type="button"
                 className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
                 onClick={() => handleStatusFilterClick('active')}
