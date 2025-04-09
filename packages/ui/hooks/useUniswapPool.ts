@@ -5,8 +5,7 @@ import { Pool } from '@uniswap/v3-sdk';
 import { useCallback, useEffect, useState } from 'react';
 import { useReadContract, useReadContracts } from 'wagmi';
 
-import { TOKEN_DECIMALS } from '../constants';
-import erc20ABI from '../erc20abi.json';
+import erc20ABI from '../abis/erc20abi.json';
 
 const REFETCH_INTERVAL = 60000; // 1 minute
 
@@ -78,14 +77,14 @@ export const useUniswapPool = (chainId: number, poolAddress: `0x${string}`) => {
         const token0 = new Token(
           chainId,
           token0Address as string,
-          TOKEN_DECIMALS,
+          18,
           'Ggas',
           'Ggas'
         );
         const token1 = new Token(
           chainId,
           token1Address as string,
-          TOKEN_DECIMALS,
+          18,
           'wstETH',
           'wstETH'
         );

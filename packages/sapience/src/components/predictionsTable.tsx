@@ -1,21 +1,21 @@
 'use client';
 
 import { Card } from '@foil/ui/components/ui/card';
+import { useResources } from '@foil/ui/hooks/useResources';
 import { format, formatDistance, formatDistanceToNow } from 'date-fns';
 import {
-  FrownIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  ScaleIcon,
   BarChart2Icon,
+  CheckCircleIcon,
+  ClockIcon,
+  FrownIcon,
   LayoutGridIcon,
+  ScaleIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 
 import { DEFAULT_FOCUS_AREA, FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { useResources } from '~/lib/hooks/useResources';
 
 // New PredictionPreview component
 interface PredictionPreviewProps {

@@ -13,7 +13,7 @@ import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 import { timeToLocal } from '~/lib/utils';
 
-import { useLatestIndexPrice } from './useResources';
+import { useLatestIndexPrice } from '@foil/ui/hooks/useResources';
 
 export const GREEN_PRIMARY = '#41A53E';
 export const RED = '#C44444';
