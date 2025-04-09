@@ -41,7 +41,7 @@ interface MarketGroup {
   epochs: EpochWithMarketInfo[];
 }
 
-const PredictionsTable = () => {
+const ForecastingTable = () => {
   const { data: resources, isLoading: isLoadingResources } = useMarketGroups();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -166,7 +166,7 @@ const PredictionsTable = () => {
       params.set('focus', focusAreaId);
     }
     // Use replace to avoid adding to history for filter changes
-    router.replace(`/predictions?${params.toString()}`);
+    router.replace(`/forecasting?${params.toString()}`);
   };
 
   const handleStatusFilterClick = (filter: 'all' | 'active') => {
@@ -320,4 +320,4 @@ const PredictionsTable = () => {
   );
 };
 
-export default PredictionsTable;
+export default ForecastingTable;

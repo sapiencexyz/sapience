@@ -146,7 +146,7 @@ export default function TopicsOfInterest() {
               {extendedFocusAreas.map((area, index) => (
                 <Link
                   key={index}
-                  href={`/predictions?focus=${area.id}`}
+                  href={`/forecasting?focus=${area.id}`}
                   className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0 flex flex-col w-auto flex-shrink-0 hover:bg-muted/30 transition-colors"
                 >
                   <div

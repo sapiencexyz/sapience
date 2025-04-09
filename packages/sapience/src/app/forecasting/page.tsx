@@ -5,11 +5,11 @@ import { Suspense } from 'react';
 import MarketGroupsList from '~/components/MarketGroupsList';
 
 export const metadata: Metadata = {
-  title: 'Predictions',
-  description: 'Make predictions across various focus areas',
+  title: 'Forecasting',
+  description: 'Make forecasts across various focus areas',
 };
 
-const PredictionsPage = () => {
+const ForecastingPage = () => {
   return (
     <div className="container mx-auto p-8 max-w-8xl mt-16">
       <Suspense
@@ -25,4 +25,4 @@ const PredictionsPage = () => {
   );
 };
 
-export default PredictionsPage;
+export default ForecastingPage;

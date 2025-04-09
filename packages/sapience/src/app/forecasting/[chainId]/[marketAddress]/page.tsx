@@ -11,7 +11,7 @@ import { ChartType, TimeInterval } from '@foil/ui/types/charts';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
-const PredictionDetailPage = () => {
+const ForecastingDetailPage = () => {
   const params = useParams();
   const { chainId, marketAddress, epochId } = params;
 
@@ -271,4 +271,4 @@ const PredictionDetailPage = () => {
   );
 };
 
-export default PredictionDetailPage;
+export default ForecastingDetailPage;

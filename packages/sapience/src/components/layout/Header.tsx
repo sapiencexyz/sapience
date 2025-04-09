@@ -40,10 +40,10 @@ const NavLinks = ({ isMobile = false, onClose }: NavLinksProps) => {
 
   return (
     <nav className="flex flex-col gap-3 w-full my-48 ml-4">
-      <Link href="/predictions" passHref className="flex w-fit">
+      <Link href="/forecasting" passHref className="flex w-fit">
         <Button
           variant="ghost"
-          className={`${linkClass} ${isActive('/predictions', pathname) ? activeClass : ''}`}
+          className={`${linkClass} ${isActive('/forecasting', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
           Forecasting

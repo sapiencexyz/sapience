@@ -18,10 +18,10 @@ const FutarchyPage = () => {
         the most liquid prediction markets for future forecasting on the planet.
       </p>
       <Link
-        href="/predictions"
+        href="/forecasting"
         className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1.5 text-xs tracking-widest transition-all duration-300 font-semibold mt-4 self-start"
       >
-        EXPLORE PREDICTIONS
+        EXPLORE FORECASTING
         <ChevronRight className="h-3.5 w-3.5" />
       </Link>
     </div>
