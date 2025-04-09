@@ -2,7 +2,7 @@ import { Loader2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
-import PredictionsTable from '~/components/predictionsTable';
+import MarketGroupsList from '~/components/MarketGroupsList';
 
 export const metadata: Metadata = {
   title: 'Predictions',
@@ -19,7 +19,7 @@ const PredictionsPage = () => {
           </div>
         }
       >
-        <PredictionsTable />
+        <MarketGroupsList />
       </Suspense>
     </div>
   );
