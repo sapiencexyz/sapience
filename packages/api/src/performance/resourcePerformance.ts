@@ -212,11 +212,12 @@ export class ResourcePerformance {
     let lastResourceTimestamp = 0;
 
     while (hasMoreResourcePrices) {
-      const { prices: dbResourcePrices, hasMore } = await this.pullResourcePrices(
-        initialResourceTimestamp,
-        ResourcePerformance.BATCH_SIZE,
-        resourceSkip
-      );
+      const { prices: dbResourcePrices, hasMore } =
+        await this.pullResourcePrices(
+          initialResourceTimestamp,
+          ResourcePerformance.BATCH_SIZE,
+          resourceSkip
+        );
 
       if (dbResourcePrices.length === 0) {
         break;
@@ -254,7 +255,8 @@ export class ResourcePerformance {
 
       // Update last timestamp
       if (dbResourcePrices.length > 0) {
-        lastResourceTimestamp = dbResourcePrices[dbResourcePrices.length - 1].timestamp;
+        lastResourceTimestamp =
+          dbResourcePrices[dbResourcePrices.length - 1].timestamp;
       }
     }
 
@@ -297,7 +299,8 @@ export class ResourcePerformance {
 
       // Update last timestamp
       if (dbMarketPrices.length > 0) {
-        lastMarketTimestamp = dbMarketPrices[dbMarketPrices.length - 1].timestamp;
+        lastMarketTimestamp =
+          dbMarketPrices[dbMarketPrices.length - 1].timestamp;
       }
     }
 

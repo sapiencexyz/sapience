@@ -50,4 +50,4 @@ async function testResourcePerformance() {
 }
 
 // Run the test
-testResourcePerformance().catch(console.error); 
+testResourcePerformance().catch(console.error);
