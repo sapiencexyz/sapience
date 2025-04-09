@@ -10,6 +10,7 @@ import { initializeApolloServer } from './graphql/startApolloServer';
 import Sentry from './sentry';
 import { NextFunction, Request, Response } from 'express';
 import { ResourcePerformanceManager } from './performance';
+import { initializeFixtures } from './fixtures';
 
 const PORT = 3001;
 
@@ -22,6 +23,9 @@ initSentry();
 
 const startServer = async () => {
   await initializeDataSource();
+
+  // Initialize fixtures from fixtures.json
+  await initializeFixtures();
 
   const apolloServer = await initializeApolloServer();
 

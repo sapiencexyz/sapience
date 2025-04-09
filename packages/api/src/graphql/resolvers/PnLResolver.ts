@@ -21,7 +21,7 @@ export class PnLResolver {
       return pnlData.map((pnl) => {
         return {
           epochId: parseInt(epochId),
-          owner: pnl.owner,
+          owner: pnl.owner.toLowerCase(),
           totalDeposits: pnl.totalDeposits.toString(),
           totalWithdrawals: pnl.totalWithdrawals.toString(),
           openPositionsPnL: pnl.openPositionsPnL.toString(),

@@ -1,17 +1,16 @@
 'use client';
 
-import { Copy } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { getEnsName } from 'viem/ens';
-import { usePublicClient } from 'wagmi';
-
-import { Button } from '@/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import { Copy } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { getEnsName } from 'viem/ens';
+import { usePublicClient } from 'wagmi';
 
 const formatAddress = (address: string): string => {
   if (!address) return '';

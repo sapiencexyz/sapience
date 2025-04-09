@@ -1,15 +1,15 @@
-import { Edit } from 'lucide-react';
-import Link from 'next/link';
-import type React from 'react';
-import { useState, useContext } from 'react';
-
-import { Button } from '~/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '~/components/ui/dialog';
+} from '@foil/ui/components/ui/dialog';
+import { Edit } from 'lucide-react';
+import Link from 'next/link';
+import type React from 'react';
+import { useState, useContext } from 'react';
+
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { positionHasBalance } from '~/lib/utils/util';

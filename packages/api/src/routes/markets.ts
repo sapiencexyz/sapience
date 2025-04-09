@@ -21,6 +21,7 @@ router.get(
         ...epoch,
         startTimestamp: Number(epoch.startTimestamp),
         endTimestamp: Number(epoch.endTimestamp),
+        question: epoch.question,
       })),
     }));
 

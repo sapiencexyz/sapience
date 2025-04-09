@@ -3,29 +3,29 @@
 'use client';
 
 import { gql } from '@apollo/client';
-import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
-import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
-import { useSignMessage } from 'wagmi';
-
-import { Button } from '@/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+} from '@foil/ui/components/ui/dialog';
+import { Input } from '@foil/ui/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@foil/ui/components/ui/select';
+import { useToast } from '@foil/ui/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
+import { print } from 'graphql';
+import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { useSignMessage } from 'wagmi';
+
 import AdminTable from '~/components/admin/AdminTable';
-import { useToast } from '~/hooks/use-toast';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 import { foilApi } from '~/lib/utils/util';
@@ -182,20 +182,26 @@ const Admin = () => {
     }
   };
 
-  return (
-    <div className="w-full">
-      <AdminTable />
+  const toolButtons = (
+    <>
+      <Button size="xs" onClick={() => setStatusOpen(true)}>
+        Check Job Status
+      </Button>
+      <Button size="xs" onClick={() => setIndexResourceOpen(true)}>
+        Index Resource
+      </Button>
+      <Button size="xs" onClick={() => setRefreshCacheOpen(true)}>
+        Refresh Cache
+      </Button>
+    </>
+  );
 
-      <div className="flex gap-4 my-4 ml-4">
-        <Button onClick={() => setStatusOpen(true)}>Check Job Status</Button>
-        <Button onClick={() => setIndexResourceOpen(true)}>
-          Index Resource
-        </Button>
-        <Button onClick={() => setRefreshCacheOpen(true)}>Refresh Cache</Button>
-      </div>
+  return (
+    <div className="w-full h-full pb-20">
+      <AdminTable toolButtons={toolButtons} />
 
       <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Check Job Status</DialogTitle>
           </DialogHeader>

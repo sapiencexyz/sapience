@@ -4,9 +4,9 @@ import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { Between } from 'typeorm';
 import { Market } from '../models/Market';
 import { ResourcePrice } from '../models/ResourcePrice';
-import { MARKETS } from 'src/fixtures';
 import { getMarketStartEndBlock } from 'src/controllers/marketHelpers';
 import dataSource from 'src/db';
+import { INDEXERS } from '../fixtures';
 
 const router = Router();
 
@@ -27,26 +27,26 @@ const getMissingBlocks = async (
     return { missingBlockNumbers: null, error: 'Market not found' };
   }
 
-  // Find the market info to get the correct chain for price indexing
-  const marketInfo = MARKETS.find(
-    (m) =>
-      m.marketChainId === market.chainId &&
-      m.deployment.address.toLowerCase() === market.address.toLowerCase()
-  );
-  if (!marketInfo) {
+  // Get the resource slug to find the appropriate indexer
+  if (!market.resource?.slug) {
     return {
       missingBlockNumbers: null,
-      error: 'Market configuration not found',
+      error: 'Market resource not found or missing slug',
+    };
+  }
+
+  // Use the indexer for this resource from fixtures
+  const indexer = INDEXERS[market.resource.slug];
+  if (!indexer) {
+    return {
+      missingBlockNumbers: null,
+      error: `Indexer not found for resource: ${market.resource.slug}`,
     };
   }
 
   // Get block numbers using the price indexer client
   const { startBlockNumber, endBlockNumber, error } =
-    await getMarketStartEndBlock(
-      market,
-      epochId,
-      marketInfo.resource.priceIndexer.client
-    );
+    await getMarketStartEndBlock(market, epochId, indexer.client);
 
   if (error || !startBlockNumber || !endBlockNumber) {
     return { missingBlockNumbers: null, error };

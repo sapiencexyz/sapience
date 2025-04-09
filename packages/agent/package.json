@@ -1,0 +1,54 @@
+{
+  "name": "@foil/agent",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "description": "",
+  "main": "dist/mcp-server.js",
+  "types": "dist/mcp-server.d.ts",
+  "bin": {
+    "claude-install": "./dist/claude-install.js",
+    "run-server": "./dist/mcp-server.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "NODE_OPTIONS='--no-deprecation' tsx src/index.ts 300000",
+    "dev": "NODE_ENV=development NODE_OPTIONS='--no-deprecation' tsx watch src/index.ts 0",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^10.9.0",
+    "@types/node": "^20.17.24",
+    "@types/node-fetch": "^2.6.11",
+    "rimraf": "^4.1.2",
+    "ts-node": "^10.9.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@foil/protocol": "workspace:*",
+    "@langchain/anthropic": "^0.3.15",
+    "@langchain/community": "^0.3.37",
+    "@langchain/core": "^0.3.43",
+    "@langchain/langgraph": "^0.2.60",
+    "@langchain/openai": "^0.5.0",
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.5",
+    "graphql": "^16.8.1",
+    "langchain": "^0.3.19",
+    "mermaid": "^10.9.0",
+    "node-fetch": "^2.7.0",
+    "viem": "^2.23.12",
+    "zod": "^3.22.4"
+  }
+}

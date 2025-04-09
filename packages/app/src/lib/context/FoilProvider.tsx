@@ -1,3 +1,4 @@
+import { useToast } from '@foil/ui/hooks/use-toast';
 import type {
   QueryObserverResult,
   RefetchOptions,
@@ -6,7 +7,6 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 
-import { useToast } from '../../hooks/use-toast';
 import { gweiToEther, mainnetClient, foilApi } from '../utils/util';
 
 export interface Market {
@@ -29,6 +29,7 @@ export interface Market {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   }>;
   currentEpoch: {
     id: number;
@@ -36,6 +37,7 @@ export interface Market {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   } | null;
   nextEpoch: {
     id: number;
@@ -43,6 +45,7 @@ export interface Market {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   } | null;
 }
 

@@ -88,4 +88,7 @@ export class Epoch {
 
   @Column({ type: 'boolean', default: true })
   public: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  question: string | null;
 }

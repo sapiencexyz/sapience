@@ -1,7 +1,13 @@
 import { gql } from '@apollo/client';
+import { timeToLocal } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
-import type { UTCTimestamp, IChartApi } from 'lightweight-charts';
+import type {
+  UTCTimestamp,
+  IChartApi,
+  ISeriesApi,
+  MouseEventParams,
+} from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
 import {
@@ -19,7 +25,6 @@ import { convertGgasPerWstEthToGwei, foilApi } from '../utils/util';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import type { PriceChartData } from '~/lib/interfaces/interfaces';
 import { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
-import { timeToLocal } from '~/lib/utils';
 
 import { useLatestIndexPrice } from './useResources';
 
@@ -165,14 +170,26 @@ const TRAILING_RESOURCE_CANDLES_QUERY = gql`
 
 // Helper functions for price extraction
 const extractPriceFromData = (
-  data: any,
+  data: unknown,
   propertyName: string
 ): number | null => {
   if (data === undefined) return null;
 
-  const price = data as any;
-  if (typeof price === 'object' && price !== null && propertyName in price) {
-    return price[propertyName];
+  if (
+    typeof data === 'object' &&
+    data !== null &&
+    Object.prototype.hasOwnProperty.call(data, propertyName)
+  ) {
+    const price = (data as Record<string, unknown>)[propertyName];
+    if (typeof price === 'number') {
+      return price;
+    }
+    if (typeof price === 'string') {
+      const parsedPrice = parseFloat(price);
+      if (!isNaN(parsedPrice)) {
+        return parsedPrice;
+      }
+    }
   }
   return null;
 };
@@ -210,10 +227,10 @@ export const useChart = ({
 }: UseChartProps) => {
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
-  const candlestickSeriesRef = useRef<any>(null);
-  const indexPriceSeriesRef = useRef<any>(null);
-  const resourcePriceSeriesRef = useRef<any>(null);
-  const trailingPriceSeriesRef = useRef<any>(null);
+  const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const indexPriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const resourcePriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const trailingPriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const hasSetTimeScale = useRef(false);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
@@ -265,11 +282,11 @@ export const useChart = ({
       selectedInterval,
     ],
     queryFn: async () => {
-      const now = Math.floor(Date.now() / 1000);
+      const currentTimestamp = Math.floor(Date.now() / 1000);
       const timeRange = selectedWindow
         ? getTimeRangeFromWindow(selectedWindow)
         : 86400;
-      const from = now - timeRange;
+      const from = currentTimestamp - timeRange;
       const interval = getIntervalSeconds(selectedInterval);
 
       const { data } = await foilApi.post('/graphql', {
@@ -279,7 +296,7 @@ export const useChart = ({
           chainId: market?.chainId,
           epochId: market?.epochId?.toString(),
           from,
-          to: now,
+          to: currentTimestamp,
           interval,
         },
       });
@@ -320,11 +337,11 @@ export const useChart = ({
       selectedInterval,
     ],
     queryFn: async () => {
-      const now = Math.floor(Date.now() / 1000);
+      const currentTimestamp = Math.floor(Date.now() / 1000);
       const timeRange = selectedWindow
         ? getTimeRangeFromWindow(selectedWindow)
         : 86400;
-      const from = now - timeRange;
+      const from = currentTimestamp - timeRange;
       const interval = getIntervalSeconds(selectedInterval);
 
       const { data } = await foilApi.post('/graphql', {
@@ -334,7 +351,7 @@ export const useChart = ({
           chainId: market?.chainId,
           epochId: market?.epochId?.toString(),
           from,
-          to: now,
+          to: currentTimestamp,
           interval,
         },
       });
@@ -360,8 +377,8 @@ export const useChart = ({
       if (!resourceSlug) {
         return [];
       }
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      const from = currentTimestamp - 28 * 24 * 60 * 60 * 2; // Two periods ago
       const interval = getIntervalSeconds(selectedInterval);
 
       const { data } = await foilApi.post('/graphql', {
@@ -369,7 +386,7 @@ export const useChart = ({
         variables: {
           slug: resourceSlug,
           from,
-          to: now,
+          to: currentTimestamp,
           interval,
         },
       });
@@ -394,8 +411,8 @@ export const useChart = ({
         if (!resourceSlug) {
           return [];
         }
-        const now = Math.floor(Date.now() / 1000);
-        const from = now - 28 * 24 * 60 * 60 * 2; // Two periods ago
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        const from = currentTimestamp - 28 * 24 * 60 * 60 * 2; // Two periods ago
         const interval = getIntervalSeconds(selectedInterval);
 
         // Calculate duration in days from full market data
@@ -415,7 +432,7 @@ export const useChart = ({
           variables: {
             slug: resourceSlug,
             from,
-            to: now,
+            to: currentTimestamp,
             interval,
             trailingAvgTime: durationInDays * 24 * 60 * 60,
           },
@@ -517,6 +534,7 @@ export const useChart = ({
       color: BLUE,
       lineStyle: 2,
       lineWidth: 2,
+      priceScaleId: 'right',
     });
 
     resourcePriceSeriesRef.current = chart.addLineSeries({
@@ -527,11 +545,13 @@ export const useChart = ({
         precision: 4,
         minMove: 0.0001,
       },
+      priceScaleId: 'right',
     });
 
     trailingPriceSeriesRef.current = chart.addLineSeries({
       color: BLUE,
       lineWidth: 2,
+      priceScaleId: 'right',
     });
 
     // Add crosshair move handler to track hover data
@@ -572,7 +592,7 @@ export const useChart = ({
     });
 
     // Helper function to get price from series data
-    function getPriceFromSeries(param: any): number | null {
+    function getPriceFromSeries(param: MouseEventParams): number | null {
       // Try resource series first (if visible)
       if (seriesVisibility?.resource && resourcePriceSeriesRef.current) {
         const resourceData = param.seriesData.get(
@@ -601,9 +621,16 @@ export const useChart = ({
 
     // Add mouse leave handler to reset hover data
     if (containerRef.current) {
-      containerRef.current.addEventListener('mouseleave', () => {
+      const currentContainer = containerRef.current;
+      const mouseLeaveHandler = () => {
         setHoverData(null);
-      });
+      };
+      currentContainer.addEventListener('mouseleave', mouseLeaveHandler);
+
+      // Cleanup function
+      return () => {
+        currentContainer.removeEventListener('mouseleave', mouseLeaveHandler);
+      };
     }
 
     const handleResize = () => {
@@ -629,7 +656,7 @@ export const useChart = ({
         chartRef.current = null;
       }
     };
-  }, [theme, containerRef]);
+  }, [theme, containerRef, seriesVisibility, resourcePrices]);
 
   const updateCandlestickData = useCallback(() => {
     if (
@@ -763,18 +790,21 @@ export const useChart = ({
   ]);
 
   const updateResourcePriceData = useCallback(() => {
-    if (resourcePrices?.length && resourcePriceSeriesRef.current) {
+    if (
+      resourcePrices?.length &&
+      resourcePriceSeriesRef.current &&
+      !isBeforeStart &&
+      (seriesVisibility?.resource ?? true)
+    ) {
       const resourceLineData = resourcePrices.map((rp) => ({
         time: (rp.timestamp / 1000) as UTCTimestamp,
-        value: useMarketUnits
-          ? Number(rp.price / ((stEthPerToken || 1e9) / 1e9))
-          : rp.price,
+        value: rp.price,
       }));
       resourcePriceSeriesRef.current.setData(resourceLineData);
     }
-  }, [resourcePrices, useMarketUnits, stEthPerToken]);
+  }, [resourcePrices, isBeforeStart, seriesVisibility]);
 
-  const updateTrailingAverageData = useCallback(() => {
+  const updateTrailingPriceData = useCallback(() => {
     if (trailingResourcePrices?.length && trailingPriceSeriesRef.current) {
       const trailingLineData = trailingResourcePrices.map((trp) => ({
         time: (trp.timestamp / 1000) as UTCTimestamp,
@@ -815,15 +845,16 @@ export const useChart = ({
     updateCandlestickData();
     updateIndexPriceData();
     updateResourcePriceData();
-    if (!contextMarket?.isCumulative) updateTrailingAverageData();
+    updateTrailingPriceData();
     updateSeriesVisibility();
   }, [
-    contextMarket?.isCumulative,
     updateCandlestickData,
     updateIndexPriceData,
     updateResourcePriceData,
-    updateTrailingAverageData,
-    updateSeriesVisibility,
+    updateTrailingPriceData,
+    seriesVisibility,
+    contextMarket,
+    useMarketUnits,
   ]);
 
   // Dedicated effect to update the chart when the latest index price changes
@@ -845,30 +876,12 @@ export const useChart = ({
     }
   }, [market?.chainId, market?.address, market?.epochId]);
 
+  // Effect to toggle logarithmic scale
   useEffect(() => {
     if (!chartRef.current) return;
 
     chartRef.current.priceScale('right').applyOptions({
       mode: isLogarithmic ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
-    });
-
-    const series = [
-      candlestickSeriesRef.current,
-      indexPriceSeriesRef.current,
-      resourcePriceSeriesRef.current,
-      trailingPriceSeriesRef.current,
-    ];
-
-    series.forEach((s) => {
-      if (s) {
-        s.applyOptions({
-          priceScale: {
-            mode: isLogarithmic
-              ? PriceScaleMode.Logarithmic
-              : PriceScaleMode.Normal,
-          },
-        });
-      }
     });
   }, [isLogarithmic]);
 
@@ -878,7 +891,7 @@ export const useChart = ({
       updateCandlestickData();
       updateIndexPriceData();
       updateResourcePriceData();
-      if (!contextMarket?.isCumulative) updateTrailingAverageData();
+      updateTrailingPriceData();
     }
   }, [
     useMarketUnits,
@@ -886,8 +899,8 @@ export const useChart = ({
     updateCandlestickData,
     updateIndexPriceData,
     updateResourcePriceData,
-    updateTrailingAverageData,
-    contextMarket?.isCumulative,
+    updateTrailingPriceData,
+    contextMarket,
   ]);
 
   const loadingStates = useMemo(
@@ -908,45 +921,64 @@ export const useChart = ({
   );
 
   // Helper function to set market price time scale
-  const setMarketPriceTimeScale = () => {
-    if (marketPrices?.length) {
-      const firstCandleIndex = marketPrices.findIndex(
-        (candle) => Number(candle.close) !== 0
-      );
-      const firstCandle =
-        firstCandleIndex >= 0
-          ? marketPrices[firstCandleIndex]
-          : marketPrices[0];
-      const lastCandle = marketPrices[marketPrices.length - 1];
-      chartRef.current?.timeScale().setVisibleRange({
-        from: (firstCandle.startTimestamp / 1000) as UTCTimestamp,
-        to: (lastCandle.endTimestamp / 1000) as UTCTimestamp,
-      });
-    } else if (trailingResourcePrices?.length && !contextMarket?.isCumulative) {
-      const now = Math.floor(Date.now() / 1000);
-      const from = now - 28 * 86400;
-
-      chartRef.current?.timeScale().setVisibleRange({
-        from: from as UTCTimestamp,
-        to: now as UTCTimestamp,
-      });
+  const setMarketPriceTimeScale = useCallback(() => {
+    if (
+      !chartRef.current ||
+      !marketPrices ||
+      marketPrices.length === 0 ||
+      hasSetTimeScale.current
+    ) {
+      return;
     }
-  };
-
-  // Helper function to set default time scale
-  const setDefaultTimeScale = () => {
-    const timeRange = selectedWindow
-      ? getTimeRangeFromWindow(selectedWindow)
-      : 86400;
-    const now = Math.floor(Date.now() / 1000);
-    const from = now - timeRange;
-
-    chartRef?.current?.timeScale().setVisibleRange({
-      from: from as UTCTimestamp,
-      to: now as UTCTimestamp,
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const firstTimestamp = marketPrices[0].startTimestamp / 1000;
+    const lastTimestamp =
+      marketPrices[marketPrices.length - 1].endTimestamp / 1000;
+    chartRef.current.timeScale().setVisibleRange({
+      from: firstTimestamp as UTCTimestamp,
+      to: (lastTimestamp > currentTimestamp
+        ? lastTimestamp
+        : currentTimestamp) as UTCTimestamp,
     });
     hasSetTimeScale.current = true;
-  };
+  }, [marketPrices]);
+
+  // Helper function to set default time scale
+  const setDefaultTimeScale = useCallback(() => {
+    if (
+      !chartRef.current ||
+      !marketPrices ||
+      marketPrices.length === 0 ||
+      !selectedWindow ||
+      hasSetTimeScale.current
+    ) {
+      return;
+    }
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const timeRangeSeconds = getTimeRangeFromWindow(selectedWindow);
+    const fromTimestamp = currentTimestamp - timeRangeSeconds;
+    chartRef.current.timeScale().setVisibleRange({
+      from: fromTimestamp as UTCTimestamp,
+      to: currentTimestamp as UTCTimestamp,
+    });
+    hasSetTimeScale.current = true;
+  }, [marketPrices, selectedWindow]);
+
+  // Effect to set initial time scale
+  useEffect(() => {
+    if (marketPrices?.length && !hasSetTimeScale.current) {
+      if (isBeforeStart) {
+        setMarketPriceTimeScale();
+      } else {
+        setDefaultTimeScale();
+      }
+    }
+  }, [
+    marketPrices,
+    isBeforeStart,
+    setMarketPriceTimeScale,
+    setDefaultTimeScale,
+  ]);
 
   const hasSetVisibility = useRef(false);
 

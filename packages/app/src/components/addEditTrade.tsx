@@ -1,4 +1,14 @@
 /* eslint-disable sonarjs/cognitive-complexity */
+import { Button } from '@foil/ui/components/ui/button';
+import { Form } from '@foil/ui/components/ui/form';
+import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { debounce } from 'lodash';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
@@ -18,16 +28,6 @@ import {
 
 import { useConnectWallet } from '../lib/context/ConnectWalletProvider';
 import erc20ABI from '../lib/erc20abi.json';
-import { Button } from '~/components/ui/button';
-import { Form } from '~/components/ui/form';
-import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
 import {
   HIGH_PRICE_IMPACT,
   MIN_BIG_INT_SIZE,

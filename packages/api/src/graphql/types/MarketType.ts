@@ -11,7 +11,7 @@ export class MarketType {
   @Field(() => String)
   address: string;
 
-  @Field(() => String)
+  @Field(() => String, { nullable: true })
   vaultAddress: string;
 
   @Field(() => Int)
@@ -40,4 +40,7 @@ export class MarketType {
 
   @Field(() => String, { nullable: true })
   collateralAsset: string | null;
+
+  @Field(() => String, { nullable: true })
+  claimStatement: string | null;
 }
