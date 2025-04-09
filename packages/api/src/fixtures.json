@@ -41,9 +41,7 @@
   ],
   "MARKETS": [
     {
-      "questions": [
-        "How much blob data will be posted to Celestia in April?"
-      ],
+      "questions": ["How much blob data will be posted to Celestia in April?"],
       "resource": "celestia-blobspace",
       "chainId": 8453,
       "address": "0x497057F1dBdaFBeD7a052dEa366e72c04de7A370",

@@ -1,9 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
-import {
-  initializeDataSource,
-  resourceRepository,
-} from '../db';
+import { initializeDataSource, resourceRepository } from '../db';
 import { indexMarketEvents } from '../controllers/market';
 import { initializeFixtures, INDEXERS } from '../fixtures';
 import * as Sentry from '@sentry/node';
@@ -85,12 +82,13 @@ async function main() {
   for (const marketInfo of fixturesData.MARKETS) {
     jobs.push(
       createResilientProcess(
-        () => indexMarketEvents({
-          address: marketInfo.address,
-          chainId: marketInfo.chainId,
-          isYin: marketInfo.isYin || true,
-          isCumulative: marketInfo.isCumulative || false
-        } as any),
+        () =>
+          indexMarketEvents({
+            address: marketInfo.address,
+            chainId: marketInfo.chainId,
+            isYin: marketInfo.isYin || true,
+            isCumulative: marketInfo.isCumulative || false,
+          } as any),
         `indexMarketEvents-${marketInfo.address}`
       )()
     );
@@ -102,19 +100,16 @@ async function main() {
     const resource = await resourceRepository.findOne({
       where: { slug: resourceSlug },
     });
-    
+
     if (!resource) {
       console.log(`Resource not found: ${resourceSlug}`);
       continue;
     }
 
     jobs.push(
-      createResilientProcess(
-        () => {
-          return indexer.watchBlocksForResource(resource) as Promise<void>;
-        },
-        `watchBlocksForResource-${resourceSlug}`
-      )()
+      createResilientProcess(() => {
+        return indexer.watchBlocksForResource(resource) as Promise<void>;
+      }, `watchBlocksForResource-${resourceSlug}`)()
     );
   }
 

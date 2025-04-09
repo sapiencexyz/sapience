@@ -112,7 +112,7 @@ const Header = () => {
                 <span className="text-2xl font-normal">Sapience</span>
               </div>
             </Link>
-            <SidebarTrigger className="block flex items-center justify-center opacity-40 hover:opacity-90 ml-6" />
+            <SidebarTrigger className="block flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6" />
           </div>
 
           <div className="flex items-center gap-5">

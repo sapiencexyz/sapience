@@ -22,7 +22,7 @@ export async function reindexMarket(
     );
 
     await initializeDataSource();
-    
+
     // Find the market in the database instead of using MARKETS
     const marketEntity = await marketRepository.findOne({
       where: {
@@ -45,15 +45,16 @@ export async function reindexMarket(
         address,
         abi: Foil.abi as Abi,
         deployTimestamp: marketEntity.deployTimestamp?.toString() || '0',
-        deployTxnBlockNumber: marketEntity.deployTxnBlockNumber?.toString() || '0',
+        deployTxnBlockNumber:
+          marketEntity.deployTxnBlockNumber?.toString() || '0',
       },
       vaultAddress: marketEntity.vaultAddress || '',
       isYin: marketEntity.isYin || false,
       isCumulative: marketEntity.isCumulative || false,
       resource: {
         name: marketEntity.resource.name,
-        priceIndexer: INDEXERS[marketEntity.resource.slug]
-      }
+        priceIndexer: INDEXERS[marketEntity.resource.slug],
+      },
     };
 
     const market = await initializeMarket(marketInfo);

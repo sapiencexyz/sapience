@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { mainnet, base, arbitrum } from 'viem/chains';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
@@ -13,6 +12,7 @@ import { Epoch } from './models/Epoch';
 import { epochRepository } from './db';
 import { Category } from './models/Category';
 import { categoryRepository } from './db';
+import { IResourcePriceIndexer } from './interfaces';
 
 // TAT = Trailing Average Time
 export const TIME_INTERVALS = {
@@ -29,18 +29,21 @@ export const TIME_INTERVALS = {
 };
 
 export const INDEXERS: {
-  [key: string]: any;
+  [key: string]: IResourcePriceIndexer;
 } = {
-  "ethereum-gas": new evmIndexer(mainnet.id),
-  "ethereum-blobspace": new ethBlobsIndexer(mainnet.id),
-  "celestia-blobspace": new celestiaIndexer('https://api-mainnet.celenium.io'),
-  "bitcoin-fees": new btcIndexer(),
-  "base-gas": new evmIndexer(base.id),
-  "arbitrum-gas": new evmIndexer(arbitrum.id),
+  'ethereum-gas': new evmIndexer(mainnet.id),
+  'ethereum-blobspace': new ethBlobsIndexer(mainnet.id),
+  'celestia-blobspace': new celestiaIndexer('https://api-mainnet.celenium.io'),
+  'bitcoin-fees': new btcIndexer(),
+  'base-gas': new evmIndexer(base.id),
+  'arbitrum-gas': new evmIndexer(arbitrum.id),
 };
 
 // Helper function to create or update epochs with questions
-async function handleEpochQuestions(market: Market, questions: string[]): Promise<void> {
+async function handleEpochQuestions(
+  market: Market,
+  questions: string[]
+): Promise<void> {
   if (!questions || questions.length === 0) {
     return;
   }
@@ -48,7 +51,7 @@ async function handleEpochQuestions(market: Market, questions: string[]): Promis
   // Create or update epochs for each question
   for (let i = 0; i < questions.length; i++) {
     const epochId = i + 1; // Convert 0-index to 1-index for epochId
-    
+
     // Check if epoch already exists
     let epoch = await epochRepository.findOne({
       where: {
@@ -69,7 +72,9 @@ async function handleEpochQuestions(market: Market, questions: string[]): Promis
       // Update epoch question if different
       epoch.question = questions[i];
       await epochRepository.save(epoch);
-      console.log(`Updated epoch ${epochId} with new question: ${questions[i]}`);
+      console.log(
+        `Updated epoch ${epochId} with new question: ${questions[i]}`
+      );
     }
   }
 }
@@ -80,7 +85,7 @@ async function handleEpochQuestions(market: Market, questions: string[]): Promis
 // Function to initialize fixtures - upsert resources and markets from fixtures.json
 export const initializeFixtures = async (): Promise<void> => {
   console.log('Initializing fixtures from fixtures.json');
-  
+
   // Initialize resources from fixtures.json
   for (const resourceData of fixturesData.RESOURCES) {
     let resource = await resourceRepository.findOne({
@@ -140,26 +145,31 @@ export const initializeFixtures = async (): Promise<void> => {
 
     // Check if market already exists by address and chainId
     let market = await marketRepository.findOne({
-      where: { 
-        address: marketData.address,
-        chainId: marketData.chainId
+      where: {
+        address: marketData.address.toLowerCase(),
+        chainId: marketData.chainId,
       },
     });
 
     if (!market) {
       // Create new market
       market = new Market();
-      market.address = marketData.address;
+      market.address = marketData.address.toLowerCase();
       market.chainId = marketData.chainId;
       market.isYin = marketData.isYin || false;
       market.isCumulative = marketData.isCumulative || false;
       market.category = category;
-            
+
       // Set the resource for the market
       market.resource = resource;
       await marketRepository.save(market);
-      console.log('Created market:', market.address, 'on chain', market.chainId);
-      
+      console.log(
+        'Created market:',
+        market.address,
+        'on chain',
+        market.chainId
+      );
+
       // Handle questions for epochs after market is saved
       if (marketData.questions && market.id) {
         await handleEpochQuestions(market, marketData.questions);
@@ -168,12 +178,18 @@ export const initializeFixtures = async (): Promise<void> => {
       // Update market if needed
       market.resource = resource;
       market.isYin = marketData.isYin || market.isYin || false;
-      market.isCumulative = marketData.isCumulative || market.isCumulative || false;
+      market.isCumulative =
+        marketData.isCumulative || market.isCumulative || false;
       market.category = category;
-            
+
       await marketRepository.save(market);
-      console.log('Updated market:', market.address, 'on chain', market.chainId);
-      
+      console.log(
+        'Updated market:',
+        market.address,
+        'on chain',
+        market.chainId
+      );
+
       // Handle questions for epochs after market is updated
       if (marketData.questions && market.id) {
         await handleEpochQuestions(market, marketData.questions);

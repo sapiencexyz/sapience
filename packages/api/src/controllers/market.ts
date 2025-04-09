@@ -71,14 +71,14 @@ interface MarketInfo {
   marketChainId: number;
   deployment: {
     address: string;
-    deployTxnBlockNumber?: string | number;
-    deployTimestamp?: string | number;
+    deployTxnBlockNumber?: string | number | null;
+    deployTimestamp?: string | number | null;
   };
   resource: {
     id?: number | string;
     slug?: string;
     priceIndexer: {
-      client: any;
+      client?: any;
       indexBlocks: (resource: any, blockNumbers: number[]) => Promise<any>;
     };
     [key: string]: any;
@@ -92,7 +92,7 @@ interface MarketInfo {
 export const initializeMarket = async (marketInfo: MarketInfo) => {
   const existingMarket = await marketRepository.findOne({
     where: {
-      address: marketInfo.deployment.address,
+      address: marketInfo.deployment.address.toLowerCase(),
       chainId: marketInfo.marketChainId,
     },
     relations: ['resource'],
@@ -107,19 +107,9 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     functionName: 'getMarket',
   })) as [string, string, boolean, boolean, MarketParams];
 
-  let updatedMarket = market;
-  if (!updatedMarket) {
-    const existingMarket = await marketRepository.findOne({
-      where: {
-        address: marketInfo.deployment.address,
-        chainId: marketInfo.marketChainId,
-      },
-      relations: ['epochs', 'resource'],
-    });
-    updatedMarket = existingMarket || new Market();
-  }
+  const updatedMarket = market;
 
-  updatedMarket.address = marketInfo.deployment.address;
+  updatedMarket.address = marketInfo.deployment.address.toLowerCase();
   updatedMarket.vaultAddress = marketInfo.vaultAddress ?? '';
   updatedMarket.isYin = marketInfo.isYin ?? true;
   updatedMarket.isCumulative = marketInfo.isCumulative ?? false;
@@ -198,10 +188,7 @@ export const indexMarketEvents = async (market: Market) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (
-  market: Market,
-  epochId: number
-) => {
+export const reindexMarketEvents = async (market: Market, epochId: number) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
@@ -517,9 +504,9 @@ const alertEvent = async (
       try {
         const marketObj = await marketRepository.findOne({
           where: { address, chainId },
-          relations: ['resource']
+          relations: ['resource'],
         });
-        
+
         if (marketObj && marketObj.resource && marketObj.resource.name) {
           marketName = marketObj.resource.name;
         }
@@ -753,7 +740,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       const epoch = await epochRepository.findOne({
         where: {
           market: {
-            address: event.market.address,
+            address: event.market.address.toLowerCase(),
             chainId: event.market.chainId,
           },
           epochId: Number(event.logData.args.epochId),

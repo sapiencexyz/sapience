@@ -1,6 +1,10 @@
-# Foil MCP Server
+# Sapience Agent + MCP Server
 
 ## Use with Claude Desktop
+
+Run `npx @foil/agent claude-install`
+
+### For Development
 
 After pulling this repo and running `pnpm install`, add the following to your configuration file:
 * macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -58,8 +62,6 @@ After pulling this repo and running `pnpm install`, add the following to your co
   * `getMarketTickSpacing` - Gets the tick spacing for the market
   * `totalSupply` - Gets total number of positions
   * `balanceOf` - Gets number of positions owned by an address
-* `misc` handles different 
-  * `stage_transaction` - Stages a transaction to the safe service
-  * `execute_transaction` - Executes a transaction using viem and the private key from env.ETHEREUM_PRIVATE_KEY
+* `misc` includes some generic ERC-20 functions
   * `approve_token` - Returns the calldata for an ERC-20 approval
   * `balance_of_token` - Reads the ERC-20 token balance of an owner

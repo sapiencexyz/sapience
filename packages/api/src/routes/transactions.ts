@@ -30,7 +30,7 @@ router.get(
       .innerJoinAndSelect('market.resource', 'resource')
       .innerJoinAndSelect('transaction.event', 'event')
       .where('market.chainId = :chainId', { chainId })
-      .andWhere('market.address = :address', { address })
+      .andWhere('market.address = :address', { address: address.toLowerCase() })
       .orderBy('position.positionId', 'ASC')
       .addOrderBy('event.blockNumber', 'ASC');
 

@@ -15,4 +15,4 @@ export class CategoryType {
 
   @Field(() => [MarketType])
   markets: MarketType[];
-} 
+}

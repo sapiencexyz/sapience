@@ -52,6 +52,7 @@ export default function CustomConnectButton() {
                   <Button
                     onClick={openChainModal}
                     variant="destructive"
+                    className="rounded-full"
                     size="lg"
                   >
                     Wrong network
@@ -59,10 +60,10 @@ export default function CustomConnectButton() {
                 );
               }
               return (
-                <div className="flex gap-2">
+                <div className="flex gap-4">
                   <Button
                     onClick={openChainModal}
-                    className="flex items-center"
+                    className="flex items-center rounded-full"
                     variant="outline"
                     size="lg"
                   >
@@ -85,6 +86,7 @@ export default function CustomConnectButton() {
                   <Button
                     onClick={openAccountModal}
                     variant="outline"
+                    className="rounded-full"
                     size="lg"
                   >
                     {account.displayName}

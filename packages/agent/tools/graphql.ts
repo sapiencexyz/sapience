@@ -69,6 +69,7 @@ const getMarket = {
           isYin
           owner
           vaultAddress
+          collateralDecimals
           epochs {
             epochId
             startTimestamp
@@ -100,14 +101,14 @@ const listMarkets = {
   description: "Lists all markets available in the Foil system, optionally filtering for the active periods (end time in the future).",
   parameters: {
     properties: {
-      isActive: {
+      activeOnly: {
         type: 'boolean',
         description: 'Optional boolean to filter for markets with active markets (end time in the future). Defaults to false if not provided.',
       },
     },
-    required: [], // isActive is optional
+    required: [], // activeOnly is optional
   },
-  function: async ({ isActive }: { isActive?: boolean }) => {
+  function: async ({ activeOnly }: { activeOnly?: boolean }) => {
     const query = `
       query ListPeriods {
         epochs {
@@ -117,10 +118,10 @@ const listMarkets = {
           settled
           settlementPriceD18
           public
+          question
           market {
             address
             chainId
-            claimStatement
             resource {
               name
             }
@@ -135,7 +136,7 @@ const listMarkets = {
     // Filter for public epochs first
     periods = periods.filter((period: any) => period.public);
 
-    if (isActive) {
+    if (activeOnly) {
       const nowInSeconds = Date.now() / 1000;
       periods = periods.filter((period: any) => period.endTimestamp > nowInSeconds);
     }
@@ -144,15 +145,19 @@ const listMarkets = {
     const formattedPeriods = periods.map((period: any) => {
       const { market, ...restOfPeriod } = period;
       return {
-        ...restOfPeriod, // Spread epoch details
-        marketAddress: market?.address || null, // Add market address
-        chainId: market?.chainId || null, // Add chain ID
-        question: market?.claimStatement || null, // Add claim statement as question
+        ...restOfPeriod,
+        marketAddress: market?.address || null,
+        chainId: market?.chainId || null,
       };
     });
 
     // Return the JSON string directly, as expected by DynamicTool
-    return JSON.stringify(formattedPeriods, null, 2);
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify(formattedPeriods, null, 2)
+      }]
+    };
   },
 };
 
@@ -285,12 +290,6 @@ const listResources = {
             chainId
             id
           }
-          resourcePrices {
-            id
-            timestamp
-            value
-            blockNumber
-          }
         }
       }
     `;
@@ -329,6 +328,7 @@ const getEpochs = {
           settled
           settlementPriceD18
           public
+          question
           market {
             address
             chainId
@@ -347,6 +347,7 @@ const getEpochs = {
     if (marketId) variables.marketId = parseInt(marketId);
 
     const result = await executeGraphQLQuery(query, variables);
+
     return {
       content: [{
         type: "text" as const,

@@ -37,7 +37,9 @@ export async function getTransactionsInTimeRange(
       }
     )
     .andWhere('market.chainId = :chainId', { chainId })
-    .andWhere('market.address = :marketAddress', { marketAddress })
+    .andWhere('market.address = :marketAddress', {
+      marketAddress: marketAddress.toLowerCase(),
+    })
     .orderBy('CAST(event.timestamp AS BIGINT)', 'ASC')
     .getMany();
 }
@@ -57,7 +59,7 @@ export async function getMarketPricesInTimeRange(
     .innerJoinAndSelect('event.market', 'market')
     .innerJoinAndSelect('market.epochs', 'epoch', 'epoch.epochId = :epochId')
     .where('market.chainId = :chainId', { chainId })
-    .andWhere('market.address = :address', { address })
+    .andWhere('market.address = :address', { address: address.toLowerCase() })
     .andWhere('epoch.epochId = :epochId', { epochId })
     .andWhere('CAST(marketPrice.timestamp AS bigint) >= :startTimestamp', {
       startTimestamp,
