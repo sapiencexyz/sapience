@@ -1,30 +1,130 @@
 'use client';
 
+import {
+  Chart,
+  ChartSelector,
+  IntervalSelector,
+  WindowSelector,
+} from '@foil/ui/components/charts';
+import { ChartType, TimeInterval, TimeWindow } from '@foil/ui/types/charts';
 import { useParams } from 'next/navigation';
+import { useState } from 'react';
 
 const PredictionDetailPage = () => {
   const params = useParams();
-
   const { chainId, marketAddress, epochId } = params;
 
-  // TODO: Fetch actual prediction data based on params
+  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(null);
+  const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
+    TimeInterval.I15M
+  );
+  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+
+  // Placeholder for form data
+  const [formData, setFormData] = useState({
+    prediction: '',
+    amount: '',
+  });
 
   return (
-    <div className="container mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-6">Prediction Details</h1>
-      <div className="bg-card p-6 rounded-lg shadow-sm border">
-        <p className="mb-2">
-          <span className="font-semibold">Chain ID:</span> {chainId}
-        </p>
-        <p className="mb-2">
-          <span className="font-semibold">Market Address:</span> {marketAddress}
-        </p>
-        <p className="mb-4">
-          <span className="font-semibold">Epoch ID:</span> {epochId}
-        </p>
-        <p className="text-muted-foreground italic">
-          (Placeholder - Prediction data will be loaded here)
-        </p>
+    <div className="flex flex-col w-full h-[calc(100dvh-69px)] overflow-y-auto lg:overflow-hidden">
+      <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
+        <div className="flex flex-col flex-1 px-4 md:px-3 gap-2 md:gap-5 md:flex-row min-h-0">
+          <div className="w-full order-2 md:order-2 md:max-w-[340px] pb-4 flex flex-col h-full pt-0">
+            {/* Placeholder for form */}
+            <div className="bg-card p-6 rounded-lg shadow-sm border">
+              <h2 className="text-xl font-semibold mb-4">Make a Prediction</h2>
+              <form className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="prediction"
+                    className="block text-sm font-medium mb-1"
+                  >
+                    Prediction
+                  </label>
+                  <input
+                    id="prediction"
+                    name="prediction"
+                    type="text"
+                    className="w-full p-2 border rounded"
+                    value={formData.prediction}
+                    onChange={(e) =>
+                      setFormData({ ...formData, prediction: e.target.value })
+                    }
+                    placeholder="Enter your prediction"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="amount"
+                    className="block text-sm font-medium mb-1"
+                  >
+                    Amount
+                  </label>
+                  <input
+                    id="amount"
+                    name="amount"
+                    type="number"
+                    className="w-full p-2 border rounded"
+                    value={formData.amount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, amount: e.target.value })
+                    }
+                    placeholder="Enter amount"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-primary text-primary-foreground py-2 px-4 rounded hover:bg-primary/90"
+                >
+                  Submit Prediction
+                </button>
+              </form>
+            </div>
+          </div>
+          <div className="flex flex-col w-full order-1 md:order-1">
+            <div className="flex flex-1 min-h-[250px] md:min-h-0">
+              <div className="flex w-full h-full border border-border rounded-sm shadow-sm">
+                <Chart
+                  resourceSlug="prediction"
+                  market={{
+                    epochId: Number(epochId),
+                    chainId: Number(chainId),
+                    address: marketAddress as string,
+                  }}
+                  selectedWindow={selectedWindow}
+                  selectedInterval={selectedInterval}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
+              <div className="flex flex-row flex-wrap gap-3 w-full">
+                <div className="order-2 sm:order-none">
+                  <ChartSelector
+                    chartType={chartType}
+                    setChartType={setChartType}
+                  />
+                </div>
+                {chartType !== ChartType.LIQUIDITY && (
+                  <div className="order-2 sm:order-none">
+                    <WindowSelector
+                      selectedWindow={selectedWindow}
+                      setSelectedWindow={setSelectedWindow}
+                    />
+                  </div>
+                )}
+                {chartType === ChartType.PRICE && (
+                  <div className="order-2 sm:order-none">
+                    <IntervalSelector
+                      selectedInterval={selectedInterval}
+                      setSelectedInterval={setSelectedInterval}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
