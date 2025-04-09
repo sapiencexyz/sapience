@@ -471,16 +471,18 @@ export class FoilAgent {
 
     // 2. Fetch agent's collateral balance
     let collateralBalance = 0; // Placeholder
-    const getBalanceTool = this.flatTools.find(t => t.name === 'getERC20BalanceOf'); // FIX: Use correct tool name from logs
+    const getBalanceTool = this.flatTools.find(t => t.name === 'balanceOfToken'); // FIX: Use correct tool name from logs
     if (getBalanceTool) {
         try {
             Logger.info(chalk.dim(`UPDATE: Fetching collateral (${this.collateralToken}) balance for agent ${this.agentAddress}...`));
-            const balanceResultRaw = await getBalanceTool.func(JSON.stringify({ tokenAddress: this.collateralToken, walletAddress: this.agentAddress }));
+            const balanceResultRaw = await getBalanceTool.func(JSON.stringify({ tokenAddress: this.collateralToken, ownerAddress: this.agentAddress }));
              Logger.info(chalk.dim(`UPDATE (Raw Balance Result): ${typeof balanceResultRaw === 'string' ? balanceResultRaw : JSON.stringify(balanceResultRaw)}`));
 
             // --- ADD: Parse balanceResult ---
              let parsedBalance = '0';
-             if (typeof balanceResultRaw === 'string') {
+             if (typeof balanceResultRaw === 'object' && balanceResultRaw !== null && Array.isArray(balanceResultRaw.content) && balanceResultRaw.content.length > 0 && balanceResultRaw.content[0].type === 'text') {
+                parsedBalance = JSON.parse(balanceResultRaw.content[0].text).balance;
+             } else if (typeof balanceResultRaw === 'string') {
                  try {
                      // Assuming the result is a simple number or an object containing the balance
                      const parsedJson = JSON.parse(balanceResultRaw);
@@ -528,7 +530,7 @@ export class FoilAgent {
              collateralBalance = 0; // Reset on error
         }
     } else {
-         Logger.warn(chalk.yellow(`UPDATE: getBalanceOf tool not found. Proceeding without balance data.`)); // FIX: Update log message
+         Logger.warn(chalk.yellow(`UPDATE: balanceOfToken tool not found. Proceeding without balance data.`)); // FIX: Update log message
     }
 
     // 3. Calculate Total Collateral (Sum of balance and collateral in ACTIVE positions)
@@ -595,6 +597,38 @@ export class FoilAgent {
     const mergeData = await this.getMergeData(this.lastMarketUpdates, this.lastFetchedPositions);
     this.lastMergeData = mergeData; // Store merge data
 
+
+    // Get tool for quoting the max size of the position
+    const quoteMaxSizeTool = this.flatTools.find(t => t.name === 'getMaxSizeForCreateTraderPosition');
+    // Iterate over positions to open and call the quote tool
+    for (const merged of this.lastMergeData.positionsToOpen) {
+      const { marketAddress, epochId, chainId } = this.parseMarketIdentifier(merged.marketId);
+      Logger.info(chalk.dim(`LLL UPDATE: Quoting max size for position: ${marketAddress} ${epochId} ${chainId}`, JSON.stringify(merged)));
+      let fixedTargetPosition = merged.targetPosition.replace('YES', '1').replace('NO', '0');
+      try {
+        fixedTargetPosition = parseFloat(fixedTargetPosition);
+      } catch (e) {
+        Logger.error(chalk.red(`LLL UPDATE: Failed to parse target position: ${merged.targetPosition}`));
+        fixedTargetPosition = 3.3;
+      }
+      if (isNaN(fixedTargetPosition)) {
+        Logger.error(chalk.red(`LLL UPDATE: Failed to parse target position: ${merged.targetPosition}`));
+        fixedTargetPosition = 3.3;
+      }
+
+      if (quoteMaxSizeTool) {
+        const quoteMaxSizeToolArgs = {
+          chainId: chainId,
+          marketAddress: marketAddress,
+          epochId: epochId,
+          collateralAvailable: merged.targetAllocation,
+          expectedPrice: fixedTargetPosition.toString()
+        }
+        const quoteMaxSizeResult = await quoteMaxSizeTool.func(JSON.stringify(quoteMaxSizeToolArgs));
+        Logger.info(chalk.dim(`LLL UPDATE: Quoted max size for position: ${JSON.stringify(quoteMaxSizeResult)}`));
+      }
+    }
+    
 
     // Placeholder for actual update logic (e.g., calling write tools based on marketUpdates)
     Logger.info(chalk.dim(`UPDATE: Finished processing results. (Placeholder - Actual contract interactions needed)`));

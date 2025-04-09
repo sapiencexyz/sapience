@@ -30,7 +30,8 @@ import {
   createLiquidityPosition,
   quoteModifyLiquidityPosition,
   modifyLiquidityPosition,
-  settlePosition
+  settlePosition,
+  getMaxSizeForCreateTraderPosition
 } from './writeFoilContracts';
 
 import {
@@ -70,7 +71,8 @@ export const writeFoilContracts = {
   create_sapience_liquidity_position: createLiquidityPosition,
   quote_modify_sapience_liquidity_position: quoteModifyLiquidityPosition,
   modify_sapience_liquidity_position: modifyLiquidityPosition,
-  settle_sapience_position: settlePosition
+  settle_sapience_position: settlePosition,
+  quote_max_size_for_create_trader_position: getMaxSizeForCreateTraderPosition
 };
 
 export const misc = {

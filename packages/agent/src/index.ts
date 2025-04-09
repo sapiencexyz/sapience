@@ -27,7 +27,8 @@ const agentAddress = account.address;
 const rawTools = {
   graphql: await import('../tools/graphql.js'),
   writeFoilContracts: await import('../tools/writeFoilContracts.js'),
-  readFoilContracts: await import('../tools/readFoilContracts.js')
+  readFoilContracts: await import('../tools/readFoilContracts.js'),
+  misc: await import('../tools/misc.js')
 };
 
 // Convert tools to BaseTool format
@@ -51,6 +52,15 @@ const tools = {
     return acc;
   }, {} as Record<string, Tool>),
   readFoilContracts: Object.entries(rawTools.readFoilContracts as Record<string, any>).reduce((acc, [toolName, tool]) => {
+    acc[toolName] = {
+      name: toolName,
+      description: tool.description,
+      parameters: tool.parameters,
+      function: tool.function
+    } as Tool;
+    return acc;
+  }, {} as Record<string, Tool>),
+  misc: Object.entries(rawTools.misc as Record<string, any>).reduce((acc, [toolName, tool]) => {
     acc[toolName] = {
       name: toolName,
       description: tool.description,

@@ -68,6 +68,50 @@ export const balanceOfToken = {
     required: ["tokenAddress", "ownerAddress"],
   },
   function: async (args: { tokenAddress: string; ownerAddress: string }) => {
+
+    if (!args) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: args required"
+        }], 
+        isError: true
+      };
+    }
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch (error) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: "Error: args must be an object"
+          }],
+          isError: true
+        };
+      }
+    }
+
+    // Validate required parameters
+    if (!args.tokenAddress) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: tokenAddress is required"
+        }],
+        isError: true
+      };
+    }
+    if (!args.ownerAddress) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: ownerAddress is required"
+        }],
+        isError: true
+      };
+    }
+
     try {
 
       const publicClient = createPublicClient({

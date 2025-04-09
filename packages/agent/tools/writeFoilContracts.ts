@@ -160,9 +160,79 @@ export const getMaxSizeForCreateTraderPosition = {
     required: ["chainId", "marketAddress", "epochId", "collateralAvailable", "expectedPrice"],
   },
   function: async (args: { chainId: string; marketAddress: string; epochId: string; collateralAvailable: string; expectedPrice: string }) => { 
+    if (!args) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: args required"
+        }], 
+        isError: true
+      };
+    }
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch (error) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: "Error: args must be an object"
+          }],
+          isError: true
+        };
+      }
+    }
+
+    // Validate required parameters
+    if (!args.chainId) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: chainId is required"
+        }],
+        isError: true
+      };
+    }
+    if (!args.marketAddress) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: marketAddress is required"
+        }],
+        isError: true
+      };
+    }
+    if (!args.epochId) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: epochId is required"
+        }],
+        isError: true
+      };
+    }
+    if (!args.collateralAvailable) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: collateralAvailable is required"
+        }], 
+        isError: true
+      };
+    }
+    if (!args.expectedPrice) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: expectedPrice is required"
+        }],
+        isError: true
+      };
+    }
+          
     try {
       // Use the API GET /quoter endpoint to get the max size for a new trader position
-      const result = await fetch(`${process.env.API_URL}/quoter/${args.chainId}/${args.marketAddress}/${args.epochId}?collateralAvailable=${args.collateralAvailable}&expectedPrice=${args.expectedPrice}`, {
+      const result = await fetch(`${process.env.FOIL_API_URL}/quoter/${args.chainId}/${args.marketAddress}/${args.epochId}?collateralAvailable=${args.collateralAvailable}&expectedPrice=${args.expectedPrice}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
