@@ -131,6 +131,79 @@ export const createTraderPosition = {
   },
 };
 
+export const getMaxSizeForCreateTraderPosition = {
+  name: "get_max_size_for_create_trader_position",
+  description: "Gets the maximum size for a new trader position",
+  parameters: {
+    properties: {
+      chainId: {
+        type: "string",
+        description: "The ID of the chain"
+      },
+      marketAddress: {
+        type: "string", 
+        description: "The address of the market"
+      },
+      epochId: {
+        type: "string",
+        description: "The ID of the epoch"
+      },
+      collateralAvailable: {
+        type: "string",
+        description: "The amount of collateral available"
+      },
+      expectedPrice: {
+        type: "string",
+        description: "The expected price of the market"
+      },
+    },
+    required: ["chainId", "marketAddress", "epochId", "collateralAvailable", "expectedPrice"],
+  },
+  function: async (args: { chainId: string; marketAddress: string; epochId: string; collateralAvailable: string; expectedPrice: string }) => { 
+    try {
+      // Use the API GET /quoter endpoint to get the max size for a new trader position
+      const result = await fetch(`${process.env.API_URL}/quoter/${args.chainId}/${args.marketAddress}/${args.epochId}?collateralAvailable=${args.collateralAvailable}&expectedPrice=${args.expectedPrice}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log(result);
+
+      const maxSize = result.maxSize as bigint;
+      const isLong = result.isLong as boolean;
+      if (isLong) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              maxSize: maxSize.toString()
+            }, null, 2)
+          }]
+        };
+      } else {
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              maxSize: -maxSize.toString()
+            }, null, 2)
+          }]
+        };
+      }
+    } catch (error) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: `Error getting max size for createTraderPosition: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }],
+        isError: true
+      };
+    }
+  },
+};
+
 export const quoteModifyTraderPosition = {
   name: "quote_modify_sapience_trader_position",
   description: "Gets a quote for modifying an existing trader position",
