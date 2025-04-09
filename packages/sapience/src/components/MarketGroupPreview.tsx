@@ -74,9 +74,7 @@ export const MarketGroupPreview = ({
 
   return (
     // Wrap the entire content with Next.js Link
-    <Link
-      href={`/predictions/${chainId}/${marketAddress}/${firstEpoch.epochId}`}
-    >
+    <Link href={`/predictions/${chainId}/${marketAddress}`}>
       <div className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0">
         <div className="h-1.5" style={{ backgroundColor: color }} />
 
