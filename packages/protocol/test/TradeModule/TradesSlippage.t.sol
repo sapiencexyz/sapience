@@ -107,7 +107,7 @@ contract TradePositionSlippage is TestTrade {
         int256 positionSize = 1 ether;
         vm.startPrank(trader1);
 
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -139,7 +139,7 @@ contract TradePositionSlippage is TestTrade {
         int256 positionSize = -1 ether;
         vm.startPrank(trader1);
 
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -172,7 +172,7 @@ contract TradePositionSlippage is TestTrade {
         int256 updatedPositionSize = 2 ether;
         vm.startPrank(trader1);
 
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -186,7 +186,7 @@ contract TradePositionSlippage is TestTrade {
             block.timestamp + 30 minutes
         );
 
-        (int256 requiredCollateralForUpdate, , ) = foil
+        (int256 requiredCollateralForUpdate, , , ) = foil
             .quoteModifyTraderPosition(positionId, updatedPositionSize);
 
         // Expect revert
@@ -218,7 +218,7 @@ contract TradePositionSlippage is TestTrade {
         int256 updatedPositionSize = .5 ether;
         vm.startPrank(trader1);
 
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -232,7 +232,7 @@ contract TradePositionSlippage is TestTrade {
             block.timestamp + 30 minutes
         );
 
-        (int256 requiredCollateralForUpdate, , ) = foil
+        (int256 requiredCollateralForUpdate, , , ) = foil
             .quoteModifyTraderPosition(positionId, updatedPositionSize);
 
         // Expect revert
@@ -264,7 +264,7 @@ contract TradePositionSlippage is TestTrade {
         int256 updatedPositionSize = -2 ether;
         vm.startPrank(trader1);
 
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -278,7 +278,7 @@ contract TradePositionSlippage is TestTrade {
             block.timestamp + 30 minutes
         );
 
-        (int256 requiredCollateralForUpdate, , ) = foil
+        (int256 requiredCollateralForUpdate, , , ) = foil
             .quoteModifyTraderPosition(positionId, updatedPositionSize);
 
         // Expect revert
@@ -310,7 +310,7 @@ contract TradePositionSlippage is TestTrade {
         int256 updatedPositionSize = -.5 ether;
         vm.startPrank(trader1);
 
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -324,7 +324,7 @@ contract TradePositionSlippage is TestTrade {
             block.timestamp + 30 minutes
         );
 
-        (int256 requiredCollateralForUpdate, , ) = foil
+        (int256 requiredCollateralForUpdate, , , ) = foil
             .quoteModifyTraderPosition(positionId, updatedPositionSize);
 
         // Expect revert
@@ -356,7 +356,7 @@ contract TradePositionSlippage is TestTrade {
         int256 updatedPositionSize = 0;
         vm.startPrank(trader1);
 
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -370,7 +370,7 @@ contract TradePositionSlippage is TestTrade {
             block.timestamp + 30 minutes
         );
 
-        (int256 requiredCollateralForUpdate, , ) = foil
+        (int256 requiredCollateralForUpdate, , , ) = foil
             .quoteModifyTraderPosition(positionId, updatedPositionSize);
 
         // Expect revert
@@ -402,7 +402,7 @@ contract TradePositionSlippage is TestTrade {
         int256 updatedPositionSize = 0;
         vm.startPrank(trader1);
 
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -416,7 +416,7 @@ contract TradePositionSlippage is TestTrade {
             block.timestamp + 30 minutes
         );
 
-        (int256 requiredCollateralForUpdate, , ) = foil
+        (int256 requiredCollateralForUpdate, , , ) = foil
             .quoteModifyTraderPosition(positionId, updatedPositionSize);
 
         // Expect revert

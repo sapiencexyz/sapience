@@ -80,7 +80,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
     }
 
     function test_validatePriceInRange_CreatePosition_Normal() public {
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             -0.1 ether
         );
@@ -112,7 +112,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
 
     function test_validatePriceInRange_ModifyPosition_Normal() public {
         // First create a small position
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             -0.05 ether
         );
@@ -127,7 +127,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
         );
 
         // Now modify the position
-        (int256 expectedCollateralDelta, , ) = foil.quoteModifyTraderPosition(
+        (int256 expectedCollateralDelta, , , ) = foil.quoteModifyTraderPosition(
             traderPositionId,
             -0.1 ether // Increase size from -0.05 to -0.1
         );
@@ -145,7 +145,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
 
     function test_validatePriceInRange_ModifyPosition_OutOfRange() public {
         // First create a small position
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             -0.05 ether
         );
