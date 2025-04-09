@@ -33,7 +33,7 @@ export const INDEXERS: {
 } = {
   'ethereum-gas': new evmIndexer(mainnet.id),
   'ethereum-blobspace': new ethBlobsIndexer(mainnet.id),
-  'celestia-blobspace': new celestiaIndexer('https://api-mainnet.celenium.io'),
+  // 'celestia-blobspace': new celestiaIndexer('https://api-mainnet.celenium.io'),
   'bitcoin-fees': new btcIndexer(),
   'base-gas': new evmIndexer(base.id),
   'arbitrum-gas': new evmIndexer(arbitrum.id),
@@ -159,6 +159,7 @@ export const initializeFixtures = async (): Promise<void> => {
       market.isYin = marketData.isYin || false;
       market.isCumulative = marketData.isCumulative || false;
       market.category = category;
+      market.question = marketData.question || null;
 
       // Set the resource for the market
       market.resource = resource;
@@ -181,6 +182,7 @@ export const initializeFixtures = async (): Promise<void> => {
       market.isCumulative =
         marketData.isCumulative || market.isCumulative || false;
       market.category = category;
+      market.question = marketData.question || market.question;
 
       await marketRepository.save(market);
       console.log(

@@ -43,6 +43,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   deployTxnBlockNumber: market.deployTxnBlockNumber,
   owner: market.owner?.toLowerCase() || null,
   collateralAsset: market.collateralAsset,
+  question: market.question,
   claimStatement: hexToString(market.marketParams?.claimStatement),
 });
 
