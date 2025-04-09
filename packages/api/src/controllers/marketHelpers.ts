@@ -366,7 +366,7 @@ export const createOrUpdateMarketFromContract = async (
     (marketReadResult as MarketReadResult)[0] as string
   ).toLowerCase();
   updatedMarket.collateralAsset = (marketReadResult as MarketReadResult)[1];
-  
+
   if (updatedMarket.collateralAsset) {
     try {
       const decimals = await client.readContract({
@@ -385,12 +385,14 @@ export const createOrUpdateMarketFromContract = async (
         functionName: 'decimals',
       });
       updatedMarket.collateralDecimals = Number(decimals);
-      console.log(`Set collateralDecimals to ${decimals} for market ${updatedMarket.address}`);
     } catch (error) {
-      console.error(`Failed to fetch decimals for token ${updatedMarket.collateralAsset}:`, error);
+      console.error(
+        `Failed to fetch decimals for token ${updatedMarket.collateralAsset}:`,
+        error
+      );
     }
   }
-  
+
   const marketParamsRaw = (marketReadResult as MarketReadResult)[4];
   const marketParams: MarketParams = {
     ...marketParamsRaw,
@@ -470,7 +472,7 @@ export const createOrUpdateMarketFromEvent = async (
   market.address = address.toLowerCase();
   if (eventArgs.collateralAsset) {
     market.collateralAsset = eventArgs.collateralAsset;
-    
+
     try {
       const client = getProviderForChain(chainId);
       const decimals = await client.readContract({
@@ -489,9 +491,14 @@ export const createOrUpdateMarketFromEvent = async (
         functionName: 'decimals',
       });
       market.collateralDecimals = Number(decimals);
-      console.log(`Set collateralDecimals to ${decimals} for market ${market.address} from event`);
+      console.log(
+        `Set collateralDecimals to ${decimals} for market ${market.address} from event`
+      );
     } catch (error) {
-      console.error(`Failed to fetch decimals for token ${eventArgs.collateralAsset}:`, error);
+      console.error(
+        `Failed to fetch decimals for token ${eventArgs.collateralAsset}:`,
+        error
+      );
     }
   }
   if (eventArgs.initialOwner) {
