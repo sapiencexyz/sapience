@@ -610,7 +610,7 @@ const getColumns = (
     cell: ({ row }) => {
       // Get the actual vaultAddress from the market to compare
       const actualVaultAddress = row.original.market.vaultAddress;
-      const isVault = actualVaultAddress !== zeroAddress;
+      const isVault = actualVaultAddress && actualVaultAddress !== zeroAddress;
 
       return (
         <div className="flex items-center gap-2">
