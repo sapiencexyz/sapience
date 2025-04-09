@@ -43,6 +43,7 @@ type MarketType {
   isCumulative: Boolean!
   isYin: Boolean!
   owner: String
+  question: String
   resource: ResourceType
   vaultAddress: String
 }

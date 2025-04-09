@@ -33,7 +33,7 @@ export const INDEXERS: {
 } = {
   'ethereum-gas': new evmIndexer(mainnet.id),
   'ethereum-blobspace': new ethBlobsIndexer(mainnet.id),
-  // 'celestia-blobspace': new celestiaIndexer('https://api-mainnet.celenium.io'),
+  'celestia-blobspace': new celestiaIndexer('https://api-mainnet.celenium.io'),
   'bitcoin-fees': new btcIndexer(),
   'base-gas': new evmIndexer(base.id),
   'arbitrum-gas': new evmIndexer(arbitrum.id),
