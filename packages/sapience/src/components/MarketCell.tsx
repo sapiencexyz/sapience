@@ -1,8 +1,7 @@
+import type { Resource } from '@foil/ui/hooks/useResources';
 import Image from 'next/image';
 
 import EpochTiming from './EpochTiming';
-
-import type { Resource } from '@foil/ui/hooks/useResources';
 
 interface MarketCellProps {
   marketName: string;
