@@ -138,7 +138,7 @@ contract SettleTradeTest is TestTrade {
         }
 
         vm.startPrank(trader1);
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             initialPositionSize
         );
