@@ -231,15 +231,8 @@ const PredictionsTable = () => {
                   <MarketGroupPreview
                     chainId={marketGroup.chainId}
                     marketAddress={marketGroup.marketAddress}
-                    marketCategorySlug={marketGroup.focusAreaSlug}
                     epochs={marketGroup.epochs}
                     color={marketGroup.color}
-                    iconPath={marketGroup.iconPath}
-                    marketName={marketGroup.marketName}
-                    collateralAsset={marketGroup.collateralAsset}
-                    totalLiquidity={0}
-                    minTick={0}
-                    maxTick={100}
                   />
                 </motion.div>
               ))}

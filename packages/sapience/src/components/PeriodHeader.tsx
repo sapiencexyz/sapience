@@ -4,6 +4,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
+import { useResources, type Resource } from '@foil/ui/hooks/useResources';
 import { format } from 'date-fns';
 import { MoveHorizontal, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
@@ -14,7 +15,6 @@ import { IoDocumentTextOutline } from 'react-icons/io5';
 import { useFoil } from '~/lib/context/FoilProvider';
 import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
@@ -37,7 +37,9 @@ const PeriodHeader = () => {
     (market: Market) => market.address.toLowerCase() === address.toLowerCase()
   );
 
-  const resource = resources?.find((r) => r.name === market?.resource?.name);
+  const resource = resources?.find(
+    (r: Resource) => r.name === market?.resource?.name
+  );
 
   let endTimeString = '';
   let startTimeString = '';

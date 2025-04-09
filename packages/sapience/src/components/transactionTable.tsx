@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
+import { useResources } from '@foil/ui/hooks/useResources';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -30,7 +31,6 @@ import { useMemo, useState } from 'react';
 
 import { useFoil } from '../lib/context/FoilProvider';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
-import { useResources } from '~/lib/hooks/useResources';
 import { foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';

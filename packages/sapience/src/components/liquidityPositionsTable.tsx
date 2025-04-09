@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
 import { toast } from '@foil/ui/hooks/use-toast';
+import { useResources } from '@foil/ui/hooks/useResources';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -37,7 +38,6 @@ import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
 import type { PeriodContextType } from '../lib/context/PeriodProvider';
-import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice, foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
