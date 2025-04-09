@@ -10,12 +10,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@foil/ui/components/ui/accordion';
 
 // Assuming these hooks and types are correctly imported or defined elsewhere
 // You might need to adjust imports based on your project structure
@@ -63,22 +57,13 @@ const EpochMarketPreviewLoader: React.FC<EpochMarketPreviewLoaderProps> = ({
     [marketAddress, chainId, epoch.epochId]
   );
 
-  const { data: marketCandles, isLoading: isLoadingCandles } =
-    useMarketCandles(marketInfo);
-
   const { data: totalVolumeData, isLoading: isLoadingVolume } =
     useTotalVolume(marketInfo);
 
-  const currentMarketPrice = React.useMemo(
-    () => getLatestPriceFromCandles(marketCandles),
-    [marketCandles]
-  );
-
-  if (isLoadingCandles || isLoadingVolume) {
-    // Use the skeleton structure from the previous implementation
+  if (isLoadingVolume) {
+    // Keep the skeleton as it uses color for the border
     return (
-      <div className="space-y-3">
-        <Skeleton className="h-40 w-full border-t-[6px]" style={{ borderTopColor: color }} />
+      <div className="space-y-3 p-6 pt-0">
         <Skeleton className="h-6 w-3/4" />
         <Skeleton className="h-5 w-full" />
         <Skeleton className="h-5 w-5/6" />
@@ -102,74 +87,9 @@ const EpochMarketPreviewLoader: React.FC<EpochMarketPreviewLoaderProps> = ({
     // Add any other necessary props
   };
 
-  const yesProb = Math.round(currentMarketPrice ?? 0); // Calculate yesProb here
-
+  // Return only the MarketPreview component now, without the gauge/chart div
   return (
-    <> {/* Use a fragment to wrap multiple elements */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-b">
-        {/* Left side - Probability gauge (1/3 width) */}
-        <div className="p-6 pb-0 flex flex-col items-center justify-center">
-          {/* Gauge container with relative positioning */}
-          <div className="relative w-full flex flex-col items-center">
-            {/* Half circle gauge - wider */}
-            <div className="w-full max-w-[200px]">
-              <svg
-                width="100%"
-                viewBox="0 0 100 55"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                {/* Background half circle */}
-                <path
-                  d="M 5 50 A 45 45 0 0 1 95 50"
-                  fill="none"
-                  stroke="#f0f0f0"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                {/* Colored progress half circle */}
-                <path
-                  d="M 5 50 A 45 45 0 0 1 95 50"
-                  fill="none"
-                  stroke={color} // Use the 'color' prop passed down
-                  strokeWidth="2"
-                  strokeDasharray={`${yesProb * 1.41} 141`} // Use calculated probability
-                  strokeDashoffset="0"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-
-            {/* Percentage - positioned to overlap the bottom of the arc */}
-            <div className="absolute top-[28px] left-0 right-0 flex flex-col items-center">
-              <span
-                style={{
-                  fontSize: '36px',
-                  fontWeight: '500',
-                  letterSpacing: '-0.5px',
-                  borderRadius: '8px',
-                  padding: '0 8px',
-                }}
-              >
-                {yesProb}
-              </span>
-              <span className="text-gray-500 text-sm mt-1">gwei</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Right side - Price chart (2/3 width) */}
-        <div className="p-6 pb-0 flex flex-col md:col-span-2">
-          <div className="h-32 w-full relative">
-            {/* Simplified chart representation */}
-            <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-              Chart Placeholder (using {marketCandles ? marketCandles.length : 0} candles) {/* Update placeholder */}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <MarketPreview {...marketPreviewProps} /> {/* Existing component call */}
-    </>
+    <MarketPreview {...marketPreviewProps} />
   );
 };
 // --- End of EpochMarketPreviewLoader --- //
@@ -210,62 +130,103 @@ export const MarketGroupPreview = ({
   }
 
   // Generate a stable key for the first epoch if it exists
-  const firstEpochKey = epochs.length > 0 ? `${marketAddress}:${epochs[0].epochId}` : undefined;
+  const firstEpoch = epochs[0]; // Get the first epoch for gauge/chart data
+  const firstEpochKey = firstEpoch ? `${marketAddress}:${firstEpoch.epochId}` : undefined;
+
+  // Fetch market candles and calculate probability for the first epoch
+  const marketInfo = React.useMemo(
+    () => (firstEpoch ? { address: marketAddress, chainId, epochId: Number(firstEpoch.epochId) } : undefined),
+    [marketAddress, chainId, firstEpoch]
+  );
+
+  // Pass marketInfo!; assert non-null because we check epochs.length > 0
+  // Assuming hook handles undefined internally by disabling, but TS needs assurance.
+  const { data: marketCandles, isLoading: isLoadingCandles } = useMarketCandles(marketInfo!);
+
+  const currentMarketPrice = React.useMemo(
+    () => getLatestPriceFromCandles(marketCandles),
+    [marketCandles]
+  );
+
+  const yesProb = Math.round(currentMarketPrice ?? 0); // Calculate yesProb here
 
   return (
-    <div
-      className="bg-background rounded-2xl overflow-hidden shadow-sm border border-muted border-t-0 space-y-4"
-    >
-      <div className="h-3" style={{ backgroundColor: color }} />
+    // Wrap the entire content with Next.js Link
+    <Link href={`/predictions/${chainId}:${marketAddress}`}>
+      <div
+        className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0"
+      >
+        <div className="h-1.5" style={{ backgroundColor: color }} />
 
-      {epochs.length > 1 ? (
-        <Accordion type="single" collapsible className="w-full" defaultValue={firstEpochKey}>
-          {epochs.map((epoch: any) => {
+        {/* Gauge and Chart section - moved from EpochMarketPreviewLoader */}
+        {isLoadingCandles ? (
+           <div className="p-6 pb-0"> <Skeleton className="h-40 w-full" /> </div>
+        ) : (
+          // Restore the 3-column grid layout
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 border-b">
+            {/* Left side - Probability Value (Re-added without SVG) */}
+            <div className="p-6 pb-0 flex flex-col items-center justify-center">
+              {/* Container for the value and unit */}
+              <div className="relative w-full flex flex-col items-center">
+                {/* SVG element is NOT included */}
+                {/* Value and unit */}
+                <div className="flex flex-col items-center pt-8"> {/* Added pt-8 for spacing */} 
+                  <span
+                    style={{
+                      fontSize: '36px',
+                      fontWeight: '500',
+                      letterSpacing: '-0.5px',
+                      borderRadius: '8px',
+                      padding: '0 8px',
+                    }}
+                  >
+                    {yesProb}
+                  </span>
+                  <span className="text-gray-500 text-sm mt-1">gwei</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right side - Price chart (Restore md:col-span-2) */}
+            <div className="p-6 pb-0 flex flex-col md:col-span-2">
+              <div className="h-32 w-full relative">
+                {/* Simplified chart representation */}
+                <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                  Chart Placeholder (using {marketCandles ? marketCandles.length : 0} candles)
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* End of Gauge and Chart section */}
+
+        {/* List of Epochs - Replaced Accordion */}
+        <div className="px-6 py-4"> {/* Add padding around the list */} 
+          {epochs.map((epoch: any, index: number) => {
             const epochKey = `${marketAddress}:${epoch.epochId}`;
             return (
-              <AccordionItem value={epochKey} key={epochKey}>
-                <AccordionTrigger className="text-2xl font-heading font-normal hover:no-underline px-8">
-                  {epoch.question}
-                </AccordionTrigger>
-                <AccordionContent className="py-0">
-                  <EpochMarketPreviewLoader
-                    chainId={chainId}
-                    marketAddress={marketAddress}
-                    epoch={epoch} // Pass the full epoch object
-                    marketCategorySlug={marketCategorySlug}
-                    collateralAsset={collateralAsset} // Pass from group props
-                    color={color} // Pass from group props
-                    iconPath={iconPath} // Pass from group props
-                    marketName={marketName} // Pass market name (consider if needed if trigger shows it)
-                    minTick={minTick} // Pass down from group props
-                    maxTick={maxTick} // Pass down from group props
-                    totalLiquidity={totalLiquidity} // Pass down the value
-                  />
-                </AccordionContent>
-              </AccordionItem>
+              <div key={epochKey} className={index > 0 ? "mt-6 pt-6 border-t" : ""}> {/* Add margin and border top for subsequent epochs */} 
+                {/* Display the question */}
+                <h3 className="text-lg font-heading font-normal mb-4">{epoch.question}</h3> {/* Adjusted styling */} 
+                {/* Render the EpochMarketPreviewLoader */}
+                <EpochMarketPreviewLoader
+                  chainId={chainId}
+                  marketAddress={marketAddress}
+                  epoch={epoch}
+                  marketCategorySlug={marketCategorySlug}
+                  collateralAsset={collateralAsset}
+                  color={color}
+                  iconPath={iconPath}
+                  marketName={marketName}
+                  minTick={minTick}
+                  maxTick={maxTick}
+                  totalLiquidity={totalLiquidity}
+                />
+              </div>
             );
           })}
-        </Accordion>
-      ) : (
-        // Render the single epoch directly if only one exists
-        epochs.map((epoch: any) => (
-          <div key={`${marketAddress}:${epoch.epochId}`}>
-            <EpochMarketPreviewLoader
-              chainId={chainId}
-              marketAddress={marketAddress}
-              epoch={epoch}
-              marketCategorySlug={marketCategorySlug}
-              collateralAsset={collateralAsset}
-              color={color}
-              iconPath={iconPath}
-              marketName={marketName}
-              minTick={minTick}
-              maxTick={maxTick}
-              totalLiquidity={totalLiquidity}
-            />
-          </div>
-        ))
-      )}
-    </div>
+        </div>
+      </div>
+    </Link>
   );
 }; 

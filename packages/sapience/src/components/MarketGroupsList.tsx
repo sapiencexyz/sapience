@@ -50,78 +50,6 @@ interface MarketGroup {
   epochs: EpochWithMarketInfo[];
 }
 
-// --- PredictionEpochRow Component Definition ---
-
-interface PredictionEpochRowProps {
-  chainId: number;
-  marketAddress: string;
-  epoch: EpochWithMarketInfo;
-  collateralAsset: string;
-  focusAreaSlug: string;
-  color: string;
-  totalLiquidity: number;
-  minTick: number;
-  maxTick: number;
-}
-
-const PredictionEpochRow = ({
-  chainId,
-  marketAddress,
-  epoch,
-  collateralAsset,
-  focusAreaSlug,
-  color,
-  totalLiquidity,
-  minTick,
-  maxTick,
-}: PredictionEpochRowProps) => {
-  const marketInfo = React.useMemo(
-    () => ({ address: marketAddress, chainId, epochId: epoch.epochId }),
-    [marketAddress, chainId, epoch.epochId]
-  );
-
-  const { data: marketCandles, isLoading: isLoadingCandles } =
-    useMarketCandles(marketInfo);
-
-  const { data: totalVolumeData, isLoading: isLoadingVolume } =
-    useTotalVolume(marketInfo);
-
-  const currentMarketPrice = React.useMemo(
-    () => getLatestPriceFromCandles(marketCandles),
-    [marketCandles]
-  );
-
-  const previewProps: MarketGroupPreviewProps = {
-    endTime: epoch.endTimestamp,
-    marketQuestion: epoch.question ?? 'N/A',
-    totalLiquidity: totalLiquidity,
-    totalVolume: totalVolumeData ?? 0,
-    currentMarketPrice: currentMarketPrice ?? 0,
-    marketCandles: marketCandles ?? [],
-    collateralTicker: collateralAsset,
-    minTick: minTick,
-    maxTick: maxTick,
-    marketCategorySlug: focusAreaSlug,
-    chainId,
-    marketAddress,
-  };
-
-  if (isLoadingCandles || isLoadingVolume) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-40 w-full border-t-[6px]" style={{ borderTopColor: color }} />
-        <Skeleton className="h-6 w-3/4" />
-        <Skeleton className="h-5 w-full" />
-        <Skeleton className="h-5 w-5/6" />
-      </div>
-    );
-  }
-
-  return <MarketGroupPreview {...previewProps} />;
-};
-
-// --- End of PredictionEpochRow ---
-
 const PredictionsTable = () => {
   const { data: resources, isLoading: isLoadingResources } = useMarketGroups();
   const searchParams = useSearchParams();
@@ -139,7 +67,7 @@ const PredictionsTable = () => {
 
   // Add state for the active/settled toggle
   const [statusFilter, setStatusFilter] = React.useState<
-    'all' | 'active' | 'settled'
+    'all' | 'active'
   >('active');
 
   // Update the state when the URL parameter changes
@@ -195,15 +123,10 @@ const PredictionsTable = () => {
       // Filter by active/settled status
       const now = Math.floor(Date.now() / 1000);
       if (statusFilter === 'active') {
-        return (
-          now <= epoch.endTimestamp ||
-          (now > epoch.endTimestamp && !epoch.settled)
-        );
+        return now <= epoch.endTimestamp;
       }
-      if (statusFilter === 'settled') {
-        return epoch.settled;
-      }
-      return true; // 'all' filter
+      // 'all' filter doesn't filter by time, only public status applied earlier
+      return true;
     });
 
     // 3. Group filtered epochs by market key
@@ -257,7 +180,7 @@ const PredictionsTable = () => {
     router.replace(`/predictions?${params.toString()}`);
   };
 
-  const handleStatusFilterClick = (filter: 'all' | 'active' | 'settled') => {
+  const handleStatusFilterClick = (filter: 'all' | 'active') => {
     setStatusFilter(filter);
     // Note: Status is not currently in URL params, only local state
   };
@@ -386,13 +309,6 @@ const PredictionsTable = () => {
             <div className="flex space-x-1">
                <button
                 type="button"
-                className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
-                onClick={() => handleStatusFilterClick('all')}
-              >
-                All
-              </button>
-              <button
-                type="button"
                 className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
                 onClick={() => handleStatusFilterClick('active')}
               >
@@ -400,10 +316,10 @@ const PredictionsTable = () => {
               </button>
               <button
                 type="button"
-                className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'settled' ? selectedStatusClass : hoverStatusClass}`}
-                onClick={() => handleStatusFilterClick('settled')}
+                className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
+                onClick={() => handleStatusFilterClick('all')}
               >
-                Settled
+                All
               </button>
             </div>
           </div>
