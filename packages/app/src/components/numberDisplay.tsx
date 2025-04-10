@@ -37,7 +37,8 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({
       return `<${1 / 10 ** precision}`;
     }
 
-    const roundedValue = Number(numValue.toFixed(precision));
+    const factor = 10 ** precision;
+    const roundedValue = Math.floor(numValue * factor) / factor;
 
     return roundedValue.toString();
   };

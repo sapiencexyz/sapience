@@ -2,27 +2,43 @@
   "RESOURCES": [
     {
       "name": "Ethereum Gas",
-      "slug": "ethereum-gas"
+      "slug": "ethereum-gas",
+      "category": "decentralized-compute"
     },
     {
       "name": "Base Gas",
-      "slug": "base-gas"
+      "slug": "base-gas",
+      "category": "decentralized-compute"
     },
     {
       "name": "Arbitrum Gas",
-      "slug": "arbitrum-gas"
+      "slug": "arbitrum-gas",
+      "category": "decentralized-compute"
     },
     {
       "name": "Ethereum Blobspace",
-      "slug": "ethereum-blobspace"
+      "slug": "ethereum-blobspace",
+      "category": "decentralized-compute"
     },
     {
       "name": "Bitcoin Fees",
-      "slug": "bitcoin-fees"
+      "slug": "bitcoin-fees",
+      "category": "decentralized-compute"
     },
     {
       "name": "Celestia Blobspace",
-      "slug": "celestia-blobspace"
+      "slug": "celestia-blobspace",
+      "category": "decentralized-compute"
+    },
+    {
+      "name": "San Francisco Precipitation",
+      "slug": "sf-precipitation",
+      "category": "climate-change"
+    },
+    {
+      "name": "New York City Air Temperature",
+      "slug": "nyc-air-temperature",
+      "category": "climate-change"
     }
   ],
   "CATEGORIES": [
@@ -37,11 +53,57 @@
     {
       "name": "Biosecurity",
       "slug": "biosecurity"
+    },
+    {
+      "name": "International Relations",
+      "slug": "international-relations"
     }
   ],
   "MARKETS": [
     {
+      "chainId": 8453,
+      "address": "0x971e76c61ee64846b8bb5edcea1dc0cb504c25da",
+      "category": "climate-change",
+      "isCumulative": true,
+      "resource": "sf-precipitation",
+      "question": "What will be the cumulative rainfall in San Francisco in a given period?",
+      "questions": [
+        "What will be the cumulative rainfall in San Francisco in April 2024?"
+      ]
+    },
+    {
+      "chainId": 8453,
+      "address": "0x826a0a530fee31fb6d63b30ea5fd151bfa243d8f",
+      "category": "climate-change",
+      "resource": "nyc-air-temperature",
+      "question": "What will be the average air temperature in New York City in a given period?",
+      "questions": [
+        "What will bethe average air temperature in New York City in April 2024?"
+      ]
+    },
+    {
+      "chainId": 8453,
+      "address": "0x49ef9eb6d4e29ca2f7727f36dfcb2296913b82cc",
+      "category": "biosecurity",
+      "question": "Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025?",
+      "questions": [
+        "Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025?"
+      ]
+    },
+    {
+      "chainId": 8453,
+      "address": "0x78d120b363a23cc513e903ca00e9e4bf6c823f7c",
+      "category": "international-relations",
+      "question": "Which party will hold a plurality in the US House of Representatives after the 2026 midterm elections?",
+      "questions": [
+        "Will the Democrats hold a plurality in the US House of Representatives after the 2026 midterm elections?",
+        "Will the Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?",
+        "Will a party other than the Democrats or Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?"
+      ]
+    },
+    {
       "questions": ["How much blob data will be posted to Celestia in April?"],
+      "question": "How much blob data will be posted to Celestia in a given month?",
       "resource": "celestia-blobspace",
       "chainId": 8453,
       "address": "0x497057F1dBdaFBeD7a052dEa366e72c04de7A370",
@@ -52,6 +114,7 @@
       "questions": [
         "What will be the average blob gas cost on Ethereum in April?"
       ],
+      "question": "What will be the average blob gas cost on Ethereum in a given month?",
       "resource": "ethereum-blobspace",
       "chainId": 8453,
       "address": "0x301f7f583A6850d8D6e0Ea0a86205f905B91e255",
@@ -61,14 +124,16 @@
     {
       "questions": [
         "What will be the average gas cost on Ethereum on the week of April 1st?",
-        "What will be the average gas cost on Ethereum on the week of April 7th?"
+        "What will be the average gas cost on Ethereum on the week of April 8th?"
       ],
+      "question": "What will be the average gas cost on Ethereum in a given week?",
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x914126c7BFA849055bE8230975e0665De985f03A",
       "category": "decentralized-compute"
     },
     {
+      "question": null,
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x0D70bE0BA7d58cd414B01C4e8a1bB5A1Dd212bDc",
@@ -76,6 +141,7 @@
       "category": "decentralized-compute"
     },
     {
+      "question": null,
       "resource": "ethereum-blobspace",
       "chainId": 8453,
       "address": "0x2883610d2c5A2C2b8EBacfa5c8F8035F60b9C850",
@@ -83,6 +149,7 @@
       "category": "decentralized-compute"
     },
     {
+      "question": null,
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x20Ba5e24aD8a5b9502D4882607f0C8526A1F3205",
