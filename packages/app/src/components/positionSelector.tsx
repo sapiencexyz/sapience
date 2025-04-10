@@ -19,7 +19,7 @@ import PositionDisplay from './PositionDisplay';
 const PositionSelector: React.FC = () => {
   const { nftId, positions, setNftId } = useAddEditPosition();
   const [isOpen, setIsOpen] = useState(false);
-  const { chainId, address: marketAddress, epoch } = useContext(PeriodContext);
+  const { chainId, address: marketAddress } = useContext(PeriodContext);
 
   const allPositions = [
     ...(positions?.liquidityPositions?.map((pos) => ({
@@ -37,9 +37,14 @@ const PositionSelector: React.FC = () => {
     setIsOpen(false);
   };
 
-  const getPositionUrl = (position: { type: 'lp' | 'trade'; id: bigint }) => {
+  const getPositionUrl = (position: {
+    type: 'lp' | 'trade';
+    id: bigint;
+    epochId: bigint;
+  }) => {
     const positionType = position.type === 'lp' ? 'pool' : 'trade';
-    return `/markets/${chainId}:${marketAddress}/periods/${epoch}/${positionType}?positionId=${position.id.toString()}`;
+
+    return `/markets/${chainId}:${marketAddress}/periods/${position.epochId.toString()}/${positionType}?positionId=${position.id.toString()}`;
   };
 
   return (

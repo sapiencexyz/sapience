@@ -3,17 +3,17 @@ import Link from 'next/link';
 
 const FutarchyPage = () => {
   return (
-    <div className="container max-w-[920px] mx-auto p-4 md:p-8 lg:p-20 flex flex-col justify-center min-h-[calc(100vh-var(--header-height,4rem))]">
-      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-10">
+    <div className="container max-w-[740px] mx-auto p-4 md:p-8 lg:p-20 flex flex-col justify-center min-h-[100vh]">
+      <h1 className="text-3xl md:text-4xl font-heading font-normal mb-6 md:mb-8">
         Vote on values, but bet on beliefs
       </h1>
       <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
         Economist Robin Hanson developed the concept of{' '}
-        <strong className="font-semibold">futarchy</strong>, where elected
-        officials define goals and prediction markets determine which policies
+        <strong className="font-semibold">futarchy</strong>, where goals are
+        democratically defined and prediction markets determine which policies
         could best achieve them.
       </p>
-      <p className="text-muted-foreground text-lg mb-6 leading-relaxed">
+      <p className="text-muted-foreground text-lg mb-4 leading-relaxed">
         Help lay the groundwork for futarchy by building and participating in
         the most liquid prediction markets for future forecasting on the planet.
       </p>

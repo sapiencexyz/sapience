@@ -10,6 +10,12 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from '@foil/ui/components/ui/toggle-group';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { cn } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -22,8 +28,6 @@ import { Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
 import { foilApi } from '~/lib/utils/util';
-
-import NumberDisplay from './numberDisplay';
 
 interface Props {
   params: {
@@ -136,12 +140,24 @@ const useLeaderboard = (marketId: string, epochId: string) => {
 // Moved component definitions outside of Leaderboard component
 const PnLCell = ({ cell }: { cell: { getValue: () => unknown } }) => {
   const value = cell.getValue() as number;
-  const prefix = value > 0 ? '+' : '';
+  const displayValue = value / 1e18;
+  const roundedDisplayValue = displayValue.toFixed(4);
+
   return (
-    <span className="whitespace-nowrap text-sm md:text-base">
-      {prefix}
-      <NumberDisplay value={value / 1e18} /> wstETH
-    </span>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* Directly use the rounded string for 4 decimal places */}
+          <span className="whitespace-nowrap text-sm md:text-base">
+            {roundedDisplayValue} wstETH
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {/* Display full value in tooltip */}
+          <p>{displayValue} wstETH</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -231,7 +247,7 @@ const Leaderboard = ({ params }: Props) => {
             if (value) setSelectedTimeframe(value);
           }}
           aria-label="Select timeframe"
-          className="justify-start flex-wrap"
+          className="justify-start flex-wrap gap-2"
         >
           <ToggleGroupItem value="all" aria-label="All Time" size="sm">
             All Time

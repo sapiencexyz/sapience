@@ -114,7 +114,7 @@ contract TradePositionBasicFuzz is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -164,7 +164,7 @@ contract TradePositionBasicFuzz is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -226,7 +226,7 @@ contract TradePositionBasicFuzz is TestTrade {
         uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
         if (requiredDeltaCollateral > 0) {
@@ -305,7 +305,7 @@ contract TradePositionBasicFuzz is TestTrade {
         uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
         if (requiredDeltaCollateral > 0) {
@@ -384,7 +384,7 @@ contract TradePositionBasicFuzz is TestTrade {
         uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
         if (requiredDeltaCollateral > 0) {
@@ -463,7 +463,7 @@ contract TradePositionBasicFuzz is TestTrade {
         uint256 tradeRatio = _getTradeRatio(deltaPositionSize);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
             .quoteModifyTraderPosition(positionId, positionSize);
 
         if (requiredDeltaCollateral > 0) {
@@ -529,7 +529,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -593,7 +593,7 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
