@@ -65,7 +65,7 @@
         "What will be the average gas cost on Ethereum on the week of April 1st?",
         "What will be the average gas cost on Ethereum on the week of April 7th?"
       ],
-      "question": "What will be the average gas cost on Ethereum on the week of April 7th?",
+      "question": "What will be the average gas cost on Ethereum in a given week?",
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x914126c7BFA849055bE8230975e0665De985f03A",
