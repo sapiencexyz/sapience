@@ -5,6 +5,7 @@ import { Position } from '../../models/Position';
 import { Transaction } from '../../models/Transaction';
 import { Epoch } from '../../models/Epoch';
 import { ResourcePrice } from '../../models/ResourcePrice';
+import { Category } from '../../models/Category';
 import { HydratedTransaction } from '../../helpers/hydrateTransactions';
 import {
   MarketType,
@@ -13,6 +14,7 @@ import {
   TransactionType,
   EpochType,
   ResourcePriceType,
+  CategoryType,
 } from '../types';
 
 // Helper to decode hex string (0x...) to UTF-8
@@ -39,6 +41,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   isCumulative: market.isCumulative,
   epochs: market.epochs?.map(mapEpochToType) || [],
   resource: market.resource ? mapResourceToType(market.resource) : null,
+  category: market.category ? mapCategoryToType(market.category) : null,
   deployTimestamp: market.deployTimestamp,
   deployTxnBlockNumber: market.deployTxnBlockNumber,
   owner: market.owner?.toLowerCase() || null,
@@ -53,6 +56,13 @@ export const mapResourceToType = (resource: Resource): ResourceType => ({
   slug: resource.slug,
   markets: resource.markets?.map(mapMarketToType) || [],
   resourcePrices: resource.resourcePrices?.map(mapResourcePriceToType) || [],
+});
+
+export const mapCategoryToType = (category: Category): CategoryType => ({
+  id: category.id,
+  name: category.name,
+  slug: category.slug,
+  markets: category.markets?.map(mapMarketToType) || [],
 });
 
 export const mapEpochToType = (epoch: Epoch): EpochType => ({
