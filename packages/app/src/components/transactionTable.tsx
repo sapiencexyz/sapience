@@ -1,3 +1,11 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@foil/ui/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -21,17 +29,9 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 
 import { useFoil } from '../lib/context/FoilProvider';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertGgasPerWstEthToGwei, foilApi } from '~/lib/utils/util';
+import { foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
@@ -158,8 +158,12 @@ const TransactionTable: React.FC<Props> = ({
     isLoading,
   } = useTransactions(walletAddress, periodContext);
 
-  const { collateralAssetTicker, collateralAssetDecimals, useMarketUnits } =
-    periodContext;
+  const {
+    collateralAssetTicker,
+    collateralAssetDecimals,
+    unitDisplay,
+    valueDisplay,
+  } = periodContext;
 
   const { stEthPerToken } = useFoil();
 
@@ -188,7 +192,7 @@ const TransactionTable: React.FC<Props> = ({
       },
       {
         id: 'ggas',
-        header: 'Virtual Ggas Change',
+        header: `Virtual ${unitDisplay(false)} Change`,
         accessorFn: (row) => {
           if (['addLiquidity', 'removeLiquidity'].includes(row.type)) {
             return row.lpBaseDeltaToken;
@@ -198,7 +202,7 @@ const TransactionTable: React.FC<Props> = ({
       },
       {
         id: 'wsteth',
-        header: 'Virtual wstETH Change',
+        header: `Virtual ${collateralAssetTicker} Change`,
         accessorFn: (row) => {
           if (['addLiquidity', 'removeLiquidity'].includes(row.type)) {
             return row.lpQuoteDeltaToken;
@@ -213,9 +217,7 @@ const TransactionTable: React.FC<Props> = ({
           const tradeRatio = row.tradeRatioD18
             ? parseFloat(row.tradeRatioD18) / 10 ** 18
             : 0;
-          return useMarketUnits
-            ? tradeRatio * 10 ** 18
-            : convertGgasPerWstEthToGwei(tradeRatio * 10 ** 18, stEthPerToken);
+          return valueDisplay(tradeRatio * 10 ** 18, stEthPerToken);
         },
       },
       {
@@ -224,7 +226,7 @@ const TransactionTable: React.FC<Props> = ({
         accessorFn: (row) => row.timestamp,
       },
     ],
-    [useMarketUnits, stEthPerToken]
+    [valueDisplay, stEthPerToken]
   );
 
   const table = useReactTable({
@@ -310,9 +312,7 @@ const TransactionTable: React.FC<Props> = ({
     return (
       <div className="flex items-center gap-1">
         <NumberDisplay value={value} />
-        <span className="text-muted-foreground text-sm">
-          {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-        </span>
+        <span className="text-muted-foreground text-sm">{unitDisplay()}</span>
       </div>
     );
   };

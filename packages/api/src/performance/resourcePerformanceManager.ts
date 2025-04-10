@@ -1,6 +1,7 @@
 import { ResourcePerformance } from './resourcePerformance';
 import { Resource } from 'src/models/Resource';
-import { clearStorageFiles } from './helper';
+import { clearStorageFiles } from './persistenceHelper';
+
 export class ResourcePerformanceManager {
   private static _instance: ResourcePerformanceManager;
   private static _initialized: boolean = false;
@@ -134,6 +135,14 @@ export class ResourcePerformanceManager {
     resources: Resource[],
     hardInitialize: boolean
   ) {
+    console.log(
+      `Checking CACHE_DISABLED in initializeResources. Value: [${process.env.CACHE_DISABLED}]`
+    );
+    if (process.env.CACHE_DISABLED === 'true') {
+      console.log('CACHE_DISABLED is true, skipping resource initialization.');
+      return;
+    }
+
     // Clean up existing resource performances
     // await Promise.all(
     //   Object.values(this.resourcePerformances).map(async (rp) => {
@@ -150,10 +159,18 @@ export class ResourcePerformanceManager {
     this.resourcePerformances = {};
 
     this.resources = resources;
+    // Create all instances of ResourcePerformance
     for (const resource of this.resources) {
       this.resourcePerformances[resource.slug] = new ResourcePerformance(
         resource
       );
+      console.log(
+        `ResourcePerformanceManager Create Resource ${resource.slug} done - op# ${this.actionIdx}`
+      );
+    }
+
+    // Initialize all instances of ResourcePerformance
+    for (const resource of this.resources) {
       await this.updateResourceCache(resource, hardInitialize, 'initialize');
       console.log(
         `ResourcePerformanceManager Initialize Resource ${resource.slug} done - op# ${this.actionIdx}`
@@ -166,6 +183,16 @@ export class ResourcePerformanceManager {
     hardInitialize: boolean,
     logMode: 'initialize' | 'refresh'
   ) {
+    console.log(
+      `Checking CACHE_DISABLED in updateResourceCache for ${resource.slug}. Value: [${process.env.CACHE_DISABLED}]`
+    );
+    if (process.env.CACHE_DISABLED === 'true') {
+      console.log(
+        `CACHE_DISABLED is true, skipping cache update for resource ${resource.slug}.`
+      );
+      return;
+    }
+
     if (hardInitialize) {
       console.log(
         `ResourcePerformanceManager Hard ${logMode} resource ${resource.slug}`

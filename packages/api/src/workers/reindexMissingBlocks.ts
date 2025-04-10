@@ -1,9 +1,13 @@
-import { initializeDataSource, resourcePriceRepository } from '../db';
-import { MARKETS } from '../fixtures';
+import {
+  initializeDataSource,
+  resourcePriceRepository,
+  marketRepository,
+} from '../db';
 import { initializeMarket } from '../controllers/market';
 import { getMarketStartEndBlock } from '../controllers/marketHelpers';
 import { Between } from 'typeorm';
 import * as Sentry from '@sentry/node';
+import { INDEXERS } from '../fixtures';
 
 export async function reindexMissingBlocks(
   chainId: number,
@@ -16,16 +20,34 @@ export async function reindexMissingBlocks(
     );
 
     await initializeDataSource();
-    const marketInfo = MARKETS.find(
-      (m: { marketChainId: number; deployment: { address: string } }) =>
-        m.marketChainId === chainId &&
-        m.deployment.address.toLowerCase() === address.toLowerCase()
-    );
-    if (!marketInfo) {
+
+    const marketEntity = await marketRepository.findOne({
+      where: {
+        chainId,
+        address: address.toLowerCase(),
+      },
+      relations: ['resource'],
+    });
+
+    if (!marketEntity) {
       throw new Error(
         `Market not found for chainId ${chainId} and address ${address}`
       );
     }
+
+    const marketInfo = {
+      marketChainId: marketEntity.chainId,
+      deployment: {
+        address: marketEntity.address.toLowerCase(),
+        deployTxnBlockNumber: marketEntity.deployTxnBlockNumber,
+        deployTimestamp: marketEntity.deployTimestamp,
+      },
+      resource: {
+        ...marketEntity.resource,
+        priceIndexer: INDEXERS[marketEntity.resource.slug],
+      },
+    };
+
     const market = await initializeMarket(marketInfo);
 
     // if this is not a crypto market, simply fetch latest data (leave this array empty)

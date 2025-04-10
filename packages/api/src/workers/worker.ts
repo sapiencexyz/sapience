@@ -1,17 +1,14 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
-import {
-  initializeDataSource,
-  resourceRepository,
-  marketRepository,
-} from '../db';
-import { indexMarketEvents, initializeMarket } from '../controllers/market';
-import { MARKETS, RESOURCES } from '../fixtures';
-import { createOrUpdateEpochFromContract } from '../controllers/marketHelpers';
+import { initializeDataSource, resourceRepository } from '../db';
+import { indexMarketEvents } from '../controllers/market';
+import { initializeFixtures, INDEXERS } from '../fixtures';
 import * as Sentry from '@sentry/node';
 import { Resource } from '../models/Resource';
 import { reindexMarket } from './reindexMarket';
 import { reindexMissingBlocks } from './reindexMissingBlocks';
 import { reindexResource } from './reindexResource';
+import fixturesData from '../fixtures.json';
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
 
@@ -74,74 +71,38 @@ function createResilientProcess<T>(
   };
 }
 
-async function initializeResources() {
-  console.log('initializing resources');
-  for (const resourceInfo of RESOURCES) {
-    let resource = await resourceRepository.findOne({
-      where: { name: resourceInfo.name },
-    });
-
-    if (!resource) {
-      resource = new Resource();
-      resource.name = resourceInfo.name;
-      resource.slug = resourceInfo.slug;
-      await resourceRepository.save(resource);
-      console.log('created resource:', resourceInfo.name);
-    } else if (!resource.slug) {
-      // Update existing resources with slug if missing
-      resource.slug = resourceInfo.slug;
-      await resourceRepository.save(resource);
-      console.log('updated resource with slug:', resourceInfo.name);
-    }
-  }
-}
-
 async function main() {
   await initializeDataSource();
   const jobs: Promise<void>[] = [];
   console.log('starting worker');
 
-  // Initialize resources first
-  await initializeResources();
+  // Initialize resources from fixtures
+  await initializeFixtures();
 
-  for (const marketInfo of MARKETS) {
-    const resource = await resourceRepository.findOne({
-      where: { name: marketInfo.resource.name },
-    });
-    if (!resource) {
-      console.log(`Resource not found: ${marketInfo.resource.name}`);
-      continue;
-    }
-
-    const market = await initializeMarket(marketInfo);
-    console.log(
-      'initialized market',
-      market.address,
-      'on chain',
-      market.chainId
-    );
-
-    // Set the resource for the market
-    market.resource = resource;
-    await marketRepository.save(market);
-
-    await createOrUpdateEpochFromContract(marketInfo, market);
-
+  for (const marketInfo of fixturesData.MARKETS) {
     jobs.push(
       createResilientProcess(
-        () => indexMarketEvents(market, marketInfo.deployment.abi),
-        `indexMarketEvents-${market.address}`
+        () =>
+          indexMarketEvents({
+            address: marketInfo.address,
+            chainId: marketInfo.chainId,
+            isYin: marketInfo.isYin || true,
+            isCumulative: marketInfo.isCumulative || false,
+          } as any),
+        `indexMarketEvents-${marketInfo.address}`
       )()
     );
   }
 
-  // Watch for new blocks for each resource
-  for (const resourceInfo of RESOURCES) {
+  // Watch for new blocks for each resource with an indexer
+  for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
+    // Find the resource in the database
     const resource = await resourceRepository.findOne({
-      where: { name: resourceInfo.name },
+      where: { slug: resourceSlug },
     });
+
     if (!resource) {
-      console.log(`Resource not found: ${resourceInfo.name}`);
+      console.log(`Resource not found: ${resourceSlug}`);
       continue;
     }
 
@@ -150,11 +111,10 @@ async function main() {
       jobs.push(
         createResilientProcess(
           () => resourceInfo.priceIndexer.watchBlocksForResource(resource),
-          `watchBlocksForResource-${resourceInfo.name}`
+          `watchBlocksForResource-${resourceSlug}`
         )()
       );
     }
-  }
 
   await Promise.all(jobs);
 }

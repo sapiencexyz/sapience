@@ -1,15 +1,15 @@
-import { Edit } from 'lucide-react';
-import Link from 'next/link';
-import type React from 'react';
-import { useState, useContext } from 'react';
-
-import { Button } from '~/components/ui/button';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '~/components/ui/dialog';
+} from '@foil/ui/components/ui/dialog';
+import { Edit } from 'lucide-react';
+import Link from 'next/link';
+import type React from 'react';
+import { useState, useContext } from 'react';
+
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { positionHasBalance } from '~/lib/utils/util';
@@ -19,7 +19,7 @@ import PositionDisplay from './PositionDisplay';
 const PositionSelector: React.FC = () => {
   const { nftId, positions, setNftId } = useAddEditPosition();
   const [isOpen, setIsOpen] = useState(false);
-  const { chainId, address: marketAddress, epoch } = useContext(PeriodContext);
+  const { chainId, address: marketAddress } = useContext(PeriodContext);
 
   const allPositions = [
     ...(positions?.liquidityPositions?.map((pos) => ({
@@ -37,9 +37,14 @@ const PositionSelector: React.FC = () => {
     setIsOpen(false);
   };
 
-  const getPositionUrl = (position: { type: 'lp' | 'trade'; id: bigint }) => {
+  const getPositionUrl = (position: {
+    type: 'lp' | 'trade';
+    id: bigint;
+    epochId: bigint;
+  }) => {
     const positionType = position.type === 'lp' ? 'pool' : 'trade';
-    return `/markets/${chainId}:${marketAddress}/periods/${epoch}/${positionType}?positionId=${position.id.toString()}`;
+
+    return `/markets/${chainId}:${marketAddress}/periods/${position.epochId.toString()}/${positionType}?positionId=${position.id.toString()}`;
   };
 
   return (

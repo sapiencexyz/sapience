@@ -1,3 +1,5 @@
+import { Button } from '@foil/ui/components/ui/button';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext } from 'react';
 import { formatUnits } from 'viem';
@@ -8,8 +10,6 @@ import {
   useWaitForTransactionReceipt,
 } from 'wagmi';
 
-import { Button } from '~/components/ui/button';
-import { useToast } from '~/hooks/use-toast';
 import { useAddEditPosition } from '~/lib/context/AddEditPositionContext';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTokenIdsOfOwner } from '~/lib/hooks/useTokenIdsOfOwner';
@@ -27,6 +27,7 @@ export default function Settle() {
     epochSettled,
     settlementPrice,
     collateralAssetTicker,
+    unitDisplay,
   } = useContext(PeriodContext);
   const { nftId, setNftId, positions } = useAddEditPosition();
   const [withdrawableCollateral, setWithdrawableCollateral] = useState<bigint>(
@@ -151,7 +152,7 @@ export default function Settle() {
             <p className="text-sm font-semibold mb-0.5">Settlement Price</p>
             <p className="text-sm">
               <NumberDisplay value={formatUnits(settlementPrice, 18)} />{' '}
-              wstETH/Ggas
+              {unitDisplay()}
             </p>
           </div>
           <Button

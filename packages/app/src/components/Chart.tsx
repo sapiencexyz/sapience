@@ -1,17 +1,17 @@
-import { Loader2 } from 'lucide-react';
-import { useRef, useContext, useMemo, useEffect, useState } from 'react';
-import type React from 'react';
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '~/components/ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import { cn } from '@foil/ui/lib/utils';
+import { Loader2 } from 'lucide-react';
+import { useRef, useContext, useMemo, useEffect, useState } from 'react';
+import type React from 'react';
+
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useChart } from '~/lib/hooks/useChart';
 import type { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
-import { cn } from '~/lib/utils';
 
 interface Props {
   resourceSlug?: string;
@@ -42,7 +42,7 @@ const Chart: React.FC<Props> = ({
   onHoverChange,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const { useMarketUnits, startTime } = useContext(PeriodContext);
+  const { useMarketUnits, startTime, endTime } = useContext(PeriodContext);
   const [isHovering, setIsHovering] = useState(false);
 
   const { isLogarithmic, setIsLogarithmic, loadingStates, hoverData } =
@@ -52,6 +52,7 @@ const Chart: React.FC<Props> = ({
       seriesVisibility,
       useMarketUnits,
       startTime,
+      endTime,
       containerRef: chartContainerRef,
       selectedWindow,
       selectedInterval,

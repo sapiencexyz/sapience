@@ -1,3 +1,19 @@
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@foil/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
+import { toast } from '@foil/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -21,26 +37,10 @@ import { useState, useMemo, useContext } from 'react';
 import { useReadContract } from 'wagmi';
 
 import { useFoil } from '../lib/context/FoilProvider';
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { toast } from '~/hooks/use-toast';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { foilApi, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
+import { foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
 import NumberDisplay from './numberDisplay';
@@ -233,7 +233,7 @@ const TraderPositionsTable: React.FC<Props> = ({
   const { data: resources } = useResources();
 
   const { stEthPerToken } = useFoil();
-  const { useMarketUnits } = useContext(PeriodContext);
+  const { unitDisplay, valueDisplay } = useContext(PeriodContext);
 
   const calculateEntryPrice = (position: any) => {
     let entryPrice = 0;
@@ -268,10 +268,8 @@ const TraderPositionsTable: React.FC<Props> = ({
       }
     }
 
-    const unitsAdjustedEntryPrice = useMarketUnits
-      ? entryPrice
-      : convertGgasPerWstEthToGwei(entryPrice, stEthPerToken);
-    return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
+    const unitsAdjustedEntryPrice = valueDisplay(entryPrice, stEthPerToken);
+    return Number.isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 
   const renderMarketCell = (row: any) => (
@@ -332,7 +330,7 @@ const TraderPositionsTable: React.FC<Props> = ({
     return (
       <div className="flex items-center gap-1">
         <NumberDisplay value={parseFloat(value) / 10 ** 18} />
-        <span className="text-muted-foreground text-sm">vGgas</span>
+        <span className="text-muted-foreground text-sm">{`v${unitDisplay(false)}`}</span>
       </div>
     );
   };
@@ -351,9 +349,7 @@ const TraderPositionsTable: React.FC<Props> = ({
     return (
       <div className="flex items-center gap-1">
         <NumberDisplay value={value} />
-        <span className="text-muted-foreground text-sm">
-          {periodContext.useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
-        </span>
+        <span className="text-muted-foreground text-sm">{unitDisplay()}</span>
       </div>
     );
   };

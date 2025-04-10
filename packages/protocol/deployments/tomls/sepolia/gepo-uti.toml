@@ -1,0 +1,104 @@
+
+name="foil"
+version="1.0.2"
+preset="gepo-uti"
+
+[var.settings]
+deployer="0xdb5af497a73620d881561edb508012a5f84e9ba2"
+owner="0xdb5af497a73620d881561edb508012a5f84e9ba2"
+feeRate = "10000" # 1%
+assertionLiveness = "21600"
+bondAmount = "5000000" # Change for Prod
+claimStatement = "<%= stringToHex('Will Gepotidacin receive FDA approval for uncomplicated urinary tract infections (UTIs) by March 31, 2025? 1 for YES; 0 for NO') %>"
+minTradeSize = "10000"
+
+# Integration addresses
+# Change for Prod
+optimisticOracleV3 = "0xFd9e2642a170aDD10F53Ee14a93FcF2F31924944" # UMA Optimistic Oracle V3 
+uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52" # Uniswap V3 NonfungiblePositionManager 
+uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12" # Using our deployed SwapRouter // "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" # Uniswap V3 SwapRouter 
+uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3" # Uniswap V3 QuoterV2 
+
+# tokens
+# Change for Prod
+# USDS = "0x820c137fa70c8691f0e44dc420a5e53c168921dc"
+WETH = "0x7b79995e5f793a07bc00c21412e50ecae098e7f9"
+USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+depends = []
+
+[deploy.ConfigurationModule]
+artifact="ConfigurationModule"
+args=["<%= settings.deployer %>"]
+
+[deploy.LiquidityModule]
+artifact="LiquidityModule"
+
+[deploy.UMASettlementModule]
+artifact="UMASettlementModule"
+
+[deploy.TradeModule]
+artifact="TradeModule"
+
+[deploy.NftModule]
+artifact="NftModule"
+
+[deploy.ViewsModule]
+artifact="ViewsModule"
+
+[deploy.ERC165Module]
+artifact="ERC165Module"
+
+[deploy.SettlementModule]
+artifact="SettlementModule"
+
+[router.Foil]
+contracts=[
+  "ConfigurationModule",
+  "LiquidityModule",
+  "UMASettlementModule",
+  "TradeModule",
+  "NftModule",
+  "ViewsModule",
+  "ERC165Module",
+  "SettlementModule"
+]
+highlight=true
+
+[invoke.initializeMarket]
+target="Foil"
+func="initializeMarket"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.owner %>",
+  "<%= settings.WETH %>",
+  [],
+  "<%= zeroAddress %>",
+  "<%= settings.minTradeSize %>",
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.USDC %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+]
+depends=["router.Foil"]
+
+# Epoch Settings
+# Change for Prod
+[var.epochSettings]
+startTime="1742516000"
+endTime="1743120800"
+startingSqrtPriceX96 = "56022770974786143748341366784" # 0.5
+lowerBound="-92200" # 0.01
+upperBound="0" # 1
+salt="<%= stringToHex('gepo-uti') %>"
+
+[invoke.createEpoch]
+target="Foil"
+func="createEpoch"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.startTime %>",
+  "<%= settings.endTime %>",
+  "<%= settings.startingSqrtPriceX96 %>",
+  "<%= settings.lowerBound %>", # baseAssetMinPriceTick
+  "<%= settings.upperBound %>",  # baseAssetMaxPriceTick
+  "<%= settings.salt %>"
+]
+depends=["invoke.initializeMarket"]
+

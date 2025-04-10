@@ -12,7 +12,7 @@ router.get(
   '/',
   handleAsyncErrors(async (_, res: Response) => {
     const markets = await marketRepository.find({
-      relations: ['epochs', 'resource'],
+      relations: ['epochs', 'resource', 'category'],
     });
 
     const formattedMarkets = markets.map((market: Market) => ({
@@ -21,6 +21,7 @@ router.get(
         ...epoch,
         startTimestamp: Number(epoch.startTimestamp),
         endTimestamp: Number(epoch.endTimestamp),
+        question: epoch.question,
       })),
     }));
 

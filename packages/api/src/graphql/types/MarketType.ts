@@ -1,6 +1,7 @@
 import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
 import { EpochType } from './EpochType';
 import { ResourceType } from './ResourceType';
+import { CategoryType } from './CategoryType';
 
 @Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
@@ -11,7 +12,7 @@ export class MarketType {
   @Field(() => String)
   address: string;
 
-  @Field(() => String)
+  @Field(() => String, { nullable: true })
   vaultAddress: string;
 
   @Field(() => Int)
@@ -20,11 +21,17 @@ export class MarketType {
   @Field(() => Boolean)
   isYin: boolean;
 
+  @Field(() => Boolean)
+  isCumulative: boolean;
+
   @Field(() => [EpochType])
   epochs: EpochType[];
 
   @Field(() => ResourceType, { nullable: true })
   resource: ResourceType | null;
+
+  @Field(() => CategoryType, { nullable: true })
+  category: CategoryType | null;
 
   @Field(() => Int, { nullable: true })
   deployTimestamp: number | null;
@@ -37,4 +44,10 @@ export class MarketType {
 
   @Field(() => String, { nullable: true })
   collateralAsset: string | null;
+
+  @Field(() => String, { nullable: true })
+  question: string | null;
+
+  @Field(() => String, { nullable: true })
+  claimStatement: string | null;
 }

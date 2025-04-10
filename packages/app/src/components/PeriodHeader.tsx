@@ -1,26 +1,25 @@
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { format } from 'date-fns';
 import { MoveHorizontal, ArrowRight } from 'lucide-react';
 import Image from 'next/image';
 import { useContext } from 'react';
 import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
+import { LiaRulerVerticalSolid } from 'react-icons/lia';
 
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
 import { useFoil } from '~/lib/context/FoilProvider';
-import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
-import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
 const PeriodHeader = () => {
-  const { stEthPerToken, markets } = useFoil();
+  const { stEthPerToken } = useFoil();
   const {
     chain,
     address,
@@ -30,15 +29,11 @@ const PeriodHeader = () => {
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     useMarketUnits,
+    market,
+    resource,
+    unitDisplay,
+    question,
   } = useContext(PeriodContext);
-  const { data: resources } = useResources();
-
-  const market = markets.find(
-    (market: Market) => market.address.toLowerCase() === address.toLowerCase()
-  );
-
-  const resource = resources?.find((r) => r.name === market?.resource?.name);
-
   let endTimeString = '';
   let startTimeString = '';
   let startTimeTooltip = '';
@@ -56,19 +51,21 @@ const PeriodHeader = () => {
     endTimeTooltip = format(date, 'MMMM do, yyyy h:mm a (O)');
   }
 
-  const minPrice = useMarketUnits
-    ? tickToPrice(baseAssetMinPriceTick)
-    : convertGgasPerWstEthToGwei(
-        tickToPrice(baseAssetMinPriceTick),
-        stEthPerToken
-      );
+  const minPrice =
+    useMarketUnits || market?.isCumulative
+      ? tickToPrice(baseAssetMinPriceTick)
+      : convertGgasPerWstEthToGwei(
+          tickToPrice(baseAssetMinPriceTick),
+          stEthPerToken
+        );
 
-  const maxPrice = useMarketUnits
-    ? tickToPrice(baseAssetMaxPriceTick)
-    : convertGgasPerWstEthToGwei(
-        tickToPrice(baseAssetMaxPriceTick),
-        stEthPerToken
-      );
+  const maxPrice =
+    useMarketUnits || market?.isCumulative
+      ? tickToPrice(baseAssetMaxPriceTick)
+      : convertGgasPerWstEthToGwei(
+          tickToPrice(baseAssetMaxPriceTick),
+          stEthPerToken
+        );
 
   const links = (
     <>
@@ -101,14 +98,14 @@ const PeriodHeader = () => {
       </a>
 
       <div className="inline-flex items-center">
-        <span className="inline-block mr-1.5">
-          <FaRegChartBar />
+        <span className="inline-block mr-1">
+          <LiaRulerVerticalSolid />
         </span>
         <span className="font-medium mr-1">Market Price Range:</span>
         <NumberDisplay value={minPrice} />
         <MoveHorizontal className="w-3 h-3 mx-1" />
         <NumberDisplay value={maxPrice} />
-        <span className="ml-1">{useMarketUnits ? 'Ggas/wstETH' : 'gwei'}</span>
+        <span className="ml-1">{unitDisplay()}</span>
       </div>
 
       <div className="inline-flex items-center">
@@ -130,6 +127,16 @@ const PeriodHeader = () => {
           </Tooltip>
         </TooltipProvider>
       </div>
+
+      <div className="inline-flex items-center">
+        <span className="inline-block mr-1.5">
+          <FaRegChartBar />
+        </span>
+        <span className="font-medium mr-1">Market Type:</span>
+        <span>
+          {market?.isCumulative ? 'Cumulative Spent' : 'Average Price'}
+        </span>
+      </div>
     </>
   );
 
@@ -147,7 +154,7 @@ const PeriodHeader = () => {
                 className="w-8 h-8  "
               />
             )}
-            {resource?.name} Market
+            {question ?? `${resource?.name} Market`}
           </h1>
           <div className="flex flex-wrap gap-y-1.5 lg:gap-y-2 gap-x-3 lg:gap-x-6 text-xs sm:text-sm">
             {links}

@@ -23,7 +23,7 @@ export const foilApi = {
     return headers;
   },
 
-  async post(path: string, body: any) {
+  async post(path: string, body: unknown) {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -114,6 +114,10 @@ export const gweiToEther = (gweiValue: bigint): string => {
 };
 
 export const shortenAddress = (address: string) => {
+  if (!address) {
+    return '';
+  }
+
   if (address.length < 12) {
     return address;
   }

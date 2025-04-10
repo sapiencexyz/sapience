@@ -1,12 +1,11 @@
-import { Minus } from 'lucide-react';
-import type React from 'react';
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@foil/ui/components/ui/tooltip';
+import { Minus } from 'lucide-react';
+import type React from 'react';
 
 type NumberDisplayProps = {
   value: number | string | bigint;
@@ -38,7 +37,8 @@ const NumberDisplay: React.FC<NumberDisplayProps> = ({
       return `<${1 / 10 ** precision}`;
     }
 
-    const roundedValue = Number(numValue.toFixed(precision));
+    const factor = 10 ** precision;
+    const roundedValue = Math.floor(numValue * factor) / factor;
 
     return roundedValue.toString();
   };

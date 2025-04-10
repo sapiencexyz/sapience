@@ -292,7 +292,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function quoteCreateTraderPosition(
         uint256 epochId,
         int256 size
-    ) external returns (uint256 requiredCollateral, uint256 fillPrice) {
+    ) external returns (uint256 requiredCollateral, uint256 fillPrice, uint256 price18DigitsAfter) {
         if (size == 0) {
             revert Errors.InvalidData("Size cannot be 0");
         }
@@ -317,7 +317,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
-        return (outputParams.requiredCollateral, outputParams.tradeRatioD18);
+        epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
+        price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(outputParams.sqrtPriceX96After);
+
+        return (outputParams.requiredCollateral, outputParams.tradeRatioD18, price18DigitsAfter);
     }
 
     /**
@@ -331,7 +334,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         returns (
             int256 expectedCollateralDelta,
             int256 closePnL,
-            uint256 fillPrice
+            uint256 fillPrice,
+            uint256 price18DigitsAfter
         )
     {
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
@@ -341,7 +345,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         Position.Data storage position = Position.loadValid(positionId);
 
         // check if epoch is not settled
-        Epoch.load(position.epochId).validateNotSettled();
+        Epoch.Data storage epoch = Epoch.load(position.epochId);
+        epoch.validateNotSettled();
 
         if (position.kind != IFoilStructs.PositionKind.Trade) {
             revert Errors.InvalidPositionKind();
@@ -365,10 +370,14 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
+        epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
+        price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(outputParams.sqrtPriceX96After);
+
         return (
             outputParams.expectedDeltaCollateral,
             outputParams.closePnL,
-            outputParams.tradeRatioD18
+            outputParams.tradeRatioD18,
+            price18DigitsAfter
         );
     }
 
@@ -428,6 +437,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         uint256 requiredCollateral;
         int256 expectedDeltaCollateral;
         int256 closePnL; // PnL from initial position to zero
+        uint160 sqrtPriceX96After;
     }
 
     function _quoteOrTrade(
@@ -447,21 +457,23 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         runtime.tradedVGas = params.deltaSize.abs();
         if (runtime.isLongDirection) {
             // Long direction; Quote or Trade
-            (runtime.tradedVEth, ) = Trade.swapOrQuoteTokensExactOut(
-                epoch,
-                0,
-                runtime.tradedVGas,
-                params.isQuote
-            );
+            (runtime.tradedVEth, , output.sqrtPriceX96After) = Trade
+                .swapOrQuoteTokensExactOut(
+                    epoch,
+                    0,
+                    runtime.tradedVGas,
+                    params.isQuote
+                );
             runtime.signedTradedVEth = runtime.tradedVEth.toInt();
         } else {
             // Short direction; Quote or Trade
-            (runtime.tradedVEth, ) = Trade.swapOrQuoteTokensExactIn(
-                epoch,
-                0,
-                runtime.tradedVGas,
-                params.isQuote
-            );
+            (runtime.tradedVEth, , output.sqrtPriceX96After) = Trade
+                .swapOrQuoteTokensExactIn(
+                    epoch,
+                    0,
+                    runtime.tradedVGas,
+                    params.isQuote
+                );
             runtime.signedTradedVEth = runtime.tradedVEth.toInt() * -1;
         }
 

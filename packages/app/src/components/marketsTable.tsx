@@ -1,5 +1,15 @@
 'use client';
 
+import { Badge } from '@foil/ui/components/ui/badge';
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@foil/ui/components/ui/table';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   useReactTable,
@@ -14,16 +24,6 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
-import { Badge } from '~/components/ui/badge';
-import { Button } from '~/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '~/components/ui/table';
 import { RESOURCE_ORDER } from '~/lib/constants/resources';
 import { useResources } from '~/lib/hooks/useResources';
 

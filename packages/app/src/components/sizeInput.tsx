@@ -1,12 +1,12 @@
 'use client';
 
+import { Button } from '@foil/ui/components/ui/button';
+import { FormItem, FormLabel } from '@foil/ui/components/ui/form';
+import { Input } from '@foil/ui/components/ui/input';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';
 
-import { Button } from '~/components/ui/button';
-import { FormItem, FormLabel } from '~/components/ui/form';
-import { Input } from '~/components/ui/input';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
   allowCollateralInput?: boolean;
   collateralAssetTicker?: string;
   onCollateralAmountChange?: (amount: bigint) => void;
+  fixedUnit?: boolean;
 }
 
 enum InputFormType {
@@ -41,11 +42,17 @@ const SizeInput: React.FC<Props> = ({
   allowCollateralInput = false,
   collateralAssetTicker = '',
   onCollateralAmountChange,
+  fixedUnit = false,
 }) => {
+  let defaultInputType;
+  if (fixedUnit) {
+    defaultInputType = InputFormType.Collateral;
+  } else {
+    defaultInputType = defaultToGas ? InputFormType.Gas : InputFormType.Ggas;
+  }
+
   const [sizeInput, setSizeInput] = useState<string>('0');
-  const [inputType, setInputType] = useState<InputFormType>(
-    defaultToGas ? InputFormType.Gas : InputFormType.Ggas
-  );
+  const [inputType, setInputType] = useState<InputFormType>(defaultInputType);
 
   useEffect(() => {
     handleSizeChange('0');
@@ -222,14 +229,15 @@ const SizeInput: React.FC<Props> = ({
             type="button"
             variant="secondary"
             className="rounded-l-none px-3 h-10 border border-border"
-            onClick={handleUpdateInputType}
+            onClick={() => !fixedUnit && handleUpdateInputType()}
           >
             {inputType === 'collateral' ? collateralAssetTicker : inputType}
-
-            <span className="flex flex-col scale-75">
-              <ChevronUp className="h-1 w-1 translate-y-1/4" />
-              <ChevronDown className="h-1 w-1 -translate-y-1/4" />
-            </span>
+            {!fixedUnit && (
+              <span className="flex flex-col scale-75">
+                <ChevronUp className="h-1 w-1 translate-y-1/4" />
+                <ChevronDown className="h-1 w-1 -translate-y-1/4" />
+              </span>
+            )}
           </Button>
         </div>
         {error && (

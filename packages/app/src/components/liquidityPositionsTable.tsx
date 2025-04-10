@@ -1,3 +1,19 @@
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@foil/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
+import { toast } from '@foil/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,
@@ -20,22 +36,6 @@ import type React from 'react';
 import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
-import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { toast } from '~/hooks/use-toast';
 import type { PeriodContextType } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
 import { tickToPrice, foilApi } from '~/lib/utils/util';
@@ -218,7 +218,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
   walletAddress,
   periodContext,
 }) => {
-  const { endTime } = periodContext;
+  const { endTime, unitDisplay } = periodContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'position',
@@ -231,6 +231,9 @@ const LiquidityPositionsTable: React.FC<Props> = ({
     error,
     isLoading,
   } = useLPPositions(walletAddress, periodContext);
+
+  const { collateralAssetTicker } = periodContext;
+
   const { data: resources } = useResources();
 
   const dateMilliseconds = Number(endTime) * 1000;
@@ -302,14 +305,18 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         return (
           <div className="flex items-center gap-1">
             <NumberDisplay value={parseFloat(value) / 10 ** 18} />
-            <span className="text-muted-foreground text-sm">vGgas</span>
+            <span className="text-muted-foreground text-sm">
+              {`v${unitDisplay(false)}`}
+            </span>
           </div>
         );
       case 'quoteToken':
         return (
           <div className="flex items-center gap-1">
             <NumberDisplay value={parseFloat(value) / 10 ** 18} />
-            <span className="text-muted-foreground text-sm">vWstETH</span>
+            <span className="text-muted-foreground text-sm">
+              v${collateralAssetTicker}
+            </span>
           </div>
         );
       case 'lowPrice':
@@ -318,7 +325,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
           <div className="flex items-center gap-1">
             <NumberDisplay value={tickToPrice(Number(value))} />
             <span className="text-muted-foreground text-sm">
-              {periodContext.useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+              {unitDisplay()}
             </span>
           </div>
         );
@@ -367,12 +374,12 @@ const LiquidityPositionsTable: React.FC<Props> = ({
       },
       {
         id: 'baseToken',
-        header: 'Virtual Ggas',
+        header: `Virtual ${unitDisplay(false)}`,
         accessorKey: 'lpBaseToken',
       },
       {
         id: 'quoteToken',
-        header: 'Virtual wstETH',
+        header: `Virtual ${collateralAssetTicker}`,
         accessorKey: 'lpQuoteToken',
       },
       {

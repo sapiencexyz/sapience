@@ -1,7 +1,10 @@
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@foil/ui/components/ui/toggle-group';
 import Image from 'next/image';
 import { useContext } from 'react';
 
-import { ToggleGroup, ToggleGroupItem } from '~/components/ui/toggle-group';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 
 interface PriceTogglesProps {
@@ -14,8 +17,8 @@ interface PriceTogglesProps {
 }
 
 const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
-  const { seriesVisibility, setSeriesVisibility } = useContext(PeriodContext);
-  console.log('seriesVisibility', seriesVisibility);
+  const { seriesVisibility, setSeriesVisibility, market } =
+    useContext(PeriodContext);
   const toggleSeries = (series: keyof typeof seriesVisibility) => {
     setSeriesVisibility({
       ...seriesVisibility,
@@ -78,21 +81,23 @@ const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
         Resource Price
       </ToggleGroupItem>
 
-      <ToggleGroupItem
-        value="trailing"
-        variant={seriesVisibility?.trailing ? 'default' : 'outline'}
-        onClick={() => toggleSeries('trailing')}
-        disabled={seriesDisabled.trailing}
-        className="w-full flex-1 sm:flex-initial sm:w-auto whitespace-nowrap"
-      >
-        <Image
-          src="/priceicons/average.svg"
-          alt="Trailing Average Price"
-          width={16}
-          height={16}
-        />
-        Trailing Avg. Price
-      </ToggleGroupItem>
+      {!market?.isCumulative && (
+        <ToggleGroupItem
+          value="trailing"
+          variant={seriesVisibility?.trailing ? 'default' : 'outline'}
+          onClick={() => toggleSeries('trailing')}
+          disabled={seriesDisabled.trailing}
+          className="w-full flex-1 sm:flex-initial sm:w-auto whitespace-nowrap"
+        >
+          <Image
+            src="/priceicons/average.svg"
+            alt="Trailing Average Price"
+            width={16}
+            height={16}
+          />
+          Trailing Avg. Price
+        </ToggleGroupItem>
+      )}
     </ToggleGroup>
   );
 };

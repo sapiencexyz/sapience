@@ -1,6 +1,13 @@
 'use client';
 
 import { gql } from '@apollo/client';
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@foil/ui/components/ui/dialog';
 import Spline from '@splinetool/react-spline';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,17 +27,10 @@ import { useAccount } from 'wagmi';
 
 import NumberDisplay from '~/components/numberDisplay';
 import Subscribe from '~/components/subscribe';
-import { Button } from '~/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui/dialog';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext, PeriodProvider } from '~/lib/context/PeriodProvider';
 import { useResources } from '~/lib/hooks/useResources';
-import { convertGgasPerWstEthToGwei, foilApi } from '~/lib/utils/util';
+import { foilApi } from '~/lib/utils/util';
 
 const SUBSCRIPTIONS_QUERY = gql`
   query GetSubscriptions($owner: String!) {
@@ -92,7 +92,7 @@ interface Subscription {
 }
 
 const useSubscriptions = (address?: string) => {
-  const { useMarketUnits } = useContext(PeriodContext);
+  const { useMarketUnits, valueDisplay } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
 
   const calculateEntryPrice = (position: any, transactions: any[]) => {
@@ -127,10 +127,8 @@ const useSubscriptions = (address?: string) => {
         entryPrice /= quoteTokenDeltaTotal;
       }
     }
-    const unitsAdjustedEntryPrice = useMarketUnits
-      ? entryPrice
-      : convertGgasPerWstEthToGwei(entryPrice, stEthPerToken);
-    return isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
+    const unitsAdjustedEntryPrice = valueDisplay(entryPrice, stEthPerToken);
+    return Number.isNaN(unitsAdjustedEntryPrice) ? 0 : unitsAdjustedEntryPrice;
   };
 
   const fetchSubscriptions = async () => {
@@ -205,6 +203,7 @@ function useIsInViewport(ref: React.RefObject<HTMLElement>) {
 }
 
 const SubscriptionsList = () => {
+  const { unitDisplay, collateralAssetTicker } = useContext(PeriodContext);
   const { address } = useAccount();
   const { data: subscriptions, isLoading, error } = useSubscriptions(address);
   const { data: resources, isLoading: isResourcesLoading } = useResources();
@@ -297,7 +296,7 @@ const SubscriptionsList = () => {
                       1e9
                     }
                   />{' '}
-                  Ggas
+                  {unitDisplay(false)}
                 </span>
               </div>
 
@@ -306,7 +305,8 @@ const SubscriptionsList = () => {
                   Entry Price
                 </span>
                 <span className="text-sm font-medium">
-                  {Number(subscription.entryPrice).toFixed(4)} wstETH/Ggas
+                  {Number(subscription.entryPrice).toFixed(4)}{' '}
+                  {collateralAssetTicker}/{unitDisplay(false)}
                 </span>
               </div>
 
@@ -433,10 +433,14 @@ const SubscribeContent = () => {
         market,
       }))
     );
-    console.log('All Epochs:', allEpochs);
+
+    // Filter for monthly epochs (28 days duration)
+    const monthlyEpochs = allEpochs.filter(
+      (epoch) => epoch.endTimestamp - epoch.startTimestamp === 28 * 24 * 60 * 60
+    );
 
     // Sort epochs by start time
-    const sortedEpochs = allEpochs.sort(
+    const sortedEpochs = monthlyEpochs.sort(
       (a, b) => a.startTimestamp - b.startTimestamp
     );
 
@@ -459,13 +463,16 @@ const SubscribeContent = () => {
       activeEpoch &&
       currentTime - activeEpoch.startTimestamp < 7 * 24 * 60 * 60; // 7 days in seconds
 
-    // Logic for determining which epoch to show
-    if (showActiveEpoch && activeEpoch && isWithin7DaysOfActiveEpochStart) {
-      // Show active epoch if it exists and we're within 7 days of its start
+    // If we're not within 7 days of active epoch start and showActiveEpoch is false,
+    // or if we are within 7 days and showActiveEpoch is true, show active epoch
+    if (
+      (!isWithin7DaysOfActiveEpochStart && !showActiveEpoch) ||
+      (isWithin7DaysOfActiveEpochStart && showActiveEpoch)
+    ) {
       return activeEpoch;
     }
 
-    // Default to next epoch or most recent if no next epoch
+    // Otherwise show next epoch
     return nextEpoch || mostRecentEpoch;
   }, [gasMarkets, currentTime, showActiveEpoch]);
 

@@ -330,7 +330,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -369,7 +369,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, ) = foil.quoteCreateTraderPosition(
+        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
             epochId,
             positionSize
         );
@@ -414,7 +414,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredCollateral, , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredCollateral, , , ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -466,7 +466,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredCollateral, , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredCollateral, , , ) = foil.quoteModifyTraderPosition(
             positionId,
             0
         );
@@ -522,7 +522,7 @@ contract TradePositionDumb is TestTrade {
         fillPositionState(positionId, initialStateData);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
@@ -581,7 +581,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
@@ -637,7 +637,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , ) = foil.quoteModifyTraderPosition(
             positionId,
             finalPositionSize
         );
@@ -690,7 +690,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
@@ -745,7 +745,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , ) = foil.quoteModifyTraderPosition(
             positionId,
             finalPositionSize
         );
@@ -798,7 +798,7 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(foil, epochId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , ) = foil.quoteModifyTraderPosition(
             positionId,
             finalPositionSize
         );
@@ -834,6 +834,134 @@ contract TradePositionDumb is TestTrade {
             expectedStateData,
             "Short2Long Reduce"
         );
+    }
+
+    function test_quote_create_Long() public {
+        int256 positionSize = 1 ether;
+        StateData memory initialStateData;
+        fillCollateralStateData(trader1, initialStateData);
+
+        vm.startPrank(trader1);
+        // quote and open a long
+        (uint256 requiredCollateral, , uint256 quotedPrice18DigitsAfter) = foil.quoteCreateTraderPosition(
+            epochId,
+            positionSize
+        );
+        collateralAsset.approve(address(foil), requiredCollateral + 2);
+        // Send more collateral than required, just checking the position can be created/modified
+        foil.createTraderPosition(
+            epochId,
+            positionSize,
+            requiredCollateral + 2,
+            block.timestamp + 30 minutes
+        );
+        vm.stopPrank();
+
+        uint256 price18DigitsAfter = foil.getReferencePrice(epochId);
+        assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
+    }
+
+    function test_quote_create_Short() public {
+        int256 positionSize = -1 ether;
+        StateData memory initialStateData;
+        fillCollateralStateData(trader1, initialStateData);
+
+        vm.startPrank(trader1);
+        // quote and open a long
+        (uint256 requiredCollateral, , uint256 quotedPrice18DigitsAfter) = foil.quoteCreateTraderPosition(
+            epochId,
+            positionSize
+        );
+        collateralAsset.approve(address(foil), requiredCollateral + 2);
+        // Send more collateral than required, just checking the position can be created/modified
+        foil.createTraderPosition(
+            epochId,
+            positionSize,
+            requiredCollateral + 2,
+            block.timestamp + 30 minutes
+        );
+        vm.stopPrank();
+
+        uint256 price18DigitsAfter = foil.getReferencePrice(epochId);
+        assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
+    }
+
+    function test_quote_modify_Long() public {
+        StateData memory initialStateData;
+        int256 initialPositionSize = 1 ether;
+        int256 finalPositionSize = 2 ether;
+
+        uint256 positionId;
+
+        fillCollateralStateData(trader1, initialStateData);
+        vm.startPrank(trader1);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+
+        fillCollateralStateData(trader1, initialStateData);
+        fillPositionState(positionId, initialStateData);
+
+        // quote and close a long
+        (int256 requiredDeltaCollateral, , , uint256 quotedPrice18DigitsAfter) = foil
+            .quoteModifyTraderPosition(positionId, finalPositionSize);
+
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint()
+            );
+        }
+
+        // Send more collateral than required, just checking the position can be created/modified
+        foil.modifyTraderPosition(
+            positionId,
+            finalPositionSize,
+            requiredDeltaCollateral + 2,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+
+        uint256 price18DigitsAfter = foil.getReferencePrice(epochId);
+        assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
+    }
+
+    function test_quote_modify_Short() public {
+        StateData memory initialStateData;
+        int256 initialPositionSize = -1 ether;
+        int256 finalPositionSize = -2 ether;
+
+        uint256 positionId;
+
+        fillCollateralStateData(trader1, initialStateData);
+
+        vm.startPrank(trader1);
+        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+
+        // quote and close a long
+        (int256 requiredDeltaCollateral, , , uint256 quotedPrice18DigitsAfter) = foil.quoteModifyTraderPosition(
+            positionId,
+            finalPositionSize
+        );
+
+        if (requiredDeltaCollateral > 0) {
+            collateralAsset.approve(
+                address(foil),
+                requiredDeltaCollateral.toUint() + 2
+            );
+        }
+
+        // Send more collateral than required, just checking the position can be created/modified
+        foil.modifyTraderPosition(
+            positionId,
+            finalPositionSize,
+            requiredDeltaCollateral + 2,
+            block.timestamp + 30 minutes
+        );
+
+        vm.stopPrank();
+
+        uint256 price18DigitsAfter = foil.getReferencePrice(epochId);
+        assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
     // //////////////// //

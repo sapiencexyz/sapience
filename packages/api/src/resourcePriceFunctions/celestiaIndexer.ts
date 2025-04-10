@@ -43,14 +43,12 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         await this.getStartingBlockForPolling(resource);
 
       const params = new URLSearchParams({
-        limit: '100',
-        offset: '0',
         msg_type: 'MsgPayForBlobs',
       });
 
       let retries = 0;
-      let response;
-      let data;
+      let blobMessagesPayload;
+      let blockPayload;
 
       while (retries < this.MAX_RETRIES) {
         try {
@@ -61,19 +59,24 @@ class CelestiaIndexer implements IResourcePriceIndexer {
             );
             return;
           }
-          response = await fetch(
+          blobMessagesPayload = await fetch(
             `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${currentBlockToPoll}/messages/?${params.toString()}`,
             { headers }
           );
 
-          data = await response.json();
+          if (blobMessagesPayload.ok) {
+            blockPayload = await fetch(
+              `${this.celeniumEndpoint}/${celeniumApiVersionUrl}/block/${currentBlockToPoll}?stats=true`,
+              { headers }
+            );
 
-          if (response.ok) {
-            break;
+            if (blockPayload.ok) {
+              break;
+            }
           }
 
           console.error(
-            `[CelestiaIndexer] HTTP error! status: ${response.status}`
+            `[CelestiaIndexer] HTTP error! status: ${blobMessagesPayload.status}`
           );
           retries++;
           const backoffDelay = this.SLEEP_INTERVAL_MS * Math.pow(2, retries); // Exponential backoff
@@ -92,9 +95,20 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         }
       }
 
-      if (!response || !response.ok) {
+      if (!blobMessagesPayload || !blobMessagesPayload.ok) {
         throw new Error(
           `Failed to fetch block ${currentBlockToPoll} after ${this.MAX_RETRIES} retries`
+        );
+      }
+
+      //  https://api-mainnet.celenium.io/v1/block/{height}
+      const blobMessages = await blobMessagesPayload.json();
+
+      const blockStats = await blockPayload?.json();
+
+      if (!blockStats) {
+        throw new Error(
+          `Failed to fetch block ${currentBlockToPoll} stats from the API...`
         );
       }
 
@@ -102,11 +116,11 @@ class CelestiaIndexer implements IResourcePriceIndexer {
         height: currentBlockToPoll,
         timeMs: new Date().getTime(),
         stats: {
-          blobs_size: 0,
+          blobs_size: blockStats.stats.blobs_size,
           fee: 0,
         },
       };
-      const finalStats = data.reduce(
+      const finalStats = blobMessages.reduce(
         (
           acc: Block,
           msg: {
@@ -123,9 +137,6 @@ class CelestiaIndexer implements IResourcePriceIndexer {
           ) {
             blobAccumulatedDataDummy.height = msg.height;
             blobAccumulatedDataDummy.timeMs = new Date(msg.time).getTime();
-            blobAccumulatedDataDummy.stats.blobs_size += Number(
-              msg.tx.gas_used
-            );
             blobAccumulatedDataDummy.stats.fee += Number(msg.tx.fee);
           }
           return acc;
@@ -213,6 +224,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   private async storeBlockPrice(block: Block, resource: Resource) {
     const used = block?.stats?.blobs_size;
     const fee = block?.stats?.fee * 10 ** 9; // Increase the fee to 9 digits to be compatible with the EVM indexer and UI (we use 9 decimals for the gwei)
+
     const value = used > 0 ? fee / used : 0;
 
     try {
@@ -308,7 +320,8 @@ class CelestiaIndexer implements IResourcePriceIndexer {
   public async indexBlockPriceFromTimestamp(
     resource: Resource,
     startTimestamp: number,
-    endTimestamp?: number
+    endTimestamp?: number,
+    overwriteExisting: boolean = true // TODO (Vlad): change to false once done reindexing
   ): Promise<boolean> {
     const initialBlockNumber = await this.getBlockByTimestamp(
       startTimestamp * 1000
@@ -346,7 +359,7 @@ class CelestiaIndexer implements IResourcePriceIndexer {
           },
         });
 
-        if (resourcePrice) {
+        if (!overwriteExisting && resourcePrice) {
           console.log(
             '[CelestiaIndexer] Resource price already exists for block',
             blockNumber

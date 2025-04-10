@@ -1,11 +1,11 @@
+import { Button } from '@foil/ui/components/ui/button';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import type React from 'react';
 import { useState } from 'react';
 import { zeroAddress } from 'viem';
 import { useAccount, useReadContract, useWriteContract } from 'wagmi';
 
 import useFoilDeployment from '../useFoilDeployment';
-import { Button } from '@/components/ui/button';
-import { useToast } from '~/hooks/use-toast';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useSettlementPrice } from '~/lib/hooks/useSettlementPrice';
 
@@ -152,7 +152,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
 
   if (epochSettled) {
     return (
-      <Button disabled size="sm">
+      <Button disabled size="xs">
         Settled
       </Button>
     );
@@ -162,7 +162,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Button
-          size="sm"
+          size="xs"
           disabled={
             !getEpochData ||
             buttonIsLoading ||

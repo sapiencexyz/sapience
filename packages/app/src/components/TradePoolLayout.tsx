@@ -1,6 +1,8 @@
 'use client';
 
-import { CircleHelp, DatabaseIcon } from 'lucide-react';
+import { Button } from '@foil/ui/components/ui/button';
+import { Label } from '@foil/ui/components/ui/label';
+import { CircleHelp, DatabaseIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';
 
@@ -14,11 +16,8 @@ import Stats from '~/components/stats';
 import VolumeChart from '~/components/VolumeChart';
 import WindowSelector from '~/components/WindowButtons';
 import { AddEditPositionProvider } from '~/lib/context/AddEditPositionContext';
-import { useFoil } from '~/lib/context/FoilProvider';
-import type { Market } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { TradePoolProvider } from '~/lib/context/TradePoolContext';
-import { useResources } from '~/lib/hooks/useResources';
 import {
   ChartType,
   TimeWindow,
@@ -28,8 +27,6 @@ import {
 import DataDrawer from './DataDrawer';
 import DepthChart from './DepthChart';
 import MarketUnitsToggle from './marketUnitsToggle';
-import { Button } from './ui/button';
-import { Label } from './ui/label';
 
 const TradePoolLayout = ({
   params,
@@ -71,10 +68,10 @@ const TradePoolLayout = ({
   }, [selectedWindow]);
 
   const { startTime } = useContext(PeriodContext);
-  const { data: resources } = useResources();
-  const { markets } = useFoil();
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
+
+  const { market, resource } = useContext(PeriodContext);
 
   // this will set the selected window to the correct time window based on the time since the market started
   // if the market is less than a day old it will show the day window
@@ -98,10 +95,6 @@ const TradePoolLayout = ({
   const { epoch } = params;
   const contractId = `${chainId}:${marketAddress}`;
 
-  const market = markets.find(
-    (m: Market) => m.address.toLowerCase() === marketAddress.toLowerCase()
-  );
-
   useEffect(() => {
     if (market?.resource?.name) {
       document.title = isTrade
@@ -119,18 +112,10 @@ const TradePoolLayout = ({
 
   const renderChart = () => {
     if (chartType === ChartType.PRICE) {
-      const resource = resources?.find((r) =>
-        r.markets.some(
-          (m) =>
-            m.chainId === Number(chainId) &&
-            m.address.toLowerCase() === marketAddress.toLowerCase()
-        )
-      );
-
       return (
         <div className="pr-2 pb-2 w-full">
           <Chart
-            resourceSlug={resource?.slug}
+            resourceSlug={market?.resource?.slug}
             market={{
               epochId: Number(epoch),
               chainId: Number(chainId),
@@ -157,6 +142,16 @@ const TradePoolLayout = ({
     return null;
   };
 
+  if (!market || !resource) {
+    return (
+      <div className="flex items-center justify-center w-full h-[calc(100dvh-69px)]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin h-12 w-12 text-primary" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AddEditPositionProvider>
       <TradePoolProvider>
@@ -165,17 +160,21 @@ const TradePoolLayout = ({
           <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
             <div className="flex flex-col flex-1 px-4 md:px-3 gap-2 md:gap-5 md:flex-row min-h-0">
               <div className="w-full order-2 md:order-2 md:max-w-[340px] pb-4 flex flex-col h-full pt-0">
-                <div className="flex items-center gap-4 mb-6 flex-shrink-0 md:hidden">
-                  <Label className="whitespace-nowrap">Price Units</Label>
-                  <MarketUnitsToggle />
-                </div>
+                {!market?.isCumulative && (
+                  <div className="flex items-center gap-4 mb-6 flex-shrink-0 md:hidden">
+                    <Label className="whitespace-nowrap">Price Units</Label>
+                    <MarketUnitsToggle />
+                  </div>
+                )}
                 <div className="flex-1 overflow-y-auto">
                   <MarketSidebar isTrade={isTrade} />
                 </div>
-                <div className="hidden md:flex items-center gap-4 mt-4 lg:ml-auto flex-shrink-0">
-                  <Label className="whitespace-nowrap">Price Units</Label>
-                  <MarketUnitsToggle />
-                </div>
+                {!market?.isCumulative && (
+                  <div className="hidden md:flex items-center gap-4 mt-4 lg:ml-auto flex-shrink-0">
+                    <Label className="whitespace-nowrap">Price Units</Label>
+                    <MarketUnitsToggle />
+                  </div>
+                )}
               </div>
               <div className="flex flex-col w-full order-1 md:order-1">
                 <Stats />

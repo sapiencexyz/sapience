@@ -1,12 +1,4 @@
-export type ReducedCandleData = {
-  t: number;
-  o: string;
-  h: string;
-  l: string;
-  c: string;
-};
-
-export type CandleData = {
+export type ResponseCandleData = {
   timestamp: number;
   open: string;
   high: string;
@@ -14,44 +6,71 @@ export type CandleData = {
   close: string;
 };
 
-export type TrailingAvgData = {
-  t: number;
-  u: string;
-  f: string;
-};
-
-export type MarketPriceData = {
-  v: string;
-  t: number;
-  e: number;
-};
-
-export type CandleMetadata = {
-  u: string;
-  f: string;
-  st: number;
-  et: number;
-};
-
-export type IndexStore = {
-  data: ReducedCandleData[];
-  metadata: CandleMetadata[];
-  trailingAvgData: TrailingAvgData[];
+export type StorageData = {
+  [interval: string]: IntervalStore;
 };
 
 export type IntervalStore = {
-  resourceStore: IndexStore;
-  trailingAvgStore: {
-    [trailingAvgTime: string]: IndexStore;
+  resourceStore: Store;
+  marketStore: {
+    [epoch: string]: Store;
   };
   indexStore: {
-    [epoch: string]: IndexStore;
+    [epoch: string]: Store;
   };
-  marketStore: {
-    [epoch: string]: IndexStore;
+  trailingAvgStore: {
+    [trailingAvgTime: string]: Store;
   };
 };
 
-export type StorageData = {
-  [interval: string]: IntervalStore;
+export type Store = {
+  datapoints: Datapoint[];
+};
+
+export type Datapoint = {
+  timestamp: number; // datapoint timestamp
+  endTimestamp: number;
+  data: CandleData | IndexData;
+  metadata: GenericMetadata | IndexMetadata | TrailingAvgMetadata;
+};
+
+export type CandleData = {
+  // t: number; // timestamp
+  o: string; // open
+  h: string; // high
+  l: string; // low
+  c: string; // close
+};
+
+export type IndexData = {
+  // t: number; // timestamp
+  v: string; // value
+  c: string; // cumulative
+};
+
+export type MarketPriceData = {
+  v: string; // value
+  t: number; // timestamp
+  e: number; // end timestamp
+};
+
+export type GenericMetadata = {
+  // Datapoint metadata for all
+  lastIncludedTimestamp: number;
+};
+export type IndexMetadata = GenericMetadata & {
+  sumUsed: string;
+  sumPaid: string;
+};
+export type TrailingAvgMetadata = IndexMetadata & {
+  trailingStartTimestamp: number;
+};
+
+// TrailingAvg related types (now separate)
+export type ResourceCacheTrailingAvgStorage = ResourceCacheTrailingAvgData[];
+
+export type ResourceCacheTrailingAvgData = {
+  t: number; // timestamp
+  u: string; // used
+  f: string; // fee
 };

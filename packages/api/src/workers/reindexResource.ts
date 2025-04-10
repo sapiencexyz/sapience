@@ -1,4 +1,4 @@
-import { RESOURCES } from 'src/fixtures';
+import { INDEXERS } from 'src/fixtures';
 import { Resource } from 'src/models/Resource';
 
 export const reindexResource = async (
@@ -6,9 +6,7 @@ export const reindexResource = async (
   startTimestamp: number,
   endTimestamp?: number
 ) => {
-  const indexer = RESOURCES.find((element) => {
-    return element.slug === resource.slug;
-  })?.priceIndexer;
+  const indexer = INDEXERS[resource.slug];
 
   const result = await indexer?.indexBlockPriceFromTimestamp(
     resource,

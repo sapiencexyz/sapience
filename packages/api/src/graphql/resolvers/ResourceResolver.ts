@@ -12,7 +12,12 @@ export class ResourceResolver {
   async resources(): Promise<ResourceType[]> {
     try {
       const resources = await dataSource.getRepository(Resource).find({
-        relations: ['markets', 'markets.epochs'],
+        relations: [
+          'markets',
+          'markets.epochs',
+          'markets.category',
+          'category',
+        ],
       });
       return resources.map(mapResourceToType);
     } catch (error) {
@@ -28,7 +33,12 @@ export class ResourceResolver {
     try {
       const resource = await dataSource.getRepository(Resource).findOne({
         where: { slug },
-        relations: ['markets', 'resourcePrices'],
+        relations: [
+          'markets',
+          'resourcePrices',
+          'markets.category',
+          'category',
+        ],
       });
 
       if (!resource) return null;

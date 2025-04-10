@@ -12,6 +12,7 @@ import { Epoch } from './Epoch';
 import { MarketParams } from './MarketParams';
 import { Event } from './Event';
 import { Resource } from './Resource';
+import { Category } from './Category';
 
 @Entity()
 @Unique(['address', 'chainId'])
@@ -26,6 +27,9 @@ export class Market {
 
   @ManyToOne(() => Resource, (resource) => resource.markets)
   resource: Resource;
+
+  @ManyToOne(() => Category, (category) => category.markets)
+  category: Category;
 
   @PrimaryGeneratedColumn()
   id: number;
@@ -43,6 +47,9 @@ export class Market {
   @Column({ type: 'boolean', default: false })
   isYin: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isCumulative: boolean;
+
   @Column({ type: 'integer' })
   @Index()
   chainId: number;
@@ -58,6 +65,9 @@ export class Market {
 
   @Column({ type: 'varchar', nullable: true })
   collateralAsset: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  question: string | null;
 
   @Column(() => MarketParams)
   marketParams: MarketParams;

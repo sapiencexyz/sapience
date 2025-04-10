@@ -1,4 +1,21 @@
 /* eslint-disable sonarjs/no-duplicate-string */
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@foil/ui/components/ui/accordion';
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+} from '@foil/ui/components/ui/drawer';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@foil/ui/components/ui/popover';
 import { Menu, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -8,19 +25,6 @@ import { useState, useEffect } from 'react';
 import ConnectButton from '../ConnectButton';
 import EpochTiming from '../EpochTiming';
 import ModeToggle from '../ModeToggle';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '~/components/ui/accordion';
-import { Button } from '~/components/ui/button';
-import { Drawer, DrawerContent, DrawerTrigger } from '~/components/ui/drawer';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '~/components/ui/popover';
 import { useFoil } from '~/lib/context/FoilProvider';
 import {
   useResources,
@@ -244,7 +248,9 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     height={16}
                     className=" "
                   />
-                  {resource.name}
+                  {resource.slug === 'celestia-blobspace'
+                    ? 'Celestia Blob Count'
+                    : resource.name}
                 </div>
               </div>
             ))}
@@ -375,6 +381,9 @@ const NavLinks = ({
           Earn
         </Link>
         */}
+        <Link href="/leaderboard" onClick={() => onClose?.()}>
+          Leaderboard
+        </Link>
         <Link href="https://docs.foil.xyz" onClick={() => onClose?.()}>
           Docs
         </Link>
@@ -404,6 +413,11 @@ const NavLinks = ({
       */}
       <ResourcePopover label="Trade" path="trade" />
       <ResourcePopover label="Pool" path="pool" />
+      <Link href="/leaderboard" className="hover:no-underline">
+        <Button variant="ghost" className={getButtonClasses('/leaderboard')}>
+          Leaderboard
+        </Button>
+      </Link>
 
       <Link href="https://docs.foil.xyz" className="hover:no-underline">
         <Button variant="ghost" className="text-base">

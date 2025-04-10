@@ -1,4 +1,14 @@
 /* eslint-disable sonarjs/cognitive-complexity */
+import { Button } from '@foil/ui/components/ui/button';
+import { Form } from '@foil/ui/components/ui/form';
+import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { debounce } from 'lodash';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useContext, useMemo } from 'react';
@@ -18,16 +28,6 @@ import {
 
 import { useConnectWallet } from '../lib/context/ConnectWalletProvider';
 import erc20ABI from '../lib/erc20abi.json';
-import { Button } from '~/components/ui/button';
-import { Form } from '~/components/ui/form';
-import { Tabs, TabsList, TabsTrigger } from '~/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '~/components/ui/tooltip';
-import { useToast } from '~/hooks/use-toast';
 import {
   HIGH_PRICE_IMPACT,
   MIN_BIG_INT_SIZE,
@@ -88,6 +88,8 @@ export default function AddEditTrade() {
     liquidity,
     refetchUniswapData,
     useMarketUnits,
+    unitDisplay,
+    market,
   } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
 
@@ -847,6 +849,7 @@ export default function AddEditTrade() {
                 allowCollateralInput
                 collateralAssetTicker={collateralAssetTicker}
                 onCollateralAmountChange={handleCollateralAmountChange}
+                fixedUnit={market?.isCumulative}
                 {...register('size', {
                   onChange: (e) => {
                     const processed = removeLeadingZeros(e.target.value);
@@ -885,7 +888,7 @@ export default function AddEditTrade() {
                     TOKEN_DECIMALS
                   )}
                 />{' '}
-                Ggas
+                {unitDisplay(false)}
                 {isNonZeroSizeChange && (
                   <>
                     {' '}
@@ -896,7 +899,7 @@ export default function AddEditTrade() {
                         TOKEN_DECIMALS
                       )}
                     />{' '}
-                    Ggas
+                    {unitDisplay(false)}
                   </>
                 )}
               </p>
@@ -971,7 +974,7 @@ export default function AddEditTrade() {
               <p className="text-sm  mb-0.5">
                 <NumberDisplay
                   value={
-                    useMarketUnits
+                    useMarketUnits || market?.isCumulative
                       ? formatUnits(
                           quotedFillPrice || BigInt(0),
                           TOKEN_DECIMALS
@@ -984,7 +987,7 @@ export default function AddEditTrade() {
                         ) * convertGgasPerWstEthToGwei(1, stEthPerToken)
                   }
                 />{' '}
-                {useMarketUnits ? 'Ggas/wstETH' : 'gwei'}
+                {unitDisplay()}
               </p>
             </div>
           )}

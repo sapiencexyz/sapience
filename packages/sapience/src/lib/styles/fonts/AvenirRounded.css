@@ -1,0 +1,107 @@
+/**
+ * Avenir Next Rounded Font Declarations
+ */
+
+@font-face {
+  font-family: 'Avenir Next Rounded';
+  font-style: normal;
+  font-weight: 400;
+  src:
+    url('/AvenirNextRoundedRegular-1080183-export/AvenirNextRoundedRegular-1080183.woff2')
+      format('woff2'),
+    url('/AvenirNextRoundedRegular-1080183-export/AvenirNextRoundedRegular-1080183.woff')
+      format('woff'),
+    url('/AvenirNextRoundedRegular-1080183-export/AvenirNextRoundedRegular-1080183.ttf')
+      format('truetype');
+}
+
+@font-face {
+  font-family: 'Avenir Next Rounded';
+  font-style: italic;
+  font-weight: 400;
+  src:
+    url('/AvenirNextRoundedItalic-1075329-export/AvenirNextRoundedItalic-1075329.woff2')
+      format('woff2'),
+    url('/AvenirNextRoundedItalic-1075329-export/AvenirNextRoundedItalic-1075329.woff')
+      format('woff'),
+    url('/AvenirNextRoundedItalic-1075329-export/AvenirNextRoundedItalic-1075329.ttf')
+      format('truetype');
+}
+
+@font-face {
+  font-family: 'Avenir Next Rounded';
+  font-style: normal;
+  font-weight: 500;
+  src:
+    url('/AvenirNextRoundedMedium-1080181-export/AvenirNextRoundedMedium-1080181.woff2')
+      format('woff2'),
+    url('/AvenirNextRoundedMedium-1080181-export/AvenirNextRoundedMedium-1080181.woff')
+      format('woff'),
+    url('/AvenirNextRoundedMedium-1080181-export/AvenirNextRoundedMedium-1080181.ttf')
+      format('truetype');
+}
+
+@font-face {
+  font-family: 'Avenir Next Rounded';
+  font-style: italic;
+  font-weight: 500;
+  src:
+    url('/AvenirNextRoundedMediumItalic-1080182-export/AvenirNextRoundedMediumItalic-1080182.woff2')
+      format('woff2'),
+    url('/AvenirNextRoundedMediumItalic-1080182-export/AvenirNextRoundedMediumItalic-1080182.woff')
+      format('woff'),
+    url('/AvenirNextRoundedMediumItalic-1080182-export/AvenirNextRoundedMediumItalic-1080182.ttf')
+      format('truetype');
+}
+
+@font-face {
+  font-family: 'Avenir Next Rounded';
+  font-style: normal;
+  font-weight: 600;
+  src:
+    url('/AvenirNextRoundedDemi-1080178-export/AvenirNextRoundedDemi-1080178.woff2')
+      format('woff2'),
+    url('/AvenirNextRoundedDemi-1080178-export/AvenirNextRoundedDemi-1080178.woff')
+      format('woff'),
+    url('/AvenirNextRoundedDemi-1080178-export/AvenirNextRoundedDemi-1080178.ttf')
+      format('truetype');
+}
+
+@font-face {
+  font-family: 'Avenir Next Rounded';
+  font-style: italic;
+  font-weight: 600;
+  src:
+    url('/AvenirNextRoundedDemiItalic-1080179-export/AvenirNextRoundedDemiItalic-1080179.woff2')
+      format('woff2'),
+    url('/AvenirNextRoundedDemiItalic-1080179-export/AvenirNextRoundedDemiItalic-1080179.woff')
+      format('woff'),
+    url('/AvenirNextRoundedDemiItalic-1080179-export/AvenirNextRoundedDemiItalic-1080179.ttf')
+      format('truetype');
+}
+
+@font-face {
+  font-family: 'Avenir Next Rounded';
+  font-style: normal;
+  font-weight: 700;
+  src:
+    url('/AvenirNextRoundedBold-1080176-export/AvenirNextRoundedBold-1080176.woff2')
+      format('woff2'),
+    url('/AvenirNextRoundedBold-1080176-export/AvenirNextRoundedBold-1080176.woff')
+      format('woff'),
+    url('/AvenirNextRoundedBold-1080176-export/AvenirNextRoundedBold-1080176.ttf')
+      format('truetype');
+}
+
+@font-face {
+  font-family: 'Avenir Next Rounded';
+  font-style: italic;
+  font-weight: 700;
+  src:
+    url('/AvenirNextRoundedBoldItalic-1075320-export/AvenirNextRoundedBoldItalic-1075320.woff2')
+      format('woff2'),
+    url('/AvenirNextRoundedBoldItalic-1075320-export/AvenirNextRoundedBoldItalic-1075320.woff')
+      format('woff'),
+    url('/AvenirNextRoundedBoldItalic-1075320-export/AvenirNextRoundedBoldItalic-1075320.ttf')
+      format('truetype');
+}
