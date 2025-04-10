@@ -32,7 +32,7 @@ const hexToString = (hex: string | null | undefined): string | null => {
 
 export const mapMarketToType = (market: Market): MarketType => ({
   id: market.id,
-  address: market.address.toLowerCase(),
+  address: market.address?.toLowerCase(),
   vaultAddress: market.vaultAddress,
   chainId: market.chainId,
   isYin: market.isYin,
