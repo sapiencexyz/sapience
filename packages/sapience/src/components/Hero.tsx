@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 
 export default function Hero() {
@@ -87,19 +88,7 @@ export default function Hero() {
                 className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
               >
                 LEARN MORE
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="ml-0.5"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
+                <ChevronDown className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
