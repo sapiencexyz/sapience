@@ -125,7 +125,10 @@ const Header = () => {
                 <span className="text-2xl font-normal">Sapience</span>
               </div>
             </Link>
-            <SidebarTrigger className="block flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6" />
+            <SidebarTrigger
+              id="nav-sidebar"
+              className="block flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6"
+            />
           </div>
 
           <div className="flex items-center gap-5">
@@ -138,7 +141,7 @@ const Header = () => {
       </header>
 
       {/* Desktop Sidebar */}
-      <Sidebar variant="sidebar" collapsible="offcanvas">
+      <Sidebar id="nav-sidebar" variant="sidebar" collapsible="offcanvas">
         <SidebarContent>
           <NavLinks />
         </SidebarContent>

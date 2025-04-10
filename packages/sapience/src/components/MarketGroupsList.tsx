@@ -1,8 +1,20 @@
 'use client';
 
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from '@foil/ui/components/ui/sheet';
 import { Skeleton } from '@foil/ui/components/ui/skeleton';
+import { useIsMobile } from '@foil/ui/hooks/use-mobile';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FrownIcon, LayoutGridIcon, TagIcon } from 'lucide-react';
+import {
+  FrownIcon,
+  LayoutGridIcon,
+  TagIcon,
+  SlidersHorizontal,
+} from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -46,6 +58,104 @@ interface GroupedMarket {
   displayQuestion?: string;
 }
 
+// Define FocusAreaFilter component outside ForecastingTable
+const FocusAreaFilter = ({
+  selectedCategorySlug,
+  handleCategoryClick,
+  statusFilter,
+  handleStatusFilterClick,
+  isLoadingCategories,
+  categories,
+  getCategoryStyle,
+}: {
+  selectedCategorySlug: string | null;
+  handleCategoryClick: (categorySlug: string | null) => void;
+  statusFilter: 'all' | 'active';
+  handleStatusFilterClick: (filter: 'all' | 'active') => void;
+  isLoadingCategories: boolean;
+  categories: any[] | null | undefined;
+  getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
+}) => (
+  <div className="p-5 w-[280px] mt-0">
+    <div className="pb-2">
+      <h3 className="font-medium text-sm mb-3">Focus Areas</h3>
+      <div className="space-y-1">
+        <button
+          type="button"
+          onClick={() => handleCategoryClick(null)}
+          className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
+        >
+          <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
+            <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
+          </div>
+          <span className="font-medium">All Focus Areas</span>
+        </button>
+        {isLoadingCategories &&
+          [...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-8 w-full rounded-full" />
+          ))}
+        {!isLoadingCategories &&
+          categories &&
+          categories.map((category) => {
+            const styleInfo = getCategoryStyle(category.slug);
+            const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
+
+            // Use the name from FOCUS_AREAS if available, otherwise fall back to category.name
+            const displayName = styleInfo?.name || category.name;
+
+            return (
+              <button
+                type="button"
+                key={category.id}
+                onClick={() => handleCategoryClick(category.slug)}
+                className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
+              >
+                <div
+                  className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
+                  style={{ backgroundColor: `${categoryColor}1A` }}
+                >
+                  {styleInfo?.iconSvg ? (
+                    <div style={{ transform: 'scale(0.65)' }}>
+                      <div
+                        style={{ color: categoryColor }}
+                        dangerouslySetInnerHTML={{
+                          __html: styleInfo.iconSvg,
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <TagIcon className="w-3 h-3" />
+                  )}
+                </div>
+                <span className="font-medium">{displayName}</span>
+              </button>
+            );
+          })}
+      </div>
+
+      <div className="mt-6 mb-6">
+        <h3 className="font-medium text-sm mb-2">Status</h3>
+        <div className="flex space-x-1">
+          <button
+            type="button"
+            className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
+            onClick={() => handleStatusFilterClick('active')}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
+            onClick={() => handleStatusFilterClick('all')}
+          >
+            All
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const ForecastingTable = () => {
   // Use the new hook and update variable names
   const { data: enrichedMarkets, isLoading: isLoadingMarkets } =
@@ -65,6 +175,11 @@ const ForecastingTable = () => {
   const [statusFilter, setStatusFilter] = React.useState<'all' | 'active'>(
     'active'
   );
+
+  // Add state for filter sheet
+  const [filterOpen, setFilterOpen] = React.useState(false);
+  // Get mobile status
+  const isMobile = useIsMobile();
 
   // Update the state when the URL parameter changes
   React.useEffect(() => {
@@ -214,9 +329,40 @@ const ForecastingTable = () => {
   };
 
   return (
-    <div className="grid grid-cols-[1fr_280px] gap-0">
+    <div className="flex flex-col md:flex-row min-h-0">
       {/* Main Content */}
-      <div className="pr-6">
+      <div className="flex-1 pr-6">
+        {/* Only show the filter button on mobile */}
+        {isMobile && (
+          <div className="sticky top-20 z-10 flex justify-end mb-2">
+            <div className="flex items-center bg-background/30 p-2 backdrop-blur-sm rounded-full">
+              <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="flex items-center justify-center opacity-40 hover:opacity-90 w-8 h-8 rounded-full"
+                  >
+                    <SlidersHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Filter</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[280px] pr-0">
+                  <FocusAreaFilter
+                    selectedCategorySlug={selectedCategorySlug}
+                    handleCategoryClick={handleCategoryClick}
+                    statusFilter={statusFilter}
+                    handleStatusFilterClick={handleStatusFilterClick}
+                    isLoadingCategories={isLoadingCategories}
+                    categories={categories}
+                    getCategoryStyle={getCategoryStyle}
+                  />
+                </SheetContent>
+              </Sheet>
+            </div>
+          </div>
+        )}
+
         {isLoadingMarkets && (
           <div className="space-y-12 flex flex-col pt-10">
             {[...Array(3)].map((_, i) => (
@@ -232,9 +378,9 @@ const ForecastingTable = () => {
             ))}
           </div>
         )}
-        {/* Container for list and zero-state using popLayout */}
+
         {!isLoadingMarkets && (
-          <div className="relative min-h-[300px] pt-10">
+          <div className="relative min-h-[300px] pt-2">
             <AnimatePresence mode="popLayout">
               {groupedMarkets.length === 0 && (
                 <motion.div
@@ -258,7 +404,7 @@ const ForecastingTable = () => {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.98, y: 0 }}
                   transition={{ duration: 0.15, ease: 'easeInOut' }}
-                  className="mb-12"
+                  className="mb-12 relative cursor-pointer transition-all hover:translate-y-[-2px] hover:opacity-95 hover:shadow-sm"
                 >
                   <MarketGroupPreview
                     chainId={market.chainId}
@@ -274,84 +420,20 @@ const ForecastingTable = () => {
         )}
       </div>
 
-      {/* Right Sidebar - Navigation */}
-      <div className="p-5 sticky top-0 self-start mt-10">
-        <div className="pb-2">
-          <h3 className="font-medium text-sm mb-3">Focus Areas</h3>
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => handleCategoryClick(null)}
-              className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
-            >
-              <div className="rounded-full p-1 w-10 h-10 flex items-center justify-center bg-zinc-500/20">
-                <LayoutGridIcon className="w-4 h-4 text-zinc-500" />
-              </div>
-              <span className="font-medium">All Focus Areas</span>
-            </button>
-            {isLoadingCategories &&
-              [...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full rounded-md" />
-              ))}
-            {!isLoadingCategories &&
-              categories &&
-              categories.map((category) => {
-                const styleInfo = getCategoryStyle(category.slug);
-                const categoryColor =
-                  styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
-
-                return (
-                  <button
-                    type="button"
-                    key={category.id}
-                    onClick={() => handleCategoryClick(category.slug)}
-                    className={`w-full text-left px-2 py-1.5 rounded-md flex items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
-                  >
-                    <div
-                      className="rounded-full p-1 w-10 h-10 flex items-center justify-center"
-                      style={{ backgroundColor: `${categoryColor}1A` }}
-                    >
-                      {styleInfo?.iconSvg ? (
-                        <div
-                          style={{ color: categoryColor }}
-                          dangerouslySetInnerHTML={{
-                            __html: styleInfo.iconSvg,
-                          }}
-                        />
-                      ) : (
-                        <TagIcon
-                          className="w-2 h-2"
-                          style={{ color: categoryColor }}
-                        />
-                      )}
-                    </div>
-                    <span className="font-medium">{category.name}</span>
-                  </button>
-                );
-              })}
-          </div>
-
-          <div className="mt-6 mb-6">
-            <h3 className="font-medium text-sm mb-2">Status</h3>
-            <div className="flex space-x-1">
-              <button
-                type="button"
-                className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
-                onClick={() => handleStatusFilterClick('active')}
-              >
-                Active
-              </button>
-              <button
-                type="button"
-                className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
-                onClick={() => handleStatusFilterClick('all')}
-              >
-                All
-              </button>
-            </div>
-          </div>
+      {/* Desktop filter panel - sticky on the right side */}
+      {!isMobile && (
+        <div className="hidden md:block w-[280px] sticky top-20 max-h-[calc(100vh-5rem)] self-start overflow-y-auto">
+          <FocusAreaFilter
+            selectedCategorySlug={selectedCategorySlug}
+            handleCategoryClick={handleCategoryClick}
+            statusFilter={statusFilter}
+            handleStatusFilterClick={handleStatusFilterClick}
+            isLoadingCategories={isLoadingCategories}
+            categories={categories}
+            getCategoryStyle={getCategoryStyle}
+          />
         </div>
-      </div>
+      )}
     </div>
   );
 };
