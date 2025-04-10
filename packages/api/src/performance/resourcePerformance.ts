@@ -771,7 +771,7 @@ export class ResourcePerformance {
         };
 
         piStore.metadata[currentPlaceholderIndex] = {
-          st: 
+          st:
             piStore.metadata[currentPlaceholderIndex].st,
           et: item.timestamp,
           u: ripd.used.toString(),
@@ -962,7 +962,7 @@ export class ResourcePerformance {
       };
 
       ptStore.metadata[currentPlaceholderIndex] = {
-        st: 
+        st:
           ptStore.metadata[currentPlaceholderIndex].st,
         et: item.timestamp,
         u: rtpd.used.toString(),
@@ -1073,7 +1073,7 @@ export class ResourcePerformance {
 
         // Create a placeholder in the store
         const itemStartTime = this.startOfCurrentInterval(
-          item.t, 
+          item.t,
           interval
         );
 
@@ -1132,13 +1132,13 @@ export class ResourcePerformance {
 
         // Create a placeholder for the next interval
         const itemStartTime = this.startOfCurrentInterval(
-          item.t, 
+          item.t,
           interval
         );
 
         // Check if we already have an item for this interval
         const existingIndex = pmStore.data.findIndex(
-          (d) => 
+          (d) =>
             d.t >= itemStartTime && d.t < rmpd.nextTimestamp
         );
 
