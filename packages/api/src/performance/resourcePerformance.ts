@@ -771,7 +771,8 @@ export class ResourcePerformance {
         };
 
         piStore.metadata[currentPlaceholderIndex] = {
-          st: piStore.metadata[currentPlaceholderIndex].st,
+          st: 
+            piStore.metadata[currentPlaceholderIndex].st,
           et: item.timestamp,
           u: ripd.used.toString(),
           f: ripd.feePaid.toString(),
@@ -961,7 +962,8 @@ export class ResourcePerformance {
       };
 
       ptStore.metadata[currentPlaceholderIndex] = {
-        st: ptStore.metadata[currentPlaceholderIndex].st,
+        st: 
+          ptStore.metadata[currentPlaceholderIndex].st,
         et: item.timestamp,
         u: rtpd.used.toString(),
         f: rtpd.feePaid.toString(),
@@ -1070,7 +1072,10 @@ export class ResourcePerformance {
         const pmStore = this.persistentStorage[interval].marketStore[epoch.id];
 
         // Create a placeholder in the store
-        const itemStartTime = this.startOfCurrentInterval(item.t, interval);
+        const itemStartTime = this.startOfCurrentInterval(
+          item.t, 
+          interval
+        );
 
         // Check if we already have an item for this interval
         const lastStoreIndex =
@@ -1126,11 +1131,15 @@ export class ResourcePerformance {
         rmpd.close = itemValueBn;
 
         // Create a placeholder for the next interval
-        const itemStartTime = this.startOfCurrentInterval(item.t, interval);
+        const itemStartTime = this.startOfCurrentInterval(
+          item.t, 
+          interval
+        );
 
         // Check if we already have an item for this interval
         const existingIndex = pmStore.data.findIndex(
-          (d) => d.t >= itemStartTime && d.t < rmpd.nextTimestamp
+          (d) => 
+            d.t >= itemStartTime && d.t < rmpd.nextTimestamp
         );
 
         if (existingIndex === -1 && !isEndOfEpoch) {
@@ -1317,7 +1326,9 @@ export class ResourcePerformance {
 
     // TODO: Use pointer to find the start and end indices
     // Since prices are ordered by timestamp, we can find the start and end indices
-    let startIndex = prices.findIndex((price) => price.t >= timeWindow.from);
+    let startIndex = prices.findIndex(
+      (price) => price.t >= timeWindow.from
+    );
     if (startIndex === -1) startIndex = prices.length;
 
     let endIndex = prices.length;
