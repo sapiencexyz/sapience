@@ -33,6 +33,7 @@ type EpochType {
 
 type MarketType {
   address: String!
+  category: CategoryType
   chainId: Int!
   claimStatement: String
   collateralAsset: String
