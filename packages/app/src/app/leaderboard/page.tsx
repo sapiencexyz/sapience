@@ -15,9 +15,9 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from '@tanstack/react-table';
+import { Loader2 } from 'lucide-react';
 
 import AddressDisplay from '~/components/AddressDisplay';
-import LottieLoader from '~/components/LottieLoader';
 import NumberDisplay from '~/components/numberDisplay';
 import { useResources } from '~/lib/hooks/useResources';
 import { foilApi } from '~/lib/utils/util';
@@ -271,7 +271,7 @@ const GlobalLeaderboard = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64 w-full">
-        <LottieLoader className="h-8 w-8" />
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
