@@ -96,6 +96,7 @@ async function main() {
 
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
+    console.log('slug indexer', resourceSlug);
     // Find the resource in the database
     const resource = await resourceRepository.findOne({
       where: { slug: resourceSlug },

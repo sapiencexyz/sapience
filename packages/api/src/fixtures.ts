@@ -37,8 +37,8 @@ export const INDEXERS: {
   'bitcoin-fees': new btcIndexer(),
   'base-gas': new evmIndexer(base.id),
   'arbitrum-gas': new evmIndexer(arbitrum.id),
-  'nyc-temperature': new WeatherIndexer('temperature'),
-  'la-precipitation': new WeatherIndexer('precipitation'),
+  'nyc-air-temperature': new WeatherIndexer('temperature'),
+  'sf-precipitation': new WeatherIndexer('precipitation'),
 };
 
 // Helper function to create or update epochs with questions
