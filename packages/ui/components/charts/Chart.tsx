@@ -111,12 +111,7 @@ export const Chart = ({
         </div>
       )}
       <div className="flex flex-1 h-full">
-        <div ref={chartContainerRef} className="w-full h-full">
-          {/* TODO: Implement actual chart rendering using a charting library */}
-          <div className="text-center text-muted-foreground">
-            Chart placeholder for {resourceSlug}
-          </div>
-        </div>
+        <div ref={chartContainerRef} className="w-full h-full" />
       </div>
       <TooltipProvider>
         <Tooltip>

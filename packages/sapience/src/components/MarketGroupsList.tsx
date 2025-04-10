@@ -15,6 +15,7 @@ import {
   TagIcon,
   SlidersHorizontal,
 } from 'lucide-react';
+import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
@@ -26,6 +27,13 @@ import {
 } from '~/lib/hooks/useMarketGroups';
 
 import { MarketGroupPreview } from './MarketGroupPreview';
+
+// Dynamically import LottieLoader
+const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+  ssr: false,
+  // Use a simple div as placeholder during load
+  loading: () => <div className="w-8 h-8" />,
+});
 
 // Constants for button classes
 const selectedStatusClass = 'bg-secondary';
@@ -328,6 +336,16 @@ const ForecastingTable = () => {
     return FOCUS_AREAS.find((fa) => fa.id === categorySlug);
   };
 
+  // Show loader if either query is loading
+  if (isLoadingMarkets || isLoadingCategories) {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-theme(spacing.20))] w-full">
+        <LottieLoader width={32} height={32} />
+      </div>
+    );
+  }
+
+  // Render content once both are loaded
   return (
     <div className="flex flex-col md:flex-row min-h-0">
       {/* Main Content */}
@@ -348,90 +366,87 @@ const ForecastingTable = () => {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[280px] pr-0">
-                  <FocusAreaFilter
-                    selectedCategorySlug={selectedCategorySlug}
-                    handleCategoryClick={handleCategoryClick}
-                    statusFilter={statusFilter}
-                    handleStatusFilterClick={handleStatusFilterClick}
-                    isLoadingCategories={isLoadingCategories}
-                    categories={categories}
-                    getCategoryStyle={getCategoryStyle}
-                  />
+                  {/* Add animation wrapper */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  >
+                    <FocusAreaFilter
+                      selectedCategorySlug={selectedCategorySlug}
+                      handleCategoryClick={handleCategoryClick}
+                      statusFilter={statusFilter}
+                      handleStatusFilterClick={handleStatusFilterClick}
+                      isLoadingCategories={false}
+                      categories={categories}
+                      getCategoryStyle={getCategoryStyle}
+                    />
+                  </motion.div>
                 </SheetContent>
               </Sheet>
             </div>
           </div>
         )}
 
-        {isLoadingMarkets && (
-          <div className="space-y-12 flex flex-col pt-10">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="space-y-3">
-                <Skeleton
-                  className="h-40 w-full border-t-[6px]"
-                  style={{ borderTopColor: DEFAULT_CATEGORY_COLOR }}
+        {/* Removed the inline loading checks here */}
+        <div className="relative min-h-[300px] pt-2">
+          <AnimatePresence mode="popLayout">
+            {groupedMarkets.length === 0 && (
+              <motion.div
+                key="zero-state"
+                layout
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="w-full pt-48 text-center text-muted-foreground"
+              >
+                <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+                No forecasting markets match the selected filters.
+              </motion.div>
+            )}
+            {groupedMarkets.map((market) => (
+              <motion.div
+                layout
+                key={market.key}
+                initial={{ opacity: 0, scale: 0.98, y: 0 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.98, y: 0 }}
+                transition={{ duration: 0.15, ease: 'easeInOut' }}
+                className="mb-12 relative cursor-pointer transition-all hover:translate-y-[-2px] hover:opacity-95 hover:shadow-sm"
+              >
+                <MarketGroupPreview
+                  chainId={market.chainId}
+                  marketAddress={market.marketAddress}
+                  epochs={market.epochs}
+                  color={market.color}
+                  displayQuestion={market.displayQuestion}
                 />
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-5 w-full" />
-                <Skeleton className="h-5 w-5/6" />
-              </div>
+              </motion.div>
             ))}
-          </div>
-        )}
-
-        {!isLoadingMarkets && (
-          <div className="relative min-h-[300px] pt-2">
-            <AnimatePresence mode="popLayout">
-              {groupedMarkets.length === 0 && (
-                <motion.div
-                  key="zero-state"
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-full pt-48 text-center text-muted-foreground"
-                >
-                  <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-                  No forecasting markets match the selected filters.
-                </motion.div>
-              )}
-              {groupedMarkets.map((market) => (
-                <motion.div
-                  layout
-                  key={market.key}
-                  initial={{ opacity: 0, scale: 0.98, y: 0 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.98, y: 0 }}
-                  transition={{ duration: 0.15, ease: 'easeInOut' }}
-                  className="mb-12 relative cursor-pointer transition-all hover:translate-y-[-2px] hover:opacity-95 hover:shadow-sm"
-                >
-                  <MarketGroupPreview
-                    chainId={market.chainId}
-                    marketAddress={market.marketAddress}
-                    epochs={market.epochs}
-                    color={market.color}
-                    displayQuestion={market.displayQuestion}
-                  />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Desktop filter panel - sticky on the right side */}
       {!isMobile && (
         <div className="hidden md:block w-[280px] sticky top-20 max-h-[calc(100vh-5rem)] self-start overflow-y-auto">
-          <FocusAreaFilter
-            selectedCategorySlug={selectedCategorySlug}
-            handleCategoryClick={handleCategoryClick}
-            statusFilter={statusFilter}
-            handleStatusFilterClick={handleStatusFilterClick}
-            isLoadingCategories={isLoadingCategories}
-            categories={categories}
-            getCategoryStyle={getCategoryStyle}
-          />
+          {/* Add animation wrapper */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, ease: 'easeInOut', delay: 0.1 }} // Slight delay for desktop
+          >
+            <FocusAreaFilter
+              selectedCategorySlug={selectedCategorySlug}
+              handleCategoryClick={handleCategoryClick}
+              statusFilter={statusFilter}
+              handleStatusFilterClick={handleStatusFilterClick}
+              isLoadingCategories={isLoadingCategories}
+              categories={categories}
+              getCategoryStyle={getCategoryStyle}
+            />
+          </motion.div>
         </div>
       )}
     </div>

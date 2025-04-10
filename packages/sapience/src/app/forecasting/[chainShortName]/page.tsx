@@ -1,14 +1,29 @@
 'use client';
 
 import { gql } from '@apollo/client';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@foil/ui/components/ui/dialog';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { ChevronRight } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
 import { foilApi } from '~/lib/utils/util';
+
+// Dynamically import LottieLoader
+const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+  ssr: false,
+  // Use a simple div as placeholder during load
+  loading: () => <div className="w-8 h-8" />,
+});
 
 // GraphQL query to fetch market data - updated to match schema exactly
 const MARKET_QUERY = gql`
@@ -50,6 +65,7 @@ const ForecastingDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
+  const [showEpochSelector, setShowEpochSelector] = useState(false);
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
@@ -81,7 +97,11 @@ const ForecastingDetailPage = () => {
   const chainId = getChainIdFromShortName(chainShortName);
 
   // Fetch market data
-  const { data: marketData, isLoading: isLoadingMarket } = useQuery({
+  const {
+    data: marketData,
+    isLoading: isLoadingMarket,
+    isSuccess,
+  } = useQuery({
     queryKey: ['market', chainId, marketAddress],
     queryFn: async () => {
       // Don't attempt to fetch if we don't have valid params
@@ -131,49 +151,89 @@ const ForecastingDetailPage = () => {
   });
 
   // Ensure we have a good initial state while loading
-  useEffect(() => {
-    if (isLoadingMarket) {
-      setDisplayQuestion('');
-    }
-  }, [isLoadingMarket]);
+  // useEffect(() => {
+  //   if (isLoadingMarket) {
+  //     setDisplayQuestion('');
+  //   }
+  // }, [isLoadingMarket]);
 
   // Process and format the question
   useEffect(() => {
     console.log('Market data for question:', marketData);
 
-    // Handle the placeholder value case
-    if (marketData?.placeholder) {
-      setDisplayQuestion('This market question is not available');
+    // Handle the placeholder value case or loading state
+    if (isLoadingMarket || marketData?.placeholder) {
+      setDisplayQuestion(
+        marketData?.placeholder ? 'This market question is not available' : '' // Set empty while loading initially
+      );
       return;
     }
 
-    // First try to get the question from the market directly
+    // Determine the question string
+    let questionToFormat = '';
     if (marketData?.question) {
-      formatAndSetQuestion(marketData.question);
-      return;
-    }
-
-    // Fallback to epochs if market question is not available
-    if (marketData?.epochs && marketData.epochs.length > 0) {
-      // Find the first epoch with a question
+      questionToFormat = marketData.question;
+    } else if (marketData?.epochs && marketData.epochs.length > 0) {
       const epochWithQuestion = marketData.epochs.find(
         (epoch: { question?: string }) => epoch.question
       );
-
       if (epochWithQuestion?.question) {
-        formatAndSetQuestion(epochWithQuestion.question);
-        return;
+        questionToFormat = epochWithQuestion.question;
       }
     }
 
-    // If we get here with actual data but no question, show a default
-    if (marketData && !marketData.placeholder) {
+    // Format and set the question, or set default if none found
+    if (questionToFormat) {
+      setDisplayQuestion(formatAndSetQuestion(questionToFormat));
+    } else if (marketData) {
+      // Only set 'not available' if data is loaded but no question found
       setDisplayQuestion('Market question not available');
     }
-  }, [marketData]);
+  }, [marketData, isLoadingMarket]); // Removed formatAndSetQuestion dependency
 
-  // Helper function to format and set the question
-  const formatAndSetQuestion = (rawQuestion: string) => {
+  // Redirect or show epoch selector based on epoch count
+  useEffect(() => {
+    console.log('Epoch Check Effect Triggered:', {
+      isLoadingMarket,
+      isSuccess,
+      hasMarketData: !!marketData,
+      isPlaceholder: marketData?.placeholder,
+    });
+
+    // Wait until loading is finished, the query was successful, and we have valid, non-placeholder data
+    if (
+      isLoadingMarket ||
+      !isSuccess ||
+      !marketData ||
+      marketData.placeholder
+    ) {
+      console.log(
+        'Epoch Check: Exiting early (loading/failed/no data/placeholder).'
+      );
+      return; // Exit early if still loading, query failed, data is invalid/placeholder
+    }
+
+    // Ensure epochs is an array before proceeding
+    if (!Array.isArray(marketData.epochs)) {
+      console.log(
+        'Epoch Check: Exiting (epochs data is not an array or is missing).',
+        marketData.epochs
+      );
+      return; // Exit if epochs structure is incorrect
+    }
+
+    const numberOfEpochs = marketData.epochs.length;
+    console.log(`Epoch Check: Found ${numberOfEpochs} epochs.`);
+
+    if (numberOfEpochs === 0) {
+      // Handle case with zero epochs
+      console.log('Epoch Check: Zero epochs found.');
+      // No action needed here, the other useEffect handles the display question
+    }
+  }, [marketData, isLoadingMarket, isSuccess]); // Removed router dependency as it's no longer used here
+
+  // Helper function to format the question string
+  const formatAndSetQuestion = (rawQuestion: string): string => {
     // Format the question - ensure it has proper capitalization and ends with a question mark
     let formattedQuestion = rawQuestion.trim();
 
@@ -188,7 +248,10 @@ const ForecastingDetailPage = () => {
       formattedQuestion += '?';
     }
 
-    setDisplayQuestion(formattedQuestion);
+    // Return the formatted question instead of setting state directly
+    // This makes it usable in the dialog rendering
+    return formattedQuestion;
+    // setDisplayQuestion(formattedQuestion); // Original state setting removed/commented
   };
 
   // Form data with tab selection
@@ -232,10 +295,19 @@ const ForecastingDetailPage = () => {
     { date: 'Aug', value: 80 },
   ];
 
+  // MOVED LOADING CHECK HERE - after all hooks
+  if (isLoadingMarket) {
+    return (
+      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+        <LottieLoader width={32} height={32} />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col w-full min-h-[calc(100dvh-69px)] overflow-y-auto lg:overflow-hidden">
-      <div className="container mx-auto max-w-5xl flex flex-col min-h-[calc(100dvh-69px)] pt-32">
-        <div className="flex flex-col px-4 md:px-3 flex-1">
+    <div className="flex flex-col justify-center w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-12">
+      <div className="container mx-auto max-w-5xl flex flex-col">
+        <div className="flex flex-col px-4 md:px-3">
           {displayQuestion && (
             <h1 className="text-4xl font-normal mb-8 leading-tight">
               {displayQuestion}
@@ -464,20 +536,71 @@ const ForecastingDetailPage = () => {
             </div>
           </div>
         </div>
-        <div className="flex justify-end px-4 md:px-3 py-4 mt-auto">
+        <div className="flex justify-end px-4 md:px-3 pt-4">
           <button
             type="button"
             onClick={(e) => {
               e.preventDefault();
-              router.push(`${window.location.pathname}/1`);
+              if (!marketData?.epochs) return; // Guard clause
+
+              const numberOfEpochs = marketData.epochs.length;
+              const currentPath = window.location.pathname;
+
+              if (numberOfEpochs === 1) {
+                // Navigate to the single epoch page if not already there
+                const { epochId } = marketData.epochs[0];
+                if (!currentPath.endsWith(`/${epochId}`)) {
+                  router.push(`${currentPath}/${epochId}`);
+                }
+              } else if (numberOfEpochs > 1) {
+                // Open selector if there are multiple epochs
+                setShowEpochSelector(true);
+              }
+              // If 0 epochs, the button is disabled, so onClick won't trigger.
             }}
-            className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
+            disabled={
+              isLoadingMarket ||
+              !marketData ||
+              marketData.placeholder ||
+              !marketData.epochs ||
+              marketData.epochs.length === 0
+            }
+            className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ADVANCED VIEW
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
+
+      {/* Epoch Selection Dialog */}
+      <Dialog open={showEpochSelector} onOpenChange={setShowEpochSelector}>
+        <DialogContent className="sm:max-w-xl [&>[aria-label='Close']]:hidden p-8">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-3xl font-normal">Markets</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-5 pb-2">
+            {marketData?.epochs?.map(
+              (epoch: { epochId: string; question?: string; id: string }) => (
+                <Link
+                  key={epoch.id}
+                  href={`${window.location.pathname}/${epoch.epochId}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setShowEpochSelector(false)}
+                    className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
+                  >
+                    {epoch.question
+                      ? formatAndSetQuestion(epoch.question)
+                      : `Epoch ${epoch.epochId}`}
+                  </button>
+                </Link>
+              )
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
