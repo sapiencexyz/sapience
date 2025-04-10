@@ -19,7 +19,7 @@ import PositionDisplay from './PositionDisplay';
 const PositionSelector: React.FC = () => {
   const { nftId, positions, setNftId } = useAddEditPosition();
   const [isOpen, setIsOpen] = useState(false);
-  const { chainId, address: marketAddress, epoch } = useContext(PeriodContext);
+  const { chainId, address: marketAddress } = useContext(PeriodContext);
 
   const allPositions = [
     ...(positions?.liquidityPositions?.map((pos) => ({
