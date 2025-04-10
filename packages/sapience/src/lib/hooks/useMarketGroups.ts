@@ -2,8 +2,79 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
-import { RESOURCE_ORDER, type ResourceSlug } from '~/lib/constants/resources';
+import { FOCUS_AREAS, DEFAULT_FOCUS_AREA } from '~/lib/constants/focusAreas';
 import { foilApi } from '~/lib/utils/util';
+
+// Define the Category type based on schema.graphql
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  iconSvg?: string;
+  color?: string;
+  // Add other fields from CategoryType if needed elsewhere
+}
+
+// Define the structure of the data returned by the category query
+interface GetCategoriesApiResponse {
+  data: {
+    categories: Category[];
+  };
+  // Add other potential API response fields if necessary
+}
+
+// GraphQL query to fetch categories
+const GET_CATEGORIES = gql`
+  query GetCategories {
+    categories {
+      id
+      name
+      slug
+    }
+  }
+`;
+
+// Custom hook to fetch categories using Tanstack Query
+export const useCategories = () => {
+  return useQuery<Category[], Error>({
+    // Specify return type and error type
+    queryKey: ['categories'], // Define a query key
+    queryFn: async (): Promise<Category[]> => {
+      // Define the async function
+      try {
+        const response: GetCategoriesApiResponse = await foilApi.post(
+          '/graphql',
+          {
+            query: print(GET_CATEGORIES),
+          }
+        );
+        // Ensure the response structure is as expected
+        if (
+          response &&
+          response.data &&
+          Array.isArray(response.data.categories)
+        ) {
+          return response.data.categories;
+        }
+        console.error(
+          'Unexpected API response structure for categories:',
+          response
+        );
+        throw new Error(
+          'Failed to fetch categories: Invalid response structure'
+        );
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+        // Re-throw the error or return a default value like an empty array
+        // Re-throwing ensures error state is propagated by react-query
+        throw err instanceof Error
+          ? err
+          : new Error('An unknown error occurred while fetching categories');
+      }
+    },
+    // Add other react-query options if needed (e.g., staleTime, refetchOnWindowFocus)
+  });
+};
 
 export interface Epoch {
   id: number;
@@ -26,19 +97,15 @@ export interface Market {
   id: number;
   address: string;
   chainId: number;
-  name: string;
   vaultAddress: string;
   isYin: boolean;
   collateralAsset: string;
   epochs: Epoch[];
 }
 
-export interface Resource {
-  id: number;
-  name: string;
-  slug: ResourceSlug;
-  iconPath: string;
-  markets: Market[];
+// Define the new EnrichedMarket type
+export interface EnrichedMarket extends Market {
+  category: Category;
 }
 
 export interface Candle {
@@ -48,20 +115,6 @@ export interface Candle {
   low: string;
   close: string;
 }
-
-const LATEST_RESOURCE_PRICE_QUERY = gql`
-  query GetLatestResourcePrice($slug: String!) {
-    resourceCandles(
-      slug: $slug
-      from: ${Math.floor(Date.now() / 1000) - 300}  # Last 5 minutes
-      to: ${Math.floor(Date.now() / 1000)}
-      interval: 60  # 1 minute intervals
-    ) {
-      timestamp
-      close
-    }
-  }
-`;
 
 const LATEST_INDEX_PRICE_QUERY = gql`
   query GetLatestIndexPrice($address: String!, $chainId: Int!, $epochId: String!) {
@@ -79,28 +132,28 @@ const LATEST_INDEX_PRICE_QUERY = gql`
   }
 `;
 
-const RESOURCES_QUERY = gql`
-  query GetResources {
-    resources {
+const MARKETS_QUERY = gql`
+  query GetMarkets {
+    markets {
       id
-      name
-      slug
-      markets {
+      address
+      chainId
+      isYin
+      vaultAddress
+      collateralAsset
+      category {
         id
-        address
-        isYin
-        vaultAddress
-        chainId
-        collateralAsset
-        epochs {
-          id
-          epochId
-          startTimestamp
-          endTimestamp
-          settled
-          public
-          question
-        }
+        name
+        slug
+      }
+      epochs {
+        id
+        epochId
+        startTimestamp
+        endTimestamp
+        settled
+        public
+        question
       }
     }
   }
@@ -146,73 +199,84 @@ const TOTAL_VOLUME_QUERY = gql`
   }
 `;
 
-export const useMarketGroups = () => {
-  return useQuery<Resource[]>({
-    queryKey: ['resources'],
-    queryFn: async () => {
-      const { data } = await foilApi.post('/graphql', {
-        query: print(RESOURCES_QUERY),
-      });
-      const resourcesWithMarketNames = data.resources.map((resource: any) => ({
-        ...resource,
-        markets: resource.markets.map((market: any) => ({
-          ...market,
-          name: resource.name,
-        })),
-      }));
+// Define an interface for the market data structure returned by MARKETS_QUERY
+interface MarketApiResponse {
+  id: number;
+  address: string;
+  chainId: number;
+  isYin: boolean;
+  vaultAddress: string;
+  collateralAsset: string;
+  category: Category | null; // Allow null based on schema possibility
+  epochs: Epoch[];
+}
 
-      const sortedResources = resourcesWithMarketNames.sort(
-        (a: any, b: any) => {
-          const indexA = RESOURCE_ORDER.indexOf(a.slug);
-          const indexB = RESOURCE_ORDER.indexOf(b.slug);
-          return indexA - indexB;
+// Rename the hook to reflect its output
+export const useEnrichedMarkets = () => {
+  // Update the return type to use EnrichedMarket[]
+  return useQuery<EnrichedMarket[]>({
+    queryKey: ['enrichedMarkets'], // Changed queryKey
+    queryFn: async () => {
+      // Create a lookup map for focus areas using their ID (which matches category slug)
+      const focusAreaMap = new Map<
+        string,
+        { iconSvg: string; color: string }
+      >();
+      FOCUS_AREAS.forEach((area) => {
+        focusAreaMap.set(area.id, { iconSvg: area.iconSvg, color: area.color });
+      });
+
+      const { data } = await foilApi.post('/graphql', {
+        query: print(MARKETS_QUERY), // Use the new MARKETS_QUERY
+      });
+
+      // Check if data and data.markets exist
+      if (!data || !data.markets) {
+        console.error(
+          '[useEnrichedMarkets] No markets data received from API or data structure invalid.'
+        );
+        return []; // Return empty array or handle error as appropriate
+      }
+
+      // Process the flat list of markets directly
+      const mappedMarkets = data.markets.map((market: MarketApiResponse) => {
+        // Apply the type here
+
+        let categoryInfo: Category; // Use the updated Category type
+
+        // Ensure category exists and enrich it with focus area data
+        if (market.category) {
+          const focusAreaData = focusAreaMap.get(market.category.slug); // Match category slug with focus area id
+          categoryInfo = {
+            id: market.category.id,
+            name: market.category.name,
+            slug: market.category.slug,
+            // Use focus area data if found, otherwise fallback to default
+            iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
+            color: focusAreaData?.color || DEFAULT_FOCUS_AREA.color,
+          };
+        } else {
+          // Provide default category including default focus area data
+          categoryInfo = {
+            id: 'unknown',
+            name: 'Unknown',
+            slug: 'unknown',
+            iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
+            color: DEFAULT_FOCUS_AREA.color,
+          };
         }
-      );
 
-      return sortedResources.map((resource: any) => ({
-        ...resource,
-        iconPath: `/resources/${resource.slug}.svg`,
-      }));
-    },
-  });
-};
-
-export const useLatestResourcePrice = (slug: string) => {
-  return useQuery({
-    queryKey: ['resourcePrice', slug],
-    queryFn: async () => {
-      const { data } = await foilApi.post('/graphql', {
-        query: print(LATEST_RESOURCE_PRICE_QUERY),
-        variables: {
-          slug,
-          from: Math.floor(Date.now() / 1000) - 300,
-          to: Math.floor(Date.now() / 1000),
-          interval: 60,
-        },
+        return {
+          ...market, // Spread original market fields (id, address, chainId, etc.)
+          category: categoryInfo, // Use fetched or default category
+        };
       });
 
-      const candles = data.resourceCandles;
-      if (!candles || candles.length === 0) {
-        return { timestamp: null, value: null };
-      }
+      // Rename mappedMarkets to enrichedMarkets as the filtering step is removed
+      const enrichedMarkets: EnrichedMarket[] = mappedMarkets;
 
-      const latestCandle = candles.reduce((latest: any, current: any) => {
-        return !latest || current.timestamp > latest.timestamp
-          ? current
-          : latest;
-      }, null);
-
-      if (!latestCandle) {
-        return { timestamp: null, value: null };
-      }
-
-      return {
-        timestamp: latestCandle.timestamp.toString(),
-        value: latestCandle.close,
-      };
+      return enrichedMarkets;
     },
-    refetchInterval: 6000,
-    enabled: !!slug,
   });
 };
 

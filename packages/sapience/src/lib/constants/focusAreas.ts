@@ -10,7 +10,7 @@ export interface FocusArea {
 
 export const FOCUS_AREAS: FocusArea[] = [
   {
-    id: 'compute',
+    id: 'decentralized-compute',
     name: 'Decentralized Compute',
     resources: [
       'ethereum-gas',
@@ -38,7 +38,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#3B82F6', // blue-500
   },
   {
-    id: 'energy',
+    id: 'energy-depin',
     name: 'Energy + DePIN',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -47,7 +47,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#C084FC', // purple-400
   },
   {
-    id: 'climate',
+    id: 'climate-change',
     name: 'Climate Change',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -72,7 +72,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#FBBF24', // amber-400
   },
   {
-    id: 'international',
+    id: 'international-relations',
     name: 'International Relations',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -86,7 +86,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#F87171', // red-400
   },
   {
-    id: 'space',
+    id: 'space-exploration',
     name: 'Space Exploration',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -96,7 +96,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#22D3EE', // cyan-400
   },
   {
-    id: 'tech',
+    id: 'emerging-technologies',
     name: 'Emerging Technologies',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
