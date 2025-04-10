@@ -53,7 +53,7 @@
       "questions": [
         "What will be the average blob gas cost on Ethereum in April?"
       ],
-      "question": "What will be the average blob gas cost on Ethereum in April?",
+      "question": "What will be the average blob gas cost on Ethereum in a given month?",
       "resource": "ethereum-blobspace",
       "chainId": 8453,
       "address": "0x301f7f583A6850d8D6e0Ea0a86205f905B91e255",
