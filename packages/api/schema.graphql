@@ -33,6 +33,7 @@ type EpochType {
 
 type MarketType {
   address: String!
+  category: CategoryType
   chainId: Int!
   claimStatement: String
   collateralAsset: String
@@ -43,6 +44,7 @@ type MarketType {
   isCumulative: Boolean!
   isYin: Boolean!
   owner: String
+  question: String
   resource: ResourceType
   vaultAddress: String
 }
@@ -107,6 +109,7 @@ type ResourcePriceType {
 }
 
 type ResourceType {
+  category: CategoryType
   id: ID!
   markets: [MarketType!]!
   name: String!

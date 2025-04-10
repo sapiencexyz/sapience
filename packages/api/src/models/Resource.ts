@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   OneToMany,
   Index,
+  ManyToOne,
 } from 'typeorm';
 import { Market } from './Market';
 import { ResourcePrice } from './ResourcePrice';
+import { Category } from './Category';
 
 @Entity()
 export class Resource {
@@ -29,4 +31,7 @@ export class Resource {
 
   @OneToMany(() => ResourcePrice, (resourcePrice) => resourcePrice.resource)
   resourcePrices: ResourcePrice[];
+
+  @ManyToOne(() => Category, (category) => category.resources)
+  category: Category;
 }
