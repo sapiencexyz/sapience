@@ -24,10 +24,17 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from '@tanstack/react-table';
+import dynamic from 'next/dynamic';
 import { useState, useMemo } from 'react';
 
-import LottieLoader from '~/components/LottieLoader';
-import { foilApi } from '~/lib/utils/util';
+import { foilApi } from '~/lib/utils/util'; // Import dynamic
+
+// Dynamically import LottieLoader
+const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+  ssr: false,
+  // Use a simple div as placeholder during load
+  loading: () => <div className="w-8 h-8" />,
+});
 
 interface Props {
   params: {

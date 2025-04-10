@@ -6,12 +6,19 @@ import {
   SidebarTrigger,
 } from '@foil/ui/components/ui/sidebar';
 import { ExternalLink } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import ConnectButton from '../ConnectButton';
-import LottieIcon from '../LottieIcon';
 import ModeToggle from '../ModeToggle';
+
+// Dynamically import LottieIcon
+const LottieIcon = dynamic(() => import('../LottieIcon'), {
+  ssr: false,
+  // Optional: Add a simple placeholder or skeleton
+  loading: () => <div className="w-8 h-8 opacity-80" />,
+});
 
 const isActive = (path: string, pathname: string) => {
   if (path === '/') {

@@ -3,6 +3,7 @@
 import { Skeleton } from '@foil/ui/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { ClockIcon } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -13,7 +14,22 @@ import {
   getLatestPriceFromCandles,
 } from '~/lib/hooks/useMarketGroups';
 
-import { MarketGroupPreviewChart } from './MarketGroupPreviewChart';
+// Dynamically import the chart component
+const MarketGroupPreviewChart = dynamic(
+  () =>
+    import('./MarketGroupPreviewChart').then(
+      (mod) => mod.MarketGroupPreviewChart
+    ),
+  {
+    ssr: false, // Disable server-side rendering for this component
+    loading: () => (
+      // Optional: Add a loading state placeholder
+      <div className="h-32 w-full flex items-center justify-center text-muted-foreground">
+        Loading chart...
+      </div>
+    ),
+  }
+);
 
 // Update MarketGroupPreviewProps to accept EpochWithMarketInfo
 export interface MarketGroupPreviewProps {

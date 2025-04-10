@@ -18,7 +18,8 @@
     "paths": {
       "~/*": ["./*"],
       "@/components/*": ["./components/*"],
-      "@/protocol/*": ["../../protocol/*"]
+      "@/protocol/*": ["../../protocol/*"],
+      "@foil/ui/*": ["../../ui/*"]
     },
     "incremental": true,
     "plugins": [
@@ -34,8 +35,7 @@
     "**/*.tsx",
     "src",
     "commitlint.config.js",
-    ".next/types/**/*.ts",
-    "../ui/hooks/useResources.ts"
+    ".next/types/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }
