@@ -6,6 +6,7 @@ import { ClockIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import * as React from 'react';
+import * as chains from 'viem/chains';
 
 // Assuming these hooks and types are correctly imported or defined elsewhere
 // You might need to adjust imports based on your project structure
@@ -71,28 +72,30 @@ export const MarketGroupPreview = ({
     [marketCandles]
   );
 
+  // Get chain short name from chainId
+  const getChainShortName = React.useCallback((id: number): string => {
+    const chainObj = Object.values(chains).find((chain) => chain.id === id);
+    return chainObj
+      ? chainObj.name.toLowerCase().replace(/\s+/g, '')
+      : id.toString();
+  }, []);
+
+  const chainShortName = React.useMemo(
+    () => getChainShortName(chainId),
+    [chainId, getChainShortName]
+  );
+
+  // Calculate yesProb here
+  const yesProb = Math.round(currentMarketPrice ?? 0);
+
   // Early return after hooks are defined
   if (!epochs || epochs.length === 0) {
     return null;
   }
 
-  // Log to see what's happening
-  // console.log('MarketGroupPreview candles:', {
-  //   marketInfo,
-  //   marketCandlesLength: marketCandles?.length || 0,
-  //   firstEpochInfo: firstEpoch
-  //     ? {
-  //         epochId: firstEpoch.epochId,
-  //         question: firstEpoch.question,
-  //       }
-  //     : 'No first epoch',
-  // });
-
-  const yesProb = Math.round(currentMarketPrice ?? 0); // Calculate yesProb here
-
   return (
     // Wrap the entire content with Next.js Link
-    <Link href={`/forecasting/${chainId}/${marketAddress}`}>
+    <Link href={`/forecasting/${chainShortName}:${marketAddress}`}>
       <div className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0">
         <div className="h-1.5" style={{ backgroundColor: color }} />
 
