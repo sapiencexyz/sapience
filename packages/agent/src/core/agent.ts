@@ -237,7 +237,7 @@ export class FoilAgent {
     try {
         // Assuming listMarkets returns an array of market objects
         // And the function exists within the tool definition
-        const marketsResult = await listMarketsTool.func('{}'); // Pass empty JSON string
+        const marketsResult = await listMarketsTool.func(JSON.stringify({ activeOnly: true }));
         let markets: any[] = [];
 
         // --- Result Parsing Logic ---
@@ -336,7 +336,7 @@ export class FoilAgent {
           Logger.info(chalk.dim(`EVALUATE (Response): ${responseContent}`));
 
           // Basic parsing attempt
-          const answerMatch = responseContent.match(/ANSWER:\s*([\s\S]*?)\s*CONFIDENCE:/);
+          const answerMatch = responseContent.match(/ANSWER:\s*(\d+(?:\.\d+)?)/);
           const confidenceMatch = responseContent.match(/CONFIDENCE:\s*(\d+)/);
           const rationaleMatch = responseContent.match(/RATIONALE:\s*([\s\S]*)/);
 

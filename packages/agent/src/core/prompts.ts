@@ -22,7 +22,7 @@ Available tools: ${toolNames.join(', ')}`;
  */
 export function getEvaluationPrompt(marketIdentifier: string, claimStatement: string | null | undefined): string {
     const claimText = claimStatement || 'N/A'; // Handle null/undefined claim
-    return `Analyze market ${marketIdentifier} with claim: "${claimText}". What is the current outlook? Provide your best estimate, your confidence in this estimate on a scale of 0 to 100, and a concise 1-3 sentence rationale. Your response should look like\n\nANSWER: \nCONFIDENCE:\nRATIONALE:`;
+    return `Analyze market ${marketIdentifier} with claim: "${claimText}". What is the current outlook? Provide your best estimate, your confidence in this estimate on a scale of 0 to 100, and a concise 1-3 sentence rationale. Your response should look like\n\nANSWER: \nCONFIDENCE:\nRATIONALE: \nwhere \n - answer: is a number, on yes/no questions, 0 means no, 1 means yes \n - confidence is a number between 0 and 100 \n - rationale is a string`;
 }
 
 /**

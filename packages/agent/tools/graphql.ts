@@ -108,7 +108,7 @@ const listMarkets = {
     },
     required: [], // activeOnly is optional
   },
-  function: async ({ activeOnly }: { activeOnly?: boolean }) => {
+  function: async (args: { activeOnly?: boolean }) => {
     const query = `
       query ListPeriods {
         epochs {
@@ -129,6 +129,14 @@ const listMarkets = {
         }
       }
     `;
+
+    if( typeof args === 'string') {
+      args = JSON.parse(args);
+    }
+    
+    const activeOnly = args.activeOnly;
+
+
 
     const result = await executeGraphQLQuery(query);
     let periods = result.data?.epochs || [];
