@@ -24,9 +24,9 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Loader2 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 
+import LottieLoader from '~/components/LottieLoader';
 import { foilApi } from '~/lib/utils/util';
 
 interface Props {
@@ -225,10 +225,12 @@ const Leaderboard = ({ params }: Props) => {
     getCoreRowModel: getCoreRowModel(),
   });
 
+  // Original return statement (now restored)
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[100vh] w-full">
-        <Loader2 className="h-8 w-8 animate-spin opacity-50" />
+        {/* Ensure loader uses props for size */}
+        <LottieLoader width={32} height={32} />
       </div>
     );
   }

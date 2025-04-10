@@ -24,7 +24,7 @@ const ForecastingDetailPage = () => {
   // Form data with tab selection
   const [activeTab, setActiveTab] = useState<'predict' | 'wager'>('predict');
   const [formData, setFormData] = useState({
-    prediction: '',
+    prediction: 'yes',
     wagerAmount: '',
   });
   const [showTooltip, setShowTooltip] = useState(false);

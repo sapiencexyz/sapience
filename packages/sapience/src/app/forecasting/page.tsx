@@ -1,4 +1,3 @@
-import { Loader2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
@@ -15,7 +14,7 @@ const ForecastingPage = () => {
       <Suspense
         fallback={
           <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">Loading...</p>
           </div>
         }
       >

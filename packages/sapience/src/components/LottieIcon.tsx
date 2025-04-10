@@ -11,8 +11,8 @@ interface LottieIconProps {
 const LottieIcon = ({
   animationPath,
   className = '',
-  width = 24,
-  height = 24,
+  width = 28,
+  height = 28,
 }: LottieIconProps) => {
   const [isPlaying, setIsPlaying] = useState(true);
 
@@ -38,7 +38,7 @@ const LottieIcon = ({
     // We'll just use a timeout for now since we can't easily get the duration
     const timeoutId = setTimeout(() => {
       setIsPlaying(false);
-    }, 2000); // Default to 2 seconds if we can't determine duration
+    }, 3010);
 
     return () => clearTimeout(timeoutId);
   }, [play]);

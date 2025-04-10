@@ -52,7 +52,7 @@ const BotsHero = () => {
             <iframe
               ref={iframeRef}
               title="art"
-              src="https://my.spline.design/particlescopy-3815e097877aa631d0301821f63f852c/"
+              src="https://my.spline.design/particles-672e935f9191bddedd3ff0105af8f117/"
               width="100%"
               height="100%"
               className="rounded-xl"
