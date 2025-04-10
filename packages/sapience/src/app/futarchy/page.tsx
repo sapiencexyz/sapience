@@ -1,64 +1,22 @@
 'use client';
 
 import { ChevronRight } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+
+// Dynamically import the client-side content
+const FutarchyClientContent = dynamic(
+  () => import('../../components/FutarchyClientContent'),
+  { ssr: false }
+);
 
 const FutarchyPage = () => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  // Force light mode rendering for the iframe
-  useEffect(() => {
-    const handleIframeLoad = () => {
-      const iframe = iframeRef.current;
-      if (iframe && iframe.contentDocument) {
-        try {
-          // Try to inject a style element to force light mode
-          const style = iframe.contentDocument.createElement('style');
-          style.textContent =
-            'html { color-scheme: light !important; } * { filter: none !important; }';
-          iframe.contentDocument.head.appendChild(style);
-        } catch (e) {
-          // Security policy might prevent this
-          console.error('Could not inject styles into iframe:', e);
-        }
-      }
-    };
-
-    const iframe = iframeRef.current;
-    if (iframe) {
-      iframe.addEventListener('load', handleIframeLoad);
-      return () => iframe.removeEventListener('load', handleIframeLoad);
-    }
-  }, []);
+  // Remove the iframe ref and useEffect logic from here
 
   return (
     <div className="relative h-[100dvh] overflow-hidden w-full flex flex-col justify-center">
-      {/* Spline embed background */}
-      <div
-        className="fixed inset-0 z-50 light w-[100dwv] pointer-events-none"
-        style={{
-          colorScheme: 'light',
-          filter: 'none',
-        }}
-      >
-        {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
-        <iframe
-          ref={iframeRef}
-          src="https://my.spline.design/particlesfutarchy-SDhuN0OYiCRHRPt2fFec4bCm/"
-          style={{
-            opacity: 0.5,
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            colorScheme: 'light',
-            filter: 'none',
-          }}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          sandbox="allow-same-origin allow-scripts allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
-        />
-      </div>
+      {/* Render the dynamically imported component */}
+      <FutarchyClientContent />
 
       {/* Content container */}
       <div className="container max-w-[740px] mx-auto p-4 md:p-8 lg:p-20 flex flex-col justify-center z-10 relative">

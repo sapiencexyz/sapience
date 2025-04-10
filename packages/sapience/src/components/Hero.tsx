@@ -9,6 +9,7 @@ export default function Hero() {
   useEffect(() => {
     const handleIframeLoad = () => {
       const iframe = iframeRef.current;
+      if (typeof document === 'undefined') return;
       if (iframe && iframe.contentDocument) {
         try {
           // Try to inject a style element to force light mode

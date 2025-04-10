@@ -13,24 +13,17 @@ const BotsHero = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    const handleIframeLoad = () => {
-      const iframe = iframeRef.current;
-      if (iframe && iframe.contentDocument) {
-        try {
-          const style = iframe.contentDocument.createElement('style');
-          style.textContent =
-            'html { color-scheme: light !important; } * { filter: none !important; }';
-          iframe.contentDocument.head.appendChild(style);
-        } catch (e) {
-          console.error('Could not inject styles into iframe:', e);
-        }
-      }
-    };
-
     const iframe = iframeRef.current;
-    if (iframe) {
-      iframe.addEventListener('load', handleIframeLoad);
-      return () => iframe.removeEventListener('load', handleIframeLoad);
+    if (typeof document === 'undefined') return;
+    if (iframe && iframe.contentDocument) {
+      const style = iframe.contentDocument.createElement('style');
+      style.textContent = `
+        @tailwind base;
+        @tailwind components;
+        @tailwind utilities;
+        body { background-color: transparent; margin: 0; padding: 1rem; } /* Example: Ensure transparent background */
+      `;
+      iframe.contentDocument.head.appendChild(style);
     }
   }, []);
 

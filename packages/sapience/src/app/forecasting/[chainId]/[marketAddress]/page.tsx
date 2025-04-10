@@ -139,7 +139,7 @@ const ForecastingDetailPage = () => {
                           <div className="flex gap-4">
                             <button
                               type="button"
-                              className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
+                              className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
                                 formData.prediction === 'yes'
                                   ? activeButtonStyle
                                   : inactiveButtonStyle
@@ -150,7 +150,7 @@ const ForecastingDetailPage = () => {
                             </button>
                             <button
                               type="button"
-                              className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
+                              className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
                                 formData.prediction === 'no'
                                   ? activeButtonStyle
                                   : inactiveButtonStyle
@@ -180,7 +180,7 @@ const ForecastingDetailPage = () => {
                           <div className="flex gap-4">
                             <button
                               type="button"
-                              className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
+                              className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
                                 formData.prediction === 'yes'
                                   ? activeButtonStyle
                                   : inactiveButtonStyle
@@ -191,7 +191,7 @@ const ForecastingDetailPage = () => {
                             </button>
                             <button
                               type="button"
-                              className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
+                              className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
                                 formData.prediction === 'no'
                                   ? activeButtonStyle
                                   : inactiveButtonStyle
