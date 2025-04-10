@@ -22,6 +22,7 @@ import {
   bigintReplacer,
   sqrtPriceX96ToSettlementPriceD18,
   getBlockByTimestamp,
+  getContractCreationBlock,
 } from '../utils';
 import {
   createEpochFromEvent,
@@ -188,50 +189,30 @@ export const indexMarketEvents = async (market: Market) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (market: Market, epochId: number) => {
+export const reindexMarketEvents = async (market: Market) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
 
-  // Get the epoch to calculate the time-based block
-  const epoch = await epochRepository.findOne({
-    where: {
-      market: { id: market.id },
-      epochId: Number(epochId),
-    },
-  });
-
-  if (!epoch) {
-    throw new Error(`Epoch ${epochId} not found for market ${market.address}`);
+  // Get the contract deployment time and us it as initial lookback start time
+  let deploymentBlock;
+  try {
+    deploymentBlock = await getContractCreationBlock(client, market.address);
+  } catch (err) {
+    const error = err as Error;
+    console.error(`Failed to get contract creation block: ${error.message}`);
+    throw new Error(`Failed to get contract creation block: ${error.message}`);
   }
-
-  if (!epoch.startTimestamp || !epoch.endTimestamp) {
-    throw new Error(`Epoch ${epochId} is missing start or end timestamp`);
-  }
-
-  // Calculate the start time as one epoch period before the epoch's start time
-  // An epoch period is defined as (endTimestamp - startTimestamp)
-  const epochDuration =
-    BigInt(epoch.endTimestamp) - BigInt(epoch.startTimestamp);
-  const lookbackStartTime = Number(
-    BigInt(epoch.startTimestamp) - epochDuration
-  );
-
-  // Get the block number for this lookback start time
-  const lookbackStartBlock = await getBlockByTimestamp(
-    client,
-    lookbackStartTime
-  );
 
   // Use the later of the deployment block or the lookback start block
   const startBlock = Math.max(
     Number(market.deployTxnBlockNumber || 0),
-    Number(lookbackStartBlock.number)
+    Number(deploymentBlock.block.number)
   );
 
   // Get the end block using the sooner of epoch end time and current time
   const currentTime = Math.floor(Date.now() / 1000);
-  const endTime = Math.min(Number(epoch.endTimestamp), currentTime);
+  const endTime = currentTime;
 
   let endBlock;
   try {
@@ -262,7 +243,7 @@ export const reindexMarketEvents = async (market: Market, epochId: number) => {
   const CHUNK_SIZE = 10000; // Process 10,000 blocks at a time
 
   console.log(
-    `Reindexing market events for epoch ${epochId} from block ${startBlock} to ${endBlock.number}`
+    `Reindexing market events for market ${market.address} from block ${startBlock} to ${endBlock.number}`
   );
 
   // Function to process logs regardless of how they were fetched
@@ -381,7 +362,7 @@ export const reindexMarketEvents = async (market: Market, epochId: number) => {
   }
 
   console.log(
-    `Completed indexing for market ${market.address} in epoch ${epochId}. Processed ${totalLogsProcessed} logs.`
+    `Completed indexing for market ${market.address}. Processed ${totalLogsProcessed} logs.`
   );
 };
 
