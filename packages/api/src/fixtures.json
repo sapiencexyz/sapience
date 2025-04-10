@@ -106,7 +106,7 @@
     {
       "questions": [
         "What will be the average gas cost on Ethereum on the week of April 1st?",
-        "What will be the average gas cost on Ethereum on the week of April 7th?"
+        "What will be the average gas cost on Ethereum on the week of April 8th?"
       ],
       "question": "What will be the average gas cost on Ethereum in a given week?",
       "resource": "ethereum-gas",
