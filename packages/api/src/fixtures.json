@@ -37,9 +37,43 @@
     {
       "name": "Biosecurity",
       "slug": "biosecurity"
+    },
+    {
+      "name": "International Relations",
+      "slug": "international-relations"
     }
   ],
   "MARKETS": [
+
+    {
+      "chainId": 8453,
+      "address": "0x971e76c61ee64846b8bb5edcea1dc0cb504c25da",
+      "category": "climate-change",
+      "isCumulative": true,
+      
+      SF cumulative rainfall: 
+    },
+    {
+      "chainId": 8453,
+      "address": "0x826a0a530fee31fb6d63b30ea5fd151bfa243d8f",
+      "category": "climate-change",
+      ny average temp: 
+    },
+    {
+      "chainId": 8453,
+      "address": "0x49ef9eb6d4e29ca2f7727f36dfcb2296913b82cc",
+      "category": "biosecurity",
+      novavax covid y/n: 
+    },
+    {
+      "chainId": 8453,
+      "address": "0x78d120b363a23cc513e903ca00e9e4bf6c823f7c",
+      "category": "international-relations",
+      house reps 2026: 
+    },
+
+
+
     {
       "questions": ["How much blob data will be posted to Celestia in April?"],
       "question": "How much blob data will be posted to Celestia in a given month?",
