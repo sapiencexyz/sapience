@@ -31,10 +31,10 @@ export default function Hero() {
   }, []);
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden w-full flex flex-col justify-end">
+    <div className="relative h-[100dvh] w-[100dvw] flex flex-col justify-end">
       {/* Spline embed background - made larger than viewport */}
       <div
-        className="absolute inset-0 z-0 light w-[100dwv]"
+        className="absolute inset-0 z-0 light w-[100dwv] right-0"
         style={{
           colorScheme: 'light',
           filter: 'none',

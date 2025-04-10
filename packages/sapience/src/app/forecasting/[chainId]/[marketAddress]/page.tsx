@@ -45,6 +45,11 @@ const ForecastingDetailPage = () => {
     setShowTooltip(!showTooltip);
   };
 
+  const activeButtonStyle =
+    'bg-primary text-primary-foreground hover:bg-primary/90';
+  const inactiveButtonStyle =
+    'bg-secondary text-secondary-foreground hover:bg-secondary/80';
+
   return (
     <div className="flex flex-col w-full h-[calc(100dvh-69px)] overflow-y-auto lg:overflow-hidden pt-40">
       <div className="flex flex-col px-4 md:px-3">
@@ -99,33 +104,6 @@ const ForecastingDetailPage = () => {
             <div className="bg-card p-6 rounded-lg shadow-sm border">
               <h2 className="text-3xl font-normal mb-4">Forecast</h2>
               <form className="space-y-6">
-                <div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
-                        formData.prediction === 'yes'
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                      }`}
-                      onClick={() => handlePredictionChange('yes')}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      type="button"
-                      className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
-                        formData.prediction === 'no'
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                          : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                      }`}
-                      onClick={() => handlePredictionChange('no')}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-
                 {/* Tabs Section */}
                 <div className="space-y-2 my-6">
                   <div className="flex w-full border-b">
@@ -156,98 +134,154 @@ const ForecastingDetailPage = () => {
                   {/* Tab Content */}
                   <div className="pt-2">
                     {activeTab === 'predict' && (
-                      <div>
-                        <p className="text-base text-foreground">
-                          Sign a message with your prediction using your account
-                          password and we&apos;ll record it on{' '}
-                          <a href="https://base.org" className="underline">
-                            Base
-                          </a>
-                          , a public blockchain.
-                        </p>
+                      <div className="space-y-4">
+                        <div className="mt-6">
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
+                                formData.prediction === 'yes'
+                                  ? activeButtonStyle
+                                  : inactiveButtonStyle
+                              }`}
+                              onClick={() => handlePredictionChange('yes')}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
+                                formData.prediction === 'no'
+                                  ? activeButtonStyle
+                                  : inactiveButtonStyle
+                              }`}
+                              onClick={() => handlePredictionChange('no')}
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-base text-foreground">
+                            Sign a message with your prediction using your
+                            account password and we&apos;ll record it on{' '}
+                            <a href="https://base.org" className="underline">
+                              Base
+                            </a>
+                            , a public blockchain.
+                          </p>
+                        </div>
                       </div>
                     )}
 
                     {activeTab === 'wager' && (
-                      <div>
-                        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                        <label
-                          id="wager-amount-label"
-                          htmlFor="wager-amount-input"
-                          className="block text-sm font-medium mb-1"
-                        >
-                          Amount
-                        </label>
-                        <div className="relative">
-                          <input
-                            id="wager-amount-input"
-                            name="wagerAmount"
-                            type="number"
-                            className="w-full p-2 border rounded pr-16"
-                            value={formData.wagerAmount}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                wagerAmount: e.target.value,
-                              })
-                            }
-                            placeholder="Enter amount"
-                            aria-labelledby="wager-amount-label"
-                          />
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center">
-                            sUSDS
-                            <div className="relative ml-1 flex items-center">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  toggleTooltip();
-                                }}
-                                className="text-muted-foreground hover:text-foreground flex items-center justify-center"
-                                aria-label="Information about sUSDS"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  width="16"
-                                  height="16"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
+                      <div className="space-y-4">
+                        <div className="mt-6">
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
+                                formData.prediction === 'yes'
+                                  ? activeButtonStyle
+                                  : inactiveButtonStyle
+                              }`}
+                              onClick={() => handlePredictionChange('yes')}
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
+                                formData.prediction === 'no'
+                                  ? activeButtonStyle
+                                  : inactiveButtonStyle
+                              }`}
+                              onClick={() => handlePredictionChange('no')}
+                            >
+                              No
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                          <label
+                            id="wager-amount-label"
+                            htmlFor="wager-amount-input"
+                            className="block text-sm font-medium mb-1"
+                          >
+                            Amount
+                          </label>
+                          <div className="relative">
+                            <input
+                              id="wager-amount-input"
+                              name="wagerAmount"
+                              type="number"
+                              className="w-full p-2 border rounded pr-16"
+                              value={formData.wagerAmount}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  wagerAmount: e.target.value,
+                                })
+                              }
+                              placeholder="Enter amount"
+                              aria-labelledby="wager-amount-label"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center">
+                              sUSDS
+                              <div className="relative ml-1 flex items-center">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    toggleTooltip();
+                                  }}
+                                  className="text-muted-foreground hover:text-foreground flex items-center justify-center"
+                                  aria-label="Information about sUSDS"
                                 >
-                                  <circle cx="12" cy="12" r="10" />
-                                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                                </svg>
-                              </button>
-                              {showTooltip && (
-                                <div className="absolute bottom-full right-0 mb-2 p-3 bg-popover text-popover-foreground rounded-md shadow-md w-60 text-sm">
-                                  <p>
-                                    sUSDS is the yield-bearing token of the{' '}
-                                    <a
-                                      href="https://sky.money/features#savings"
-                                      className="underline"
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      Sky Protocol
-                                    </a>{' '}
-                                    on{' '}
-                                    <a
-                                      href="https://base.org"
-                                      className="underline"
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      Base
-                                    </a>
-                                    .
-                                  </p>
-                                  <div className="absolute bottom-[-6px] right-2 w-3 h-3 bg-popover rotate-45" />
-                                </div>
-                              )}
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                                  </svg>
+                                </button>
+                                {showTooltip && (
+                                  <div className="absolute bottom-full right-0 mb-2 p-3 bg-popover text-popover-foreground rounded-md shadow-md w-60 text-sm">
+                                    <p>
+                                      sUSDS is the yield-bearing token of the{' '}
+                                      <a
+                                        href="https://sky.money/features#savings"
+                                        className="underline"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        Sky Protocol
+                                      </a>{' '}
+                                      on{' '}
+                                      <a
+                                        href="https://base.org"
+                                        className="underline"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        Base
+                                      </a>
+                                      .
+                                    </p>
+                                    <div className="absolute bottom-[-6px] right-2 w-3 h-3 bg-popover rotate-45" />
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
