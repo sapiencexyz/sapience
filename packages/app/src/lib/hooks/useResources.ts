@@ -14,6 +14,12 @@ export interface Epoch {
   public: boolean;
 }
 
+export interface Category {
+  id: number;
+  slug: string;
+  name: string;
+}
+
 export interface Market {
   id: number;
   address: string;
@@ -23,6 +29,7 @@ export interface Market {
   isYin: boolean;
   isCumulative: boolean;
   epochs: Epoch[];
+  category: Category;
 }
 
 export interface Resource {
@@ -31,6 +38,7 @@ export interface Resource {
   slug: ResourceSlug;
   iconPath: string;
   markets: Market[];
+  category: Category;
 }
 
 const LATEST_RESOURCE_PRICE_QUERY = gql`
@@ -69,6 +77,11 @@ const RESOURCES_QUERY = gql`
       id
       name
       slug
+      category {
+        id
+        slug
+        name
+      }
       markets {
         id
         address
@@ -76,6 +89,11 @@ const RESOURCES_QUERY = gql`
         isCumulative
         vaultAddress
         chainId
+        category {
+          id
+          slug
+          name
+        }
         epochs {
           id
           epochId
@@ -96,16 +114,20 @@ export const useResources = () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
       });
-      const resources = data.resources.sort((a: any, b: any) => {
+      const resources = data.resources.sort((a: Resource, b: Resource) => {
         const indexA = RESOURCE_ORDER.indexOf(a.slug);
         const indexB = RESOURCE_ORDER.indexOf(b.slug);
         return indexA - indexB;
       });
-
-      return resources.map((resource: any) => ({
-        ...resource,
-        iconPath: `/resources/${resource.slug}.svg`,
-      }));
+      return resources
+        .map((resource: Resource) => ({
+          ...resource,
+          iconPath: `/resources/${resource.slug}.svg`,
+        }))
+        .filter(
+          (resource: Resource) =>
+            resource.category?.slug === 'decentralized-compute'
+        );
     },
   });
 };
