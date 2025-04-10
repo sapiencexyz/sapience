@@ -187,7 +187,8 @@ const RankCell = ({ row }: { row: { index: number } }) => (
 );
 
 // Extract ROI cell component
-const ROICell = () => <span className="text-muted-foreground">--%</span>;
+// This component is no longer needed as the ROI column is removed
+// const ROICell = () => <span className="text-muted-foreground">--%</span>;
 
 const Leaderboard = ({ params }: Props) => {
   const { data: leaderboardData, isLoading } = useLeaderboard(
@@ -215,11 +216,6 @@ const Leaderboard = ({ params }: Props) => {
         header: 'PnL',
         accessorKey: 'totalPnL',
         cell: PnLCell,
-      },
-      {
-        id: 'roi',
-        header: 'ROI',
-        cell: ROICell,
       },
     ],
     []
@@ -290,8 +286,7 @@ const Leaderboard = ({ params }: Props) => {
                           'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
                           {
                             'text-center': header.id === 'rank',
-                            'text-right':
-                              header.id === 'pnl' || header.id === 'roi',
+                            'text-right': header.id === 'pnl',
                           }
                         )}
                       >
@@ -317,8 +312,6 @@ const Leaderboard = ({ params }: Props) => {
                           className={cn('p-3 text-sm md:text-base', {
                             'text-right font-normal': cell.column.id === 'rank',
                             'text-right': cell.column.id === 'pnl',
-                            'text-right text-muted-foreground text-sm md:text-base':
-                              cell.column.id === 'roi',
                           })}
                         >
                           {flexRender(

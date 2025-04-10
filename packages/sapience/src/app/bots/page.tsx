@@ -30,7 +30,7 @@ const BotsHero = () => {
   return (
     <div className="relative overflow-hidden flex items-center justify-center w-full">
       {/* Outer container with padding and iframe background */}
-      <div className="relative z-10 w-full px-4 sm:px-6 py-36">
+      <div className="relative z-10 w-full px-4 sm:px-6 py-36 max-w-screen-xl mx-auto">
         <div className="relative overflow-hidden rounded-xl shadow-inner">
           {/* Iframe as background within the outer box */}
           <div
@@ -91,9 +91,8 @@ const MCPSection = () => {
               </h2>
 
               <p className="text-lg text-muted-foreground">
-                Use Sapience&apos;s Model Context Protocol server to give an AI
-                assistants the ability to interact with predictions markets.
-                Connect to any{' '}
+                Use Sapience&apos;s Model Context Protocol server to use large
+                language models with predictions markets. Connect to any{' '}
                 <Link
                   href="https://modelcontextprotocol.io/clients"
                   target="_blank"
@@ -224,14 +223,14 @@ const TemplateSection = () => {
           </div>
 
           {/* Right side: Explanatory text */}
-          <div className="w-full md:w-1/2 space-y-6">
+          <div className="w-full md:w-1/2 space-y-6 max-w-[440px]">
             <h2 className="font-sans text-2xl md:text-3xl font-normal">
               Build a Research Agent
             </h2>
             <p className="text-muted-foreground text-lg">
-              Use our TypeScript boilerplate to create an AI-powered bot that
-              can research, analyze data, and make predictions on Sapience
-              markets autonomously.
+              Use our customize our TypeScript codebase to create a bot that can
+              research, analyze data, and make predictions on Sapience markets
+              autonomously.
             </p>
 
             <div className="pt-2">
