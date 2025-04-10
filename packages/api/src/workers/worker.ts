@@ -106,15 +106,16 @@ async function main() {
       continue;
     }
 
-    if (resourceInfo.priceIndexer) {
+    if (indexer) {
       // Then start watching for new blocks
       jobs.push(
         createResilientProcess(
-          () => resourceInfo.priceIndexer.watchBlocksForResource(resource),
+          () => indexer.watchBlocksForResource(resource) as Promise<void>,
           `watchBlocksForResource-${resourceSlug}`
         )()
       );
     }
+  }
 
   await Promise.all(jobs);
 }
