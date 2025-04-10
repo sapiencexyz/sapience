@@ -54,6 +54,7 @@ export const mapResourceToType = (resource: Resource): ResourceType => ({
   id: resource.id,
   name: resource.name,
   slug: resource.slug,
+  category: resource.category ? mapCategoryToType(resource.category) : null,
   markets: resource.markets?.map(mapMarketToType) || [],
   resourcePrices: resource.resourcePrices?.map(mapResourcePriceToType) || [],
 });

@@ -109,6 +109,7 @@ type ResourcePriceType {
 }
 
 type ResourceType {
+  category: CategoryType
   id: ID!
   markets: [MarketType!]!
   name: String!

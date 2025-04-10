@@ -2,36 +2,44 @@
   "RESOURCES": [
     {
       "name": "Ethereum Gas",
-      "slug": "ethereum-gas"
+      "slug": "ethereum-gas",
+      "category": "decentralized-compute"
     },
     {
       "name": "Base Gas",
-      "slug": "base-gas"
+      "slug": "base-gas",
+      "category": "decentralized-compute"
     },
     {
       "name": "Arbitrum Gas",
-      "slug": "arbitrum-gas"
+      "slug": "arbitrum-gas",
+      "category": "decentralized-compute"
     },
     {
       "name": "Ethereum Blobspace",
-      "slug": "ethereum-blobspace"
+      "slug": "ethereum-blobspace",
+      "category": "decentralized-compute"
     },
     {
       "name": "Bitcoin Fees",
-      "slug": "bitcoin-fees"
+      "slug": "bitcoin-fees",
+      "category": "decentralized-compute"
     },
     {
       "name": "Celestia Blobspace",
-      "slug": "celestia-blobspace"
+      "slug": "celestia-blobspace",
+      "category": "decentralized-compute"
     },
     {
       "name": "San Francisco Precipitation",
-      "slug": "sf-precipitation"
+      "slug": "sf-precipitation",
+      "category": "climate-change"
     },
     {
       "name": "New York City Air Temperature",
-      "slug": "nyc-air-temperature"
-    }   
+      "slug": "nyc-air-temperature",
+      "category": "climate-change"
+    }
   ],
   "CATEGORIES": [
     {
@@ -59,7 +67,9 @@
       "isCumulative": true,
       "resource": "sf-precipitation",
       "question": "What will be the cumulative rainfall in San Francisco in a given period?",
-      "questions": ["What will be the cumulative rainfall in San Francisco in April 2024?"]
+      "questions": [
+        "What will be the cumulative rainfall in San Francisco in April 2024?"
+      ]
     },
     {
       "chainId": 8453,
@@ -67,21 +77,29 @@
       "category": "climate-change",
       "resource": "nyc-air-temperature",
       "question": "What will be the average air temperature in New York City in a given period?",
-      "questions": ["What will bethe average air temperature in New York City in April 2024?"]
+      "questions": [
+        "What will bethe average air temperature in New York City in April 2024?"
+      ]
     },
     {
       "chainId": 8453,
       "address": "0x49ef9eb6d4e29ca2f7727f36dfcb2296913b82cc",
       "category": "biosecurity",
       "question": "Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025?",
-      "questions": ["Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025?"]
+      "questions": [
+        "Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025?"
+      ]
     },
     {
       "chainId": 8453,
       "address": "0x78d120b363a23cc513e903ca00e9e4bf6c823f7c",
       "category": "international-relations",
       "question": "Which party will hold a plurality in the US House of Representatives after the 2026 midterm elections?",
-      "questions": ["Will the Democrats hold a plurality in the US House of Representatives after the 2026 midterm elections?", "Will the Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?", "Will a party other than the Democrats or Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?"]
+      "questions": [
+        "Will the Democrats hold a plurality in the US House of Representatives after the 2026 midterm elections?",
+        "Will the Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?",
+        "Will a party other than the Democrats or Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?"
+      ]
     },
     {
       "questions": ["How much blob data will be posted to Celestia in April?"],
