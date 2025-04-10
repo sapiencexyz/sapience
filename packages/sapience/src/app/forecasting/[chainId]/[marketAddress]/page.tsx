@@ -103,9 +103,9 @@ const ForecastingDetailPage = () => {
             {/* Placeholder for form */}
             <div className="bg-card p-6 rounded-lg shadow-sm border">
               <h2 className="text-3xl font-normal mb-4">Forecast</h2>
-              <form className="space-y-6">
+              <form className="space-y-8">
                 {/* Tabs Section */}
-                <div className="space-y-2 my-6">
+                <div className="space-y-2 mt-4">
                   <div className="flex w-full border-b">
                     <button
                       type="button"
@@ -134,9 +134,9 @@ const ForecastingDetailPage = () => {
                   {/* Tab Content */}
                   <div className="pt-2">
                     {activeTab === 'predict' && (
-                      <div className="space-y-4">
-                        <div className="mt-6">
-                          <div className="flex gap-2">
+                      <div className="space-y-6">
+                        <div className="mt-1">
+                          <div className="flex gap-4">
                             <button
                               type="button"
                               className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
@@ -175,9 +175,9 @@ const ForecastingDetailPage = () => {
                     )}
 
                     {activeTab === 'wager' && (
-                      <div className="space-y-4">
-                        <div className="mt-6">
-                          <div className="flex gap-2">
+                      <div className="space-y-6">
+                        <div className="mt-1">
+                          <div className="flex gap-4">
                             <button
                               type="button"
                               className={`flex-1 px-5 py-3 rounded text-lg font-normal ${
