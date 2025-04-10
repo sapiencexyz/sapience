@@ -220,10 +220,14 @@ export const useEnrichedMarkets = () => {
       // Create a lookup map for focus areas using their ID (which matches category slug)
       const focusAreaMap = new Map<
         string,
-        { iconSvg: string; color: string }
+        { iconSvg: string; color: string; name: string }
       >();
       FOCUS_AREAS.forEach((area) => {
-        focusAreaMap.set(area.id, { iconSvg: area.iconSvg, color: area.color });
+        focusAreaMap.set(area.id, {
+          iconSvg: area.iconSvg,
+          color: area.color,
+          name: area.name,
+        });
       });
 
       const { data } = await foilApi.post('/graphql', {
@@ -249,7 +253,8 @@ export const useEnrichedMarkets = () => {
           const focusAreaData = focusAreaMap.get(market.category.slug); // Match category slug with focus area id
           categoryInfo = {
             id: market.category.id,
-            name: market.category.name,
+            // Use focus area name if available, otherwise use the category name from the database
+            name: focusAreaData?.name || market.category.name,
             slug: market.category.slug,
             // Use focus area data if found, otherwise fallback to default
             iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
