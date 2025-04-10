@@ -24,10 +24,17 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useState, useMemo } from 'react';
 
-import { foilApi } from '~/lib/utils/util';
+import { foilApi } from '~/lib/utils/util'; // Import dynamic
+
+// Dynamically import LottieLoader
+const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+  ssr: false,
+  // Use a simple div as placeholder during load
+  loading: () => <div className="w-8 h-8" />,
+});
 
 interface Props {
   params: {
@@ -225,10 +232,12 @@ const Leaderboard = ({ params }: Props) => {
     getCoreRowModel: getCoreRowModel(),
   });
 
+  // Original return statement (now restored)
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[100vh] w-full">
-        <Loader2 className="h-8 w-8 animate-spin opacity-50" />
+        {/* Ensure loader uses props for size */}
+        <LottieLoader width={32} height={32} />
       </div>
     );
   }

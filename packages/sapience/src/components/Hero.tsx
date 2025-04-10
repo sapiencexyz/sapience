@@ -9,6 +9,7 @@ export default function Hero() {
   useEffect(() => {
     const handleIframeLoad = () => {
       const iframe = iframeRef.current;
+      if (typeof document === 'undefined') return;
       if (iframe && iframe.contentDocument) {
         try {
           // Try to inject a style element to force light mode
@@ -31,21 +32,18 @@ export default function Hero() {
   }, []);
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden w-full flex flex-col justify-end">
+    <div className="relative h-[100dvh] w-[100dvw] flex flex-col justify-end">
       {/* Spline embed background - made larger than viewport */}
       <div
-        className="absolute inset-0 z-0 light"
+        className="absolute inset-0 z-0 light w-[100dwv] right-0"
         style={{
-          opacity: 0.5,
-          transform: 'translate(50%, -50%) scale(3)',
-          transformOrigin: 'center center',
           colorScheme: 'light',
           filter: 'none',
         }}
       >
+        {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
         <iframe
           ref={iframeRef}
-          title="art"
           src="https://my.spline.design/particles-672e935f9191bddedd3ff0105af8f117/"
           style={{
             width: '100%',

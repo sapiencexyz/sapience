@@ -13,24 +13,17 @@ const BotsHero = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    const handleIframeLoad = () => {
-      const iframe = iframeRef.current;
-      if (iframe && iframe.contentDocument) {
-        try {
-          const style = iframe.contentDocument.createElement('style');
-          style.textContent =
-            'html { color-scheme: light !important; } * { filter: none !important; }';
-          iframe.contentDocument.head.appendChild(style);
-        } catch (e) {
-          console.error('Could not inject styles into iframe:', e);
-        }
-      }
-    };
-
     const iframe = iframeRef.current;
-    if (iframe) {
-      iframe.addEventListener('load', handleIframeLoad);
-      return () => iframe.removeEventListener('load', handleIframeLoad);
+    if (typeof document === 'undefined') return;
+    if (iframe && iframe.contentDocument) {
+      const style = iframe.contentDocument.createElement('style');
+      style.textContent = `
+        @tailwind base;
+        @tailwind components;
+        @tailwind utilities;
+        body { background-color: transparent; margin: 0; padding: 1rem; } /* Example: Ensure transparent background */
+      `;
+      iframe.contentDocument.head.appendChild(style);
     }
   }, []);
 
@@ -38,21 +31,20 @@ const BotsHero = () => {
     <div className="relative overflow-hidden flex items-center justify-center w-full">
       {/* Outer container with padding and iframe background */}
       <div className="relative z-10 w-full px-4 sm:px-6 py-36">
-        <div className="relative overflow-hidden rounded-xl shadow-inner p-20 border border-gray-500/20">
+        <div className="relative overflow-hidden rounded-xl shadow-inner">
           {/* Iframe as background within the outer box */}
           <div
             className="absolute inset-0 z-0 overflow-hidden rounded-xl light"
             style={{
-              opacity: 0.4,
               transformOrigin: 'center center',
               colorScheme: 'light',
               filter: 'none',
             }}
           >
+            {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
             <iframe
               ref={iframeRef}
-              title="art"
-              src="https://my.spline.design/particlescopy-3815e097877aa631d0301821f63f852c/"
+              src="https://my.spline.design/particlesbots-7HFsdWxSwiyuWxwi8RkBNbtE/"
               width="100%"
               height="100%"
               className="rounded-xl"
@@ -67,7 +59,7 @@ const BotsHero = () => {
           </div>
 
           {/* Inner Content card overlaid on top */}
-          <div className="relative z-10 w-fit mx-auto text-center p-10 bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
+          <div className="relative z-10 w-100 text-center bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm p-24">
             <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
               Trade with Machine Intelligence
             </h1>

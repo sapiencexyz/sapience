@@ -1,7 +1,5 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -16,11 +14,11 @@ const FocusAreaIcon = ({
   color: string;
 }) => (
   <div
-    className="rounded-full p-4 w-16 h-16 flex items-center justify-center"
+    className="rounded-full p-2.5 w-10 h-10 flex items-center justify-center"
     style={{ backgroundColor: `${color}25` }} // Using 25% opacity version of the color
   >
     <div
-      className="w-8 h-8 flex items-center justify-center"
+      className="w-5 h-5 flex items-center justify-center"
       style={{ color }}
       dangerouslySetInnerHTML={{ __html: iconSvg }}
     />
@@ -125,13 +123,6 @@ export default function TopicsOfInterest() {
       <div className="container mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-3xl font-heading font-normal">Focus Areas</h2>
-          <Link
-            href="/predictions"
-            className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1.5 text-xs tracking-widest transition-all duration-300 font-semibold"
-          >
-            VIEW ALL
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
         </div>
 
         <div className="relative">
@@ -153,37 +144,22 @@ export default function TopicsOfInterest() {
               onMouseMove={handleMouseMove}
             >
               {extendedFocusAreas.map((area, index) => (
-                <div
+                <Link
                   key={index}
-                  className="bg-background rounded-2xl overflow-hidden shadow-sm border border-muted border-t-0 flex flex-col w-[320px] flex-shrink-0"
+                  href={`/forecasting?focus=${area.id}`}
+                  className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0 flex flex-col w-auto flex-shrink-0 hover:bg-muted/30 transition-colors"
                 >
                   <div
-                    className="h-3"
+                    className="h-1.5 w-full"
                     style={{ backgroundColor: area.color }}
                   />
-                  <div className="p-6 flex-grow">
-                    <div className="flex items-center gap-4 mb-4">
-                      <FocusAreaIcon
-                        iconSvg={area.iconSvg}
-                        color={area.color}
-                      />
-                      <h3 className="text-xl font-semibold">{area.name}</h3>
-                    </div>
-                    <p className="text-gray-600 text-sm mb-6">
-                      {area.description}
-                    </p>
-                    <div className="mt-auto">
-                      <Link href={`/predictions?focus=${area.id}`}>
-                        <Button
-                          variant="secondary"
-                          className="w-full rounded-full"
-                        >
-                          View Predictions
-                        </Button>
-                      </Link>
-                    </div>
+                  <div className="flex items-center gap-4 px-6 py-4">
+                    <FocusAreaIcon iconSvg={area.iconSvg} color={area.color} />
+                    <h3 className="text-xl font-medium whitespace-nowrap">
+                      {area.name}
+                    </h3>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
