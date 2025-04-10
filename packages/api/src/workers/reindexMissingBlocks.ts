@@ -50,39 +50,44 @@ export async function reindexMissingBlocks(
 
     const market = await initializeMarket(marketInfo);
 
-    const { startBlockNumber, endBlockNumber, error } =
-      await getMarketStartEndBlock(
-        market,
-        epochId,
-        marketInfo.resource.priceIndexer.client
+    // if this is not a crypto market, simply fetch latest data (leave this array empty)
+    const missingBlockNumbers = [];
+
+    // if this is a crypto market, fill the missing blocks
+    if (marketInfo.resource.priceIndexer.client) {
+      const { startBlockNumber, endBlockNumber, error } =
+        await getMarketStartEndBlock(
+          market,
+          epochId,
+          marketInfo.resource.priceIndexer.client
+        );
+
+      if (error || !startBlockNumber || !endBlockNumber) {
+        return { missingBlockNumbers: null, error };
+      }
+
+      const resourcePrices = await resourcePriceRepository.find({
+        where: {
+          resource: { id: market.resource.id },
+          blockNumber: Between(startBlockNumber, endBlockNumber),
+        },
+        select: ['blockNumber'],
+      });
+
+      const existingBlockNumbersSet = new Set(
+        resourcePrices.map((ip: { blockNumber: number }) =>
+          Number(ip.blockNumber)
+        )
       );
 
-    if (error || !startBlockNumber || !endBlockNumber) {
-      return { missingBlockNumbers: null, error };
-    }
-
-    const resourcePrices = await resourcePriceRepository.find({
-      where: {
-        resource: { id: market.resource.id },
-        blockNumber: Between(startBlockNumber, endBlockNumber),
-      },
-      select: ['blockNumber'],
-    });
-
-    const existingBlockNumbersSet = new Set(
-      resourcePrices.map((ip: { blockNumber: number }) =>
-        Number(ip.blockNumber)
-      )
-    );
-
-    const missingBlockNumbers = [];
-    for (
-      let blockNumber = startBlockNumber;
-      blockNumber <= endBlockNumber;
-      blockNumber++
-    ) {
-      if (!existingBlockNumbersSet.has(blockNumber)) {
-        missingBlockNumbers.push(blockNumber);
+      for (
+        let blockNumber = startBlockNumber;
+        blockNumber <= endBlockNumber;
+        blockNumber++
+      ) {
+        if (!existingBlockNumbersSet.has(blockNumber)) {
+          missingBlockNumbers.push(blockNumber);
+        }
       }
     }
 

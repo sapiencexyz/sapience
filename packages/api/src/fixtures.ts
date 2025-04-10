@@ -3,6 +3,7 @@ import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import btcIndexer from './resourcePriceFunctions/btcIndexer';
+import { WeatherIndexer } from './resourcePriceFunctions/weatherIndexer';
 import fixturesData from './fixtures.json';
 import { Resource } from './models/Resource';
 import { resourceRepository } from './db';
@@ -14,7 +15,6 @@ import { Category } from './models/Category';
 import { categoryRepository } from './db';
 import { IResourcePriceIndexer } from './interfaces';
 
-// TAT = Trailing Average Time
 export const TIME_INTERVALS = {
   intervals: {
     INTERVAL_1_MINUTE: 60,
@@ -37,6 +37,8 @@ export const INDEXERS: {
   'bitcoin-fees': new btcIndexer(),
   'base-gas': new evmIndexer(base.id),
   'arbitrum-gas': new evmIndexer(arbitrum.id),
+  'nyc-air-temperature': new WeatherIndexer('temperature'),
+  'sf-precipitation': new WeatherIndexer('precipitation'),
 };
 
 // Helper function to create or update epochs with questions
