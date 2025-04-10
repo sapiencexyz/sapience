@@ -329,22 +329,55 @@ export class WeatherIndexer implements IResourcePriceIndexer {
         `[WeatherIndexer.${this.resourceType}] 2. Weather service started successfully`
       );
 
-      // Log initial data fetch
-      console.log(
-        `[WeatherIndexer.${this.resourceType}] 3. Fetching initial weather data`
-      );
-      await sharedWeatherService.getLatestData();
-      // console.log(`[WeatherIndexer.${this.resourceType}] 4. Initial weather data:`, {
-      //     hasTemperature: !!initialData.temperature.latest,
-      //     hasPrecipitation: !!initialData.precipitation.latest,
-      //     temperature: initialData.temperature.latest,
-      //     precipitation: initialData.precipitation.latest
-      // });
+      try {
+        console.log(
+          `[WeatherIndexer.${this.resourceType}] 3. Polling for new weather data`
+        );
+        const weatherData = await sharedWeatherService.getLatestData();
+
+        // Log before database operation
+        console.log(
+          `[WeatherIndexer.${this.resourceType}] 4. Attempting database upsert for resource:`,
+          {
+            resourceId: resource.id,
+            resourceSlug: resource.slug,
+            timestamp: new Date().toISOString(),
+          }
+        );
+
+        await this.storeWeatherPrice(resource, weatherData);
+
+        // Log after successful database operation
+        console.log(
+          `[WeatherIndexer.${this.resourceType}] 5. Successfully stored weather data in database`
+        );
+      } catch (error) {
+        console.error(
+          `[WeatherIndexer.${this.resourceType}] Error in weather polling:`,
+          error
+        );
+        if (error instanceof Error) {
+          console.error(
+            `[WeatherIndexer.${this.resourceType}] Error details:`,
+            {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            }
+          );
+        }
+        Sentry.withScope((scope) => {
+          scope.setExtra('resource', resource.slug);
+          scope.setExtra('type', this.resourceType);
+          Sentry.captureException(error);
+        });
+      }
+
 
       this.pollInterval = setInterval(async () => {
         try {
           console.log(
-            `[WeatherIndexer.${this.resourceType}] 4. Polling for new weather data`
+            `[WeatherIndexer.${this.resourceType}] 3. Polling for new weather data`
           );
           const weatherData = await sharedWeatherService.getLatestData();
           // console.log(`[WeatherIndexer.${this.resourceType}] 6. Received new weather data:`, {
@@ -355,7 +388,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
 
           // Log before database operation
           console.log(
-            `[WeatherIndexer.${this.resourceType}] 5. Attempting database upsert for resource:`,
+            `[WeatherIndexer.${this.resourceType}] 4. Attempting database upsert for resource:`,
             {
               resourceId: resource.id,
               resourceSlug: resource.slug,
@@ -367,7 +400,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
 
           // Log after successful database operation
           console.log(
-            `[WeatherIndexer.${this.resourceType}] 8. Successfully stored weather data in database`
+            `[WeatherIndexer.${this.resourceType}] 5. Successfully stored weather data in database`
           );
         } catch (error) {
           console.error(
