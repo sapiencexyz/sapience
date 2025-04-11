@@ -121,10 +121,6 @@ export default function TopicsOfInterest() {
   return (
     <section className="pt-72 pb-24 px-8 overflow-hidden relative">
       <div className="container mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-heading font-normal">Focus Areas</h2>
-        </div>
-
         <div className="relative">
           {/* Gradient overlays for fade effect */}
           <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10" />
@@ -146,7 +142,7 @@ export default function TopicsOfInterest() {
               {extendedFocusAreas.map((area, index) => (
                 <Link
                   key={index}
-                  href={`/forecasting?focus=${area.id}`}
+                  href={`/forecasting?category=${area.id}`}
                   className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0 flex flex-col w-auto flex-shrink-0 hover:bg-muted/30 transition-colors"
                 >
                   <div
