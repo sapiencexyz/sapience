@@ -119,15 +119,17 @@ export const useResources = () => {
         const indexB = RESOURCE_ORDER.indexOf(b.slug);
         return indexA - indexB;
       });
-      return resources
-        .map((resource: Resource) => ({
-          ...resource,
-          iconPath: `/resources/${resource.slug}.svg`,
-        }))
-        .filter(
-          (resource: Resource) =>
-            resource.category?.slug === 'decentralized-compute'
-        );
+      const filteredResources = resources.filter(
+        (resource: Resource) =>
+          resource.category?.slug === 'decentralized-compute'
+      );
+      return filteredResources.map((resource: Resource) => ({
+        ...resource,
+        iconPath: `/resources/${resource.slug}.svg`,
+        markets: resource.markets.filter(
+          (market: Market) => market.category?.slug === 'decentralized-compute'
+        ),
+      }));
     },
   });
 };
