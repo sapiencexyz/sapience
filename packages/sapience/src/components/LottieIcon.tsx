@@ -1,5 +1,5 @@
 import { useLottie } from 'lottie-react';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 interface LottieIconProps {
   animationPath: string;
@@ -14,8 +14,6 @@ const LottieIcon = ({
   width = 28,
   height = 28,
 }: LottieIconProps) => {
-  const [isPlaying, setIsPlaying] = useState(true);
-
   const options = {
     animationData: undefined,
     path: animationPath,
@@ -28,29 +26,13 @@ const LottieIcon = ({
     },
   };
 
-  const { View, play, pause } = useLottie(options);
+  const { View, play } = useLottie(options);
 
   useEffect(() => {
-    // Start animation
     play();
-
-    // Get the animation duration from the loaded animation data
-    // We'll just use a timeout for now since we can't easily get the duration
-    const timeoutId = setTimeout(() => {
-      setIsPlaying(false);
-    }, 3010);
-
-    return () => clearTimeout(timeoutId);
   }, [play]);
 
-  // When animation ends, pause on the last frame instead of stopping
-  useEffect(() => {
-    if (!isPlaying) {
-      pause();
-    }
-  }, [isPlaying, pause]);
-
-  return View;
+  return <span className="dark:invert">{View}</span>;
 };
 
 export default LottieIcon;

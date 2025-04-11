@@ -36,109 +36,163 @@ const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
   loading: () => <div className="w-8 h-8" />,
 });
 
-interface Props {
-  params: {
-    id: string; // Market address
-    epoch: string;
-  };
-}
-
-// Interface based on raw GraphQL query response (BigInts as strings)
-interface EpochLeaderboardEntry {
-  epochId: string;
+// Interface for aggregated data after processing
+interface AggregatedLeaderboardEntry {
   owner: string;
-  totalDeposits: string; // These are likely strings representing BigInts
-  totalWithdrawals: string; // These are likely strings representing BigInts
-  openPositionsPnL: string; // These are likely strings representing BigInts
-  totalPnL: string; // These are likely strings representing BigInts
-  positions: string[]; // Array of position IDs
+  totalPnL: number; // Aggregated PnL as number
 }
 
-// Interface for data after processing (totalPnL as number)
-interface ProcessedEpochLeaderboardEntry
-  extends Omit<EpochLeaderboardEntry, 'totalPnL'> {
-  totalPnL: number;
-}
-
-const GET_EPOCH_LEADERBOARD = `
-  query GetEpochLeaderboard($chainId: Int!, $address: String!, $epochId: String!) {
-    getEpochLeaderboard(chainId: $chainId, address: $address, epochId: $epochId) {
-      epochId
-      owner
-      totalDeposits
-      totalWithdrawals
-      openPositionsPnL
-      totalPnL
-      positions
+// Query to fetch all markets and their epochs
+const GET_MARKETS = `
+  query GetMarkets {
+    markets {
+      address
+      chainId
+      epochs {
+        epochId
+        public
+      }
     }
   }
 `;
 
-const useLeaderboard = (marketId: string, epochId: string) => {
-  return useQuery<ProcessedEpochLeaderboardEntry[]>({
-    queryKey: ['epochLeaderboard', marketId, epochId],
+// Query to fetch leaderboard for a specific epoch
+const GET_EPOCH_LEADERBOARD = `
+  query GetEpochLeaderboard($chainId: Int!, $address: String!, $epochId: String!) {
+    getEpochLeaderboard(chainId: $chainId, address: $address, epochId: $epochId) {
+      owner
+      totalPnL # This is a string representing BigInt
+    }
+  }
+`;
+
+// Interface for the raw response of GET_EPOCH_LEADERBOARD
+interface RawEpochLeaderboardEntry {
+  owner: string;
+  totalPnL: string;
+}
+
+// Interface for the response of GET_MARKETS
+interface MarketData {
+  address: string;
+  chainId: number;
+  epochs: { epochId: number; public: boolean }[];
+}
+
+// Hook revised for client-side aggregation
+const useAllTimeLeaderboard = () => {
+  return useQuery<AggregatedLeaderboardEntry[]>({
+    queryKey: ['allTimeLeaderboard'], // Query key remains simple for now
     queryFn: async () => {
-      // Hardcoded values for testing - replace with dynamic values later
-      const chainId = 8453; // Base
-      const address = marketId; // Assuming params.id is the market address
-      const epoch = epochId; // Assuming params.epoch is the epoch ID
+      console.log('Fetching all markets...');
+      const graphqlEndpoint =
+        process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || '/graphql';
 
-      console.log(
-        `Fetching leaderboard for chainId: ${chainId}, address: ${address}, epochId: ${epoch}`
-      );
-
-      // Get leaderboard using GraphQL
       try {
-        const graphqlEndpoint =
-          process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || '/graphql';
-        const response = await foilApi.post(graphqlEndpoint, {
-          query: GET_EPOCH_LEADERBOARD,
-          variables: {
-            chainId,
-            address,
-            epochId: epoch,
-          },
+        // 1. Fetch all markets
+        const marketsResponse = await foilApi.post(graphqlEndpoint, {
+          query: GET_MARKETS,
         });
-        console.log('GraphQL Response:', response);
 
-        if (response.errors) {
-          console.error('GraphQL Errors:', response.errors);
-          throw new Error(
-            `GraphQL error: ${response.errors.map((e: any) => e.message).join(', ')}`
+        if (marketsResponse.errors) {
+          console.error(
+            'GraphQL Errors fetching markets:',
+            marketsResponse.errors
           );
+          throw new Error('Failed to fetch markets');
         }
 
-        // Ensure leaderboardData is treated as the raw type initially
-        const leaderboardData: EpochLeaderboardEntry[] =
-          response.data?.getEpochLeaderboard;
-        if (!leaderboardData) {
-          console.error(
-            'No leaderboard data found in response:',
-            response.data
-          );
+        const marketsData: MarketData[] = marketsResponse.data?.markets;
+        if (!marketsData) {
+          console.error('No market data found');
           return [];
         }
 
-        // Convert BigInt strings to numbers for sorting/display
-        const processedData: ProcessedEpochLeaderboardEntry[] =
-          leaderboardData.map((entry) => ({
-            ...entry,
-            totalPnL: Number(entry.totalPnL), // Convert totalPnL to number
-          }));
+        // 2. Identify all public market/epoch pairs
+        const publicEpochIdentifiers: {
+          address: string;
+          chainId: number;
+          epochId: string;
+        }[] = [];
+        marketsData.forEach((market) => {
+          market.epochs.forEach((epoch) => {
+            if (epoch.public) {
+              publicEpochIdentifiers.push({
+                address: market.address,
+                chainId: market.chainId,
+                epochId: String(epoch.epochId), // Ensure epochId is string for query variable
+              });
+            }
+          });
+        });
 
-        // Sort by total PnL descending
-        return processedData.sort(
-          (
-            a: ProcessedEpochLeaderboardEntry,
-            b: ProcessedEpochLeaderboardEntry
-          ) => b.totalPnL - a.totalPnL
+        if (publicEpochIdentifiers.length === 0) {
+          console.log('No public epochs found.');
+          return [];
+        }
+
+        console.log(
+          `Found ${publicEpochIdentifiers.length} public epochs. Fetching leaderboards...`
         );
+
+        // 3. Fetch leaderboards for all public epochs in parallel
+        const leaderboardPromises = publicEpochIdentifiers.map((identifier) =>
+          foilApi.post(graphqlEndpoint, {
+            query: GET_EPOCH_LEADERBOARD,
+            variables: identifier,
+          })
+        );
+
+        const leaderboardResponses = await Promise.all(leaderboardPromises);
+
+        // 4. Aggregate results
+        const aggregatedPnL: { [owner: string]: number } = {};
+
+        leaderboardResponses.forEach((response, index) => {
+          if (response.errors) {
+            console.warn(
+              `GraphQL error fetching leaderboard for ${JSON.stringify(publicEpochIdentifiers[index])}:`,
+              response.errors
+            );
+            // Continue aggregation even if one epoch fails
+            return;
+          }
+
+          const epochLeaderboard: RawEpochLeaderboardEntry[] =
+            response.data?.getEpochLeaderboard;
+
+          if (epochLeaderboard) {
+            epochLeaderboard.forEach((entry) => {
+              const { owner } = entry;
+              // Add BigInt handling - assuming pnl is d18
+              const pnlValue = BigInt(entry.totalPnL || '0'); // Handle potential null/undefined
+              if (!aggregatedPnL[owner]) {
+                aggregatedPnL[owner] = 0;
+              }
+              // Accumulate PnL as numbers (potentially large)
+              // Dividing by 1e18 here might lose precision if sums get huge before division.
+              // Keep as full numbers for now, handle display formatting in the cell component.
+              aggregatedPnL[owner] += Number(pnlValue);
+            });
+          }
+        });
+
+        // 5. Format and Sort
+        const finalLeaderboard: AggregatedLeaderboardEntry[] = Object.entries(
+          aggregatedPnL
+        )
+          .map(([owner, totalPnL]) => ({ owner, totalPnL }))
+          .sort((a, b) => b.totalPnL - a.totalPnL);
+
+        console.log(
+          `Aggregated leaderboard generated with ${finalLeaderboard.length} entries.`
+        );
+        return finalLeaderboard;
       } catch (error) {
-        console.error('Error fetching leaderboard:', error);
-        return [];
+        console.error('Error in useAllTimeLeaderboard:', error);
+        return []; // Return empty array on error
       }
     },
-    // Keep data fresh but avoid excessive refetching
     staleTime: 60 * 1000, // 1 minute
     refetchInterval: 5 * 60 * 1000, // 5 minutes
   });
@@ -186,19 +240,16 @@ const RankCell = ({ row }: { row: { index: number } }) => (
   </span>
 );
 
-// Extract ROI cell component
-// This component is no longer needed as the ROI column is removed
-// const ROICell = () => <span className="text-muted-foreground">--%</span>;
+// Removed ROI Cell component as it's not used
 
-const Leaderboard = ({ params }: Props) => {
-  const { data: leaderboardData, isLoading } = useLeaderboard(
-    params.id,
-    params.epoch
-  );
+// Removed params from component signature
+const Leaderboard = () => {
+  // Use the new hook, remove params usage
+  const { data: leaderboardData, isLoading } = useAllTimeLeaderboard();
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('all');
 
-  // Simplified columns for the basic table
-  const columns = useMemo<ColumnDef<ProcessedEpochLeaderboardEntry>[]>(
+  // Update columns definition to use AggregatedLeaderboardEntry
+  const columns = useMemo<ColumnDef<AggregatedLeaderboardEntry>[]>(
     () => [
       {
         id: 'rank',
@@ -221,8 +272,8 @@ const Leaderboard = ({ params }: Props) => {
     []
   );
 
-  // No need for groupedPositions anymore, use leaderboardData directly
-  const table = useReactTable<ProcessedEpochLeaderboardEntry>({
+  // Update useReactTable type argument
+  const table = useReactTable<AggregatedLeaderboardEntry>({
     data: leaderboardData ?? [], // Use fetched data or empty array
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -239,7 +290,7 @@ const Leaderboard = ({ params }: Props) => {
   }
 
   return (
-    <div className="container max-w-[860px] mx-auto p-4 md:p-8 lg:p-20">
+    <div className="container max-w-[660px] mx-auto py-32">
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-10">
         Leaderboard
       </h1>

@@ -30,7 +30,7 @@ const BotsHero = () => {
   return (
     <div className="relative overflow-hidden flex items-center justify-center w-full">
       {/* Outer container with padding and iframe background */}
-      <div className="relative z-10 w-full px-4 sm:px-6 py-36 max-w-screen-xl mx-auto">
+      <div className="relative z-10 w-full px-6 py-36 max-w-screen-xl mx-auto">
         <div className="relative overflow-hidden rounded-xl shadow-inner">
           {/* Iframe as background within the outer box */}
           <div
@@ -59,7 +59,7 @@ const BotsHero = () => {
           </div>
 
           {/* Inner Content card overlaid on top */}
-          <div className="relative z-10 w-100 text-center bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm p-24">
+          <div className="relative z-10 w-100 text-center bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm p-8 lg:p-24">
             <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
               Trade with Machine Intelligence
             </h1>
@@ -170,50 +170,59 @@ const MCPSection = () => {
 // Template section renamed to Research Bot Boilerplate
 const TemplateSection = () => {
   return (
-    <section id="templates" className="py-32 px-4 sm:px-6 w-full">
+    <section id="templates" className="py-16 md:py-32 px-4 sm:px-6 w-full">
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex flex-col md:flex-row gap-8 items-center">
           {/* Left side: Flow chart with loop */}
           <div className="w-full md:w-1/2 p-6">
-            <div className="relative h-[400px] w-full">
-              {/* Large circular connecting line */}
-              <div className="absolute w-[280px] h-[280px] border-2 border-muted rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+            {/* Adjusted height for mobile */}
+            <div className="relative h-[300px] md:h-[400px] w-full">
+              {/* Responsive large circular connecting line */}
+              <div className="absolute w-[200px] h-[200px] md:w-[280px] md:h-[280px] border-2 border-muted rounded-full left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
 
-              {/* Centered Spinning Icon */}
+              {/* Centered Spinning Icon - size adjusted */}
               <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                 <RefreshCw
-                  className="h-10 w-10 animate-spin opacity-20"
+                  className="h-8 w-8 md:h-10 md:w-10 animate-spin opacity-20"
                   strokeWidth={1}
                   style={{ animationDuration: '8s' }}
                 />
               </div>
 
-              {/* Step 1: Research and Forecast - Top */}
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 text-center">
-                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
-                  <Search className="h-8 w-8 text-black" />
+              {/* Step 1: Research and Forecast - Top - Responsive positioning and size */}
+              <div className="absolute top-4 md:top-8 left-1/2 -translate-x-1/2 text-center">
+                {/* Responsive icon container */}
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white flex items-center justify-center mb-2 md:mb-3 border border-gray-200 shadow-sm mx-auto">
+                  {/* Responsive icon */}
+                  <Search className="h-6 w-6 md:h-8 md:w-8 text-black" />
                 </div>
-                <p className="text-sm font-medium">Research and Forecast</p>
+                <p className="text-xs md:text-sm font-medium">
+                  Research and Forecast
+                </p>
               </div>
 
-              {/* Step 2: Create/Modify Market Positions - Bottom Right */}
-              <div className="absolute bottom-[40px] right-[80px] text-center">
-                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
-                  <TrendingUp className="h-8 w-8 text-black" />
+              {/* Step 2: Create/Modify Market Positions - Bottom Right - Responsive positioning and size */}
+              <div className="absolute bottom-[20px] right-[40px] md:bottom-[40px] md:right-[80px] text-center">
+                {/* Responsive icon container */}
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white flex items-center justify-center mb-2 md:mb-3 border border-gray-200 shadow-sm mx-auto">
+                  {/* Responsive icon */}
+                  <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-black" />
                 </div>
-                <p className="text-sm font-medium">
+                <p className="text-xs md:text-sm font-medium">
                   Update
                   <br />
                   Market Positions
                 </p>
               </div>
 
-              {/* Step 3: Update Prediction Journal - Bottom Left */}
-              <div className="absolute bottom-[40px] left-[80px] text-center">
-                <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mb-3 border border-gray-200 shadow-sm mx-auto">
-                  <Megaphone className="h-8 w-8 text-black" />
+              {/* Step 3: Update Prediction Journal - Bottom Left - Responsive positioning and size */}
+              <div className="absolute bottom-[20px] left-[40px] md:bottom-[40px] md:left-[80px] text-center">
+                {/* Responsive icon container */}
+                <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white flex items-center justify-center mb-2 md:mb-3 border border-gray-200 shadow-sm mx-auto">
+                  {/* Responsive icon */}
+                  <Megaphone className="h-6 w-6 md:h-8 md:w-8 text-black" />
                 </div>
-                <p className="text-sm font-medium">
+                <p className="text-xs md:text-sm font-medium">
                   Share Prediction
                   <br />
                   Journal
@@ -241,7 +250,7 @@ const TemplateSection = () => {
                 passHref
               >
                 <Button>
-                  <Github className="mr-1 h-4 w-4" /> Clone the repo
+                  <Github className="mr-1 h-4 w-4" /> Clone the codebase
                 </Button>
               </Link>
             </div>

@@ -25,7 +25,7 @@ const LottieLoader = ({
 
   const { View } = useLottie(options);
 
-  return View;
+  return <span className="dark:invert">{View}</span>;
 };
 
 export default LottieLoader;

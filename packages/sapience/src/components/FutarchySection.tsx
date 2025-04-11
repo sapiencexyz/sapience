@@ -22,7 +22,7 @@ export default function FutarchySection() {
           {/* Text content */}
           <div className="flex-1">
             <h2 className="text-3xl font-heading font-normal mb-6">
-              Supporting Futarchy
+              Exploring Futarchy
             </h2>
             <p className="text-lg mb-6">
               Futarchy leverages prediction markets to determine which policies
