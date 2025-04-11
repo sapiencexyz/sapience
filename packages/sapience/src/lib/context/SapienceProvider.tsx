@@ -6,10 +6,10 @@ import type {
 } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext } from 'react';
 
 import { foilApi } from '../utils/util';
-import InstallDialog from '~/components/InstallDialog';
+// import InstallDialog from '~/components/InstallDialog';
 
 // Define the type based on the API response
 interface PermitResponse {
@@ -29,12 +29,12 @@ const SapienceContext = createContext<SapienceContextType | undefined>(
   undefined
 );
 
-const LOCAL_STORAGE_KEY = 'foil_install_dialog_shown';
+// const LOCAL_STORAGE_KEY = 'foil_install_dialog_shown';
 
 export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
+  // const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
 
   // Fetch permit data
   const {
@@ -49,7 +49,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
       return foilApi.get('/permit');
     },
   });
-
+  /*
   // Handle InstallDialog visibility
   useEffect(() => {
     const alreadyShown = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -75,7 +75,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
     }
     setIsInstallDialogOpen(open);
   };
-
+*/
   return (
     <SapienceContext.Provider
       value={{
@@ -86,10 +86,10 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
       }}
     >
       {children}
-      <InstallDialog
+      {/* <InstallDialog
         isOpen={isInstallDialogOpen}
         onOpenChange={handleInstallDialogClose}
-      />
+      /> */}
     </SapienceContext.Provider>
   );
 };
