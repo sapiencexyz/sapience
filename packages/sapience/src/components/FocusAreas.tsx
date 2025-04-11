@@ -119,7 +119,7 @@ export default function TopicsOfInterest() {
   }, [isManualScrolling]);
 
   return (
-    <section className="pt-72 pb-24 px-8 overflow-hidden relative">
+    <section className="pt-40 pb-24 px-8 overflow-hidden relative">
       <div className="container mx-auto">
         <div className="relative">
           {/* Gradient overlays for fade effect */}

@@ -237,7 +237,7 @@ const TemplateSection = () => {
               Build a Research Agent
             </h2>
             <p className="text-muted-foreground text-lg">
-              Use our customize our TypeScript codebase to create a bot that can
+              Customize our TypeScript codebase to create a bot that can
               research, analyze data, and make predictions on Sapience markets
               autonomously.
             </p>
