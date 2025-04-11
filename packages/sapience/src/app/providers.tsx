@@ -10,6 +10,7 @@ import { injected } from 'wagmi/connectors';
 import ThemeProvider from '~/components/ThemeProvider';
 import { ConnectWalletProvider } from '~/lib/context/ConnectWalletProvider';
 import { FoilProvider } from '~/lib/context/FoilProvider';
+import { SapienceProvider } from '~/lib/context/SapienceProvider';
 
 const queryClient = new QueryClient();
 
@@ -67,7 +68,9 @@ const Providers = ({ children }: { children: JSX.Element }) => {
             )}
           >
             <ConnectWalletProvider>
-              <FoilProvider>{children}</FoilProvider>
+              <SapienceProvider>
+                <FoilProvider>{children}</FoilProvider>
+              </SapienceProvider>
             </ConnectWalletProvider>
           </RainbowKitProvider>
         </QueryClientProvider>

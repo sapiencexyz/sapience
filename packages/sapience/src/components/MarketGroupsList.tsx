@@ -409,9 +409,9 @@ const ForecastingTable = () => {
               <motion.div
                 layout
                 key={market.key}
-                initial={{ opacity: 0, scale: 0.98, y: 0 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.98, y: 0 }}
+                initial={{ opacity: 0, y: 0 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 0 }}
                 transition={{ duration: 0.15, ease: 'easeInOut' }}
                 className="mb-12 relative cursor-pointer transition-all hover:translate-y-[-2px] hover:opacity-95 hover:shadow-sm"
               >

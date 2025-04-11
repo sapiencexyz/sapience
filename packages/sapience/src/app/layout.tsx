@@ -4,7 +4,6 @@ import type React from 'react';
 import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
-import InstallDialog from '~/components/InstallDialog';
 import Layout from '~/components/layout';
 import LoadingSpinner from '~/components/loadingSpinner';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
@@ -107,7 +106,6 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           <LoadingProvider>
             <LoadingSpinner />
             <Layout>{children}</Layout>
-            <InstallDialog />
             <Toaster />
           </LoadingProvider>
         </Providers>

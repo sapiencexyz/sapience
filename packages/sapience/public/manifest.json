@@ -1,7 +1,7 @@
 {
-    "name": "Foil",
-    "short_name": "Foil",
-    "description": "The fully decentralized marketplace for onchain resources",
+    "name": "Sapience",
+    "short_name": "Sapience",
+    "description": "Sapience Prediction Markets",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
