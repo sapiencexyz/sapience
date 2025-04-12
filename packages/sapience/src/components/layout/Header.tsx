@@ -143,9 +143,9 @@ const Header = () => {
           {/* Mobile Sidebar Trigger Button (fixed left, with border, hover effect) */}
           <SidebarTrigger
             id="nav-sidebar"
-            className="fixed left-0 top-20 z-[51] flex items-center justify-center md:hidden border border-l-0 border-border bg-background/30 p-4 pl-3.5 backdrop-blur-sm rounded-r-full opacity-60 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-opacity"
+            className="fixed left-0 top-16 z-[51] flex items-center justify-center md:hidden border border-l-0 border-border bg-background/30 p-5 pl-4 backdrop-blur-sm rounded-r-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6" />
           </SidebarTrigger>
 
           <div className="flex items-center gap-5">

@@ -30,19 +30,18 @@ const extendedFocusAreas = [...FOCUS_AREAS, ...FOCUS_AREAS];
 
 export default function TopicsOfInterest() {
   const carouselRef = useRef<HTMLDivElement>(null);
-  const [isManualScrolling, setIsManualScrolling] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
   const [position, setPosition] = useState(0);
   const animationRef = useRef<number | null>(null);
 
   const startAutoScroll = () => {
     const carousel = carouselRef.current;
-    if (!carousel || isManualScrolling) return;
+    if (!carousel) return;
+
+    const scrollSpeed = 0.2; // Keep original speed
 
     const animate = () => {
       setPosition((prev) => {
-        const newPosition = prev - 0.2; // Slow scroll speed
+        const newPosition = prev - scrollSpeed; // Use constant speed
 
         // Reset position when first set of cards is out of view
         if (carousel && newPosition <= -carousel.scrollWidth / 2) {
@@ -65,43 +64,6 @@ export default function TopicsOfInterest() {
     }
   };
 
-  // Handle mouse down event
-  const handleMouseDown = (e: React.MouseEvent) => {
-    stopAutoScroll();
-    setIsManualScrolling(true);
-    setStartX(e.pageX - (carouselRef.current?.offsetLeft || 0));
-    setScrollLeft(position);
-  };
-
-  // Handle mouse leave event
-  const handleMouseLeave = () => {
-    if (isManualScrolling) {
-      setIsManualScrolling(false);
-      startAutoScroll();
-    }
-  };
-
-  // Handle mouse up event
-  const handleMouseUp = () => {
-    setIsManualScrolling(false);
-    startAutoScroll();
-  };
-
-  // Handle mouse move event
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isManualScrolling) return;
-    e.preventDefault();
-
-    const carousel = carouselRef.current;
-    if (!carousel) return;
-
-    const x = e.pageX - carousel.offsetLeft;
-    const walk = (x - startX) * 1; // Scroll speed multiplier
-    const newPosition = scrollLeft + walk;
-
-    setPosition(newPosition);
-  };
-
   // Apply position to carousel
   useEffect(() => {
     if (carouselRef.current) {
@@ -116,7 +78,7 @@ export default function TopicsOfInterest() {
     return () => {
       stopAutoScroll();
     };
-  }, [isManualScrolling]);
+  }, []); // Remove dependencies related to manual scroll and mobile detection
 
   return (
     <section className="pt-40 pb-24 px-8 overflow-hidden relative">
@@ -130,14 +92,8 @@ export default function TopicsOfInterest() {
           <div className="overflow-hidden">
             <div
               ref={carouselRef}
-              className="flex gap-6 py-4 cursor-grab active:cursor-grabbing"
+              className="flex gap-6 py-4"
               style={{ width: 'fit-content' }}
-              role="button"
-              tabIndex={0}
-              onMouseDown={handleMouseDown}
-              onMouseLeave={handleMouseLeave}
-              onMouseUp={handleMouseUp}
-              onMouseMove={handleMouseMove}
             >
               {extendedFocusAreas.map((area, index) => (
                 <Link

@@ -7,9 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@foil/ui/components/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@foil/ui/components/ui/popover';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, HelpCircle, Info } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -258,24 +263,17 @@ const ForecastingDetailPage = () => {
   const [activeTab, setActiveTab] = useState<'predict' | 'wager'>('predict');
   const [formData, setFormData] = useState({
     prediction: 'yes',
-    wagerAmount: '',
+    wagerAmount: '10', // Default wager amount set to 10
   });
-  const [showTooltip, setShowTooltip] = useState(false);
 
   // Handle tab change
   const handleTabChange = (tab: 'predict' | 'wager') => {
     setActiveTab(tab);
-    setShowTooltip(false);
   };
 
   // Handle prediction selection
   const handlePredictionChange = (value: 'yes' | 'no') => {
     setFormData({ ...formData, prediction: value });
-  };
-
-  // Toggle tooltip visibility
-  const toggleTooltip = () => {
-    setShowTooltip(!showTooltip);
   };
 
   const activeButtonStyle =
@@ -305,7 +303,7 @@ const ForecastingDetailPage = () => {
   }
 
   return (
-    <div className="flex flex-col justify-center w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-12">
+    <div className="flex flex-col justify-center w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-40 lg:py-12">
       <div className="container mx-auto max-w-5xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3">
           {displayQuestion && (
@@ -391,12 +389,12 @@ const ForecastingDetailPage = () => {
                           </div>
                           <div>
                             <p className="text-base text-foreground">
-                              Sign a message with your prediction using your
-                              account password and we&apos;ll record it on{' '}
+                              Submit a prediction and we&apos;ll record it on{' '}
                               <a href="https://base.org" className="underline">
                                 Base
                               </a>
-                              , a public blockchain.
+                              , a blockchain, connected to your Sapience
+                              account.
                             </p>
                           </div>
                         </div>
@@ -431,20 +429,12 @@ const ForecastingDetailPage = () => {
                             </div>
                           </div>
                           <div>
-                            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-                            <label
-                              id="wager-amount-label"
-                              htmlFor="wager-amount-input"
-                              className="block text-sm font-medium mb-1"
-                            >
-                              Amount
-                            </label>
                             <div className="relative">
                               <input
                                 id="wager-amount-input"
                                 name="wagerAmount"
                                 type="number"
-                                className="w-full p-2 border rounded pr-16"
+                                className="w-full p-2 border rounded pr-24"
                                 value={formData.wagerAmount}
                                 onChange={(e) =>
                                   setFormData({
@@ -457,65 +447,80 @@ const ForecastingDetailPage = () => {
                               />
                               <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center">
                                 sUSDS
-                                <div className="relative ml-1 flex items-center">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      toggleTooltip();
-                                    }}
-                                    className="text-muted-foreground hover:text-foreground flex items-center justify-center"
-                                    aria-label="Information about sUSDS"
-                                  >
-                                    <svg
-                                      xmlns="http://www.w3.org/2000/svg"
-                                      width="16"
-                                      height="16"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      strokeWidth="2"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="ml-1 text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
+                                      aria-label="Information about sUSDS"
                                     >
-                                      <circle cx="12" cy="12" r="10" />
-                                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                                      <line
-                                        x1="12"
-                                        y1="17"
-                                        x2="12.01"
-                                        y2="17"
-                                      />
-                                    </svg>
-                                  </button>
-                                  {showTooltip && (
-                                    <div className="absolute bottom-full right-0 mb-2 p-3 bg-popover text-popover-foreground rounded-md shadow-md w-60 text-sm">
-                                      <p>
-                                        sUSDS is the yield-bearing token of the{' '}
-                                        <a
-                                          href="https://sky.money/features#savings"
-                                          className="underline"
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                        >
-                                          Sky Protocol
-                                        </a>{' '}
-                                        on{' '}
-                                        <a
-                                          href="https://base.org"
-                                          className="underline"
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                        >
-                                          Base
-                                        </a>
-                                        .
-                                      </p>
-                                      <div className="absolute bottom-[-6px] right-2 w-3 h-3 bg-popover rotate-45" />
-                                    </div>
-                                  )}
-                                </div>
+                                      <HelpCircle size={16} />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent
+                                    side="top"
+                                    className="w-[200px] p-3 text-sm"
+                                  >
+                                    <p>
+                                      sUSDS is the yield-bearing token of the{' '}
+                                      <a
+                                        href="https://sky.money/features#savings"
+                                        className="underline"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        Sky Protocol
+                                      </a>
+                                      .
+                                    </p>
+                                  </PopoverContent>
+                                </Popover>
                               </div>
+                            </div>
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              {/* Calculate and display payout dynamically */}
+                              {Number(formData.wagerAmount) > 0 && (
+                                <>
+                                  If this market resolves to{' '}
+                                  <span className="italic">
+                                    {formData.prediction === 'yes'
+                                      ? 'Yes'
+                                      : 'No'}
+                                  </span>
+                                  , you will be able to redeem approximately{' '}
+                                  {(Number(formData.wagerAmount) * 2).toFixed(
+                                    2
+                                  )}{' '}
+                                  sUSDS
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button
+                                        type="button"
+                                        className="ml-1 text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5"
+                                        aria-label="Information about payout"
+                                      >
+                                        <Info size={14} />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent
+                                      side="top"
+                                      className="w-52 p-2 text-sm"
+                                    >
+                                      The prediction market runs onchain using
+                                      the open source{' '}
+                                      <a
+                                        href="https://docs.foil.xyz"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline"
+                                      >
+                                        Foil protocol
+                                      </a>
+                                      .
+                                    </PopoverContent>
+                                  </Popover>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>

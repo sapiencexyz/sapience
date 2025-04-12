@@ -69,10 +69,10 @@ export default function Hero() {
               Prediction Community
             </h1>
 
-            <p className="text-xl md:text-2xl mb-6 text-muted-foreground">
-              Join experts and enthusiasts forecasting the future of AI,
-              <br />
-              Biosecurity, Climate Change, International Relations, and more.
+            <p className="text-xl md:text-2xl mb-6 text-muted-foreground max-w-3xl">
+              Join experts and enthusiasts forecasting the future of the
+              economy, climate change, international relations, biosecurity, and
+              more.
             </p>
 
             <div className="flex justify-start">

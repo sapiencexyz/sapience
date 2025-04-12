@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@foil/ui/components/ui/button';
+import { Input } from '@foil/ui/components/ui/input';
 import {
   Sheet,
   SheetContent,
@@ -14,6 +15,7 @@ import {
   LayoutGridIcon,
   TagIcon,
   SlidersHorizontal,
+  SearchIcon,
 } from 'lucide-react';
 import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -86,7 +88,7 @@ const FocusAreaFilter = ({
 }) => (
   <div className="p-5 w-[280px] mt-0">
     <div className="pb-2">
-      <h3 className="font-medium text-sm mb-3">Focus Areas</h3>
+      <h3 className="font-medium mb-4 md:hidden">Filters</h3>
       <div className="space-y-1">
         <button
           type="button"
@@ -184,6 +186,9 @@ const ForecastingTable = () => {
     'active'
   );
 
+  // State for text filter
+  const [searchTerm, setSearchTerm] = React.useState('');
+
   // Add state for filter sheet
   const [filterOpen, setFilterOpen] = React.useState(false);
   // Get mobile status
@@ -196,6 +201,11 @@ const ForecastingTable = () => {
     setSelectedCategorySlug(currentCategorySlug);
   }, [searchParams]);
 
+  // Handler for text filter changes
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+  };
+
   // --- Memoization Logic Refactoring ---
   // Log before memo calculation starts
   console.log('[Pre-Memo] enrichedMarkets raw data:', enrichedMarkets);
@@ -203,31 +213,32 @@ const ForecastingTable = () => {
     console.log('[Memo] Recalculating groupedMarkets...');
     console.log('[Memo] enrichedMarkets:', enrichedMarkets);
     console.log('[Memo] selectedCategorySlug:', selectedCategorySlug);
+    console.log('[Memo] statusFilter:', statusFilter);
+    console.log('[Memo] searchTerm:', searchTerm);
 
     if (!enrichedMarkets) return [];
 
     // 1. Filter enrichedMarkets by selected Category SLUG *before* flattening
-    const filteredMarkets = enrichedMarkets.filter((market) => {
+    const filteredByCategory = enrichedMarkets.filter((market) => {
       if (selectedCategorySlug === null) return true; // Show all if no category selected
 
-      // LOGGING the comparison
+      // LOGGING the comparison - REMOVED for brevity
       const marketSlug = market.category?.slug;
-      const comparisonResult = marketSlug === selectedCategorySlug;
-      console.log(
-        `[Filter] Comparing market slug: "${marketSlug}" === selected slug: "${selectedCategorySlug}" -> ${comparisonResult}`
-      );
+      // console.log(
+      //   `[Filter] Comparing market slug: "${marketSlug}" === selected slug: "${selectedCategorySlug}" -> ${comparisonResult}`
+      // );
 
       // Filter based on the actual category slug
-      return comparisonResult;
+      return marketSlug === selectedCategorySlug;
     });
 
     console.log(
-      '[Memo] filteredMarkets length after category filter:',
-      filteredMarkets.length
+      '[Memo] filteredByCategory length after category filter:',
+      filteredByCategory.length
     );
 
     // 2. Map filteredMarkets to EpochWithContext[]
-    const allEpochs: EpochWithContext[] = filteredMarkets.flatMap((market) =>
+    const allEpochs: EpochWithContext[] = filteredByCategory.flatMap((market) =>
       market.epochs.map((epoch) => ({
         ...epoch, // Spread epoch details
         marketAddress: market.address,
@@ -244,14 +255,14 @@ const ForecastingTable = () => {
     const filteredEpochsByStatus: EpochWithContext[] = allEpochs.filter(
       (epoch) => {
         if (typeof epoch.endTimestamp !== 'number' || epoch.endTimestamp <= 0) {
-          console.warn('Filtering out epoch with invalid endTimestamp:', epoch);
+          // console.warn('Filtering out epoch with invalid endTimestamp:', epoch); // Keep console log minimal
           return false;
         }
         if (!epoch.public) return false;
         if (statusFilter === 'active') {
           return now <= epoch.endTimestamp;
         }
-        return true;
+        return true; // 'all' status includes everything public
       }
     );
 
@@ -262,7 +273,8 @@ const ForecastingTable = () => {
       const marketKey = `${epoch.chainId}:${epoch.marketAddress}`;
       if (!acc[marketKey]) {
         // Find the corresponding enrichedMarket to get details
-        const sourceMarket = filteredMarkets.find(
+        // Use filteredByCategory to ensure we only consider markets matching the slug filter
+        const sourceMarket = filteredByCategory.find(
           (m) => `${m.chainId}:${m.address}` === marketKey
         );
 
@@ -276,15 +288,16 @@ const ForecastingTable = () => {
           key: marketKey,
           marketAddress: epoch.marketAddress,
           chainId: epoch.chainId,
-          marketName: sourceMarket?.category?.name ?? 'Market',
+          // Use sourceMarket details safely
+          marketName: sourceMarket?.category?.name ?? 'Unknown Market',
           collateralAsset: epoch.collateralAsset,
           color,
           categorySlug: epoch.categorySlug,
           categoryId: epoch.categoryId,
           isYin: epoch.isYin,
-          marketQuestion: undefined,
-          epochs: [],
-          displayQuestion: undefined,
+          marketQuestion: undefined, // Initialize
+          epochs: [], // Initialize
+          displayQuestion: undefined, // Initialize
         };
       }
       acc[marketKey].epochs.push(epoch);
@@ -292,27 +305,52 @@ const ForecastingTable = () => {
     }, {});
 
     // 5. Determine display question for each group and convert to array
-    return Object.values(groupedByMarketKey).map((groupedMarket) => {
-      let displayQuestion: string | null | undefined = null; // Start with null
+    const marketsWithQuestions = Object.values(groupedByMarketKey).map(
+      (groupedMarket) => {
+        let displayQuestion: string | null | undefined = null; // Start with null
 
-      if (groupedMarket.epochs && groupedMarket.epochs.length > 0) {
-        // Sort epochs by endTimestamp descending to get the most recent first
-        const sortedEpochs = [...groupedMarket.epochs].sort(
-          (a, b) => b.endTimestamp - a.endTimestamp
-        );
-        // Try to get the question from the most recent epoch
-        displayQuestion = sortedEpochs[0]?.question;
+        if (groupedMarket.epochs && groupedMarket.epochs.length > 0) {
+          // Sort epochs by endTimestamp descending to get the most recent first
+          const sortedEpochs = [...groupedMarket.epochs].sort(
+            (a, b) => b.endTimestamp - a.endTimestamp
+          );
+          // Try to get the question from the most recent epoch
+          displayQuestion = sortedEpochs[0]?.question;
+        }
+
+        // Fallback to market name (category name) if no epoch question was found
+        displayQuestion = displayQuestion ?? groupedMarket.marketName;
+
+        return {
+          ...groupedMarket,
+          displayQuestion: displayQuestion ?? undefined, // Ensure it's string | undefined
+        };
       }
+    );
 
-      // Fallback to market name (category name) if no epoch question was found
-      displayQuestion = displayQuestion ?? groupedMarket.marketName;
+    // 6. Filter by Search Term *after* determining display question
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    const filteredBySearch = marketsWithQuestions.filter((market) => {
+      if (!lowerCaseSearchTerm) return true; // Show all if search is empty
 
-      return {
-        ...groupedMarket,
-        displayQuestion: displayQuestion ?? undefined,
-      };
+      const nameMatch = market.marketName
+        ?.toLowerCase()
+        .includes(lowerCaseSearchTerm);
+      // Make sure displayQuestion exists before calling toLowerCase
+      const questionMatch =
+        market.displayQuestion &&
+        market.displayQuestion.toLowerCase().includes(lowerCaseSearchTerm);
+
+      return nameMatch || questionMatch;
     });
-  }, [enrichedMarkets, selectedCategorySlug, statusFilter]);
+
+    console.log(
+      '[Memo] Final filtered markets length:',
+      filteredBySearch.length
+    );
+
+    return filteredBySearch; // Return the final filtered list
+  }, [enrichedMarkets, selectedCategorySlug, statusFilter, searchTerm]); // Added searchTerm dependency
   // --- End of refactored useMemo ---
 
   // Update click handler for focus areas
@@ -387,6 +425,24 @@ const ForecastingTable = () => {
             </div>
           </div>
         )}
+
+        {/* Add Text Filter Input */}
+        <div className="mb-8 sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2 pb-1">
+          {/* Wrap Input and Icon */}
+          <div className="relative flex items-center">
+            <SearchIcon
+              className="absolute left-0 h-full w-auto p-3 pl-2 text-muted-foreground opacity-40"
+              strokeWidth={1}
+            />
+            <Input
+              type="text"
+              placeholder="Search questions..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full text-3xl font-heading font-normal bg-transparent rounded-none border-0 border-b border-muted-foreground/40 placeholder:text-foreground placeholder:opacity-20 focus-visible:ring-0 focus-visible:ring-offset-0 h-auto py-3 pl-14"
+            />
+          </div>
+        </div>
 
         {/* Removed the inline loading checks here */}
         <div className="relative min-h-[300px] pt-2">
