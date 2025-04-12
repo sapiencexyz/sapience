@@ -2,6 +2,11 @@
 
 import { gql } from '@apollo/client';
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@foil/ui/components/ui/alert';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -14,13 +19,14 @@ import {
 } from '@foil/ui/components/ui/popover';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
-import { ChevronRight, HelpCircle, Info } from 'lucide-react';
+import { ChevronRight, HelpCircle, Info, AlertTriangle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
+import { useSapience } from '~/lib/context/SapienceProvider';
 import { foilApi } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
@@ -66,14 +72,10 @@ const getChainIdFromShortName = (shortName: string): number => {
   }
 };
 
-const ForecastingDetailPage = () => {
-  const params = useParams();
-  const router = useRouter();
-  const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
-  const [showEpochSelector, setShowEpochSelector] = useState(false);
-
-  // Parse chain and market address from URL parameter
-  const paramString = params.chainShortName as string;
+// Parse URL parameter to extract chain and market address
+const parseUrlParameter = (
+  paramString: string
+): { chainShortName: string; marketAddress: string } => {
   console.log('URL parameter:', paramString);
 
   // URL decode the parameter first, then parse
@@ -99,6 +101,19 @@ const ForecastingDetailPage = () => {
   }
 
   console.log('Parsed parameters:', { chainShortName, marketAddress });
+  return { chainShortName, marketAddress };
+};
+
+const ForecastingDetailPage = () => {
+  const params = useParams();
+  const router = useRouter();
+  const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
+  const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
+  const [showEpochSelector, setShowEpochSelector] = useState(false);
+
+  // Parse chain and market address from URL parameter
+  const paramString = params.chainShortName as string;
+  const { chainShortName, marketAddress } = parseUrlParameter(paramString);
   const chainId = getChainIdFromShortName(chainShortName);
 
   // Fetch market data
@@ -154,13 +169,6 @@ const ForecastingDetailPage = () => {
     retry: 3,
     retryDelay: 1000,
   });
-
-  // Ensure we have a good initial state while loading
-  // useEffect(() => {
-  //   if (isLoadingMarket) {
-  //     setDisplayQuestion('');
-  //   }
-  // }, [isLoadingMarket]);
 
   // Process and format the question
   useEffect(() => {
@@ -294,7 +302,7 @@ const ForecastingDetailPage = () => {
   ];
 
   // MOVED LOADING CHECK HERE - after all hooks
-  if (isLoadingMarket) {
+  if (isLoadingMarket || isPermitLoadingPermit) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
         <LottieLoader width={32} height={32} />
@@ -514,7 +522,7 @@ const ForecastingDetailPage = () => {
                                         rel="noopener noreferrer"
                                         className="underline"
                                       >
-                                        Foil protocol
+                                        Foil Protocol
                                       </a>
                                       .
                                     </PopoverContent>
@@ -527,15 +535,35 @@ const ForecastingDetailPage = () => {
                       )}
                     </div>
                   </div>
-
-                  <button
-                    type="submit"
-                    className="w-full bg-primary text-primary-foreground py-3 px-5 rounded text-lg font-normal hover:bg-primary/90"
-                  >
-                    {activeTab === 'wager'
-                      ? 'Submit Wager'
-                      : 'Submit Prediction'}
-                  </button>
+                  <div>
+                    <button
+                      type="submit"
+                      disabled={
+                        isPermitLoadingPermit ||
+                        (activeTab === 'wager' &&
+                          permitData?.permitted === false)
+                      }
+                      className="w-full bg-primary text-primary-foreground py-3 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {activeTab === 'wager'
+                        ? 'Submit Wager'
+                        : 'Submit Prediction'}
+                    </button>
+                    {!isPermitLoadingPermit &&
+                      permitData?.permitted === false &&
+                      activeTab === 'wager' && (
+                        <Alert
+                          variant="destructive"
+                          className="mt-5 bg-destructive/10 rounded-sm"
+                        >
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Prohibited Region</AlertTitle>
+                          <AlertDescription>
+                            You cannot wager using this app.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                  </div>
                 </form>
               </div>
             </div>
