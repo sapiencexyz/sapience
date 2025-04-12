@@ -225,7 +225,7 @@ const ForecastingDetailPage = () => {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-24">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-32">
       <div className="container mx-auto max-w-5xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3 flex-1">
           {/* Display Market Question */}
@@ -299,7 +299,7 @@ const ForecastingDetailPage = () => {
             className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
-            SIMPLE VIEW
+            EASY MODE
           </button>
         </div>
       </div>
