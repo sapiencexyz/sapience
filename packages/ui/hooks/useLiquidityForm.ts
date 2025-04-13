@@ -1,25 +1,46 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 
-const liquidityFormSchema = z.object({
-  depositAmount: z.string().min(1, 'Deposit amount is required'),
-  lowPrice: z.string().min(1, 'Low price is required'),
-  highPrice: z.string().min(1, 'High price is required'),
-  slippage: z.string().default('0.5'),
-});
+// Define the form schema structure without zod
+const liquidityFormValidation = {
+  depositAmount: {
+    required: 'Deposit amount is required',
+  },
+  lowPrice: {
+    required: 'Low price is required',
+  },
+  highPrice: {
+    required: 'High price is required',
+  },
+};
 
-export type LiquidityFormValues = z.infer<typeof liquidityFormSchema>;
+export interface LiquidityFormValues {
+  depositAmount: string;
+  lowPrice: string;
+  highPrice: string;
+  slippage: string;
+}
 
 export function useLiquidityForm() {
   const form = useForm<LiquidityFormValues>({
-    resolver: zodResolver(liquidityFormSchema),
     defaultValues: {
       depositAmount: '0',
       lowPrice: '0',
       highPrice: '0',
       slippage: '0.5',
     },
+  });
+
+  // Register fields with validation
+  form.register('depositAmount', { 
+    required: 'Deposit amount is required'
+  });
+  
+  form.register('lowPrice', {
+    required: 'Low price is required'
+  });
+  
+  form.register('highPrice', {
+    required: 'High price is required'
   });
 
   // Example of form submission

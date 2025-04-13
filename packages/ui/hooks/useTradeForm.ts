@@ -1,23 +1,27 @@
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 
-const tradeFormSchema = z.object({
-  size: z.string().min(1, 'Size is required'),
-  slippage: z.string().default('0.5'),
-  direction: z.enum(['Long', 'Short']),
-});
-
-export type TradeFormValues = z.infer<typeof tradeFormSchema>;
+export interface TradeFormValues {
+  size: string;
+  slippage: string;
+  direction: 'Long' | 'Short';
+}
 
 export function useTradeForm() {
   const form = useForm<TradeFormValues>({
-    resolver: zodResolver(tradeFormSchema),
     defaultValues: {
       size: '0',
       slippage: '0.5',
       direction: 'Long',
     },
+  });
+
+  // Register fields with validation
+  form.register('size', { 
+    required: 'Size is required'
+  });
+  
+  form.register('direction', {
+    required: 'Direction is required'
   });
 
   // Example of form submission
