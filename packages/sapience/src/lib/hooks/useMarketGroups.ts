@@ -100,6 +100,7 @@ export interface Market {
   vaultAddress: string;
   isYin: boolean;
   collateralAsset: string;
+  question?: string | null;
   epochs: Epoch[];
 }
 
@@ -141,6 +142,7 @@ const MARKETS_QUERY = gql`
       isYin
       vaultAddress
       collateralAsset
+      question
       category {
         id
         name
@@ -207,6 +209,7 @@ interface MarketApiResponse {
   isYin: boolean;
   vaultAddress: string;
   collateralAsset: string;
+  question?: string | null;
   category: Category | null; // Allow null based on schema possibility
   epochs: Epoch[];
 }

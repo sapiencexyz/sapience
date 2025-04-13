@@ -19,7 +19,7 @@ import {
 } from '@foil/ui/components/ui/popover';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
-import { ChevronRight, HelpCircle, Info, AlertTriangle } from 'lucide-react';
+import { ChevronRight, HelpCircle, Info } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -556,7 +556,6 @@ const ForecastingDetailPage = () => {
                           variant="destructive"
                           className="mt-5 bg-destructive/10 rounded-sm"
                         >
-                          <AlertTriangle className="h-4 w-4" />
                           <AlertTitle>Prohibited Region</AlertTitle>
                           <AlertDescription>
                             You cannot wager using this app.

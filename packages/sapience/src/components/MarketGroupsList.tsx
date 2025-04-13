@@ -206,36 +206,18 @@ const ForecastingTable = () => {
     setSearchTerm(event.target.value);
   };
 
-  // --- Memoization Logic Refactoring ---
-  // Log before memo calculation starts
-  console.log('[Pre-Memo] enrichedMarkets raw data:', enrichedMarkets);
   const groupedMarkets: GroupedMarket[] = React.useMemo(() => {
-    console.log('[Memo] Recalculating groupedMarkets...');
-    console.log('[Memo] enrichedMarkets:', enrichedMarkets);
-    console.log('[Memo] selectedCategorySlug:', selectedCategorySlug);
-    console.log('[Memo] statusFilter:', statusFilter);
-    console.log('[Memo] searchTerm:', searchTerm);
-
     if (!enrichedMarkets) return [];
 
     // 1. Filter enrichedMarkets by selected Category SLUG *before* flattening
     const filteredByCategory = enrichedMarkets.filter((market) => {
       if (selectedCategorySlug === null) return true; // Show all if no category selected
 
-      // LOGGING the comparison - REMOVED for brevity
       const marketSlug = market.category?.slug;
-      // console.log(
-      //   `[Filter] Comparing market slug: "${marketSlug}" === selected slug: "${selectedCategorySlug}" -> ${comparisonResult}`
-      // );
 
       // Filter based on the actual category slug
       return marketSlug === selectedCategorySlug;
     });
-
-    console.log(
-      '[Memo] filteredByCategory length after category filter:',
-      filteredByCategory.length
-    );
 
     // 2. Map filteredMarkets to EpochWithContext[]
     const allEpochs: EpochWithContext[] = filteredByCategory.flatMap((market) =>
@@ -308,17 +290,35 @@ const ForecastingTable = () => {
     const marketsWithQuestions = Object.values(groupedByMarketKey).map(
       (groupedMarket) => {
         let displayQuestion: string | null | undefined = null; // Start with null
+        const now = Math.floor(Date.now() / 1000);
 
         if (groupedMarket.epochs && groupedMarket.epochs.length > 0) {
-          // Sort epochs by endTimestamp descending to get the most recent first
-          const sortedEpochs = [...groupedMarket.epochs].sort(
-            (a, b) => b.endTimestamp - a.endTimestamp
+          // Check if there are multiple epochs with future end times
+          const futureEpochs = groupedMarket.epochs.filter(
+            (epoch) => epoch.endTimestamp > now
           );
-          // Try to get the question from the most recent epoch
-          displayQuestion = sortedEpochs[0]?.question;
+
+          // Find the source market to get the market question
+          const sourceMarket = filteredByCategory.find(
+            (m) => `${m.chainId}:${m.address}` === groupedMarket.key
+          );
+
+          if (futureEpochs.length > 1 && sourceMarket) {
+            // If multiple future epochs, try to use the market question if available
+            // MarketType has a question field according to schema.graphql
+            displayQuestion = sourceMarket.question || null;
+          }
+
+          if (!displayQuestion) {
+            // Otherwise use the most recent epoch's question (previous behavior)
+            const sortedEpochs = [...groupedMarket.epochs].sort(
+              (a, b) => b.endTimestamp - a.endTimestamp
+            );
+            displayQuestion = sortedEpochs[0]?.question;
+          }
         }
 
-        // Fallback to market name (category name) if no epoch question was found
+        // Fallback to market name (category name) if no question was found
         displayQuestion = displayQuestion ?? groupedMarket.marketName;
 
         return {
@@ -388,18 +388,34 @@ const ForecastingTable = () => {
     <div className="flex flex-col md:flex-row min-h-0">
       {/* Main Content */}
       <div className="flex-1 pr-6">
-        {/* Only show the filter button on mobile */}
-        {isMobile && (
-          <div className="sticky top-20 z-10 flex justify-end mb-2">
-            <div className="flex items-center bg-background/30 p-2 backdrop-blur-sm rounded-full">
+        {/* Add Text Filter Input with inline filter button for mobile */}
+        <div className="mb-8 sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2 pb-1">
+          {/* Wrap Input and Icon */}
+          <div className="relative flex items-center">
+            <SearchIcon
+              className="absolute left-0 h-full w-auto p-3 pl-2 text-muted-foreground opacity-40"
+              strokeWidth={1}
+            />
+            <div className="flex-1 relative border-b border-muted-foreground/40">
+              <Input
+                type="text"
+                placeholder={isMobile ? 'Search' : 'Search questions...'}
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="w-full text-3xl font-heading font-normal bg-transparent rounded-none border-0 placeholder:text-foreground placeholder:opacity-20 focus-visible:ring-0 focus-visible:ring-offset-0 h-auto py-3 pl-14"
+              />
+            </div>
+
+            {/* Add inline filter button for mobile */}
+            {isMobile && (
               <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
                 <SheetTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="flex items-center justify-center opacity-40 hover:opacity-90 w-8 h-8 rounded-full"
+                    className="ml-4 flex items-center justify-center opacity-40 hover:opacity-90 w-10 h-10 rounded-full"
                   >
-                    <SlidersHorizontal className="h-4 w-4" />
+                    <SlidersHorizontal className="h-5 w-5" />
                     <span className="sr-only">Filter</span>
                   </Button>
                 </SheetTrigger>
@@ -422,25 +438,7 @@ const ForecastingTable = () => {
                   </motion.div>
                 </SheetContent>
               </Sheet>
-            </div>
-          </div>
-        )}
-
-        {/* Add Text Filter Input */}
-        <div className="mb-8 sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2 pb-1">
-          {/* Wrap Input and Icon */}
-          <div className="relative flex items-center">
-            <SearchIcon
-              className="absolute left-0 h-full w-auto p-3 pl-2 text-muted-foreground opacity-40"
-              strokeWidth={1}
-            />
-            <Input
-              type="text"
-              placeholder="Search questions..."
-              value={searchTerm}
-              onChange={handleSearchChange}
-              className="w-full text-3xl font-heading font-normal bg-transparent rounded-none border-0 border-b border-muted-foreground/40 placeholder:text-foreground placeholder:opacity-20 focus-visible:ring-0 focus-visible:ring-offset-0 h-auto py-3 pl-14"
-            />
+            )}
           </div>
         </div>
 
@@ -458,7 +456,7 @@ const ForecastingTable = () => {
                 className="w-full pt-48 text-center text-muted-foreground"
               >
                 <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-                No forecasting markets match the selected filters.
+                No questions match the selected filters.
               </motion.div>
             )}
             {groupedMarkets.map((market) => (
