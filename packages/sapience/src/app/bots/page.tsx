@@ -64,7 +64,7 @@ const BotsHero = () => {
               Trade with Machine Intelligence
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="md:text-xl text-muted-foreground max-w-2xl mx-auto">
               Create software leveraging large language models that can conduct
               research and trade prediction markets with superhuman ability.
             </p>
@@ -117,14 +117,13 @@ const MCPSection = () => {
                 <p className="text-sm text-muted-foreground mb-2">
                   Install Sapience for Claude Desktop
                 </p>
-                <div className="flex items-stretch max-w-md">
-                  <div className="bg-black text-white px-4 font-mono text-sm flex items-center rounded-l-md flex-grow border">
+                <div className="flex items-stretch max-w-sm">
+                  <div className="bg-black text-white px-4 font-mono text-sm flex items-center rounded-l-md flex-grow border border-gray-600">
                     <span>npx @foil/agent claude-install</span>
                   </div>
                   <Button
-                    variant="outline"
                     size="default"
-                    className="rounded-l-none border-l-0 px-3"
+                    className="px-3 bg-black hover:bg-gray-800 text-white border border-l-0 border-gray-600 rounded-r-md flex items-center justify-center rounded-l-none"
                     onClick={() => {
                       navigator.clipboard.writeText(
                         'npx @foil/agent claude-install'

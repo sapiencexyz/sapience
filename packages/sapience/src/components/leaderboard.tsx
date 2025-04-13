@@ -172,9 +172,6 @@ const useAllTimeLeaderboard = () => {
               let pnlValue: bigint;
 
               try {
-                // Log the raw string before attempting conversion
-                // console.log(`Processing owner: ${owner}, rawPnlString: ${rawPnlString}`); // Optional: very verbose log
-
                 // Ensure we have a string, default to '0' if null/undefined/empty
                 const pnlStringToConvert = rawPnlString || '0';
                 pnlValue = BigInt(pnlStringToConvert);
@@ -225,7 +222,13 @@ const useAllTimeLeaderboard = () => {
         // Log final aggregated values before sorting (optional)
         // console.log('Final aggregated PnL before sorting:', aggregatedPnL);
 
-        return finalLeaderboard; // finalLeaderboard calculation remains the same
+        // Trim to top 10
+        const topTenLeaderboard = finalLeaderboard.slice(0, 10);
+        console.log(
+          `Trimmed leaderboard to top ${topTenLeaderboard.length} entries.`
+        );
+
+        return topTenLeaderboard; // Return only the top 10
       } catch (error) {
         console.error('Error in useAllTimeLeaderboard:', error);
         return []; // Return empty array on error
@@ -546,12 +549,12 @@ const Leaderboard = () => {
       },
       {
         id: 'totalPnL', // Changed ID to match accessorKey and error message expectation
-        header: 'PnL',
+        header: 'Profit/Loss',
         accessorKey: 'totalPnL',
         cell: PnLCellFromMeta,
       },
     ],
-    [] // No longer depends on wstEthPriceUsd here
+    []
   );
 
   // Update useReactTable type argument and add meta
