@@ -20,7 +20,7 @@ const SimpleTradeWrapper: React.FC = () => {
     <div className="h-full">
       <TradeForm
         onTradeSubmit={handleTradeSubmit}
-        collateralAssetTicker="USDC"
+        collateralAssetTicker="sUSDS"
       />
     </div>
   );
