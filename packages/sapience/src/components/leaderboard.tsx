@@ -549,7 +549,7 @@ const Leaderboard = () => {
       },
       {
         id: 'totalPnL', // Changed ID to match accessorKey and error message expectation
-        header: 'Profit/Loss',
+        header: 'Profit',
         accessorKey: 'totalPnL',
         cell: PnLCellFromMeta,
       },

@@ -17,6 +17,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ResponsiveContainer } from 'recharts';
 
+import SimpleLiquidityWrapper from '~/components/SimpleLiquidityWrapper';
+import SimpleTradeWrapper from '~/components/SimpleTradeWrapper';
 import { foilApi } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
@@ -61,6 +63,7 @@ const ForecastingDetailPage = () => {
     TimeInterval.I15M
   );
   const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+  const [activeFormTab, setActiveFormTab] = useState<string>('trade');
 
   // Get chainId from chain short name
   const getChainIdFromShortName = (shortName: string): number => {
@@ -283,8 +286,42 @@ const ForecastingDetailPage = () => {
               </div>
             </div>
             <div className="w-full md:max-w-[340px] pb-4">
-              <div className="bg-card p-6 rounded-lg text-center h-[390px] border mb-5 text-muted-foreground flex items-center justify-center">
-                Coming soon
+              <div className="bg-card p-6 rounded-lg border mb-5 h-[390px] overflow-auto">
+                <div className="w-full">
+                  <h3 className="text-3xl font-normal mb-4">
+                    Prediction Market
+                  </h3>
+                  <div className="flex w-full border-b">
+                    <button
+                      type="button"
+                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+                        activeFormTab === 'trade'
+                          ? 'border-b-2 border-primary text-primary'
+                          : 'text-muted-foreground'
+                      }`}
+                      onClick={() => setActiveFormTab('trade')}
+                    >
+                      Trade
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+                        activeFormTab === 'liquidity'
+                          ? 'border-b-2 border-primary text-primary'
+                          : 'text-muted-foreground'
+                      }`}
+                      onClick={() => setActiveFormTab('liquidity')}
+                    >
+                      Liquidity
+                    </button>
+                  </div>
+                  <div className="mt-4">
+                    {activeFormTab === 'trade' && <SimpleTradeWrapper />}
+                    {activeFormTab === 'liquidity' && (
+                      <SimpleLiquidityWrapper />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
