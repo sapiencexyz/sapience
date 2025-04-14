@@ -26,6 +26,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
+import PredictionInput from '~/components/PredictionInput';
 import { useSapience } from '~/lib/context/SapienceProvider';
 import { foilApi } from '~/lib/utils/util';
 
@@ -44,6 +45,8 @@ const MARKET_QUERY = gql`
       address
       chainId
       question
+      baseTokenName
+      optionNames
       epochs {
         id
         epochId
@@ -269,19 +272,42 @@ const ForecastingDetailPage = () => {
 
   // Form data with tab selection
   const [activeTab, setActiveTab] = useState<'predict' | 'wager'>('predict');
-  const [formData, setFormData] = useState({
-    prediction: 'yes',
-    wagerAmount: '10', // Default wager amount set to 10
+  const [formData, setFormData] = useState<{
+    predictionValue: string | number;
+    wagerAmount: string; // Keep wager amount as string for input control
+  }>({
+    predictionValue: '', // Initialize empty, will set based on market later
+    wagerAmount: '10',
   });
+
+  // Update state initialization based on market data
+  useEffect(() => {
+    if (marketData && !marketData.placeholder) {
+      let initialPredictionValue: string | number = '';
+      if (marketData.optionNames && marketData.optionNames.length > 0) {
+        // Use array destructuring to get the first option
+        const [firstOption] = marketData.optionNames;
+        initialPredictionValue = firstOption; // Default to first option
+      } else if (marketData.baseTokenName?.toLowerCase() === 'yes') {
+        initialPredictionValue = 'yes'; // Default to 'yes'
+      } else {
+        initialPredictionValue = 0; // Default to 0 for numerical input
+      }
+      setFormData((prev) => ({
+        ...prev,
+        predictionValue: initialPredictionValue,
+      }));
+    }
+  }, [marketData]);
 
   // Handle tab change
   const handleTabChange = (tab: 'predict' | 'wager') => {
     setActiveTab(tab);
   };
 
-  // Handle prediction selection
-  const handlePredictionChange = (value: 'yes' | 'no') => {
-    setFormData({ ...formData, prediction: value });
+  // Updated handler for prediction change
+  const handlePredictionChange = (value: string | number) => {
+    setFormData({ ...formData, predictionValue: value });
   };
 
   const activeButtonStyle =
@@ -370,30 +396,13 @@ const ForecastingDetailPage = () => {
                       {activeTab === 'predict' && (
                         <div className="space-y-6">
                           <div className="mt-1">
-                            <div className="flex gap-4">
-                              <button
-                                type="button"
-                                className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
-                                  formData.prediction === 'yes'
-                                    ? activeButtonStyle
-                                    : inactiveButtonStyle
-                                }`}
-                                onClick={() => handlePredictionChange('yes')}
-                              >
-                                Yes
-                              </button>
-                              <button
-                                type="button"
-                                className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
-                                  formData.prediction === 'no'
-                                    ? activeButtonStyle
-                                    : inactiveButtonStyle
-                                }`}
-                                onClick={() => handlePredictionChange('no')}
-                              >
-                                No
-                              </button>
-                            </div>
+                            <PredictionInput
+                              market={marketData}
+                              value={formData.predictionValue}
+                              onChange={handlePredictionChange}
+                              activeButtonStyle={activeButtonStyle}
+                              inactiveButtonStyle={inactiveButtonStyle}
+                            />
                           </div>
                           <div>
                             <p className="text-base text-foreground">
@@ -411,30 +420,13 @@ const ForecastingDetailPage = () => {
                       {activeTab === 'wager' && (
                         <div className="space-y-6">
                           <div className="mt-1">
-                            <div className="flex gap-4">
-                              <button
-                                type="button"
-                                className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
-                                  formData.prediction === 'yes'
-                                    ? activeButtonStyle
-                                    : inactiveButtonStyle
-                                }`}
-                                onClick={() => handlePredictionChange('yes')}
-                              >
-                                Yes
-                              </button>
-                              <button
-                                type="button"
-                                className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
-                                  formData.prediction === 'no'
-                                    ? activeButtonStyle
-                                    : inactiveButtonStyle
-                                }`}
-                                onClick={() => handlePredictionChange('no')}
-                              >
-                                No
-                              </button>
-                            </div>
+                            <PredictionInput
+                              market={marketData}
+                              value={formData.predictionValue}
+                              onChange={handlePredictionChange}
+                              activeButtonStyle={activeButtonStyle}
+                              inactiveButtonStyle={inactiveButtonStyle}
+                            />
                           </div>
                           <div>
                             <div className="relative">
@@ -491,9 +483,14 @@ const ForecastingDetailPage = () => {
                                 <>
                                   If this market resolves to{' '}
                                   <span className="italic">
-                                    {formData.prediction === 'yes'
-                                      ? 'Yes'
-                                      : 'No'}
+                                    {/* Ensure predictionValue is used */}
+                                    {typeof formData.predictionValue ===
+                                    'string'
+                                      ? formData.predictionValue
+                                          .charAt(0)
+                                          .toUpperCase() +
+                                        formData.predictionValue.slice(1)
+                                      : formData.predictionValue}
                                   </span>
                                   , you will be able to redeem approximately{' '}
                                   {(Number(formData.wagerAmount) * 2).toFixed(
