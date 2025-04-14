@@ -203,6 +203,9 @@ export const initializeFixtures = async (): Promise<void> => {
       market.isCumulative = marketData.isCumulative || false;
       market.category = category;
       market.question = marketData.question || null;
+      market.baseTokenName = marketData.baseTokenName || null;
+      market.quoteTokenName = marketData.quoteTokenName || null;
+      market.optionNames = marketData.optionNames || null;
 
       // Set the resource for the market
       market.resource = resource;
@@ -226,6 +229,11 @@ export const initializeFixtures = async (): Promise<void> => {
         marketData.isCumulative || market.isCumulative || false;
       market.category = category;
       market.question = marketData.question || market.question;
+      market.baseTokenName =
+        marketData.baseTokenName || market.baseTokenName || null;
+      market.quoteTokenName =
+        marketData.quoteTokenName || market.quoteTokenName || null;
+      market.optionNames = marketData.optionNames || market.optionNames || null;
 
       await marketRepository.save(market);
       console.log(
