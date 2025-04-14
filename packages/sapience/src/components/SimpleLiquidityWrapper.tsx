@@ -1,19 +1,17 @@
-import type { LiquidityFormValues } from '@foil/ui';
+import type { LiquidityFormValues, MarketProps, TokensProps } from '@foil/ui';
 import { LiquidityForm } from '@foil/ui';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { useState } from 'react';
 import type React from 'react';
 
 interface SimpleLiquidityWrapperProps {
-  collateralAssetTicker: string;
-  baseTokenName: string;
-  quoteTokenName: string;
+  market: MarketProps;
+  tokens: TokensProps;
 }
 
 const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
-  collateralAssetTicker,
-  baseTokenName,
-  quoteTokenName,
+  market,
+  tokens,
 }) => {
   const { toast } = useToast();
   const [isConnected, setIsConnected] = useState(false);
@@ -21,7 +19,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   const handleLiquiditySubmit = (data: LiquidityFormValues) => {
     toast({
       title: 'Liquidity Added',
-      description: `Deposit: ${data.depositAmount} ${collateralAssetTicker}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
+      description: `Deposit: ${data.depositAmount} ${market.address}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
     });
   };
 
@@ -38,9 +36,8 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
     <div className="h-full">
       <LiquidityForm
         onLiquiditySubmit={handleLiquiditySubmit}
-        collateralAssetTicker={collateralAssetTicker}
-        virtualBaseTokensName={baseTokenName}
-        virtualQuoteTokensName={quoteTokenName}
+        market={market}
+        tokens={tokens}
         isConnected={isConnected}
         onConnectWallet={handleConnectWallet}
       />

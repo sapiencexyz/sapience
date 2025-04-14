@@ -5,23 +5,39 @@ import { Button } from './ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { SlippageTolerance } from './SlippageTolerance';
 import { NumberDisplay } from './NumberDisplay';
+import { useReadContract } from 'wagmi';
+import { parseUnits } from 'viem';
+import { TickMath } from '@uniswap/v3-sdk';
+import { useUniswapPool } from '../hooks/useUniswapPool';
+import { useCollateralInfo } from '../hooks/useCollateralInfo';
+import { useFoilAbi } from '../hooks/useFoilAbi';
+
+
+export interface MarketProps {
+  epochId: number;
+  chainId: number;
+  address: `0x${string}`  ;
+}
+
+export interface TokensProps {
+  virtualBaseTokensName: string;
+  virtualQuoteTokensName: string;
+}
 
 export interface LiquidityFormProps {
   onLiquiditySubmit?: (data: LiquidityFormValues) => void;
-  collateralAssetTicker?: string;
-  virtualBaseTokensName?: string;
-  virtualQuoteTokensName?: string;
-  isConnected?: boolean;
   onConnectWallet?: () => void;
+  market: MarketProps;
+  tokens: TokensProps;
+  isConnected?: boolean;
 }
 
 export function LiquidityForm({ 
   onLiquiditySubmit,
-  collateralAssetTicker = 'sUSDS',
-  virtualBaseTokensName = 'Yes',
-  virtualQuoteTokensName = 'No',
+  onConnectWallet,
+  market,
+  tokens,
   isConnected = false,
-  onConnectWallet
 }: LiquidityFormProps) {
   const form = useLiquidityForm();
   const { handleSubmit, control, watch, setValue } = form;
@@ -32,11 +48,39 @@ export function LiquidityForm({
   const [virtualQuoteTokens, setVirtualQuoteTokens] = useState("0");
   const [estimatedResultingBalance, setEstimatedResultingBalance] = useState(walletBalance);
   
-
   const depositAmount = watch('depositAmount');
   const lowPrice = watch('lowPrice');
   const highPrice = watch('highPrice');
   
+  const { abi } = useFoilAbi(market.chainId);
+
+  const { ticker: collateralTicker, decimals: collateralDecimals } = useCollateralInfo(market.chainId, market.address as `0x${string}`);
+
+  const { pool, liquidity, refetchUniswapData } = useUniswapPool(
+    market.chainId,
+    market.address as `0x${string}` // TODO: not market.address, but pool address
+  );
+
+
+  // const { data: tokenAmounts, error: tokenAmountsError, isFetching } = useReadContract({
+  //   chainId: market.chainId,
+  //   address: market.address as `0x${string}`,
+  //   abi: abi,
+  //   functionName: 'quoteLiquidityPositionTokens',
+  //   args: [
+  //     market.epochId.toString(),
+  //     parseUnits(depositAmount.toString(), collateralDecimals),
+  //     pool.sqrtRatioX96.toString(),
+  //     TickMath.getSqrtRatioAtTick(tickLower).toString(),
+  //     TickMath.getSqrtRatioAtTick(tickUpper).toString(),
+  //   ],
+  //   query: {
+  //     enabled: Boolean(pool && isValid),
+  //   },
+  // });
+
+
+
   // Calculate estimated preview values based on inputs
   useEffect(() => {
     const depositNum = parseFloat(depositAmount || '0');
@@ -84,7 +128,7 @@ export function LiquidityForm({
                       {...field} 
                     />
                     <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
-                      {collateralAssetTicker}
+                      {collateralTicker}
                     </div>
                   </div>
                 </FormControl>
@@ -176,16 +220,16 @@ export function LiquidityForm({
             </div>
             
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">{virtualBaseTokensName} Tokens</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">{tokens.virtualBaseTokensName} Tokens</p>
               <p className="text-sm">
-                <NumberDisplay value={virtualBaseTokens} /> v{virtualBaseTokensName} (Min. <NumberDisplay value={virtualBaseTokens} />)
+                <NumberDisplay value={virtualBaseTokens} /> v{tokens.virtualBaseTokensName} (Min. <NumberDisplay value={virtualBaseTokens} />)
               </p>
             </div>
             
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">{virtualQuoteTokensName} Tokens</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">{tokens.virtualQuoteTokensName} Tokens</p>
               <p className="text-sm">
-                <NumberDisplay value={virtualQuoteTokens} /> v{virtualQuoteTokensName} (Min. <NumberDisplay value={virtualQuoteTokens} />)
+                <NumberDisplay value={virtualQuoteTokens} /> v{tokens.virtualQuoteTokensName} (Min. <NumberDisplay value={virtualQuoteTokens} />)
               </p>
             </div>
           </div>

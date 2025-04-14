@@ -322,9 +322,15 @@ const ForecastingDetailPage = () => {
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper
-                        collateralAssetTicker="sUSDS"
-                        baseTokenName={marketData?.baseTokenName || 'Yes'}
-                        quoteTokenName={marketData?.quoteTokenName || 'No'}
+                        market={{
+                          chainId,
+                          address: marketAddress as `0x${string}`,
+                          epochId: Number(marketId),
+                        }}
+                        tokens={{
+                          virtualBaseTokensName: marketData?.baseTokenName || 'Yes',
+                          virtualQuoteTokensName: marketData?.quoteTokenName || 'No',
+                        }}
                       />
                     )}
                   </div>
