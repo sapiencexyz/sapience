@@ -60,7 +60,7 @@ export async function reindexMarket(
     const market = await initializeMarket(marketInfo);
 
     await Promise.all([
-      // Pass only the two required arguments: market 
+      // Pass only the two required arguments: market
       reindexMarketEvents(market),
     ]);
 

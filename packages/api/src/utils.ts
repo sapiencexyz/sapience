@@ -419,31 +419,35 @@ export async function getContractCreationBlock(
   // Get the contract code at the latest block
   const latestBlockNumber = await client.getBlockNumber();
   const latestBlock = await client.getBlock({ blockNumber: latestBlockNumber });
-  
+
   // Check if the contract exists at the latest block
-  const code = await client.getBytecode({ address: contractAddress as `0x${string}` });
-  
+  const code = await client.getBytecode({
+    address: contractAddress as `0x${string}`,
+  });
+
   if (!code) {
-    throw new Error(`Contract at address ${contractAddress} not found at the latest block`);
+    throw new Error(
+      `Contract at address ${contractAddress} not found at the latest block`
+    );
   }
-  
+
   // Initialize the binary search range
   let low = 0n;
   let high = latestBlockNumber;
   let creationBlock: Block | null = null;
-  
+
   // Binary search to find the earliest block where the contract exists
   while (low <= high) {
     const mid = (low + high) / 2n;
     const block = await client.getBlock({ blockNumber: mid });
-    
+
     try {
       // Check if the contract exists at this block
-      const codeAtBlock = await client.getBytecode({ 
+      const codeAtBlock = await client.getBytecode({
         address: contractAddress as `0x${string}`,
-        blockNumber: mid
+        blockNumber: mid,
       });
-      
+
       if (codeAtBlock) {
         // Contract exists at this block, so it was created before or at this block
         creationBlock = block;
@@ -459,27 +463,29 @@ export async function getContractCreationBlock(
       high = mid - 1n;
     }
   }
-  
+
   // If we found a block where the contract exists, get the next block to find the exact creation block
   if (creationBlock) {
     // The contract was created in the block after the one we found
     if (creationBlock.number !== undefined && creationBlock.number !== null) {
       const creationBlockNumber = creationBlock.number + 1n;
-      
+
       // Make sure we don't go beyond the latest block
       if (creationBlockNumber <= latestBlockNumber) {
-        const exactCreationBlock = await client.getBlock({ blockNumber: creationBlockNumber });
+        const exactCreationBlock = await client.getBlock({
+          blockNumber: creationBlockNumber,
+        });
         return {
           block: exactCreationBlock,
-          timestamp: Number(exactCreationBlock.timestamp)
+          timestamp: Number(exactCreationBlock.timestamp),
         };
       }
     }
   }
-  
+
   // If we couldn't find the creation block, return the latest block as a fallback
   return {
     block: latestBlock,
-    timestamp: Number(latestBlock.timestamp)
+    timestamp: Number(latestBlock.timestamp),
   };
 }

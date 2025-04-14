@@ -373,7 +373,6 @@ export class WeatherIndexer implements IResourcePriceIndexer {
         });
       }
 
-
       this.pollInterval = setInterval(async () => {
         try {
           console.log(
