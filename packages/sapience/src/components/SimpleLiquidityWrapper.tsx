@@ -13,7 +13,7 @@ interface SimpleLiquidityWrapperProps {
 const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   collateralAssetTicker,
   baseTokenName,
-  quoteTokenName
+  quoteTokenName,
 }) => {
   const { toast } = useToast();
   const [isConnected, setIsConnected] = useState(false);

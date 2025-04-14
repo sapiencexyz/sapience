@@ -42,12 +42,12 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
   // Case 1: Multiple optionNames
   if (market.optionNames && market.optionNames.length > 1) {
     return (
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-2">
         {market.optionNames.map((option: string) => (
           <Button
             key={option}
             type="button"
-            className={`flex-1 px-3 py-1.5 rounded text-base font-normal min-w-[60px] ${
+            className={`flex-1 px-3 py-1.5 rounded text-sm font-normal ${
               value === option ? activeButtonStyle : inactiveButtonStyle
             }`}
             onClick={() => onChange(option)}

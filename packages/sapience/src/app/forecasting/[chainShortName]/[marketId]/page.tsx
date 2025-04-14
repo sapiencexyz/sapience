@@ -321,10 +321,10 @@ const ForecastingDetailPage = () => {
                   <div className="mt-4">
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
-                      <SimpleLiquidityWrapper 
+                      <SimpleLiquidityWrapper
                         collateralAssetTicker="sUSDS"
-                        baseTokenName={marketData?.baseTokenName || "Yes"}
-                        quoteTokenName={marketData?.quoteTokenName || "No"}
+                        baseTokenName={marketData?.baseTokenName || 'Yes'}
+                        quoteTokenName={marketData?.quoteTokenName || 'No'}
                       />
                     )}
                   </div>
