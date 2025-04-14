@@ -7,7 +7,7 @@ import { sleep } from 'src/utils';
 dotenv.config();
 
 // Configuration
-const CONFIG = {
+export const CONFIG = {
   NYC: {
     LAT: 40.7128,
     LON: -74.006,
@@ -102,7 +102,7 @@ export default class WeatherService {
   private latestData: WeatherSummary | null = null;
 
   constructor() {
-    this.validateConfig();
+    // this.validateConfig();
   }
 
   /**

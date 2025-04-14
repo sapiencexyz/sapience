@@ -14,6 +14,7 @@ import { epochRepository } from './db';
 import { Category } from './models/Category';
 import { categoryRepository } from './db';
 import { IResourcePriceIndexer } from './interfaces';
+import { CONFIG } from './resourcePriceFunctions/weatherService';
 
 export const TIME_INTERVALS = {
   intervals: {
@@ -28,7 +29,7 @@ export const TIME_INTERVALS = {
   },
 };
 
-export const INDEXERS: {
+export let INDEXERS: {
   [key: string]: IResourcePriceIndexer;
 } = {
   'ethereum-gas': new evmIndexer(mainnet.id),
@@ -36,10 +37,19 @@ export const INDEXERS: {
   'celestia-blobspace': new celestiaIndexer('https://api-mainnet.celenium.io'),
   'bitcoin-fees': new btcIndexer(),
   'base-gas': new evmIndexer(base.id),
-  'arbitrum-gas': new evmIndexer(arbitrum.id),
-  'nyc-air-temperature': new WeatherIndexer('temperature'),
-  'sf-precipitation': new WeatherIndexer('precipitation'),
+  'arbitrum-gas': new evmIndexer(arbitrum.id)
 };
+
+if (CONFIG.SF.API.TOKEN) {
+  console.log('SF API token found, initializing weather indexers...');
+  INDEXERS = {
+    ...INDEXERS,
+    'nyc-air-temperature': new WeatherIndexer('temperature'),
+    'sf-precipitation': new WeatherIndexer('precipitation'),
+  };
+} else {
+  console.log('SF API token not found, skipping weather indexers...');
+}
 
 // Helper function to create or update epochs with questions
 async function handleEpochQuestions(

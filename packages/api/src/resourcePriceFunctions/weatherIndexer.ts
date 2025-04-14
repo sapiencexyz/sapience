@@ -37,7 +37,7 @@ interface WeatherSummary {
   };
 }
 
-// Create a single shared weather service instance
+
 const sharedWeatherService = new WeatherService();
 
 export class WeatherIndexer implements IResourcePriceIndexer {
@@ -45,7 +45,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
   private readonly POLL_DELAY = 30 * 60 * 1000; // 30 minutes
   private readonly resourceType: 'temperature' | 'precipitation';
   private pollInterval: NodeJS.Timeout | null = null;
-
+  
   constructor(resourceType: 'temperature' | 'precipitation') {
     this.resourceType = resourceType;
     console.log(`[WeatherIndexer] Initialized for ${resourceType}`);
@@ -304,6 +304,11 @@ export class WeatherIndexer implements IResourcePriceIndexer {
   }
 
   async watchBlocksForResource(resource: Resource): Promise<void> {
+    sharedWeatherService.start().catch((error) => {
+      console.error('Failed to start weather service:', error);
+      process.exit(1);
+    });
+    
     console.log(
       `[WeatherIndexer.${this.resourceType}] Starting to watch blocks for resource ${resource.slug}`
     );
@@ -454,8 +459,3 @@ export class WeatherIndexer implements IResourcePriceIndexer {
   }
 }
 
-// Start the shared weather service
-sharedWeatherService.start().catch((error) => {
-  console.error('Failed to start weather service:', error);
-  process.exit(1);
-});
