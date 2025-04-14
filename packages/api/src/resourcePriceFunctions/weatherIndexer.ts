@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { IResourcePriceIndexer } from '../interfaces';
 import { resourcePriceRepository } from '../db';
 import { Resource } from '../models/Resource';
-import WeatherService from './weatherService';
+import WeatherService, { CONFIG } from './weatherService';
 import Sentry from '../sentry';
 import axios, { AxiosError } from 'axios';
 
@@ -304,6 +304,11 @@ export class WeatherIndexer implements IResourcePriceIndexer {
   }
 
   async watchBlocksForResource(resource: Resource): Promise<void> {
+    if (!CONFIG.SF.API.TOKEN) {
+      console.log('SF API token not found; skip intializing the watch procedure for weather indexers...');
+      return;
+    }
+
     sharedWeatherService.start().catch((error) => {
       console.error('Failed to start weather service:', error);
       process.exit(1);
