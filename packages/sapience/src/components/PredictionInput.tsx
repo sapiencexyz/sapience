@@ -99,7 +99,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
         id="prediction-input"
         name="predictionValue"
         type="number"
-        className="w-full p-2 border rounded pr-24 text-lg" // Added text-lg for consistency
+        className="w-full p-2 border rounded pr-24"
         value={typeof value === 'number' ? value : ''} // Ensure value is number or empty string for input
         // Note: Defaults to 0 if input is empty/invalid. Consider NaN/null if 0 vs empty needs distinction.
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)} // Ensure number type
