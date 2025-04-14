@@ -101,9 +101,7 @@ export default class WeatherService {
   private isRunning: boolean = false;
   private latestData: WeatherSummary | null = null;
 
-  constructor() {
-    // this.validateConfig();
-  }
+  constructor() {}
 
   /**
    * Starts the weather service, performing initial update and scheduling regular updates
