@@ -295,12 +295,12 @@ const LiquidityForm: React.FC = () => {
       epoch.toString(),
       parseUnits(depositAmount.toString(), collateralAssetDecimals),
       pool ? pool.sqrtRatioX96.toString() : '0',
-      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0',
-      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0',
+      TickMath.getSqrtRatioAtTick(tickLower).toString(),
+      TickMath.getSqrtRatioAtTick(tickUpper).toString(),
     ],
     chainId,
     query: {
-      enabled: Boolean(pool && isValid && tickLower > 0 && tickUpper > 0),
+      enabled: Boolean(pool && isValid),
     },
   });
 
@@ -387,8 +387,8 @@ const LiquidityForm: React.FC = () => {
   });
 
   /// ///// MEMOIZED VALUES ////////
-  const liquidity: undefined | bigint = useMemo(() => {
-    if (!uniswapPosition) return;
+  const liquidity: bigint = useMemo(() => {
+    if (!uniswapPosition) return BigInt(0);
     const uniswapData = uniswapPosition as any[];
     return uniswapData[7];
   }, [uniswapPosition]);
@@ -404,8 +404,6 @@ const LiquidityForm: React.FC = () => {
   }, [positionData, collateralAssetDecimals]);
 
   const newLiquidity = useMemo(() => {
-    if (!liquidity) return BigInt(0);
-
     // Handle empty or invalid input
     const inputValue = modifyLiquidity === '' ? '0' : modifyLiquidity;
     const percentage = parseFloat(inputValue) / 100;
