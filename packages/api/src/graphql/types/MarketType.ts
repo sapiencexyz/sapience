@@ -50,4 +50,13 @@ export class MarketType {
 
   @Field(() => String, { nullable: true })
   claimStatement: string | null;
+
+  @Field(() => String, { nullable: true })
+  baseTokenName: string | null;
+
+  @Field(() => String, { nullable: true })
+  quoteTokenName: string | null;
+
+  @Field(() => [String], { nullable: true })
+  optionNames: string[] | null;
 }

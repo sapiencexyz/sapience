@@ -48,6 +48,9 @@ export const mapMarketToType = (market: Market): MarketType => ({
   collateralAsset: market.collateralAsset,
   question: market.question,
   claimStatement: hexToString(market.marketParams?.claimStatement),
+  baseTokenName: market.baseTokenName,
+  quoteTokenName: market.quoteTokenName,
+  optionNames: market.optionNames,
 });
 
 export const mapResourceToType = (resource: Resource): ResourceType => ({

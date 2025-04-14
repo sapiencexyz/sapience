@@ -33,6 +33,7 @@ type EpochType {
 
 type MarketType {
   address: String!
+  baseTokenName: String
   category: CategoryType
   chainId: Int!
   claimStatement: String
@@ -43,8 +44,10 @@ type MarketType {
   id: ID!
   isCumulative: Boolean!
   isYin: Boolean!
+  optionNames: [String!]
   owner: String
   question: String
+  quoteTokenName: String
   resource: ResourceType
   vaultAddress: String
 }
