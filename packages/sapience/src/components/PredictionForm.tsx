@@ -454,7 +454,8 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
                   <a href="https://base.org" className="underline">
                     Base
                   </a>
-                  , a blockchain, connected to your Sapience account.
+                  , a blockchain, connected to your Sapience account on
+                  Ethereum.
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
@@ -468,7 +469,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
                     </PopoverTrigger>
                     <PopoverContent side="top" className="w-52 p-2 text-sm">
                       By submitting, you cryptographically sign the prediction
-                      and we pay the network fee, your{' '}
+                      and we pay the network fee to add your{' '}
                       <a
                         href="https://base.easscan.org/"
                         target="_blank"
@@ -477,7 +478,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
                       >
                         attestation
                       </a>{' '}
-                      to the blockchain.
+                      to the chain.
                     </PopoverContent>
                   </Popover>
                 </p>
@@ -630,13 +631,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
                       </p>
                     </>
                   )}
-                  {/* Optional: Message if wager is 0 or quote hasn't run */}
-                  {!isQuoteLoading &&
-                    !quoteError &&
-                    !quoteData &&
-                    Number(formData.wagerAmount) <= 0 && (
-                      <p>Enter a wager amount to see potential payout.</p>
-                    )}
                 </div>
               </div>
             </div>
@@ -645,29 +639,29 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
       </div>
 
       <div>
+        {!isPermitLoadingPermit &&
+          permitData?.permitted === false &&
+          activeTab === 'wager' && (
+            <Alert
+              variant="destructive"
+              className="mb-4 bg-destructive/10 rounded-sm"
+            >
+              <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
+              <AlertDescription>
+                You cannot wager using this app.
+              </AlertDescription>
+            </Alert>
+          )}
         <Button
           type="submit"
           disabled={
             isPermitLoadingPermit ||
             (activeTab === 'wager' && permitData?.permitted === false)
           }
-          className="w-full bg-primary text-primary-foreground py-3 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {activeTab === 'wager' ? 'Submit Wager' : 'Submit Prediction'}
         </Button>
-        {!isPermitLoadingPermit &&
-          permitData?.permitted === false &&
-          activeTab === 'wager' && (
-            <Alert
-              variant="destructive"
-              className="mt-5 bg-destructive/10 rounded-sm"
-            >
-              <AlertTitle>Prohibited Region</AlertTitle>
-              <AlertDescription>
-                You cannot wager using this app.
-              </AlertDescription>
-            </Alert>
-          )}
       </div>
     </form>
   );
