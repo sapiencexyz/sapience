@@ -2,36 +2,26 @@
 
 import { gql } from '@apollo/client';
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@foil/ui/components/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@foil/ui/components/ui/popover';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
-import { ChevronRight, HelpCircle, Info } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
-import PredictionInput from '~/components/PredictionInput';
-import { useSapience } from '~/lib/context/SapienceProvider';
-import { foilApi } from '~/lib/utils/util';
+import PredictionForm from '../../../components/PredictionForm';
+import { useSapience } from '../../../lib/context/SapienceProvider';
+import { foilApi } from '../../../lib/utils/util';
 
 // Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+const LottieLoader = dynamic(() => import('../../../components/LottieLoader'), {
   ssr: false,
   // Use a simple div as placeholder during load
   loading: () => <div className="w-8 h-8" />,
@@ -107,11 +97,74 @@ const parseUrlParameter = (
   return { chainShortName, marketAddress };
 };
 
+// Helper function to format the question string (moved outside component)
+const formatQuestion = (rawQuestion: string): string => {
+  // Format the question - ensure it has proper capitalization and ends with a question mark
+  let formattedQuestion = rawQuestion.trim();
+
+  // Capitalize first letter if it's not already capitalized
+  if (formattedQuestion.length > 0 && !/^[A-Z]/.test(formattedQuestion)) {
+    formattedQuestion =
+      formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
+  }
+
+  // Add question mark if missing
+  if (!formattedQuestion.endsWith('?')) {
+    formattedQuestion += '?';
+  }
+  return formattedQuestion;
+};
+
+// Helper function to get the display question (moved outside component)
+const getDisplayQuestion = (
+  marketData: any, // Consider defining a more specific type if possible
+  currentEpochId: string | null,
+  isLoadingMarket: boolean
+): string => {
+  // Handle loading or placeholder states first
+  if (isLoadingMarket) {
+    return ''; // Return empty string while loading
+  }
+  if (!marketData || marketData.placeholder) {
+    return 'This market question is not available'; // Indicate unavailability if placeholder or no data
+  }
+
+  // Find current epoch question
+  if (currentEpochId && Array.isArray(marketData.epochs)) {
+    const currentEpoch = marketData.epochs.find(
+      (epoch: { epochId: string; question?: string }) =>
+        epoch.epochId === currentEpochId
+    );
+    if (currentEpoch?.question) {
+      return formatQuestion(currentEpoch.question);
+    }
+  }
+
+  // Use market question if current epoch question not found
+  if (marketData?.question) {
+    return formatQuestion(marketData.question);
+  }
+
+  // Fallback to first epoch with a question
+  if (Array.isArray(marketData.epochs) && marketData.epochs.length > 0) {
+    const epochWithQuestion = marketData.epochs.find(
+      (epoch: { question?: string }) => epoch.question
+    );
+    if (epochWithQuestion?.question) {
+      return formatQuestion(epochWithQuestion.question);
+    }
+  }
+
+  // Default message if no question found after checking all sources
+  return 'Market question not available';
+};
+
 const ForecastingDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
+  const [currentEpochId, setCurrentEpochId] = useState<string | null>(null);
   const [showEpochSelector, setShowEpochSelector] = useState(false);
 
   // Parse chain and market address from URL parameter
@@ -173,39 +226,46 @@ const ForecastingDetailPage = () => {
     retryDelay: 1000,
   });
 
-  // Process and format the question
+  // Find the current epoch based on timestamps
   useEffect(() => {
-    console.log('Market data for question:', marketData);
-
-    // Handle the placeholder value case or loading state
-    if (isLoadingMarket || marketData?.placeholder) {
-      setDisplayQuestion(
-        marketData?.placeholder ? 'This market question is not available' : '' // Set empty while loading initially
+    if (
+      marketData &&
+      !marketData.placeholder &&
+      Array.isArray(marketData.epochs)
+    ) {
+      const nowInSeconds = Date.now() / 1000;
+      const activeEpoch = marketData.epochs.find(
+        (epoch: {
+          startTimestamp: number;
+          endTimestamp: number;
+          epochId: string;
+        }) =>
+          nowInSeconds >= epoch.startTimestamp &&
+          nowInSeconds < epoch.endTimestamp
       );
-      return;
-    }
-
-    // Determine the question string
-    let questionToFormat = '';
-    if (marketData?.question) {
-      questionToFormat = marketData.question;
-    } else if (marketData?.epochs && marketData.epochs.length > 0) {
-      const epochWithQuestion = marketData.epochs.find(
-        (epoch: { question?: string }) => epoch.question
-      );
-      if (epochWithQuestion?.question) {
-        questionToFormat = epochWithQuestion.question;
+      if (activeEpoch) {
+        console.log('Found current epoch:', activeEpoch.epochId);
+        setCurrentEpochId(activeEpoch.epochId);
+      } else {
+        console.log('No current epoch found.');
+        setCurrentEpochId(null);
       }
     }
+  }, [marketData]); // Dependency: run when marketData changes
 
-    // Format and set the question, or set default if none found
-    if (questionToFormat) {
-      setDisplayQuestion(formatAndSetQuestion(questionToFormat));
-    } else if (marketData) {
-      // Only set 'not available' if data is loaded but no question found
-      setDisplayQuestion('Market question not available');
-    }
-  }, [marketData, isLoadingMarket]); // Removed formatAndSetQuestion dependency
+  // Process and format the question, prioritizing the current epoch
+  useEffect(() => {
+    console.log('Market data for question:', marketData);
+    console.log('Current Epoch ID:', currentEpochId);
+
+    // Use the helper function to determine the question
+    const question = getDisplayQuestion(
+      marketData,
+      currentEpochId,
+      isLoadingMarket
+    );
+    setDisplayQuestion(question);
+  }, [marketData, isLoadingMarket, currentEpochId]); // Dependencies remain the same
 
   // Redirect or show epoch selector based on epoch count
   useEffect(() => {
@@ -248,28 +308,6 @@ const ForecastingDetailPage = () => {
     }
   }, [marketData, isLoadingMarket, isSuccess]); // Removed router dependency as it's no longer used here
 
-  // Helper function to format the question string
-  const formatAndSetQuestion = (rawQuestion: string): string => {
-    // Format the question - ensure it has proper capitalization and ends with a question mark
-    let formattedQuestion = rawQuestion.trim();
-
-    // Capitalize first letter if it's not already capitalized
-    if (formattedQuestion.length > 0 && !/^[A-Z]/.test(formattedQuestion)) {
-      formattedQuestion =
-        formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
-    }
-
-    // Add question mark if missing
-    if (!formattedQuestion.endsWith('?')) {
-      formattedQuestion += '?';
-    }
-
-    // Return the formatted question instead of setting state directly
-    // This makes it usable in the dialog rendering
-    return formattedQuestion;
-    // setDisplayQuestion(formattedQuestion); // Original state setting removed/commented
-  };
-
   // Form data with tab selection
   const [activeTab, setActiveTab] = useState<'predict' | 'wager'>('predict');
   const [formData, setFormData] = useState<{
@@ -284,13 +322,15 @@ const ForecastingDetailPage = () => {
   useEffect(() => {
     if (marketData && !marketData.placeholder) {
       let initialPredictionValue: string | number = '';
+      // Use optional chaining for safer access
       if (marketData.optionNames && marketData.optionNames.length > 0) {
-        // Use array destructuring to get the first option
         const [firstOption] = marketData.optionNames;
         initialPredictionValue = firstOption; // Default to first option
       } else if (marketData.baseTokenName?.toLowerCase() === 'yes') {
         initialPredictionValue = 'yes'; // Default to 'yes'
       } else {
+        // Check if it should be numerical based on lack of options/yes
+        // Assuming numerical if not options or yes/no
         initialPredictionValue = 0; // Default to 0 for numerical input
       }
       setFormData((prev) => ({
@@ -307,7 +347,15 @@ const ForecastingDetailPage = () => {
 
   // Updated handler for prediction change
   const handlePredictionChange = (value: string | number) => {
-    setFormData({ ...formData, predictionValue: value });
+    setFormData((prev) => ({ ...prev, predictionValue: value })); // Use functional update
+  };
+
+  // Form submission handler (basic example)
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    console.log('Form submitted:', { activeTab, formData });
+    // Add actual submission logic here (e.g., API call)
+    alert(`Submitting ${activeTab}: ${JSON.stringify(formData)}`);
   };
 
   const activeButtonStyle =
@@ -363,204 +411,20 @@ const ForecastingDetailPage = () => {
             <div className="w-full md:max-w-[340px] pb-4">
               <div className="bg-card p-6 rounded-lg shadow-sm border mb-5">
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
-                <form className="space-y-8">
-                  {/* Tabs Section */}
-                  <div className="space-y-2 mt-4">
-                    <div className="flex w-full border-b">
-                      <button
-                        type="button"
-                        className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                          activeTab === 'predict'
-                            ? 'border-b-2 border-primary text-primary'
-                            : 'text-muted-foreground'
-                        }`}
-                        onClick={() => handleTabChange('predict')}
-                      >
-                        Predict
-                      </button>
-                      <button
-                        type="button"
-                        className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                          activeTab === 'wager'
-                            ? 'border-b-2 border-primary text-primary'
-                            : 'text-muted-foreground'
-                        }`}
-                        onClick={() => handleTabChange('wager')}
-                      >
-                        Wager
-                      </button>
-                    </div>
-
-                    {/* Tab Content */}
-                    <div className="pt-2">
-                      {activeTab === 'predict' && (
-                        <div className="space-y-6">
-                          <div className="mt-1">
-                            <PredictionInput
-                              market={marketData}
-                              value={formData.predictionValue}
-                              onChange={handlePredictionChange}
-                              activeButtonStyle={activeButtonStyle}
-                              inactiveButtonStyle={inactiveButtonStyle}
-                            />
-                          </div>
-                          <div>
-                            <p className="text-base text-foreground">
-                              Submit a prediction and we&apos;ll record it on{' '}
-                              <a href="https://base.org" className="underline">
-                                Base
-                              </a>
-                              , a blockchain, connected to your Sapience
-                              account.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {activeTab === 'wager' && (
-                        <div className="space-y-6">
-                          <div className="mt-1">
-                            <PredictionInput
-                              market={marketData}
-                              value={formData.predictionValue}
-                              onChange={handlePredictionChange}
-                              activeButtonStyle={activeButtonStyle}
-                              inactiveButtonStyle={inactiveButtonStyle}
-                            />
-                          </div>
-                          <div>
-                            <div className="relative">
-                              <input
-                                id="wager-amount-input"
-                                name="wagerAmount"
-                                type="number"
-                                className="w-full p-2 border rounded pr-24"
-                                value={formData.wagerAmount}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    wagerAmount: e.target.value,
-                                  })
-                                }
-                                placeholder="Enter amount"
-                                aria-labelledby="wager-amount-label"
-                              />
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center">
-                                sUSDS
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <button
-                                      type="button"
-                                      className="ml-1 text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
-                                      aria-label="Information about sUSDS"
-                                    >
-                                      <HelpCircle size={16} />
-                                    </button>
-                                  </PopoverTrigger>
-                                  <PopoverContent
-                                    side="top"
-                                    className="w-[200px] p-3 text-sm"
-                                  >
-                                    <p>
-                                      sUSDS is the yield-bearing token of the{' '}
-                                      <a
-                                        href="https://sky.money/features#savings"
-                                        className="underline"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                      >
-                                        Sky Protocol
-                                      </a>
-                                      .
-                                    </p>
-                                  </PopoverContent>
-                                </Popover>
-                              </div>
-                            </div>
-                            <div className="mt-2 text-xs text-muted-foreground">
-                              {/* Calculate and display payout dynamically */}
-                              {Number(formData.wagerAmount) > 0 && (
-                                <>
-                                  If this market resolves to{' '}
-                                  <span className="italic">
-                                    {/* Ensure predictionValue is used */}
-                                    {typeof formData.predictionValue ===
-                                    'string'
-                                      ? formData.predictionValue
-                                          .charAt(0)
-                                          .toUpperCase() +
-                                        formData.predictionValue.slice(1)
-                                      : formData.predictionValue}
-                                  </span>
-                                  , you will be able to redeem approximately{' '}
-                                  {(Number(formData.wagerAmount) * 2).toFixed(
-                                    2
-                                  )}{' '}
-                                  sUSDS
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <button
-                                        type="button"
-                                        className="ml-1 text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5"
-                                        aria-label="Information about payout"
-                                      >
-                                        <Info size={14} />
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent
-                                      side="top"
-                                      className="w-52 p-2 text-sm"
-                                    >
-                                      The prediction market runs onchain using
-                                      the open source{' '}
-                                      <a
-                                        href="https://docs.foil.xyz"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="underline"
-                                      >
-                                        Foil Protocol
-                                      </a>
-                                      .
-                                    </PopoverContent>
-                                  </Popover>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <button
-                      type="submit"
-                      disabled={
-                        isPermitLoadingPermit ||
-                        (activeTab === 'wager' &&
-                          permitData?.permitted === false)
-                      }
-                      className="w-full bg-primary text-primary-foreground py-3 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {activeTab === 'wager'
-                        ? 'Submit Wager'
-                        : 'Submit Prediction'}
-                    </button>
-                    {!isPermitLoadingPermit &&
-                      permitData?.permitted === false &&
-                      activeTab === 'wager' && (
-                        <Alert
-                          variant="destructive"
-                          className="mt-5 bg-destructive/10 rounded-sm"
-                        >
-                          <AlertTitle>Prohibited Region</AlertTitle>
-                          <AlertDescription>
-                            You cannot wager using this app.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-                  </div>
-                </form>
+                <PredictionForm
+                  marketData={marketData}
+                  formData={formData}
+                  setFormData={setFormData}
+                  activeTab={activeTab}
+                  handleTabChange={handleTabChange}
+                  handlePredictionChange={handlePredictionChange}
+                  handleSubmit={handleSubmit}
+                  isPermitLoadingPermit={isPermitLoadingPermit}
+                  permitData={permitData}
+                  currentEpochId={currentEpochId}
+                  activeButtonStyle={activeButtonStyle}
+                  inactiveButtonStyle={inactiveButtonStyle}
+                />
               </div>
             </div>
           </div>
@@ -621,7 +485,7 @@ const ForecastingDetailPage = () => {
                     className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
                   >
                     {epoch.question
-                      ? formatAndSetQuestion(epoch.question)
+                      ? formatQuestion(epoch.question)
                       : `Epoch ${epoch.epochId}`}
                   </button>
                 </Link>
