@@ -8,6 +8,7 @@ import Layout from '~/components/layout';
 import LoadingSpinner from '~/components/loadingSpinner';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 
+import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from '@foil/ui/components/ui/toaster';
 
 type RootLayoutProps = {
@@ -109,6 +110,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             <Toaster />
           </LoadingProvider>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );
