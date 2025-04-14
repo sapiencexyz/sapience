@@ -36,6 +36,9 @@ const EPOCH_QUERY = gql`
       address
       chainId
       question
+      baseTokenName
+      quoteTokenName
+      optionNames
       epochs {
         id
         epochId
@@ -318,7 +321,11 @@ const ForecastingDetailPage = () => {
                   <div className="mt-4">
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
-                      <SimpleLiquidityWrapper />
+                      <SimpleLiquidityWrapper
+                        collateralAssetTicker="sUSDS"
+                        baseTokenName={marketData?.baseTokenName || 'Yes'}
+                        quoteTokenName={marketData?.quoteTokenName || 'No'}
+                      />
                     )}
                   </div>
                 </div>
