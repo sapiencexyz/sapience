@@ -15,7 +15,6 @@ import { Category } from './models/Category';
 import { categoryRepository } from './db';
 import { IResourcePriceIndexer } from './interfaces';
 
-
 export const TIME_INTERVALS = {
   intervals: {
     INTERVAL_1_MINUTE: 60,

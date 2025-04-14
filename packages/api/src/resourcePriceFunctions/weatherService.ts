@@ -7,7 +7,7 @@ import { sleep } from 'src/utils';
 dotenv.config();
 
 // Configuration
-export const CONFIG = {
+const CONFIG = {
   NYC: {
     LAT: 40.7128,
     LON: -74.006,

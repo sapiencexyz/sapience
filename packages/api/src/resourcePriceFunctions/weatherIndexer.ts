@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { IResourcePriceIndexer } from '../interfaces';
 import { resourcePriceRepository } from '../db';
 import { Resource } from '../models/Resource';
-import WeatherService, { CONFIG } from './weatherService';
+import WeatherService from './weatherService';
 import Sentry from '../sentry';
 import axios, { AxiosError } from 'axios';
 
@@ -37,7 +37,6 @@ interface WeatherSummary {
   };
 }
 
-
 const sharedWeatherService = new WeatherService();
 
 export class WeatherIndexer implements IResourcePriceIndexer {
@@ -45,7 +44,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
   private readonly POLL_DELAY = 30 * 60 * 1000; // 30 minutes
   private readonly resourceType: 'temperature' | 'precipitation';
   private pollInterval: NodeJS.Timeout | null = null;
-  
+
   constructor(resourceType: 'temperature' | 'precipitation') {
     this.resourceType = resourceType;
     console.log(`[WeatherIndexer] Initialized for ${resourceType}`);
@@ -304,8 +303,10 @@ export class WeatherIndexer implements IResourcePriceIndexer {
   }
 
   async watchBlocksForResource(resource: Resource): Promise<void> {
-    if (!CONFIG.SF.API.TOKEN) {
-      console.log('SF API token not found; skip intializing the watch procedure for weather indexers...');
+    if (!process.env.NOAA_TOKEN) {
+      console.log(
+        'SF API token not found; skip intializing the watch procedure for weather indexers...'
+      );
       return;
     }
 
@@ -313,7 +314,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
       console.error('Failed to start weather service:', error);
       process.exit(1);
     });
-    
+
     console.log(
       `[WeatherIndexer.${this.resourceType}] Starting to watch blocks for resource ${resource.slug}`
     );
@@ -463,4 +464,3 @@ export class WeatherIndexer implements IResourcePriceIndexer {
     }
   }
 }
-
