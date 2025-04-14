@@ -9,6 +9,8 @@ import { NumberDisplay } from './NumberDisplay';
 export interface LiquidityFormProps {
   onLiquiditySubmit?: (data: LiquidityFormValues) => void;
   collateralAssetTicker?: string;
+  virtualBaseTokensName?: string;
+  virtualQuoteTokensName?: string;
   isConnected?: boolean;
   onConnectWallet?: () => void;
 }
@@ -16,6 +18,8 @@ export interface LiquidityFormProps {
 export function LiquidityForm({ 
   onLiquiditySubmit,
   collateralAssetTicker = 'sUSDS',
+  virtualBaseTokensName = 'Yes',
+  virtualQuoteTokensName = 'No',
   isConnected = false,
   onConnectWallet
 }: LiquidityFormProps) {
@@ -24,10 +28,11 @@ export function LiquidityForm({
   
   // Mock state values
   const [walletBalance, setWalletBalance] = useState("100.0");
-  const [virtualYesTokens, setVirtualYesTokens] = useState("0");
-  const [virtualNoTokens, setVirtualNoTokens] = useState("0");
+  const [virtualBaseTokens, setVirtualBaseTokens] = useState("0");
+  const [virtualQuoteTokens, setVirtualQuoteTokens] = useState("0");
   const [estimatedResultingBalance, setEstimatedResultingBalance] = useState(walletBalance);
   
+
   const depositAmount = watch('depositAmount');
   const lowPrice = watch('lowPrice');
   const highPrice = watch('highPrice');
@@ -37,16 +42,16 @@ export function LiquidityForm({
     const depositNum = parseFloat(depositAmount || '0');
     
     if (depositNum === 0) {
-      setVirtualYesTokens("0");
-      setVirtualNoTokens("0");
+      setVirtualBaseTokens("0");
+      setVirtualQuoteTokens("0");
       setEstimatedResultingBalance(walletBalance);
       return;
     }
     
     // In a real implementation, this would call an API or contract to get quotes
     // For this example, we'll just use a simple calculation
-    setVirtualYesTokens((depositNum * 0.8).toFixed(4));
-    setVirtualNoTokens((depositNum * 0.2).toFixed(4));
+    setVirtualBaseTokens((depositNum * 0.8).toFixed(4));
+    setVirtualQuoteTokens((depositNum * 0.2).toFixed(4));
     
     const newBalance = (parseFloat(walletBalance) - depositNum).toFixed(4);
     setEstimatedResultingBalance(newBalance);
@@ -171,16 +176,16 @@ export function LiquidityForm({
             </div>
             
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">Yes Tokens</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">{virtualBaseTokensName} Tokens</p>
               <p className="text-sm">
-                <NumberDisplay value={virtualYesTokens} /> vYes (Min. <NumberDisplay value={virtualYesTokens} />)
+                <NumberDisplay value={virtualBaseTokens} /> v{virtualBaseTokensName} (Min. <NumberDisplay value={virtualBaseTokens} />)
               </p>
             </div>
             
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">No Tokens</p>
+              <p className="text-sm font-medium text-muted-foreground mb-1">{virtualQuoteTokensName} Tokens</p>
               <p className="text-sm">
-                <NumberDisplay value={virtualNoTokens} /> vNo (Min. <NumberDisplay value={virtualNoTokens} />)
+                <NumberDisplay value={virtualQuoteTokens} /> v{virtualQuoteTokensName} (Min. <NumberDisplay value={virtualQuoteTokens} />)
               </p>
             </div>
           </div>

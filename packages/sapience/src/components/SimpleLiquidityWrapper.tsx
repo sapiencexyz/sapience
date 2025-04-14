@@ -4,14 +4,24 @@ import { useToast } from '@foil/ui/hooks/use-toast';
 import { useState } from 'react';
 import type React from 'react';
 
-const SimpleLiquidityWrapper: React.FC = () => {
+interface SimpleLiquidityWrapperProps {
+  collateralAssetTicker: string;
+  baseTokenName: string;
+  quoteTokenName: string;
+}
+
+const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
+  collateralAssetTicker,
+  baseTokenName,
+  quoteTokenName
+}) => {
   const { toast } = useToast();
   const [isConnected, setIsConnected] = useState(false);
 
   const handleLiquiditySubmit = (data: LiquidityFormValues) => {
     toast({
       title: 'Liquidity Added',
-      description: `Deposit: ${data.depositAmount} sUSDS, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
+      description: `Deposit: ${data.depositAmount} ${collateralAssetTicker}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
     });
   };
 
@@ -28,7 +38,9 @@ const SimpleLiquidityWrapper: React.FC = () => {
     <div className="h-full">
       <LiquidityForm
         onLiquiditySubmit={handleLiquiditySubmit}
-        collateralAssetTicker="sUSDS"
+        collateralAssetTicker={collateralAssetTicker}
+        virtualBaseTokensName={baseTokenName}
+        virtualQuoteTokensName={quoteTokenName}
         isConnected={isConnected}
         onConnectWallet={handleConnectWallet}
       />
