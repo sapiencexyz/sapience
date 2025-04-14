@@ -166,6 +166,30 @@ const FocusAreaFilter = ({
   </div>
 );
 
+// Helper function to format the question string (copied from detail page)
+const formatQuestion = (
+  rawQuestion: string | null | undefined
+): string | null => {
+  if (!rawQuestion) {
+    return null; // Return null if input is null or undefined
+  }
+  // Format the question - ensure it has proper capitalization and ends with a question mark
+  let formattedQuestion = rawQuestion.trim();
+
+  // Capitalize first letter if it's not already capitalized
+  if (formattedQuestion.length > 0 && !/^[A-Z]/.test(formattedQuestion)) {
+    formattedQuestion =
+      formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
+  }
+
+  // Add question mark if missing
+  if (!formattedQuestion.endsWith('?')) {
+    formattedQuestion += '?';
+  }
+
+  return formattedQuestion;
+};
+
 const ForecastingTable = () => {
   // Use the new hook and update variable names
   const { data: enrichedMarkets, isLoading: isLoadingMarkets } =
@@ -289,41 +313,51 @@ const ForecastingTable = () => {
     // 5. Determine display question for each group and convert to array
     const marketsWithQuestions = Object.values(groupedByMarketKey).map(
       (groupedMarket) => {
-        let displayQuestion: string | null | undefined = null; // Start with null
+        let rawQuestion: string | null | undefined = null; // Use a temporary variable for the raw question
         const now = Math.floor(Date.now() / 1000);
 
+        // Find the source market (needed for market-level question)
+        const sourceMarket = filteredByCategory.find(
+          (m) => `${m.chainId}:${m.address}` === groupedMarket.key
+        );
+
         if (groupedMarket.epochs && groupedMarket.epochs.length > 0) {
-          // Check if there are multiple epochs with future end times
-          const futureEpochs = groupedMarket.epochs.filter(
-            (epoch) => epoch.endTimestamp > now
+          // 1. Find current epoch
+          const currentEpoch = groupedMarket.epochs.find(
+            (epoch) => now >= epoch.startTimestamp && now < epoch.endTimestamp
           );
 
-          // Find the source market to get the market question
-          const sourceMarket = filteredByCategory.find(
-            (m) => `${m.chainId}:${m.address}` === groupedMarket.key
-          );
-
-          if (futureEpochs.length > 1 && sourceMarket) {
-            // If multiple future epochs, try to use the market question if available
-            // MarketType has a question field according to schema.graphql
-            displayQuestion = sourceMarket.question || null;
-          }
-
-          if (!displayQuestion) {
-            // Otherwise use the most recent epoch's question (previous behavior)
+          if (currentEpoch?.question) {
+            rawQuestion = currentEpoch.question;
+          } else if (sourceMarket?.question) {
+            // 2. Fallback to market-level question
+            rawQuestion = sourceMarket.question;
+          } else {
+            // 3. Fallback to the first epoch with a question
+            // Sort by startTimestamp to get the "first" chronologically, though any epoch with a question would work
             const sortedEpochs = [...groupedMarket.epochs].sort(
-              (a, b) => b.endTimestamp - a.endTimestamp
+              (a, b) => a.startTimestamp - b.startTimestamp
             );
-            displayQuestion = sortedEpochs[0]?.question;
+            const firstEpochWithQuestion = sortedEpochs.find(
+              (epoch) => epoch.question
+            );
+            rawQuestion = firstEpochWithQuestion?.question;
           }
+        } else if (sourceMarket?.question) {
+          // Handle case where there are no epochs but market has a question
+          rawQuestion = sourceMarket.question;
         }
 
-        // Fallback to market name (category name) if no question was found
-        displayQuestion = displayQuestion ?? groupedMarket.marketName;
+        // Format the determined question
+        const formattedDisplayQuestion = formatQuestion(rawQuestion);
+
+        // 4. Fallback display text if no question found anywhere
+        const displayQuestion =
+          formattedDisplayQuestion ?? groupedMarket.marketName; // Fallback to market name
 
         return {
           ...groupedMarket,
-          displayQuestion: displayQuestion ?? undefined, // Ensure it's string | undefined
+          displayQuestion: displayQuestion ?? undefined, // Ensure string | undefined for the prop type
         };
       }
     );
