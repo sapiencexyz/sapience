@@ -28,9 +28,9 @@ export class MarketResolver {
     try {
       const market = await dataSource.getRepository(Market).findOne({
         where: { chainId, address: address.toLowerCase() },
-        relations: ['epochs', 'category'],
+        relations: ['epochs', 'category', 'resource'],
       });
-
+      console.log('Market', market);
       if (!market) return null;
 
       return mapMarketToType(market);

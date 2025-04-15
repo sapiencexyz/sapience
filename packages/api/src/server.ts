@@ -24,8 +24,14 @@ initSentry();
 const startServer = async () => {
   await initializeDataSource();
 
-  // Initialize fixtures from fixtures.json
-  await initializeFixtures();
+  // Initialize fixtures from fixtures.json, if we are in production or not working with read-only Render DB
+  if (
+    process.env.NODE_ENV === 'production' ||
+    process.env.NODE_ENV === 'staging' ||
+    !process.env.DATABASE_URL?.includes('render.com')
+  ) {
+    await initializeFixtures();
+  }
 
   const apolloServer = await initializeApolloServer();
 

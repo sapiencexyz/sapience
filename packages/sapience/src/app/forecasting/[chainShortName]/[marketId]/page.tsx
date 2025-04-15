@@ -16,10 +16,10 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ResponsiveContainer } from 'recharts';
+import { foilApi } from '~/lib/utils/util';
 
 import SimpleLiquidityWrapper from '~/components/SimpleLiquidityWrapper';
 import SimpleTradeWrapper from '~/components/SimpleTradeWrapper';
-import { foilApi } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
@@ -39,6 +39,9 @@ const EPOCH_QUERY = gql`
       baseTokenName
       quoteTokenName
       optionNames
+      resource {
+        slug
+      }
       epochs {
         id
         epochId
@@ -251,7 +254,7 @@ const ForecastingDetailPage = () => {
             <div className="flex flex-col w-full">
               <ResponsiveContainer width="100%" height={400}>
                 <Chart
-                  resourceSlug="prediction"
+                  slug={marketData?.resource?.slug}
                   market={{
                     epochId: Number(marketId),
                     chainId: Number(chainId),
