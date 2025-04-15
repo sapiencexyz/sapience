@@ -136,13 +136,20 @@ async function getMaxSizeForCollateral(
     maxIterations = 3,
   } = params;
 
-  console.log('maxIterations', maxIterations);
+  console.log('Quoter: maxIterations              =', maxIterations);
   // 1- get the theoretical max size for the collateral (collateralAvailable / currentPrice)
   const currentPriceD18 = parseUnits(currentPrice.toString(), 18);
   const UNIT_D18 = parseUnits('1', 18);
   const theoreticalMaxPositionSize =
     (collateralAvailable * UNIT_D18) / currentPriceD18;
 
+  console.log(
+    'Quoter: theoreticalMaxPositionSize =',
+    theoreticalMaxPositionSize
+  );
+  console.log('Quoter: currentPriceD18            =', currentPriceD18);
+  console.log('Quoter: collateralAvailable        =', collateralAvailable);
+  console.log('Quoter: UNIT_D18                   =', UNIT_D18);
   let currentPriceLimit = currentPrice;
   if (priceLimit !== undefined) {
     currentPriceLimit = priceLimit;
@@ -162,7 +169,7 @@ async function getMaxSizeForCollateral(
       // Convert position size to the correct sign based on direction
       positionSize = isLong ? currentPositionSize : -currentPositionSize;
 
-      console.log('positionSize', positionSize);
+      console.log('Quoter: positionSize               =', positionSize);
       const result = await client.simulateContract({
         address: marketAddress as `0x${string}`,
         abi: Foil.abi,
@@ -176,6 +183,9 @@ async function getMaxSizeForCollateral(
         bigint,
         bigint,
       ];
+
+      console.log('Quoter: requiredCollateral         =', requiredCollateral);
+      console.log('Quoter: priceAfterTrade            =', priceAfterTrade);
 
       // if the price after the trade is not defined, use the expected price (this can happen if the version of the contract doesn't support the priceAfterTrade)
       const priceAfterTradeDecimal = priceAfterTrade
