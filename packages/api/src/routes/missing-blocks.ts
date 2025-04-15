@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { validateRequestParams } from '../helpers';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { Between } from 'typeorm';
-import { Market } from '../models/Market';
+import { MarketGroup } from '../models/MarketGroup';
 import { ResourcePrice } from '../models/ResourcePrice';
 import { getMarketStartEndBlock } from 'src/controllers/marketHelpers';
 import dataSource from 'src/db';
@@ -10,7 +10,7 @@ import { INDEXERS } from '../fixtures';
 
 const router = Router();
 
-const marketRepository = dataSource.getRepository(Market);
+const marketRepository = dataSource.getRepository(MarketGroup);
 const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 
 const getMissingBlocks = async (

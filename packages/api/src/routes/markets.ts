@@ -1,27 +1,27 @@
 import { Response, Router } from 'express';
-import { Market } from '../models/Market';
+import { MarketGroup } from '../models/MarketGroup';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import dataSource from '../db';
-import { Epoch } from '../models/Epoch';
+import { Market } from '../models/Market';
 
 const router = Router();
 
-const marketRepository = dataSource.getRepository(Market);
+const marketRepository = dataSource.getRepository(MarketGroup);
 
 router.get(
   '/',
   handleAsyncErrors(async (_, res: Response) => {
     const markets = await marketRepository.find({
-      relations: ['epochs', 'resource', 'category'],
+      relations: ['markets', 'resource', 'category'],
     });
 
-    const formattedMarkets = markets.map((market: Market) => ({
+    const formattedMarkets = markets.map((market: MarketGroup) => ({
       ...market,
-      epochs: market.epochs.map((epoch: Epoch) => ({
-        ...epoch,
-        startTimestamp: Number(epoch.startTimestamp),
-        endTimestamp: Number(epoch.endTimestamp),
-        question: epoch.question,
+      markets: market.markets.map((market: Market) => ({
+        ...market,
+        startTimestamp: Number(market.startTimestamp),
+        endTimestamp: Number(market.endTimestamp),
+        question: market.question,
       })),
     }));
 
