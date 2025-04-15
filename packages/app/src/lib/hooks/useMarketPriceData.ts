@@ -56,7 +56,9 @@ export function useMarketPriceData(
 
   // Find the resource for this market
   const resource = resources?.find((r) =>
-    r.marketGroups.some((m) => m.address === marketAddress && m.chainId === chainId)
+    r.marketGroups.some(
+      (m) => m.address === marketAddress && m.chainId === chainId
+    )
   );
 
   // Check if the resource name includes "Ethereum"
