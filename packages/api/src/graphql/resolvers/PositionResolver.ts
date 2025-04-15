@@ -33,9 +33,9 @@ export class PositionResolver {
       const positions = await dataSource.getRepository(Position).find({
         where,
         relations: [
-          'epoch',
-          'epoch.market',
-          'epoch.market.resource',
+          'market',
+          'market.marketGroup',
+          'market.marketGroup.resource',
           'transactions',
           'transactions.event',
         ],

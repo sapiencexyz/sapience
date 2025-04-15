@@ -13,25 +13,12 @@ type CandleType {
 
 type CategoryType {
   id: ID!
-  markets: [MarketType!]!
+  marketGroups: [MarketGroupType!]!
   name: String!
   slug: String!
 }
 
-type EpochType {
-  endTimestamp: Int
-  epochId: Int!
-  id: ID!
-  market: MarketType
-  positions: [PositionType!]!
-  public: Boolean!
-  question: String!
-  settled: Boolean
-  settlementPriceD18: String
-  startTimestamp: Int
-}
-
-type MarketType {
+type MarketGroupType {
   address: String!
   baseTokenName: String
   category: CategoryType
@@ -40,10 +27,11 @@ type MarketType {
   collateralAsset: String
   deployTimestamp: Int
   deployTxnBlockNumber: Int
-  epochs: [EpochType!]!
+  epochs: [MarketType!]!
   id: ID!
   isCumulative: Boolean!
   isYin: Boolean!
+  markets: [MarketType!]!
   optionNames: [String!]
   owner: String
   question: String
@@ -52,8 +40,21 @@ type MarketType {
   vaultAddress: String
 }
 
+type MarketType {
+  endTimestamp: Int
+  id: ID!
+  marketGroup: MarketGroupType
+  marketId: Int!
+  positions: [PositionType!]!
+  public: Boolean!
+  question: String!
+  settled: Boolean
+  settlementPriceD18: String
+  startTimestamp: Int
+}
+
 type PnLType {
-  epochId: Int!
+  marketId: Int!
   openPositionsPnL: String!
   owner: String!
   positionCount: Int!
@@ -68,7 +69,6 @@ type PositionType {
   borrowedBaseToken: String
   borrowedQuoteToken: String
   collateral: String!
-  epoch: EpochType!
   highPriceTick: String
   id: ID!
   isLP: Boolean!
@@ -76,6 +76,7 @@ type PositionType {
   lowPriceTick: String
   lpBaseToken: String
   lpQuoteToken: String
+  market: MarketType!
   owner: String!
   positionId: Int!
   quoteToken: String!
@@ -84,22 +85,22 @@ type PositionType {
 
 type Query {
   categories: [CategoryType!]!
-  epochs(marketId: Int): [EpochType!]!
-  getEpochLeaderboard(address: String!, chainId: Int!, epochId: String!): [PnLType!]!
-  indexCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
-  indexPriceAtTime(address: String!, chainId: Int!, epochId: String!, timestamp: Int!): CandleType
-  legacyMarketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
-  market(address: String!, chainId: Int!): MarketType
-  marketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
-  markets: [MarketType!]!
-  marketsByCategory(slug: String!): [MarketType!]!
+  getEpochLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
+  indexCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
+  indexPriceAtTime(address: String!, chainId: Int!, marketId: String!, timestamp: Int!): CandleType
+  legacyMarketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
+  marketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
+  marketGroup(address: String!, chainId: Int!): MarketGroupType
+  marketGroups: [MarketGroupType!]!
+  marketGroupsByCategory(slug: String!): [MarketGroupType!]!
+  markets(marketGroupId: Int): [MarketType!]!
   positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
   resource(slug: String!): ResourceType
   resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
   resourcePrices: [ResourcePriceType!]!
   resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): [CandleType!]!
   resources: [ResourceType!]!
-  totalVolumeByEpoch(chainId: Int!, epochId: Int!, marketAddress: String!): Float!
+  totalVolumeByMarket(chainId: Int!, marketAddress: String!, marketId: Int!): Float!
   transactions(positionId: Int): [TransactionType!]!
 }
 
@@ -114,7 +115,7 @@ type ResourcePriceType {
 type ResourceType {
   category: CategoryType
   id: ID!
-  markets: [MarketType!]!
+  marketGroups: [MarketGroupType!]!
   name: String!
   resourcePrices: [ResourcePriceType!]!
   slug: String!

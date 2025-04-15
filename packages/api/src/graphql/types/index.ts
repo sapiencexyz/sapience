@@ -1,8 +1,8 @@
-export { MarketType } from './MarketType';
+export { MarketGroupType } from './MarketGroupType';
 export { ResourceType } from './ResourceType';
 export { PositionType } from './PositionType';
 export { TransactionType } from './TransactionType';
-export { EpochType } from './EpochType';
+export { MarketType } from './MarketType';
 export { ResourcePriceType } from './ResourcePriceType';
 export { CandleType } from './CandleType';
 export { PnLType } from './PnLType';
