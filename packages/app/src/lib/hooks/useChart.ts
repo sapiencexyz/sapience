@@ -47,7 +47,7 @@ interface ResourcePricePoint {
 interface UseChartProps {
   resourceSlug?: string;
   market?: {
-    epochId?: number;
+    marketId?: number;
     chainId?: number;
     address?: string;
   };
@@ -88,7 +88,7 @@ const MARKET_CANDLES_QUERY = gql`
   query MarketCandles(
     $address: String!
     $chainId: Int!
-    $epochId: String!
+    $marketId: String!
     $from: Int!
     $to: Int!
     $interval: Int!
@@ -96,7 +96,7 @@ const MARKET_CANDLES_QUERY = gql`
     marketCandles(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       from: $from
       to: $to
       interval: $interval
@@ -114,7 +114,7 @@ const INDEX_CANDLES_QUERY = gql`
   query IndexCandles(
     $address: String!
     $chainId: Int!
-    $epochId: String!
+    $marketId: String!
     $from: Int!
     $to: Int!
     $interval: Int!
@@ -122,7 +122,7 @@ const INDEX_CANDLES_QUERY = gql`
     indexCandles(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       from: $from
       to: $to
       interval: $interval
@@ -278,7 +278,7 @@ export const useChart = ({
     queryKey: [
       'market-prices',
       `${market?.chainId}:${market?.address}`,
-      market?.epochId,
+      market?.marketId,
       selectedInterval,
     ],
     queryFn: async () => {
@@ -294,7 +294,7 @@ export const useChart = ({
         variables: {
           address: market?.address,
           chainId: market?.chainId,
-          epochId: market?.epochId?.toString(),
+          marketId: market?.marketId?.toString(),
           from,
           to: currentTimestamp,
           interval,
@@ -333,7 +333,7 @@ export const useChart = ({
     queryKey: [
       'index-prices',
       `${market?.chainId}:${market?.address}`,
-      market?.epochId,
+      market?.marketId,
       selectedInterval,
     ],
     queryFn: async () => {
@@ -349,7 +349,7 @@ export const useChart = ({
         variables: {
           address: market?.address,
           chainId: market?.chainId,
-          epochId: market?.epochId?.toString(),
+          marketId: market?.marketId?.toString(),
           from,
           to: currentTimestamp,
           interval,
@@ -370,7 +370,7 @@ export const useChart = ({
     queryKey: [
       'resourcePrices',
       resourceSlug,
-      market?.epochId,
+      market?.marketId,
       selectedInterval,
     ],
     queryFn: async () => {
@@ -404,7 +404,7 @@ export const useChart = ({
       queryKey: [
         'trailingResourcePrices',
         resourceSlug,
-        market?.epochId,
+        market?.marketId,
         selectedInterval,
       ],
       queryFn: async () => {
@@ -448,16 +448,16 @@ export const useChart = ({
 
   // Fetch the latest index price using the same hook as the stats component
   const { data: latestIndexPrice } = useLatestIndexPrice(
-    market && market.address && market.chainId && market.epochId
+    market && market.address && market.chainId && market.marketId
       ? {
           address: market.address,
           chainId: market.chainId,
-          epochId: market.epochId,
+          marketId: market.marketId,
         }
       : {
           address: '',
           chainId: 0,
-          epochId: 0,
+          marketId: 0,
         }
   );
 
@@ -874,7 +874,7 @@ export const useChart = ({
     if (indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.setData([]);
     }
-  }, [market?.chainId, market?.address, market?.epochId]);
+  }, [market?.chainId, market?.address, market?.marketId]);
 
   // Effect to toggle logarithmic scale
   useEffect(() => {

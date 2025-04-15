@@ -143,7 +143,7 @@ const MarketsTable = () => {
             return resource.slug === selectedResource;
           })
           .flatMap((market) =>
-            market.epochs
+            market.markets
               .filter((epoch) => epoch.public)
               .map((epoch) => {
                 const startDate = new Date(epoch.startTimestamp * 1000);

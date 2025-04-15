@@ -3,20 +3,20 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { formatEther } from 'viem';
 
-import type { Market, Epoch } from '~/lib/types';
+import type { MarketGroup, Market } from '~/lib/types';
 import { gweiToEther, convertToSqrtPriceX96, foilApi } from '~/lib/utils/util';
 
 const INDEX_CANDLES_QUERY = gql`
   query GetIndexCandles(
     $address: String!
     $chainId: Int!
-    $epochId: String!
+    $marketId: String!
     $timestamp: Int!
   ) {
     indexCandles(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       from: $timestamp
       to: $timestamp
       interval: 60
@@ -27,33 +27,33 @@ const INDEX_CANDLES_QUERY = gql`
   }
 `;
 
-export function useSettlementPrice(market: Market, epoch: Epoch) {
+export function useSettlementPrice(marketGroup: MarketGroup, market: Market) {
   const { data: stEthPerToken = 0, isLoading: isStEthLoading } = useQuery({
-    queryKey: ['stEthPerToken', market.chainId, epoch.endTimestamp],
+    queryKey: ['stEthPerToken', marketGroup.chainId, market.endTimestamp],
     queryFn: async () => {
       const data = await foilApi.get(
-        `/getStEthPerTokenAtTimestamps?chainId=${market.chainId}&endTime=${epoch.endTimestamp}`
+        `/getStEthPerTokenAtTimestamps?chainId=${marketGroup.chainId}&endTime=${market.endTimestamp}`
       );
       return Number(formatEther(BigInt(data.stEthPerToken)));
     },
-    enabled: !!market.chainId && !!epoch.endTimestamp,
+    enabled: !!marketGroup.chainId && !!market.endTimestamp,
   });
 
   const { data: latestPrice, isLoading: isLatestPriceLoading } = useQuery({
     queryKey: [
       'latestPrice',
-      `${market?.chainId}:${market?.address}`,
-      epoch.epochId,
-      epoch.endTimestamp,
+      `${marketGroup?.chainId}:${marketGroup?.address}`,
+      market.marketId,
+      market.endTimestamp,
     ],
     queryFn: async () => {
       const response = await foilApi.post('/graphql', {
         query: print(INDEX_CANDLES_QUERY),
         variables: {
-          address: market.address,
-          chainId: market.chainId,
-          epochId: epoch.epochId.toString(),
-          timestamp: epoch.endTimestamp,
+          address: marketGroup.address,
+          chainId: marketGroup.chainId,
+          marketId: market.marketId.toString(),
+          timestamp: market.endTimestamp,
         },
       });
 
@@ -64,7 +64,7 @@ export function useSettlementPrice(market: Market, epoch: Epoch) {
 
       return Number(gweiToEther(BigInt(candles[0].close)));
     },
-    enabled: epoch.epochId !== 0 && !!market && !!epoch.endTimestamp,
+    enabled: market.marketId !== 0 && !!marketGroup && !!market.endTimestamp,
   });
 
   const priceAdjusted = (latestPrice ?? 0) / (stEthPerToken || 1);

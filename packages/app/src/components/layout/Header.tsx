@@ -29,11 +29,11 @@ import { useFoil } from '~/lib/context/FoilProvider';
 import {
   useResources,
   type Resource,
-  type Epoch,
+  type Market,
 } from '~/lib/hooks/useResources';
 
 // Extend the Epoch type with market properties
-type ExtendedEpoch = Epoch & {
+type ExtendedEpoch = Market & {
   marketChainId: string;
   marketAddress: string;
 };
@@ -122,7 +122,7 @@ function MobileMarketLinks({
                   resource.markets
                     ?.reduce<ExtendedEpoch[]>((acc, market) => {
                       const marketEpochs =
-                        market.epochs?.map((epoch: Epoch) => ({
+                        market.markets?.map((epoch: Market) => ({
                           ...epoch,
                           marketChainId: market.chainId.toString(),
                           marketAddress: market.address,
@@ -268,7 +268,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     hoveredResourceData?.markets
                       ?.reduce<ExtendedEpoch[]>((acc, market) => {
                         const marketEpochs =
-                          market.epochs?.map((epoch: Epoch) => ({
+                          market.markets?.map((epoch: Market) => ({
                             ...epoch,
                             marketChainId: market.chainId.toString(),
                             marketAddress: market.address,

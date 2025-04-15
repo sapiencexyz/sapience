@@ -12,13 +12,13 @@ const INDEX_PRICE_AT_TIME_QUERY = gql`
   query IndexPriceAtTime(
     $address: String!
     $chainId: Int!
-    $epochId: String!
+    $marketId: String!
     $timestamp: Int!
   ) {
     indexPriceAtTime(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       timestamp: $timestamp
     ) {
       timestamp
@@ -30,7 +30,7 @@ const INDEX_PRICE_AT_TIME_QUERY = gql`
 export function useMarketPriceData(
   marketAddress: string,
   chainId: number,
-  epochId: number,
+  marketId: number,
   endTimestamp: number
 ) {
   const now = Math.floor(Date.now() / 1000);
@@ -91,12 +91,12 @@ export function useMarketPriceData(
     queryKey: [
       'marketPriceData',
       `${chainId}:${marketAddress}`,
-      epochId,
+      marketId,
       timestampForKey,
     ],
     queryFn: async () => {
       // Use the API timestamp for the enabled check
-      if (!marketAddress || !chainId || !epochId || !timestampForApi) {
+      if (!marketAddress || !chainId || !marketId || !timestampForApi) {
         return null;
       }
 
@@ -105,7 +105,7 @@ export function useMarketPriceData(
         variables: {
           address: marketAddress,
           chainId,
-          epochId: epochId.toString(),
+          marketId: marketId.toString(),
           timestamp: timestampForApi,
         },
       });
@@ -134,7 +134,7 @@ export function useMarketPriceData(
       };
     },
     // Use the API timestamp for the enabled check
-    enabled: !!marketAddress && !!chainId && !!epochId && !!timestampForApi,
+    enabled: !!marketAddress && !!chainId && !!marketId && !!timestampForApi,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });

@@ -305,7 +305,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
   const epochs =
     resource.markets
       .flatMap((market) =>
-        (market.epochs || []).map((epoch) => ({
+        (market.markets || []).map((epoch) => ({
           ...epoch,
           market: {
             address: market.address,
