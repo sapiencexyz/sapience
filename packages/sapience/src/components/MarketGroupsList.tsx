@@ -107,41 +107,46 @@ const FocusAreaFilter = ({
           ))}
         {!isLoadingCategories &&
           categories &&
-          categories.map((category) => {
-            const styleInfo = getCategoryStyle(category.slug);
-            const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
+          categories
+            .filter((category) => {
+              const styleInfo = getCategoryStyle(category.slug);
+              return !!styleInfo?.iconSvg; // Only keep categories with an icon
+            })
+            .map((category) => {
+              const styleInfo = getCategoryStyle(category.slug);
+              const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
 
-            // Use the name from FOCUS_AREAS if available, otherwise fall back to category.name
-            const displayName = styleInfo?.name || category.name;
+              // Use the name from FOCUS_AREAS if available, otherwise fall back to category.name
+              const displayName = styleInfo?.name || category.name;
 
-            return (
-              <button
-                type="button"
-                key={category.id}
-                onClick={() => handleCategoryClick(category.slug)}
-                className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
-              >
-                <div
-                  className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
-                  style={{ backgroundColor: `${categoryColor}1A` }}
+              return (
+                <button
+                  type="button"
+                  key={category.id}
+                  onClick={() => handleCategoryClick(category.slug)}
+                  className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
                 >
-                  {styleInfo?.iconSvg ? (
-                    <div style={{ transform: 'scale(0.65)' }}>
-                      <div
-                        style={{ color: categoryColor }}
-                        dangerouslySetInnerHTML={{
-                          __html: styleInfo.iconSvg,
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <TagIcon className="w-3 h-3" />
-                  )}
-                </div>
-                <span className="font-medium">{displayName}</span>
-              </button>
-            );
-          })}
+                  <div
+                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
+                    style={{ backgroundColor: `${categoryColor}1A` }}
+                  >
+                    {styleInfo?.iconSvg ? (
+                      <div style={{ transform: 'scale(0.65)' }}>
+                        <div
+                          style={{ color: categoryColor }}
+                          dangerouslySetInnerHTML={{
+                            __html: styleInfo.iconSvg,
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <TagIcon className="w-3 h-3" />
+                    )}
+                  </div>
+                  <span className="font-medium">{displayName}</span>
+                </button>
+              );
+            })}
       </div>
 
       <div className="mt-6 mb-6">
@@ -400,7 +405,7 @@ const ForecastingTable = () => {
   return (
     <div className="flex flex-col md:flex-row min-h-0">
       {/* Main Content */}
-      <div className="flex-1 pr-6">
+      <div className="flex-1">
         {/* Add Text Filter Input with inline filter button for mobile */}
         <div className="mb-8 sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2 pb-1">
           {/* Wrap Input and Icon */}

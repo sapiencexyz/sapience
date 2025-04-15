@@ -706,10 +706,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground space-y-1">
                   {/* Conditional display based on quoter state */}
-                  {isQuoteLoading && <p>Loading quote...</p>}
-                  {quoteError && (
-                    <p className="text-destructive">Error: {quoteError}</p>
-                  )}
                   {quoteData && !isQuoteLoading && !quoteError && (
                     <>
                       {/* Display detailed quote info */}
@@ -824,6 +820,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         <Button
           type="submit"
           disabled={
+            true || // eslint-disable-line sonarjs/no-redundant-boolean
             isAttesting ||
             isPermitLoadingPermit ||
             (activeTab === 'wager' && permitData?.permitted === false)
@@ -832,7 +829,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         >
           {(() => {
             if (isAttesting) return 'Submitting...';
-            return activeTab === 'wager' ? 'Submit Wager' : 'Submit Prediction';
+            return activeTab === 'wager' ? 'Submit Wager' : 'Coming Soon';
           })()}
         </Button>
       </div>

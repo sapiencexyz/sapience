@@ -43,7 +43,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
         <AnimatePresence>
           {showNotification && (
             <motion.div
-              className="fixed bottom-4 left-4 bg-white dark:bg-gray-800 shadow-lg rounded-md p-4 z-50 flex items-center gap-2 border border-gray-200 dark:border-gray-700 max-w-[290px] text-sm"
+              className="fixed bottom-4 right-4 bg-white dark:bg-gray-800 shadow-lg rounded-md p-4 z-50 flex items-center gap-2 border border-gray-200 dark:border-gray-700 max-w-[260px] text-sm"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20, transition: { duration: 0.1 } }}
@@ -57,9 +57,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
                   rel="noopener noreferrer"
                   className="underline"
                 >
-                  building Sapience in public
+                  building in public
                 </a>{' '}
-                and want your input.{' '}
+                and want your feedback.{' '}
                 <a
                   href="https://discord.gg/Hn2vzMDCSs"
                   target="_blank"
@@ -68,6 +68,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 >
                   Join us
                 </a>
+                .
               </span>
               <button
                 type="button"

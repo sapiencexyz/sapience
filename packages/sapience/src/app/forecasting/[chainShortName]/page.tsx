@@ -16,6 +16,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
+import ComingSoonScrim from '../../../components/ComingSoonScrim';
 import PredictionForm from '../../../components/PredictionForm';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import {
@@ -344,7 +345,8 @@ const ForecastingDetailPage = () => {
             </h1>
           )}
           <div className="flex flex-col md:flex-row gap-12">
-            <div className="flex flex-col w-full">
+            <div className="flex flex-col w-full relative">
+              <ComingSoonScrim className="absolute rounded-lg" />
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={chartData}>
                   <XAxis dataKey="date" axisLine tickLine={false} />

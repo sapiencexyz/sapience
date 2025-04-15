@@ -52,7 +52,7 @@ export const MarketGroupPreview = ({
 
   return (
     <Link href={`/forecasting/${chainShortName}:${marketAddress}`}>
-      <div className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0">
+      <div className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0 dark:bg-muted/50">
         <div className="h-1.5" style={{ backgroundColor: color }} />
         <div className="px-6 py-4">
           <h3 className="text-3xl font-heading font-normal">
