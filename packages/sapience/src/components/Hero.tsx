@@ -62,7 +62,7 @@ export default function Hero() {
       {/* Content container - positioned at bottom, left-aligned */}
       <div className="w-full z-10">
         <div className="container px-0 pb-0">
-          <div className="text-left px-8 py-16">
+          <div className="text-left px-8 py-28">
             <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
               The World&apos;s Frontier
               <br />

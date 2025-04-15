@@ -5,7 +5,9 @@ import {
   SidebarProvider,
   useSidebar,
 } from '@foil/ui/components/ui/sidebar';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 
 import Header from './Header';
 
@@ -25,6 +27,8 @@ const ContentArea = ({ children }: { children: ReactNode }) => {
 };
 
 const Layout = ({ children }: { children: ReactNode }) => {
+  const [showNotification, setShowNotification] = useState(true);
+
   return (
     <SidebarProvider
       defaultOpen
@@ -35,6 +39,60 @@ const Layout = ({ children }: { children: ReactNode }) => {
         <div className="flex-1 flex w-full">
           <ContentArea>{children}</ContentArea>
         </div>
+
+        <AnimatePresence>
+          {showNotification && (
+            <motion.div
+              className="fixed bottom-4 left-4 bg-white dark:bg-gray-800 shadow-lg rounded-md p-4 z-50 flex items-center gap-2 border border-gray-200 dark:border-gray-700 max-w-[290px] text-sm"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20, transition: { duration: 0.1 } }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+            >
+              <span>
+                We&apos;re{' '}
+                <a
+                  href="https://github.com/foilxyz/foil/tree/main/packages/sapience"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  building Sapience in public
+                </a>{' '}
+                and want your input.{' '}
+                <a
+                  href="https://discord.gg/Hn2vzMDCSs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Join us
+                </a>
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowNotification(false)}
+                className="ml-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Close notification"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </SidebarProvider>
   );

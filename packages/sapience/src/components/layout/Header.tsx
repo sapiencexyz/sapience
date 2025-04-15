@@ -92,7 +92,7 @@ const NavLinks = ({
         </Button>
       </Link>
       <Link
-        href="https://discord.com"
+        href="https://discord.gg/Hn2vzMDCSs"
         passHref
         className="flex w-fit"
         target="_blank"
