@@ -7,10 +7,10 @@ import { WeatherIndexer } from './resourcePriceFunctions/weatherIndexer';
 import fixturesData from './fixtures.json';
 import { Resource } from './models/Resource';
 import { resourceRepository } from './db';
+import { MarketGroup } from './models/MarketGroup';
+import { marketGroupRepository } from './db';
 import { Market } from './models/Market';
 import { marketRepository } from './db';
-import { Epoch } from './models/Epoch';
-import { epochRepository } from './db';
 import { Category } from './models/Category';
 import { categoryRepository } from './db';
 import { IResourcePriceIndexer } from './interfaces';
@@ -42,8 +42,8 @@ export const INDEXERS: {
 };
 
 // Helper function to create or update epochs with questions
-async function handleEpochQuestions(
-  market: Market,
+async function handleMarketQuestions(
+  marketGroup: MarketGroup,
   questions: string[]
 ): Promise<void> {
   if (!questions || questions.length === 0) {
@@ -55,25 +55,25 @@ async function handleEpochQuestions(
     const epochId = i + 1; // Convert 0-index to 1-index for epochId
 
     // Check if epoch already exists
-    let epoch = await epochRepository.findOne({
+    let epoch = await marketRepository.findOne({
       where: {
-        market: { id: market.id },
-        epochId: epochId,
+        marketGroup: { id: marketGroup.id },
+        marketId: epochId,
       },
     });
 
     if (!epoch) {
       // Create new epoch
-      epoch = new Epoch();
-      epoch.epochId = epochId;
-      epoch.market = market;
+      epoch = new Market();
+      epoch.marketId = epochId;
+      epoch.marketGroup = marketGroup;
       epoch.question = questions[i];
-      await epochRepository.save(epoch);
+      await marketRepository.save(epoch);
       console.log(`Created epoch ${epochId} with question: ${questions[i]}`);
     } else if (epoch.question !== questions[i]) {
       // Update epoch question if different
       epoch.question = questions[i];
-      await epochRepository.save(epoch);
+      await marketRepository.save(epoch);
       console.log(
         `Updated epoch ${epochId} with new question: ${questions[i]}`
       );
@@ -187,65 +187,66 @@ export const initializeFixtures = async (): Promise<void> => {
     }
 
     // Check if market already exists by address and chainId
-    let market = await marketRepository.findOne({
+    let marketGroup = await marketGroupRepository.findOne({
       where: {
         address: marketData.address.toLowerCase(),
         chainId: marketData.chainId,
       },
     });
 
-    if (!market) {
+    if (!marketGroup) {
       // Create new market
-      market = new Market();
-      market.address = marketData.address.toLowerCase();
-      market.chainId = marketData.chainId;
-      market.isYin = marketData.isYin || false;
-      market.isCumulative = marketData.isCumulative || false;
-      market.category = category;
-      market.question = marketData.question || null;
-      market.baseTokenName = marketData.baseTokenName || null;
-      market.quoteTokenName = marketData.quoteTokenName || null;
-      market.optionNames = marketData.optionNames || null;
+      marketGroup = new MarketGroup();
+      marketGroup.address = marketData.address.toLowerCase();
+      marketGroup.chainId = marketData.chainId;
+      marketGroup.isYin = marketData.isYin || false;
+      marketGroup.isCumulative = marketData.isCumulative || false;
+      marketGroup.category = category;
+      marketGroup.question = marketData.question || null;
+      marketGroup.baseTokenName = marketData.baseTokenName || null;
+      marketGroup.quoteTokenName = marketData.quoteTokenName || null;
+      marketGroup.optionNames = marketData.optionNames || null;
 
       // Set the resource for the market
-      market.resource = resource;
-      await marketRepository.save(market);
+      marketGroup.resource = resource;
+      await marketGroupRepository.save(marketGroup);
       console.log(
         'Created market:',
-        market.address,
+        marketGroup.address,
         'on chain',
-        market.chainId
+        marketGroup.chainId
       );
 
       // Handle questions for epochs after market is saved
-      if (marketData.questions && market.id) {
-        await handleEpochQuestions(market, marketData.questions);
+      if (marketData.questions && marketGroup.id) {
+        await handleMarketQuestions(marketGroup, marketData.questions);
       }
     } else {
       // Update market if needed
-      market.resource = resource;
-      market.isYin = marketData.isYin || market.isYin || false;
-      market.isCumulative =
-        marketData.isCumulative || market.isCumulative || false;
-      market.category = category;
-      market.question = marketData.question || market.question;
-      market.baseTokenName =
-        marketData.baseTokenName || market.baseTokenName || null;
-      market.quoteTokenName =
-        marketData.quoteTokenName || market.quoteTokenName || null;
-      market.optionNames = marketData.optionNames || market.optionNames || null;
+      marketGroup.resource = resource;
+      marketGroup.isYin = marketData.isYin || marketGroup.isYin || false;
+      marketGroup.isCumulative =
+        marketData.isCumulative || marketGroup.isCumulative || false;
+      marketGroup.category = category;
+      marketGroup.question = marketData.question || marketGroup.question;
+      marketGroup.baseTokenName =
+        marketData.baseTokenName || marketGroup.baseTokenName || null;
+      marketGroup.quoteTokenName =
+        marketData.quoteTokenName || marketGroup.quoteTokenName || null;
+      marketGroup.optionNames =
+        marketData.optionNames || marketGroup.optionNames || null;
 
-      await marketRepository.save(market);
+      await marketGroupRepository.save(marketGroup);
       console.log(
         'Updated market:',
-        market.address,
+        marketGroup.address,
         'on chain',
-        market.chainId
+        marketGroup.chainId
       );
 
       // Handle questions for epochs after market is updated
-      if (marketData.questions && market.id) {
-        await handleEpochQuestions(market, marketData.questions);
+      if (marketData.questions && marketGroup.id) {
+        await handleMarketQuestions(marketGroup, marketData.questions);
       }
     }
   }

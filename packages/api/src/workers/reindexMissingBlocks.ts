@@ -1,7 +1,7 @@
 import {
   initializeDataSource,
   resourcePriceRepository,
-  marketRepository,
+  marketGroupRepository,
 } from '../db';
 import { initializeMarket } from '../controllers/market';
 import { getMarketStartEndBlock } from '../controllers/marketHelpers';
@@ -21,7 +21,7 @@ export async function reindexMissingBlocks(
 
     await initializeDataSource();
 
-    const marketEntity = await marketRepository.findOne({
+    const marketEntity = await marketGroupRepository.findOne({
       where: {
         chainId,
         address: address.toLowerCase(),

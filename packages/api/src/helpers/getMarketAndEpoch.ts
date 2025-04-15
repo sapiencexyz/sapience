@@ -1,29 +1,29 @@
 import { Repository } from 'typeorm';
+import { MarketGroup } from '../models/MarketGroup';
 import { Market } from '../models/Market';
-import { Epoch } from '../models/Epoch';
 
-export const getMarketAndEpoch = async (
+export const getMarketGroupAndMarket = async (
+  marketGroupRepository: Repository<MarketGroup>,
   marketRepository: Repository<Market>,
-  epochRepository: Repository<Epoch>,
   chainId: string,
   address: string,
-  epochId: string
-): Promise<{ market: Market; epoch: Epoch }> => {
-  const market = await marketRepository.findOne({
+  marketId: string
+): Promise<{ marketGroup: MarketGroup; market: Market }> => {
+  const marketGroup = await marketGroupRepository.findOne({
     where: { chainId: Number(chainId), address: address.toLowerCase() },
+  });
+  if (!marketGroup) {
+    throw new Error(
+      `MarketGroup not found for chainId ${chainId} and address ${address}`
+    );
+  }
+  const market = await marketRepository.findOne({
+    where: { marketGroup: { id: marketGroup.id }, marketId: Number(marketId) },
   });
   if (!market) {
     throw new Error(
-      `Market not found for chainId ${chainId} and address ${address}`
+      `Market not found for chainId ${chainId} and address ${address} and marketId ${marketId}`
     );
   }
-  const epoch = await epochRepository.findOne({
-    where: { market: { id: market.id }, epochId: Number(epochId) },
-  });
-  if (!epoch) {
-    throw new Error(
-      `Epoch not found for chainId ${chainId} and address ${address} and epochId ${epochId}`
-    );
-  }
-  return { market, epoch };
+  return { marketGroup, market };
 };

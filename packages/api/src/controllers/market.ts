@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import 'tsconfig-paths/register';
 import {
-  epochRepository,
+  marketRepository,
   eventRepository,
   initializeDataSource,
-  marketRepository,
+  marketGroupRepository,
   transactionRepository,
 } from '../db';
 import { MarketParams } from '../models/MarketParams';
 import { Event } from '../models/Event';
-import { Market } from '../models/Market';
+import { MarketGroup } from '../models/MarketGroup';
 import { Transaction } from '../models/Transaction';
 import { decodeEventLog, Log, formatUnits } from 'viem';
 import {
@@ -91,14 +91,14 @@ interface MarketInfo {
 
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
-  const existingMarket = await marketRepository.findOne({
+  const existingMarket = await marketGroupRepository.findOne({
     where: {
       address: marketInfo.deployment.address.toLowerCase(),
       chainId: marketInfo.marketChainId,
     },
     relations: ['resource'],
   });
-  const market = existingMarket || new Market();
+  const market = existingMarket || new MarketGroup();
 
   const client = getProviderForChain(marketInfo.marketChainId);
 
@@ -128,12 +128,12 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     bondAmount: marketParamsRaw?.bondAmount?.toString() ?? '0',
   };
   updatedMarket.marketParams = marketEpochParams;
-  await marketRepository.save(updatedMarket);
+  await marketGroupRepository.save(updatedMarket);
   return updatedMarket;
 };
 
 // Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
-export const indexMarketEvents = async (market: Market) => {
+export const indexMarketEvents = async (market: MarketGroup) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
@@ -189,7 +189,7 @@ export const indexMarketEvents = async (market: Market) => {
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (market: Market) => {
+export const reindexMarketEvents = async (market: MarketGroup) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
@@ -483,7 +483,7 @@ const alertEvent = async (
 
       let marketName = 'Foil Market';
       try {
-        const marketObj = await marketRepository.findOne({
+        const marketObj = await marketGroupRepository.findOne({
           where: { address, chainId },
           relations: ['resource'],
         });
@@ -582,7 +582,7 @@ const upsertEvent = async (
   });
 
   // Find market with relations
-  const market = await marketRepository.findOne({
+  const market = await marketGroupRepository.findOne({
     where: { chainId, address },
     relations: ['marketParams'],
   });
@@ -598,7 +598,7 @@ const upsertEvent = async (
     const existingEvent = await eventRepository.findOne({
       where: {
         transactionHash: logData.transactionHash,
-        market: { id: market.id },
+        marketGroup: { id: market.id },
         blockNumber: Number(blockNumber),
         logIndex: logIndex,
       },
@@ -617,7 +617,7 @@ const upsertEvent = async (
 
     console.log('inserting new event..');
     const newEvent = new Event();
-    newEvent.market = market;
+    newEvent.marketGroup = market;
     newEvent.blockNumber = Number(blockNumber);
     newEvent.timestamp = timeStamp.toString();
     newEvent.logIndex = logIndex;
@@ -672,9 +672,9 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       } as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
         marketCreatedArgs,
-        event.market.chainId,
-        event.market.address,
-        event.market
+        event.marketGroup.chainId,
+        event.marketGroup.address,
+        event.marketGroup
       );
       skipTransaction = true;
       break;
@@ -689,9 +689,9 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       } as MarketCreatedUpdatedEventLog;
       await createOrUpdateMarketFromEvent(
         marketUpdatedArgs,
-        event.market.chainId,
-        event.market.address,
-        event.market
+        event.marketGroup.chainId,
+        event.marketGroup.address,
+        event.marketGroup
       );
       skipTransaction = true;
       break;
@@ -706,11 +706,11 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
         endTime: event.logData.args.endTime,
         startingSqrtPriceX96: event.logData.args.startingSqrtPriceX96,
       } as EpochCreatedEventLog;
-      await createEpochFromEvent(epochCreatedArgs, event.market);
+      await createEpochFromEvent(epochCreatedArgs, event.marketGroup);
 
       // Call createOrUpdateEpochFromContract with the data from the event
       await createOrUpdateEpochFromContract(
-        event.market,
+        event.marketGroup,
         Number(epochCreatedArgs.epochId)
       );
       skipTransaction = true;
@@ -718,13 +718,13 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
     }
     case EventType.EpochSettled: {
       console.log('Market settled event. event: ', event);
-      const epoch = await epochRepository.findOne({
+      const epoch = await marketRepository.findOne({
         where: {
           market: {
-            address: event.market.address.toLowerCase(),
-            chainId: event.market.chainId,
+            address: event.marketGroup.address.toLowerCase(),
+            chainId: event.marketGroup.chainId,
           },
-          epochId: Number(event.logData.args.epochId),
+          marketId: Number(event.logData.args.epochId),
         },
         relations: ['market'],
       });
@@ -738,9 +738,9 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
           settlementSqrtPriceX96
         );
         epoch.settlementPriceD18 = settlementPriceD18.toString();
-        await epochRepository.save(epoch);
+        await marketRepository.save(epoch);
       } else {
-        console.error('Epoch not found for market: ', event.market);
+        console.error('Epoch not found for market: ', event.marketGroup);
       }
       skipTransaction = true;
       break;
