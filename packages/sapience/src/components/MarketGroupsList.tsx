@@ -405,9 +405,9 @@ const ForecastingTable = () => {
   return (
     <div className="flex flex-col md:flex-row min-h-0">
       {/* Main Content */}
-      <div className="flex-1">
+      <div className="flex-1 flex flex-col gap-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
-        <div className="mb-8 sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2 pb-1">
+        <div className="sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2 pb-1">
           {/* Wrap Input and Icon */}
           <div className="relative flex items-center">
             <SearchIcon
@@ -461,7 +461,7 @@ const ForecastingTable = () => {
         </div>
 
         {/* Removed the inline loading checks here */}
-        <div className="relative min-h-[300px] pt-2">
+        <div className="relative min-h-[300px]">
           <AnimatePresence mode="popLayout">
             {groupedMarkets.length === 0 && (
               <motion.div
