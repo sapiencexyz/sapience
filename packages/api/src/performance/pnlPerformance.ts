@@ -1,6 +1,6 @@
 import { TIME_INTERVALS } from 'src/fixtures';
 import { startOfCurrentInterval } from './helper';
-import { epochRepository, positionRepository } from 'src/db';
+import { marketRepository, positionRepository } from 'src/db';
 import { Position } from 'src/models/Position';
 import { getProviderForChain } from 'src/utils';
 import { PublicClient } from 'viem';
@@ -84,7 +84,7 @@ export class PnLPerformance {
       // 1. Fetch positions for the epoch
       const positions = await positionRepository.find({
         where: {
-          epoch: { id: epochData.id },
+          market: { id: epochData.id },
         },
         relations: ['transactions', 'transactions.collateralTransfer'],
       });
@@ -189,13 +189,13 @@ export class PnLPerformance {
     epochId: number
   ): Promise<EpochPnLData | undefined> {
     try {
-      const epoch = await epochRepository.findOne({
+      const epoch = await marketRepository.findOne({
         where: {
           market: {
             chainId,
             address: address.toLowerCase(),
           },
-          epochId: Number(epochId),
+          marketId: Number(epochId),
         },
       });
 
