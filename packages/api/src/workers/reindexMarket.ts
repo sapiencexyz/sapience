@@ -1,10 +1,30 @@
 import { initializeDataSource } from '../db';
-import { initializeMarket, reindexMarketEvents } from '../controllers/market';
+import {
+  initializeMarket,
+  reindexMarketEvents,
+  reindexMarketsByChainId,
+} from '../controllers/market';
 import * as Sentry from '@sentry/node';
 import { marketRepository } from '../db';
 import { INDEXERS } from '../fixtures';
 import { Abi } from 'viem';
 import Foil from '@foil/protocol/deployments/Foil.json';
+
+export async function reindexMarketByChainId(chainId: number) {
+  try {
+    console.log('Reindexing all markets for chain ID:', chainId);
+    await initializeDataSource();
+    await reindexMarketsByChainId(chainId);
+    console.log('Finished reindexing all markets for chain ID:', chainId);
+  } catch (error) {
+    console.error('Error in reindexMarketByChainId:', error);
+    Sentry.withScope((scope: Sentry.Scope) => {
+      scope.setExtra('chainId', chainId);
+      Sentry.captureException(error);
+    });
+    throw error;
+  }
+}
 
 export async function reindexMarket(
   chainId: number,

@@ -1,14 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
 import { initializeDataSource, resourceRepository } from '../db';
-import { indexMarketEvents } from '../controllers/market';
+import { indexMarketsByChainId } from '../controllers/market';
 import { initializeFixtures, INDEXERS } from '../fixtures';
 import * as Sentry from '@sentry/node';
 import { Resource } from '../models/Resource';
-import { reindexMarket } from './reindexMarket';
+import { reindexMarket, reindexMarketByChainId } from './reindexMarket';
 import { reindexMissingBlocks } from './reindexMissingBlocks';
 import { reindexResource } from './reindexResource';
-import fixturesData from '../fixtures.json';
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
 
@@ -79,17 +77,15 @@ async function main() {
   // Initialize resources from fixtures
   await initializeFixtures();
 
-  for (const marketInfo of fixturesData.MARKETS) {
+  // Define the chains we want to index
+  const SUPPORTED_CHAIN_IDS = [8453, 11155111]; // Base and Sepolia
+
+  // Index all markets for each supported chain
+  for (const chainId of SUPPORTED_CHAIN_IDS) {
     jobs.push(
       createResilientProcess(
-        () =>
-          indexMarketEvents({
-            address: marketInfo.address,
-            chainId: marketInfo.chainId,
-            isYin: marketInfo.isYin || true,
-            isCumulative: marketInfo.isCumulative || false,
-          } as any),
-        `indexMarketEvents-${marketInfo.address}`
+        () => indexMarketsByChainId(chainId),
+        `indexMarketsByChainId-${chainId}`
       )()
     );
   }
@@ -138,6 +134,21 @@ if (process.argv[2] === 'reindexMarket') {
     process.exit(0);
   };
   callReindex();
+} else if (process.argv[2] === 'reindexMarketsByChain') {
+  const callReindexByChain = async () => {
+    const chainId = parseInt(process.argv[3], 10);
+
+    if (isNaN(chainId)) {
+      console.error(
+        'Invalid arguments. Usage: tsx src/worker.ts reindexMarketsByChain <chainId>'
+      );
+      process.exit(1);
+    }
+    await reindexMarketByChainId(chainId);
+    console.log('Done reindexing all markets for chain ID:', chainId);
+    process.exit(0);
+  };
+  callReindexByChain();
 } else if (process.argv[2] === 'reindexMissing') {
   const callReindexMissing = async () => {
     const chainId = parseInt(process.argv[3], 10);
