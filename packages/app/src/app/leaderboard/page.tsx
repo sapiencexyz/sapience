@@ -101,6 +101,21 @@ const useGlobalLeaderboard = () => {
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
           epochId: '1',
         },
+        {
+          chainId: 8453,
+          address: '0x914126c7bfa849055be8230975e0665de985f03a',
+          epochId: '2',
+        },
+        {
+          chainId: 8453,
+          address: '0x914126c7bfa849055be8230975e0665de985f03a',
+          epochId: '3',
+        },
+        {
+          chainId: 8453,
+          address: '0x914126c7bfa849055be8230975e0665de985f03a',
+          epochId: '4',
+        },
       ];
 
       // Fetch leaderboard data for each specific epoch using GraphQL
