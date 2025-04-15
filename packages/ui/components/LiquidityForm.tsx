@@ -5,13 +5,13 @@ import { Button } from './ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
 import { SlippageTolerance } from './SlippageTolerance';
 import { NumberDisplay } from './NumberDisplay';
-import { useReadContract } from 'wagmi';
-import { parseUnits } from 'viem';
-import { TickMath } from '@uniswap/v3-sdk';
-import { useUniswapPool } from '../hooks/useUniswapPool';
+// import { useReadContract } from 'wagmi';
+// import { parseUnits } from 'viem';
+// import { TickMath } from '@uniswap/v3-sdk';
+// import { useUniswapPool } from '../hooks/useUniswapPool';
 import { useCollateralInfo } from '../hooks/useCollateralInfo';
 import { useFoilAbi } from '../hooks/useFoilAbi';
-
+import { useMarketInfo } from '../hooks/useMarketInfo';
 
 export interface MarketProps {
   epochId: number;
@@ -51,15 +51,22 @@ export function LiquidityForm({
   const depositAmount = watch('depositAmount');
   const lowPrice = watch('lowPrice');
   const highPrice = watch('highPrice');
-  
+
+
   const { abi } = useFoilAbi(market.chainId);
+
+  const { data: marketInfo } = useMarketInfo(market.chainId, market.address as `0x${string}`, market.epochId, abi);
+
+  console.log('LLL marketInfo', marketInfo)
 
   const { ticker: collateralTicker, decimals: collateralDecimals } = useCollateralInfo(market.chainId, market.address as `0x${string}`);
 
-  const { pool, liquidity, refetchUniswapData } = useUniswapPool(
-    market.chainId,
-    market.address as `0x${string}` // TODO: not market.address, but pool address
-  );
+  // const { data: marketInfo } = useMarketInfo(market.chainId, market.address as `0x${string}`, market.epochId);
+  // console.log('LLL marketInfo', marketInfo)
+  // const { pool, liquidity, refetchUniswapData } = useUniswapPool(
+  //   market.chainId,
+  //   market.address as `0x${string}` // TODO: not market.address, but pool address
+  // );
 
 
   // const { data: tokenAmounts, error: tokenAmountsError, isFetching } = useReadContract({
@@ -128,7 +135,7 @@ export function LiquidityForm({
                       {...field} 
                     />
                     <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
-                      {collateralTicker}
+                      {/* {collateralTicker} */}
                     </div>
                   </div>
                 </FormControl>
