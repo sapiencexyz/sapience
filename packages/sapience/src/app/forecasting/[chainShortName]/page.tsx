@@ -18,6 +18,10 @@ import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
 import PredictionForm from '../../../components/PredictionForm';
 import { useSapience } from '../../../lib/context/SapienceProvider';
+import {
+  findActiveEpochs,
+  getDisplayQuestion,
+} from '../../../lib/utils/questionUtils';
 import { foilApi } from '../../../lib/utils/util';
 
 // Dynamically import LottieLoader
@@ -115,56 +119,13 @@ const formatQuestion = (rawQuestion: string): string => {
   return formattedQuestion;
 };
 
-// Helper function to get the display question (moved outside component)
-const getDisplayQuestion = (
-  marketData: any, // Consider defining a more specific type if possible
-  currentEpochId: string | null,
-  isLoadingMarket: boolean
-): string => {
-  // Handle loading or placeholder states first
-  if (isLoadingMarket) {
-    return ''; // Return empty string while loading
-  }
-  if (!marketData || marketData.placeholder) {
-    return 'This market question is not available'; // Indicate unavailability if placeholder or no data
-  }
-
-  // Find current epoch question
-  if (currentEpochId && Array.isArray(marketData.epochs)) {
-    const currentEpoch = marketData.epochs.find(
-      (epoch: { epochId: string; question?: string }) =>
-        epoch.epochId === currentEpochId
-    );
-    if (currentEpoch?.question) {
-      return formatQuestion(currentEpoch.question);
-    }
-  }
-
-  // Use market question if current epoch question not found
-  if (marketData?.question) {
-    return formatQuestion(marketData.question);
-  }
-
-  // Fallback to first epoch with a question
-  if (Array.isArray(marketData.epochs) && marketData.epochs.length > 0) {
-    const epochWithQuestion = marketData.epochs.find(
-      (epoch: { question?: string }) => epoch.question
-    );
-    if (epochWithQuestion?.question) {
-      return formatQuestion(epochWithQuestion.question);
-    }
-  }
-
-  // Default message if no question found after checking all sources
-  return 'Market question not available';
-};
-
 const ForecastingDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
   const [currentEpochId, setCurrentEpochId] = useState<string | null>(null);
+  const [activeEpochs, setActiveEpochs] = useState<any[]>([]);
   const [showEpochSelector, setShowEpochSelector] = useState(false);
 
   // Parse chain and market address from URL parameter
@@ -226,46 +187,35 @@ const ForecastingDetailPage = () => {
     retryDelay: 1000,
   });
 
-  // Find the current epoch based on timestamps
+  // Find active epochs based on timestamps
   useEffect(() => {
-    if (
-      marketData &&
-      !marketData.placeholder &&
-      Array.isArray(marketData.epochs)
-    ) {
-      const nowInSeconds = Date.now() / 1000;
-      const activeEpoch = marketData.epochs.find(
-        (epoch: {
-          startTimestamp: number;
-          endTimestamp: number;
-          epochId: string;
-        }) =>
-          nowInSeconds >= epoch.startTimestamp &&
-          nowInSeconds < epoch.endTimestamp
-      );
-      if (activeEpoch) {
-        console.log('Found current epoch:', activeEpoch.epochId);
-        setCurrentEpochId(activeEpoch.epochId);
+    if (marketData && !marketData.placeholder) {
+      const currentlyActiveEpochs = findActiveEpochs(marketData);
+
+      setActiveEpochs(currentlyActiveEpochs);
+
+      // If we have active epochs, set the currentEpochId to the first one
+      if (currentlyActiveEpochs.length > 0) {
+        console.log('Found active epochs:', currentlyActiveEpochs.length);
+        setCurrentEpochId(currentlyActiveEpochs[0].epochId);
       } else {
-        console.log('No current epoch found.');
+        console.log('No active epochs found.');
         setCurrentEpochId(null);
       }
     }
   }, [marketData]); // Dependency: run when marketData changes
 
-  // Process and format the question, prioritizing the current epoch
+  // Process and format the question, using the consolidated logic
   useEffect(() => {
-    console.log('Market data for question:', marketData);
-    console.log('Current Epoch ID:', currentEpochId);
-
-    // Use the helper function to determine the question
+    // Use the updated helper function to determine the question
     const question = getDisplayQuestion(
       marketData,
-      currentEpochId,
-      isLoadingMarket
+      activeEpochs,
+      isLoadingMarket,
+      'Loading question...'
     );
     setDisplayQuestion(question);
-  }, [marketData, isLoadingMarket, currentEpochId]); // Dependencies remain the same
+  }, [marketData, isLoadingMarket, activeEpochs]); // Dependencies updated to include activeEpochs
 
   // Redirect or show epoch selector based on epoch count
   useEffect(() => {

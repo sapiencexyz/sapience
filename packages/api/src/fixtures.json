@@ -55,8 +55,8 @@
       "slug": "biosecurity"
     },
     {
-      "name": "International Relations",
-      "slug": "international-relations"
+      "name": "Geopolitics",
+      "slug": "geopolitics"
     }
   ],
   "MARKETS": [
@@ -99,7 +99,7 @@
     {
       "chainId": 8453,
       "address": "0x78d120b363a23cc513e903ca00e9e4bf6c823f7c",
-      "category": "international-relations",
+      "category": "geopolitics",
       "question": "Which party will hold a plurality in the US House of Representatives after the 2026 midterm elections?",
       "questions": [
         "Will the Democrats hold a plurality in the US House of Representatives after the 2026 midterm elections?",
