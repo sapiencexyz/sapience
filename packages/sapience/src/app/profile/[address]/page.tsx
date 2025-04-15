@@ -1,7 +1,6 @@
 'use client';
 
 import { gql } from '@apollo/client';
-import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Table,
@@ -15,7 +14,6 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useParams } from 'next/navigation';
 
-import EpochTiming from '~/components/EpochTiming';
 import LottieLoader from '~/components/LottieLoader';
 import NumberDisplay from '~/components/numberDisplay';
 import { foilApi } from '~/lib/utils/util';
@@ -136,38 +134,19 @@ export default function PortfolioPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Position</TableHead>
               <TableHead>Question</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead>Collateral</TableHead>
-              <TableHead>Size</TableHead>
+              <TableHead>Prediction</TableHead>
+              <TableHead>Wager</TableHead>
+              <TableHead>Profit/Loss</TableHead>
+              <TableHead>Potential Profit</TableHead>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {positions?.map((position: any) => (
               <TableRow key={position.id}>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span>#{position.positionId}</span>
-                    <Badge variant={position.isLP ? 'secondary' : 'default'}>
-                      {position.isLP ? 'LP' : 'Trader'}
-                    </Badge>
-                  </div>
-                </TableCell>
-                <TableCell>
                   {position.epoch.question || 'No question provided'}
-                </TableCell>
-                <TableCell>
-                  <EpochTiming
-                    startTimestamp={position.epoch.startTimestamp}
-                    endTimestamp={position.epoch.endTimestamp}
-                  />
-                </TableCell>
-                <TableCell>
-                  <NumberDisplay
-                    value={Number(position.collateral) / 10 ** 18}
-                  />{' '}
-                  wstETH
                 </TableCell>
                 <TableCell>
                   {position.isLP ? (
@@ -195,6 +174,32 @@ export default function PortfolioPage() {
                       Ggas
                     </span>
                   )}
+                </TableCell>
+                <TableCell>
+                  <NumberDisplay
+                    value={Number(position.collateral) / 10 ** 18}
+                  />{' '}
+                  wstETH
+                </TableCell>
+                <TableCell>
+                  {/* Actual or realized profit/loss */}
+                  {position.isSettled ? '+' : ''}
+                  <NumberDisplay value={0} /> wstETH
+                </TableCell>
+                <TableCell>
+                  {/* Potential profit calculation */}
+                  <NumberDisplay
+                    value={(Number(position.collateral) / 10 ** 18) * 0.2}
+                  />{' '}
+                  wstETH
+                </TableCell>
+                <TableCell>
+                  <Button
+                    size="sm"
+                    variant={position.isSettled ? 'default' : 'secondary'}
+                  >
+                    {position.isSettled ? 'Claim' : 'Sell'}
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
