@@ -16,7 +16,7 @@ import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../utils/util';
 
-import type { Market } from './FoilProvider';
+import type { MarketGroup } from './FoilProvider';
 import { useFoil } from './FoilProvider';
 
 // Types and Interfaces
@@ -46,7 +46,7 @@ export interface PeriodContextType {
   refetchUniswapData: () => void;
   useMarketUnits: boolean;
   setUseMarketUnits: (useMarketUnits: boolean) => void;
-  market?: Market;
+  market?: MarketGroup;
   resource?: Resource;
   question?: string;
   seriesVisibility: {
@@ -102,7 +102,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   const { data: resources } = useResources();
 
   const market = markets.find(
-    (m: Market) => m.address.toLowerCase() === address.toLowerCase()
+    (m: MarketGroup) => m.address.toLowerCase() === address.toLowerCase()
   );
   const currentEpochData = market?.epochs.find((e) => e.epochId === epoch);
   const resource = resources?.find((r) => r.name === market?.resource?.name);

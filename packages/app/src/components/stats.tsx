@@ -10,7 +10,7 @@ import { BookTextIcon, InfoIcon } from 'lucide-react';
 import { useContext } from 'react';
 import { formatUnits } from 'viem';
 
-import type { Market } from '~/lib/context/FoilProvider';
+import type { MarketGroup } from '~/lib/context/FoilProvider';
 import { useFoil } from '~/lib/context/FoilProvider';
 import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useLatestIndexPrice } from '~/lib/hooks/useResources';
@@ -66,7 +66,7 @@ const IndexPriceDisplay = ({
   isBeforeStart: boolean;
   startTimeRelative: string;
   isLoadingIndexPrice: boolean;
-  market: Market;
+  market: MarketGroup;
   latestIndexPrice: any;
   useMarketUnits: boolean;
   stEthPerToken: number | undefined;
@@ -116,7 +116,7 @@ const Stats = () => {
         ? {
             address: market.address,
             chainId: market.chainId,
-            epochId: market.currentEpoch!.epochId,
+            epochId: market.currentMarket!.marketId,
           }
         : {
             address: '',

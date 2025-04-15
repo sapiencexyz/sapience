@@ -234,7 +234,7 @@ export const useChart = ({
   const hasSetTimeScale = useRef(false);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
-  const { stEthPerToken, markets } = useFoil();
+  const { stEthPerToken, marketGroups } = useFoil();
   const [hoverData, setHoverData] = useState<{
     price: number | null;
     timestamp: number | null;
@@ -264,7 +264,7 @@ export const useChart = ({
 
   const fullMarket =
     market && hasRequiredMarketProps(market)
-      ? markets.find((m) => {
+      ? marketGroups.find((m) => {
           return (
             m.chainId === market.chainId &&
             m.address.toLowerCase() === market.address.toLowerCase()
@@ -418,12 +418,12 @@ export const useChart = ({
         // Calculate duration in days from full market data
         let durationInDays = 28; // Default to 28 days
         if (
-          fullMarket?.currentEpoch?.startTimestamp &&
-          fullMarket?.currentEpoch?.endTimestamp
+          fullMarket?.currentMarket?.startTimestamp &&
+          fullMarket?.currentMarket?.endTimestamp
         ) {
           const durationInSeconds =
-            fullMarket.currentEpoch.endTimestamp -
-            fullMarket.currentEpoch.startTimestamp;
+            fullMarket.currentMarket.endTimestamp -
+            fullMarket.currentMarket.startTimestamp;
           durationInDays = Math.ceil(durationInSeconds / (24 * 60 * 60));
         }
 

@@ -94,27 +94,27 @@ const useGlobalLeaderboard = () => {
         {
           chainId: 8453,
           address: '0x497057F1dBdaFBeD7a052dEa366e72c04de7A370',
-          epochId: '1',
+          marketId: '1',
         },
         {
           chainId: 8453,
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
-          epochId: '1',
+          marketId: '1',
         },
         {
           chainId: 8453,
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
-          epochId: '2',
+          marketId: '2',
         },
         {
           chainId: 8453,
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
-          epochId: '3',
+          marketId: '3',
         },
         {
           chainId: 8453,
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
-          epochId: '4',
+          marketId: '4',
         },
       ];
 
@@ -126,7 +126,7 @@ const useGlobalLeaderboard = () => {
             variables: {
               chainId: epoch.chainId,
               address: epoch.address,
-              epochId: epoch.epochId,
+              marketId: epoch.marketId,
             },
           })
           .then((response) => response.data.getEpochLeaderboard)

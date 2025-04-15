@@ -513,7 +513,7 @@ const Subscribe: FC<SubscribeProps> = ({
         walletAddress: resolvedAddress,
         chainId: finalChainId,
         marketAddress: finalMarketAddress,
-        epochId: finalEpoch,
+        marketID: finalEpoch,
       });
 
       // Add check for no gas usage

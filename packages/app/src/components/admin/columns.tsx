@@ -14,7 +14,7 @@ import { base, sepolia } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 import NumberDisplay from '~/components/numberDisplay';
-import type { Market } from '~/lib/context/FoilProvider';
+import type { MarketGroup } from '~/lib/context/FoilProvider';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useMarketPriceData } from '~/lib/hooks/useMarketPriceData';
 import { useResources } from '~/lib/hooks/useResources';
@@ -26,7 +26,7 @@ import type { MissingBlocks } from './types';
 
 // Extend the Market type with missing properties
 declare module '~/lib/context/FoilProvider' {
-  interface Market {
+  interface MarketGroup {
     marketParams?: {
       bondCurrency: `0x${string}`;
       bondAmount: bigint;
@@ -330,7 +330,13 @@ const MarketPriceCell = ({
 };
 
 // BondCell component with fixed comparison
-const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
+const BondCell = ({
+  market,
+  chainId,
+}: {
+  market: MarketGroup;
+  chainId: number;
+}) => {
   const bondCurrency = market.marketParams?.bondCurrency;
   const bondAmount = market.marketParams?.bondAmount;
   const spenderAddress =
@@ -416,14 +422,14 @@ const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
 export interface TableRow {
   marketAddress: string;
   chainId: number;
-  epochId: number;
+  marketId: number;
   startTimestamp: number;
   endTimestamp: number;
   settled: boolean;
   assertionId?: string;
   vaultAddress: string;
   public: boolean;
-  market: Market;
+  marketGroup: MarketGroup;
   question?: string;
   id?: number;
   volume?: number | null; // Add volume property
@@ -431,7 +437,7 @@ export interface TableRow {
 
 const getColumns = (
   loadingAction: { [key: string]: boolean },
-  updateMarketPrivacy: (market: Market, epochId: number) => void,
+  updateMarketPrivacy: (market: MarketGroup, epochId: number) => void,
   handleReindex: (
     reindexType: 'price' | 'events',
     marketAddress: string,
