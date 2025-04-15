@@ -15,9 +15,20 @@ import debounce from 'lodash/debounce';
 import { HelpCircle, Info } from 'lucide-react';
 import type React from 'react';
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { parseUnits, formatUnits } from 'viem';
+import {
+  parseUnits,
+  formatUnits,
+  encodeAbiParameters,
+  parseAbiParameters,
+} from 'viem';
+import { useAccount, useWriteContract, useTransaction } from 'wagmi';
 
 import PredictionInput from './PredictionInput';
+
+// EAS constants
+const EAS_CONTRACT_ADDRESS = '0x4200000000000000000000000000000000000021';
+const SCHEMA_UID =
+  '0x8c6ff62d30ea7aa47f0651cd5c1757d47539f8a303888c61d3f19c7502fa9a24';
 
 // Define a local type matching the component's usage until correct import path is found
 // Consider moving this to a shared types file if used elsewhere
@@ -74,15 +85,21 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   activeTab,
   handleTabChange,
   handlePredictionChange,
-  handleSubmit, // Receive handleSubmit
+  handleSubmit: externalHandleSubmit, // Rename to avoid conflict
   isPermitLoadingPermit,
   permitData,
   activeButtonStyle = defaultActiveStyle,
   inactiveButtonStyle = defaultInactiveStyle,
   currentEpochId, // Destructure the new prop
 }) => {
-  // This component now receives all necessary state and handlers via props.
-  // We also receive setFormData directly to handle the wagerAmount input change.
+  // Wagmi hooks
+  const { address } = useAccount();
+
+  // State for attestation status
+  const [attestationError, setAttestationError] = useState<string | null>(null);
+  const [attestationSuccess, setAttestationSuccess] = useState<string | null>(
+    null
+  );
 
   // State for quoter integration
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
@@ -406,8 +423,145 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     debouncedFetchQuote, // Include debounced function in dependency array
   ]);
 
+  // EAS contract write hook
+  const {
+    writeContract,
+    data: attestData,
+    isPending: isAttesting,
+    error: writeError,
+  } = useWriteContract();
+
+  // Wait for transaction
+  const { data: txReceipt, isSuccess: txSuccess } = useTransaction({
+    hash: attestData,
+  });
+
+  // Set success message when transaction completes
+  useEffect(() => {
+    if (txSuccess && txReceipt) {
+      setAttestationSuccess(
+        `Prediction submitted successfully! Transaction: ${txReceipt.hash}`
+      );
+    }
+  }, [txSuccess, txReceipt]);
+
+  // Set error message if write fails
+  useEffect(() => {
+    if (writeError) {
+      setAttestationError(writeError.message);
+    }
+  }, [writeError]);
+
+  // Helper function to encode schema data
+  const encodeSchemaData = useCallback(
+    (marketAddress: string, marketId: string, prediction: string) => {
+      try {
+        // Encode the data according to the schema "address marketAddress,uint256 marketId,uint160 prediction"
+        return encodeAbiParameters(
+          parseAbiParameters(
+            'address marketAddress, uint256 marketId, uint160 prediction'
+          ),
+          [marketAddress as `0x${string}`, BigInt(marketId), BigInt(prediction)]
+        );
+      } catch (error) {
+        console.error('Error encoding schema data:', error);
+        throw new Error('Failed to encode prediction data');
+      }
+    },
+    []
+  );
+
+  // Custom handleSubmit that handles predict vs wager differently
+  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    // Reset states
+    setAttestationError(null);
+    setAttestationSuccess(null);
+
+    // For the wager tab, use the existing handleSubmit function
+    if (activeTab === 'wager') {
+      return externalHandleSubmit(event);
+    }
+
+    // For the predict tab, implement EAS attestation
+    if (activeTab === 'predict') {
+      try {
+        if (!address) {
+          throw new Error('Wallet not connected');
+        }
+
+        if (!marketData?.address) {
+          throw new Error('Market address not available');
+        }
+
+        // Encode the schema data
+        const encodedData = encodeSchemaData(
+          marketData.address,
+          currentEpochId || '0',
+          submissionValue
+        );
+
+        // Submit the attestation using wagmi's writeContract
+        writeContract({
+          address: EAS_CONTRACT_ADDRESS as `0x${string}`,
+          abi: [
+            {
+              name: 'attest',
+              type: 'function',
+              stateMutability: 'payable',
+              inputs: [
+                {
+                  name: 'request',
+                  type: 'tuple',
+                  components: [
+                    { name: 'schema', type: 'bytes32' },
+                    {
+                      name: 'data',
+                      type: 'tuple',
+                      components: [
+                        { name: 'recipient', type: 'address' },
+                        { name: 'expirationTime', type: 'uint64' },
+                        { name: 'revocable', type: 'bool' },
+                        { name: 'refUID', type: 'bytes32' },
+                        { name: 'data', type: 'bytes' },
+                        { name: 'value', type: 'uint256' },
+                      ],
+                    },
+                  ],
+                },
+              ],
+              outputs: [{ name: 'uid', type: 'bytes32' }],
+            },
+          ],
+          functionName: 'attest',
+          args: [
+            {
+              schema: SCHEMA_UID as `0x${string}`,
+              data: {
+                recipient:
+                  '0x0000000000000000000000000000000000000000' as `0x${string}`,
+                expirationTime: BigInt(0),
+                revocable: true,
+                refUID:
+                  '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+                data: encodedData,
+                value: BigInt(0),
+              },
+            },
+          ],
+        });
+      } catch (error) {
+        console.error('Attestation error:', error);
+        setAttestationError(
+          error instanceof Error ? error.message : 'Failed to submit prediction'
+        );
+      }
+    }
+  };
+
   return (
-    <form className="space-y-8" onSubmit={handleSubmit}>
+    <form className="space-y-8" onSubmit={handleFormSubmit}>
       {/* Tabs Section */}
       <div className="space-y-2 mt-4">
         <div className="flex w-full border-b">
@@ -638,6 +792,21 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         </div>
       </div>
 
+      {/* Display attestation status */}
+      {activeTab === 'predict' && attestationError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{attestationError}</AlertDescription>
+        </Alert>
+      )}
+
+      {activeTab === 'predict' && attestationSuccess && (
+        <Alert className="mb-4">
+          <AlertTitle>Success</AlertTitle>
+          <AlertDescription>{attestationSuccess}</AlertDescription>
+        </Alert>
+      )}
+
       <div>
         {!isPermitLoadingPermit &&
           permitData?.permitted === false &&
@@ -655,12 +824,16 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         <Button
           type="submit"
           disabled={
+            isAttesting ||
             isPermitLoadingPermit ||
             (activeTab === 'wager' && permitData?.permitted === false)
           }
           className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {activeTab === 'wager' ? 'Submit Wager' : 'Submit Prediction'}
+          {(() => {
+            if (isAttesting) return 'Submitting...';
+            return activeTab === 'wager' ? 'Submit Wager' : 'Submit Prediction';
+          })()}
         </Button>
       </div>
     </form>
