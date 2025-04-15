@@ -25,8 +25,9 @@ import {
   getCoreRowModel,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink, Wallet } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useState, useMemo } from 'react';
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
@@ -435,6 +436,12 @@ const AddressDisplay = ({ address }: { address: string }) => {
         >
           <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
         </Button>
+
+        <Link href={`/profile/${address}`} className="flex items-center">
+          <Button variant="ghost" size="icon" className="h-5 w-5 p-0.5">
+            <Wallet className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+          </Button>
+        </Link>
 
         <Popover>
           <PopoverTrigger asChild>
