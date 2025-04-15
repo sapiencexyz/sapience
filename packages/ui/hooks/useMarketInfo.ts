@@ -5,7 +5,7 @@ export const useMarketInfo = (chainId?: number, address?: `0x${string}`, marketI
     return { data: null };
   }
 
-  const { data } = useReadContract({
+  const { data, isError, isLoading } = useReadContract({
     chainId: chainId,
     abi: abi,
     address: address as `0x${string}`,
@@ -15,5 +15,5 @@ export const useMarketInfo = (chainId?: number, address?: `0x${string}`, marketI
 
   console.log('LLL data', data)
 
-  return { data };
+  return { data, isError, isLoading };
 };

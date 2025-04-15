@@ -6,7 +6,7 @@ export const useCollateralInfo = (chainId?: number, address?: `0x${string}`) => 
     return { ticker: '', decimals: 0 };
   }
 
-  const { data } = useReadContracts({
+  const { data, isError, isLoading } = useReadContracts({
     contracts: [
       {
         chainId: chainId,
@@ -26,5 +26,5 @@ export const useCollateralInfo = (chainId?: number, address?: `0x${string}`) => 
   const ticker = data?.[0]?.result as string;
   const decimals = data?.[1]?.result as bigint;
 
-  return { ticker, decimals };
+  return { ticker, decimals, isError, isLoading };
 };
