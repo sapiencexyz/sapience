@@ -50,7 +50,6 @@ export class Market {
   @Column(() => MarketParams)
   marketParams: MarketParams;
 
-  // TODO REVIEW (MERGE CONFLICT)
   @Column({
     type: 'numeric',
     precision: NUMERIC_PRECISION,
@@ -58,13 +57,6 @@ export class Market {
     nullable: true,
   })
   settlementPriceD18: string | null;
-
-  @Column({ type: 'integer', nullable: true })
-  collateralDecimals: number | null;
-
-  @Column({ type: 'text', nullable: true })
-  question: string | null;
-  // TODO REVIEW (MERGE CONFLICT)
 
   @Column({
     type: 'boolean',

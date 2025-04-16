@@ -25,7 +25,7 @@ export class MarketGroupType {
   isCumulative: boolean;
 
   @Field(() => [MarketType])
-  epochs: MarketType[];
+  markets: MarketType[];
 
   @Field(() => ResourceType, { nullable: true })
   resource: ResourceType | null;
@@ -44,6 +44,9 @@ export class MarketGroupType {
 
   @Field(() => String, { nullable: true })
   collateralAsset: string | null;
+
+  @Field(() => Int, { nullable: true })
+  collateralDecimals: number | null;
 
   @Field(() => String, { nullable: true })
   question: string | null;

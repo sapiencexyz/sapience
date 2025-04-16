@@ -23,17 +23,9 @@ export class MarketType {
   @Field(() => [PositionType])
   positions: PositionType[];
 
-  // TODO REVIEW MERGE CONFLICT
   @Directive('@cacheControl(maxAge: 60)')
   @Field(() => Boolean, { nullable: true })
   settled: boolean | null;
-
-  @Field(() => Int, { nullable: true })
-  collateralDecimals: number | null;
-
-  @Field(() => String, { nullable: true })
-  question: string | null;
-  // TODO REVIEW MERGE CONFLICT
 
   @Directive('@cacheControl(maxAge: 60)')
   @Field(() => String, { nullable: true })
@@ -42,6 +34,6 @@ export class MarketType {
   @Field(() => Boolean)
   public: boolean;
 
-  @Field(() => String)
-  question: string;
+  @Field(() => String, { nullable: true })
+  question: string | null;
 }

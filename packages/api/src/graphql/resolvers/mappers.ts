@@ -41,7 +41,7 @@ export const mapMarketGroupToType = (
   chainId: marketGroup.chainId,
   isYin: marketGroup.isYin,
   isCumulative: marketGroup.isCumulative,
-  epochs: marketGroup.markets?.map(mapMarketToType) || [],
+  markets: marketGroup.markets?.map(mapMarketToType) || [],
   resource: marketGroup.resource
     ? mapResourceToType(marketGroup.resource)
     : null,
@@ -52,7 +52,7 @@ export const mapMarketGroupToType = (
   deployTxnBlockNumber: marketGroup.deployTxnBlockNumber,
   owner: marketGroup.owner?.toLowerCase() || null,
   collateralAsset: marketGroup.collateralAsset,
-  collateralDecimals: market.collateralDecimals,
+  collateralDecimals: marketGroup.collateralDecimals,
   question: marketGroup.question,
   claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
   baseTokenName: marketGroup.baseTokenName,
