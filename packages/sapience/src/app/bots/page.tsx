@@ -119,14 +119,14 @@ const MCPSection = () => {
                 </p>
                 <div className="flex items-stretch max-w-sm">
                   <div className="bg-black text-white px-4 font-mono text-sm flex items-center rounded-l-md flex-grow border border-gray-600">
-                    <span>npx @foil/agent claude-install</span>
+                    <span>npx @sapience/agent claude-install</span>
                   </div>
                   <Button
                     size="default"
                     className="px-3 bg-black hover:bg-gray-800 text-white border border-l-0 border-gray-600 rounded-r-md flex items-center justify-center rounded-l-none"
                     onClick={() => {
                       navigator.clipboard.writeText(
-                        'npx @foil/agent claude-install'
+                        'npx @sapience/agent claude-install'
                       );
                       toast({
                         title: 'Copied to clipboard',
