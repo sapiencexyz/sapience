@@ -90,7 +90,7 @@ const useGlobalLeaderboard = () => {
       if (!resources) return [];
 
       // Define specific epochs to fetch
-      const specificEpochs = [
+      const specificMarkets = [
         {
           chainId: 8453,
           address: '0x497057F1dBdaFBeD7a052dEa366e72c04de7A370',
@@ -119,14 +119,14 @@ const useGlobalLeaderboard = () => {
       ];
 
       // Fetch leaderboard data for each specific epoch using GraphQL
-      const leaderboardPromises = specificEpochs.map((epoch) =>
+      const leaderboardPromises = specificMarkets.map((market) =>
         foilApi
           .post('/graphql', {
             query: GET_MARKET_LEADERBOARD,
             variables: {
-              chainId: epoch.chainId,
-              address: epoch.address,
-              marketId: epoch.marketId,
+              chainId: market.chainId,
+              address: market.address,
+              marketId: market.marketId,
             },
           })
           .then((response) => response.data.getEpochLeaderboard)
@@ -135,13 +135,13 @@ const useGlobalLeaderboard = () => {
       const leaderboards = await Promise.all(leaderboardPromises);
 
       // Fetch positions data for each market
-      const positionsPromises = specificEpochs.map((epoch) =>
+      const positionsPromises = specificMarkets.map((market) =>
         foilApi
           .post('/graphql', {
             query: GET_POSITIONS,
             variables: {
-              chainId: epoch.chainId,
-              marketAddress: epoch.address,
+              chainId: market.chainId,
+              marketAddress: market.address,
             },
           })
           .then((response) => response.data.positions)
