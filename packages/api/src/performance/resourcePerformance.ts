@@ -205,7 +205,7 @@ export class ResourcePerformance {
     // Process resource prices in batches
     let resourceSkip = 0;
     let hasMoreResourcePrices = true;
-    let lastResourceTimestamp = 0;
+    const lastResourceTimestamp = 0;
 
     while (hasMoreResourcePrices) {
       const { prices: dbResourcePrices, hasMore } =
@@ -217,7 +217,6 @@ export class ResourcePerformance {
 
       if (dbResourcePrices.length === 0) {
         break;
-
       }
 
       this.initializeOrCleanupRuntimeData(dbResourcePrices);
@@ -231,13 +230,15 @@ export class ResourcePerformance {
             item,
             i,
             interval,
-            this.trailingAvgTime[0]
+            this.trailingAvgTime[0],
+            this.persistentResourceCacheTrailingAvgStorage
           );
           this.processTrailingAvgPricesData(
             item,
             i,
             interval,
-            this.trailingAvgTime[1]
+            this.trailingAvgTime[1],
+            this.persistentResourceCacheTrailingAvgStorage
           );
           this.processIndexPricesData(item, i, interval);
         }
@@ -249,18 +250,12 @@ export class ResourcePerformance {
       // Update skip and hasMore
       resourceSkip += dbResourcePrices.length;
       hasMoreResourcePrices = hasMore;
-
-      // Update last timestamp
-      if (dbResourcePrices.length > 0) {
-        lastResourceTimestamp =
-          dbResourcePrices[dbResourcePrices.length - 1].timestamp;
-      }
     }
 
     // Process market prices in batches
     let marketSkip = 0;
     let hasMoreMarketPrices = true;
-    let lastMarketTimestamp = 0;
+    const lastMarketTimestamp = 0;
 
     while (hasMoreMarketPrices) {
       const { prices: dbMarketPrices, hasMore } = await this.pullMarketPrices(
@@ -293,12 +288,6 @@ export class ResourcePerformance {
       // Update skip and hasMore
       marketSkip += dbMarketPrices.length;
       hasMoreMarketPrices = hasMore;
-
-      // Update last timestamp
-      if (dbMarketPrices.length > 0) {
-        lastMarketTimestamp =
-          dbMarketPrices[dbMarketPrices.length - 1].timestamp;
-      }
     }
 
     // Update the last timestamps processed
