@@ -28,7 +28,6 @@ type MarketGroupType {
   collateralDecimals: Int
   deployTimestamp: Int
   deployTxnBlockNumber: Int
-  epochs: [MarketType!]!
   id: ID!
   isCumulative: Boolean!
   isYin: Boolean!
@@ -48,7 +47,7 @@ type MarketType {
   marketId: Int!
   positions: [PositionType!]!
   public: Boolean!
-  question: String!
+  question: String
   settled: Boolean
   settlementPriceD18: String
   startTimestamp: Int
