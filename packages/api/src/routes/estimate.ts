@@ -16,7 +16,7 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { walletAddress, chainId, marketAddress, epochId } = req.body;
 
-    const { epoch } = await getMarketGroupAndMarket(
+    const { market } = await getMarketGroupAndMarket(
       marketGroupRepository,
       marketRepository,
       chainId,
@@ -24,7 +24,8 @@ router.post(
       epochId
     );
 
-    const duration = Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+    const duration =
+      Number(market.endTimestamp) - Number(market.startTimestamp);
     const startTime = Math.floor(Date.now() / 1000) - duration;
 
     // Fetch transactions from Etherscan

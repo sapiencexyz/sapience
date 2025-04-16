@@ -720,7 +720,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       console.log('Market settled event. event: ', event);
       const epoch = await marketRepository.findOne({
         where: {
-          market: {
+          marketGroup: {
             address: event.marketGroup.address.toLowerCase(),
             chainId: event.marketGroup.chainId,
           },

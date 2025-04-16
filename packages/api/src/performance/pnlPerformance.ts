@@ -62,7 +62,7 @@ export class PnLPerformance {
     );
 
     if (!epoch) {
-      epoch = await this.getEpochData(chainId, address, epochId);
+      epoch = await this.getMarketData(chainId, address, epochId);
       if (!epoch) {
         return [];
       }
@@ -183,19 +183,19 @@ export class PnLPerformance {
     return true;
   }
 
-  private async getEpochData(
+  private async getMarketData(
     chainId: number,
     address: string,
-    epochId: number
+    marketId: number
   ): Promise<EpochPnLData | undefined> {
     try {
       const epoch = await marketRepository.findOne({
         where: {
-          market: {
+          marketGroup: {
             chainId,
             address: address.toLowerCase(),
           },
-          marketId: Number(epochId),
+          marketId: Number(marketId),
         },
       });
 
@@ -208,7 +208,7 @@ export class PnLPerformance {
           id: epoch.id,
           chainId,
           address,
-          epochId,
+          epochId: marketId,
         },
         pnlData: [],
         datapointTime: 0,

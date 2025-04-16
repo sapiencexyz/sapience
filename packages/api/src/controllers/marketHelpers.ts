@@ -425,7 +425,7 @@ export const createOrUpdateEpochFromContract = async (
     bondAmount: marketParamsRaw.bondAmount?.toString() ?? '0',
   };
   updatedEpoch.marketGroup = market;
-  updatedEpoch.marketGroupParams = marketParams;
+  updatedEpoch.marketParams = marketParams;
   await marketRepository.save(updatedEpoch);
 };
 
@@ -758,7 +758,7 @@ export const createEpochFromEvent = async (
   newEpoch.startTimestamp = Number(eventArgs.startTime);
   newEpoch.endTimestamp = Number(eventArgs.endTime);
   newEpoch.startingSqrtPriceX96 = eventArgs.startingSqrtPriceX96;
-  newEpoch.marketGroupParams = market.marketParams;
+  newEpoch.marketParams = market.marketParams;
 
   const epoch = await marketRepository.save(newEpoch);
   return epoch;
