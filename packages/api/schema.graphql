@@ -85,7 +85,7 @@ type PositionType {
 
 type Query {
   categories: [CategoryType!]!
-  getEpochLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
+  getMarketLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
   indexCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
   indexPriceAtTime(address: String!, chainId: Int!, marketId: String!, timestamp: Int!): CandleType
   legacyMarketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!

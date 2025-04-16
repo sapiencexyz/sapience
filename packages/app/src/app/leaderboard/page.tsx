@@ -30,10 +30,10 @@ interface TraderStats {
   averageReturn: number;
 }
 
-const GET_EPOCH_LEADERBOARD = `
-  query GetEpochLeaderboard($chainId: Int!, $address: String!, $epochId: String!) {
-    getEpochLeaderboard(chainId: $chainId, address: $address, epochId: $epochId) {
-      epochId
+const GET_MARKET_LEADERBOARD = `
+  query GetMarketLeaderboard($chainId: Int!, $address: String!, $marketId: String!) {
+    getMarketLeaderboard(chainId: $chainId, address: $address, marketId: $marketId) {
+      marketId
       owner
       totalDeposits
       totalWithdrawals
@@ -122,7 +122,7 @@ const useGlobalLeaderboard = () => {
       const leaderboardPromises = specificEpochs.map((epoch) =>
         foilApi
           .post('/graphql', {
-            query: GET_EPOCH_LEADERBOARD,
+            query: GET_MARKET_LEADERBOARD,
             variables: {
               chainId: epoch.chainId,
               address: epoch.address,

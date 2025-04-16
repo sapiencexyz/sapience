@@ -5,7 +5,7 @@ import { PnLPerformance } from '../../performance';
 @Resolver(() => PnLType)
 export class PnLResolver {
   @Query(() => [PnLType])
-  async getEpochLeaderboard(
+  async getMarketLeaderboard(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
     @Arg('marketId', () => String) marketId: string

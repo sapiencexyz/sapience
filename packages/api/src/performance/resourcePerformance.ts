@@ -342,10 +342,10 @@ export class ResourcePerformance {
       .createQueryBuilder('marketPrice')
       .leftJoinAndSelect('marketPrice.transaction', 'transaction')
       .leftJoinAndSelect('transaction.event', 'event')
-      .leftJoinAndSelect('event.market', 'market')
-      .leftJoinAndSelect('market.resource', 'resource')
+      .leftJoinAndSelect('event.marketGroup', 'marketGroup')
+      .leftJoinAndSelect('marketGroup.resource', 'resource')
       .leftJoinAndSelect('transaction.position', 'position')
-      .leftJoinAndSelect('position.epoch', 'epoch')
+      .leftJoinAndSelect('position.market', 'market')
       .where('resource.id = :resourceId', { resourceId: this.resource.id })
       .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
         from: initialTimestamp?.toString() ?? '0',
@@ -396,7 +396,7 @@ export class ResourcePerformance {
     // Notice: doing it everytime since we don't know if a new epoch was added
     if (!this.markets || this.markets.length === 0 || !onlyIfMissing) {
       console.time(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.epochs`
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
       );
       this.markets = await marketRepository.find({
         where: {
@@ -408,7 +408,7 @@ export class ResourcePerformance {
         relations: ['marketGroup'],
       });
       console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.epochs`
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
       );
     }
   }
