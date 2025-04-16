@@ -29,10 +29,6 @@ export const BLANK_MARKET: PeriodContextType = {
   epoch: 0,
   epochSettled: false,
   foilData: {},
-  foilVaultData: {
-    yin: {},
-    yang: {},
-  },
   chainId: 0,
   liquidity: 0,
   owner: '',

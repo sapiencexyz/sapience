@@ -85,7 +85,7 @@ startTime="1742516000"
 endTime="1743120800"
 startingSqrtPriceX96 = "56022770974786143748341366784" # 0.5
 lowerBound="-92200" # 0.01
-upperBound="0" # 5
+upperBound="0" # 1
 salt="<%= stringToHex('gepo-uti') %>"
 
 [invoke.createEpoch]

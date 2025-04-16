@@ -2,7 +2,7 @@
 
 import { Button } from '@foil/ui/components/ui/button';
 import { Label } from '@foil/ui/components/ui/label';
-import { CircleHelp, DatabaseIcon } from 'lucide-react';
+import { CircleHelp, DatabaseIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';
 
@@ -146,8 +146,7 @@ const TradePoolLayout = ({
     return (
       <div className="flex items-center justify-center w-full h-[calc(100dvh-69px)]">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
-          <p className="text-lg font-medium">Loading market data...</p>
+          <Loader2 className="animate-spin h-12 w-12 text-primary" />
         </div>
       </div>
     );

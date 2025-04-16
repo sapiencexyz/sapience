@@ -8,9 +8,8 @@ export default function FutarchySection() {
   return (
     <section className="pt-48 pb-64 px-8">
       <div className="container mx-auto">
-        <div className="flex flex-col md:flex-row items-center gap-12">
-          {/* Visual content - Image */}
-          <div className="flex-1 relative aspect-video min-h-[250px]">
+        <div className="flex flex-col lg:flex-row items-center gap-12">
+          <div className="w-full lg:w-1/2 relative aspect-video min-h-[250px]">
             <Image
               src="/futarchy.png"
               alt="Futarchy prediction market concept"
@@ -19,22 +18,14 @@ export default function FutarchySection() {
             />
           </div>
 
-          {/* Text content */}
-          <div className="flex-1">
+          <div className="w-full lg:w-1/2 lg:max-w-sm lg:ml-8">
             <h2 className="text-3xl font-heading font-normal mb-6">
-              Supporting Futarchy
+              Exploring Futarchy
             </h2>
             <p className="text-lg mb-6">
               Futarchy leverages prediction markets to determine which policies
-              will best achieve established goals, combining collective
-              intelligence with data-driven governance.
+              could best achieve pre-established goals.
             </p>
-            <p className="text-muted-foreground mb-8">
-              Sapience forecasters can help guide policy decisions by providing
-              predictions about which strategies could most effectively achieve
-              measurable outcomes.
-            </p>
-
             <Button
               asChild
               size="lg"

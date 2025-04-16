@@ -1,10 +1,8 @@
 import { Button } from '@foil/ui/components/ui/button';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-
-import { useConnectWallet } from '../lib/context/ConnectWalletProvider';
+import { ConnectButton, useConnectModal } from '@rainbow-me/rainbowkit';
 
 export default function CustomConnectButton() {
-  const { setIsOpen } = useConnectWallet();
+  const { openConnectModal } = useConnectModal();
 
   return (
     <ConnectButton.Custom>
@@ -39,7 +37,7 @@ export default function CustomConnectButton() {
               if (!connected) {
                 return (
                   <Button
-                    onClick={() => setIsOpen(true)}
+                    onClick={openConnectModal}
                     className="bg-primary hover:bg-primary/90 rounded-full"
                     size="lg"
                   >

@@ -1,6 +1,5 @@
+import type { Resource } from '@foil/ui/hooks/useResources';
 import Image from 'next/image';
-
-import type { Resource } from '~/lib/hooks/useResources';
 
 import EpochTiming from './EpochTiming';
 

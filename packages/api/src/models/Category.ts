@@ -7,6 +7,7 @@ import {
   Index,
 } from 'typeorm';
 import { Market } from './Market';
+import { Resource } from './Resource';
 
 @Entity()
 export class Category {
@@ -25,4 +26,7 @@ export class Category {
 
   @OneToMany(() => Market, (market) => market.category)
   markets: Market[];
+
+  @OneToMany(() => Resource, (resource) => resource.category)
+  resources: Resource[];
 }

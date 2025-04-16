@@ -3,7 +3,6 @@ import type { ResourceSlug } from './resources';
 export interface FocusArea {
   id: string;
   name: string;
-  description: string;
   resources: ResourceSlug[];
   iconSvg: string;
   color: string;
@@ -11,10 +10,8 @@ export interface FocusArea {
 
 export const FOCUS_AREAS: FocusArea[] = [
   {
-    id: 'compute',
+    id: 'decentralized-compute',
     name: 'Decentralized Compute',
-    description:
-      'Track the revolution in distributed computing networks. See how blockchain infrastructure is democratizing access and reshaping our digital landscape.',
     resources: [
       'ethereum-gas',
       'base-gas',
@@ -41,10 +38,8 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#3B82F6', // blue-500
   },
   {
-    id: 'energy',
+    id: 'energy-depin',
     name: 'Energy + DePIN',
-    description:
-      'Witness physical infrastructure meeting decentralized networks. Track how nuclear innovation and renewables are building resilient systems for tomorrow.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -52,10 +47,8 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#C084FC', // purple-400
   },
   {
-    id: 'climate',
+    id: 'climate-change',
     name: 'Climate Change',
-    description:
-      'Follow the data on our changing planet. Track global temperature shifts, sea-level rise, and extreme weather patterns shaping our collective future.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 2L4 7L12 12L20 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -67,8 +60,6 @@ export const FOCUS_AREAS: FocusArea[] = [
   {
     id: 'biosecurity',
     name: 'Biosecurity',
-    description:
-      'Monitor the vital intersection of biology and security. Track how advanced forecasting helps prevent biological threats from pandemics to biotech risks.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="12" cy="8" r="2.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -81,10 +72,8 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#FBBF24', // amber-400
   },
   {
-    id: 'international',
-    name: 'International Relations',
-    description:
-      'Decode the global power chessboard. Track emerging alliances, conflicts, and pivotal diplomatic moves reshaping international politics.',
+    id: 'geopolitics',
+    name: 'Geopolitics',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 21H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -97,10 +86,8 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#F87171', // red-400
   },
   {
-    id: 'space',
+    id: 'space-exploration',
     name: 'Space Exploration',
-    description:
-      "Follow humanity's journey to the stars. Track breakthroughs in rocket tech, satellite networks, and ambitious missions expanding our cosmic reach.",
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -109,10 +96,8 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#22D3EE', // cyan-400
   },
   {
-    id: 'tech',
+    id: 'emerging-technologies',
     name: 'Emerging Technologies',
-    description:
-      'See the future taking shape through AI, quantum computing, and biotech. Track which innovations will redefine industries and transform human capabilities.',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M9.5 2C9.5 2 9 6 9 9C9 12 12 12 12 12C12 12 15 12 15 9C15 6 14.5 2 14.5 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

@@ -5,6 +5,7 @@ import { Position } from '../../models/Position';
 import { Transaction } from '../../models/Transaction';
 import { Epoch } from '../../models/Epoch';
 import { ResourcePrice } from '../../models/ResourcePrice';
+import { Category } from '../../models/Category';
 import { HydratedTransaction } from '../../helpers/hydrateTransactions';
 import {
   MarketType,
@@ -13,6 +14,7 @@ import {
   TransactionType,
   EpochType,
   ResourcePriceType,
+  CategoryType,
 } from '../types';
 
 // Helper to decode hex string (0x...) to UTF-8
@@ -32,26 +34,39 @@ const hexToString = (hex: string | null | undefined): string | null => {
 
 export const mapMarketToType = (market: Market): MarketType => ({
   id: market.id,
-  address: market.address.toLowerCase(),
+  address: market.address?.toLowerCase(),
   vaultAddress: market.vaultAddress,
   chainId: market.chainId,
   isYin: market.isYin,
   isCumulative: market.isCumulative,
   epochs: market.epochs?.map(mapEpochToType) || [],
   resource: market.resource ? mapResourceToType(market.resource) : null,
+  category: market.category ? mapCategoryToType(market.category) : null,
   deployTimestamp: market.deployTimestamp,
   deployTxnBlockNumber: market.deployTxnBlockNumber,
   owner: market.owner?.toLowerCase() || null,
   collateralAsset: market.collateralAsset,
+  question: market.question,
   claimStatement: hexToString(market.marketParams?.claimStatement),
+  baseTokenName: market.baseTokenName,
+  quoteTokenName: market.quoteTokenName,
+  optionNames: market.optionNames,
 });
 
 export const mapResourceToType = (resource: Resource): ResourceType => ({
   id: resource.id,
   name: resource.name,
   slug: resource.slug,
+  category: resource.category ? mapCategoryToType(resource.category) : null,
   markets: resource.markets?.map(mapMarketToType) || [],
   resourcePrices: resource.resourcePrices?.map(mapResourcePriceToType) || [],
+});
+
+export const mapCategoryToType = (category: Category): CategoryType => ({
+  id: category.id,
+  name: category.name,
+  slug: category.slug,
+  markets: category.markets?.map(mapMarketToType) || [],
 });
 
 export const mapEpochToType = (epoch: Epoch): EpochType => ({

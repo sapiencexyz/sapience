@@ -1,9 +1,9 @@
 import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
-import { Pool } from '@uniswap/v3-sdk';
 import type { FeeAmount } from '@uniswap/v3-sdk';
+import { Pool } from '@uniswap/v3-sdk';
 import { useCallback, useEffect, useState } from 'react';
-import { useReadContracts, useReadContract } from 'wagmi';
+import { useReadContract, useReadContracts } from 'wagmi';
 
 import { TOKEN_DECIMALS } from '../constants';
 import erc20ABI from '../erc20abi.json';

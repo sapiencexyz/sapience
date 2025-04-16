@@ -1,4 +1,7 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
+import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
+import type { Resource } from '@foil/ui/hooks/useResources';
+import { useResources } from '@foil/ui/hooks/useResources';
 import type { Pool } from '@uniswap/v3-sdk';
 import type { ReactNode } from 'react';
 import type React from 'react';
@@ -7,11 +10,8 @@ import * as Chains from 'viem/chains';
 import type { Chain } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
-import useFoilDeployment from '../../components/useFoilDeployment';
 import { BLANK_MARKET } from '../constants';
 import erc20ABI from '../erc20abi.json';
-import type { Resource } from '../hooks/useResources';
-import { useResources } from '../hooks/useResources';
 import { useUniswapPool } from '../hooks/useUniswapPool';
 import type { EpochData, MarketParams } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../utils/util';
@@ -38,7 +38,6 @@ export interface PeriodContextType {
   epochSettled: boolean;
   settlementPrice?: bigint;
   foilData: any;
-  foilVaultData: any;
   chainId: number;
   error?: string;
   liquidity: number;
@@ -96,7 +95,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     localStorage.setItem('useMarketUnits', JSON.stringify(useMarketUnits));
   }, [useMarketUnits]);
 
-  const { foilData, foilVaultData } = useFoilDeployment(chainId);
+  const { abi } = useFoilAbi(chainId);
   const { markets } = useFoil();
   const { data: resources } = useResources();
 
@@ -107,14 +106,14 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   const marketViewFunctionResult = useReadContract({
     chainId,
-    abi: foilData?.abi,
+    abi,
     address: state.address as `0x${string}`,
     functionName: 'getMarket',
   }) as any;
 
   const epochViewFunctionResult = useReadContract({
     chainId,
-    abi: foilData.abi,
+    abi,
     address: state.address as `0x${string}`,
     functionName: 'getEpoch',
     args: [epoch ?? 0],
@@ -173,12 +172,11 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   useEffect(() => {
     setState((currentState) => ({
       ...currentState,
-      foilData: { address, abi: foilData.abi },
-      foilVaultData,
+      foilData: { address, abi },
       seriesVisibility,
       setSeriesVisibility,
     }));
-  }, [foilData, address, foilVaultData, seriesVisibility, setSeriesVisibility]);
+  }, [abi, address, seriesVisibility, setSeriesVisibility]);
 
   useEffect(() => {
     if (marketViewFunctionResult.error) {

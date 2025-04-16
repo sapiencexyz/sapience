@@ -9,9 +9,9 @@ export default function BotSection() {
   return (
     <section className="pt-48 pb-24 px-8 bg-secondary/10">
       <div className="container mx-auto">
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
           {/* Text content */}
-          <div className="md:w-2/3 flex flex-col items-center justify-center">
+          <div className="lg:w-2/3 flex flex-col items-center justify-center">
             <div className="lg:max-w-[520px]">
               <h2 className="text-3xl font-heading font-normal mb-6">
                 Use Sapience with Claude
@@ -41,7 +41,7 @@ export default function BotSection() {
           </div>
 
           {/* Video Player */}
-          <div className="md:w-1/2 flex items-center justify-center lg:p-8">
+          <div className="lg:w-1/2 flex items-center justify-center lg:p-8">
             <ClaudeVideoPlayer />
           </div>
         </div>

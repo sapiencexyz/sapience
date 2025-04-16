@@ -9,43 +9,33 @@ import {
 } from '@foil/ui/components/ui/dialog';
 import { Share, PlusSquare } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
 
-const InstallDialog = () => {
-  const [isOpen, setIsOpen] = useState(false);
+interface InstallDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
 
-  useEffect(() => {
-    // Check if we're on mobile and not in standalone mode
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const isStandalone = window.matchMedia(
-      '(display-mode: standalone)'
-    ).matches;
-
-    if (isMobile && !isStandalone) {
-      setIsOpen(true);
-    }
-  }, []);
-
+const InstallDialog = ({ isOpen, onOpenChange }: InstallDialogProps) => {
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] mx-auto" autoFocus={false}>
         <div className="mx-auto w-full max-w-sm">
           <DialogHeader className="mb-6">
             <div className="my-4 flex justify-center">
               <Image
                 src="/icons/icon-192x192.png"
-                alt="Foil App Icon"
+                alt="Sapience App Icon"
                 width={72}
                 height={72}
                 className="rounded-2xl border border-border shadow-lg"
               />
             </div>
             <DialogTitle className="text-center text-2xl">
-              Install Foil
+              Install Sapience
             </DialogTitle>
             <DialogDescription className="max-w-[260px] mx-auto">
               Add the app to your home screen for{' '}
-              <strong>one tap to gas price charts & analytics</strong>.
+              <strong>one tap to forecasting</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 rounded-lg bg-muted px-4 py-6 text-center">

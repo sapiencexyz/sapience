@@ -96,6 +96,7 @@ async function main() {
 
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
+    console.log('slug indexer', resourceSlug);
     // Find the resource in the database
     const resource = await resourceRepository.findOne({
       where: { slug: resourceSlug },
@@ -106,11 +107,15 @@ async function main() {
       continue;
     }
 
-    jobs.push(
-      createResilientProcess(() => {
-        return indexer.watchBlocksForResource(resource) as Promise<void>;
-      }, `watchBlocksForResource-${resourceSlug}`)()
-    );
+    if (indexer) {
+      // Then start watching for new blocks
+      jobs.push(
+        createResilientProcess(
+          () => indexer.watchBlocksForResource(resource) as Promise<void>,
+          `watchBlocksForResource-${resourceSlug}`
+        )()
+      );
+    }
   }
 
   await Promise.all(jobs);

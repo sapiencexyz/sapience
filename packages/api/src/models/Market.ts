@@ -66,6 +66,18 @@ export class Market {
   @Column({ type: 'varchar', nullable: true })
   collateralAsset: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  question: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  baseTokenName: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  quoteTokenName: string | null;
+
+  @Column({ type: 'simple-array', nullable: true })
+  optionNames: string[] | null;
+
   @Column(() => MarketParams)
   marketParams: MarketParams;
 }

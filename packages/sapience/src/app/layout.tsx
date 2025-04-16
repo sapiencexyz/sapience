@@ -4,11 +4,11 @@ import type React from 'react';
 import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
-import InstallDialog from '~/components/InstallDialog';
 import Layout from '~/components/layout';
 import LoadingSpinner from '~/components/loadingSpinner';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 
+import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from '@foil/ui/components/ui/toaster';
 
 type RootLayoutProps = {
@@ -18,8 +18,8 @@ type RootLayoutProps = {
 const APP_NAME = 'Sapience';
 const APP_DESCRIPTION = 'Sapience Prediction Markets';
 const LARGE_ICON_PATH = '/icons/icon-512x512.png';
-const DEFAULT_OG_IMAGE = 'https://foil.xyz/og-image.png';
-const APP_URL = 'https://foil.xyz';
+const DEFAULT_OG_IMAGE = 'https://sapience.xyz/og-image.png';
+const APP_URL = 'https://sapience.xyz';
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s | ${APP_NAME}` },
@@ -107,10 +107,10 @@ const RootLayout = ({ children }: RootLayoutProps) => {
           <LoadingProvider>
             <LoadingSpinner />
             <Layout>{children}</Layout>
-            <InstallDialog />
             <Toaster />
           </LoadingProvider>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );

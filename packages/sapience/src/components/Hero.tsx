@@ -1,14 +1,23 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { useEffect, useRef, useState } from 'react';
+
+// Dynamically import LottieScroll
+const LottieScroll = dynamic(() => import('./LottieScroll'), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function Hero() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [scrollOpacity, setScrollOpacity] = useState(1);
 
   // Force light mode rendering for the iframe
   useEffect(() => {
     const handleIframeLoad = () => {
       const iframe = iframeRef.current;
+      if (typeof document === 'undefined') return;
       if (iframe && iframe.contentDocument) {
         try {
           // Try to inject a style element to force light mode
@@ -30,22 +39,32 @@ export default function Hero() {
     }
   }, []);
 
+  // Handle scroll fade out effect
+  useEffect(() => {
+    const handleScroll = () => {
+      // Start fading out after 50px of scroll, completely gone by 200px
+      const { scrollY } = window;
+      const newOpacity = Math.max(0, 1 - scrollY / 150);
+      setScrollOpacity(newOpacity);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <div className="relative h-[100dvh] overflow-hidden w-full flex flex-col justify-end">
+    <div className="relative h-[100dvh] w-[100dvw] flex flex-col justify-end">
       {/* Spline embed background - made larger than viewport */}
       <div
-        className="absolute inset-0 z-0 light"
+        className="absolute inset-0 z-0 light w-[100dwv] right-0"
         style={{
-          opacity: 0.5,
-          transform: 'translate(50%, -50%) scale(3)',
-          transformOrigin: 'center center',
           colorScheme: 'light',
           filter: 'none',
         }}
       >
+        {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
         <iframe
           ref={iframeRef}
-          title="art"
           src="https://my.spline.design/particles-672e935f9191bddedd3ff0105af8f117/"
           style={{
             width: '100%',
@@ -60,50 +79,28 @@ export default function Hero() {
         />
       </div>
 
+      {/* Centered Lottie Scroll Animation */}
+      <div
+        className="fixed left-1/2 bottom-8 -translate-x-1/2 z-20 hidden md:block"
+        style={{ opacity: scrollOpacity, transition: 'opacity 0.2s ease-out' }}
+      >
+        <LottieScroll width={50} height={50} />
+      </div>
+
       {/* Content container - positioned at bottom, left-aligned */}
       <div className="w-full z-10">
         <div className="container px-0 pb-0">
-          <div className="text-left px-8 py-16">
+          <div className="text-left px-8 py-24">
             <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
               The World&apos;s Frontier
               <br />
               Prediction Community
             </h1>
 
-            <p className="text-xl md:text-2xl mb-6 text-muted-foreground">
-              Join experts and enthusiasts forecasting the future of AI,
-              <br />
-              Biosecurity, Climate Change, International Relations, and more.
+            <p className="text-xl md:text-2xl mb-6 text-muted-foreground max-w-2xl">
+              Join experts and enthusiasts forecasting the future of the
+              economy, climate change, geopolitics, biosecurity, and more.
             </p>
-
-            <div className="flex justify-start">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault(); // Prevent default link behavior
-                  window.scrollTo({
-                    top: window.innerHeight, // Scroll down by viewport height
-                    behavior: 'smooth',
-                  });
-                }}
-                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
-              >
-                LEARN MORE
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="ml-0.5"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
-            </div>
           </div>
         </div>
       </div>
