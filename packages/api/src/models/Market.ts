@@ -66,6 +66,9 @@ export class Market {
   @Column({ type: 'varchar', nullable: true })
   collateralAsset: string | null;
 
+  @Column({ type: 'integer', nullable: true })
+  collateralDecimals: number | null;
+
   @Column({ type: 'text', nullable: true })
   question: string | null;
 
