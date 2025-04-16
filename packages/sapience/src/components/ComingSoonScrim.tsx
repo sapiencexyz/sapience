@@ -11,7 +11,7 @@ export default function ComingSoonSkrim({ className }: ComingSoonSkrimProps) {
 
   return (
     <div
-      className={`fixed inset-0 flex items-center justify-center bg-white/50 backdrop-blur-sm z-50 ${className || ''}`}
+      className={`fixed inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm z-50 ${className || ''}`}
     >
       <div className="text-center">
         <h2 className="text-xs font-heading font-semibold tracking-wider text-muted-foreground/70">
