@@ -409,7 +409,7 @@ const AddressDisplay = ({ address }: { address: string }) => {
   const { data: ensName } = useEnsName(address);
   const truncatedAddress =
     address.length > 10
-      ? `${address.slice(0, 6)}....${address.slice(-4)}`
+      ? `${address.slice(0, 6)}...${address.slice(-4)}`
       : address;
 
   const displayName = ensName || truncatedAddress;
@@ -426,7 +426,7 @@ const AddressDisplay = ({ address }: { address: string }) => {
 
   return (
     <div className="flex items-center gap-2 text-sm md:text-base">
-      <span>{displayName}</span>
+      <span className="font-mono">{displayName}</span>
       <div className="flex items-center gap-1.5">
         <Button
           variant="ghost"

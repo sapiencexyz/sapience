@@ -1,10 +1,17 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
+import { useEffect, useRef, useState } from 'react';
+
+// Dynamically import LottieScroll
+const LottieScroll = dynamic(() => import('./LottieScroll'), {
+  ssr: false,
+  loading: () => null,
+});
 
 export default function Hero() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [scrollOpacity, setScrollOpacity] = useState(1);
 
   // Force light mode rendering for the iframe
   useEffect(() => {
@@ -30,6 +37,19 @@ export default function Hero() {
       iframe.addEventListener('load', handleIframeLoad);
       return () => iframe.removeEventListener('load', handleIframeLoad);
     }
+  }, []);
+
+  // Handle scroll fade out effect
+  useEffect(() => {
+    const handleScroll = () => {
+      // Start fading out after 50px of scroll, completely gone by 200px
+      const { scrollY } = window;
+      const newOpacity = Math.max(0, 1 - scrollY / 150);
+      setScrollOpacity(newOpacity);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
@@ -59,10 +79,18 @@ export default function Hero() {
         />
       </div>
 
+      {/* Centered Lottie Scroll Animation */}
+      <div
+        className="fixed left-1/2 bottom-8 -translate-x-1/2 z-20 hidden md:block"
+        style={{ opacity: scrollOpacity, transition: 'opacity 0.2s ease-out' }}
+      >
+        <LottieScroll width={50} height={50} />
+      </div>
+
       {/* Content container - positioned at bottom, left-aligned */}
       <div className="w-full z-10">
         <div className="container px-0 pb-0">
-          <div className="text-left px-8 py-28">
+          <div className="text-left px-8 py-24">
             <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
               The World&apos;s Frontier
               <br />
@@ -73,23 +101,6 @@ export default function Hero() {
               Join experts and enthusiasts forecasting the future of the
               economy, climate change, geopolitics, biosecurity, and more.
             </p>
-
-            <div className="flex justify-start">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault(); // Prevent default link behavior
-                  window.scrollTo({
-                    top: window.innerHeight, // Scroll down by viewport height
-                    behavior: 'smooth',
-                  });
-                }}
-                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
-              >
-                LEARN MORE
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-            </div>
           </div>
         </div>
       </div>

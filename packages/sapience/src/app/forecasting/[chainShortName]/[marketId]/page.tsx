@@ -17,6 +17,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ResponsiveContainer } from 'recharts';
 
+import ComingSoonScrim from '~/components/ComingSoonScrim';
 import SimpleLiquidityWrapper from '~/components/SimpleLiquidityWrapper';
 import SimpleTradeWrapper from '~/components/SimpleTradeWrapper';
 import { foilApi } from '~/lib/utils/util';
@@ -248,8 +249,9 @@ const ForecastingDetailPage = () => {
             </h1>
           )}
           <div className="flex flex-col md:flex-row gap-12">
-            <div className="flex flex-col w-full">
-              <ResponsiveContainer width="100%" height={400}>
+            <div className="flex flex-col w-full relative">
+              <ComingSoonScrim className="absolute rounded-lg" />
+              <ResponsiveContainer width="100%" height="100%">
                 <Chart
                   resourceSlug="prediction"
                   market={{
@@ -289,7 +291,7 @@ const ForecastingDetailPage = () => {
               </div>
             </div>
             <div className="w-full md:max-w-[340px] pb-4">
-              <div className="bg-card p-6 rounded-lg border mb-5 h-[390px] overflow-auto">
+              <div className="bg-card p-6 rounded-lg border mb-5 overflow-auto">
                 <div className="w-full">
                   <h3 className="text-3xl font-normal mb-4">
                     Prediction Market
@@ -318,7 +320,8 @@ const ForecastingDetailPage = () => {
                       Liquidity
                     </button>
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-4 relative p-1">
+                    <ComingSoonScrim className="absolute rounded-lg" />
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper
