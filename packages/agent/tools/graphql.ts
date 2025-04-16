@@ -200,8 +200,8 @@ const getPositions = {
           lowPriceTick
           lpBaseToken
           lpQuoteToken
-          epoch {
-            epochId
+          market {
+            marketId
             startTimestamp
             endTimestamp
             settled

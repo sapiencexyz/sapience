@@ -66,15 +66,15 @@ const POSITIONS_QUERY = gql`
       lowPriceTick
       lpBaseToken
       lpQuoteToken
-      epoch {
+      market {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
         settled
         settlementPriceD18
         question
-        market {
+        marketGroup {
           id
           chainId
           address
