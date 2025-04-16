@@ -7,8 +7,7 @@ import {
   IntervalSelector,
   WindowSelector,
 } from '@foil/ui/components/charts';
-import type { TimeWindow } from '@foil/ui/types/charts';
-import { ChartType, TimeInterval } from '@foil/ui/types/charts';
+import { TimeWindow, ChartType, TimeInterval } from '@foil/ui/types/charts';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { ChevronLeft } from 'lucide-react';
@@ -64,7 +63,9 @@ const ForecastingDetailPage = () => {
     string | null
   >(null);
 
-  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(null);
+  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
+    TimeWindow.D
+  );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I15M
   );
