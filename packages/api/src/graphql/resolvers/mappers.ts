@@ -52,6 +52,7 @@ export const mapMarketGroupToType = (
   deployTxnBlockNumber: marketGroup.deployTxnBlockNumber,
   owner: marketGroup.owner?.toLowerCase() || null,
   collateralAsset: marketGroup.collateralAsset,
+  collateralDecimals: market.collateralDecimals,
   question: marketGroup.question,
   claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
   baseTokenName: marketGroup.baseTokenName,

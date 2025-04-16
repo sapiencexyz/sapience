@@ -370,6 +370,31 @@ export const createOrUpdateMarketFromContract = async (
     (marketReadResult as MarketReadResult)[0] as string
   ).toLowerCase();
   updatedMarket.collateralAsset = (marketReadResult as MarketReadResult)[1];
+  if (updatedMarket.collateralAsset) {
+    try {
+      const decimals = await client.readContract({
+        address: updatedMarket.collateralAsset as `0x${string}`,
+        abi: [
+          {
+            constant: true,
+            inputs: [],
+            name: 'decimals',
+            outputs: [{ name: '', type: 'uint8' }],
+            payable: false,
+            stateMutability: 'view',
+            type: 'function',
+          },
+        ],
+        functionName: 'decimals',
+      });
+      updatedMarket.collateralDecimals = Number(decimals);
+    } catch (error) {
+      console.error(
+        `Failed to fetch decimals for token ${updatedMarket.collateralAsset}:`,
+        error
+      );
+    }
+  }
   const marketParamsRaw = (marketReadResult as MarketReadResult)[4];
   const marketParams: MarketParams = {
     ...marketParamsRaw,
