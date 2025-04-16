@@ -29,7 +29,7 @@ const PeriodHeader = () => {
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     useMarketUnits,
-    market,
+    marketGroup: market,
     resource,
     unitDisplay,
     question,

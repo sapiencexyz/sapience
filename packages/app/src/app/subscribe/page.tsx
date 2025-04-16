@@ -62,11 +62,11 @@ const SUBSCRIPTIONS_QUERY = gql`
 interface Subscription {
   id: number;
   positionId: number;
-  epoch: {
+  market: {
     id: number;
     startTimestamp: number;
     endTimestamp: number;
-    market: {
+    marketGroup: {
       chainId: number;
       address: string;
       name: string;
@@ -258,7 +258,7 @@ const SubscriptionsList = () => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {subscriptions.map((subscription) => {
         const resource = resources?.find((r) =>
-          r.markets.some(
+          r.marketGroups.some(
             (m) =>
               m.chainId === subscription.epoch.market.chainId &&
               m.address.toLowerCase() ===
@@ -367,9 +367,11 @@ const SubscriptionsList = () => {
           </DialogHeader>
           {selectedPosition && (
             <PeriodProvider
-              chainId={selectedPosition.epoch.market.chainId}
-              address={selectedPosition.epoch.market.address as `0x${string}`}
-              epoch={selectedPosition.epoch.id}
+              chainId={selectedPosition.market.marketGroup.chainId}
+              address={
+                selectedPosition.market.marketGroup.address as `0x${string}`
+              }
+              market={selectedPosition.market.id}
             >
               <Subscribe
                 positionId={selectedPosition.positionId}
@@ -400,7 +402,7 @@ const SubscribeContent = () => {
     }
   }, [address, shouldOpenAfterConnect]);
 
-  const { markets } = useFoil();
+  const { marketGroups } = useFoil();
   const currentTime = Math.floor(Date.now() / 1000);
 
   // Find all gas markets
@@ -410,27 +412,28 @@ const SubscribeContent = () => {
     if (!ethGasResource) return [];
 
     // Filter markets based on the resource's markets array
-    const filteredMarkets = markets.filter((market) =>
-      ethGasResource.markets.some(
-        (resourceMarket) =>
-          resourceMarket.chainId === market.chainId &&
-          resourceMarket.address.toLowerCase() === market.address.toLowerCase()
+    const filteredMarkets = marketGroups.filter((marketGroup) =>
+      ethGasResource.marketGroups.some(
+        (resourceMarketGroup) =>
+          resourceMarketGroup.chainId === marketGroup.chainId &&
+          resourceMarketGroup.address.toLowerCase() ===
+            marketGroup.address.toLowerCase()
       )
     );
 
     console.log('Filtered Gas Markets:', filteredMarkets);
     return filteredMarkets;
-  }, [markets, resources]);
+  }, [marketGroups, resources]);
 
   // Get all epochs from gas markets and find the target epoch
-  const targetEpoch = useMemo(() => {
+  const targetMarket = useMemo(() => {
     if (!gasMarkets.length) return null;
 
     // Collect all epochs from gas markets with their corresponding market data
-    const allEpochs = gasMarkets.flatMap((market) =>
-      market.epochs.map((epoch) => ({
-        ...epoch,
-        market,
+    const allEpochs = gasMarkets.flatMap((marketGroup) =>
+      marketGroup.markets.map((market) => ({
+        ...market,
+        marketGroup,
       }))
     );
 
@@ -496,7 +499,7 @@ const SubscribeContent = () => {
     );
   }
 
-  if (!gasMarkets.length || !targetEpoch) {
+  if (!gasMarkets.length || !targetMarket) {
     return (
       <div className="text-muted-foreground text-center my-6">
         Gas market not found
@@ -506,9 +509,9 @@ const SubscribeContent = () => {
 
   return (
     <PeriodProvider
-      chainId={targetEpoch.market.chainId}
-      address={targetEpoch.market.address}
-      epoch={targetEpoch.epochId}
+      chainId={targetMarket.marketGroup.chainId}
+      address={targetMarket.marketGroup.address}
+      market={targetMarket.id}
     >
       <div className="flex-1 flex flex-col">
         <div className="py-9 px-4">

@@ -74,20 +74,20 @@ function MobileMarketLinks({
   path: string;
   onClose?: () => void;
 }) {
-  const { markets } = useFoil();
+  const { marketGroups } = useFoil();
   const { data: resources, isLoading } = useResources();
 
   if (path === 'subscribe' || path === 'earn') {
     return (
       <div className="flex flex-col space-y-2">
-        {markets.map((market) => (
+        {marketGroups.map((marketGroup) => (
           <Link
-            key={market.id}
-            href={getMarketHref(path, market)}
+            key={marketGroup.id}
+            href={getMarketHref(path, marketGroup)}
             onClick={() => onClose?.()}
             className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
           >
-            {market.name}
+            {marketGroup.name}
           </Link>
         ))}
       </div>
@@ -119,13 +119,13 @@ function MobileMarketLinks({
               {(() => {
                 // Combine all epochs from all markets and sort them
                 const allEpochs =
-                  resource.markets
-                    ?.reduce<ExtendedEpoch[]>((acc, market) => {
+                  resource.marketGroups
+                    ?.reduce<ExtendedEpoch[]>((acc, marketGroup) => {
                       const marketEpochs =
-                        market.markets?.map((epoch: Market) => ({
+                        marketGroup.markets?.map((epoch: Market) => ({
                           ...epoch,
-                          marketChainId: market.chainId.toString(),
-                          marketAddress: market.address,
+                          marketChainId: marketGroup.chainId.toString(),
+                          marketAddress: marketGroup.address,
                         })) || [];
                       return [...acc, ...marketEpochs];
                     }, [])
@@ -135,7 +135,7 @@ function MobileMarketLinks({
                         a.endTimestamp - b.endTimestamp
                     ) || [];
 
-                if (!resource.markets?.length || allEpochs.length === 0) {
+                if (!resource.marketGroups?.length || allEpochs.length === 0) {
                   return (
                     <div className="text-center text-sm text-muted-foreground flex-1 flex items-center justify-center m-8">
                       No upcoming or active periods
@@ -160,9 +160,9 @@ function MobileMarketLinks({
                   <>
                     {activeEpochs.map((epoch) => (
                       <Link
-                        key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
+                        key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.marketId}`}
                         className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-gray-50"
-                        href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}/${path}`}
+                        href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.marketId}/${path}`}
                         onClick={() => onClose?.()}
                       >
                         {formatDuration(
@@ -265,13 +265,13 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
 
                   // Combine all epochs from all markets and sort them
                   const allEpochs =
-                    hoveredResourceData?.markets
-                      ?.reduce<ExtendedEpoch[]>((acc, market) => {
+                    hoveredResourceData?.marketGroups
+                      ?.reduce<ExtendedEpoch[]>((acc, marketGroup) => {
                         const marketEpochs =
-                          market.markets?.map((epoch: Market) => ({
+                          marketGroup.markets?.map((epoch: Market) => ({
                             ...epoch,
-                            marketChainId: market.chainId.toString(),
-                            marketAddress: market.address,
+                            marketChainId: marketGroup.chainId.toString(),
+                            marketAddress: marketGroup.address,
                           })) || [];
                         return [...acc, ...marketEpochs];
                       }, [])
@@ -282,7 +282,7 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                       ) || [];
 
                   if (
-                    !hoveredResourceData?.markets?.length ||
+                    !hoveredResourceData?.marketGroups?.length ||
                     allEpochs.length === 0
                   ) {
                     return (
@@ -307,16 +307,16 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
 
                   return (
                     <>
-                      {activeEpochs.map((epoch) => (
+                      {activeEpochs.map((market) => (
                         <Link
-                          key={`${epoch.marketChainId}:${epoch.marketAddress}:${epoch.epochId}`}
+                          key={`${market.marketChainId}:${market.marketAddress}:${market.marketId}`}
                           className="text-sm w-full block rounded-md px-3 py-1.5 hover:bg-secondary"
-                          href={`/markets/${epoch.marketChainId}:${epoch.marketAddress}/periods/${epoch.epochId}/${path}`}
+                          href={`/markets/${market.marketChainId}:${market.marketAddress}/periods/${market.marketId}/${path}`}
                           onClick={handleLinkClick(setOpen)}
                         >
                           {formatDuration(
-                            epoch.startTimestamp,
-                            epoch.endTimestamp
+                            market.startTimestamp,
+                            market.endTimestamp
                           )}
                         </Link>
                       ))}

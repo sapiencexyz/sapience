@@ -50,19 +50,19 @@ interface ResourcePrice {
   value: string;
 }
 
-interface Epoch {
+interface Market {
   id: number;
-  epochId: number;
+  marketId: number;
   startTimestamp: number;
   endTimestamp: number;
-  market: {
+  marketGroup: {
     address: string;
     chainId: number;
   };
 }
 
 interface PeriodsTableProps {
-  data: Epoch[];
+  data: Market[];
   id: string;
 }
 
@@ -79,7 +79,7 @@ const PeriodsTable = ({ data, id }: PeriodsTableProps) => {
               return (
                 <Link
                   key={epoch.id}
-                  href={`/markets/${epoch.market.chainId}:${epoch.market.address}/periods/${epoch.epochId}/trade`}
+                  href={`/markets/${epoch.marketGroup.chainId}:${epoch.marketGroup.address}/periods/${epoch.marketId}/trade`}
                   className="block hover:no-underline border-b border-border"
                 >
                   <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
@@ -302,24 +302,24 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
     );
   }
 
-  const epochs =
-    resource.markets
-      .flatMap((market) =>
-        (market.markets || []).map((epoch) => ({
-          ...epoch,
-          market: {
-            address: market.address,
-            chainId: market.chainId,
+  const markets =
+    resource.marketGroups
+      .flatMap((marketGroup) =>
+        (marketGroup.markets || []).map((market) => ({
+          ...market,
+          marketGroup: {
+            address: marketGroup.address,
+            chainId: marketGroup.chainId,
           },
         }))
       )
-      .filter((epoch) => epoch.public)
+      .filter((market) => market.public)
       .sort((a, b) => a.startTimestamp - b.startTimestamp) || [];
 
   return (
     <div className="flex flex-col md:flex-row h-[calc(100dvh-69px-53px-69px)] md:h-[calc(100dvh-69px-53px)] p-3 lg:p-6 gap-3 lg:gap-6">
       <div
-        className={`flex-1 min-w-0 ${!epochs.length ? 'w-full' : ''} flex flex-col`}
+        className={`flex-1 min-w-0 ${!markets.length ? 'w-full' : ''} flex flex-col`}
       >
         <div className="flex-1 relative h-full">
           <Card className="absolute top-4 left-4 md:top-8 md:left-8 z-20">
@@ -495,7 +495,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
         </div>
       </div>
 
-      {epochs.length > 0 && (
+      {markets.length > 0 && (
         <div className="w-full md:w-[320px] h-auto md:h-full">
           <div className="border border-border rounded-sm shadow h-full flex flex-col">
             <div className="p-4">
@@ -507,7 +507,7 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                 periods:
               </p>
             </div>
-            <PeriodsTable data={epochs} id={id} />
+            <PeriodsTable data={markets} id={id} />
           </div>
         </div>
       )}

@@ -26,7 +26,7 @@ export const BLANK_MARKET: PeriodContextType = {
   endTime: 0,
   pool: null,
   poolAddress: '0x',
-  epoch: 0,
+  market: 0,
   epochSettled: false,
   foilData: {},
   foilVaultData: {
@@ -59,7 +59,7 @@ export const BLANK_MARKET: PeriodContextType = {
     uniswapSwapRouter: '0x',
   },
   refetchUniswapData: () => {},
-  market: undefined,
+  marketGroup: undefined,
   unitDisplay: (_full?: boolean) => '',
   valueDisplay: (_price: number, _stEthPerToken?: number) => 0,
 };

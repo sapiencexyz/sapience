@@ -109,10 +109,10 @@ function useTransactions(
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketAddress, market } = periodContext;
 
   return useQuery({
-    queryKey: ['transactions', walletAddress, chainId, marketAddress, epoch],
+    queryKey: ['transactions', walletAddress, chainId, marketAddress, market],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: TRANSACTIONS_QUERY,
@@ -129,7 +129,7 @@ function useTransactions(
 
       // Flatten all transactions from all positions and filter by epoch
       return data.positions
-        .filter((position: any) => Number(position.epoch?.epochId) === epoch)
+        .filter((position: any) => Number(position.market?.marketId) === market)
         .flatMap((position: any) =>
           position.transactions.map((tx: any) => ({
             ...tx,

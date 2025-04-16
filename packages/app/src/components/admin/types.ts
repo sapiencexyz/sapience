@@ -33,7 +33,7 @@ export interface SettlementPriceCellProps {
 }
 
 export interface EpochItemProps {
-  epoch: MarketGroup['epochs'][0];
+  epoch: MarketGroup['markets'][0];
   market: MarketGroup;
   missingBlocks: MissingBlocks;
 }

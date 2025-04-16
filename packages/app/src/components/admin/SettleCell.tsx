@@ -35,7 +35,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
     address: market.address as `0x${string}`,
     abi: foilData?.abi,
     functionName: 'getEpoch',
-    args: [BigInt(epoch.epochId)],
+    args: [BigInt(epoch.marketId)],
     chainId: market.chainId,
     query: {
       enabled: !loading && !error && !!foilData,
@@ -111,7 +111,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
         },
       ],
       functionName: 'submitMarketSettlementPrice',
-      args: [BigInt(epoch.epochId), sqrtPriceX96],
+      args: [BigInt(epoch.marketId), sqrtPriceX96],
     });
   };
 
@@ -125,7 +125,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
   const isEpochEnded = epoch.endTimestamp && currentTime > epoch.endTimestamp;
 
   // Check for missing blocks
-  const key = `${market.address}-${epoch.epochId}`;
+  const key = `${market.address}-${epoch.marketId}`;
   const missingBlocksCount = missingBlocks[key]?.resourcePrice?.length ?? null;
   const areMissingBlocksLoading = missingBlocksCount === null;
   const hasMissingBlocks = missingBlocksCount && missingBlocksCount > 0;

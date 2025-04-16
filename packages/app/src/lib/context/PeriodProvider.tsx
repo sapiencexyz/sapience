@@ -34,7 +34,7 @@ export interface PeriodContextType {
   poolAddress: `0x${string}`;
   pool: Pool | null;
   collateralAssetDecimals: number;
-  epoch: number | undefined;
+  market: number | undefined;
   epochSettled: boolean;
   settlementPrice?: bigint;
   foilData: any;
@@ -46,7 +46,7 @@ export interface PeriodContextType {
   refetchUniswapData: () => void;
   useMarketUnits: boolean;
   setUseMarketUnits: (useMarketUnits: boolean) => void;
-  market?: MarketGroup;
+  marketGroup?: MarketGroup;
   resource?: Resource;
   question?: string;
   seriesVisibility: {
@@ -68,7 +68,7 @@ export interface PeriodContextType {
 interface PeriodProviderProps {
   chainId: number;
   address: string;
-  epoch?: number;
+  market?: number;
   children: ReactNode;
 }
 
@@ -80,7 +80,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   chainId,
   address,
   children,
-  epoch,
+  market,
 }) => {
   const { toast } = useToast();
   const [state, setState] = useState<PeriodContextType>(BLANK_MARKET);
@@ -98,14 +98,18 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   }, [useMarketUnits]);
 
   const { foilData, foilVaultData } = useFoilDeployment(chainId);
-  const { markets } = useFoil();
+  const { marketGroups } = useFoil();
   const { data: resources } = useResources();
 
-  const market = markets.find(
+  const marketGroup = marketGroups.find(
     (m: MarketGroup) => m.address.toLowerCase() === address.toLowerCase()
   );
-  const currentEpochData = market?.epochs.find((e) => e.epochId === epoch);
-  const resource = resources?.find((r) => r.name === market?.resource?.name);
+  const currentEpochData = marketGroup?.markets.find(
+    (e) => e.marketId === market
+  );
+  const resource = resources?.find(
+    (r) => r.name === marketGroup?.resource?.name
+  );
 
   const marketViewFunctionResult = useReadContract({
     chainId,
@@ -119,8 +123,8 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     abi: foilData.abi,
     address: state.address as `0x${string}`,
     functionName: 'getEpoch',
-    args: [epoch ?? 0],
-    query: { enabled: epoch !== undefined },
+    args: [market ?? 0],
+    query: { enabled: market !== undefined },
   }) as any;
 
   const collateralTickerFunctionResult = useReadContract({
@@ -165,12 +169,12 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
       ...currentState,
       chain: chain[1] as any,
       address,
-      epoch,
+      market,
       chainId,
       useMarketUnits,
       setUseMarketUnits,
     }));
-  }, [chainId, address, epoch, useMarketUnits, setUseMarketUnits]);
+  }, [chainId, address, market, useMarketUnits, setUseMarketUnits]);
 
   useEffect(() => {
     setState((currentState) => ({
@@ -262,7 +266,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   const valueDisplay = useCallback(
     (price: number, stEthPerToken: number | undefined = 1e9) => {
-      if (market?.isCumulative) {
+      if (marketGroup?.isCumulative) {
         return price;
       }
 
@@ -270,12 +274,12 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
         ? price
         : convertGgasPerWstEthToGwei(price, stEthPerToken);
     },
-    [market, useMarketUnits]
+    [marketGroup, useMarketUnits]
   );
 
   const unitDisplay = useCallback(
     (full = true) => {
-      if (market?.isCumulative) {
+      if (marketGroup?.isCumulative) {
         return 'GB';
       }
 
@@ -284,14 +288,14 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
       }
       return 'gwei';
     },
-    [useMarketUnits, market, collateralTickerFunctionResult.data]
+    [useMarketUnits, marketGroup, collateralTickerFunctionResult.data]
   );
 
   return (
     <PeriodContext.Provider
       value={{
         ...state,
-        market,
+        marketGroup,
         resource,
         unitDisplay,
         valueDisplay,

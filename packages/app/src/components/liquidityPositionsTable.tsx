@@ -110,7 +110,7 @@ const useLPPositions = (
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) => {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketAddress, market: epoch } = periodContext;
 
   return useQuery({
     queryKey: ['lpPositions', walletAddress, chainId, marketAddress, epoch],

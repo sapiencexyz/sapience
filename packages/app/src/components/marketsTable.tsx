@@ -137,13 +137,13 @@ const MarketsTable = () => {
   const data = React.useMemo(
     () =>
       resources?.flatMap((resource) =>
-        resource.markets
+        resource.marketGroups
           .filter(() => {
             if (!selectedResource) return true;
             return resource.slug === selectedResource;
           })
-          .flatMap((market) =>
-            market.markets
+          .flatMap((marketGroup) =>
+            marketGroup.markets
               .filter((epoch) => epoch.public)
               .map((epoch) => {
                 const startDate = new Date(epoch.startTimestamp * 1000);
@@ -151,15 +151,15 @@ const MarketsTable = () => {
                 return {
                   marketName: resource.name,
                   iconPath: resource.iconPath,
-                  epochId: epoch.epochId,
+                  marketId: epoch.marketId,
                   period: `${format(startDate, 'PPpp')} → ${format(
                     endDate,
                     'PPpp'
                   )}`,
                   startTimestamp: epoch.startTimestamp,
                   endTimestamp: epoch.endTimestamp,
-                  chainId: market.chainId,
-                  marketAddress: market.address,
+                  chainId: marketGroup.chainId,
+                  marketAddress: marketGroup.address,
                   settled: epoch.settled,
                 };
               })

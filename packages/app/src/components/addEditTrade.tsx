@@ -81,7 +81,7 @@ export default function AddEditTrade() {
     collateralAsset,
     collateralAssetTicker,
     collateralAssetDecimals,
-    epoch,
+    market: epoch,
     foilData,
     chainId,
     pool,
@@ -89,7 +89,7 @@ export default function AddEditTrade() {
     refetchUniswapData,
     useMarketUnits,
     unitDisplay,
-    market,
+    marketGroup: market,
   } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
 

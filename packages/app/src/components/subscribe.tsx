@@ -89,7 +89,7 @@ const Subscribe: FC<SubscribeProps> = ({
   const {
     address: contextMarketAddress,
     chainId: contextChainId,
-    epoch: contextEpoch,
+    market: contextEpoch,
     collateralAsset,
     foilData,
     collateralAssetDecimals,

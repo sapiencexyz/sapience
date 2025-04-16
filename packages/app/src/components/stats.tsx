@@ -57,7 +57,7 @@ const IndexPriceDisplay = ({
   isBeforeStart,
   startTimeRelative,
   isLoadingIndexPrice,
-  market,
+  marketGroup,
   latestIndexPrice,
   useMarketUnits,
   stEthPerToken,
@@ -66,7 +66,7 @@ const IndexPriceDisplay = ({
   isBeforeStart: boolean;
   startTimeRelative: string;
   isLoadingIndexPrice: boolean;
-  market: MarketGroup;
+  marketGroup: MarketGroup;
   latestIndexPrice: any;
   useMarketUnits: boolean;
   stEthPerToken: number | undefined;
@@ -80,7 +80,7 @@ const IndexPriceDisplay = ({
     );
   }
 
-  if (isLoadingIndexPrice || !market) {
+  if (isLoadingIndexPrice || !marketGroup) {
     return <span>Loading...</span>;
   }
 
@@ -104,7 +104,7 @@ const Stats = () => {
     pool,
     liquidity,
     useMarketUnits,
-    market,
+    marketGroup,
     resource,
     unitDisplay,
     valueDisplay,
@@ -112,16 +112,16 @@ const Stats = () => {
   const { stEthPerToken } = useFoil();
   const { data: latestIndexPrice, isLoading: isLoadingIndexPrice } =
     useLatestIndexPrice(
-      market
+      marketGroup
         ? {
-            address: market.address,
-            chainId: market.chainId,
-            epochId: market.currentMarket!.marketId,
+            address: marketGroup.address,
+            chainId: marketGroup.chainId,
+            marketId: marketGroup.currentMarket!.marketId,
           }
         : {
             address: '',
             chainId: 0,
-            epochId: 0,
+            marketId: 0,
           }
     );
 
@@ -142,7 +142,7 @@ const Stats = () => {
     ? formatDistanceToNow(new Date(startTime * 1000))
     : '';
 
-  const isCumulative = market?.isCumulative;
+  const isCumulative = marketGroup?.isCumulative;
   const gridColsClass = isCumulative
     ? 'grid-cols-1 md:grid-cols-3'
     : 'grid-cols-1 md:grid-cols-4';
@@ -160,7 +160,7 @@ const Stats = () => {
                 isBeforeStart={isBeforeStart}
                 startTimeRelative={startTimeRelative}
                 isLoadingIndexPrice={isLoadingIndexPrice}
-                market={market!}
+                marketGroup={marketGroup!}
                 latestIndexPrice={latestIndexPrice}
                 useMarketUnits={useMarketUnits}
                 stEthPerToken={stEthPerToken}

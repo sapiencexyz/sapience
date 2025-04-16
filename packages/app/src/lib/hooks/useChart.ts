@@ -243,7 +243,7 @@ export const useChart = ({
   // Check if we have a PeriodProvider context with seriesVisibility
   // If it exists, use it, otherwise fall back to the prop
   const {
-    market: contextMarket,
+    marketGroup: contextMarket,
     seriesVisibility: seriesVisibilityFromContext,
     setSeriesVisibility,
   } = useContext(PeriodContext);

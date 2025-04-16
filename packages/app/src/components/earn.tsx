@@ -72,8 +72,10 @@ const Earn: FC<Props> = ({ slug }) => {
 
   // Get the appropriate market based on the selected vault type
   const market = useMemo(() => {
-    if (!resource?.markets) return null;
-    return resource.markets.find((m) => m.isYin === (selectedVault === 'yin'));
+    if (!resource?.marketGroups) return null;
+    return resource.marketGroups.find(
+      (m) => m.isYin === (selectedVault === 'yin')
+    );
   }, [resource, selectedVault]);
 
   // Load vault data using market info

@@ -17,8 +17,11 @@ interface PriceTogglesProps {
 }
 
 const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
-  const { seriesVisibility, setSeriesVisibility, market } =
-    useContext(PeriodContext);
+  const {
+    seriesVisibility,
+    setSeriesVisibility,
+    marketGroup: market,
+  } = useContext(PeriodContext);
   const toggleSeries = (series: keyof typeof seriesVisibility) => {
     setSeriesVisibility({
       ...seriesVisibility,

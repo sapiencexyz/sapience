@@ -76,8 +76,9 @@ const ResourceCell = ({
 
   // Find the resource that contains this market
   const foundResource = resources.find((resource) =>
-    resource.markets.some(
-      (market) => market.address === marketAddress && market.chainId === chainId
+    resource.marketGroups.some(
+      (marketGroup) =>
+        marketGroup.address === marketAddress && marketGroup.chainId === chainId
     )
   );
 
@@ -454,10 +455,12 @@ const getColumns = (
       <PublicCell
         isPublic={row.original.public}
         loading={
-          loadingAction[`${row.original.marketAddress}-${row.original.epochId}`]
+          loadingAction[
+            `${row.original.marketAddress}-${row.original.marketId}`
+          ]
         }
-        market={row.original.market}
-        epochId={row.original.epochId}
+        market={row.original.marketGroup}
+        epochId={row.original.marketId}
         onUpdate={updateMarketPrivacy}
       />
     ),
@@ -486,7 +489,7 @@ const getColumns = (
       <VolumeCell
         volume={row.original.volume}
         chainId={row.original.chainId}
-        collateralAssetAddress={row.original.market.collateralAsset}
+        collateralAssetAddress={row.original.marketGroup.collateralAsset}
       />
     ),
   },
@@ -615,7 +618,7 @@ const getColumns = (
     accessorKey: 'vaultAddress',
     cell: ({ row }) => {
       // Get the actual vaultAddress from the market to compare
-      const actualVaultAddress = row.original.market.vaultAddress;
+      const actualVaultAddress = row.original.marketGroup.vaultAddress;
       const isVault = actualVaultAddress && actualVaultAddress !== zeroAddress;
 
       return (
@@ -655,29 +658,29 @@ const getColumns = (
     id: 'epochId',
     header: 'Period',
     accessorKey: 'epochId',
-    cell: ({ row }) => <span>{row.original.epochId}</span>,
+    cell: ({ row }) => <span>{row.original.marketId}</span>,
   },
   {
     id: 'isCumulative',
     header: 'Cumulative',
-    accessorFn: (row) => row.market?.isCumulative,
+    accessorFn: (row) => row.marketGroup?.isCumulative,
     cell: ({ row }) => (
       <span
-        className={`text-lg ${row.original.market.isCumulative ? 'text-gray-900' : 'text-gray-500'}`}
+        className={`text-lg ${row.original.marketGroup.isCumulative ? 'text-gray-900' : 'text-gray-500'}`}
       >
-        {row.original.market.isCumulative ? '●' : '○'}
+        {row.original.marketGroup.isCumulative ? '●' : '○'}
       </span>
     ),
   },
   {
     id: 'isYin',
     header: 'Yin',
-    accessorFn: (row) => row.market?.isYin,
+    accessorFn: (row) => row.marketGroup?.isYin,
     cell: ({ row }) => (
       <span
-        className={`text-lg ${row.original.market.isYin ? 'text-gray-900' : 'text-gray-500'}`}
+        className={`text-lg ${row.original.marketGroup.isYin ? 'text-gray-900' : 'text-gray-500'}`}
       >
-        {row.original.market.isYin ? '●' : '○'}
+        {row.original.marketGroup.isYin ? '●' : '○'}
       </span>
     ),
   },
@@ -685,11 +688,11 @@ const getColumns = (
     id: 'missingPriceBlocks',
     header: 'Missing Prices',
     accessorFn: (row) => {
-      const key = `${row.marketAddress}-${row.epochId}`;
+      const key = `${row.marketAddress}-${row.marketId}`;
       return missingBlocks[key]?.resourcePrice?.length || 0;
     },
     cell: ({ row }) => {
-      const key = `${row.original.marketAddress}-${row.original.epochId}`;
+      const key = `${row.original.marketAddress}-${row.original.marketId}`;
       const missingBlocksEntry = missingBlocks[key];
       const blocks = missingBlocksEntry?.resourcePrice;
 
@@ -704,7 +707,7 @@ const getColumns = (
                   handleReindex(
                     'price',
                     row.original.marketAddress,
-                    row.original.epochId,
+                    row.original.marketId,
                     row.original.chainId
                   )
                 }
@@ -756,18 +759,18 @@ const getColumns = (
     header: 'Settlement Price',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, epochId, endTimestamp } = row;
+      const { marketAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
+      return `${marketAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
         marketAddress={row.original.marketAddress}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
+        epochId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="indexPrice"
-        isCumulative={row.original.market.isCumulative}
+        isCumulative={row.original.marketGroup.isCumulative}
       />
     ),
   },
@@ -777,15 +780,15 @@ const getColumns = (
     header: 'wstETH Ratio',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, epochId, endTimestamp } = row;
+      const { marketAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
+      return `${marketAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
         marketAddress={row.original.marketAddress}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
+        epochId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="stEthPerToken"
       />
@@ -797,18 +800,18 @@ const getColumns = (
     header: 'Adjusted Price',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, epochId, endTimestamp } = row;
+      const { marketAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
+      return `${marketAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
         marketAddress={row.original.marketAddress}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
+        epochId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="adjustedPrice"
-        isCumulative={row.original.market.isCumulative}
+        isCumulative={row.original.marketGroup.isCumulative}
       />
     ),
   },
@@ -818,15 +821,15 @@ const getColumns = (
     header: 'SqrtPriceX96',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, epochId, endTimestamp } = row;
+      const { marketAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
+      return `${marketAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
         marketAddress={row.original.marketAddress}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
+        epochId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="sqrtPriceX96"
       />
@@ -835,9 +838,9 @@ const getColumns = (
   {
     id: 'bondCurrency',
     header: 'Bond Currency',
-    accessorFn: (row) => row.market?.marketParams?.bondCurrency || '',
+    accessorFn: (row) => row.marketGroup?.marketParams?.bondCurrency || '',
     cell: ({ row }) => {
-      const bondCurrency = row.original.market.marketParams?.bondCurrency;
+      const bondCurrency = row.original.marketGroup.marketParams?.bondCurrency;
       if (!bondCurrency) return <span>Loading...</span>;
 
       return (
@@ -849,11 +852,14 @@ const getColumns = (
     id: 'bondAmount',
     header: 'Bond Required',
     accessorFn: (row) => {
-      const bondAmount = row.market?.marketParams?.bondAmount;
+      const bondAmount = row.marketGroup?.marketParams?.bondAmount;
       return bondAmount ? bondAmount.toString() : '';
     },
     cell: ({ row }) => (
-      <BondCell market={row.original.market} chainId={row.original.chainId} />
+      <BondCell
+        market={row.original.marketGroup}
+        chainId={row.original.chainId}
+      />
     ),
   },
   {
@@ -862,10 +868,10 @@ const getColumns = (
     enableSorting: false,
     cell: ({ row }) => (
       <SettleCell
-        market={row.original.market}
+        market={row.original.marketGroup}
         epoch={{
-          id: row.original.id ?? row.original.epochId, // Use id if available, fall back to epochId
-          epochId: row.original.epochId,
+          id: row.original.id ?? row.original.marketId, // Use id if available, fall back to epochId
+          marketId: row.original.marketId,
           startTimestamp: row.original.startTimestamp,
           endTimestamp: row.original.endTimestamp,
           public: row.original.public,
@@ -885,7 +891,7 @@ const getColumns = (
           handleReindex(
             'events',
             row.original.marketAddress,
-            row.original.epochId,
+            row.original.marketId,
             row.original.chainId
           )
         }
