@@ -129,7 +129,7 @@ const useGlobalLeaderboard = () => {
               marketId: market.marketId,
             },
           })
-          .then((response) => response.data.getEpochLeaderboard)
+          .then((response) => response.data.getMarketLeaderboard)
       );
 
       const leaderboards = await Promise.all(leaderboardPromises);
