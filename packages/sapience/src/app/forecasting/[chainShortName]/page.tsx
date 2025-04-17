@@ -387,8 +387,6 @@ const ForecastingDetailPage = () => {
         <div className="flex flex-col px-4 md:px-3 mt-8 w-full md:w-2/3 mx-auto">
           <PredictionsList
             marketAddress={marketAddress}
-            activeEpochIds={activeEpochs.map((epoch) => epoch.epochId)}
-            chainId={chainId}
             schemaId="0x8c6ff62d30ea7aa47f0651cd5c1757d47539f8a303888c61d3f19c7502fa9a24"
             optionNames={marketData?.optionNames}
           />
