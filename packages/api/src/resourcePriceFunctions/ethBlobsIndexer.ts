@@ -17,7 +17,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
   private isWatching: boolean = false;
   private blobscanApiUrl: string = 'https://api.blobscan.com';
-  private retryDelay: number = 5000; // Increased from 1 second to 5 seconds
+  private retryDelay: number = 5000;
   private maxRetries: number = Infinity;
 
   constructor(chainId: number) {
