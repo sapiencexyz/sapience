@@ -5,13 +5,13 @@ export class Migration1744775423017 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "market" ADD "collateralDecimals" integer`
+      `ALTER TABLE "market_group" ADD "collateralDecimals" integer`
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "market" DROP COLUMN "collateralDecimals"`
+      `ALTER TABLE "market_group" DROP COLUMN "collateralDecimals"`
     );
   }
 }
