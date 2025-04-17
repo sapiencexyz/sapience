@@ -435,7 +435,9 @@ const ForecastingDetailPage = () => {
       <Dialog open={showEpochSelector} onOpenChange={setShowEpochSelector}>
         <DialogContent className="sm:max-w-xl [&>[aria-label='Close']]:hidden p-8">
           <DialogHeader className="mb-2">
-            <DialogTitle className="text-3xl font-normal">Markets</DialogTitle>
+            <DialogTitle className="text-3xl font-normal">
+              Prediction Markets
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 pb-2">
             {marketData?.epochs?.map(
