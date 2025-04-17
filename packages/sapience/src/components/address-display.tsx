@@ -36,7 +36,23 @@ const useEnsName = (address: string) => {
   });
 };
 
-const AddressDisplay = ({ address }: { address: string }) => {
+interface AddressDisplayProps {
+  address: string;
+  disableProfileLink?: boolean;
+  className?: string;
+}
+
+// Constants for the button and icon sizes
+const LARGE_BUTTON_SIZE = 'h-8 w-8 p-1';
+const SMALL_BUTTON_SIZE = 'h-5 w-5 p-0.5';
+const LARGE_ICON_SIZE = 'h-5 w-5';
+const SMALL_ICON_SIZE = 'h-3 w-3';
+
+const AddressDisplay = ({
+  address,
+  disableProfileLink,
+  className,
+}: AddressDisplayProps) => {
   const { toast } = useToast();
   const { data: ensName } = useEnsName(address);
   const truncatedAddress =
@@ -45,6 +61,7 @@ const AddressDisplay = ({ address }: { address: string }) => {
       : address;
 
   const displayName = ensName || truncatedAddress;
+  const isLarge = className?.includes('text-2xl');
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -57,28 +74,46 @@ const AddressDisplay = ({ address }: { address: string }) => {
   };
 
   return (
-    <div className="flex items-center gap-2 text-sm md:text-base">
-      <span className="font-mono">{displayName}</span>
+    <div className={`flex items-center gap-3 ${className || ''}`}>
+      <span className={`font-mono ${isLarge ? 'text-2xl' : ''}`}>
+        {displayName}
+      </span>
       <div className="flex items-center gap-1.5">
         <Button
           variant="ghost"
           size="icon"
-          className="h-5 w-5 p-0.5"
+          className={isLarge ? LARGE_BUTTON_SIZE : SMALL_BUTTON_SIZE}
           onClick={handleCopy}
         >
-          <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+          <Copy
+            className={`${isLarge ? LARGE_ICON_SIZE : SMALL_ICON_SIZE} text-muted-foreground hover:text-foreground`}
+          />
         </Button>
 
-        <Link href={`/profile/${address}`} className="flex items-center">
-          <Button variant="ghost" size="icon" className="h-5 w-5 p-0.5">
-            <Wallet className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-          </Button>
-        </Link>
+        {!disableProfileLink && (
+          <Link href={`/profile/${address}`} className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={isLarge ? LARGE_BUTTON_SIZE : SMALL_BUTTON_SIZE}
+            >
+              <Wallet
+                className={`${isLarge ? LARGE_ICON_SIZE : SMALL_ICON_SIZE} text-muted-foreground hover:text-foreground`}
+              />
+            </Button>
+          </Link>
+        )}
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-5 w-5 p-0.5">
-              <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className={isLarge ? LARGE_BUTTON_SIZE : SMALL_BUTTON_SIZE}
+            >
+              <ExternalLink
+                className={`${isLarge ? LARGE_ICON_SIZE : SMALL_ICON_SIZE} text-muted-foreground hover:text-foreground`}
+              />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-30 p-1 flex flex-col gap-0.5">
