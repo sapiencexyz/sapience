@@ -9,6 +9,7 @@ import {
 } from '@foil/ui/components/ui/sheet';
 import { Skeleton } from '@foil/ui/components/ui/skeleton';
 import { useIsMobile } from '@foil/ui/hooks/use-mobile';
+import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FrownIcon,
@@ -171,6 +172,18 @@ const FocusAreaFilter = ({
     </div>
   </div>
 );
+
+// Helper function to determine the day for a given timestamp
+const getDayKey = (timestamp: number): string => {
+  const date = new Date(timestamp * 1000);
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+};
+
+// Helper to format end date display using date-fns
+const formatEndDate = (timestamp: number): string => {
+  const date = new Date(timestamp * 1000);
+  return format(date, 'MMMM d, yyyy');
+};
 
 const ForecastingTable = () => {
   // Use the new hook and update variable names
@@ -371,6 +384,80 @@ const ForecastingTable = () => {
   }, [enrichedMarkets, selectedCategorySlug, statusFilter, searchTerm]); // Added searchTerm dependency
   // --- End of refactored useMemo ---
 
+  // Group markets by day based on their earliest active epoch
+  const marketsByDay = React.useMemo(() => {
+    if (groupedMarkets.length === 0) return {};
+
+    return groupedMarkets.reduce<Record<string, GroupedMarket[]>>(
+      (acc, market) => {
+        // Find the earliest active epoch
+        const now = Math.floor(Date.now() / 1000);
+        const activeEpochs = market.epochs.filter(
+          (epoch) => now >= epoch.startTimestamp && now < epoch.endTimestamp
+        );
+
+        // Determine the timestamp to use for day grouping
+        let timestamp;
+        if (activeEpochs.length > 0) {
+          // Sort by end time and get the earliest ending epoch
+          timestamp = [...activeEpochs].sort(
+            (a, b) => a.endTimestamp - b.endTimestamp
+          )[0].endTimestamp;
+        } else {
+          // If no active epochs, use the earliest ending epoch
+          timestamp = [...market.epochs].sort(
+            (a, b) => a.endTimestamp - b.endTimestamp
+          )[0].endTimestamp;
+        }
+
+        const dayKey = getDayKey(timestamp);
+        if (!acc[dayKey]) {
+          acc[dayKey] = [];
+        }
+        acc[dayKey].push(market);
+        return acc;
+      },
+      {}
+    );
+  }, [groupedMarkets]);
+
+  // Calculate next ending market for each day
+  const dayEndTimes = React.useMemo(() => {
+    const result: Record<string, number> = {};
+
+    Object.entries(marketsByDay).forEach(([dayKey, markets]) => {
+      // Get all active epochs from all markets in this day
+      const now = Math.floor(Date.now() / 1000);
+      const allActiveEpochs = markets.flatMap((market) =>
+        market.epochs.filter((epoch) => now < epoch.endTimestamp)
+      );
+
+      if (allActiveEpochs.length > 0) {
+        // Sort by end time and get the one ending soonest
+        const nextEndingEpoch = [...allActiveEpochs].sort(
+          (a, b) => a.endTimestamp - b.endTimestamp
+        )[0];
+
+        result[dayKey] = nextEndingEpoch.endTimestamp;
+      } else {
+        // If no active epochs, use the latest end time from any epoch
+        const allEpochs = markets.flatMap((market) => market.epochs);
+        const latestEndingEpoch = [...allEpochs].sort(
+          (a, b) => b.endTimestamp - a.endTimestamp
+        )[0];
+
+        result[dayKey] = latestEndingEpoch.endTimestamp;
+      }
+    });
+
+    return result;
+  }, [marketsByDay]);
+
+  // Sort days chronologically
+  const sortedDays = React.useMemo(() => {
+    return Object.keys(marketsByDay).sort();
+  }, [marketsByDay]);
+
   // Update click handler for focus areas
   const handleCategoryClick = (categorySlug: string | null) => {
     setSelectedCategorySlug(categorySlug);
@@ -405,7 +492,7 @@ const ForecastingTable = () => {
   return (
     <div className="flex flex-col md:flex-row min-h-0">
       {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-12">
+      <div className="flex-1 flex flex-col gap-16 lg:gap-10 pr-0 lg:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
         <div className="sticky top-20 md:top-0 z-10 bg-background/90 backdrop-blur-sm pt-2 pb-1">
           {/* Wrap Input and Icon */}
@@ -477,28 +564,48 @@ const ForecastingTable = () => {
                 No questions match the selected filters.
               </motion.div>
             )}
-            {groupedMarkets.map((market) => (
+
+            {sortedDays.map((dayKey) => (
               <motion.div
                 layout
-                key={market.key}
+                key={dayKey}
                 initial={{ opacity: 0, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 0 }}
-                transition={{ duration: 0.15, ease: 'easeInOut' }}
-                className="mb-12 relative cursor-pointer transition-all hover:translate-y-[-2px] hover:opacity-95 hover:shadow-sm"
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                className="mb-8"
               >
-                <MarketGroupPreview
-                  chainId={market.chainId}
-                  marketAddress={market.marketAddress}
-                  epochs={market.epochs}
-                  color={market.color}
-                  displayQuestion={market.displayQuestion}
-                  marketData={{
-                    question: market.marketQuestion,
-                    epochs: market.epochs,
-                    placeholder: false,
-                  }}
-                />
+                <h3 className="text-xs font-medium mb-4">
+                  {dayEndTimes[dayKey]
+                    ? formatEndDate(dayEndTimes[dayKey])
+                    : 'Upcoming'}
+                </h3>
+                <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
+                  {marketsByDay[dayKey].map((market) => (
+                    <motion.div
+                      layout
+                      key={market.key}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15, ease: 'easeInOut' }}
+                      className="relative cursor-pointer transition-all hover:bg-secondary/5"
+                    >
+                      <MarketGroupPreview
+                        chainId={market.chainId}
+                        marketAddress={market.marketAddress}
+                        epochs={market.epochs}
+                        color={market.color}
+                        displayQuestion={market.displayQuestion}
+                        marketData={{
+                          question: market.marketQuestion,
+                          epochs: market.epochs,
+                          placeholder: false,
+                        }}
+                      />
+                    </motion.div>
+                  ))}
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>
