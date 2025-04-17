@@ -27,7 +27,7 @@ export const BLANK_MARKET: PeriodContextType = {
   pool: null,
   poolAddress: '0x',
   market: 0,
-  epochSettled: false,
+  marketSettled: false,
   foilData: {},
   foilVaultData: {
     yin: {},

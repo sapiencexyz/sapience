@@ -17,11 +17,8 @@ interface PriceTogglesProps {
 }
 
 const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
-  const {
-    seriesVisibility,
-    setSeriesVisibility,
-    marketGroup: market,
-  } = useContext(PeriodContext);
+  const { seriesVisibility, setSeriesVisibility, marketGroup } =
+    useContext(PeriodContext);
   const toggleSeries = (series: keyof typeof seriesVisibility) => {
     setSeriesVisibility({
       ...seriesVisibility,
@@ -84,7 +81,7 @@ const PriceToggles = ({ seriesDisabled }: PriceTogglesProps) => {
         Resource Price
       </ToggleGroupItem>
 
-      {!market?.isCumulative && (
+      {!marketGroup?.isCumulative && (
         <ToggleGroupItem
           value="trailing"
           variant={seriesVisibility?.trailing ? 'default' : 'outline'}

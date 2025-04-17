@@ -110,17 +110,23 @@ const useLPPositions = (
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) => {
-  const { chainId, address: marketAddress, market: epoch } = periodContext;
+  const { chainId, address: marketGroupAddress, market } = periodContext;
 
   return useQuery({
-    queryKey: ['lpPositions', walletAddress, chainId, marketAddress, epoch],
+    queryKey: [
+      'lpPositions',
+      walletAddress,
+      chainId,
+      marketGroupAddress,
+      market,
+    ],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: LP_POSITIONS_QUERY,
         variables: {
           owner: walletAddress || undefined,
           chainId: walletAddress ? undefined : Number(chainId),
-          marketAddress: walletAddress ? undefined : marketAddress,
+          marketAddress: walletAddress ? undefined : marketGroupAddress,
         },
       });
 
@@ -132,11 +138,12 @@ const useLPPositions = (
       return data.positions.filter((position: any) => {
         const { isLP } = position;
         const positionEpochId = Number(position.epoch?.epochId);
-        return isLP && positionEpochId === epoch;
+        return isLP && positionEpochId === market;
       });
     },
     enabled:
-      Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
+      Boolean(walletAddress) ||
+      (Boolean(chainId) && Boolean(marketGroupAddress)),
     refetchInterval: POLLING_INTERVAL,
   });
 };

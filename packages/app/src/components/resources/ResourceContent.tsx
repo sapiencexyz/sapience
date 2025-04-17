@@ -16,8 +16,8 @@ import React from 'react';
 import { formatUnits } from 'viem';
 
 import Chart from '~/components/Chart';
-import EpochTiming from '~/components/EpochTiming';
 import IntervalSelector from '~/components/IntervalSelector';
+import MarketTiming from '~/components/MarketTiming';
 import NumberDisplay from '~/components/numberDisplay';
 import { BLUE } from '~/lib/hooks/useChart';
 import { useLatestResourcePrice, useResources } from '~/lib/hooks/useResources';
@@ -68,25 +68,27 @@ interface PeriodsTableProps {
 
 const PeriodsTable = ({ data, id }: PeriodsTableProps) => {
   const currentTime = Math.floor(Date.now() / 1000);
-  const activeEpochs = data.filter((epoch) => epoch.endTimestamp > currentTime);
+  const activeMarkets = data.filter(
+    (market) => market.endTimestamp > currentTime
+  );
 
   return (
     <div className="border-t border-border flex flex-col min-h-0 h-full">
-      {activeEpochs.length ? (
+      {activeMarkets.length ? (
         <>
           <div className="flex-1">
-            {activeEpochs.map((epoch) => {
+            {activeMarkets.map((market) => {
               return (
                 <Link
-                  key={epoch.id}
-                  href={`/markets/${epoch.marketGroup.chainId}:${epoch.marketGroup.address}/periods/${epoch.marketId}/trade`}
+                  key={market.id}
+                  href={`/markets/${market.marketGroup.chainId}:${market.marketGroup.address}/periods/${market.marketId}/trade`}
                   className="block hover:no-underline border-b border-border"
                 >
                   <div className="flex items-center justify-between cursor-pointer px-4 py-1.5 hover:bg-secondary">
                     <div className="flex items-baseline">
-                      <EpochTiming
-                        startTimestamp={epoch.startTimestamp}
-                        endTimestamp={epoch.endTimestamp}
+                      <MarketTiming
+                        startTimestamp={market.startTimestamp}
+                        endTimestamp={market.endTimestamp}
                       />
                     </div>
                     <ChevronRight className="h-6 w-6" />

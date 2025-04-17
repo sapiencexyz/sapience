@@ -258,16 +258,16 @@ const getTooltipContent = (type: string, isCumulative?: boolean): string => {
 
 // Simplified MarketPriceCell component
 const MarketPriceCell = ({
-  marketAddress,
+  marketGroupAddress,
   chainId,
-  epochId,
+  marketId,
   endTimestamp,
   type,
   isCumulative,
 }: {
-  marketAddress: string;
+  marketGroupAddress: string;
   chainId: number;
-  epochId: number;
+  marketId: number;
   endTimestamp: number;
   type: 'indexPrice' | 'stEthPerToken' | 'adjustedPrice' | 'sqrtPriceX96';
   isCumulative?: boolean;
@@ -281,7 +281,7 @@ const MarketPriceCell = ({
     error,
     isActive,
     isEthereumResource,
-  } = useMarketPriceData(marketAddress, chainId, epochId, endTimestamp);
+  } = useMarketPriceData(marketGroupAddress, chainId, marketId, endTimestamp);
 
   if (isLoading) {
     return <span>Loading...</span>;
@@ -332,16 +332,18 @@ const MarketPriceCell = ({
 
 // BondCell component with fixed comparison
 const BondCell = ({
-  market,
+  marketGroup,
   chainId,
 }: {
-  market: MarketGroup;
+  marketGroup: MarketGroup;
   chainId: number;
 }) => {
-  const bondCurrency = market.marketParams?.bondCurrency;
-  const bondAmount = market.marketParams?.bondAmount;
+  const bondCurrency = marketGroup.marketParams?.bondCurrency;
+  const bondAmount = marketGroup.marketParams?.bondAmount;
   const spenderAddress =
-    market.vaultAddress !== zeroAddress ? market.vaultAddress : market.address;
+    marketGroup.vaultAddress !== zeroAddress
+      ? marketGroup.vaultAddress
+      : marketGroup.address;
 
   // Get the viem chain object based on chainId
   const getViemChain = (id: number) => {
@@ -421,7 +423,7 @@ const BondCell = ({
 };
 
 export interface TableRow {
-  marketAddress: string;
+  marketGroupAddress: string;
   chainId: number;
   marketId: number;
   startTimestamp: number;
@@ -438,11 +440,11 @@ export interface TableRow {
 
 const getColumns = (
   loadingAction: { [key: string]: boolean },
-  updateMarketPrivacy: (market: MarketGroup, epochId: number) => void,
+  updateMarketPrivacy: (marketGroup: MarketGroup, marketId: number) => void,
   handleReindex: (
     reindexType: 'price' | 'events',
-    marketAddress: string,
-    epochId: number,
+    marketGroupAddress: string,
+    marketId: number,
     chainId: number
   ) => void,
   missingBlocks: MissingBlocks
@@ -456,11 +458,11 @@ const getColumns = (
         isPublic={row.original.public}
         loading={
           loadingAction[
-            `${row.original.marketAddress}-${row.original.marketId}`
+            `${row.original.marketGroupAddress}-${row.original.marketId}`
           ]
         }
-        market={row.original.marketGroup}
-        epochId={row.original.marketId}
+        marketGroup={row.original.marketGroup}
+        marketId={row.original.marketId}
         onUpdate={updateMarketPrivacy}
       />
     ),
@@ -577,11 +579,11 @@ const getColumns = (
     header: 'Resource',
     accessorFn: (row) => {
       // Use marketAddress for sorting but display resource cell
-      return `${row.marketAddress}-${row.chainId}`;
+      return `${row.marketGroupAddress}-${row.chainId}`;
     },
     cell: ({ row }) => (
       <ResourceCell
-        marketAddress={row.original.marketAddress}
+        marketAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
       />
     ),
@@ -649,7 +651,7 @@ const getColumns = (
     accessorKey: 'marketAddress',
     cell: ({ row }) => (
       <AddressCell
-        address={row.original.marketAddress}
+        address={row.original.marketGroupAddress}
         chainId={row.original.chainId}
       />
     ),
@@ -688,11 +690,11 @@ const getColumns = (
     id: 'missingPriceBlocks',
     header: 'Missing Prices',
     accessorFn: (row) => {
-      const key = `${row.marketAddress}-${row.marketId}`;
+      const key = `${row.marketGroupAddress}-${row.marketId}`;
       return missingBlocks[key]?.resourcePrice?.length || 0;
     },
     cell: ({ row }) => {
-      const key = `${row.original.marketAddress}-${row.original.marketId}`;
+      const key = `${row.original.marketGroupAddress}-${row.original.marketId}`;
       const missingBlocksEntry = missingBlocks[key];
       const blocks = missingBlocksEntry?.resourcePrice;
 
@@ -706,7 +708,7 @@ const getColumns = (
                 onClick={() =>
                   handleReindex(
                     'price',
-                    row.original.marketAddress,
+                    row.original.marketGroupAddress,
                     row.original.marketId,
                     row.original.chainId
                   )
@@ -759,15 +761,15 @@ const getColumns = (
     header: 'Settlement Price',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, marketId, endTimestamp } = row;
+      const { marketGroupAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${marketId}-${endTimestamp}`;
+      return `${marketGroupAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
-        marketAddress={row.original.marketAddress}
+        marketGroupAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
-        epochId={row.original.marketId}
+        marketId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="indexPrice"
         isCumulative={row.original.marketGroup.isCumulative}
@@ -780,15 +782,15 @@ const getColumns = (
     header: 'wstETH Ratio',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, marketId, endTimestamp } = row;
+      const { marketGroupAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${marketId}-${endTimestamp}`;
+      return `${marketGroupAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
-        marketAddress={row.original.marketAddress}
+        marketGroupAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
-        epochId={row.original.marketId}
+        marketId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="stEthPerToken"
       />
@@ -800,15 +802,15 @@ const getColumns = (
     header: 'Adjusted Price',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, marketId, endTimestamp } = row;
+      const { marketGroupAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${marketId}-${endTimestamp}`;
+      return `${marketGroupAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
-        marketAddress={row.original.marketAddress}
+        marketGroupAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
-        epochId={row.original.marketId}
+        marketId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="adjustedPrice"
         isCumulative={row.original.marketGroup.isCumulative}
@@ -821,15 +823,15 @@ const getColumns = (
     header: 'SqrtPriceX96',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, marketId, endTimestamp } = row;
+      const { marketGroupAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${marketId}-${endTimestamp}`;
+      return `${marketGroupAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
-        marketAddress={row.original.marketAddress}
+        marketGroupAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
-        epochId={row.original.marketId}
+        marketId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="sqrtPriceX96"
       />
@@ -857,7 +859,7 @@ const getColumns = (
     },
     cell: ({ row }) => (
       <BondCell
-        market={row.original.marketGroup}
+        marketGroup={row.original.marketGroup}
         chainId={row.original.chainId}
       />
     ),
@@ -868,8 +870,8 @@ const getColumns = (
     enableSorting: false,
     cell: ({ row }) => (
       <SettleCell
-        market={row.original.marketGroup}
-        epoch={{
+        marketGroup={row.original.marketGroup}
+        market={{
           id: row.original.id ?? row.original.marketId, // Use id if available, fall back to epochId
           marketId: row.original.marketId,
           startTimestamp: row.original.startTimestamp,
@@ -890,7 +892,7 @@ const getColumns = (
         onClick={() =>
           handleReindex(
             'events',
-            row.original.marketAddress,
+            row.original.marketGroupAddress,
             row.original.marketId,
             row.original.chainId
           )

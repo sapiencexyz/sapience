@@ -81,7 +81,7 @@ export default function AddEditTrade() {
     collateralAsset,
     collateralAssetTicker,
     collateralAssetDecimals,
-    market: epoch,
+    market,
     foilData,
     chainId,
     pool,
@@ -89,12 +89,12 @@ export default function AddEditTrade() {
     refetchUniswapData,
     useMarketUnits,
     unitDisplay,
-    marketGroup: market,
+    marketGroup,
   } = useContext(PeriodContext);
   const { stEthPerToken } = useFoil();
 
-  if (!epoch) {
-    throw new Error('Epoch is not defined');
+  if (!market) {
+    throw new Error('Market is not defined');
   }
 
   const { toast } = useToast();
@@ -204,7 +204,7 @@ export default function AddEditTrade() {
     abi: foilData.abi,
     address: marketAddress as `0x${string}`,
     functionName: 'quoteCreateTraderPosition',
-    args: [epoch, desiredSizeInContractUnit],
+    args: [market, desiredSizeInContractUnit],
     chainId,
     account: address || zeroAddress,
     query: { enabled: !isEdit && isNonZeroSizeChange },
@@ -370,7 +370,7 @@ export default function AddEditTrade() {
           address: marketAddress as `0x${string}`,
           functionName: 'createTraderPosition',
           args: [
-            epoch,
+            market,
             desiredSizeInContractUnit,
             collateralDeltaLimit,
             deadline,
@@ -515,7 +515,7 @@ export default function AddEditTrade() {
         address: marketAddress as `0x${string}`,
         functionName: 'createTraderPosition',
         args: [
-          epoch,
+          market,
           desiredSizeInContractUnit,
           collateralDeltaLimit,
           deadline,
@@ -746,7 +746,7 @@ export default function AddEditTrade() {
             : 'quoteCreateTraderPosition',
           args: isEdit
             ? [nftId, sizeInContractUnits]
-            : [epoch, sizeInContractUnits],
+            : [market, sizeInContractUnits],
           account: address || zeroAddress,
         });
 
@@ -849,7 +849,7 @@ export default function AddEditTrade() {
                 allowCollateralInput
                 collateralAssetTicker={collateralAssetTicker}
                 onCollateralAmountChange={handleCollateralAmountChange}
-                fixedUnit={market?.isCumulative}
+                fixedUnit={marketGroup?.isCumulative}
                 {...register('size', {
                   onChange: (e) => {
                     const processed = removeLeadingZeros(e.target.value);
@@ -974,7 +974,7 @@ export default function AddEditTrade() {
               <p className="text-sm  mb-0.5">
                 <NumberDisplay
                   value={
-                    useMarketUnits || market?.isCumulative
+                    useMarketUnits || marketGroup?.isCumulative
                       ? formatUnits(
                           quotedFillPrice || BigInt(0),
                           TOKEN_DECIMALS

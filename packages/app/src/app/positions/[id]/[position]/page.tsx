@@ -5,7 +5,7 @@ import { cn } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Loader2 } from 'lucide-react';
 
-import EpochTiming from '~/components/EpochTiming';
+import MarketTiming from '~/components/MarketTiming';
 import NumberDisplay from '~/components/numberDisplay';
 import PositionDisplay from '~/components/PositionDisplay';
 import { FoilProvider } from '~/lib/context/FoilProvider';
@@ -134,7 +134,7 @@ const PositionPage = ({
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Period</p>
               <div>
-                <EpochTiming
+                <MarketTiming
                   startTimestamp={positionData.epoch.startTimestamp}
                   endTimestamp={positionData.epoch.endTimestamp}
                 />

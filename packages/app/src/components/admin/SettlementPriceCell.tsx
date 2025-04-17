@@ -3,7 +3,10 @@ import { useSettlementPrice } from '~/lib/hooks/useSettlementPrice';
 
 import type { SettlementPriceCellProps } from './types';
 
-const SettlementPriceCell = ({ market, epoch }: SettlementPriceCellProps) => {
+const SettlementPriceCell = ({
+  marketGroup: market,
+  market: epoch,
+}: SettlementPriceCellProps) => {
   const { stEthPerToken } = useFoil();
   const { latestPrice, priceAdjusted, sqrtPriceX96, isLoading } =
     useSettlementPrice(market, epoch);

@@ -24,7 +24,7 @@ export default function Settle() {
     address: marketAddress,
     foilData,
     chainId,
-    epochSettled,
+    marketSettled: epochSettled,
     settlementPrice,
     collateralAssetTicker,
     unitDisplay,

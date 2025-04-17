@@ -14,26 +14,26 @@ export interface AddressCellProps {
 export interface PublicCellProps {
   isPublic: boolean;
   loading: boolean;
-  market: MarketGroup;
-  epochId: number;
-  onUpdate: (market: MarketGroup, epochId: number) => void;
+  marketGroup: MarketGroup;
+  marketId: number;
+  onUpdate: (marketGroup: MarketGroup, marketId: number) => void;
 }
 
 export interface BondCellProps {
-  market: MarketGroup;
-  epoch: any;
+  marketGroup: MarketGroup;
+  market: any;
   bondAmount?: bigint;
   bondCurrency?: string;
   vaultAddress?: string;
 }
 
 export interface SettlementPriceCellProps {
-  market: MarketGroup;
-  epoch: any;
+  marketGroup: MarketGroup;
+  market: any;
 }
 
-export interface EpochItemProps {
-  epoch: MarketGroup['markets'][0];
-  market: MarketGroup;
+export interface MarketItemProps {
+  market: MarketGroup['markets'][0];
+  marketGroup: MarketGroup;
   missingBlocks: MissingBlocks;
 }

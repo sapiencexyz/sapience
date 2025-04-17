@@ -23,7 +23,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 import ConnectButton from '../ConnectButton';
-import EpochTiming from '../EpochTiming';
+import MarketTiming from '../MarketTiming';
 import ModeToggle from '../ModeToggle';
 import { useFoil } from '~/lib/context/FoilProvider';
 import {
@@ -64,7 +64,7 @@ const handleLinkClick = (setStateFunction: (value: boolean) => void) => () => {
 };
 
 const formatDuration = (start: number, end: number) => {
-  return <EpochTiming startTimestamp={start} endTimestamp={end} />;
+  return <MarketTiming startTimestamp={start} endTimestamp={end} />;
 };
 
 function MobileMarketLinks({

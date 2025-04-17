@@ -25,7 +25,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
   isTrade = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { epochSettled } = useContext(PeriodContext);
+  const { marketSettled: epochSettled } = useContext(PeriodContext);
 
   const handleSelect = (option: ChartType) => {
     setChartType(option);

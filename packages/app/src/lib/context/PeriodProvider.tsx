@@ -13,7 +13,7 @@ import erc20ABI from '../erc20abi.json';
 import type { Resource } from '../hooks/useResources';
 import { useResources } from '../hooks/useResources';
 import { useUniswapPool } from '../hooks/useUniswapPool';
-import type { EpochData, MarketParams } from '../interfaces/interfaces';
+import type { MarketData, MarketParams } from '../interfaces/interfaces';
 import { convertGgasPerWstEthToGwei } from '../utils/util';
 
 import type { MarketGroup } from './FoilProvider';
@@ -35,7 +35,7 @@ export interface PeriodContextType {
   pool: Pool | null;
   collateralAssetDecimals: number;
   market: number | undefined;
-  epochSettled: boolean;
+  marketSettled: boolean;
   settlementPrice?: bigint;
   foilData: any;
   foilVaultData: any;
@@ -104,7 +104,7 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   const marketGroup = marketGroups.find(
     (m: MarketGroup) => m.address.toLowerCase() === address.toLowerCase()
   );
-  const currentEpochData = marketGroup?.markets.find(
+  const currentMarketData = marketGroup?.markets.find(
     (e) => e.marketId === market
   );
   const resource = resources?.find(
@@ -220,20 +220,20 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
 
   useEffect(() => {
     if (epochViewFunctionResult.data !== undefined) {
-      const epochData: EpochData = epochViewFunctionResult.data[0];
+      const marketData: MarketData = epochViewFunctionResult.data[0];
       setState((currentState) => ({
         ...currentState,
-        startTime: Number(epochData.startTime),
-        endTime: Number(epochData.endTime),
-        poolAddress: epochData.pool,
-        epochSettled: epochData.settled,
-        settlementPrice: epochData.settlementPriceD18,
-        baseAssetMaxPriceTick: epochData.baseAssetMaxPriceTick,
-        baseAssetMinPriceTick: epochData.baseAssetMinPriceTick,
-        question: currentEpochData?.question,
+        startTime: Number(marketData.startTime),
+        endTime: Number(marketData.endTime),
+        poolAddress: marketData.pool,
+        marketSettled: marketData.settled,
+        settlementPrice: marketData.settlementPriceD18,
+        baseAssetMaxPriceTick: marketData.baseAssetMaxPriceTick,
+        baseAssetMinPriceTick: marketData.baseAssetMinPriceTick,
+        question: currentMarketData?.question,
       }));
     }
-  }, [epochViewFunctionResult.data, currentEpochData]);
+  }, [epochViewFunctionResult.data, currentMarketData]);
 
   useEffect(() => {
     if (pool) {

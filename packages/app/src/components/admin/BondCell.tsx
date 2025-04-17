@@ -12,7 +12,7 @@ import AddressCell from './AddressCell';
 import type { BondCellProps } from './types';
 
 const BondCell: React.FC<BondCellProps> = ({
-  market,
+  marketGroup: market,
   bondAmount,
   bondCurrency,
   vaultAddress,

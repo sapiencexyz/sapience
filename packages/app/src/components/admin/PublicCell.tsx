@@ -6,15 +6,15 @@ import type { PublicCellProps } from './types';
 
 const PublicCell: React.FC<PublicCellProps> = ({
   isPublic,
-  market,
+  marketGroup,
   loading,
   onUpdate,
-  epochId,
+  marketId,
 }) => (
   <div className="flex items-center gap-2">
     <Switch
       checked={isPublic}
-      onCheckedChange={() => onUpdate(market, epochId)}
+      onCheckedChange={() => onUpdate(marketGroup, marketId)}
       disabled={loading}
       aria-label="Toggle market public status"
     />
