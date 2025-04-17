@@ -97,6 +97,7 @@ export const findActiveMarkets = (marketData: any): any[] => {
   const nowInSeconds = Date.now() / 1000;
   return marketData.markets.filter(
     (market: { startTimestamp: number; endTimestamp: number }) =>
-      nowInSeconds >= market.startTimestamp && nowInSeconds < market.endTimestamp
+      nowInSeconds >= market.startTimestamp &&
+      nowInSeconds < market.endTimestamp
   );
 };
