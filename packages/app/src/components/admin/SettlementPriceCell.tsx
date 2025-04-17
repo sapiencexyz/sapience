@@ -4,19 +4,19 @@ import { useSettlementPrice } from '~/lib/hooks/useSettlementPrice';
 import type { SettlementPriceCellProps } from './types';
 
 const SettlementPriceCell = ({
-  marketGroup: market,
-  market: epoch,
+  marketGroup,
+  market,
 }: SettlementPriceCellProps) => {
   const { stEthPerToken } = useFoil();
   const { latestPrice, priceAdjusted, sqrtPriceX96, isLoading } =
-    useSettlementPrice(market, epoch);
+    useSettlementPrice(marketGroup, market);
 
   if (isLoading) {
     return <span>Loading...</span>;
   }
 
   const now = Math.floor(Date.now() / 1000);
-  if (now < epoch.endTimestamp) {
+  if (now < market.endTimestamp) {
     return <i>Period in progress</i>;
   }
 

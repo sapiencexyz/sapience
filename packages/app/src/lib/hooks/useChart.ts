@@ -715,7 +715,7 @@ export const useChart = ({
           ? Number(rawValue / ((stEthPerToken || 1e9) / 1e9))
           : rawValue;
 
-        // If market is cumulative, extrapolate the value based on actual epoch duration
+        // If marketGroup is cumulative, extrapolate the value based on actual market duration
         if (
           contextMarket?.isCumulative &&
           startTime > 0 &&
@@ -728,11 +728,11 @@ export const useChart = ({
             (timestampSec - startTime) / (24 * 60 * 60)
           );
 
-          // Calculate total epoch duration in days
-          const epochDurationDays = (endTime - startTime) / (24 * 60 * 60);
+          // Calculate total market duration in days
+          const marketDurationDays = (endTime - startTime) / (24 * 60 * 60);
 
-          // Extrapolate based on actual epoch duration instead of hardcoded 30 days
-          value *= epochDurationDays / daysSinceStart;
+          // Extrapolate based on actual market duration instead of hardcoded 30 days
+          value *= marketDurationDays / daysSinceStart;
         }
 
         return value;

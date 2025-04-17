@@ -89,7 +89,7 @@ const useGlobalLeaderboard = () => {
     queryFn: async () => {
       if (!resources) return [];
 
-      // Define specific epochs to fetch
+      // Define specific markets to fetch
       const specificMarkets = [
         {
           chainId: 8453,
@@ -118,7 +118,7 @@ const useGlobalLeaderboard = () => {
         },
       ];
 
-      // Fetch leaderboard data for each specific epoch using GraphQL
+      // Fetch leaderboard data for each specific market using GraphQL
       const leaderboardPromises = specificMarkets.map((market) =>
         foilApi
           .post('/graphql', {
@@ -153,8 +153,8 @@ const useGlobalLeaderboard = () => {
       const traderStats: Record<string, TraderStats> = {};
 
       // Process each leaderboard entry
-      for (const epochLeaderboard of leaderboards) {
-        for (const position of epochLeaderboard) {
+      for (const marketLeaderboard of leaderboards) {
+        for (const position of marketLeaderboard) {
           if (!traderStats[position.owner]) {
             traderStats[position.owner] = {
               address: position.owner,

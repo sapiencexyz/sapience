@@ -657,9 +657,9 @@ const getColumns = (
     ),
   },
   {
-    id: 'epochId',
+    id: 'marketId',
     header: 'Period',
-    accessorKey: 'epochId',
+    accessorKey: 'marketId',
     cell: ({ row }) => <span>{row.original.marketId}</span>,
   },
   {

@@ -204,7 +204,7 @@ export default function PortfolioPage() {
               {positions?.map((position: any) => (
                 <TableRow key={position.id}>
                   <TableCell>
-                    {position.epoch.question || 'No question provided'}
+                    {position.market.question || 'No question provided'}
                   </TableCell>
                   <TableCell>
                     {position.isLP ? (

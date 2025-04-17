@@ -85,18 +85,18 @@ export const getDisplayQuestion = (
 /**
  * Finds active epochs for a market based on current timestamp
  */
-export const findActiveEpochs = (marketData: any): any[] => {
+export const findActiveMarkets = (marketData: any): any[] => {
   if (
     !marketData ||
     marketData.placeholder ||
-    !Array.isArray(marketData.epochs)
+    !Array.isArray(marketData.markets)
   ) {
     return [];
   }
 
   const nowInSeconds = Date.now() / 1000;
-  return marketData.epochs.filter(
-    (epoch: { startTimestamp: number; endTimestamp: number }) =>
-      nowInSeconds >= epoch.startTimestamp && nowInSeconds < epoch.endTimestamp
+  return marketData.markets.filter(
+    (market: { startTimestamp: number; endTimestamp: number }) =>
+      nowInSeconds >= market.startTimestamp && nowInSeconds < market.endTimestamp
   );
 };

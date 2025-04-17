@@ -5,7 +5,7 @@ import * as React from 'react';
 import * as chains from 'viem/chains';
 
 import {
-  findActiveEpochs,
+  findActiveMarkets,
   getDisplayQuestion,
 } from '~/lib/utils/questionUtils';
 
@@ -37,7 +37,7 @@ export const MarketGroupPreview = ({
   const finalDisplayQuestion = React.useMemo(() => {
     if (marketData) {
       // Find active epochs if market data is available
-      const activeEpochs = findActiveEpochs(marketData);
+      const activeEpochs = findActiveMarkets(marketData);
       // Use shared logic to determine question
       return getDisplayQuestion(marketData, activeEpochs, false);
     }

@@ -30,8 +30,8 @@ const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
 });
 
 // Updated query to match schema structure
-const EPOCH_QUERY = gql`
-  query GetEpochData($chainId: Int!, $address: String!) {
+const MARKET_QUERY = gql`
+  query GetMarketData($chainId: Int!, $address: String!) {
     market(chainId: $chainId, address: $address) {
       id
       address
@@ -40,9 +40,9 @@ const EPOCH_QUERY = gql`
       baseTokenName
       quoteTokenName
       optionNames
-      epochs {
+      markets {
         id
-        epochId
+        marketId
         question
         startTimestamp
         endTimestamp
@@ -117,7 +117,7 @@ const ForecastingDetailPage = () => {
         });
 
         const response = await foilApi.post('/graphql', {
-          query: print(EPOCH_QUERY),
+          query: print(MARKET_QUERY),
           variables: {
             chainId,
             address: marketAddress,
@@ -174,15 +174,15 @@ const ForecastingDetailPage = () => {
     }
 
     // Look for the specific epoch based on marketId
-    if (marketData?.epochs && marketData.epochs.length > 0 && marketId) {
-      const targetEpoch = marketData.epochs.find(
-        (epoch: { epochId: number | string }) =>
-          epoch.epochId.toString() === marketId.toString()
+    if (marketData?.markets && marketData.markets.length > 0 && marketId) {
+      const targetMarket = marketData.markets.find(
+        (market: { marketId: number | string }) =>
+          market.marketId.toString() === marketId.toString()
       );
 
-      if (targetEpoch?.question) {
-        console.log('Found specific epoch question:', targetEpoch.question);
-        formatAndSetQuestion(targetEpoch.question);
+      if (targetMarket?.question) {
+        console.log('Found specific market question:', targetMarket.question);
+        formatAndSetQuestion(targetMarket.question);
         return;
       }
     }
@@ -190,7 +190,7 @@ const ForecastingDetailPage = () => {
     // Fallback to market question for the main display IF no specific epoch question was found
     if (marketData?.question) {
       console.log(
-        'Using market question as main display (no specific epoch found):',
+        'Using market group question as main display (no specific market found):',
         marketData.question
       );
       formatAndSetQuestion(marketData.question);
@@ -255,7 +255,7 @@ const ForecastingDetailPage = () => {
                 <Chart
                   resourceSlug="prediction"
                   market={{
-                    epochId: Number(marketId),
+                    marketId: Number(marketId),
                     chainId: Number(chainId),
                     address: marketAddress as string,
                   }}

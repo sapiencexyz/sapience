@@ -74,7 +74,9 @@ const PositionPage = ({
             <h1 className="text-2xl font-bold">
               <PositionDisplay
                 positionId={positionId}
-                marketType={positionData.epoch.market.isYin ? 'yin' : 'yang'}
+                marketType={
+                  positionData.market.marketGroup.isYin ? 'yin' : 'yang'
+                }
               />
             </h1>
             <div
@@ -135,11 +137,11 @@ const PositionPage = ({
               <p className="text-sm text-muted-foreground">Period</p>
               <div>
                 <MarketTiming
-                  startTimestamp={positionData.epoch.startTimestamp}
-                  endTimestamp={positionData.epoch.endTimestamp}
+                  startTimestamp={positionData.market.startTimestamp}
+                  endTimestamp={positionData.market.endTimestamp}
                 />
                 <span className="text-xs text-muted-foreground ml-1">
-                  (ID: {positionData.epoch.epochId})
+                  (ID: {positionData.market.marketId})
                 </span>
               </div>
             </div>
@@ -239,7 +241,7 @@ const PositionPage = ({
       <PeriodProvider
         chainId={Number(chainId)}
         address={marketAddress}
-        market={Number(positionData?.epoch?.id)}
+        market={Number(positionData?.market?.marketId)}
       >
         <div className="flex-1 flex items-center justify-center min-h-[calc(100dvh-69px)] p-4">
           <div className="w-full max-w-[480px]">
