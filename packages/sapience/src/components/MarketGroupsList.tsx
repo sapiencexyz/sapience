@@ -575,7 +575,7 @@ const ForecastingTable = () => {
                 transition={{ duration: 0.2, ease: 'easeInOut' }}
                 className="mb-8"
               >
-                <h3 className="text-xs font-medium mb-4">
+                <h3 className="text-sm font-medium mb-4">
                   {dayEndTimes[dayKey]
                     ? formatEndDate(dayEndTimes[dayKey])
                     : 'Upcoming'}

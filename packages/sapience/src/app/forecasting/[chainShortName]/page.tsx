@@ -24,6 +24,7 @@ import {
   getDisplayQuestion,
 } from '../../../lib/utils/questionUtils';
 import { foilApi } from '../../../lib/utils/util';
+import PredictionsList from '~/components/PredictionsList';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('../../../components/LottieLoader'), {
@@ -336,7 +337,7 @@ const ForecastingDetailPage = () => {
   }
 
   return (
-    <div className="flex flex-col justify-center w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-40 lg:py-12">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-5xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3">
           {displayQuestion && (
@@ -381,7 +382,19 @@ const ForecastingDetailPage = () => {
             </div>
           </div>
         </div>
-        <div className="flex justify-end px-4 md:px-3 pt-4">
+
+        {/* PredictionsList Component */}
+        <div className="flex flex-col px-4 md:px-3 mt-8 w-full md:w-2/3 mx-auto">
+          <PredictionsList
+            marketAddress={marketAddress}
+            activeEpochIds={activeEpochs.map((epoch) => epoch.epochId)}
+            chainId={chainId}
+            schemaId="0x8c6ff62d30ea7aa47f0651cd5c1757d47539f8a303888c61d3f19c7502fa9a24"
+            optionNames={marketData?.optionNames}
+          />
+        </div>
+
+        <div className="flex justify-end px-4 md:px-3 pt-8">
           <button
             type="button"
             onClick={(e) => {
