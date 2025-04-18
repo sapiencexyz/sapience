@@ -29,24 +29,24 @@ const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
   loading: () => <div className="w-8 h-8" />,
 });
 
-// Updated query to match schema structure
+// Updated query to fetch the specific market directly, filtered by chainId and marketGroup address
 const MARKET_QUERY = gql`
-  query GetMarketData($chainId: Int!, $address: String!) {
-    market(chainId: $chainId, address: $address) {
+  query GetMarketData($chainId: Int!, $address: String!, $marketId: Int!) {
+    markets(chainId: $chainId, marketAddress: $address) {
       id
-      address
-      chainId
+      marketId
       question
-      baseTokenName
-      quoteTokenName
-      optionNames
-      markets {
+      startTimestamp
+      endTimestamp
+      settled
+      marketGroup {
         id
-        marketId
+        address
+        chainId
         question
-        startTimestamp
-        endTimestamp
-        settled
+        baseTokenName
+        quoteTokenName
+        optionNames
       }
     }
   }
@@ -100,12 +100,13 @@ const ForecastingDetailPage = () => {
 
   // Fetch market data including all epochs
   const { data: marketData, isLoading: isLoadingMarket } = useQuery({
-    queryKey: ['market', chainId, marketAddress],
+    queryKey: ['market', chainId, marketAddress, marketId],
     queryFn: async () => {
-      if (!chainId || !marketAddress) {
+      if (!chainId || !marketId || !marketAddress) {
         console.log('Missing required parameters for market query:', {
           chainId,
           marketAddress,
+          marketId,
         });
         return { placeholder: true };
       }
@@ -114,6 +115,7 @@ const ForecastingDetailPage = () => {
         console.log('Fetching market with:', {
           chainId,
           address: marketAddress,
+          marketId: Number(marketId),
         });
 
         const response = await foilApi.post('/graphql', {
@@ -121,6 +123,7 @@ const ForecastingDetailPage = () => {
           variables: {
             chainId,
             address: marketAddress,
+            marketId: Number(marketId),
           },
         });
 
@@ -129,19 +132,30 @@ const ForecastingDetailPage = () => {
           JSON.stringify(response.data, null, 2)
         );
 
-        const marketResponse = response.data?.market;
-        if (!marketResponse) {
-          console.error('No market data in response:', response.data);
+        // The response will contain all markets, so we need to filter for the specific one
+        const marketsData = response.data?.data?.markets;
+        if (!marketsData || !Array.isArray(marketsData) || marketsData.length === 0) {
+          console.error('No markets data in response:', response.data);
           return { placeholder: true };
         }
 
-        return marketResponse;
+        // Find the specific market by marketId
+        const targetMarket = marketsData.find(
+          (market: any) => market.marketId === Number(marketId)
+        );
+
+        if (!targetMarket) {
+          console.error(`Market with ID ${marketId} not found in response:`, marketsData);
+          return { placeholder: true };
+        }
+
+        return targetMarket;
       } catch (error) {
         console.error('Error fetching market:', error);
         return { placeholder: true };
       }
     },
-    enabled: !!chainId && !!marketAddress,
+    enabled: !!chainId && !!marketId && !!marketAddress,
     retry: 3,
     retryDelay: 1000,
   });
@@ -166,42 +180,35 @@ const ForecastingDetailPage = () => {
       JSON.stringify(marketData, null, 2)
     );
 
-    // Set Market Question first if available
-    if (marketData?.question) {
-      setMarketQuestionDisplay(marketData.question);
+    // Set Market Group Question as the context question if available
+    if (marketData?.marketGroup?.question) {
+      setMarketQuestionDisplay(marketData.marketGroup.question);
     } else {
       setMarketQuestionDisplay(null);
     }
 
-    // Look for the specific epoch based on marketId
-    if (marketData?.markets && marketData.markets.length > 0 && marketId) {
-      const targetMarket = marketData.markets.find(
-        (market: { marketId: number | string }) =>
-          market.marketId.toString() === marketId.toString()
-      );
-
-      if (targetMarket?.question) {
-        console.log('Found specific market question:', targetMarket.question);
-        formatAndSetQuestion(targetMarket.question);
-        return;
-      }
-    }
-
-    // Fallback to market question for the main display IF no specific epoch question was found
+    // Use the specific market question for the main display
     if (marketData?.question) {
-      console.log(
-        'Using market group question as main display (no specific market found):',
-        marketData.question
-      );
+      console.log('Using specific market question:', marketData.question);
       formatAndSetQuestion(marketData.question);
       return;
     }
 
-    // If we get here with actual data but no question (neither market nor epoch), show a default
+    // Fallback to market group question for the main display
+    if (marketData?.marketGroup?.question) {
+      console.log(
+        'Using market group question as main display:',
+        marketData.marketGroup.question
+      );
+      formatAndSetQuestion(marketData.marketGroup.question);
+      return;
+    }
+
+    // If we get here with actual data but no question (neither market nor market group), show a default
     console.log('No question found in market data:', marketData);
     setDisplayQuestion('Market question not available');
     setMarketQuestionDisplay(null);
-  }, [marketData, marketId, isLoadingMarket]);
+  }, [marketData, isLoadingMarket]);
 
   // Show loader while market data is loading
   if (isLoadingMarket) {
@@ -326,8 +333,8 @@ const ForecastingDetailPage = () => {
                     {activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper
                         collateralAssetTicker="sUSDS"
-                        baseTokenName={marketData?.baseTokenName || 'Yes'}
-                        quoteTokenName={marketData?.quoteTokenName || 'No'}
+                        baseTokenName={marketData?.marketGroup?.baseTokenName || 'Yes'}
+                        quoteTokenName={marketData?.marketGroup?.quoteTokenName || 'No'}
                       />
                     )}
                   </div>
