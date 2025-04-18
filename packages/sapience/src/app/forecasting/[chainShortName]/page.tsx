@@ -172,7 +172,7 @@ const ForecastingDetailPage = () => {
         );
 
         // Check if we have data in the expected structure - the data is directly in response.data.marketGroup
-        const marketResponse = response.data?.data?.marketGroup;
+        const marketResponse = response.data?.marketGroup;
 
         if (!marketResponse) {
           console.error('No market group data in response:', response.data);
