@@ -40,11 +40,11 @@ const PositionSelector: React.FC = () => {
   const getPositionUrl = (position: {
     type: 'lp' | 'trade';
     id: bigint;
-    epochId: bigint;
+    marketId: bigint;
   }) => {
     const positionType = position.type === 'lp' ? 'pool' : 'trade';
 
-    return `/markets/${chainId}:${marketAddress}/periods/${position.epochId.toString()}/${positionType}?positionId=${position.id.toString()}`;
+    return `/markets/${chainId}:${marketAddress}/periods/${position.marketId.toString()}/${positionType}?positionId=${position.id.toString()}`;
   };
 
   return (

@@ -47,7 +47,7 @@ interface ResourcePricePoint {
 interface UseChartProps {
   resourceSlug?: string;
   market?: {
-    epochId?: number;
+    marketId?: number;
     chainId?: number;
     address?: string;
   };
@@ -88,7 +88,7 @@ const MARKET_CANDLES_QUERY = gql`
   query MarketCandles(
     $address: String!
     $chainId: Int!
-    $epochId: String!
+    $marketId: String!
     $from: Int!
     $to: Int!
     $interval: Int!
@@ -96,7 +96,7 @@ const MARKET_CANDLES_QUERY = gql`
     marketCandles(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       from: $from
       to: $to
       interval: $interval
@@ -114,7 +114,7 @@ const INDEX_CANDLES_QUERY = gql`
   query IndexCandles(
     $address: String!
     $chainId: Int!
-    $epochId: String!
+    $marketId: String!
     $from: Int!
     $to: Int!
     $interval: Int!
@@ -122,7 +122,7 @@ const INDEX_CANDLES_QUERY = gql`
     indexCandles(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       from: $from
       to: $to
       interval: $interval
@@ -234,7 +234,7 @@ export const useChart = ({
   const hasSetTimeScale = useRef(false);
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
-  const { stEthPerToken, markets } = useFoil();
+  const { stEthPerToken, marketGroups } = useFoil();
   const [hoverData, setHoverData] = useState<{
     price: number | null;
     timestamp: number | null;
@@ -243,7 +243,7 @@ export const useChart = ({
   // Check if we have a PeriodProvider context with seriesVisibility
   // If it exists, use it, otherwise fall back to the prop
   const {
-    market: contextMarket,
+    marketGroup: contextMarket,
     seriesVisibility: seriesVisibilityFromContext,
     setSeriesVisibility,
   } = useContext(PeriodContext);
@@ -264,7 +264,7 @@ export const useChart = ({
 
   const fullMarket =
     market && hasRequiredMarketProps(market)
-      ? markets.find((m) => {
+      ? marketGroups.find((m) => {
           return (
             m.chainId === market.chainId &&
             m.address.toLowerCase() === market.address.toLowerCase()
@@ -278,7 +278,7 @@ export const useChart = ({
     queryKey: [
       'market-prices',
       `${market?.chainId}:${market?.address}`,
-      market?.epochId,
+      market?.marketId,
       selectedInterval,
     ],
     queryFn: async () => {
@@ -294,7 +294,7 @@ export const useChart = ({
         variables: {
           address: market?.address,
           chainId: market?.chainId,
-          epochId: market?.epochId?.toString(),
+          marketId: market?.marketId?.toString(),
           from,
           to: currentTimestamp,
           interval,
@@ -333,7 +333,7 @@ export const useChart = ({
     queryKey: [
       'index-prices',
       `${market?.chainId}:${market?.address}`,
-      market?.epochId,
+      market?.marketId,
       selectedInterval,
     ],
     queryFn: async () => {
@@ -349,7 +349,7 @@ export const useChart = ({
         variables: {
           address: market?.address,
           chainId: market?.chainId,
-          epochId: market?.epochId?.toString(),
+          marketId: market?.marketId?.toString(),
           from,
           to: currentTimestamp,
           interval,
@@ -370,7 +370,7 @@ export const useChart = ({
     queryKey: [
       'resourcePrices',
       resourceSlug,
-      market?.epochId,
+      market?.marketId,
       selectedInterval,
     ],
     queryFn: async () => {
@@ -404,7 +404,7 @@ export const useChart = ({
       queryKey: [
         'trailingResourcePrices',
         resourceSlug,
-        market?.epochId,
+        market?.marketId,
         selectedInterval,
       ],
       queryFn: async () => {
@@ -418,12 +418,12 @@ export const useChart = ({
         // Calculate duration in days from full market data
         let durationInDays = 28; // Default to 28 days
         if (
-          fullMarket?.currentEpoch?.startTimestamp &&
-          fullMarket?.currentEpoch?.endTimestamp
+          fullMarket?.currentMarket?.startTimestamp &&
+          fullMarket?.currentMarket?.endTimestamp
         ) {
           const durationInSeconds =
-            fullMarket.currentEpoch.endTimestamp -
-            fullMarket.currentEpoch.startTimestamp;
+            fullMarket.currentMarket.endTimestamp -
+            fullMarket.currentMarket.startTimestamp;
           durationInDays = Math.ceil(durationInSeconds / (24 * 60 * 60));
         }
 
@@ -448,16 +448,16 @@ export const useChart = ({
 
   // Fetch the latest index price using the same hook as the stats component
   const { data: latestIndexPrice } = useLatestIndexPrice(
-    market && market.address && market.chainId && market.epochId
+    market && market.address && market.chainId && market.marketId
       ? {
           address: market.address,
           chainId: market.chainId,
-          epochId: market.epochId,
+          marketId: market.marketId,
         }
       : {
           address: '',
           chainId: 0,
-          epochId: 0,
+          marketId: 0,
         }
   );
 
@@ -715,7 +715,7 @@ export const useChart = ({
           ? Number(rawValue / ((stEthPerToken || 1e9) / 1e9))
           : rawValue;
 
-        // If market is cumulative, extrapolate the value based on actual epoch duration
+        // If marketGroup is cumulative, extrapolate the value based on actual market duration
         if (
           contextMarket?.isCumulative &&
           startTime > 0 &&
@@ -728,11 +728,11 @@ export const useChart = ({
             (timestampSec - startTime) / (24 * 60 * 60)
           );
 
-          // Calculate total epoch duration in days
-          const epochDurationDays = (endTime - startTime) / (24 * 60 * 60);
+          // Calculate total market duration in days
+          const marketDurationDays = (endTime - startTime) / (24 * 60 * 60);
 
-          // Extrapolate based on actual epoch duration instead of hardcoded 30 days
-          value *= epochDurationDays / daysSinceStart;
+          // Extrapolate based on actual market duration instead of hardcoded 30 days
+          value *= marketDurationDays / daysSinceStart;
         }
 
         return value;
@@ -874,7 +874,7 @@ export const useChart = ({
     if (indexPriceSeriesRef.current) {
       indexPriceSeriesRef.current.setData([]);
     }
-  }, [market?.chainId, market?.address, market?.epochId]);
+  }, [market?.chainId, market?.address, market?.marketId]);
 
   // Effect to toggle logarithmic scale
   useEffect(() => {

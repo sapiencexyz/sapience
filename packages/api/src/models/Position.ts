@@ -11,10 +11,10 @@ import {
 } from 'typeorm';
 import { Transaction } from './Transaction';
 import { NUMERIC_PRECISION } from '../constants';
-import { Epoch } from './Epoch';
+import { Market } from './Market';
 
 @Entity()
-@Unique(['positionId', 'epoch'])
+@Unique(['positionId', 'market'])
 export class Position {
   @OneToMany(() => Transaction, (transaction) => transaction.position)
   transactions: Transaction[];
@@ -25,9 +25,9 @@ export class Position {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Epoch, (epoch) => epoch.positions)
+  @ManyToOne(() => Market, (market) => market.positions)
   @JoinColumn()
-  epoch: Epoch;
+  market: Market;
 
   @Column({ type: 'integer' })
   @Index()

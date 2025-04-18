@@ -7,7 +7,7 @@ import {
   Index,
   ManyToOne,
 } from 'typeorm';
-import { Market } from './Market';
+import { MarketGroup } from './MarketGroup';
 import { ResourcePrice } from './ResourcePrice';
 import { Category } from './Category';
 
@@ -26,8 +26,8 @@ export class Resource {
   @Index()
   slug: string;
 
-  @OneToMany(() => Market, (market) => market.resource)
-  markets: Market[];
+  @OneToMany(() => MarketGroup, (marketGroup) => marketGroup.resource)
+  marketGroups: MarketGroup[];
 
   @OneToMany(() => ResourcePrice, (resourcePrice) => resourcePrice.resource)
   resourcePrices: ResourcePrice[];

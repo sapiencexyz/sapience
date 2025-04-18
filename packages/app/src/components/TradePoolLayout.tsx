@@ -32,7 +32,7 @@ const TradePoolLayout = ({
   params,
   isTrade,
 }: {
-  params: { id: string; epoch: string };
+  params: { id: string; market: string };
   isTrade: boolean;
 }) => {
   const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(null);
@@ -71,7 +71,7 @@ const TradePoolLayout = ({
   const now = Math.floor(Date.now() / 1000);
   const isBeforeStart = now < startTime;
 
-  const { market, resource } = useContext(PeriodContext);
+  const { marketGroup, resource } = useContext(PeriodContext);
 
   // this will set the selected window to the correct time window based on the time since the market started
   // if the market is less than a day old it will show the day window
@@ -92,16 +92,16 @@ const TradePoolLayout = ({
   }, [chartType, selectedWindow, startTime, now]);
 
   const [chainId, marketAddress] = params.id.split('%3A');
-  const { epoch } = params;
+  const { market } = params;
   const contractId = `${chainId}:${marketAddress}`;
 
   useEffect(() => {
-    if (market?.resource?.name) {
+    if (marketGroup?.resource?.name) {
       document.title = isTrade
-        ? `Trade ${market.resource.name} | Foil`
-        : `Pool Liquidity for ${market.resource.name} | Foil`;
+        ? `Trade ${marketGroup.resource.name} | Foil`
+        : `Pool Liquidity for ${marketGroup.resource.name} | Foil`;
     }
-  }, [market?.resource?.name, isTrade]);
+  }, [marketGroup?.resource?.name, isTrade]);
 
   const disabledSeries = {
     candles: false,
@@ -115,9 +115,9 @@ const TradePoolLayout = ({
       return (
         <div className="pr-2 pb-2 w-full">
           <Chart
-            resourceSlug={market?.resource?.slug}
+            resourceSlug={marketGroup?.resource?.slug}
             market={{
-              epochId: Number(epoch),
+              marketId: Number(market),
               chainId: Number(chainId),
               address: marketAddress,
             }}
@@ -131,7 +131,7 @@ const TradePoolLayout = ({
       return (
         <VolumeChart
           contractId={contractId}
-          epochId={epoch}
+          marketId={market}
           activeWindow={selectedWindow || TimeWindow.W}
         />
       );
@@ -142,7 +142,7 @@ const TradePoolLayout = ({
     return null;
   };
 
-  if (!market || !resource) {
+  if (!marketGroup || !resource) {
     return (
       <div className="flex items-center justify-center w-full h-[calc(100dvh-69px)]">
         <div className="flex flex-col items-center gap-4">
@@ -160,7 +160,7 @@ const TradePoolLayout = ({
           <div className="flex flex-col flex-1 lg:overflow-y-auto md:overflow-visible">
             <div className="flex flex-col flex-1 px-4 md:px-3 gap-2 md:gap-5 md:flex-row min-h-0">
               <div className="w-full order-2 md:order-2 md:max-w-[340px] pb-4 flex flex-col h-full pt-0">
-                {!market?.isCumulative && (
+                {!marketGroup?.isCumulative && (
                   <div className="flex items-center gap-4 mb-6 flex-shrink-0 md:hidden">
                     <Label className="whitespace-nowrap">Price Units</Label>
                     <MarketUnitsToggle />
@@ -169,7 +169,7 @@ const TradePoolLayout = ({
                 <div className="flex-1 overflow-y-auto">
                   <MarketSidebar isTrade={isTrade} />
                 </div>
-                {!market?.isCumulative && (
+                {!marketGroup?.isCumulative && (
                   <div className="hidden md:flex items-center gap-4 mt-4 lg:ml-auto flex-shrink-0">
                     <Label className="whitespace-nowrap">Price Units</Label>
                     <MarketUnitsToggle />

@@ -2,8 +2,8 @@ import { Resolver, Query, Arg } from 'type-graphql';
 import dataSource from '../../db';
 import { Category } from '../../models/Category';
 import { CategoryType } from '../types';
-import { MarketType } from '../types';
-import { mapMarketToType } from './mappers';
+import { MarketGroupType } from '../types';
+import { mapMarketGroupToType } from './mappers';
 
 @Resolver(() => CategoryType)
 export class CategoryResolver {
@@ -17,7 +17,7 @@ export class CategoryResolver {
         id: category.id,
         name: category.name,
         slug: category.slug,
-        markets: category.markets.map(mapMarketToType),
+        marketGroups: category.marketGroups.map(mapMarketGroupToType),
       }));
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -25,21 +25,25 @@ export class CategoryResolver {
     }
   }
 
-  @Query(() => [MarketType])
-  async marketsByCategory(
+  @Query(() => [MarketGroupType])
+  async marketGroupsByCategory(
     @Arg('slug', () => String) slug: string
-  ): Promise<MarketType[]> {
+  ): Promise<MarketGroupType[]> {
     try {
       const category = await dataSource.getRepository(Category).findOne({
         where: { slug },
-        relations: ['markets', 'markets.epochs', 'markets.resource'],
+        relations: [
+          'marketGroups',
+          'marketGroups.markets',
+          'marketGroups.resource',
+        ],
       });
 
       if (!category) {
         throw new Error(`Category with slug ${slug} not found`);
       }
 
-      return category.markets.map(mapMarketToType);
+      return category.marketGroups.map(mapMarketGroupToType);
     } catch (error) {
       console.error('Error fetching markets by category:', error);
       throw new Error('Failed to fetch markets by category');

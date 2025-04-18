@@ -1,7 +1,7 @@
 import { initializeDataSource } from '../db';
 import { initializeMarket, reindexMarketEvents } from '../controllers/market';
 import * as Sentry from '@sentry/node';
-import { marketRepository } from '../db';
+import { marketGroupRepository } from '../db';
 import { INDEXERS } from '../fixtures';
 import { Abi } from 'viem';
 import Foil from '@foil/protocol/deployments/Foil.json';
@@ -24,7 +24,7 @@ export async function reindexMarket(
     await initializeDataSource();
 
     // Find the market in the database instead of using MARKETS
-    const marketEntity = await marketRepository.findOne({
+    const marketEntity = await marketGroupRepository.findOne({
       where: {
         chainId,
         address: address.toLowerCase(),

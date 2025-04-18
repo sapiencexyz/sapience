@@ -20,7 +20,7 @@ import ComingSoonScrim from '../../../components/ComingSoonScrim';
 import PredictionForm from '../../../components/PredictionForm';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import {
-  findActiveEpochs,
+  findActiveMarkets,
   getDisplayQuestion,
 } from '../../../lib/utils/questionUtils';
 import { foilApi } from '../../../lib/utils/util';
@@ -44,9 +44,9 @@ const MARKET_QUERY = gql`
       baseTokenName
       quoteTokenName
       optionNames
-      epochs {
+      markets {
         id
-        epochId
+        marketId
         question
         startTimestamp
         endTimestamp
@@ -127,9 +127,9 @@ const ForecastingDetailPage = () => {
   const router = useRouter();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
-  const [currentEpochId, setCurrentEpochId] = useState<string | null>(null);
-  const [activeEpochs, setActiveEpochs] = useState<any[]>([]);
-  const [showEpochSelector, setShowEpochSelector] = useState(false);
+  const [currentMarketId, setCurrentMarketId] = useState<string | null>(null);
+  const [activeMarkets, setActiveMarkets] = useState<any[]>([]);
+  const [showMarketSelector, setShowMarketSelector] = useState(false);
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
@@ -193,17 +193,17 @@ const ForecastingDetailPage = () => {
   // Find active epochs based on timestamps
   useEffect(() => {
     if (marketData && !marketData.placeholder) {
-      const currentlyActiveEpochs = findActiveEpochs(marketData);
+      const currentlyActiveMarkets = findActiveMarkets(marketData);
 
-      setActiveEpochs(currentlyActiveEpochs);
+      setActiveMarkets(currentlyActiveMarkets);
 
       // If we have active epochs, set the currentEpochId to the first one
-      if (currentlyActiveEpochs.length > 0) {
-        console.log('Found active epochs:', currentlyActiveEpochs.length);
-        setCurrentEpochId(currentlyActiveEpochs[0].epochId);
+      if (currentlyActiveMarkets.length > 0) {
+        console.log('Found active markets:', currentlyActiveMarkets.length);
+        setCurrentMarketId(currentlyActiveMarkets[0].marketId);
       } else {
-        console.log('No active epochs found.');
-        setCurrentEpochId(null);
+        console.log('No active markets found.');
+        setCurrentMarketId(null);
       }
     }
   }, [marketData]); // Dependency: run when marketData changes
@@ -213,12 +213,12 @@ const ForecastingDetailPage = () => {
     // Use the updated helper function to determine the question
     const question = getDisplayQuestion(
       marketData,
-      activeEpochs,
+      activeMarkets,
       isLoadingMarket,
       'Loading question...'
     );
     setDisplayQuestion(question);
-  }, [marketData, isLoadingMarket, activeEpochs]); // Dependencies updated to include activeEpochs
+  }, [marketData, isLoadingMarket, activeMarkets]); // Dependencies updated to include activeMarkets
 
   // Redirect or show epoch selector based on epoch count
   useEffect(() => {
@@ -243,20 +243,20 @@ const ForecastingDetailPage = () => {
     }
 
     // Ensure epochs is an array before proceeding
-    if (!Array.isArray(marketData.epochs)) {
+    if (!Array.isArray(marketData.markets)) {
       console.log(
         'Epoch Check: Exiting (epochs data is not an array or is missing).',
-        marketData.epochs
+        marketData.markets
       );
       return; // Exit if epochs structure is incorrect
     }
 
-    const numberOfEpochs = marketData.epochs.length;
-    console.log(`Epoch Check: Found ${numberOfEpochs} epochs.`);
+    const numberOfMarkets = marketData.markets.length;
+    console.log(`Market Check: Found ${numberOfMarkets} markets.`);
 
-    if (numberOfEpochs === 0) {
-      // Handle case with zero epochs
-      console.log('Epoch Check: Zero epochs found.');
+    if (numberOfMarkets === 0) {
+      // Handle case with zero markets
+      console.log('Market Check: Zero markets found.');
       // No action needed here, the other useEffect handles the display question
     }
   }, [marketData, isLoadingMarket, isSuccess]); // Removed router dependency as it's no longer used here
@@ -375,7 +375,7 @@ const ForecastingDetailPage = () => {
                   handleSubmit={handleSubmit}
                   isPermitLoadingPermit={isPermitLoadingPermit}
                   permitData={permitData}
-                  currentEpochId={currentEpochId}
+                  currentMarketId={currentMarketId}
                   activeButtonStyle={activeButtonStyle}
                   inactiveButtonStyle={inactiveButtonStyle}
                 />
@@ -398,20 +398,20 @@ const ForecastingDetailPage = () => {
             type="button"
             onClick={(e) => {
               e.preventDefault();
-              if (!marketData?.epochs) return; // Guard clause
+              if (!marketData?.markets) return; // Guard clause
 
-              const numberOfEpochs = marketData.epochs.length;
+              const numberOfMarkets = marketData.markets.length;
               const currentPath = window.location.pathname;
 
-              if (numberOfEpochs === 1) {
+              if (numberOfMarkets === 1) {
                 // Navigate to the single epoch page if not already there
-                const { epochId } = marketData.epochs[0];
-                if (!currentPath.endsWith(`/${epochId}`)) {
-                  router.push(`${currentPath}/${epochId}`);
+                const { marketId } = marketData.markets[0];
+                if (!currentPath.endsWith(`/${marketId}`)) {
+                  router.push(`${currentPath}/${marketId}`);
                 }
-              } else if (numberOfEpochs > 1) {
+              } else if (numberOfMarkets > 1) {
                 // Open selector if there are multiple epochs
-                setShowEpochSelector(true);
+                setShowMarketSelector(true);
               }
               // If 0 epochs, the button is disabled, so onClick won't trigger.
             }}
@@ -419,8 +419,8 @@ const ForecastingDetailPage = () => {
               isLoadingMarket ||
               !marketData ||
               marketData.placeholder ||
-              !marketData.epochs ||
-              marketData.epochs.length === 0
+              !marketData.markets ||
+              marketData.markets.length === 0
             }
             className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -430,8 +430,8 @@ const ForecastingDetailPage = () => {
         </div>
       </div>
 
-      {/* Epoch Selection Dialog */}
-      <Dialog open={showEpochSelector} onOpenChange={setShowEpochSelector}>
+      {/* Market Selection Dialog */}
+      <Dialog open={showMarketSelector} onOpenChange={setShowMarketSelector}>
         <DialogContent className="sm:max-w-xl [&>[aria-label='Close']]:hidden p-8">
           <DialogHeader className="mb-2">
             <DialogTitle className="text-3xl font-normal">
@@ -439,20 +439,20 @@ const ForecastingDetailPage = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 pb-2">
-            {marketData?.epochs?.map(
-              (epoch: { epochId: string; question?: string; id: string }) => (
+            {marketData?.markets?.map(
+              (market: { marketId: string; question?: string; id: string }) => (
                 <Link
-                  key={epoch.id}
-                  href={`${window.location.pathname}/${epoch.epochId}`}
+                  key={market.id}
+                  href={`${window.location.pathname}/${market.marketId}`}
                 >
                   <button
                     type="button"
-                    onClick={() => setShowEpochSelector(false)}
+                    onClick={() => setShowMarketSelector(false)}
                     className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
                   >
-                    {epoch.question
-                      ? formatQuestion(epoch.question)
-                      : `Epoch ${epoch.epochId}`}
+                    {market.question
+                      ? formatQuestion(market.question)
+                      : `Market ${market.marketId}`}
                   </button>
                 </Link>
               )

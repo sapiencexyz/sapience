@@ -37,9 +37,9 @@ interface PredictionMarketType {
   optionNames?: string[] | null;
   baseTokenName?: string | null;
   quoteTokenName?: string | null;
-  epochs?: {
+  markets?: {
     id?: string;
-    epochId: string | number;
+    marketId: string | number;
     question?: string;
     startTimestamp?: number | string | null;
     endTimestamp?: number | string | null;
@@ -72,7 +72,7 @@ interface PredictionFormProps {
   permitData: PermitDataType | null | undefined;
   activeButtonStyle?: string;
   inactiveButtonStyle?: string;
-  currentEpochId?: string | null; // Added prop for current epoch ID
+  currentMarketId?: string | null; // Added prop for current market ID
 }
 
 // Define type for quoter response data
@@ -101,79 +101,82 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   permitData,
   activeButtonStyle = defaultActiveStyle,
   inactiveButtonStyle = defaultInactiveStyle,
-  currentEpochId, // Destructure the new prop
+  currentMarketId, // Destructure the new prop
 }) => {
   // Wagmi hooks
   const { address } = useAccount();
 
   // --- New logic to determine input type based on active markets ---
-  const { inputType, activeOptionNames, unitDisplay, displayEpochId } =
-    useMemo((): {
+  const { inputType, activeOptionNames, unitDisplay, displayMarketId } =
+    useMemo<{
       inputType: InputType;
       activeOptionNames: string[] | null | undefined;
       unitDisplay: string | null;
-      displayEpochId: string | number | null;
-    } => {
-      if (!marketData?.epochs || !marketData.epochs.length) {
-        // No epochs, cannot determine input type
+      displayMarketId: string | number | null;
+    }>(() => {
+      if (!marketData?.markets || !marketData.markets.length) {
+        // No markets, cannot determine input type
         console.log(
-          'PredictionForm: inputType is null because marketData has no epochs or is missing.',
+          'PredictionForm: inputType is null because marketData has no markets or is missing.',
           marketData
         );
         return {
           inputType: null,
           activeOptionNames: null,
           unitDisplay: null,
-          displayEpochId: null,
+          displayMarketId: null,
         };
       }
 
       const now = Math.floor(Date.now() / 1000); // Current time in seconds
 
-      console.log('PredictionForm: Raw marketData.epochs:', marketData.epochs);
+      console.log(
+        'PredictionForm: Raw marketData.markets:',
+        marketData.markets
+      );
 
-      const activeEpochs = marketData.epochs.filter((epoch) => {
+      const activeMarkets = marketData.markets.filter((market) => {
         // Ensure startTime and endTime are valid numbers
         // Use the correct property names from the GraphQL response
-        const start = epoch.startTimestamp
-          ? parseInt(String(epoch.startTimestamp), 10)
+        const start = market.startTimestamp
+          ? parseInt(String(market.startTimestamp), 10)
           : null;
-        const end = epoch.endTimestamp
-          ? parseInt(String(epoch.endTimestamp), 10)
+        const end = market.endTimestamp
+          ? parseInt(String(market.endTimestamp), 10)
           : null;
 
         if (start === null || isNaN(start) || end === null || isNaN(end)) {
           console.warn(
-            `Epoch ${epoch.epochId} has invalid or missing timestamps`
+            `Market ${market.marketId} has invalid or missing timestamps`
           );
-          return false; // Skip epochs with invalid/missing times
+          return false; // Skip markets with invalid/missing times
         }
         return now >= start && now < end;
       });
 
-      console.log('PredictionForm: Filtered active epochs:', activeEpochs);
+      console.log('PredictionForm: Filtered active markets:', activeMarkets);
 
-      // Determine the display epoch (prioritize currentEpochId if valid & active)
-      const activeEpochIds = activeEpochs.map((e) => e.epochId);
-      let currentDisplayEpochId = null;
-      if (currentEpochId && activeEpochIds.includes(currentEpochId)) {
-        currentDisplayEpochId = currentEpochId;
-      } else if (activeEpochs.length > 0) {
-        // Fallback to the first active epoch if currentEpochId is not active or not provided
-        currentDisplayEpochId = activeEpochs[0].epochId;
+      // Determine the display market (prioritize currentMarketId if valid & active)
+      const activeMarketIds = activeMarkets.map((m) => m.marketId);
+      let currentDisplayMarketId = null;
+      if (currentMarketId && activeMarketIds.includes(currentMarketId)) {
+        currentDisplayMarketId = currentMarketId;
+      } else if (activeMarkets.length > 0) {
+        // Fallback to the first active market if currentMarketId is not active or not provided
+        currentDisplayMarketId = activeMarkets[0].marketId;
       }
 
-      if (activeEpochs.length > 1) {
-        // Multiple active epochs: Use optionNames from the market group
+      if (activeMarkets.length > 1) {
+        // Multiple active markets: Use optionNames from the market group
         return {
           inputType: 'options',
           activeOptionNames: marketData.optionNames,
           unitDisplay: null,
-          displayEpochId: currentDisplayEpochId,
+          displayMarketId: currentDisplayMarketId,
         };
       }
-      if (activeEpochs.length === 1) {
-        // Single active epoch: Check bounds
+      if (activeMarkets.length === 1) {
+        // Single active market: Check bounds
         const isYesNoRange =
           marketData.lowerBound === '-92200' && marketData.upperBound === '0';
         if (isYesNoRange) {
@@ -181,7 +184,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
             inputType: 'yesno',
             activeOptionNames: null,
             unitDisplay: null,
-            displayEpochId: currentDisplayEpochId,
+            displayMarketId: currentDisplayMarketId,
           };
         }
         // Numerical input - construct unit display string
@@ -198,17 +201,17 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           inputType: 'number',
           activeOptionNames: null,
           unitDisplay: displayString,
-          displayEpochId: currentDisplayEpochId,
+          displayMarketId: currentDisplayMarketId,
         };
       }
-      // No active epochs
+      // No active markets
       return {
         inputType: null,
         activeOptionNames: null,
         unitDisplay: null,
-        displayEpochId: null,
+        displayMarketId: null,
       };
-    }, [marketData, currentEpochId]);
+    }, [marketData, currentMarketId]);
   // --- End of new logic ---
 
   // Add debugging information
@@ -216,7 +219,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     inputType,
     activeOptionNames,
     unitDisplay,
-    displayEpochId,
+    displayMarketId,
     marketData,
   });
 
@@ -385,7 +388,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
       async (params: {
         chainId: number;
         marketAddress: string;
-        epochId: string;
+        marketId: string;
         expectedPrice: number;
         collateralAvailable: bigint;
         wagerAmountStr: string; // Pass original wager amount string for check
@@ -393,7 +396,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         const {
           chainId,
           marketAddress,
-          epochId,
+          marketId,
           expectedPrice,
           collateralAvailable,
           wagerAmountStr,
@@ -414,7 +417,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         try {
           // Construct the URL using the established environment variable pattern
           const apiBaseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL || ''; // Use specific FOIL API URL
-          const apiUrl = `${apiBaseUrl}/quoter/${chainId}/${marketAddress}/${epochId}/?expectedPrice=${expectedPrice}&collateralAvailable=${collateralAvailable.toString()}`;
+          const apiUrl = `${apiBaseUrl}/quoter/${chainId}/${marketAddress}/${marketId}/?expectedPrice=${expectedPrice}&collateralAvailable=${collateralAvailable.toString()}`;
           console.log('Fetching quote from:', apiUrl); // Debug log
 
           const response = await fetch(apiUrl);
@@ -455,7 +458,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
       activeTab === 'wager' &&
       marketData?.chainId &&
       marketData?.address &&
-      displayEpochId &&
+      displayMarketId &&
       expectedPriceForQuoter !== null && // Ensure we have a valid price
       formData.wagerAmount // Ensure wager amount is not empty
     ) {
@@ -470,7 +473,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           debouncedFetchQuote({
             chainId: marketData.chainId,
             marketAddress: marketData.address,
-            epochId: displayEpochId.toString(),
+            marketId: displayMarketId.toString(),
             expectedPrice: expectedPriceForQuoter,
             collateralAvailable: collateralAmountBI,
             wagerAmountStr: formData.wagerAmount, // Pass original string for check inside debounced function
@@ -505,7 +508,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     activeTab,
     marketData?.chainId,
     marketData?.address,
-    displayEpochId,
+    displayMarketId,
     expectedPriceForQuoter,
     formData.wagerAmount,
     debouncedFetchQuote, // Include debounced function in dependency array
@@ -586,7 +589,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         // Encode the schema data
         const encodedData = encodeSchemaData(
           marketData.address,
-          String(displayEpochId || '0'), // Convert epoch ID to string
+          currentMarketId || '0',
           submissionValue
         );
 

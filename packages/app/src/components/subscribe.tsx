@@ -74,7 +74,7 @@ interface SubscribeProps {
   positionId?: number;
   onClose?: () => void;
   onPeriodToggle?: () => void;
-  isActiveEpoch?: boolean;
+  isActiveMarket?: boolean;
 }
 
 const Subscribe: FC<SubscribeProps> = ({
@@ -84,12 +84,12 @@ const Subscribe: FC<SubscribeProps> = ({
   positionId,
   onClose,
   onPeriodToggle,
-  isActiveEpoch = true,
+  isActiveMarket = true,
 }) => {
   const {
     address: contextMarketAddress,
     chainId: contextChainId,
-    epoch: contextEpoch,
+    market: contextEpoch,
     collateralAsset,
     foilData,
     collateralAssetDecimals,
@@ -513,7 +513,7 @@ const Subscribe: FC<SubscribeProps> = ({
         walletAddress: resolvedAddress,
         chainId: finalChainId,
         marketAddress: finalMarketAddress,
-        epochId: finalEpoch,
+        marketID: finalEpoch,
       });
 
       // Add check for no gas usage
@@ -877,7 +877,7 @@ const Subscribe: FC<SubscribeProps> = ({
                 />
               </TooltipTrigger>
               <TooltipContent>
-                <p>Switch to {isActiveEpoch ? 'upcoming' : 'active'} period</p>
+                <p>Switch to {isActiveMarket ? 'upcoming' : 'active'} period</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

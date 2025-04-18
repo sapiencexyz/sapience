@@ -1,16 +1,16 @@
 import { format } from 'date-fns';
 
-interface EpochTimingProps {
+interface MarketTimingProps {
   startTimestamp: number;
   endTimestamp: number;
   showDuration?: boolean;
 }
 
-const EpochTiming = ({
+const MarketTiming = ({
   startTimestamp,
   endTimestamp,
   showDuration = true,
-}: EpochTimingProps) => {
+}: MarketTimingProps) => {
   const now = Math.floor(Date.now() / 1000);
   const isStartInFuture = startTimestamp > now;
   const date = isStartInFuture ? startTimestamp : endTimestamp;
@@ -30,4 +30,4 @@ const EpochTiming = ({
   );
 };
 
-export default EpochTiming;
+export default MarketTiming;

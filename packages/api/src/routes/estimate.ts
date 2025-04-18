@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-import { getMarketAndEpoch } from '../helpers/getMarketAndEpoch';
-import { marketRepository, epochRepository } from '../db';
+import { getMarketGroupAndMarket } from '../helpers/getMarketAndEpoch';
+import { marketGroupRepository, marketRepository } from '../db';
 
 interface Transaction {
   timeStamp: string;
@@ -16,15 +16,16 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { walletAddress, chainId, marketAddress, epochId } = req.body;
 
-    const { epoch } = await getMarketAndEpoch(
+    const { market } = await getMarketGroupAndMarket(
+      marketGroupRepository,
       marketRepository,
-      epochRepository,
       chainId,
       marketAddress.toLowerCase(),
       epochId
     );
 
-    const duration = Number(epoch.endTimestamp) - Number(epoch.startTimestamp);
+    const duration =
+      Number(market.endTimestamp) - Number(market.startTimestamp);
     const startTime = Math.floor(Date.now() / 1000) - duration;
 
     // Fetch transactions from Etherscan

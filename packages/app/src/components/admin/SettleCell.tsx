@@ -9,34 +9,34 @@ import useFoilDeployment from '../useFoilDeployment';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useSettlementPrice } from '~/lib/hooks/useSettlementPrice';
 
-import type { EpochItemProps } from './types';
+import type { MarketItemProps } from './types';
 
-const SettleCell: React.FC<EpochItemProps> = ({
+const SettleCell: React.FC<MarketItemProps> = ({
+  marketGroup,
   market,
-  epoch,
   missingBlocks,
 }) => {
   const account = useAccount();
   const { address } = account;
   const { toast } = useToast();
   const { foilData, loading, error, foilVaultData } = useFoilDeployment(
-    market?.chainId
+    marketGroup?.chainId
   );
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
   }>({});
 
   const { sqrtPriceX96, isLoading: isPriceLoading } = useSettlementPrice(
-    market,
-    epoch
+    marketGroup,
+    market
   );
 
   const { data: getEpochData } = useReadContract({
-    address: market.address as `0x${string}`,
+    address: marketGroup.address as `0x${string}`,
     abi: foilData?.abi,
     functionName: 'getEpoch',
-    args: [BigInt(epoch.epochId)],
-    chainId: market.chainId,
+    args: [BigInt(market.marketId)],
+    chainId: marketGroup.chainId,
     query: {
       enabled: !loading && !error && !!foilData,
     },
@@ -54,7 +54,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
     functionName: 'allowance',
     args: [address, foilVaultData.yin.address],
     account: address || zeroAddress,
-    chainId: market.chainId,
+    chainId: marketGroup.chainId,
     query: {
       enabled:
         !!address && !!bondAmount && !loading && !error && !!foilVaultData,
@@ -83,7 +83,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
 
   const handleSettleWithPrice = () => {
     settleWithPrice({
-      address: market.owner as `0x${string}`,
+      address: marketGroup.owner as `0x${string}`,
       abi: [
         {
           type: 'function',
@@ -111,7 +111,7 @@ const SettleCell: React.FC<EpochItemProps> = ({
         },
       ],
       functionName: 'submitMarketSettlementPrice',
-      args: [BigInt(epoch.epochId), sqrtPriceX96],
+      args: [BigInt(market.marketId), sqrtPriceX96],
     });
   };
 
@@ -122,10 +122,10 @@ const SettleCell: React.FC<EpochItemProps> = ({
   const buttonIsLoading = loadingAction.settle || isPriceLoading;
 
   const currentTime = Math.floor(Date.now() / 1000);
-  const isEpochEnded = epoch.endTimestamp && currentTime > epoch.endTimestamp;
+  const isEpochEnded = market.endTimestamp && currentTime > market.endTimestamp;
 
   // Check for missing blocks
-  const key = `${market.address}-${epoch.epochId}`;
+  const key = `${marketGroup.address}-${market.marketId}`;
   const missingBlocksCount = missingBlocks[key]?.resourcePrice?.length ?? null;
   const areMissingBlocksLoading = missingBlocksCount === null;
   const hasMissingBlocks = missingBlocksCount && missingBlocksCount > 0;
