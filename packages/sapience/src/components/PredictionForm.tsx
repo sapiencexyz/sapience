@@ -13,8 +13,7 @@ import {
 } from '@foil/ui/components/ui/popover';
 import debounce from 'lodash/debounce';
 import { HelpCircle, Info } from 'lucide-react';
-import type React from 'react';
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   parseUnits,
   formatUnits,
@@ -24,6 +23,7 @@ import {
 import { useAccount, useWriteContract, useTransaction } from 'wagmi';
 
 import PredictionInput from './PredictionInput';
+import type { InputType } from './PredictionInput';
 
 // EAS constants
 const EAS_CONTRACT_ADDRESS = '0x4200000000000000000000000000000000000021';
@@ -35,9 +35,15 @@ const SCHEMA_UID =
 interface PredictionMarketType {
   optionNames?: string[] | null;
   baseTokenName?: string | null;
-  epochs?: { epochId: string }[];
+  epochs?: {
+    epochId: string;
+    startTime?: string | null; // Unix timestamp (seconds) as string from GQL
+    endTime?: string | null;   // Unix timestamp (seconds) as string from GQL
+  }[];
   address?: string;
   chainId?: number;
+  lowerBound?: string | null; // Add lowerBound
+  upperBound?: string | null; // Add upperBound
 }
 
 interface PredictionFormData {
@@ -94,6 +100,81 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
 }) => {
   // Wagmi hooks
   const { address } = useAccount();
+
+  // --- New logic to determine input type based on active markets ---
+  const { inputType, activeOptionNames, activeBaseTokenName, displayEpochId } = useMemo((): {
+    inputType: InputType; // Explicitly use InputType here
+    activeOptionNames: string[] | null | undefined;
+    activeBaseTokenName: string | null | undefined;
+    displayEpochId: string | null;
+   } => {
+    if (!marketData?.epochs || !marketData.epochs.length) {
+      // No epochs, cannot determine input type
+      return { inputType: null, activeOptionNames: null, activeBaseTokenName: null, displayEpochId: null };
+    }
+
+    const now = Math.floor(Date.now() / 1000); // Current time in seconds
+
+    const activeEpochs = marketData.epochs.filter((epoch) => {
+      // Ensure startTime and endTime are valid numbers
+      const start = epoch.startTime ? parseInt(epoch.startTime, 10) : null;
+      const end = epoch.endTime ? parseInt(epoch.endTime, 10) : null;
+
+      if (start === null || isNaN(start) || end === null || isNaN(end)) {
+        console.warn(`Epoch ${epoch.epochId} has invalid or missing timestamps`);
+        return false; // Skip epochs with invalid/missing times
+      }
+      return now >= start && now < end;
+    });
+
+    // Determine the display epoch (prioritize currentEpochId if valid & active)
+    const activeEpochIds = activeEpochs.map(e => e.epochId);
+    let currentDisplayEpochId = null;
+    if (currentEpochId && activeEpochIds.includes(currentEpochId)) {
+      currentDisplayEpochId = currentEpochId;
+    } else if (activeEpochs.length > 0) {
+      // Fallback to the first active epoch if currentEpochId is not active or not provided
+      currentDisplayEpochId = activeEpochs[0].epochId;
+    }
+
+    if (activeEpochs.length > 1) {
+      // Multiple active epochs: Use optionNames from the market group
+      return {
+        inputType: 'options',
+        activeOptionNames: marketData.optionNames,
+        activeBaseTokenName: null,
+        displayEpochId: currentDisplayEpochId // May need refinement based on selection
+      };
+    } else if (activeEpochs.length === 1) {
+      // Single active epoch: Check bounds
+      const isYesNoRange = marketData.lowerBound === "-92200" && marketData.upperBound === "0";
+      if (isYesNoRange) {
+        return {
+          inputType: 'yesno',
+          activeOptionNames: null,
+          activeBaseTokenName: 'Yes/No', // Placeholder, not displayed directly in Input
+          displayEpochId: currentDisplayEpochId
+        };
+      } else {
+        // Numerical input
+        return {
+          inputType: 'number',
+          activeOptionNames: null,
+          activeBaseTokenName: marketData.baseTokenName,
+          displayEpochId: currentDisplayEpochId
+        };
+      }
+    } else {
+      // No active epochs
+      return {
+        inputType: null,
+        activeOptionNames: null,
+        activeBaseTokenName: null,
+        displayEpochId: null
+      };
+    }
+  }, [marketData, currentEpochId]);
+  // --- End of new logic ---
 
   // State for attestation status
   const [attestationError, setAttestationError] = useState<string | null>(null);
@@ -213,43 +294,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     return 'N/A';
   }, [marketData, formData.predictionValue, TWO_POW_96]); // Added TWO_POW_96 to dependency array
   console.log('submissionValue', submissionValue);
-
-  // Calculate the Epoch ID to display based on current epoch, selected option, or default
-  const displayEpochId = useMemo(() => {
-    // 1. Prioritize currentEpochId if it exists and market doesn't override based on selection
-    const isMultiOptionMarket =
-      marketData?.optionNames != null && marketData.optionNames.length > 1;
-    if (currentEpochId && !isMultiOptionMarket) {
-      console.log('Using currentEpochId for display:', currentEpochId);
-      return currentEpochId;
-    }
-
-    // 2. If multi-option, determine based on selection (existing logic)
-    if (isMultiOptionMarket && marketData?.epochs) {
-      const selectedOptionIndex = marketData?.optionNames?.findIndex(
-        (option) => option === formData.predictionValue
-      );
-
-      if (
-        selectedOptionIndex &&
-        selectedOptionIndex !== -1 &&
-        marketData.epochs[selectedOptionIndex]
-      ) {
-        console.log(
-          'Using epoch based on selected option:',
-          marketData.epochs[selectedOptionIndex].epochId
-        );
-        return marketData.epochs[selectedOptionIndex].epochId;
-      }
-    }
-
-    // 3. Fallback to the first epoch's ID if available (existing logic, refined)
-    const fallbackEpochId = marketData?.epochs?.[0]?.epochId ?? null;
-    console.log('Using fallback epoch ID:', fallbackEpochId);
-    return fallbackEpochId;
-
-    // Ensure all dependencies are included
-  }, [marketData, formData.predictionValue, currentEpochId]);
 
   // Calculate expectedPrice for the quoter
   const expectedPriceForQuoter = useMemo(() => {
@@ -595,7 +639,11 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
             <div className="space-y-6">
               <div className="mt-1">
                 <PredictionInput
-                  market={marketData}
+                  market={{ 
+                    optionNames: inputType === 'options' ? activeOptionNames : null,
+                    baseTokenName: inputType === 'number' ? activeBaseTokenName : null,
+                  }}
+                  inputType={inputType}
                   value={formData.predictionValue}
                   onChange={handlePredictionChange}
                   activeButtonStyle={activeButtonStyle}
@@ -644,7 +692,11 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
             <div className="space-y-6">
               <div className="mt-1">
                 <PredictionInput
-                  market={marketData}
+                  market={{ 
+                    optionNames: inputType === 'options' ? activeOptionNames : null,
+                    baseTokenName: inputType === 'number' ? activeBaseTokenName : null,
+                  }}
+                  inputType={inputType}
                   value={formData.predictionValue}
                   onChange={handlePredictionChange}
                   activeButtonStyle={activeButtonStyle}
