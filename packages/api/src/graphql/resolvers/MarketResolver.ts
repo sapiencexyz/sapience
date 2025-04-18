@@ -8,18 +8,20 @@ import { mapMarketToType } from './mappers';
 export class MarketResolver {
   @Query(() => [MarketType])
   async markets(
-    @Arg('marketGroupId', () => Int, { nullable: true }) marketGroupId?: number
+    @Arg('marketId', () => Int) marketId: number,
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('marketAddress', () => String) marketAddress: string
   ): Promise<MarketType[]> {
     try {
-      const where: { marketGroup?: { id: number } } = {};
-      if (marketGroupId) {
-        where.marketGroup = { id: marketGroupId };
-      }
+      const queryBuilder = dataSource.getRepository(Market)
+        .createQueryBuilder('market')
+        .leftJoinAndSelect('market.marketGroup', 'marketGroup');
+      
+      queryBuilder.andWhere('market.marketId = :marketId', { marketId });
+      queryBuilder.andWhere('marketGroup.chainId = :chainId', { chainId });
+      queryBuilder.andWhere('marketGroup.address = :marketAddress', { marketAddress });
 
-      const markets = await dataSource.getRepository(Market).find({
-        where,
-        relations: ['marketGroup'],
-      });
+      const markets = await queryBuilder.getMany();
 
       return markets.map(mapMarketToType);
     } catch (error) {
