@@ -4,10 +4,35 @@ import type {
   RefetchOptions,
 } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
+import { gql } from '@apollo/client';
+import { print } from 'graphql';
 import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 
 import { gweiToEther, mainnetClient, foilApi } from '../utils/util';
+
+// Define GraphQL query for market groups
+const MARKET_GROUPS_QUERY = gql`
+  query GetMarketGroups {
+    marketGroups {
+      id
+      chainId
+      address
+      question
+      baseTokenName
+      quoteTokenName
+      optionNames
+      markets {
+        id
+        marketId
+        question
+        startTimestamp
+        endTimestamp
+        settled
+      }
+    }
+  }
+`;
 
 export interface Market {
   id: number;
@@ -109,42 +134,75 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
     error,
     refetch: refetchMarkets,
   } = useQuery<Market[], Error>({
-    queryKey: ['markets'],
+    queryKey: ['marketGroups'],
     queryFn: async () => {
-      const data = await foilApi.get('/markets');
-      const currentTimestamp = Math.floor(Date.now() / 1000);
+      try {
+        const response = await foilApi.post('/graphql', {
+          query: print(MARKET_GROUPS_QUERY),
+        });
 
-      return data.map((market: Market) => {
-        const sortedEpochs = [...market.epochs].sort(
-          (a, b) => a.startTimestamp - b.startTimestamp
-        );
+        if (!response.data?.data?.marketGroups) {
+          throw new Error('No market groups found in the response');
+        }
 
-        const currentEpoch =
-          sortedEpochs.find(
-            (epoch) =>
-              epoch.startTimestamp <= currentTimestamp &&
-              epoch.endTimestamp > currentTimestamp
-          ) ||
-          sortedEpochs[sortedEpochs.length - 1] ||
-          null;
+        const marketGroups = response.data.data.marketGroups;
+        const currentTimestamp = Math.floor(Date.now() / 1000);
 
-        const nextEpoch =
-          sortedEpochs.find(
-            (epoch) => epoch.startTimestamp > currentTimestamp
-          ) ||
-          sortedEpochs[sortedEpochs.length - 1] ||
-          null;
+        return marketGroups.map((marketGroup: any) => {
+          // Transform the structure to match the expected Market interface
+          const epochs = marketGroup.markets.map((market: any) => ({
+            id: market.id,
+            epochId: market.marketId,
+            startTimestamp: market.startTimestamp,
+            endTimestamp: market.endTimestamp,
+            public: market.settled !== undefined ? !market.settled : true,
+          }));
 
-        return {
-          ...market,
-          currentEpoch,
-          nextEpoch,
-        };
-      });
+          const sortedEpochs = [...epochs].sort(
+            (a, b) => a.startTimestamp - b.startTimestamp
+          );
+
+          const currentEpoch =
+            sortedEpochs.find(
+              (epoch) =>
+                epoch.startTimestamp <= currentTimestamp &&
+                epoch.endTimestamp > currentTimestamp
+            ) ||
+            sortedEpochs[sortedEpochs.length - 1] ||
+            null;
+
+          const nextEpoch =
+            sortedEpochs.find(
+              (epoch) => epoch.startTimestamp > currentTimestamp
+            ) ||
+            sortedEpochs[sortedEpochs.length - 1] ||
+            null;
+
+          return {
+            id: marketGroup.id,
+            name: marketGroup.question || `Market ${marketGroup.id}`, // Use question as name fallback
+            chainId: marketGroup.chainId,
+            address: marketGroup.address,
+            vaultAddress: marketGroup.address, // Fallback
+            collateralAsset: marketGroup.baseTokenName || 'ETH', // Fallback
+            owner: marketGroup.address, // Fallback
+            isCumulative: false, // Default
+            resource: {
+              id: 0,
+              name: 'Unknown',
+              slug: 'unknown',
+            }, // Default resource info
+            epochs,
+            currentEpoch,
+            nextEpoch,
+          };
+        });
+      } catch (error) {
+        console.error('Error fetching market groups via GraphQL:', error);
+        throw error;
+      }
     },
   });
-
-  //
 
   return (
     <FoilContext.Provider
