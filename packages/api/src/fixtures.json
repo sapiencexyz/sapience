@@ -94,7 +94,7 @@
         "Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025?"
       ],
       "baseTokenName": "Yes",
-      "quoteTokenName": "No"
+      "quoteTokenName": "sUSDS"
     },
     {
       "chainId": 8453,
@@ -103,12 +103,11 @@
       "question": "Which party will hold a plurality in the US House of Representatives after the 2026 midterm elections?",
       "questions": [
         "Will the Democrats hold a plurality in the US House of Representatives after the 2026 midterm elections?",
-        "Will the Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?",
-        "Will a party other than the Democrats or Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?"
+        "Will the Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?"
       ],
-      "optionNames": ["Democrats", "Republicans", "Other"],
+      "optionNames": ["Democrats", "Republicans"],
       "baseTokenName": "Yes",
-      "quoteTokenName": "No"
+      "quoteTokenName": "sUSDS"
     },
     {
       "questions": ["How much blob data will be posted to Celestia in April?"],

@@ -13,17 +13,20 @@ export class MarketResolver {
     @Arg('marketAddress', () => String) marketAddress: string
   ): Promise<MarketType[]> {
     try {
-      const queryBuilder = dataSource.getRepository(Market)
+      const queryBuilder = dataSource
+        .getRepository(Market)
         .createQueryBuilder('market')
         .leftJoinAndSelect('market.marketGroup', 'marketGroup');
-      
+
       queryBuilder.andWhere('market.marketId = :marketId', { marketId });
       queryBuilder.andWhere('marketGroup.chainId = :chainId', { chainId });
-      queryBuilder.andWhere('marketGroup.address = :marketAddress', { marketAddress });
+      queryBuilder.andWhere('marketGroup.address = :marketAddress', {
+        marketAddress,
+      });
 
       const markets = await queryBuilder.getMany();
 
-      const result =  markets.map(mapMarketToType);
+      const result = markets.map(mapMarketToType);
       return result;
     } catch (error) {
       console.error('Error fetching markets:', error);
