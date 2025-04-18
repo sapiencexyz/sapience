@@ -1,6 +1,8 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import React from 'react';
 
 import '@testing-library/jest-dom';
 import PredictionForm from './PredictionForm';
@@ -9,10 +11,10 @@ import PredictionForm from './PredictionForm';
 interface PredictionMarketType {
   optionNames?: string[] | null;
   baseTokenName?: string | null;
-  epochs?: {
-    epochId: string;
-    startTime?: string | null;
-    endTime?: string | null;
+  markets?: {
+    marketId: string | number;
+    startTimestamp?: string | null;
+    endTimestamp?: string | null;
   }[];
   address?: string;
   chainId?: number;
@@ -28,6 +30,7 @@ jest.mock('./PredictionInput', () => {
     inputType,
     value,
     onChange,
+    unitDisplay,
     activeButtonStyle,
     inactiveButtonStyle,
   }: {
@@ -35,6 +38,7 @@ jest.mock('./PredictionInput', () => {
     inputType: any;
     value: any;
     onChange: any;
+    unitDisplay?: any;
     activeButtonStyle?: any;
     inactiveButtonStyle?: any;
   }) => {
@@ -58,7 +62,7 @@ jest.mock('./PredictionInput', () => {
         <span data-testid="mock-market-options">
           {JSON.stringify(market?.optionNames)}
         </span>
-        <span data-testid="mock-market-token">{market?.baseTokenName}</span>
+        <span data-testid="mock-market-token">{unitDisplay}</span>
         <span data-testid="mock-active-style">{activeButtonStyle}</span>
         <span data-testid="mock-inactive-style">{inactiveButtonStyle}</span>
       </div>
@@ -137,16 +141,16 @@ describe('PredictionForm', () => {
       baseTokenName: 'GROUP', // Base token for the group
       lowerBound: null,
       upperBound: null,
-      epochs: [
+      markets: [
         {
-          epochId: '1',
-          startTime: String(nowSec - oneHour),
-          endTime: String(nowSec + oneHour),
+          marketId: '1',
+          startTimestamp: String(nowSec - oneHour),
+          endTimestamp: String(nowSec + oneHour),
         },
         {
-          epochId: '2',
-          startTime: String(nowSec - oneHour),
-          endTime: String(nowSec + oneHour),
+          marketId: '2',
+          startTimestamp: String(nowSec - oneHour),
+          endTimestamp: String(nowSec + oneHour),
         },
       ],
       address: '0xabc',
@@ -168,16 +172,16 @@ describe('PredictionForm', () => {
       baseTokenName: 'YESNO_MARKET', // Might have a name, but bounds determine input
       lowerBound: '-92200',
       upperBound: '0',
-      epochs: [
+      markets: [
         {
-          epochId: '1',
-          startTime: String(nowSec - oneHour),
-          endTime: String(nowSec + oneHour),
+          marketId: '1',
+          startTimestamp: String(nowSec - oneHour),
+          endTimestamp: String(nowSec + oneHour),
         },
         {
-          epochId: '2',
-          startTime: String(nowSec - 2 * oneHour),
-          endTime: String(nowSec - oneHour),
+          marketId: '2',
+          startTimestamp: String(nowSec - 2 * oneHour),
+          endTimestamp: String(nowSec - oneHour),
         }, // Inactive
       ],
       address: '0xabc',
@@ -196,11 +200,11 @@ describe('PredictionForm', () => {
       baseTokenName: 'ETH Price',
       lowerBound: '1000',
       upperBound: '5000',
-      epochs: [
+      markets: [
         {
-          epochId: '1',
-          startTime: String(nowSec - oneHour),
-          endTime: String(nowSec + oneHour),
+          marketId: '1',
+          startTimestamp: String(nowSec - oneHour),
+          endTimestamp: String(nowSec + oneHour),
         },
       ],
       address: '0xabc',
@@ -222,11 +226,11 @@ describe('PredictionForm', () => {
       baseTokenName: 'OLD',
       lowerBound: '0',
       upperBound: '1',
-      epochs: [
+      markets: [
         {
-          epochId: '1',
-          startTime: String(nowSec - 2 * oneHour),
-          endTime: String(nowSec - oneHour),
+          marketId: '1',
+          startTimestamp: String(nowSec - 2 * oneHour),
+          endTimestamp: String(nowSec - oneHour),
         }, // Past
       ],
       address: '0xabc',
@@ -241,7 +245,7 @@ describe('PredictionForm', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('renders no input when marketData is null or epochs are empty', () => {
+  test('renders no input when marketData is null or markets are empty', () => {
     const { rerender } = render(
       <PredictionForm {...defaultProps} marketData={null} />
     );
@@ -249,7 +253,7 @@ describe('PredictionForm', () => {
       screen.queryByTestId('mock-prediction-input')
     ).not.toBeInTheDocument();
 
-    rerender(<PredictionForm {...defaultProps} marketData={{ epochs: [] }} />);
+    rerender(<PredictionForm {...defaultProps} marketData={{ markets: [] }} />);
     expect(
       screen.queryByTestId('mock-prediction-input')
     ).not.toBeInTheDocument();
@@ -261,23 +265,27 @@ describe('PredictionForm', () => {
       baseTokenName: 'Maybe Market',
       lowerBound: '0',
       upperBound: '100',
-      epochs: [
+      markets: [
         {
-          epochId: '1',
-          startTime: 'invalid-start',
-          endTime: String(nowSec + oneHour),
+          marketId: '1',
+          startTimestamp: 'invalid-start',
+          endTimestamp: String(nowSec + oneHour),
         },
-        { epochId: '2', startTime: null, endTime: String(nowSec + oneHour) },
         {
-          epochId: '3',
-          startTime: String(nowSec - oneHour),
-          endTime: undefined,
+          marketId: '2',
+          startTimestamp: null,
+          endTimestamp: String(nowSec + oneHour),
+        },
+        {
+          marketId: '3',
+          startTimestamp: String(nowSec - oneHour),
+          endTimestamp: undefined,
         },
         // Add one valid active epoch to ensure it's selected over invalid ones
         {
-          epochId: '4',
-          startTime: String(nowSec - oneHour),
-          endTime: String(nowSec + oneHour),
+          marketId: '4',
+          startTimestamp: String(nowSec - oneHour),
+          endTimestamp: String(nowSec + oneHour),
         },
       ],
       address: '0xabc',
@@ -297,13 +305,13 @@ describe('PredictionForm', () => {
     );
     // Check that warnings were logged for invalid epochs
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'Epoch 1 has invalid or missing timestamps'
+      'Market 1 has invalid or missing timestamps'
     );
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'Epoch 2 has invalid or missing timestamps'
+      'Market 2 has invalid or missing timestamps'
     );
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      'Epoch 3 has invalid or missing timestamps'
+      'Market 3 has invalid or missing timestamps'
     );
 
     consoleWarnSpy.mockRestore(); // Restore console.warn
@@ -317,11 +325,11 @@ describe('PredictionForm', () => {
       baseTokenName: 'TEST',
       lowerBound: '0',
       upperBound: '1',
-      epochs: [
+      markets: [
         {
-          epochId: '1',
-          startTime: String(nowSec - oneHour),
-          endTime: String(nowSec + oneHour),
+          marketId: '1',
+          startTimestamp: String(nowSec - oneHour),
+          endTimestamp: String(nowSec + oneHour),
         },
       ],
       address: '0xabc',
