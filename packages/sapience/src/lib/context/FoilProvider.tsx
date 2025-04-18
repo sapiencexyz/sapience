@@ -1,10 +1,10 @@
+import { gql } from '@apollo/client';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import type {
   QueryObserverResult,
   RefetchOptions,
 } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
-import { gql } from '@apollo/client';
 import { print } from 'graphql';
 import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -145,7 +145,7 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
           throw new Error('No market groups found in the response');
         }
 
-        const marketGroups = response.data.data.marketGroups;
+        const { marketGroups } = response.data.data;
         const currentTimestamp = Math.floor(Date.now() / 1000);
 
         return marketGroups.map((marketGroup: any) => {

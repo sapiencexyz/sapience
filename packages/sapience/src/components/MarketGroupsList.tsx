@@ -613,7 +613,7 @@ const ForecastingTable = () => {
                 exit={{ opacity: 0 }}
               >
                 <div className="flex flex-col mb-2">
-                  <h3 className="font-semibold text-sm text-muted-foreground mb-2 text-center">
+                  <h3 className="font-medium text-sm text-muted-foreground mb-2">
                     {formatEndDate(dayEndTimes[dayKey])}
                   </h3>
                   <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
