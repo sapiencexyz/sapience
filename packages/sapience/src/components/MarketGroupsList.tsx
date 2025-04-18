@@ -24,9 +24,9 @@ import * as React from 'react';
 
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import {
-  useEnrichedMarkets,
+  useEnrichedMarketGroups,
   useCategories,
-  type Epoch,
+  type Market,
 } from '~/lib/hooks/useMarketGroups';
 import { formatQuestion } from '~/lib/utils/questionUtils';
 
@@ -45,7 +45,7 @@ const hoverStatusClass = 'hover:bg-secondary/50';
 const DEFAULT_CATEGORY_COLOR = '#71717a';
 
 // Define local interfaces based on expected data shape
-interface EpochWithContext extends Epoch {
+interface MarketWithContext extends Market {
   marketAddress: string;
   chainId: number;
   collateralAsset: string;
@@ -55,7 +55,7 @@ interface EpochWithContext extends Epoch {
 }
 
 // Interface for the final grouped market data structure
-interface GroupedMarket {
+interface GroupedMarketGroup {
   key: string;
   marketAddress: string;
   chainId: number;
@@ -66,7 +66,7 @@ interface GroupedMarket {
   categoryId: string;
   isYin: boolean;
   marketQuestion?: string | null;
-  epochs: EpochWithContext[];
+  markets: MarketWithContext[];
   displayQuestion?: string;
 }
 
@@ -109,10 +109,7 @@ const FocusAreaFilter = ({
         {!isLoadingCategories &&
           categories &&
           categories
-            .filter((category) => {
-              const styleInfo = getCategoryStyle(category.slug);
-              return !!styleInfo?.iconSvg; // Only keep categories with an icon
-            })
+            // Display all categories, not just those with icons
             .map((category) => {
               const styleInfo = getCategoryStyle(category.slug);
               const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
@@ -141,7 +138,10 @@ const FocusAreaFilter = ({
                         />
                       </div>
                     ) : (
-                      <TagIcon className="w-3 h-3" />
+                      <TagIcon
+                        className="w-3 h-3"
+                        style={{ color: categoryColor }}
+                      />
                     )}
                   </div>
                   <span className="font-medium">{displayName}</span>
@@ -187,8 +187,8 @@ const formatEndDate = (timestamp: number): string => {
 
 const ForecastingTable = () => {
   // Use the new hook and update variable names
-  const { data: enrichedMarkets, isLoading: isLoadingMarkets } =
-    useEnrichedMarkets();
+  const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
+    useEnrichedMarketGroups();
   const { data: categories, isLoading: isLoadingCategories } = useCategories();
 
   const searchParams = useSearchParams();
@@ -225,134 +225,138 @@ const ForecastingTable = () => {
     setSearchTerm(event.target.value);
   };
 
-  const groupedMarkets: GroupedMarket[] = React.useMemo(() => {
-    if (!enrichedMarkets) return [];
+  const groupedMarketGroups: GroupedMarketGroup[] = React.useMemo(() => {
+    if (!enrichedMarketGroups) return [];
 
-    // 1. Filter enrichedMarkets by selected Category SLUG *before* flattening
-    const filteredByCategory = enrichedMarkets.filter((market) => {
+    // 1. Filter enrichedMarketGroups by selected Category SLUG *before* flattening
+    const filteredByCategory = enrichedMarketGroups.filter((marketGroup) => {
       if (selectedCategorySlug === null) return true; // Show all if no category selected
 
-      const marketSlug = market.category?.slug;
+      const marketSlug = marketGroup.category?.slug;
 
       // Filter based on the actual category slug
       return marketSlug === selectedCategorySlug;
     });
 
-    // 2. Map filteredMarkets to EpochWithContext[]
-    const allEpochs: EpochWithContext[] = filteredByCategory.flatMap((market) =>
-      market.epochs.map((epoch) => ({
-        ...epoch, // Spread epoch details
-        marketAddress: market.address,
-        chainId: market.chainId,
-        collateralAsset: market.collateralAsset,
-        isYin: market.isYin,
-        categorySlug: market.category.slug,
-        categoryId: market.category.id,
-      }))
+    // 2. Map filteredMarketGroups to MarketWithContext[]
+    const allMarkets: MarketWithContext[] = filteredByCategory.flatMap(
+      (marketGroup) =>
+        marketGroup.markets.map((market) => ({
+          ...market, // Spread market details
+          marketAddress: marketGroup.address,
+          chainId: marketGroup.chainId,
+          collateralAsset: marketGroup.collateralAsset,
+          isYin: marketGroup.isYin,
+          categorySlug: marketGroup.category.slug,
+          categoryId: marketGroup.category.id,
+        }))
     );
 
-    // 3. Filter epochs based on status
+    // 3. Filter markets based on status
     const now = Math.floor(Date.now() / 1000);
-    const filteredEpochsByStatus: EpochWithContext[] = allEpochs.filter(
-      (epoch) => {
-        if (typeof epoch.endTimestamp !== 'number' || epoch.endTimestamp <= 0) {
-          // console.warn('Filtering out epoch with invalid endTimestamp:', epoch); // Keep console log minimal
+    const filteredMarketsByStatus: MarketWithContext[] = allMarkets.filter(
+      (market) => {
+        if (
+          typeof market.endTimestamp !== 'number' ||
+          market.endTimestamp <= 0
+        ) {
+          // console.warn('Filtering out market with invalid endTimestamp:', market); // Keep console log minimal
           return false;
         }
-        if (!epoch.public) return false;
+        if (!market.public) return false;
         if (statusFilter === 'active') {
-          return now <= epoch.endTimestamp;
+          return now <= market.endTimestamp;
         }
         return true; // 'all' status includes everything public
       }
     );
 
-    // 4. Group filtered epochs by market key
-    const groupedByMarketKey = filteredEpochsByStatus.reduce<{
-      [key: string]: GroupedMarket;
-    }>((acc, epoch) => {
-      const marketKey = `${epoch.chainId}:${epoch.marketAddress}`;
+    // 4. Group filtered markets by market group key
+    const groupedByMarketKey = filteredMarketsByStatus.reduce<{
+      [key: string]: GroupedMarketGroup;
+    }>((acc, market) => {
+      const marketKey = `${market.chainId}:${market.marketAddress}`;
       if (!acc[marketKey]) {
-        // Find the corresponding enrichedMarket to get details
-        // Use filteredByCategory to ensure we only consider markets matching the slug filter
-        const sourceMarket = filteredByCategory.find(
+        // Find the corresponding enrichedMarketGroup to get details
+        // Use filteredByCategory to ensure we only consider market groups matching the slug filter
+        const sourceMarketGroup = filteredByCategory.find(
           (m) => `${m.chainId}:${m.address}` === marketKey
         );
 
-        // Find the FocusArea data that includes this market's category slug
+        // Find the FocusArea data that includes this market group's category slug
         const focusAreaStyle = FOCUS_AREAS.find(
-          (fa) => fa.id === sourceMarket?.category?.slug
+          (fa) => fa.id === sourceMarketGroup?.category?.slug
         );
         const color = focusAreaStyle?.color ?? DEFAULT_CATEGORY_COLOR;
 
         acc[marketKey] = {
           key: marketKey,
-          marketAddress: epoch.marketAddress,
-          chainId: epoch.chainId,
-          // Use sourceMarket details safely
-          marketName: sourceMarket?.category?.name ?? 'Unknown Market',
-          collateralAsset: epoch.collateralAsset,
+          marketAddress: market.marketAddress,
+          chainId: market.chainId,
+          // Use sourceMarketGroup details safely
+          marketName: sourceMarketGroup?.category?.name ?? 'Unknown Market',
+          collateralAsset: market.collateralAsset,
           color,
-          categorySlug: epoch.categorySlug,
-          categoryId: epoch.categoryId,
-          isYin: epoch.isYin,
+          categorySlug: market.categorySlug,
+          categoryId: market.categoryId,
+          isYin: market.isYin,
           marketQuestion: undefined, // Initialize
-          epochs: [], // Initialize
+          markets: [], // Initialize
           displayQuestion: undefined, // Initialize
         };
       }
-      acc[marketKey].epochs.push(epoch);
+      acc[marketKey].markets.push(market);
       return acc;
     }, {});
 
-    // 5. Prepare markets with questions
-    const marketsWithQuestions = Object.values(groupedByMarketKey).map(
-      (groupedMarket) => {
-        // Find the source market (needed for market-level question)
-        const sourceMarket = filteredByCategory.find(
-          (m) => `${m.chainId}:${m.address}` === groupedMarket.key
+    // 5. Prepare market groups with questions
+    const marketGroupsWithQuestions = Object.values(groupedByMarketKey).map(
+      (groupedMarketGroup) => {
+        // Find the source market group (needed for market-level question)
+        const sourceMarketGroup = filteredByCategory.find(
+          (m) => `${m.chainId}:${m.address}` === groupedMarketGroup.key
         );
 
         // Get the market-level question
-        const marketQuestion = sourceMarket?.question || null;
+        const marketQuestion = sourceMarketGroup?.question || null;
 
-        // Find active epochs for this market
+        // Find active markets for this market group
         const now = Math.floor(Date.now() / 1000);
-        const activeEpochs = groupedMarket.epochs.filter(
-          (epoch) => now >= epoch.startTimestamp && now < epoch.endTimestamp
+        const activeMarkets = groupedMarketGroup.markets.filter(
+          (market) => now >= market.startTimestamp && now < market.endTimestamp
         );
 
         // Determine the raw question (will be formatted by MarketGroupPreview)
         let rawQuestion: string | null = null;
 
-        // If we have multiple active epochs, use market question
-        if (activeEpochs.length > 1 && sourceMarket?.question) {
-          rawQuestion = sourceMarket.question;
+        // If we have multiple active markets, use market question
+        if (activeMarkets.length > 1 && sourceMarketGroup?.question) {
+          rawQuestion = sourceMarketGroup.question;
         }
-        // If we have exactly one active epoch with a question, use that
-        else if (activeEpochs.length === 1 && activeEpochs[0]?.question) {
-          rawQuestion = activeEpochs[0].question;
+        // If we have exactly one active market with a question, use that
+        else if (activeMarkets.length === 1 && activeMarkets[0]?.question) {
+          rawQuestion = activeMarkets[0].question;
         }
         // Fallback to market question
-        else if (sourceMarket?.question) {
-          rawQuestion = sourceMarket.question;
+        else if (sourceMarketGroup?.question) {
+          rawQuestion = sourceMarketGroup.question;
         }
-        // Fallback to first epoch with a question
-        else if (groupedMarket.epochs.length > 0) {
-          const firstEpochWithQuestion = [...groupedMarket.epochs]
+        // Fallback to first market with a question
+        else if (groupedMarketGroup.markets.length > 0) {
+          const firstMarketWithQuestion = [...groupedMarketGroup.markets]
             .sort((a, b) => a.startTimestamp - b.startTimestamp)
-            .find((epoch) => epoch.question);
+            .find((market) => market.question);
 
-          rawQuestion = firstEpochWithQuestion?.question || null;
+          rawQuestion = firstMarketWithQuestion?.question || null;
         }
 
         // Format the question if we have one, otherwise use market name
         const displayQuestion =
           (rawQuestion ? formatQuestion(rawQuestion) : null) ||
-          groupedMarket.marketName;
+          groupedMarketGroup.marketName;
 
         return {
-          ...groupedMarket,
+          ...groupedMarketGroup,
           marketQuestion,
           displayQuestion,
         };
@@ -361,51 +365,51 @@ const ForecastingTable = () => {
 
     // 6. Filter by Search Term *after* determining display question
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
-    const filteredBySearch = marketsWithQuestions.filter((market) => {
+    const filteredBySearch = marketGroupsWithQuestions.filter((marketGroup) => {
       if (!lowerCaseSearchTerm) return true; // Show all if search is empty
 
-      const nameMatch = market.marketName
+      const nameMatch = marketGroup.marketName
         ?.toLowerCase()
         .includes(lowerCaseSearchTerm);
       // Make sure displayQuestion exists before calling toLowerCase
       const questionMatch =
-        market.displayQuestion &&
-        market.displayQuestion.toLowerCase().includes(lowerCaseSearchTerm);
+        marketGroup.displayQuestion &&
+        marketGroup.displayQuestion.toLowerCase().includes(lowerCaseSearchTerm);
 
       return nameMatch || questionMatch;
     });
 
     console.log(
-      '[Memo] Final filtered markets length:',
+      '[Memo] Final filtered market groups length:',
       filteredBySearch.length
     );
 
     return filteredBySearch; // Return the final filtered list
-  }, [enrichedMarkets, selectedCategorySlug, statusFilter, searchTerm]); // Added searchTerm dependency
+  }, [enrichedMarketGroups, selectedCategorySlug, statusFilter, searchTerm]); // Added searchTerm dependency
   // --- End of refactored useMemo ---
 
-  // Group markets by day based on their earliest active epoch
-  const marketsByDay = React.useMemo(() => {
-    if (groupedMarkets.length === 0) return {};
+  // Group market groups by day based on their earliest active market
+  const marketGroupsByDay = React.useMemo(() => {
+    if (groupedMarketGroups.length === 0) return {};
 
-    return groupedMarkets.reduce<Record<string, GroupedMarket[]>>(
-      (acc, market) => {
-        // Find the earliest active epoch
+    return groupedMarketGroups.reduce<Record<string, GroupedMarketGroup[]>>(
+      (acc, marketGroup) => {
+        // Find the earliest active market
         const now = Math.floor(Date.now() / 1000);
-        const activeEpochs = market.epochs.filter(
-          (epoch) => now >= epoch.startTimestamp && now < epoch.endTimestamp
+        const activeMarkets = marketGroup.markets.filter(
+          (market) => now >= market.startTimestamp && now < market.endTimestamp
         );
 
         // Determine the timestamp to use for day grouping
         let timestamp;
-        if (activeEpochs.length > 0) {
-          // Sort by end time and get the earliest ending epoch
-          timestamp = [...activeEpochs].sort(
+        if (activeMarkets.length > 0) {
+          // Sort by end time and get the earliest ending market
+          timestamp = [...activeMarkets].sort(
             (a, b) => a.endTimestamp - b.endTimestamp
           )[0].endTimestamp;
         } else {
-          // If no active epochs, use the earliest ending epoch
-          timestamp = [...market.epochs].sort(
+          // If no active markets, use the earliest ending market
+          timestamp = [...marketGroup.markets].sort(
             (a, b) => a.endTimestamp - b.endTimestamp
           )[0].endTimestamp;
         }
@@ -414,49 +418,51 @@ const ForecastingTable = () => {
         if (!acc[dayKey]) {
           acc[dayKey] = [];
         }
-        acc[dayKey].push(market);
+        acc[dayKey].push(marketGroup);
         return acc;
       },
       {}
     );
-  }, [groupedMarkets]);
+  }, [groupedMarketGroups]);
 
   // Calculate next ending market for each day
   const dayEndTimes = React.useMemo(() => {
     const result: Record<string, number> = {};
 
-    Object.entries(marketsByDay).forEach(([dayKey, markets]) => {
-      // Get all active epochs from all markets in this day
+    Object.entries(marketGroupsByDay).forEach(([dayKey, marketGroups]) => {
+      // Get all active markets from all market groups in this day
       const now = Math.floor(Date.now() / 1000);
-      const allActiveEpochs = markets.flatMap((market) =>
-        market.epochs.filter((epoch) => now < epoch.endTimestamp)
+      const allActiveMarkets = marketGroups.flatMap((marketGroup) =>
+        marketGroup.markets.filter((market) => now < market.endTimestamp)
       );
 
-      if (allActiveEpochs.length > 0) {
+      if (allActiveMarkets.length > 0) {
         // Sort by end time and get the one ending soonest
-        const nextEndingEpoch = [...allActiveEpochs].sort(
+        const nextEndingMarket = [...allActiveMarkets].sort(
           (a, b) => a.endTimestamp - b.endTimestamp
         )[0];
 
-        result[dayKey] = nextEndingEpoch.endTimestamp;
+        result[dayKey] = nextEndingMarket.endTimestamp;
       } else {
-        // If no active epochs, use the latest end time from any epoch
-        const allEpochs = markets.flatMap((market) => market.epochs);
-        const latestEndingEpoch = [...allEpochs].sort(
+        // If no active markets, use the latest end time from any market
+        const allMarkets = marketGroups.flatMap(
+          (marketGroup) => marketGroup.markets
+        );
+        const latestEndingMarket = [...allMarkets].sort(
           (a, b) => b.endTimestamp - a.endTimestamp
         )[0];
 
-        result[dayKey] = latestEndingEpoch.endTimestamp;
+        result[dayKey] = latestEndingMarket.endTimestamp;
       }
     });
 
     return result;
-  }, [marketsByDay]);
+  }, [marketGroupsByDay]);
 
   // Sort days chronologically
   const sortedDays = React.useMemo(() => {
-    return Object.keys(marketsByDay).sort();
-  }, [marketsByDay]);
+    return Object.keys(marketGroupsByDay).sort();
+  }, [marketGroupsByDay]);
 
   // Update click handler for focus areas
   const handleCategoryClick = (categorySlug: string | null) => {
@@ -476,11 +482,44 @@ const ForecastingTable = () => {
 
   // Helper to find FocusArea data by category slug for UI styling
   const getCategoryStyle = (categorySlug: string): FocusArea | undefined => {
-    return FOCUS_AREAS.find((fa) => fa.id === categorySlug);
+    // First try to find a matching focus area
+    const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
+
+    if (focusArea) {
+      return focusArea;
+    }
+
+    // If no matching focus area, create a deterministic color based on the slug
+    // This ensures the same category always gets the same color
+    const DEFAULT_COLORS = [
+      '#3B82F6', // blue-500
+      '#C084FC', // purple-400
+      '#4ADE80', // green-400
+      '#FBBF24', // amber-400
+      '#F87171', // red-400
+      '#22D3EE', // cyan-400
+      '#FB923C', // orange-400
+    ];
+
+    // Use a simple hash function to get a consistent index
+    const hashCode = categorySlug.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + (acc * 32 - acc);
+    }, 0);
+
+    const colorIndex = Math.abs(hashCode) % DEFAULT_COLORS.length;
+
+    // Return a partial focus area with the minimal required properties
+    return {
+      id: categorySlug,
+      name: '', // Will use category.name from database
+      resources: [],
+      color: DEFAULT_COLORS[colorIndex],
+      iconSvg: '', // Will use default TagIcon
+    };
   };
 
   // Show loader if either query is loading
-  if (isLoadingMarkets || isLoadingCategories) {
+  if (isLoadingMarketGroups || isLoadingCategories) {
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-theme(spacing.20))] w-full">
         <LottieLoader width={32} height={32} />
@@ -550,7 +589,7 @@ const ForecastingTable = () => {
         {/* Removed the inline loading checks here */}
         <div className="relative min-h-[300px]">
           <AnimatePresence mode="popLayout">
-            {groupedMarkets.length === 0 && (
+            {groupedMarketGroups.length === 0 && (
               <motion.div
                 key="zero-state"
                 layout
@@ -567,44 +606,39 @@ const ForecastingTable = () => {
 
             {sortedDays.map((dayKey) => (
               <motion.div
-                layout
                 key={dayKey}
-                initial={{ opacity: 0, y: 0 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 0 }}
-                transition={{ duration: 0.2, ease: 'easeInOut' }}
                 className="mb-8"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
               >
-                <h3 className="text-sm font-medium mb-4">
-                  {dayEndTimes[dayKey]
-                    ? formatEndDate(dayEndTimes[dayKey])
-                    : 'Upcoming'}
-                </h3>
-                <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
-                  {marketsByDay[dayKey].map((market) => (
-                    <motion.div
-                      layout
-                      key={market.key}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15, ease: 'easeInOut' }}
-                      className="relative cursor-pointer transition-all hover:bg-secondary/5"
-                    >
-                      <MarketGroupPreview
-                        chainId={market.chainId}
-                        marketAddress={market.marketAddress}
-                        epochs={market.epochs}
-                        color={market.color}
-                        displayQuestion={market.displayQuestion}
-                        marketData={{
-                          question: market.marketQuestion,
-                          epochs: market.epochs,
-                          placeholder: false,
-                        }}
-                      />
-                    </motion.div>
-                  ))}
+                <div className="flex flex-col mb-2">
+                  <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                    {formatEndDate(dayEndTimes[dayKey])}
+                  </h3>
+                  <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
+                    {marketGroupsByDay[dayKey].map((marketGroup) => (
+                      <motion.div
+                        layout
+                        key={marketGroup.key}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="border-b last:border-b-0 border-border"
+                      >
+                        <MarketGroupPreview
+                          marketAddress={marketGroup.marketAddress}
+                          chainId={marketGroup.chainId}
+                          displayQuestion={
+                            marketGroup.displayQuestion || 'Loading...'
+                          }
+                          color={marketGroup.color}
+                          markets={marketGroup.markets}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
                 </div>
               </motion.div>
             ))}

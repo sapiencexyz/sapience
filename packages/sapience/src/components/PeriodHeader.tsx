@@ -13,14 +13,14 @@ import { FaRegChartBar, FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 
 import { useFoil } from '~/lib/context/FoilProvider';
-import type { Market } from '~/lib/context/FoilProvider';
-import { PeriodContext } from '~/lib/context/PeriodProvider';
+import type { MarketGroup } from '~/lib/context/FoilProvider';
+import { MarketContext } from '~/lib/context/MarketProvider';
 import { tickToPrice, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
 
 import NumberDisplay from './numberDisplay';
 
-const PeriodHeader = () => {
-  const { stEthPerToken, markets } = useFoil();
+const MarketHeader = () => {
+  const { stEthPerToken, marketGroups } = useFoil();
   const {
     chain,
     address,
@@ -30,15 +30,16 @@ const PeriodHeader = () => {
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     useMarketUnits,
-  } = useContext(PeriodContext);
+  } = useContext(MarketContext);
   const { data: resources } = useResources();
 
-  const market = markets.find(
-    (market: Market) => market.address.toLowerCase() === address.toLowerCase()
+  const marketGroup = marketGroups.find(
+    (marketGroup: MarketGroup) =>
+      marketGroup.address.toLowerCase() === address.toLowerCase()
   );
 
   const resource = resources?.find(
-    (r: Resource) => r.name === market?.resource?.name
+    (r: Resource) => r.name === marketGroup?.resource?.name
   );
 
   let endTimeString = '';
@@ -160,4 +161,4 @@ const PeriodHeader = () => {
   );
 };
 
-export default PeriodHeader;
+export default MarketHeader;

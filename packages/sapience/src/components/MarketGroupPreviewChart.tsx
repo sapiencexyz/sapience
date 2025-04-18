@@ -21,12 +21,12 @@ import { useMarketCandles, type Candle } from '~/lib/hooks/useMarketGroups';
 
 // Extend the Candle type for our component
 interface ExtendedCandle extends Candle {
-  epochId: number;
+  marketId: number;
 }
 
-// Define the expected structure of an epoch in the chart
-interface ChartEpoch {
-  epochId: number;
+// Define the expected structure of a market in the chart
+interface ChartMarket {
+  marketId: number;
   chainId: number;
   marketAddress: string;
   question?: string;
@@ -34,12 +34,12 @@ interface ChartEpoch {
 }
 
 export interface MarketGroupPreviewChartProps {
-  epochs: ChartEpoch[];
+  markets: ChartMarket[];
   marketCandles?: Candle[];
   marketInfo?: {
     address: string;
     chainId: number;
-    epochId: number;
+    marketId: number;
   };
   isLoading?: boolean;
 }
@@ -83,11 +83,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 /**
  * Component that renders a Recharts line chart showing
- * the close values for each epoch's market data.
+ * the close values for each market's data.
  */
 export const MarketGroupPreviewChart: React.FC<
   MarketGroupPreviewChartProps
-> = ({ epochs, marketCandles = [], marketInfo, isLoading = false }) => {
+> = ({ markets, marketCandles = [], marketInfo, isLoading = false }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -105,7 +105,7 @@ export const MarketGroupPreviewChart: React.FC<
     marketInfo &&
     marketInfo.address &&
     marketInfo.chainId > 0 &&
-    marketInfo.epochId > 0;
+    marketInfo.marketId > 0;
 
   console.log('Direct fetch enabled:', directFetchEnabled, marketInfo);
 
@@ -113,7 +113,7 @@ export const MarketGroupPreviewChart: React.FC<
   const { data: directCandles, isLoading: isDirectLoading } = useMarketCandles({
     address: marketInfo?.address || '',
     chainId: marketInfo?.chainId || 0,
-    epochId: marketInfo?.epochId || 0,
+    marketId: marketInfo?.marketId || 0,
   });
 
   // Log the actual raw candles we're getting
@@ -126,35 +126,35 @@ export const MarketGroupPreviewChart: React.FC<
     Array.isArray(directCandles) ? directCandles.slice(0, 2) : 'Not an array'
   );
 
-  // Fetch candles for each epoch
-  const epochCandlesMap = React.useMemo(() => {
-    // If we have no epochs, return empty map
-    if (!Array.isArray(epochs) || !epochs.length) {
+  // Fetch candles for each market
+  const marketCandlesMap = React.useMemo(() => {
+    // If we have no markets, return empty map
+    if (!Array.isArray(markets) || !markets.length) {
       return new Map();
     }
 
-    // Create a map to store candles for each epoch
+    // Create a map to store candles for each market
     const candlesMap = new Map();
 
     // Process parent-provided candles if available
     if (Array.isArray(marketCandles) && marketCandles.length) {
-      // Group candles by epoch (assuming marketCandles includes epochId property)
+      // Group candles by market (assuming marketCandles includes marketId property)
       const groupedCandles = marketCandles.reduce(
         (acc, candle) => {
-          const candleWithEpoch = candle as ExtendedCandle;
-          if (!acc[candleWithEpoch.epochId]) {
-            acc[candleWithEpoch.epochId] = [];
+          const candleWithMarket = candle as ExtendedCandle;
+          if (!acc[candleWithMarket.marketId]) {
+            acc[candleWithMarket.marketId] = [];
           }
-          acc[candleWithEpoch.epochId].push(candle);
+          acc[candleWithMarket.marketId].push(candle);
           return acc;
         },
         {} as Record<number, Candle[]>
       );
 
-      // Add each epoch's candles to the map
-      epochs.forEach((epoch) => {
-        if (groupedCandles[epoch.epochId]) {
-          candlesMap.set(epoch.epochId, groupedCandles[epoch.epochId]);
+      // Add each market's candles to the map
+      markets.forEach((market) => {
+        if (groupedCandles[market.marketId]) {
+          candlesMap.set(market.marketId, groupedCandles[market.marketId]);
         }
       });
     } else if (
@@ -162,23 +162,23 @@ export const MarketGroupPreviewChart: React.FC<
       Array.isArray(directCandles) &&
       directCandles.length &&
       marketInfo &&
-      marketInfo.epochId
+      marketInfo.marketId
     ) {
-      // If using direct fetch, we only have data for one epoch
-      // So add it to the current marketInfo epoch
-      candlesMap.set(marketInfo.epochId, directCandles);
+      // If using direct fetch, we only have data for one market
+      // So add it to the current marketInfo market
+      candlesMap.set(marketInfo.marketId, directCandles);
     }
 
     return candlesMap;
-  }, [epochs, marketCandles, directCandles, directFetchEnabled, marketInfo]);
+  }, [markets, marketCandles, directCandles, directFetchEnabled, marketInfo]);
 
   // Format and merge candle data for chart display
   const chartData = React.useMemo(() => {
-    // If we have epoch candles, transform them for the chart
-    if (epochCandlesMap.size > 0) {
-      // Find all unique timestamps across all epochs' candles
+    // If we have market candles, transform them for the chart
+    if (marketCandlesMap.size > 0) {
+      // Find all unique timestamps across all markets' candles
       const allTimestamps = new Set<number>();
-      epochCandlesMap.forEach((candles) => {
+      marketCandlesMap.forEach((candles) => {
         candles.forEach((candle: Candle) => {
           allTimestamps.add(candle.timestamp);
         });
@@ -187,21 +187,21 @@ export const MarketGroupPreviewChart: React.FC<
       // Sort timestamps for proper chart rendering
       const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
 
-      // Create a data point for each timestamp with prices from all epochs
+      // Create a data point for each timestamp with prices from all markets
       return sortedTimestamps.map((timestamp) => {
         // Start with the timestamp
         const dataPoint: { timestamp: number; [key: string]: number | string } =
           { timestamp };
 
-        // Add each epoch's price for this timestamp if available
-        epochs.forEach((epoch) => {
-          const epochCandles = epochCandlesMap.get(epoch.epochId);
-          if (epochCandles) {
-            const candle = epochCandles.find(
+        // Add each market's price for this timestamp if available
+        markets.forEach((market) => {
+          const marketCandles = marketCandlesMap.get(market.marketId);
+          if (marketCandles) {
+            const candle = marketCandles.find(
               (c: Candle) => c.timestamp === timestamp
             );
-            const epochKey = `price_${epoch.epochId}`;
-            dataPoint[epochKey] = candle ? parseFloat(candle.close) : NaN;
+            const marketKey = `price_${market.marketId}`;
+            dataPoint[marketKey] = candle ? parseFloat(candle.close) : NaN;
           }
         });
 
@@ -212,12 +212,12 @@ export const MarketGroupPreviewChart: React.FC<
     // Return empty array if no data available
     console.log('No chart data available');
     return [];
-  }, [epochCandlesMap, epochs]);
+  }, [marketCandlesMap, markets]);
 
   console.log('Chart data prepared:', {
     length: chartData.length,
     sampleData: chartData.slice(0, 3),
-    epochs: epochs.map((e) => e.epochId),
+    markets: markets.map((m) => m.marketId),
   });
 
   // Determine loading state
@@ -239,11 +239,11 @@ export const MarketGroupPreviewChart: React.FC<
         margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
       >
         <defs>
-          {/* Generate gradients for each epoch */}
-          {epochs.map((epoch, index) => (
+          {/* Generate gradients for each market */}
+          {markets.map((market, index) => (
             <linearGradient
-              key={`gradient-${epoch.epochId}`}
-              id={`color-${epoch.epochId}`}
+              key={`gradient-${market.marketId}`}
+              id={`color-${market.marketId}`}
               x1="0"
               y1="0"
               x2="0"
@@ -280,26 +280,26 @@ export const MarketGroupPreviewChart: React.FC<
 
         <Tooltip content={<CustomTooltip />} />
 
-        {/* Render a line for each epoch */}
-        {epochs.map((epoch, index) => (
-          <React.Fragment key={`epoch-${epoch.epochId}`}>
+        {/* Render a line for each market */}
+        {markets.map((market, index) => (
+          <React.Fragment key={`market-${market.marketId}`}>
             <Area
               type="monotone"
-              dataKey={`price_${epoch.epochId}`}
+              dataKey={`price_${market.marketId}`}
               stroke="none"
-              fill={`url(#color-${epoch.epochId})`}
+              fill={`url(#color-${market.marketId})`}
               activeDot={false}
               fillOpacity={1}
-              name={`Epoch ${epoch.epochId}`}
+              name={`Market ${market.marketId}`}
             />
             <Line
               type="monotone"
-              dataKey={`price_${epoch.epochId}`}
+              dataKey={`price_${market.marketId}`}
               stroke={CHART_COLORS[index % CHART_COLORS.length]}
               dot={false}
               activeDot={{ r: 4, strokeWidth: 1 }}
               strokeWidth={2}
-              name={epoch.question || `Epoch ${epoch.epochId}`}
+              name={market.question || `Market ${market.marketId}`}
               className="font-heading font-normal text-3xl"
               connectNulls
             />

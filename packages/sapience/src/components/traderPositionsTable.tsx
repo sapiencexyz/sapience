@@ -38,8 +38,8 @@ import { useState, useMemo, useContext } from 'react';
 import { useReadContract } from 'wagmi';
 
 import { useFoil } from '../lib/context/FoilProvider';
-import type { PeriodContextType } from '~/lib/context/PeriodProvider';
-import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { MarketContext } from '~/lib/context/MarketProvider';
+import type { MarketContextType } from '~/lib/context/MarketProvider';
 import { foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
@@ -99,14 +99,14 @@ const POSITIONS_QUERY = `
 
 interface Props {
   walletAddress: string | null;
-  periodContext: PeriodContextType;
+  marketContext: MarketContextType;
 }
 
 const usePositions = (
   walletAddress: string | null,
-  periodContext: PeriodContextType
+  marketContext: MarketContextType
 ) => {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketAddress, epoch } = marketContext;
 
   return useQuery({
     queryKey: ['positions', walletAddress, chainId, marketAddress, epoch],
@@ -212,7 +212,7 @@ const PnLHeaderCell = () => (
 
 const TraderPositionsTable: React.FC<Props> = ({
   walletAddress,
-  periodContext,
+  marketContext,
 }) => {
   const [sorting, setSorting] = useState<SortingState>([
     {
@@ -229,11 +229,11 @@ const TraderPositionsTable: React.FC<Props> = ({
     data: positions,
     error,
     isLoading,
-  } = usePositions(walletAddress, periodContext);
+  } = usePositions(walletAddress, marketContext);
   const { data: resources } = useResources();
 
   const { stEthPerToken } = useFoil();
-  const { unitDisplay, valueDisplay } = useContext(PeriodContext);
+  const { unitDisplay, valueDisplay } = useContext(MarketContext);
 
   const calculateEntryPrice = (position: any) => {
     let entryPrice = 0;
@@ -306,11 +306,11 @@ const TraderPositionsTable: React.FC<Props> = ({
       <div className="flex items-center gap-1">
         <NumberDisplay
           value={
-            parseFloat(value) / 10 ** periodContext.collateralAssetDecimals
+            parseFloat(value) / 10 ** marketContext.collateralAssetDecimals
           }
         />
         <span className="text-muted-foreground text-sm">
-          {periodContext.collateralAssetTicker}
+          {marketContext.collateralAssetTicker}
         </span>
       </div>
     );
@@ -368,10 +368,10 @@ const TraderPositionsTable: React.FC<Props> = ({
     return (
       <PnLCell
         positionId={row.positionId}
-        chainId={periodContext.chainId}
-        address={periodContext.address}
-        collateralAssetDecimals={periodContext.collateralAssetDecimals}
-        collateralAssetTicker={periodContext.collateralAssetTicker}
+        chainId={marketContext.chainId}
+        address={marketContext.address}
+        collateralAssetDecimals={marketContext.collateralAssetDecimals}
+        collateralAssetTicker={marketContext.collateralAssetTicker}
       />
     );
   };
@@ -453,7 +453,7 @@ const TraderPositionsTable: React.FC<Props> = ({
         enableSorting: false,
       },
     ],
-    [periodContext, calculateEntryPrice]
+    [marketContext, calculateEntryPrice]
   );
 
   const table = useReactTable({

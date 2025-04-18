@@ -13,7 +13,7 @@ import {
 export interface MarketGroupPreviewProps {
   chainId: number;
   marketAddress: string;
-  epochs: any[]; // Consider using EpochWithMarketInfo[] from MarketGroupsList if exported
+  markets: any[]; // Consider using MarketWithMarketInfo[] from MarketGroupsList if exported
   color: string;
   displayQuestion?: string; // Optional provided question
   marketData?: any; // Add optional market data for calculating the question
@@ -22,7 +22,7 @@ export interface MarketGroupPreviewProps {
 export const MarketGroupPreview = ({
   chainId,
   marketAddress,
-  epochs,
+  markets,
   color,
   displayQuestion: providedDisplayQuestion,
   marketData,
@@ -36,17 +36,17 @@ export const MarketGroupPreview = ({
   // Calculate display question - prioritize market data calculation
   const finalDisplayQuestion = React.useMemo(() => {
     if (marketData) {
-      // Find active epochs if market data is available
-      const activeEpochs = findActiveMarkets(marketData);
+      // Find active markets if market data is available
+      const activeMarkets = findActiveMarkets(marketData);
       // Use shared logic to determine question
-      return getDisplayQuestion(marketData, activeEpochs, false);
+      return getDisplayQuestion(marketData, activeMarkets, false);
     }
     // Fallback to provided display question
     return providedDisplayQuestion || 'Market question not available';
   }, [marketData, providedDisplayQuestion]);
 
-  // Early return if no epochs
-  if (!epochs || epochs.length === 0) {
+  // Early return if no markets
+  if (!markets || markets.length === 0) {
     return null;
   }
 

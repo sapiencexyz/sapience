@@ -30,6 +30,9 @@ const GET_CATEGORIES = gql`
       id
       name
       slug
+      marketGroups {
+        id
+      }
     }
   }
 `;
@@ -76,9 +79,9 @@ export const useCategories = () => {
   });
 };
 
-export interface Epoch {
+export interface Market {
   id: number;
-  epochId: number;
+  marketId: number;
   startTimestamp: number;
   endTimestamp: number;
   settled: boolean;
@@ -93,7 +96,7 @@ export interface Epoch {
   marketCandles: any[];
 }
 
-export interface Market {
+export interface MarketGroup {
   id: number;
   address: string;
   chainId: number;
@@ -101,11 +104,11 @@ export interface Market {
   isYin: boolean;
   collateralAsset: string;
   question?: string | null;
-  epochs: Epoch[];
+  markets: Market[];
 }
 
 // Define the new EnrichedMarket type
-export interface EnrichedMarket extends Market {
+export interface EnrichedMarketGroup extends MarketGroup {
   category: Category;
 }
 
@@ -118,11 +121,11 @@ export interface Candle {
 }
 
 const LATEST_INDEX_PRICE_QUERY = gql`
-  query GetLatestIndexPrice($address: String!, $chainId: Int!, $epochId: String!) {
+  query GetLatestIndexPrice($address: String!, $chainId: Int!, $marketId: String!) {
     indexCandles(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       from: ${Math.floor(Date.now() / 1000) - 300}  # Last 5 minutes
       to: ${Math.floor(Date.now() / 1000)}
       interval: 60  # 1 minute intervals
@@ -135,7 +138,7 @@ const LATEST_INDEX_PRICE_QUERY = gql`
 
 const MARKETS_QUERY = gql`
   query GetMarkets {
-    markets {
+    marketGroups {
       id
       address
       chainId
@@ -148,9 +151,9 @@ const MARKETS_QUERY = gql`
         name
         slug
       }
-      epochs {
+      markets {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
         settled
@@ -165,7 +168,7 @@ const MARKET_CANDLES_QUERY = gql`
   query GetMarketCandles(
     $address: String!
     $chainId: Int!
-    $epochId: String!
+    $marketId: String!
     $from: Int!
     $to: Int!
     $interval: Int!
@@ -173,7 +176,7 @@ const MARKET_CANDLES_QUERY = gql`
     marketCandles(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       from: $from
       to: $to
       interval: $interval
@@ -191,18 +194,18 @@ const TOTAL_VOLUME_QUERY = gql`
   query GetTotalVolume(
     $marketAddress: String!
     $chainId: Int!
-    $epochId: Int!
+    $marketId: Int!
   ) {
-    totalVolumeByEpoch(
+    totalVolumeByMarket(
       marketAddress: $marketAddress
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
     )
   }
 `;
 
 // Define an interface for the market data structure returned by MARKETS_QUERY
-interface MarketApiResponse {
+interface MarketGroupApiResponse {
   id: number;
   address: string;
   chainId: number;
@@ -211,14 +214,14 @@ interface MarketApiResponse {
   collateralAsset: string;
   question?: string | null;
   category: Category | null; // Allow null based on schema possibility
-  epochs: Epoch[];
+  markets: Market[];
 }
 
 // Rename the hook to reflect its output
-export const useEnrichedMarkets = () => {
-  // Update the return type to use EnrichedMarket[]
-  return useQuery<EnrichedMarket[]>({
-    queryKey: ['enrichedMarkets'], // Changed queryKey
+export const useEnrichedMarketGroups = () => {
+  // Update the return type to use EnrichedMarketGroup[]
+  return useQuery<EnrichedMarketGroup[]>({
+    queryKey: ['enrichedMarketGroups'], // Changed queryKey
     queryFn: async () => {
       // Create a lookup map for focus areas using their ID (which matches category slug)
       const focusAreaMap = new Map<
@@ -237,53 +240,55 @@ export const useEnrichedMarkets = () => {
         query: print(MARKETS_QUERY), // Use the new MARKETS_QUERY
       });
 
-      // Check if data and data.markets exist
-      if (!data || !data.markets) {
+      // Check if data and data.marketGroups exist
+      if (!data || !data.marketGroups) {
         console.error(
-          '[useEnrichedMarkets] No markets data received from API or data structure invalid.'
+          '[useEnrichedMarketGroups] No market groups data received from API or data structure invalid.'
         );
         return []; // Return empty array or handle error as appropriate
       }
 
-      // Process the flat list of markets directly
-      const mappedMarkets = data.markets.map((market: MarketApiResponse) => {
-        // Apply the type here
+      // Process the flat list of market groups directly
+      const mappedMarketGroups = data.marketGroups.map(
+        (marketGroup: MarketGroupApiResponse) => {
+          // Apply the type here
 
-        let categoryInfo: Category; // Use the updated Category type
+          let categoryInfo: Category; // Use the updated Category type
 
-        // Ensure category exists and enrich it with focus area data
-        if (market.category) {
-          const focusAreaData = focusAreaMap.get(market.category.slug); // Match category slug with focus area id
-          categoryInfo = {
-            id: market.category.id,
-            // Use focus area name if available, otherwise use the category name from the database
-            name: focusAreaData?.name || market.category.name,
-            slug: market.category.slug,
-            // Use focus area data if found, otherwise fallback to default
-            iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
-            color: focusAreaData?.color || DEFAULT_FOCUS_AREA.color,
-          };
-        } else {
-          // Provide default category including default focus area data
-          categoryInfo = {
-            id: 'unknown',
-            name: 'Unknown',
-            slug: 'unknown',
-            iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
-            color: DEFAULT_FOCUS_AREA.color,
+          // Ensure category exists and enrich it with focus area data
+          if (marketGroup.category) {
+            const focusAreaData = focusAreaMap.get(marketGroup.category.slug); // Match category slug with focus area id
+            categoryInfo = {
+              id: marketGroup.category.id,
+              // Use focus area name if available, otherwise use the category name from the database
+              name: focusAreaData?.name || marketGroup.category.name,
+              slug: marketGroup.category.slug,
+              // Use focus area data if found, otherwise fallback to default
+              iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
+              color: focusAreaData?.color || DEFAULT_FOCUS_AREA.color,
+            };
+          } else {
+            // Provide default category including default focus area data
+            categoryInfo = {
+              id: 'unknown',
+              name: 'Unknown',
+              slug: 'unknown',
+              iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
+              color: DEFAULT_FOCUS_AREA.color,
+            };
+          }
+
+          return {
+            ...marketGroup, // Spread original market group fields (id, address, chainId, etc.)
+            category: categoryInfo, // Use fetched or default category
           };
         }
+      );
 
-        return {
-          ...market, // Spread original market fields (id, address, chainId, etc.)
-          category: categoryInfo, // Use fetched or default category
-        };
-      });
+      // Rename mappedMarketGroups to enrichedMarketGroups as the filtering step is removed
+      const enrichedMarketGroups: EnrichedMarketGroup[] = mappedMarketGroups;
 
-      // Rename mappedMarkets to enrichedMarkets as the filtering step is removed
-      const enrichedMarkets: EnrichedMarket[] = mappedMarkets;
-
-      return enrichedMarkets;
+      return enrichedMarketGroups;
     },
   });
 };
@@ -291,16 +296,16 @@ export const useEnrichedMarkets = () => {
 export const useLatestIndexPrice = (market: {
   address: string;
   chainId: number;
-  epochId: number;
+  marketId: number;
 }) => {
   return useQuery({
     queryKey: [
       'indexPrice',
       `${market.chainId}:${market.address}`,
-      market.epochId,
+      market.marketId,
     ],
     queryFn: async () => {
-      if (!market.address || !market.chainId || market.epochId === 0) {
+      if (!market.address || !market.chainId || market.marketId === 0) {
         return { timestamp: null, value: null };
       }
 
@@ -310,7 +315,7 @@ export const useLatestIndexPrice = (market: {
           variables: {
             address: market.address,
             chainId: market.chainId,
-            epochId: market.epochId.toString(),
+            marketId: market.marketId.toString(),
             from: Math.floor(Date.now() / 1000) - 300,
             to: Math.floor(Date.now() / 1000),
             interval: 60,
@@ -342,14 +347,14 @@ export const useLatestIndexPrice = (market: {
       }
     },
     refetchInterval: 12000,
-    enabled: !!market.address && !!market.chainId && market.epochId !== 0,
+    enabled: !!market.address && !!market.chainId && market.marketId !== 0,
   });
 };
 
 export const useMarketCandles = (market: {
   address: string;
   chainId: number;
-  epochId: number;
+  marketId: number;
 }) => {
   const now = Math.floor(Date.now() / 1000);
   const from = now - 7 * 24 * 60 * 60;
@@ -363,10 +368,10 @@ export const useMarketCandles = (market: {
     queryKey: [
       'marketCandles',
       `${market.chainId}:${market.address}`,
-      market.epochId,
+      market.marketId,
     ],
     queryFn: async () => {
-      if (!market.address || !market.chainId || market.epochId === 0) {
+      if (!market.address || !market.chainId || market.marketId === 0) {
         console.log('useMarketCandles early return - invalid params:', market);
         return null;
       }
@@ -375,7 +380,7 @@ export const useMarketCandles = (market: {
         console.log('Fetching market candles for:', {
           address: market.address,
           chainId: market.chainId,
-          epochId: market.epochId,
+          marketId: market.marketId,
           from,
           to,
           interval,
@@ -386,7 +391,7 @@ export const useMarketCandles = (market: {
           variables: {
             address: market.address,
             chainId: market.chainId,
-            epochId: market.epochId.toString(),
+            marketId: market.marketId.toString(),
             from,
             to,
             interval,
@@ -404,7 +409,7 @@ export const useMarketCandles = (market: {
         return null;
       }
     },
-    enabled: !!market.address && !!market.chainId && market.epochId !== 0,
+    enabled: !!market.address && !!market.chainId && market.marketId !== 0,
     refetchInterval: 60000,
   });
 };
@@ -412,16 +417,16 @@ export const useMarketCandles = (market: {
 export const useTotalVolume = (market: {
   address: string;
   chainId: number;
-  epochId: number;
+  marketId: number;
 }) => {
   return useQuery<number | null>({
     queryKey: [
       'totalVolume',
       `${market.chainId}:${market.address}`,
-      market.epochId,
+      market.marketId,
     ],
     queryFn: async () => {
-      if (!market.address || !market.chainId || market.epochId === 0) {
+      if (!market.address || !market.chainId || market.marketId === 0) {
         return null;
       }
 
@@ -431,16 +436,16 @@ export const useTotalVolume = (market: {
           variables: {
             marketAddress: market.address,
             chainId: market.chainId,
-            epochId: market.epochId,
+            marketId: market.marketId,
           },
         });
-        return data.totalVolumeByEpoch;
+        return data.totalVolumeByMarket;
       } catch (error) {
         console.error('Error fetching total volume:', error);
         return null;
       }
     },
-    enabled: !!market.address && !!market.chainId && market.epochId !== 0,
+    enabled: !!market.address && !!market.chainId && market.marketId !== 0,
     refetchInterval: 60000,
   });
 };
