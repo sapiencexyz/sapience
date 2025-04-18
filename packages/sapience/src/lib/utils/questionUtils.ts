@@ -1,5 +1,5 @@
 /**
- * Utility functions for handling market and epoch questions
+ * Utility functions for handling market group and market questions
  */
 
 /**
@@ -29,11 +29,11 @@ export const formatQuestion = (
 };
 
 /**
- * Determines which question to display based on active epochs and market data
+ * Determines which question to display based on active markets and market group data
  */
 export const getDisplayQuestion = (
   marketData: any, // Consider defining a more specific type if possible
-  activeEpochs: any[], // Array of active epochs
+  activeMarkets: any[], // Array of active markets
   isLoading: boolean,
   defaultLoadingMessage: string = '', // Default loading message - empty string or custom message
   defaultErrorMessage: string = 'This market question is not available' // Default error message
@@ -52,29 +52,29 @@ export const getDisplayQuestion = (
     return defaultErrorMessage;
   }
 
-  // If multiple epochs are active, use the market question
-  if (activeEpochs.length > 1 && marketData?.question) {
+  // If multiple markets are active, use the market group question
+  if (activeMarkets.length > 1 && marketData?.question) {
     return formatOrDefault(marketData.question);
   }
 
-  // If exactly one epoch is active, use that epoch's question if available
-  if (activeEpochs.length === 1 && activeEpochs[0]?.question) {
-    return formatOrDefault(activeEpochs[0].question);
+  // If exactly one market is active, use that market's question if available
+  if (activeMarkets.length === 1 && activeMarkets[0]?.question) {
+    return formatOrDefault(activeMarkets[0].question);
   }
 
-  // Fallbacks if no active epochs or they don't have questions:
-  // Use market question if available
+  // Fallbacks if no active markets or they don't have questions:
+  // Use market group question if available
   if (marketData?.question) {
     return formatOrDefault(marketData.question);
   }
 
-  // Fallback to first epoch with a question
-  if (Array.isArray(marketData.epochs) && marketData.epochs.length > 0) {
-    const epochWithQuestion = marketData.epochs.find(
-      (epoch: { question?: string }) => epoch.question
+  // Fallback to first market with a question
+  if (Array.isArray(marketData.markets) && marketData.markets.length > 0) {
+    const marketWithQuestion = marketData.markets.find(
+      (market: { question?: string }) => market.question
     );
-    if (epochWithQuestion?.question) {
-      return formatOrDefault(epochWithQuestion.question);
+    if (marketWithQuestion?.question) {
+      return formatOrDefault(marketWithQuestion.question);
     }
   }
 
@@ -83,7 +83,7 @@ export const getDisplayQuestion = (
 };
 
 /**
- * Finds active epochs for a market based on current timestamp
+ * Finds active markets for a market group based on current timestamp
  */
 export const findActiveMarkets = (marketData: any): any[] => {
   if (
