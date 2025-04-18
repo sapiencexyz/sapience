@@ -17,20 +17,9 @@ import { positionHasBalance } from '~/lib/utils/util';
 import PositionDisplay from './PositionDisplay';
 
 const PositionSelector: React.FC = () => {
-  const { nftId, positions, setNftId } = useAddEditPosition();
+  const { nftId, processedPositions, setNftId } = useAddEditPosition();
   const [isOpen, setIsOpen] = useState(false);
   const { chainId, address: marketAddress } = useContext(PeriodContext);
-
-  const allPositions = [
-    ...(positions?.liquidityPositions?.map((pos) => ({
-      ...pos,
-      type: 'lp' as const,
-    })) || []),
-    ...(positions?.tradePositions?.map((pos) => ({
-      ...pos,
-      type: 'trade' as const,
-    })) || []),
-  ];
 
   const handlePositionSelect = (selectedNftId: number) => {
     setNftId(selectedNftId);
@@ -40,11 +29,10 @@ const PositionSelector: React.FC = () => {
   const getPositionUrl = (position: {
     type: 'lp' | 'trade';
     id: bigint;
-    marketId: bigint;
+    marketID: string;
   }) => {
     const positionType = position.type === 'lp' ? 'pool' : 'trade';
-
-    return `/markets/${chainId}:${marketAddress}/periods/${position.marketId.toString()}/${positionType}?positionId=${position.id.toString()}`;
+    return `/markets/${chainId}:${marketAddress}/periods/${position.marketID}/${positionType}?positionId=${position.id.toString()}`;
   };
 
   return (
@@ -69,7 +57,7 @@ const PositionSelector: React.FC = () => {
             <DialogTitle>Select Position</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col space-y-2">
-            {[...allPositions]
+            {[...processedPositions]
               .sort((a, b) => {
                 const aHasBalance = positionHasBalance(a);
                 const bHasBalance = positionHasBalance(b);
