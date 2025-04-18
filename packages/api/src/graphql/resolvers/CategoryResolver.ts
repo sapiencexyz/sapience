@@ -11,13 +11,17 @@ export class CategoryResolver {
   async categories(): Promise<CategoryType[]> {
     try {
       const categories = await dataSource.getRepository(Category).find({
-        relations: ['markets', 'markets.epochs', 'markets.resource'],
+        relations: [
+          'marketGroups',
+          'marketGroups.markets',
+          'marketGroups.resource',
+        ],
       });
       return categories.map((category) => ({
         id: category.id,
         name: category.name,
         slug: category.slug,
-        marketGroups: category.marketGroups.map(mapMarketGroupToType),
+        marketGroups: category.marketGroups?.map(mapMarketGroupToType) || [],
       }));
     } catch (error) {
       console.error('Error fetching categories:', error);
