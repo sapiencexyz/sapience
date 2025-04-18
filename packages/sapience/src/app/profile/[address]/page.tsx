@@ -10,43 +10,15 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
-import { useToast } from '@foil/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { blo } from 'blo';
 import { print } from 'graphql';
-import { Copy } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
 
+import { AddressDisplay } from '~/components/address-display';
 import LottieLoader from '~/components/LottieLoader';
 import NumberDisplay from '~/components/numberDisplay';
 import { foilApi } from '~/lib/utils/util';
-
-// Create a public client for ENS resolution
-const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http(),
-});
-
-// Hook to fetch ENS name
-const useEnsName = (address: string) => {
-  return useQuery({
-    queryKey: ['ensName', address],
-    queryFn: async () => {
-      try {
-        if (!address) return null;
-        return await publicClient.getEnsName({
-          address: address as `0x${string}`,
-        });
-      } catch (error) {
-        console.error('Error fetching ENS name:', error);
-        return null;
-      }
-    },
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
-  });
-};
 
 // GraphQL query to fetch positions by owner address
 const POSITIONS_QUERY = gql`
@@ -97,8 +69,6 @@ const POSITIONS_QUERY = gql`
 export default function PortfolioPage() {
   const params = useParams();
   const address = (params.address as string).toLowerCase();
-  const { toast } = useToast();
-  const { data: ensName } = useEnsName(address);
 
   const {
     data: positions,
@@ -124,15 +94,6 @@ export default function PortfolioPage() {
     staleTime: 30000, // 30 seconds
   });
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(address);
-    toast({
-      title: 'Copied to clipboard',
-      description: 'Address copied successfully',
-      duration: 2000,
-    });
-  };
-
   if (isLoading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center">
@@ -152,9 +113,6 @@ export default function PortfolioPage() {
     );
   }
 
-  const truncatedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
-  const displayName = ensName || truncatedAddress;
-
   return (
     <div className="container max-w-6xl mx-auto py-32 px-4">
       <div className="mb-8 flex flex-row items-center gap-4">
@@ -167,16 +125,12 @@ export default function PortfolioPage() {
           <p className="text-muted-foreground block mb-1">
             Ethereum Account Address
           </p>
-          <div className="flex items-center gap-2">
-            <p className="font-mono text-2xl">{displayName}</p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleCopy}
-            >
-              <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            </Button>
+          <div className="scale-125 origin-left">
+            <AddressDisplay
+              address={address}
+              disableProfileLink
+              className="text-xl"
+            />
           </div>
         </div>
       </div>

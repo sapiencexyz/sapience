@@ -52,10 +52,17 @@ export const MarketGroupPreview = ({
 
   return (
     <Link href={`/forecasting/${chainShortName}:${marketAddress}`}>
-      <div className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0 dark:bg-muted/50">
-        <div className="h-1.5" style={{ backgroundColor: color }} />
-        <div className="px-6 py-4">
-          <h3 className="text-3xl font-heading font-normal">
+      <div className="bg-background border-b border-muted dark:bg-muted/50 flex hover:bg-secondary/10 transition-colors">
+        <div
+          className="w-1 min-w-[4px] max-w-[4px] -translate-y-[1px]"
+          style={{
+            backgroundColor: color,
+            margin: '-1px 0',
+            alignSelf: 'stretch',
+          }}
+        />
+        <div className="px-4 py-3">
+          <h3 className="text-xl font-heading font-normal">
             {finalDisplayQuestion}
           </h3>
         </div>

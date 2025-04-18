@@ -10,6 +10,7 @@ import { ExternalLink, Menu } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAccount } from 'wagmi';
 
 import ConnectButton from '../ConnectButton';
 import ModeToggle from '../ModeToggle';
@@ -115,6 +116,7 @@ const NavLinks = ({
 
 const Header = () => {
   const pathname = usePathname();
+  const { address, isConnected } = useAccount();
 
   return (
     <>
@@ -153,6 +155,11 @@ const Header = () => {
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
             <ConnectButton />
+            {isConnected && address && (
+              <Link href={`/profile/${address}`} passHref>
+                <Button className="rounded-full px-8">Your Profile</Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
