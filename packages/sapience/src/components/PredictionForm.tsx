@@ -35,10 +35,14 @@ const SCHEMA_UID =
 interface PredictionMarketType {
   optionNames?: string[] | null;
   baseTokenName?: string | null;
+  quoteTokenName?: string | null;
   epochs?: {
-    epochId: string;
-    startTime?: string | null; // Unix timestamp (seconds) as string from GQL
-    endTime?: string | null;   // Unix timestamp (seconds) as string from GQL
+    id?: string;
+    epochId: string | number;
+    question?: string;
+    startTimestamp?: number | string | null;
+    endTimestamp?: number | string | null;
+    settled?: boolean;
   }[];
   address?: string;
   chainId?: number;
@@ -102,79 +106,111 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   const { address } = useAccount();
 
   // --- New logic to determine input type based on active markets ---
-  const { inputType, activeOptionNames, activeBaseTokenName, displayEpochId } = useMemo((): {
-    inputType: InputType; // Explicitly use InputType here
-    activeOptionNames: string[] | null | undefined;
-    activeBaseTokenName: string | null | undefined;
-    displayEpochId: string | null;
-   } => {
-    if (!marketData?.epochs || !marketData.epochs.length) {
-      // No epochs, cannot determine input type
-      return { inputType: null, activeOptionNames: null, activeBaseTokenName: null, displayEpochId: null };
-    }
-
-    const now = Math.floor(Date.now() / 1000); // Current time in seconds
-
-    const activeEpochs = marketData.epochs.filter((epoch) => {
-      // Ensure startTime and endTime are valid numbers
-      const start = epoch.startTime ? parseInt(epoch.startTime, 10) : null;
-      const end = epoch.endTime ? parseInt(epoch.endTime, 10) : null;
-
-      if (start === null || isNaN(start) || end === null || isNaN(end)) {
-        console.warn(`Epoch ${epoch.epochId} has invalid or missing timestamps`);
-        return false; // Skip epochs with invalid/missing times
-      }
-      return now >= start && now < end;
-    });
-
-    // Determine the display epoch (prioritize currentEpochId if valid & active)
-    const activeEpochIds = activeEpochs.map(e => e.epochId);
-    let currentDisplayEpochId = null;
-    if (currentEpochId && activeEpochIds.includes(currentEpochId)) {
-      currentDisplayEpochId = currentEpochId;
-    } else if (activeEpochs.length > 0) {
-      // Fallback to the first active epoch if currentEpochId is not active or not provided
-      currentDisplayEpochId = activeEpochs[0].epochId;
-    }
-
-    if (activeEpochs.length > 1) {
-      // Multiple active epochs: Use optionNames from the market group
-      return {
-        inputType: 'options',
-        activeOptionNames: marketData.optionNames,
-        activeBaseTokenName: null,
-        displayEpochId: currentDisplayEpochId // May need refinement based on selection
-      };
-    } else if (activeEpochs.length === 1) {
-      // Single active epoch: Check bounds
-      const isYesNoRange = marketData.lowerBound === "-92200" && marketData.upperBound === "0";
-      if (isYesNoRange) {
+  const { inputType, activeOptionNames, unitDisplay, displayEpochId } =
+    useMemo((): {
+      inputType: InputType;
+      activeOptionNames: string[] | null | undefined;
+      unitDisplay: string | null;
+      displayEpochId: string | number | null;
+    } => {
+      if (!marketData?.epochs || !marketData.epochs.length) {
+        // No epochs, cannot determine input type
+        console.log('PredictionForm: inputType is null because marketData has no epochs or is missing.', marketData);
         return {
-          inputType: 'yesno',
+          inputType: null,
           activeOptionNames: null,
-          activeBaseTokenName: 'Yes/No', // Placeholder, not displayed directly in Input
-          displayEpochId: currentDisplayEpochId
+          unitDisplay: null,
+          displayEpochId: null,
         };
-      } else {
-        // Numerical input
+      }
+
+      const now = Math.floor(Date.now() / 1000); // Current time in seconds
+
+      console.log('PredictionForm: Raw marketData.epochs:', marketData.epochs);
+
+      const activeEpochs = marketData.epochs.filter((epoch) => {
+        // Ensure startTime and endTime are valid numbers
+        // Use the correct property names from the GraphQL response
+        const start = epoch.startTimestamp ? parseInt(String(epoch.startTimestamp), 10) : null;
+        const end = epoch.endTimestamp ? parseInt(String(epoch.endTimestamp), 10) : null;
+
+        if (start === null || isNaN(start) || end === null || isNaN(end)) {
+          console.warn(
+            `Epoch ${epoch.epochId} has invalid or missing timestamps`
+          );
+          return false; // Skip epochs with invalid/missing times
+        }
+        return now >= start && now < end;
+      });
+
+      console.log('PredictionForm: Filtered active epochs:', activeEpochs);
+
+      // Determine the display epoch (prioritize currentEpochId if valid & active)
+      const activeEpochIds = activeEpochs.map((e) => e.epochId);
+      let currentDisplayEpochId = null;
+      if (currentEpochId && activeEpochIds.includes(currentEpochId)) {
+        currentDisplayEpochId = currentEpochId;
+      } else if (activeEpochs.length > 0) {
+        // Fallback to the first active epoch if currentEpochId is not active or not provided
+        currentDisplayEpochId = activeEpochs[0].epochId;
+      }
+
+      if (activeEpochs.length > 1) {
+        // Multiple active epochs: Use optionNames from the market group
+        return {
+          inputType: 'options',
+          activeOptionNames: marketData.optionNames,
+          unitDisplay: null,
+          displayEpochId: currentDisplayEpochId,
+        };
+      }
+      if (activeEpochs.length === 1) {
+        // Single active epoch: Check bounds
+        const isYesNoRange =
+          marketData.lowerBound === '-92200' && marketData.upperBound === '0';
+        if (isYesNoRange) {
+          return {
+            inputType: 'yesno',
+            activeOptionNames: null,
+            unitDisplay: null,
+            displayEpochId: currentDisplayEpochId,
+          };
+        }
+        // Numerical input - construct unit display string
+        const base = marketData.baseTokenName;
+        const quote = marketData.quoteTokenName;
+        let displayString = base || 'units'; // Default to base or 'units'
+        if (base && quote) {
+          displayString = `${quote} / ${base}`;
+        } else if (quote) {
+          displayString = quote; // Fallback if only quote exists
+        }
+
         return {
           inputType: 'number',
           activeOptionNames: null,
-          activeBaseTokenName: marketData.baseTokenName,
-          displayEpochId: currentDisplayEpochId
+          unitDisplay: displayString,
+          displayEpochId: currentDisplayEpochId,
         };
       }
-    } else {
       // No active epochs
       return {
         inputType: null,
         activeOptionNames: null,
-        activeBaseTokenName: null,
-        displayEpochId: null
+        unitDisplay: null,
+        displayEpochId: null,
       };
-    }
-  }, [marketData, currentEpochId]);
+    }, [marketData, currentEpochId]);
   // --- End of new logic ---
+
+  // Add debugging information
+  console.log('PredictionForm calculated values:', {
+    inputType,
+    activeOptionNames,
+    unitDisplay,
+    displayEpochId,
+    marketData
+  });
 
   // State for attestation status
   const [attestationError, setAttestationError] = useState<string | null>(null);
@@ -542,7 +578,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         // Encode the schema data
         const encodedData = encodeSchemaData(
           marketData.address,
-          currentEpochId || '0',
+          String(displayEpochId || '0'), // Convert epoch ID to string
           submissionValue
         );
 
@@ -639,11 +675,12 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
             <div className="space-y-6">
               <div className="mt-1">
                 <PredictionInput
-                  market={{ 
-                    optionNames: inputType === 'options' ? activeOptionNames : null,
-                    baseTokenName: inputType === 'number' ? activeBaseTokenName : null,
+                  market={{
+                    optionNames:
+                      inputType === 'options' ? activeOptionNames : null,
                   }}
                   inputType={inputType}
+                  unitDisplay={unitDisplay}
                   value={formData.predictionValue}
                   onChange={handlePredictionChange}
                   activeButtonStyle={activeButtonStyle}
@@ -692,11 +729,12 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
             <div className="space-y-6">
               <div className="mt-1">
                 <PredictionInput
-                  market={{ 
-                    optionNames: inputType === 'options' ? activeOptionNames : null,
-                    baseTokenName: inputType === 'number' ? activeBaseTokenName : null,
+                  market={{
+                    optionNames:
+                      inputType === 'options' ? activeOptionNames : null,
                   }}
                   inputType={inputType}
+                  unitDisplay={unitDisplay}
                   value={formData.predictionValue}
                   onChange={handlePredictionChange}
                   activeButtonStyle={activeButtonStyle}
@@ -872,7 +910,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         <Button
           type="submit"
           disabled={
-            true || // eslint-disable-line sonarjs/no-redundant-boolean
             isAttesting ||
             isPermitLoadingPermit ||
             (activeTab === 'wager' && permitData?.permitted === false)
@@ -881,7 +918,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         >
           {(() => {
             if (isAttesting) return 'Submitting...';
-            return activeTab === 'wager' ? 'Submit Wager' : 'Coming Soon';
+            return activeTab === 'wager' ? 'Submit Wager' : 'Submit Prediction';
           })()}
         </Button>
       </div>

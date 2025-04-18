@@ -42,6 +42,7 @@ const MARKET_QUERY = gql`
       chainId
       question
       baseTokenName
+      quoteTokenName
       optionNames
       epochs {
         id

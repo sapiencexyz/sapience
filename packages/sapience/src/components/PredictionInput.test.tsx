@@ -1,12 +1,15 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
+
 import '@testing-library/jest-dom';
-import PredictionInput, { type InputType, convertToSqrtPriceX96 } from './PredictionInput';
+import PredictionInput, {
+  type InputType,
+  convertToSqrtPriceX96,
+} from './PredictionInput';
 
 // Mock the local PredictionMarketType for testing purposes
 interface PredictionMarketType {
   optionNames?: string[] | null;
-  baseTokenName?: string | null;
 }
 
 describe('PredictionInput', () => {
@@ -14,37 +17,38 @@ describe('PredictionInput', () => {
   // Mock market object used in multiple tests - simplify if needed
   const mockMarketWithOptions: PredictionMarketType = {
     optionNames: ['Option A', 'Option B', 'Option C'],
-    baseTokenName: null,
   };
   const mockMarketNumeric: PredictionMarketType = {
     optionNames: null,
-    baseTokenName: 'ETH',
   };
   const mockMarketYesNo: PredictionMarketType = {
-    // Provide a baseTokenName even for yesno, as the component might still use it internally,
-    // although rendering logic is based on inputType
     optionNames: null,
-    baseTokenName: null,
   };
 
   beforeEach(() => {
     mockOnChange.mockClear();
   });
 
-  // --- Test rendering based on inputType --- 
+  // --- Test rendering based on inputType ---
 
   test('renders buttons when inputType is options', () => {
     render(
       <PredictionInput
         market={mockMarketWithOptions}
         inputType="options"
-        value={''}
+        value=""
         onChange={mockOnChange}
       />
     );
-    expect(screen.getByRole('button', { name: 'Option A' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Option B' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Option C' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Option A' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Option B' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Option C' })
+    ).toBeInTheDocument();
   });
 
   test('renders Yes/No buttons when inputType is yesno', () => {
@@ -52,7 +56,7 @@ describe('PredictionInput', () => {
       <PredictionInput
         market={mockMarketYesNo}
         inputType="yesno"
-        value={''}
+        value=""
         onChange={mockOnChange}
       />
     );
@@ -61,18 +65,20 @@ describe('PredictionInput', () => {
   });
 
   test('renders numerical input when inputType is number', () => {
+    const testUnitDisplay = 'wstETH / GGas';
     render(
       <PredictionInput
         market={mockMarketNumeric}
         inputType="number"
-        value={''}
+        unitDisplay={testUnitDisplay}
+        value=""
         onChange={mockOnChange}
       />
     );
-    const input = screen.getByLabelText('Enter prediction value in ETH');
+    const input = screen.getByLabelText(`Enter prediction value in ${testUnitDisplay}`);
     expect(input).toBeInTheDocument();
     expect(input).toHaveAttribute('type', 'number');
-    expect(screen.getByText('ETH')).toBeInTheDocument();
+    expect(screen.getByText(testUnitDisplay)).toBeInTheDocument();
   });
 
   test('renders nothing when inputType is null', () => {
@@ -80,7 +86,7 @@ describe('PredictionInput', () => {
       <PredictionInput
         market={mockMarketNumeric}
         inputType={null}
-        value={''}
+        value=""
         onChange={mockOnChange}
       />
     );
@@ -93,22 +99,24 @@ describe('PredictionInput', () => {
       <PredictionInput
         market={mockMarketNumeric}
         inputType={'invalid-type' as InputType}
-        value={''}
+        value=""
         onChange={mockOnChange}
       />
     );
     // Check for the fallback message defined in the component
-    expect(screen.getByText('Invalid input configuration.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Invalid input configuration.')
+    ).toBeInTheDocument();
   });
 
-  // --- Test onChange functionality for each inputType --- 
+  // --- Test onChange functionality for each inputType ---
 
   test('calls onChange with the 1-based index when an option button is clicked (inputType=options)', () => {
     render(
       <PredictionInput
         market={mockMarketWithOptions}
         inputType="options"
-        value={''}
+        value=""
         onChange={mockOnChange}
       />
     );
@@ -122,7 +130,7 @@ describe('PredictionInput', () => {
       <PredictionInput
         market={mockMarketYesNo}
         inputType="yesno"
-        value={''}
+        value=""
         onChange={mockOnChange}
       />
     );
@@ -134,15 +142,17 @@ describe('PredictionInput', () => {
   });
 
   test('calls onChange with sqrtPriceX96 when numerical input changes (inputType=number)', () => {
+    const testUnitDisplay = 'wstETH / GGas';
     render(
       <PredictionInput
         market={mockMarketNumeric}
         inputType="number"
-        value={''}
+        unitDisplay={testUnitDisplay}
+        value=""
         onChange={mockOnChange}
       />
     );
-    const input = screen.getByLabelText('Enter prediction value in ETH');
+    const input = screen.getByLabelText(`Enter prediction value in ${testUnitDisplay}`);
     fireEvent.change(input, { target: { value: '123.45' } });
     expect(mockOnChange).toHaveBeenCalledTimes(1);
     // We're expecting the sqrtPriceX96 value calculated by the function, not the raw input
@@ -150,15 +160,17 @@ describe('PredictionInput', () => {
   });
 
   test('calls onChange with sqrtPriceX96 of 0 when numerical input is cleared or invalid (inputType=number)', () => {
+    const testUnitDisplay = 'wstETH / GGas';
     render(
       <PredictionInput
         market={mockMarketNumeric}
         inputType="number"
+        unitDisplay={testUnitDisplay}
         value={100}
         onChange={mockOnChange}
       />
     );
-    const input = screen.getByLabelText('Enter prediction value in ETH');
+    const input = screen.getByLabelText(`Enter prediction value in ${testUnitDisplay}`);
     fireEvent.change(input, { target: { value: '' } });
     expect(mockOnChange).toHaveBeenCalledWith('0');
     fireEvent.change(input, { target: { value: 'invalid' } });
@@ -171,11 +183,11 @@ describe('PredictionInput', () => {
   test('applies active style to selected option button (inputType=options)', () => {
     const activeStyle = 'bg-blue-500';
     const inactiveStyle = 'bg-gray-300';
-    
+
     // First, render with Option A as selected (value = 1)
     render(
       <PredictionInput
-        market={{ optionNames: ['Option A', 'Option B'], baseTokenName: null }}
+        market={{ optionNames: ['Option A', 'Option B'] }}
         inputType="options"
         value={1} // Index 0 + 1 = 1
         onChange={mockOnChange}
@@ -183,11 +195,11 @@ describe('PredictionInput', () => {
         inactiveButtonStyle={inactiveStyle}
       />
     );
-    
+
     // Use test IDs to identify the buttons
     const button0 = screen.getByTestId('option-button-0');
     const button1 = screen.getByTestId('option-button-1');
-    
+
     // Check that the active/inactive styles are applied correctly
     expect(button0.className).toContain(activeStyle);
     expect(button1.className).toContain(inactiveStyle);
@@ -196,7 +208,7 @@ describe('PredictionInput', () => {
   test('applies active style to selected Yes/No button (inputType=yesno)', () => {
     const activeStyle = 'bg-green-500';
     const inactiveStyle = 'bg-red-300';
-    
+
     // Case 1: Test with 'Yes' selected (Uniswap sqrtx96 value)
     const { rerender } = render(
       <PredictionInput
@@ -208,14 +220,14 @@ describe('PredictionInput', () => {
         inactiveButtonStyle={inactiveStyle}
       />
     );
-    
+
     // Get the buttons by their text content
     const yesButton = screen.getByRole('button', { name: 'Yes' });
     const noButton = screen.getByRole('button', { name: 'No' });
-    
+
     expect(yesButton).toHaveClass(activeStyle);
     expect(noButton).toHaveClass(inactiveStyle);
-    
+
     // Case 2: Test with 'No' selected (value = 0)
     rerender(
       <PredictionInput
@@ -227,11 +239,13 @@ describe('PredictionInput', () => {
         inactiveButtonStyle={inactiveStyle}
       />
     );
-    
+
     // Verify styling has changed
-    expect(screen.getByRole('button', { name: 'Yes' })).toHaveClass(inactiveStyle);
+    expect(screen.getByRole('button', { name: 'Yes' })).toHaveClass(
+      inactiveStyle
+    );
     expect(screen.getByRole('button', { name: 'No' })).toHaveClass(activeStyle);
   });
 
   // No active/inactive style applies to the numerical input itself, so no test for inputType=number styling.
-}); 
+});

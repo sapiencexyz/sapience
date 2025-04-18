@@ -1,7 +1,7 @@
-import React from 'react';
 import { Button } from '@foil/ui/components/ui/button';
 import { Input } from '@foil/ui/components/ui/input';
 import { Label } from '@foil/ui/components/ui/label';
+import React from 'react';
 
 // Import the actual MarketType - adjust path if necessary
 // import { type MarketType } from '~/types';
@@ -9,14 +9,14 @@ import { Label } from '@foil/ui/components/ui/label';
 // Define a local type matching the component's usage until correct import path is found
 interface PredictionMarketType {
   optionNames?: string[] | null;
-  baseTokenName?: string | null;
 }
 
 export type InputType = 'options' | 'yesno' | 'number' | null;
 
 interface PredictionInputProps {
-  market: PredictionMarketType | null | undefined; // Can simplify this later
+  market: PredictionMarketType | null | undefined;
   inputType: InputType;
+  unitDisplay?: string | null;
   value: string | number;
   onChange: (newValue: string | number) => void;
   disabled?: boolean;
@@ -38,7 +38,7 @@ export const convertToSqrtPriceX96 = (price: number): string => {
   try {
     // For simplicity, let's use a formula that approximates the conversion
     // Proper implementation would use more complex math with BigInt
-    const SCALE = 2**96;
+    const SCALE = 2 ** 96;
     const scaledPrice = Math.sqrt(price) * SCALE;
     return Math.floor(scaledPrice).toString();
   } catch (error) {
@@ -50,6 +50,7 @@ export const convertToSqrtPriceX96 = (price: number): string => {
 const PredictionInput: React.FC<PredictionInputProps> = ({
   market,
   inputType,
+  unitDisplay,
   value,
   onChange,
   disabled = false,
@@ -58,11 +59,16 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
 }: PredictionInputProps) => {
   // Render nothing or a loading/disabled state if inputType isn't determined
   if (!inputType || !market) {
+    console.log('PredictionInput: Not rendering - inputType or market is null/undefined');
     return null; // Or a placeholder/spinner
   }
 
   // Case 1: Multiple optionNames
-  if (inputType === 'options' && market.optionNames && market.optionNames.length > 0) {
+  if (
+    inputType === 'options' &&
+    market.optionNames &&
+    market.optionNames.length > 0
+  ) {
     return (
       <div className="flex flex-wrap gap-2">
         {market.optionNames.map((option: string, index: number) => {
@@ -92,7 +98,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
     // Define the appropriate Uniswap sqrtPriceX96 values
     const yesValue = '79228162514264337593543950336'; // 1e18 as sqrtPriceX96
     const noValue = '0';
-    
+
     return (
       <div className="flex gap-4">
         <Button
@@ -122,10 +128,9 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
   // Case 3: Numerical input
   if (inputType === 'number') {
     // Extract numeric value from potentially string-based input
-    const displayValue = typeof value === 'string' 
-      ? parseFloat(value) || '' 
-      : value;
-      
+    const displayValue =
+      typeof value === 'string' ? parseFloat(value) || '' : value;
+
     return (
       <div className="relative">
         <Label htmlFor="prediction-input" className="sr-only">
@@ -144,11 +149,11 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
           }}
           placeholder="Enter value"
           disabled={disabled}
-          aria-label={`Enter prediction value in ${market.baseTokenName || 'units'}`}
+          aria-label={`Enter prediction value in ${unitDisplay || 'units'}`}
         />
-        {market.baseTokenName && (
+        {unitDisplay && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center pointer-events-none">
-            {market.baseTokenName}
+            {unitDisplay}
           </div>
         )}
       </div>
