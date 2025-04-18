@@ -93,7 +93,7 @@ type Query {
   marketGroup(address: String!, chainId: Int!): MarketGroupType
   marketGroups: [MarketGroupType!]!
   marketGroupsByCategory(slug: String!): [MarketGroupType!]!
-  markets(marketGroupId: Int): [MarketType!]!
+  markets(chainId: Int!, marketAddress: String!, marketId: Int!): [MarketType!]!
   positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
   resource(slug: String!): ResourceType
   resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!

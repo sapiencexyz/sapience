@@ -32,7 +32,7 @@ const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
 // Updated query to fetch the specific market directly, filtered by chainId and marketGroup address
 const MARKET_QUERY = gql`
   query GetMarketData($chainId: Int!, $address: String!, $marketId: Int!) {
-    markets(chainId: $chainId, marketAddress: $address) {
+    markets(chainId: $chainId, marketAddress: $address, marketId: $marketId) {
       id
       marketId
       question
@@ -133,7 +133,7 @@ const ForecastingDetailPage = () => {
         );
 
         // The response will contain all markets, so we need to filter for the specific one
-        const marketsData = response.data?.data?.markets;
+        const marketsData = response.data?.markets;
         if (!marketsData || !Array.isArray(marketsData) || marketsData.length === 0) {
           console.error('No markets data in response:', response.data);
           return { placeholder: true };
