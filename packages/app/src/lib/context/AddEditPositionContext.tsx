@@ -33,7 +33,7 @@ interface AddEditPositionContextType {
   processedPositions: ProcessedPosition[];
   refreshPositions: () => Promise<void>;
   isLoading: boolean;
-  getPositionPeriodId: (position: FoilPosition) => string;
+  getPositionMarketId: (position: FoilPosition) => string;
 }
 
 const AddEditPositionContext = createContext<
@@ -41,7 +41,7 @@ const AddEditPositionContext = createContext<
 >(undefined);
 
 //
-const getPositionPeriodId = (position: FoilPosition): string => {
+const getPositionMarketId = (position: FoilPosition): string => {
   if (
     'epochId' in position &&
     position.epochId !== undefined &&
@@ -120,13 +120,13 @@ export const AddEditPositionProvider: React.FC<{
     const liquidityPositions = positions.liquidityPositions.map((pos) => ({
       ...pos,
       type: 'lp' as const,
-      marketID: getPositionPeriodId(pos),
+      marketID: getPositionMarketId(pos),
     }));
 
     const tradePositions = positions.tradePositions.map((pos) => ({
       ...pos,
       type: 'trade' as const,
-      marketID: getPositionPeriodId(pos),
+      marketID: getPositionMarketId(pos),
     }));
 
     return [...liquidityPositions, ...tradePositions];
@@ -235,7 +235,7 @@ export const AddEditPositionProvider: React.FC<{
         processedPositions,
         refreshPositions,
         isLoading,
-        getPositionPeriodId,
+        getPositionMarketId,
       }}
     >
       {children}
