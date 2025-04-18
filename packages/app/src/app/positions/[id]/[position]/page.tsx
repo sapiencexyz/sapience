@@ -5,7 +5,7 @@ import { cn } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Loader2 } from 'lucide-react';
 
-import EpochTiming from '~/components/EpochTiming';
+import MarketTiming from '~/components/MarketTiming';
 import NumberDisplay from '~/components/numberDisplay';
 import PositionDisplay from '~/components/PositionDisplay';
 import { FoilProvider } from '~/lib/context/FoilProvider';
@@ -45,7 +45,7 @@ const PositionPage = ({
   const { data: resources } = useResources();
 
   const resource = resources?.find((r) =>
-    r.markets.some(
+    r.marketGroups.some(
       (m) =>
         m.chainId === Number(chainId) &&
         m.address.toLowerCase() === marketAddress.toLowerCase()
@@ -74,7 +74,9 @@ const PositionPage = ({
             <h1 className="text-2xl font-bold">
               <PositionDisplay
                 positionId={positionId}
-                marketType={positionData.epoch.market.isYin ? 'yin' : 'yang'}
+                marketType={
+                  positionData.market.marketGroup.isYin ? 'yin' : 'yang'
+                }
               />
             </h1>
             <div
@@ -134,12 +136,12 @@ const PositionPage = ({
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Period</p>
               <div>
-                <EpochTiming
-                  startTimestamp={positionData.epoch.startTimestamp}
-                  endTimestamp={positionData.epoch.endTimestamp}
+                <MarketTiming
+                  startTimestamp={positionData.market.startTimestamp}
+                  endTimestamp={positionData.market.endTimestamp}
                 />
                 <span className="text-xs text-muted-foreground ml-1">
-                  (ID: {positionData.epoch.epochId})
+                  (ID: {positionData.market.marketId})
                 </span>
               </div>
             </div>
@@ -239,7 +241,7 @@ const PositionPage = ({
       <PeriodProvider
         chainId={Number(chainId)}
         address={marketAddress}
-        epoch={Number(positionData?.epoch?.id)}
+        market={Number(positionData?.market?.marketId)}
       >
         <div className="flex-1 flex items-center justify-center min-h-[calc(100dvh-69px)] p-4">
           <div className="w-full max-w-[480px]">

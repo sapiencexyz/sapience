@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { Resource } from 'src/models/Resource';
-import { Epoch } from 'src/models/Epoch';
+import { Market } from 'src/models/Market';
 import {
   Store,
   GenericMetadata,
@@ -34,7 +34,7 @@ export async function persist(
   resource: Resource,
   intervals: number[],
   trailingAvgTimes: number[],
-  epochs: Epoch[]
+  markets: Market[]
 ) {
   if (process.env.SAVE_STORAGE !== 'true') {
     return;
@@ -46,7 +46,7 @@ export async function persist(
     !resource ||
     !intervals ||
     !trailingAvgTimes ||
-    !epochs
+    !markets
   ) {
     throw new Error('Invalid data provided');
   }
@@ -97,16 +97,16 @@ export async function persist(
       storage[interval].resourceStore
     );
 
-    for (const epoch of epochs) {
+    for (const market of markets) {
       // persist marketStore
       await storeRecords(
         mode,
         resource.slug,
         'market',
         interval,
-        epoch.id,
+        market.id,
         undefined,
-        storage[interval].marketStore[epoch.id]
+        storage[interval].marketStore[market.id]
       );
       // persist indexStore
       await storeRecords(
@@ -114,9 +114,9 @@ export async function persist(
         resource.slug,
         'index',
         interval,
-        epoch.id,
+        market.id,
         undefined,
-        storage[interval].indexStore[epoch.id]
+        storage[interval].indexStore[market.id]
       );
     }
 
@@ -149,7 +149,7 @@ export async function restore(
   resource: Resource,
   intervals: number[],
   trailingAvgTimes: number[],
-  epochs: Epoch[]
+  markets: Market[]
 ): Promise<
   | {
       storage: StorageData;
@@ -163,7 +163,7 @@ export async function restore(
     return;
   }
   // Common validations
-  if (!resource || !intervals || !trailingAvgTimes || !epochs) {
+  if (!resource || !intervals || !trailingAvgTimes || !markets) {
     throw new Error('Invalid request data provided');
   }
 
@@ -230,11 +230,11 @@ export async function restore(
       restored = true;
     }
 
-    for (const epoch of epochs) {
-      storage[interval].marketStore[epoch.id] = {
+    for (const market of markets) {
+      storage[interval].marketStore[market.id] = {
         datapoints: [],
       };
-      storage[interval].indexStore[epoch.id] = {
+      storage[interval].indexStore[market.id] = {
         datapoints: [],
       };
       // restore marketStore
@@ -243,11 +243,11 @@ export async function restore(
         resource.slug,
         'market',
         interval,
-        epoch.id,
+        market.id,
         undefined
       );
       if (records) {
-        storage[interval].marketStore[epoch.id] = records;
+        storage[interval].marketStore[market.id] = records;
         restored = true;
       }
       // restore indexStore
@@ -256,11 +256,11 @@ export async function restore(
         resource.slug,
         'index',
         interval,
-        epoch.id,
+        market.id,
         undefined
       );
       if (records) {
-        storage[interval].indexStore[epoch.id] = records;
+        storage[interval].indexStore[market.id] = records;
         restored = true;
       }
     }

@@ -3,7 +3,7 @@ import { getTransactionsInTimeRange } from '../../serviceUtil'; // Assuming serv
 import { formatUnits } from 'viem';
 import { TOKEN_PRECISION } from '../../constants'; // Assuming constants path
 import dataSource from '../../db'; // Import dataSource
-import { Epoch } from '../../models/Epoch'; // Import Epoch model
+import { Market } from '../../models/Market'; // Import Epoch model
 
 // Placeholder for GraphQL return type - might need to define this in schema
 // import { Volume } from '../types'; // Assuming a Volume type exists or will be created
@@ -11,20 +11,20 @@ import { Epoch } from '../../models/Epoch'; // Import Epoch model
 @Resolver()
 export class VolumeResolver {
   @Query(() => Number) // Using Number for now, might need a custom Scalar or a Volume type
-  async totalVolumeByEpoch(
+  async totalVolumeByMarket(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('marketAddress', () => String) marketAddress: string,
-    @Arg('epochId', () => Int) epochId: number
+    @Arg('marketId', () => Int) marketId: number
   ): Promise<number> {
     // 1. Get epoch start and end timestamps (Needs implementation or existing function)
-    const { startTimestamp, endTimestamp } = await getEpochStartEndTimestamps(
-      epochId,
+    const { startTimestamp, endTimestamp } = await getMarketStartEndTimestamps(
+      marketId,
       chainId,
       marketAddress
     );
 
     if (!startTimestamp || !endTimestamp) {
-      throw new Error(`Epoch ${epochId} not found for chain ${chainId}`);
+      throw new Error(`Epoch ${marketId} not found for chain ${chainId}`);
     }
 
     // 2. Fetch transactions
@@ -62,34 +62,34 @@ export class VolumeResolver {
 }
 
 // Placeholder function - replace with actual implementation
-async function getEpochStartEndTimestamps(
-  epochId: number,
+async function getMarketStartEndTimestamps(
+  marketId: number,
   chainId: number,
   marketAddress: string
 ): Promise<{ startTimestamp: number | null; endTimestamp: number | null }> {
   try {
-    const epochRepository = dataSource.getRepository(Epoch);
-    const epoch = await epochRepository.findOne({
+    const marketRepository = dataSource.getRepository(Market);
+    const market = await marketRepository.findOne({
       where: {
-        epochId: epochId, // Use number
-        market: {
+        marketId: marketId, // Use number
+        marketGroup: {
           chainId: chainId, // Use number
           address: marketAddress,
         },
       },
-      relations: ['market'], // Ensure market relation is loaded
+      relations: ['marketGroup'], // Ensure market relation is loaded
     });
 
-    if (epoch && epoch.startTimestamp && epoch.endTimestamp) {
+    if (market && market.startTimestamp && market.endTimestamp) {
       // Convert string timestamps from DB to numbers
       return {
-        startTimestamp: Number(epoch.startTimestamp),
-        endTimestamp: Number(epoch.endTimestamp),
+        startTimestamp: Number(market.startTimestamp),
+        endTimestamp: Number(market.endTimestamp),
       };
     }
   } catch (error) {
     console.error(
-      `Error fetching epoch ${epochId} for market ${chainId}:${marketAddress}:`,
+      `Error fetching market ${marketId} for market group ${chainId}:${marketAddress}:`,
       error
     );
   }

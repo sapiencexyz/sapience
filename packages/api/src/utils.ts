@@ -9,7 +9,7 @@ import {
 } from 'viem';
 import { mainnet, sepolia, cannon, base, arbitrum } from 'viem/chains';
 import { TOKEN_PRECISION } from './constants';
-import { epochRepository } from './db';
+import { marketRepository } from './db';
 import { Deployment } from './interfaces';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -161,15 +161,18 @@ export const getTimestampsForReindex = async (
   }
 
   // get info from database
-  const epoch = await epochRepository.findOne({
+  const market = await marketRepository.findOne({
     where: {
-      epochId,
-      market: { address: contractDeployment.address.toLowerCase(), chainId },
+      marketId: epochId,
+      marketGroup: {
+        address: contractDeployment.address.toLowerCase(),
+        chainId,
+      },
     },
-    relations: ['market'],
+    relations: ['marketGroup'],
   });
 
-  if (!epoch || !epoch.startTimestamp || !epoch.endTimestamp) {
+  if (!market || !market.startTimestamp || !market.endTimestamp) {
     // get info from contract
     console.log('fetching epoch from contract to get timestamps...');
     const epochContract = (await client.readContract({
@@ -185,8 +188,8 @@ export const getTimestampsForReindex = async (
   }
 
   return {
-    startTimestamp: Number(epoch.startTimestamp),
-    endTimestamp: Math.min(Number(epoch.endTimestamp), now),
+    startTimestamp: Number(market.startTimestamp),
+    endTimestamp: Math.min(Number(market.endTimestamp), now),
   };
 };
 

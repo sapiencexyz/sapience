@@ -38,13 +38,13 @@ interface AggregatedLeaderboardEntry {
 }
 
 // Query to fetch all markets and their epochs
-const GET_MARKETS = `
-  query GetMarkets {
-    markets {
+const GET_MARKET_GROUPS = `
+  query GetMarketGroups {
+    marketGroups {
       address
       chainId
-      epochs {
-        epochId
+      markets {
+        marketId
         public
       }
     }
@@ -52,26 +52,26 @@ const GET_MARKETS = `
 `;
 
 // Query to fetch leaderboard for a specific epoch
-const GET_EPOCH_LEADERBOARD = `
-  query GetEpochLeaderboard($chainId: Int!, $address: String!, $epochId: String!) {
-    getEpochLeaderboard(chainId: $chainId, address: $address, epochId: $epochId) {
+const GET_MARKET_LEADERBOARD = `
+  query GetMarketLeaderboard($chainId: Int!, $address: String!, $marketId: String!) {
+    getMarketLeaderboard(chainId: $chainId, address: $address, marketId: $marketId) {
       owner
       totalPnL # This is a string representing BigInt
     }
   }
 `;
 
-// Interface for the raw response of GET_EPOCH_LEADERBOARD
-interface RawEpochLeaderboardEntry {
+// Interface for the raw response of GET_MARKET_LEADERBOARD
+interface RawMarketLeaderboardEntry {
   owner: string;
   totalPnL: string;
 }
 
-// Interface for the response of GET_MARKETS
-interface MarketData {
+// Interface for the response of GET_MARKET_GROUPS
+interface MarketGroupData {
   address: string;
   chainId: number;
-  epochs: { epochId: number; public: boolean }[];
+  markets: { marketId: number; public: boolean }[];
 }
 
 // Hook revised for client-side aggregation
@@ -85,55 +85,56 @@ const useAllTimeLeaderboard = () => {
 
       try {
         // 1. Fetch all markets
-        const marketsResponse = await foilApi.post(graphqlEndpoint, {
-          query: GET_MARKETS,
+        const marketGroupsResponse = await foilApi.post(graphqlEndpoint, {
+          query: GET_MARKET_GROUPS,
         });
 
-        if (marketsResponse.errors) {
+        if (marketGroupsResponse.errors) {
           console.error(
-            'GraphQL Errors fetching markets:',
-            marketsResponse.errors
+            'GraphQL Errors fetching market groups:',
+            marketGroupsResponse.errors
           );
-          throw new Error('Failed to fetch markets');
+          throw new Error('Failed to fetch market groups');
         }
 
-        const marketsData: MarketData[] = marketsResponse.data?.markets;
-        if (!marketsData) {
-          console.error('No market data found');
+        const marketGroupsData: MarketGroupData[] =
+          marketGroupsResponse.data?.marketGroups;
+        if (!marketGroupsData) {
+          console.error('No market group data found');
           return [];
         }
 
         // 2. Identify all public market/epoch pairs
-        const publicEpochIdentifiers: {
+        const publicMarketIdentifiers: {
           address: string;
           chainId: number;
-          epochId: string;
+          marketId: string;
         }[] = [];
-        marketsData.forEach((market) => {
-          market.epochs.forEach((epoch) => {
-            if (epoch.public) {
-              publicEpochIdentifiers.push({
-                address: market.address,
-                chainId: market.chainId,
-                epochId: String(epoch.epochId), // Ensure epochId is string for query variable
+        marketGroupsData.forEach((marketGroup) => {
+          marketGroup.markets.forEach((market) => {
+            if (market.public) {
+              publicMarketIdentifiers.push({
+                address: marketGroup.address,
+                chainId: marketGroup.chainId,
+                marketId: String(market.marketId), // Ensure epochId is string for query variable
               });
             }
           });
         });
 
-        if (publicEpochIdentifiers.length === 0) {
+        if (publicMarketIdentifiers.length === 0) {
           console.log('No public epochs found.');
           return [];
         }
 
         console.log(
-          `Found ${publicEpochIdentifiers.length} public epochs. Fetching leaderboards...`
+          `Found ${publicMarketIdentifiers.length} public epochs. Fetching leaderboards...`
         );
 
         // 3. Fetch leaderboards for all public epochs in parallel
-        const leaderboardPromises = publicEpochIdentifiers.map((identifier) =>
+        const leaderboardPromises = publicMarketIdentifiers.map((identifier) =>
           foilApi.post(graphqlEndpoint, {
-            query: GET_EPOCH_LEADERBOARD,
+            query: GET_MARKET_LEADERBOARD,
             variables: identifier,
           })
         );
@@ -144,7 +145,7 @@ const useAllTimeLeaderboard = () => {
         const aggregatedPnL: { [owner: string]: number } = {};
 
         leaderboardResponses.forEach((response, index) => {
-          const identifier = publicEpochIdentifiers[index]; // For logging context
+          const identifier = publicMarketIdentifiers[index]; // For logging context
           if (response.errors) {
             console.warn(
               `GraphQL error fetching leaderboard for ${JSON.stringify(identifier)}:`,
@@ -154,11 +155,11 @@ const useAllTimeLeaderboard = () => {
             return;
           }
 
-          const epochLeaderboard: RawEpochLeaderboardEntry[] =
-            response.data?.getEpochLeaderboard;
+          const marketLeaderboard: RawMarketLeaderboardEntry[] =
+            response.data?.getMarketLeaderboard;
 
-          if (epochLeaderboard) {
-            epochLeaderboard.forEach((entry) => {
+          if (marketLeaderboard) {
+            marketLeaderboard.forEach((entry) => {
               const { owner, totalPnL: rawPnlString } = entry; // Rename for clarity
               let pnlValue: bigint;
 

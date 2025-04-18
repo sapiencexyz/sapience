@@ -16,14 +16,14 @@ export class PositionResolver {
     try {
       const where: {
         owner?: string;
-        epoch?: { market: { chainId: number; address: string } };
+        market?: { marketGroup: { chainId: number; address: string } };
       } = {};
       if (owner) {
         where.owner = owner.toLowerCase();
       }
       if (chainId && marketAddress) {
-        where.epoch = {
-          market: {
+        where.market = {
+          marketGroup: {
             chainId,
             address: marketAddress.toLowerCase(),
           },
@@ -33,9 +33,9 @@ export class PositionResolver {
       const positions = await dataSource.getRepository(Position).find({
         where,
         relations: [
-          'epoch',
-          'epoch.market',
-          'epoch.market.resource',
+          'market',
+          'market.marketGroup',
+          'market.marketGroup.resource',
           'transactions',
           'transactions.event',
         ],

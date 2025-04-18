@@ -25,7 +25,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
   isTrade = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { epochSettled } = useContext(PeriodContext);
+  const { marketSettled } = useContext(PeriodContext);
 
   const handleSelect = (option: ChartType) => {
     setChartType(option);
@@ -40,7 +40,7 @@ const ChartSelector: React.FC<CustomDropdownProps> = ({
   };
 
   const renderChartType = (option: ChartType) => {
-    if (epochSettled && option === ChartType.LIQUIDITY) return null;
+    if (marketSettled && option === ChartType.LIQUIDITY) return null;
 
     // For trade pages, show "Depth Chart" instead of "Liquidity"
     const displayText =

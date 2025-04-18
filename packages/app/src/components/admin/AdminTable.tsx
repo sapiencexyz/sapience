@@ -49,7 +49,7 @@ import { useSignMessage } from 'wagmi';
 
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useFoil } from '~/lib/context/FoilProvider';
-import type { Market } from '~/lib/context/FoilProvider';
+import type { MarketGroup } from '~/lib/context/FoilProvider';
 import { foilApi } from '~/lib/utils/util';
 
 import getColumns from './columns';
@@ -57,9 +57,9 @@ import type { TableRow as AdminTableRowData } from './columns';
 import type { MissingBlocks } from './types';
 
 // Define GraphQL Query for Total Volume
-const TOTAL_VOLUME_BY_EPOCH_QUERY = `
-  query GetTotalVolumeByEpoch($chainId: Int!, $marketAddress: String!, $epochId: Int!) {
-    totalVolumeByEpoch(chainId: $chainId, marketAddress: $marketAddress, epochId: $epochId)
+const TOTAL_VOLUME_BY_MARKET_QUERY = `
+  query GetTotalVolumeByMarket($chainId: Int!, $marketAddress: String!, $marketId: Int!) {
+    totalVolumeByMarket(chainId: $chainId, marketAddress: $marketAddress, marketId: $marketId)
   }
 `;
 
@@ -85,7 +85,7 @@ interface AdminTableProps {
 }
 
 const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
-  const { markets, isLoading, refetchMarkets } = useFoil();
+  const { marketGroups, isLoading, refetchMarketGroups } = useFoil();
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
   }>({});
@@ -108,22 +108,22 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
     },
   ]);
   // State for storing fetched volumes
-  const [volumes, setVolumes] = useState<Record<string, number | null>>({}); // Key: marketAddress-chainId-epochId
+  const [volumes, setVolumes] = useState<Record<string, number | null>>({}); // Key: marketAddress-chainId-marketId
 
   // Effect to fetch all volumes when markets data is available
   useEffect(() => {
-    if (!isLoading && markets.length > 0) {
+    if (!isLoading && marketGroups.length > 0) {
       const fetchAllVolumes = async () => {
-        const volumePromises = markets.flatMap((market) =>
-          market.epochs.map(async (epoch) => {
-            const key = `${market.address}-${market.chainId}-${epoch.epochId}`;
+        const volumePromises = marketGroups.flatMap((marketGroup) =>
+          marketGroup.markets.map(async (market) => {
+            const key = `${marketGroup.address}-${marketGroup.chainId}-${market.marketId}`;
             try {
               const response = await foilApi.post('/graphql', {
-                query: TOTAL_VOLUME_BY_EPOCH_QUERY,
+                query: TOTAL_VOLUME_BY_MARKET_QUERY,
                 variables: {
-                  chainId: market.chainId,
-                  marketAddress: market.address,
-                  epochId: epoch.epochId,
+                  chainId: marketGroup.chainId,
+                  marketAddress: marketGroup.address,
+                  marketId: market.marketId,
                 },
               });
 
@@ -136,14 +136,14 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
               }
               if (
                 !response.data ||
-                typeof response.data.totalVolumeByEpoch !== 'number'
+                typeof response.data.totalVolumeByMarket !== 'number'
               ) {
                 console.error(
                   `Volume data is not in the expected format for ${key}`
                 );
                 return { key, volume: null }; // Mark as error/null
               }
-              return { key, volume: response.data.totalVolumeByEpoch };
+              return { key, volume: response.data.totalVolumeByMarket };
             } catch (error) {
               console.error(`Failed to fetch volume for ${key}:`, error);
               return { key, volume: null }; // Mark as error/null
@@ -160,37 +160,37 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
       };
 
       fetchAllVolumes();
-    } else if (!isLoading && markets.length === 0) {
+    } else if (!isLoading && marketGroups.length === 0) {
       // Handle case where there are no markets
       setVolumes({});
     }
     // Intentionally excluding foilApi from dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markets, isLoading]);
+  }, [marketGroups, isLoading]);
 
   const data: AdminTableRowData[] = useMemo(() => {
-    return markets.flatMap((market) =>
-      market.epochs.map((epoch) => {
-        const volumeKey = `${market.address}-${market.chainId}-${epoch.epochId}`;
+    return marketGroups.flatMap((marketGroup) =>
+      marketGroup.markets.map((market) => {
+        const volumeKey = `${marketGroup.address}-${marketGroup.chainId}-${market.marketId}`;
         const volume = volumes[volumeKey]; // Get volume from state
 
         return {
-          ...epoch,
-          market, // Pass the whole market object
-          marketAddress: market.address,
-          vaultAddress: market.owner, // Use owner as vaultAddress for display logic in columns
-          chainId: market.chainId,
-          settled: 'settled' in epoch ? (epoch as any).settled : false,
+          ...market,
+          marketGroup, // Pass the whole market object
+          marketGroupAddress: marketGroup.address,
+          vaultAddress: marketGroup.owner, // Use owner as vaultAddress for display logic in columns
+          chainId: marketGroup.chainId,
+          settled: 'settled' in market ? (market as any).settled : false,
           assertionId:
-            'assertionId' in epoch ? (epoch as any).assertionId : undefined,
-          public: 'public' in epoch ? (epoch as any).public : false,
+            'assertionId' in market ? (market as any).assertionId : undefined,
+          public: 'public' in market ? (market as any).public : false,
           volume, // Pass undefined if loading, null if error, or number if fetched
-          id: 'id' in epoch ? (epoch as any).id : undefined, // Ensure id is passed if available
-          question: 'question' in epoch ? (epoch as any).question : undefined, // Pass question if available
+          id: 'id' in market ? (market as any).id : undefined, // Ensure id is passed if available
+          question: 'question' in market ? (market as any).question : undefined, // Pass question if available
         };
       })
     );
-  }, [markets, volumes]); // Depend on volumes state now
+  }, [marketGroups, volumes]); // Depend on volumes state now
 
   // Dynamically generate status options based on available data
   const statusOptions = useMemo(() => {
@@ -289,15 +289,18 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
     icon: <Eye className="h-4 w-4" />,
   };
 
-  const fetchMissingBlocks = async (market: Market, epochId: number) => {
+  const fetchMissingBlocks = async (
+    marketGroup: MarketGroup,
+    marketId: number
+  ) => {
     try {
       const data = await foilApi.get(
-        `/missing-blocks?chainId=${market.chainId}&address=${market.address}&epochId=${epochId}`
+        `/missing-blocks?chainId=${marketGroup.chainId}&address=${marketGroup.address}&marketId=${marketId}`
       );
 
       setMissingBlocks((prev) => ({
         ...prev,
-        [`${market.address}-${epochId}`]: {
+        [`${marketGroup.address}-${marketId}`]: {
           resourcePrice: data.missingBlockNumbers,
         },
       }));
@@ -307,25 +310,25 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
   };
 
   React.useEffect(() => {
-    if (!isLoading && markets.length > 0) {
-      markets.forEach((market) => {
-        market.epochs.forEach((epoch) => {
-          fetchMissingBlocks(market, epoch.epochId);
+    if (!isLoading && marketGroups.length > 0) {
+      marketGroups.forEach((marketGroup) => {
+        marketGroup.markets.forEach((market) => {
+          fetchMissingBlocks(marketGroup, market.marketId);
         });
       });
     }
-  }, [markets, isLoading]);
+  }, [marketGroups, isLoading]);
 
   const handleReindex = async (
     reindexType: 'price' | 'events',
     marketAddress: string,
-    epochId: number,
+    marketId: number,
     chainId: number
   ) => {
     try {
       setLoadingAction((prev) => ({
         ...prev,
-        [`reindex-${marketAddress}-${epochId}-${reindexType}`]: true,
+        [`reindex-${marketAddress}-${marketId}-${reindexType}`]: true,
       }));
       const timestamp = Date.now();
 
@@ -338,7 +341,7 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
         {
           chainId,
           address: marketAddress,
-          epochId,
+          marketId,
           signature,
           timestamp,
         }
@@ -350,9 +353,11 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
           description: response.message,
           variant: 'default',
         });
-        const market = markets.find((m) => m.address === marketAddress);
-        if (market) {
-          fetchMissingBlocks(market, epochId);
+        const marketGroup = marketGroups.find(
+          (m) => m.address === marketAddress
+        );
+        if (marketGroup) {
+          fetchMissingBlocks(marketGroup, marketId);
         }
       } else {
         toast({
@@ -372,15 +377,18 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
     } finally {
       setLoadingAction((prev) => ({
         ...prev,
-        [`reindex-${marketAddress}-${epochId}-${reindexType}`]: false,
+        [`reindex-${marketAddress}-${marketId}-${reindexType}`]: false,
       }));
     }
   };
 
-  const updateMarketPrivacy = async (market: Market, epochId: number) => {
+  const updateMarketPrivacy = async (
+    marketGroup: MarketGroup,
+    marketId: number
+  ) => {
     setLoadingAction((prev) => ({
       ...prev,
-      [`${market.address}-${epochId}`]: true,
+      [`${marketGroup.address}-${marketId}`]: true,
     }));
     const timestamp = Date.now();
 
@@ -388,18 +396,18 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
       message: ADMIN_AUTHENTICATE_MSG,
     });
     const response = await foilApi.post('/updateMarketPrivacy', {
-      address: market.address,
-      chainId: market.chainId,
-      epochId,
+      address: marketGroup.address,
+      chainId: marketGroup.chainId,
+      marketId,
       signature,
       timestamp,
     });
     if (response.success) {
-      await refetchMarkets();
+      await refetchMarketGroups();
     }
     setLoadingAction((prev) => ({
       ...prev,
-      [`${market.address}-${epochId}`]: false,
+      [`${marketGroup.address}-${marketId}`]: false,
     }));
   };
 

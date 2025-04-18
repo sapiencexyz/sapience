@@ -2,7 +2,7 @@ import Image from 'next/image';
 
 import type { Resource } from '~/lib/hooks/useResources';
 
-import EpochTiming from './EpochTiming';
+import MarketTiming from './MarketTiming';
 
 interface MarketCellProps {
   marketName: string;
@@ -35,7 +35,7 @@ const MarketCell = ({
       <div className="flex flex-col gap-0.5">
         <div className="font-medium whitespace-nowrap">{marketName}</div>
         {startTimestamp && endTimestamp && (
-          <EpochTiming
+          <MarketTiming
             startTimestamp={startTimestamp}
             endTimestamp={endTimestamp}
           />

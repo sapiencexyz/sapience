@@ -3,10 +3,10 @@ import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { parseContractId } from '../helpers/parseContractId';
 import { validateRequestParams } from '../helpers/validateRequestParams';
 import dataSource from '../db';
-import { Market } from '../models/Market';
+import { MarketGroup } from '../models/MarketGroup';
 import { Position } from '../models/Position';
 import { formatDbBigInt } from '../utils';
-const marketRepository = dataSource.getRepository(Market);
+const marketGroupRepository = dataSource.getRepository(MarketGroup);
 const positionRepository = dataSource.getRepository(Position);
 const router = Router();
 
@@ -21,14 +21,14 @@ router.get(
 
     const { chainId, address } = parseContractId(contractId);
 
-    const market = await marketRepository.findOne({
+    const marketGroup = await marketGroupRepository.findOne({
       where: {
         chainId: Number(chainId),
         address: String(address).toLowerCase(),
       },
     });
 
-    if (!market) {
+    if (!marketGroup) {
       res.status(404).json({ error: 'Market not found' });
       return;
     }
@@ -36,12 +36,16 @@ router.get(
     // Query for positions related to any epoch of this market
     const where = {
       isLP: isLP === 'true' ? true : undefined,
-      epoch: { market: { id: market.id } },
+      market: { marketGroup: { id: marketGroup.id } },
     };
 
     const positions = await positionRepository.find({
       where,
-      relations: ['epoch', 'epoch.market', 'epoch.market.resource'],
+      relations: [
+        'market',
+        'market.marketGroup',
+        'market.marketGroup.resource',
+      ],
       order: { positionId: 'ASC' },
     });
 
@@ -68,14 +72,14 @@ router.get(
 
     const { chainId, address } = parseContractId(contractId);
 
-    const market = await marketRepository.findOne({
+    const marketGroup = await marketGroupRepository.findOne({
       where: {
         chainId: Number(chainId),
         address: String(address).toLowerCase(),
       },
     });
 
-    if (!market) {
+    if (!marketGroup) {
       res.status(404).json({ error: 'Market not found' });
       return;
     }
@@ -83,9 +87,13 @@ router.get(
     const position = await positionRepository.findOne({
       where: {
         positionId: Number(positionId),
-        epoch: { market: { id: market.id } },
+        market: { marketGroup: { id: marketGroup.id } },
       },
-      relations: ['epoch', 'epoch.market', 'epoch.market.resource'],
+      relations: [
+        'market',
+        'market.marketGroup',
+        'market.marketGroup.resource',
+      ],
     });
 
     if (!position) {

@@ -68,12 +68,12 @@ const POSITIONS_QUERY = `
       borrowedQuoteToken
       collateral
       isSettled
-      epoch {
+      market {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
-        market {
+        marketGroup {
           id
           chainId
           address

@@ -27,11 +27,11 @@ export const hydrateTransactions = (
       ...transaction,
       position: {
         ...transaction.position,
-        epoch: {
-          ...transaction.position?.epoch,
-          market: {
-            ...transaction.position?.epoch?.market,
-            resource: transaction.position?.epoch?.market?.resource,
+        market: {
+          ...transaction.position?.market,
+          marketGroup: {
+            ...transaction.position?.market?.marketGroup,
+            resource: transaction.position?.market?.marketGroup?.resource,
           },
         },
       },

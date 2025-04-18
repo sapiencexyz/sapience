@@ -61,7 +61,7 @@ interface PredictionFormProps {
   permitData: PermitDataType | null | undefined;
   activeButtonStyle?: string;
   inactiveButtonStyle?: string;
-  currentEpochId?: string | null; // Added prop for current epoch ID
+  currentMarketId?: string | null; // Added prop for current market ID
 }
 
 // Define type for quoter response data
@@ -90,7 +90,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   permitData,
   activeButtonStyle = defaultActiveStyle,
   inactiveButtonStyle = defaultInactiveStyle,
-  currentEpochId, // Destructure the new prop
+  currentMarketId, // Destructure the new prop
 }) => {
   // Wagmi hooks
   const { address } = useAccount();
@@ -219,9 +219,9 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     // 1. Prioritize currentEpochId if it exists and market doesn't override based on selection
     const isMultiOptionMarket =
       marketData?.optionNames != null && marketData.optionNames.length > 1;
-    if (currentEpochId && !isMultiOptionMarket) {
-      console.log('Using currentEpochId for display:', currentEpochId);
-      return currentEpochId;
+    if (currentMarketId && !isMultiOptionMarket) {
+      console.log('Using currentMarketId for display:', currentMarketId);
+      return currentMarketId;
     }
 
     // 2. If multi-option, determine based on selection (existing logic)
@@ -249,7 +249,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     return fallbackEpochId;
 
     // Ensure all dependencies are included
-  }, [marketData, formData.predictionValue, currentEpochId]);
+  }, [marketData, formData.predictionValue, currentMarketId]);
 
   // Calculate expectedPrice for the quoter
   const expectedPriceForQuoter = useMemo(() => {
@@ -498,7 +498,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         // Encode the schema data
         const encodedData = encodeSchemaData(
           marketData.address,
-          currentEpochId || '0',
+          currentMarketId || '0',
           submissionValue
         );
 

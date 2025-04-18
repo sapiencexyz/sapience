@@ -38,15 +38,15 @@ const POSITIONS_QUERY = gql`
       lowPriceTick
       lpBaseToken
       lpQuoteToken
-      epoch {
+      market {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
         settled
         settlementPriceD18
         question
-        market {
+        marketGroup {
           id
           chainId
           address
@@ -158,7 +158,7 @@ export default function PortfolioPage() {
               {positions?.map((position: any) => (
                 <TableRow key={position.id}>
                   <TableCell>
-                    {position.epoch.question || 'No question provided'}
+                    {position.market.question || 'No question provided'}
                   </TableCell>
                   <TableCell>
                     {position.isLP ? (
