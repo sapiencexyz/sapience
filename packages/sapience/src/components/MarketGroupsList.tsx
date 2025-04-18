@@ -109,10 +109,7 @@ const FocusAreaFilter = ({
         {!isLoadingCategories &&
           categories &&
           categories
-            .filter((category) => {
-              const styleInfo = getCategoryStyle(category.slug);
-              return !!styleInfo?.iconSvg; // Only keep categories with an icon
-            })
+            // Display all categories, not just those with icons
             .map((category) => {
               const styleInfo = getCategoryStyle(category.slug);
               const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
@@ -141,7 +138,10 @@ const FocusAreaFilter = ({
                         />
                       </div>
                     ) : (
-                      <TagIcon className="w-3 h-3" />
+                      <TagIcon
+                        className="w-3 h-3"
+                        style={{ color: categoryColor }}
+                      />
                     )}
                   </div>
                   <span className="font-medium">{displayName}</span>
@@ -482,7 +482,40 @@ const ForecastingTable = () => {
 
   // Helper to find FocusArea data by category slug for UI styling
   const getCategoryStyle = (categorySlug: string): FocusArea | undefined => {
-    return FOCUS_AREAS.find((fa) => fa.id === categorySlug);
+    // First try to find a matching focus area
+    const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
+
+    if (focusArea) {
+      return focusArea;
+    }
+
+    // If no matching focus area, create a deterministic color based on the slug
+    // This ensures the same category always gets the same color
+    const DEFAULT_COLORS = [
+      '#3B82F6', // blue-500
+      '#C084FC', // purple-400
+      '#4ADE80', // green-400
+      '#FBBF24', // amber-400
+      '#F87171', // red-400
+      '#22D3EE', // cyan-400
+      '#FB923C', // orange-400
+    ];
+
+    // Use a simple hash function to get a consistent index
+    const hashCode = categorySlug.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + (acc * 32 - acc);
+    }, 0);
+
+    const colorIndex = Math.abs(hashCode) % DEFAULT_COLORS.length;
+
+    // Return a partial focus area with the minimal required properties
+    return {
+      id: categorySlug,
+      name: '', // Will use category.name from database
+      resources: [],
+      color: DEFAULT_COLORS[colorIndex],
+      iconSvg: '', // Will use default TagIcon
+    };
   };
 
   // Show loader if either query is loading
@@ -579,8 +612,8 @@ const ForecastingTable = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-semibold text-sm text-muted-foreground">
+                <div className="flex flex-col mb-2">
+                  <h3 className="font-semibold text-sm text-muted-foreground mb-2 text-center">
                     {formatEndDate(dayEndTimes[dayKey])}
                   </h3>
                   <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">

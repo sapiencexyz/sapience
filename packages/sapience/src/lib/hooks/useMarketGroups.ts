@@ -30,6 +30,9 @@ const GET_CATEGORIES = gql`
       id
       name
       slug
+      marketGroups {
+        id
+      }
     }
   }
 `;
@@ -78,7 +81,7 @@ export const useCategories = () => {
 
 export interface Market {
   id: number;
-  epochId: number;
+  marketId: number;
   startTimestamp: number;
   endTimestamp: number;
   settled: boolean;
@@ -150,7 +153,7 @@ const MARKETS_QUERY = gql`
       }
       markets {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
         settled

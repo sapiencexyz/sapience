@@ -34,9 +34,9 @@ const LottieLoader = dynamic(() => import('../../../components/LottieLoader'), {
 });
 
 // GraphQL query to fetch market data - updated to match schema exactly
-const MARKET_QUERY = gql`
-  query GetMarket($chainId: Int!, $address: String!) {
-    market(chainId: $chainId, address: $address) {
+const MARKET_GROUP_QUERY = gql`
+  query GetMarketGroup($chainId: Int!, $address: String!) {
+    marketGroup(chainId: $chainId, address: $address) {
       id
       address
       chainId
@@ -142,7 +142,7 @@ const ForecastingDetailPage = () => {
     isLoading: isLoadingMarket,
     isSuccess,
   } = useQuery({
-    queryKey: ['market', chainId, marketAddress],
+    queryKey: ['marketGroup', chainId, marketAddress],
     queryFn: async () => {
       // Don't attempt to fetch if we don't have valid params
       if (!chainId || !marketAddress || chainId === 0) {
@@ -154,12 +154,12 @@ const ForecastingDetailPage = () => {
       }
 
       try {
-        console.log('Fetching market with:', {
+        console.log('Fetching market group with:', {
           chainId,
           address: marketAddress,
         });
         const response = await foilApi.post('/graphql', {
-          query: print(MARKET_QUERY),
+          query: print(MARKET_GROUP_QUERY),
           variables: {
             chainId,
             address: marketAddress,
@@ -171,17 +171,17 @@ const ForecastingDetailPage = () => {
           JSON.stringify(response.data, null, 2)
         );
 
-        // Check if we have data in the expected structure - the data is directly in response.data.market
-        const marketResponse = response.data?.market;
+        // Check if we have data in the expected structure - the data is directly in response.data.marketGroup
+        const marketResponse = response.data?.data?.marketGroup;
 
         if (!marketResponse) {
-          console.error('No market data in response:', response.data);
+          console.error('No market group data in response:', response.data);
           return { placeholder: true }; // Return a non-undefined placeholder value
         }
 
         return marketResponse;
       } catch (error) {
-        console.error('Error fetching market:', error);
+        console.error('Error fetching market group:', error);
         return { placeholder: true }; // Return a non-undefined placeholder value
       }
     },
