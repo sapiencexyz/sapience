@@ -24,7 +24,6 @@ export class MarketResolver {
       const markets = await queryBuilder.getMany();
 
       const result =  markets.map(mapMarketToType);
-      console.log('result', result);
       return result;
     } catch (error) {
       console.error('Error fetching markets:', error);
