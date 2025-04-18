@@ -1,4 +1,4 @@
-import type { PeriodContextType } from '~/lib/context/PeriodProvider';
+import type { MarketContextType } from '~/lib/context/MarketProvider';
 
 export const TOKEN_DECIMALS = 18; // should be retrieved from the contract?
 
@@ -15,7 +15,7 @@ export const ADMIN_AUTHENTICATE_MSG =
 
 export const HIGH_PRICE_IMPACT = 5;
 
-export const BLANK_MARKET: PeriodContextType = {
+export const BLANK_MARKET: MarketContextType = {
   chain: undefined,
   address: '',
   collateralAsset: '',

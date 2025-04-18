@@ -37,7 +37,7 @@ import type React from 'react';
 import { useState, useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 
-import type { PeriodContextType } from '../lib/context/PeriodProvider';
+import type { MarketContextType } from '~/lib/context/MarketProvider';
 import { tickToPrice, foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
@@ -103,14 +103,14 @@ const LP_POSITIONS_QUERY = `
 
 interface Props {
   walletAddress: string | null;
-  periodContext: PeriodContextType;
+  marketContext: MarketContextType;
 }
 
 const useLPPositions = (
   walletAddress: string | null,
-  periodContext: PeriodContextType
+  marketContext: MarketContextType
 ) => {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketAddress, epoch } = marketContext;
 
   return useQuery({
     queryKey: ['lpPositions', walletAddress, chainId, marketAddress, epoch],
@@ -216,9 +216,9 @@ const PnLHeaderCell = () => (
 
 const LiquidityPositionsTable: React.FC<Props> = ({
   walletAddress,
-  periodContext,
+  marketContext,
 }) => {
-  const { endTime, unitDisplay } = periodContext;
+  const { endTime, unitDisplay } = marketContext;
   const [sorting, setSorting] = useState<SortingState>([
     {
       id: 'position',
@@ -230,9 +230,9 @@ const LiquidityPositionsTable: React.FC<Props> = ({
     data: positions,
     error,
     isLoading,
-  } = useLPPositions(walletAddress, periodContext);
+  } = useLPPositions(walletAddress, marketContext);
 
-  const { collateralAssetTicker } = periodContext;
+  const { collateralAssetTicker } = marketContext;
 
   const { data: resources } = useResources();
 
@@ -293,11 +293,11 @@ const LiquidityPositionsTable: React.FC<Props> = ({
           <div className="flex items-center gap-1">
             <NumberDisplay
               value={
-                parseFloat(value) / 10 ** periodContext.collateralAssetDecimals
+                parseFloat(value) / 10 ** marketContext.collateralAssetDecimals
               }
             />
             <span className="text-muted-foreground text-sm">
-              {periodContext.collateralAssetTicker}
+              {marketContext.collateralAssetTicker}
             </span>
           </div>
         );
@@ -333,10 +333,10 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         return (
           <PnLCell
             positionId={row.original.positionId}
-            chainId={periodContext.chainId}
-            address={periodContext.address}
-            collateralAssetDecimals={periodContext.collateralAssetDecimals}
-            collateralAssetTicker={periodContext.collateralAssetTicker}
+            chainId={marketContext.chainId}
+            address={marketContext.address}
+            collateralAssetDecimals={marketContext.collateralAssetDecimals}
+            collateralAssetTicker={marketContext.collateralAssetTicker}
           />
         );
       case 'more': {
@@ -404,7 +404,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         enableSorting: false,
       },
     ],
-    [periodContext, expired, resources]
+    [marketContext, expired, resources]
   );
 
   const table = useReactTable({

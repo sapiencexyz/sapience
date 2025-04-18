@@ -34,7 +34,7 @@ const MARKET_GROUPS_QUERY = gql`
   }
 `;
 
-export interface Market {
+export interface MarketGroup {
   id: number;
   name: string;
   chainId: number;
@@ -48,23 +48,23 @@ export interface Market {
     name: string;
     slug: string;
   };
-  epochs: Array<{
+  markets: Array<{
     id: number;
-    epochId: number;
+    marketId: number;
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
   }>;
-  currentEpoch: {
+  currentMarket: {
     id: number;
-    epochId: number;
+    marketId: number;
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
   } | null;
-  nextEpoch: {
+  nextMarket: {
     id: number;
-    epochId: number;
+    marketId: number;
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
@@ -72,12 +72,12 @@ export interface Market {
 }
 
 interface FoilContextType {
-  markets: Market[];
+  marketGroups: MarketGroup[];
   isLoading: boolean;
   error: Error | null;
-  refetchMarkets: (
+  refetchMarketGroups: (
     options?: RefetchOptions
-  ) => Promise<QueryObserverResult<Market[], Error>>;
+  ) => Promise<QueryObserverResult<MarketGroup[], Error>>;
   stEthPerToken: number | undefined;
 }
 
@@ -133,7 +133,7 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
     isLoading,
     error,
     refetch: refetchMarkets,
-  } = useQuery<Market[], Error>({
+  } = useQuery<MarketGroup[], Error>({
     queryKey: ['marketGroups'],
     queryFn: async () => {
       try {
@@ -150,32 +150,32 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
 
         return marketGroups.map((marketGroup: any) => {
           // Transform the structure to match the expected Market interface
-          const epochs = marketGroup.markets.map((market: any) => ({
+          const markets = marketGroup.markets.map((market: any) => ({
             id: market.id,
-            epochId: market.marketId,
+            marketId: market.marketId,
             startTimestamp: market.startTimestamp,
             endTimestamp: market.endTimestamp,
             public: market.settled !== undefined ? !market.settled : true,
           }));
 
-          const sortedEpochs = [...epochs].sort(
+          const sortedMarkets = [...markets].sort(
             (a, b) => a.startTimestamp - b.startTimestamp
           );
 
-          const currentEpoch =
-            sortedEpochs.find(
-              (epoch) =>
-                epoch.startTimestamp <= currentTimestamp &&
-                epoch.endTimestamp > currentTimestamp
+          const currentMarket =
+            sortedMarkets.find(
+              (market) =>
+                market.startTimestamp <= currentTimestamp &&
+                market.endTimestamp > currentTimestamp
             ) ||
-            sortedEpochs[sortedEpochs.length - 1] ||
+            sortedMarkets[sortedMarkets.length - 1] ||
             null;
 
-          const nextEpoch =
-            sortedEpochs.find(
-              (epoch) => epoch.startTimestamp > currentTimestamp
+          const nextMarket =
+            sortedMarkets.find(
+              (market) => market.startTimestamp > currentTimestamp
             ) ||
-            sortedEpochs[sortedEpochs.length - 1] ||
+            sortedMarkets[sortedMarkets.length - 1] ||
             null;
 
           return {
@@ -192,9 +192,9 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
               name: 'Unknown',
               slug: 'unknown',
             }, // Default resource info
-            epochs,
-            currentEpoch,
-            nextEpoch,
+            markets,
+            currentMarket,
+            nextMarket,
           };
         });
       } catch (error) {
@@ -207,10 +207,10 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <FoilContext.Provider
       value={{
-        markets: markets || [],
+        marketGroups: markets || [],
         isLoading,
         error,
-        refetchMarkets,
+        refetchMarketGroups: refetchMarkets,
         stEthPerToken,
       }}
     >

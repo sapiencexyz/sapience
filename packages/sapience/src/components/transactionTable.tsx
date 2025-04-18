@@ -30,7 +30,7 @@ import type React from 'react';
 import { useMemo, useState } from 'react';
 
 import { useFoil } from '../lib/context/FoilProvider';
-import type { PeriodContextType } from '~/lib/context/PeriodProvider';
+import type { MarketContextType } from '~/lib/context/MarketProvider';
 import { foilApi } from '~/lib/utils/util';
 
 import MarketCell from './MarketCell';
@@ -87,7 +87,7 @@ const TRANSACTIONS_QUERY = `
 
 interface Props {
   walletAddress: string | null;
-  periodContext: PeriodContextType;
+  marketContext: MarketContextType;
 }
 
 const getTypeDisplay = (type: string) => {
@@ -107,9 +107,9 @@ const getTypeDisplay = (type: string) => {
 
 function useTransactions(
   walletAddress: string | null,
-  periodContext: PeriodContextType
+  marketContext: MarketContextType
 ) {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketAddress, epoch } = marketContext;
 
   return useQuery({
     queryKey: ['transactions', walletAddress, chainId, marketAddress, epoch],
@@ -145,7 +145,7 @@ function useTransactions(
 
 const TransactionTable: React.FC<Props> = ({
   walletAddress,
-  periodContext,
+  marketContext,
 }) => {
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'time', desc: true },
@@ -156,14 +156,14 @@ const TransactionTable: React.FC<Props> = ({
     data: transactions,
     error,
     isLoading,
-  } = useTransactions(walletAddress, periodContext);
+  } = useTransactions(walletAddress, marketContext);
 
   const {
     collateralAssetTicker,
     collateralAssetDecimals,
     unitDisplay,
     valueDisplay,
-  } = periodContext;
+  } = marketContext;
 
   const { stEthPerToken } = useFoil();
 
@@ -425,7 +425,7 @@ const TransactionTable: React.FC<Props> = ({
                 <a
                   target="_blank"
                   rel="noreferrer"
-                  href={`${periodContext.chain?.blockExplorers?.default.url}/tx/${row.original.transactionHash}`}
+                  href={`${marketContext.chain?.blockExplorers?.default.url}/tx/${row.original.transactionHash}`}
                 >
                   <img
                     src="/etherscan.svg"

@@ -21,7 +21,7 @@ import { useAccount } from 'wagmi';
 import LiquidityPositionsTable from '../liquidityPositionsTable';
 import TraderPositionsTable from '../traderPositionsTable';
 import TransactionTable from '../transactionTable';
-import { PeriodContext } from '~/lib/context/PeriodProvider';
+import { MarketContext } from '~/lib/context/MarketProvider';
 
 import DataDrawerFilter from './DataDrawerFilter';
 
@@ -36,7 +36,7 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
   );
   const [showTable, setShowTable] = useState(false);
   const [selectedTab, setSelectedTab] = useState('transactions');
-  const periodContext = useContext(PeriodContext);
+  const marketContext = useContext(MarketContext);
 
   const tabTitles: { [key: string]: string } = {
     leaderboard: 'Leaderboard',
@@ -91,19 +91,19 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
             <TabsContent value="transactions">
               <TransactionTable
                 walletAddress={walletAddress}
-                periodContext={periodContext}
+                marketContext={marketContext}
               />
             </TabsContent>
             <TabsContent value="trader-positions">
               <TraderPositionsTable
                 walletAddress={walletAddress}
-                periodContext={periodContext}
+                marketContext={marketContext}
               />
             </TabsContent>
             <TabsContent value="lp-positions">
               <LiquidityPositionsTable
                 walletAddress={walletAddress}
-                periodContext={periodContext}
+                marketContext={marketContext}
               />
             </TabsContent>
           </Tabs>
