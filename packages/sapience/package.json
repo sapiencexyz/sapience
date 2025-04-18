@@ -13,6 +13,7 @@
     "lint:fix": "eslint src --fix && pnpm format",
     "type-check": "tsc --noEmit",
     "check:turbo": "npx turbo lint type-check",
+    "test": "jest",
     "test:e2e": "playwright test",
     "format": "prettier --write src",
     "up-interactive": "pnpm up -i",

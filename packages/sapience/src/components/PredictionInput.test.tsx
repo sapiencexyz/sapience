@@ -1,5 +1,4 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import React from 'react';
 
 import '@testing-library/jest-dom';
 import PredictionInput, {
@@ -28,6 +27,9 @@ describe('PredictionInput', () => {
   beforeEach(() => {
     mockOnChange.mockClear();
   });
+
+  // Define the constant unit display string here for reuse
+  const testUnitDisplay = 'wstETH / GGas';
 
   // --- Test rendering based on inputType ---
 
@@ -65,20 +67,22 @@ describe('PredictionInput', () => {
   });
 
   test('renders numerical input when inputType is number', () => {
-    const testUnitDisplay = 'wstETH / GGas';
+    // Use the defined constant
     render(
       <PredictionInput
         market={mockMarketNumeric}
         inputType="number"
-        unitDisplay={testUnitDisplay}
+        unitDisplay={testUnitDisplay} // Use constant
         value=""
         onChange={mockOnChange}
       />
     );
-    const input = screen.getByLabelText(`Enter prediction value in ${testUnitDisplay}`);
+    const input = screen.getByLabelText(
+      `Enter prediction value in ${testUnitDisplay}` // Use constant
+    );
     expect(input).toBeInTheDocument();
     expect(input).toHaveAttribute('type', 'number');
-    expect(screen.getByText(testUnitDisplay)).toBeInTheDocument();
+    expect(screen.getByText(testUnitDisplay)).toBeInTheDocument(); // Use constant
   });
 
   test('renders nothing when inputType is null', () => {
@@ -142,17 +146,19 @@ describe('PredictionInput', () => {
   });
 
   test('calls onChange with sqrtPriceX96 when numerical input changes (inputType=number)', () => {
-    const testUnitDisplay = 'wstETH / GGas';
+    // Use the defined constant
     render(
       <PredictionInput
         market={mockMarketNumeric}
         inputType="number"
-        unitDisplay={testUnitDisplay}
+        unitDisplay={testUnitDisplay} // Use constant
         value=""
         onChange={mockOnChange}
       />
     );
-    const input = screen.getByLabelText(`Enter prediction value in ${testUnitDisplay}`);
+    const input = screen.getByLabelText(
+      `Enter prediction value in ${testUnitDisplay}` // Use constant
+    );
     fireEvent.change(input, { target: { value: '123.45' } });
     expect(mockOnChange).toHaveBeenCalledTimes(1);
     // We're expecting the sqrtPriceX96 value calculated by the function, not the raw input
@@ -160,17 +166,19 @@ describe('PredictionInput', () => {
   });
 
   test('calls onChange with sqrtPriceX96 of 0 when numerical input is cleared or invalid (inputType=number)', () => {
-    const testUnitDisplay = 'wstETH / GGas';
+    // Use the defined constant
     render(
       <PredictionInput
         market={mockMarketNumeric}
         inputType="number"
-        unitDisplay={testUnitDisplay}
+        unitDisplay={testUnitDisplay} // Use constant
         value={100}
         onChange={mockOnChange}
       />
     );
-    const input = screen.getByLabelText(`Enter prediction value in ${testUnitDisplay}`);
+    const input = screen.getByLabelText(
+      `Enter prediction value in ${testUnitDisplay}` // Use constant
+    );
     fireEvent.change(input, { target: { value: '' } });
     expect(mockOnChange).toHaveBeenCalledWith('0');
     fireEvent.change(input, { target: { value: 'invalid' } });

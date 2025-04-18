@@ -13,7 +13,8 @@ import {
 } from '@foil/ui/components/ui/popover';
 import debounce from 'lodash/debounce';
 import { HelpCircle, Info } from 'lucide-react';
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import type React from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   parseUnits,
   formatUnits,
@@ -115,7 +116,10 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     } => {
       if (!marketData?.epochs || !marketData.epochs.length) {
         // No epochs, cannot determine input type
-        console.log('PredictionForm: inputType is null because marketData has no epochs or is missing.', marketData);
+        console.log(
+          'PredictionForm: inputType is null because marketData has no epochs or is missing.',
+          marketData
+        );
         return {
           inputType: null,
           activeOptionNames: null,
@@ -131,8 +135,12 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
       const activeEpochs = marketData.epochs.filter((epoch) => {
         // Ensure startTime and endTime are valid numbers
         // Use the correct property names from the GraphQL response
-        const start = epoch.startTimestamp ? parseInt(String(epoch.startTimestamp), 10) : null;
-        const end = epoch.endTimestamp ? parseInt(String(epoch.endTimestamp), 10) : null;
+        const start = epoch.startTimestamp
+          ? parseInt(String(epoch.startTimestamp), 10)
+          : null;
+        const end = epoch.endTimestamp
+          ? parseInt(String(epoch.endTimestamp), 10)
+          : null;
 
         if (start === null || isNaN(start) || end === null || isNaN(end)) {
           console.warn(
@@ -209,7 +217,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     activeOptionNames,
     unitDisplay,
     displayEpochId,
-    marketData
+    marketData,
   });
 
   // State for attestation status
@@ -462,7 +470,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           debouncedFetchQuote({
             chainId: marketData.chainId,
             marketAddress: marketData.address,
-            epochId: displayEpochId,
+            epochId: displayEpochId.toString(),
             expectedPrice: expectedPriceForQuoter,
             collateralAvailable: collateralAmountBI,
             wagerAmountStr: formData.wagerAmount, // Pass original string for check inside debounced function

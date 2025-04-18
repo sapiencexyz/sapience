@@ -1,6 +1,6 @@
+/* eslint-disable sonarjs/no-duplicate-string */
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
 
 import '@testing-library/jest-dom';
 import PredictionForm from './PredictionForm';
@@ -22,8 +22,6 @@ interface PredictionMarketType {
 
 // Mock PredictionInput component and its exported function
 jest.mock('./PredictionInput', () => {
-  const original = jest.requireActual('./PredictionInput');
-
   // Mock component that displays received props for verification
   const MockPredictionInput = ({
     market,
@@ -46,6 +44,7 @@ jest.mock('./PredictionInput', () => {
     return (
       <div data-testid="mock-prediction-input">
         <button
+          type="button"
           data-testid="mock-input-change"
           onClick={() => {
             // Always pass 'mock-change' directly to match test expectation
@@ -69,7 +68,7 @@ jest.mock('./PredictionInput', () => {
   return {
     __esModule: true,
     default: MockPredictionInput,
-    convertToSqrtPriceX96: jest.fn((price) => '79228162514264337593543950336'),
+    convertToSqrtPriceX96: jest.fn(() => '79228162514264337593543950336'),
   };
 });
 

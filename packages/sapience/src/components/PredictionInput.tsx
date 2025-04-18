@@ -1,7 +1,7 @@
 import { Button } from '@foil/ui/components/ui/button';
 import { Input } from '@foil/ui/components/ui/input';
 import { Label } from '@foil/ui/components/ui/label';
-import React from 'react';
+import type React from 'react';
 
 // Import the actual MarketType - adjust path if necessary
 // import { type MarketType } from '~/types';
@@ -59,7 +59,9 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
 }: PredictionInputProps) => {
   // Render nothing or a loading/disabled state if inputType isn't determined
   if (!inputType || !market) {
-    console.log('PredictionInput: Not rendering - inputType or market is null/undefined');
+    console.log(
+      'PredictionInput: Not rendering - inputType or market is null/undefined'
+    );
     return null; // Or a placeholder/spinner
   }
 
