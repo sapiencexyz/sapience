@@ -52,7 +52,7 @@ export const MarketGroupPreview = ({
 
   return (
     <Link href={`/forecasting/${chainShortName}:${marketAddress}`}>
-      <div className="bg-background border-b border-muted dark:bg-muted/50 flex hover:bg-secondary/10 transition-colors">
+      <div className="bg-background border-muted dark:bg-muted/50 flex hover:bg-secondary/10 transition-colors">
         <div
           className="w-1 min-w-[4px] max-w-[4px] -translate-y-[1px]"
           style={{

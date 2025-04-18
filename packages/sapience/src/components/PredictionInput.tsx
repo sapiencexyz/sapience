@@ -9,14 +9,13 @@ import type React from 'react';
 // Define a local type matching the component's usage until correct import path is found
 interface PredictionMarketType {
   optionNames?: string[] | null;
+  baseTokenName?: string;
+  quoteTokenName?: string;
+  isGroupMarket?: boolean;
 }
-
-export type InputType = 'options' | 'yesno' | 'number' | null;
 
 interface PredictionInputProps {
   market: PredictionMarketType | null | undefined;
-  inputType: InputType;
-  unitDisplay?: string | null;
   value: string | number;
   onChange: (newValue: string | number) => void;
   disabled?: boolean;
@@ -49,8 +48,8 @@ export const convertToSqrtPriceX96 = (price: number): string => {
 
 const PredictionInput: React.FC<PredictionInputProps> = ({
   market,
-  inputType,
-  unitDisplay,
+  // Remove inputType from destructuring
+  // inputType,
   value,
   onChange,
   disabled = false,
@@ -58,32 +57,44 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
   inactiveButtonStyle = defaultInactiveStyle,
 }: PredictionInputProps) => {
   // Render nothing or a loading/disabled state if inputType isn't determined
-  if (!inputType || !market) {
-    console.log(
-      'PredictionInput: Not rendering - inputType or market is null/undefined'
-    );
+  if (!market) {
+    console.log('PredictionInput: Not rendering - market is null/undefined');
     return null; // Or a placeholder/spinner
   }
 
-  // Case 1: Multiple optionNames
+  // Debug the market object to see what's coming in
+  console.log('PredictionInput market:', {
+    baseTokenName: market.baseTokenName,
+    quoteTokenName: market.quoteTokenName,
+    hasOptionNames: !!market.optionNames,
+    optionCount: market.optionNames?.length,
+    isGroupMarket: market.isGroupMarket,
+  });
+
+  // --- Start of Prioritized Rendering Logic ---
+
+  // HIGHEST PRIORITY: Group market with multiple options
   if (
-    inputType === 'options' &&
+    market.isGroupMarket &&
     market.optionNames &&
     market.optionNames.length > 0
   ) {
+    console.log('Rendering group market options (Priority 1: isGroupMarket)');
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-4">
         {market.optionNames.map((option: string, index: number) => {
-          // For option buttons, compare the value to the 1-based index
-          const isActive = value === index + 1;
+          // Value should correspond to the 1-based index of the selected market
+          const optionValue = index + 1;
+          const isActive = value === optionValue;
           return (
             <Button
               key={option}
               type="button"
-              className={`flex-1 px-3 py-1.5 rounded text-sm font-normal ${
+              className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
                 isActive ? activeButtonStyle : inactiveButtonStyle
               }`}
-              onClick={() => onChange(index + 1)} // 1-based index
+              // Clicking sets the value to the 1-based index
+              onClick={() => onChange(optionValue)}
               disabled={disabled}
               data-testid={`option-button-${index}`}
             >
@@ -94,22 +105,23 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
       </div>
     );
   }
-
-  // Case 2: Yes/No market
-  if (inputType === 'yesno') {
-    // Define the appropriate Uniswap sqrtPriceX96 values
-    const yesValue = '79228162514264337593543950336'; // 1e18 as sqrtPriceX96
-    const noValue = '0';
+  // Case 2: Single market with Yes/No options (baseTokenName = "Yes")
+  if (market.baseTokenName === 'Yes') {
+    console.log('Rendering Yes/No buttons (Priority 2: baseTokenName=Yes)');
+    const yesValue = '1'; // Represents prediction of 1
+    const noValue = '0'; // Represents prediction of 0
 
     return (
       <div className="flex gap-4">
         <Button
           type="button"
           className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
+            // Compare value directly to '1' or '0' for Yes/No
             value === yesValue ? activeButtonStyle : inactiveButtonStyle
           }`}
-          onClick={() => onChange(yesValue)} // Use sqrtPriceX96 for "yes"
+          onClick={() => onChange(yesValue)}
           disabled={disabled}
+          data-testid="yes-button"
         >
           Yes
         </Button>
@@ -118,18 +130,27 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
           className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
             value === noValue ? activeButtonStyle : inactiveButtonStyle
           }`}
-          onClick={() => onChange(noValue)} // Use 0 for "no"
+          onClick={() => onChange(noValue)}
           disabled={disabled}
+          data-testid="no-button"
         >
           No
         </Button>
       </div>
     );
   }
+  // Case 3 & 4: Number input (sUSDS or default quote/base)
+  // Combine number input logic
+  if (market.quoteTokenName && market.baseTokenName) {
+    // Determine unit based on quote token
+    const unit =
+      market.quoteTokenName === 'sUSDS'
+        ? market.baseTokenName
+        : `${market.quoteTokenName}/${market.baseTokenName}`;
 
-  // Case 3: Numerical input
-  if (inputType === 'number') {
-    // Extract numeric value from potentially string-based input
+    console.log(
+      `Rendering number input (Combined sUSDS/Default - Unit: ${unit})`
+    );
     const displayValue =
       typeof value === 'string' ? parseFloat(value) || '' : value;
 
@@ -142,27 +163,31 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
           id="prediction-input"
           name="predictionValue"
           type="number"
-          className="w-full p-2 border rounded pr-24"
-          value={displayValue} // Show numeric value in input
-          // Convert user input to sqrtPriceX96 format when sending to parent
+          className="w-full p-2 border rounded pr-28 pl-4" // Adjust padding if unit length varies significantly
+          value={displayValue}
           onChange={(e) => {
             const numValue = parseFloat(e.target.value) || 0;
-            onChange(convertToSqrtPriceX96(numValue));
+            onChange(convertToSqrtPriceX96(numValue)); // Convert to sqrtPriceX96
           }}
           placeholder="Enter value"
           disabled={disabled}
-          aria-label={`Enter prediction value in ${unitDisplay || 'units'}`}
+          aria-label={`Enter prediction value in ${unit}`}
         />
-        {unitDisplay && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center pointer-events-none">
-            {unitDisplay}
-          </div>
-        )}
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center pointer-events-none">
+          {unit}
+        </div>
       </div>
     );
   }
+  // Final fallback if nothing matches
 
-  // Fallback if inputType is known but doesn't match expected cases
+  console.error(
+    'PredictionInput: Invalid input configuration. Market data:',
+    market
+    // Remove inputType from error log
+    // 'Input type:',
+    // inputType
+  );
   return <p>Invalid input configuration.</p>;
 };
 

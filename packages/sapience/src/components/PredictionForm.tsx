@@ -24,7 +24,6 @@ import {
 import { useAccount, useWriteContract, useTransaction } from 'wagmi';
 
 import PredictionInput from './PredictionInput';
-import type { InputType } from './PredictionInput';
 
 // EAS constants
 const EAS_CONTRACT_ADDRESS = '0x4200000000000000000000000000000000000021';
@@ -107,121 +106,120 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   const { address } = useAccount();
 
   // --- New logic to determine input type based on active markets ---
-  const { inputType, activeOptionNames, unitDisplay, displayMarketId } =
-    useMemo<{
-      inputType: InputType;
-      activeOptionNames: string[] | null | undefined;
-      unitDisplay: string | null;
-      displayMarketId: string | number | null;
-    }>(() => {
-      if (!marketData?.markets || !marketData.markets.length) {
-        // No markets, cannot determine input type
-        console.log(
-          'PredictionForm: inputType is null because marketData has no markets or is missing.',
-          marketData
-        );
-        return {
-          inputType: null,
-          activeOptionNames: null,
-          unitDisplay: null,
-          displayMarketId: null,
-        };
-      }
-
-      const now = Math.floor(Date.now() / 1000); // Current time in seconds
-
-      console.log(
-        'PredictionForm: Raw marketData.markets:',
-        marketData.markets
-      );
-
-      const activeMarkets = marketData.markets.filter((market) => {
-        // Ensure startTime and endTime are valid numbers
-        // Use the correct property names from the GraphQL response
-        const start = market.startTimestamp
-          ? parseInt(String(market.startTimestamp), 10)
-          : null;
-        const end = market.endTimestamp
-          ? parseInt(String(market.endTimestamp), 10)
-          : null;
-
-        if (start === null || isNaN(start) || end === null || isNaN(end)) {
-          console.warn(
-            `Market ${market.marketId} has invalid or missing timestamps`
-          );
-          return false; // Skip markets with invalid/missing times
-        }
-        return now >= start && now < end;
-      });
-
-      console.log('PredictionForm: Filtered active markets:', activeMarkets);
-
-      // Determine the display market (prioritize currentMarketId if valid & active)
-      const activeMarketIds = activeMarkets.map((m) => m.marketId);
-      let currentDisplayMarketId = null;
-      if (currentMarketId && activeMarketIds.includes(currentMarketId)) {
-        currentDisplayMarketId = currentMarketId;
-      } else if (activeMarkets.length > 0) {
-        // Fallback to the first active market if currentMarketId is not active or not provided
-        currentDisplayMarketId = activeMarkets[0].marketId;
-      }
-
-      if (activeMarkets.length > 1) {
-        // Multiple active markets: Use optionNames from the market group
-        return {
-          inputType: 'options',
-          activeOptionNames: marketData.optionNames,
-          unitDisplay: null,
-          displayMarketId: currentDisplayMarketId,
-        };
-      }
-      if (activeMarkets.length === 1) {
-        // Single active market: Check bounds
-        const isYesNoRange =
-          marketData.lowerBound === '-92200' && marketData.upperBound === '0';
-        if (isYesNoRange) {
-          return {
-            inputType: 'yesno',
-            activeOptionNames: null,
-            unitDisplay: null,
-            displayMarketId: currentDisplayMarketId,
-          };
-        }
-        // Numerical input - construct unit display string
-        const base = marketData.baseTokenName;
-        const quote = marketData.quoteTokenName;
-        let displayString = base || 'units'; // Default to base or 'units'
-        if (base && quote) {
-          displayString = `${quote} / ${base}`;
-        } else if (quote) {
-          displayString = quote; // Fallback if only quote exists
-        }
-
-        return {
-          inputType: 'number',
-          activeOptionNames: null,
-          unitDisplay: displayString,
-          displayMarketId: currentDisplayMarketId,
-        };
-      }
-      // No active markets
+  const { activeOptionNames, unitDisplay, displayMarketId } = useMemo<{
+    activeOptionNames: string[] | null | undefined;
+    unitDisplay: string | null;
+    displayMarketId: string | number | null;
+  }>(() => {
+    if (!marketData?.markets || !marketData.markets.length) {
       return {
-        inputType: null,
         activeOptionNames: null,
         unitDisplay: null,
         displayMarketId: null,
       };
-    }, [marketData, currentMarketId]);
+    }
+
+    const now = Math.floor(Date.now() / 1000); // Current time in seconds
+
+    const activeMarkets = marketData.markets.filter((market) => {
+      // Ensure startTime and endTime are valid numbers
+      // Use the correct property names from the GraphQL response
+      const start = market.startTimestamp
+        ? parseInt(String(market.startTimestamp), 10)
+        : null;
+      const end = market.endTimestamp
+        ? parseInt(String(market.endTimestamp), 10)
+        : null;
+
+      if (start === null || isNaN(start) || end === null || isNaN(end)) {
+        console.warn(
+          `Market ${market.marketId} has invalid or missing timestamps`
+        );
+        return false; // Skip markets with invalid/missing times
+      }
+      return now >= start && now < end;
+    });
+
+    // Determine the display market (prioritize currentMarketId if valid & active)
+    const activeMarketIds = activeMarkets.map((m) => m.marketId);
+    let currentDisplayMarketId = null;
+    if (currentMarketId && activeMarketIds.includes(currentMarketId)) {
+      currentDisplayMarketId = currentMarketId;
+    } else if (activeMarkets.length > 0) {
+      // Fallback to the first active market if currentMarketId is not active or not provided
+      currentDisplayMarketId = activeMarkets[0].marketId;
+    }
+
+    if (activeMarkets.length > 1) {
+      // Multiple active markets: Use optionNames from the market group
+      return {
+        activeOptionNames: marketData.optionNames,
+        unitDisplay: null,
+        displayMarketId: currentDisplayMarketId,
+      };
+    }
+    if (activeMarkets.length === 1) {
+      // Single active market: Check bounds
+      const isYesNoRange =
+        marketData.lowerBound === '-92200' && marketData.upperBound === '0';
+      if (isYesNoRange) {
+        return {
+          activeOptionNames: null,
+          unitDisplay: null,
+          displayMarketId: currentDisplayMarketId,
+        };
+      }
+      // Numerical input - construct unit display string
+      const base = marketData.baseTokenName;
+      const quote = marketData.quoteTokenName;
+      let displayString = base || 'units'; // Default to base or 'units'
+      if (base && quote) {
+        displayString = `${quote} / ${base}`;
+      } else if (quote) {
+        displayString = quote; // Fallback if only quote exists
+      }
+
+      return {
+        activeOptionNames: null,
+        unitDisplay: displayString,
+        displayMarketId: currentDisplayMarketId,
+      };
+    }
+    // No active markets
+    return {
+      activeOptionNames: null,
+      unitDisplay: null,
+      displayMarketId: null,
+    };
+  }, [marketData, currentMarketId]);
   // --- End of new logic ---
 
   // Add debugging information
   console.log('PredictionForm calculated values:', {
-    inputType,
     activeOptionNames,
     unitDisplay,
     displayMarketId,
     marketData,
   });
+
+  // Derive isGroupMarket based on the number of active markets
+  const isGroupMarket = useMemo(() => {
+    if (!marketData?.markets) return false;
+    const now = Math.floor(Date.now() / 1000);
+    const activeMarkets = marketData.markets.filter((market) => {
+      const start = market.startTimestamp
+        ? parseInt(String(market.startTimestamp), 10)
+        : null;
+      const end = market.endTimestamp
+        ? parseInt(String(market.endTimestamp), 10)
+        : null;
+      if (start === null || isNaN(start) || end === null || isNaN(end)) {
+        return false;
+      }
+      return now >= start && now < end;
+    });
+    return activeMarkets.length > 1;
+  }, [marketData]);
 
   // State for attestation status
   const [attestationError, setAttestationError] = useState<string | null>(null);
@@ -687,11 +685,17 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
               <div className="mt-1">
                 <PredictionInput
                   market={{
-                    optionNames:
-                      inputType === 'options' ? activeOptionNames : null,
+                    optionNames: activeOptionNames,
+                    baseTokenName:
+                      marketData?.baseTokenName === null
+                        ? undefined
+                        : marketData?.baseTokenName,
+                    quoteTokenName:
+                      marketData?.quoteTokenName === null
+                        ? undefined
+                        : marketData?.quoteTokenName,
+                    isGroupMarket,
                   }}
-                  inputType={inputType}
-                  unitDisplay={unitDisplay}
                   value={formData.predictionValue}
                   onChange={handlePredictionChange}
                   activeButtonStyle={activeButtonStyle}
@@ -741,11 +745,17 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
               <div className="mt-1">
                 <PredictionInput
                   market={{
-                    optionNames:
-                      inputType === 'options' ? activeOptionNames : null,
+                    optionNames: activeOptionNames,
+                    baseTokenName:
+                      marketData?.baseTokenName === null
+                        ? undefined
+                        : marketData?.baseTokenName,
+                    quoteTokenName:
+                      marketData?.quoteTokenName === null
+                        ? undefined
+                        : marketData?.quoteTokenName,
+                    isGroupMarket,
                   }}
-                  inputType={inputType}
-                  unitDisplay={unitDisplay}
                   value={formData.predictionValue}
                   onChange={handlePredictionChange}
                   activeButtonStyle={activeButtonStyle}
