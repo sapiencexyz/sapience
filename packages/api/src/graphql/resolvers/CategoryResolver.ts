@@ -11,7 +11,11 @@ export class CategoryResolver {
   async categories(): Promise<CategoryType[]> {
     try {
       const categories = await dataSource.getRepository(Category).find({
-        relations: ['marketGroups', 'marketGroups.markets', 'marketGroups.resource'],
+        relations: [
+          'marketGroups',
+          'marketGroups.markets',
+          'marketGroups.resource',
+        ],
       });
       return categories.map((category) => ({
         id: category.id,
