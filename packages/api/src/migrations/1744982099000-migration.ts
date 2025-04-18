@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Migration1744740680860 implements MigrationInterface {
-  name = 'Migration1744740680860';
+export class Migration1744982099000 implements MigrationInterface {
+  name = 'Migration1744982099000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Drop the foreign key constraints

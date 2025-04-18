@@ -57,7 +57,11 @@ export async function getMarketPricesInTimeRange(
     .innerJoinAndSelect('marketPrice.transaction', 'transaction')
     .innerJoinAndSelect('transaction.event', 'event')
     .innerJoinAndSelect('event.marketGroup', 'marketGroup')
-    .innerJoinAndSelect('marketGroup.markets', 'market', 'market.marketId = :marketId')
+    .innerJoinAndSelect(
+      'marketGroup.markets',
+      'market',
+      'market.marketId = :marketId'
+    )
     .where('market.chainId = :chainId', { chainId })
     .andWhere('market.address = :address', { address: address.toLowerCase() })
     .andWhere('market.marketId = :marketId', { marketId })
