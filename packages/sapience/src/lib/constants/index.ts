@@ -48,7 +48,6 @@ export const BLANK_MARKET: MarketContextType = {
     uniswapSwapRouter: '0x',
   },
   refetchUniswapData: () => {},
-  market: undefined,
   seriesVisibility: {
     candles: true,
     index: true,

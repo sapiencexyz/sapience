@@ -134,7 +134,11 @@ const ForecastingDetailPage = () => {
 
         // The response will contain all markets, so we need to filter for the specific one
         const marketsData = response.data?.markets;
-        if (!marketsData || !Array.isArray(marketsData) || marketsData.length === 0) {
+        if (
+          !marketsData ||
+          !Array.isArray(marketsData) ||
+          marketsData.length === 0
+        ) {
           console.error('No markets data in response:', response.data);
           return { placeholder: true };
         }
@@ -145,7 +149,10 @@ const ForecastingDetailPage = () => {
         );
 
         if (!targetMarket) {
-          console.error(`Market with ID ${marketId} not found in response:`, marketsData);
+          console.error(
+            `Market with ID ${marketId} not found in response:`,
+            marketsData
+          );
           return { placeholder: true };
         }
 
@@ -333,8 +340,12 @@ const ForecastingDetailPage = () => {
                     {activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper
                         collateralAssetTicker="sUSDS"
-                        baseTokenName={marketData?.marketGroup?.baseTokenName || 'Yes'}
-                        quoteTokenName={marketData?.marketGroup?.quoteTokenName || 'No'}
+                        baseTokenName={
+                          marketData?.marketGroup?.baseTokenName || 'Yes'
+                        }
+                        quoteTokenName={
+                          marketData?.marketGroup?.quoteTokenName || 'No'
+                        }
                       />
                     )}
                   </div>
