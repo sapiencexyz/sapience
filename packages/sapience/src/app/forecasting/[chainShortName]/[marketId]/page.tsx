@@ -17,17 +17,37 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ResponsiveContainer } from 'recharts';
 
-import ComingSoonScrim from '~/components/ComingSoonScrim';
-import SimpleLiquidityWrapper from '~/components/SimpleLiquidityWrapper';
-import SimpleTradeWrapper from '~/components/SimpleTradeWrapper';
+import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
+// import SimpleLiquidityWrapper from '~/components/SimpleLiquidityWrapper';
+// import SimpleTradeWrapper from '~/components/SimpleTradeWrapper';
 import { foilApi } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
   // Use a simple div as placeholder during load
   loading: () => <div className="w-8 h-8" />,
 });
+
+const SimpleTradeWrapper = dynamic(
+  () => import('~/components/forecasting/SimpleTradeWrapper'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 animate-pulse bg-muted/40 rounded-md" />
+    ),
+  }
+);
+
+const SimpleLiquidityWrapper = dynamic(
+  () => import('~/components/forecasting/SimpleLiquidityWrapper'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 animate-pulse bg-muted/40 rounded-md" />
+    ),
+  }
+);
 
 // Updated query to fetch the specific market directly, filtered by chainId and marketGroup address
 const MARKET_QUERY = gql`

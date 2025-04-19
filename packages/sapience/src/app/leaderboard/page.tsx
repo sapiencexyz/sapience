@@ -1,6 +1,6 @@
 'use client';
 
-import Leaderboard from '~/components/Leaderboard';
+import Leaderboard from '~/components/leaderboard/Leaderboard';
 
 const LeaderboardPage = () => {
   return (

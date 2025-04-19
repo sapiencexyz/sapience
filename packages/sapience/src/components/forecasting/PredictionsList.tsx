@@ -20,8 +20,8 @@ import { ChevronRight } from 'lucide-react';
 import React from 'react';
 import { getAddress } from 'viem';
 
-import { AddressDisplay } from '~/components/AddressDisplay';
-import LottieLoader from '~/components/LottieLoader';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import LottieLoader from '~/components/shared/LottieLoader';
 
 interface PredictionsListProps {
   marketAddress?: string;

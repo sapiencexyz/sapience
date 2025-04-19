@@ -5,7 +5,7 @@ const MarketGroupsListSkeleton = () => <div className="space-y-4" />;
 
 // Dynamically import MarketGroupsList
 const MarketGroupsList = dynamic(
-  () => import('~/components/MarketGroupsList'),
+  () => import('~/components/forecasting/MarketGroupsList'),
   {
     ssr: false, // Disable server-side rendering
     loading: () => <MarketGroupsListSkeleton />, // Show skeleton while loading

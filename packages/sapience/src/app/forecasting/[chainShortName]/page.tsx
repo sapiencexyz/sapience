@@ -16,22 +16,25 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
-import ComingSoonScrim from '../../../components/ComingSoonScrim';
-import PredictionForm from '../../../components/PredictionForm';
+import PredictionForm from '../../../components/forecasting/PredictionForm';
+import ComingSoonScrim from '../../../components/shared/ComingSoonScrim';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import {
   findActiveMarkets,
   getDisplayQuestion,
 } from '../../../lib/utils/questionUtils';
 import { foilApi } from '../../../lib/utils/util';
-import PredictionsList from '~/components/PredictionsList';
+import PredictionsList from '~/components/forecasting/PredictionsList';
 
 // Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('../../../components/LottieLoader'), {
-  ssr: false,
-  // Use a simple div as placeholder during load
-  loading: () => <div className="w-8 h-8" />,
-});
+const LottieLoader = dynamic(
+  () => import('../../../components/shared/LottieLoader'),
+  {
+    ssr: false,
+    // Use a simple div as placeholder during load
+    loading: () => <div className="w-8 h-8" />,
+  }
+);
 
 // GraphQL query to fetch market data - updated to match schema exactly
 const MARKET_GROUP_QUERY = gql`

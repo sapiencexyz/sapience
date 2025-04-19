@@ -22,18 +22,18 @@ import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
-import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import {
   useEnrichedMarketGroups,
   useCategories,
   type Market,
-} from '~/lib/hooks/useMarketGroups';
+} from '~/hooks/useMarketGroups';
+import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import { formatQuestion } from '~/lib/utils/questionUtils';
 
 import { MarketGroupPreview } from './MarketGroupPreview';
 
 // Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
   // Use a simple div as placeholder during load
   loading: () => <div className="w-8 h-8" />,

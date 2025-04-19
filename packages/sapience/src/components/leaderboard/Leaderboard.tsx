@@ -1,3 +1,5 @@
+'use client';
+
 import {
   Table,
   TableBody,
@@ -21,11 +23,11 @@ import {
 import dynamic from 'next/dynamic';
 import { useState, useMemo } from 'react';
 
-import { AddressDisplay } from '~/components/AddressDisplay';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import { foilApi } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
   // Use a simple div as placeholder during load
   loading: () => <div className="w-8 h-8" />,

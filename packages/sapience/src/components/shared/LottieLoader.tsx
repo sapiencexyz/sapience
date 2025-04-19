@@ -1,3 +1,5 @@
+'use client';
+
 import { useLottie } from 'lottie-react';
 
 interface LottieLoaderProps {

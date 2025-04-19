@@ -1,3 +1,5 @@
+'use client';
+
 /* eslint-disable sonarjs/no-duplicate-string */
 import { Button } from '@foil/ui/components/ui/button';
 import {
@@ -12,11 +14,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAccount } from 'wagmi';
 
-import ConnectButton from '../ConnectButton';
-import ModeToggle from '../ModeToggle';
+import ConnectButton from './ConnectButton';
+import ModeToggle from './ModeToggle';
 
 // Dynamically import LottieIcon
-const LottieIcon = dynamic(() => import('../LottieIcon'), {
+const LottieIcon = dynamic(() => import('./LottieIcon'), {
   ssr: false,
   // Optional: Add a simple placeholder or skeleton
   loading: () => <div className="w-8 h-8 opacity-80" />,

@@ -3,7 +3,7 @@
 import { Button } from '@foil/ui/components/ui/button';
 import Link from 'next/link';
 
-import ClaudeVideoPlayer from './ClaudeVideoPlayer';
+import ClaudeVideoPlayer from '../bots/ClaudeVideoPlayer';
 
 export default function BotSection() {
   return (
