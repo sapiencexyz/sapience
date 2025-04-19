@@ -3,8 +3,6 @@ import { useState } from 'react';
 
 import { foilApi } from '~/lib/utils/util';
 
-// --- Interfaces (copied from Leaderboard.tsx) ---
-
 // Interface for aggregated data after processing
 interface AggregatedLeaderboardEntry {
   owner: string;
@@ -47,8 +45,6 @@ interface MarketGroupData {
   chainId: number;
   markets: { marketId: number; public: boolean }[];
 }
-
-// --- Hooks (copied and adapted from Leaderboard.tsx) ---
 
 // Hook revised for client-side aggregation
 const useAllTimeLeaderboard = () => {

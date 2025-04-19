@@ -2,9 +2,6 @@
 
 import dynamic from 'next/dynamic';
 
-// import MCPSection from '~/components/bots/MCPSection';
-// import TemplateSection from '~/components/bots/TemplateSection';
-
 const BotsHero = dynamic(() => import('~/components/bots/BotsHero'), {
   ssr: false,
 });

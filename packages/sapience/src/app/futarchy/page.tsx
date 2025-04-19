@@ -2,8 +2,6 @@
 
 import dynamic from 'next/dynamic';
 
-// import FutarchyContent from '../../components/futarchy/FutarchyContent';
-
 const Fuzz = dynamic(() => import('../../components/futarchy/Fuzz'), {
   ssr: false,
 });
