@@ -16,6 +16,7 @@ interface PredictionMarketType {
 
 interface PredictionInputProps {
   market: PredictionMarketType | null | undefined;
+  unitDisplay: string | null;
   value: string | number;
   onChange: (newValue: string | number) => void;
   disabled?: boolean;
@@ -48,8 +49,7 @@ export const convertToSqrtPriceX96 = (price: number): string => {
 
 const PredictionInput: React.FC<PredictionInputProps> = ({
   market,
-  // Remove inputType from destructuring
-  // inputType,
+  unitDisplay,
   value,
   onChange,
   disabled = false,
@@ -118,12 +118,6 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
 
   // Helper to render number input
   const renderNumberInput = () => {
-    // Determine unit based on quote token, add non-null assertions
-    const unit =
-      market!.quoteTokenName === 'sUSDS'
-        ? market!.baseTokenName!
-        : `${market!.quoteTokenName}/${market!.baseTokenName}`;
-
     // Calculate displayValue without nested ternary
     let displayValue = '';
     if (typeof value === 'string') {
@@ -147,12 +141,12 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
             // Pass the raw string value from the input directly to the parent onChange handler.
             onChange(e.target.value);
           }}
-          placeholder="Enter value"
+          placeholder="Enter prediction"
           disabled={disabled}
-          aria-label={`Enter prediction value in ${unit}`}
+          aria-label={`Enter prediction value in ${unitDisplay || 'units'}`}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center pointer-events-none">
-          {unit}
+          {unitDisplay || 'Units'}
         </div>
       </div>
     );
@@ -171,6 +165,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
     hasOptionNames: !!market.optionNames,
     optionCount: market.optionNames?.length,
     isGroupMarket: market.isGroupMarket,
+    unitDisplay,
   });
 
   // --- Start of Prioritized Rendering Logic ---
@@ -192,8 +187,10 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
   }
 
   // Case 3 & 4: Number input (sUSDS or default quote/base)
-  if (market.quoteTokenName && market.baseTokenName) {
-    console.log(`Rendering number input (Combined sUSDS/Default)`);
+  if (unitDisplay) {
+    console.log(
+      `Rendering number input (unitDisplay provided: ${unitDisplay})`
+    );
     return renderNumberInput();
   }
 

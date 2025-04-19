@@ -28,7 +28,12 @@ const isMarketActive = (
     ? parseInt(String(market.endTimestamp), 10)
     : null;
 
-  if (start === null || isNaN(start) || end === null || isNaN(end)) {
+  if (
+    start === null ||
+    Number.isNaN(start) ||
+    end === null ||
+    Number.isNaN(end)
+  ) {
     // console.warn(`Market ${market.marketId} has invalid or missing timestamps`);
     return false;
   }
@@ -122,6 +127,7 @@ export function useMarketCalculations({
     unitDisplay: string | null;
     displayMarketId: string | number | null;
   }>(() => {
+    // Initial Guard Clause
     if (!marketData?.markets?.length) {
       return {
         activeOptionNames: null,
@@ -131,12 +137,11 @@ export function useMarketCalculations({
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const activeMarkets = marketData.markets.filter(
-      (
-        market: MarketInfo // Add type
-      ) => isMarketActive(market, now)
+    const activeMarkets = marketData.markets.filter((market: MarketInfo) =>
+      isMarketActive(market, now)
     );
 
+    // Guard Clause for no active markets
     if (!activeMarkets.length) {
       return {
         activeOptionNames: null,
@@ -145,49 +150,58 @@ export function useMarketCalculations({
       };
     }
 
+    // Determine the primary market ID to display
     const activeMarketIds = activeMarkets.map((m: MarketInfo) =>
       String(m.marketId)
-    ); // Add type & Ensure string comparison
+    );
     let currentDisplayMarketId: string | number | null = null;
-
     if (currentMarketId && activeMarketIds.includes(currentMarketId)) {
       currentDisplayMarketId = currentMarketId;
-    } else if (activeMarkets.length > 0) {
-      currentDisplayMarketId = activeMarkets[0].marketId; // Fallback to first active
+    } else {
+      // Fallback to the first active market if currentMarketId is not provided or not active
+      currentDisplayMarketId = activeMarkets[0].marketId;
     }
 
-    // Determine output based on number of active markets
+    // Handle Group Market (multiple active markets)
     if (activeMarkets.length > 1) {
       return {
         activeOptionNames: marketData.optionNames,
-        unitDisplay: null,
+        unitDisplay: null, // No specific unit for group markets
         displayMarketId: currentDisplayMarketId,
       };
     }
 
-    // Single active market logic
+    // Handle Single Active Market
     const isYesNoRange =
       marketData.lowerBound === '-92200' && marketData.upperBound === '0';
+
     if (isYesNoRange) {
+      // Yes/No Market
       return {
-        activeOptionNames: null,
-        unitDisplay: null, // Explicitly null for Yes/No
+        activeOptionNames: null, // Options not displayed for Yes/No
+        unitDisplay: null, // No specific unit for Yes/No
         displayMarketId: currentDisplayMarketId,
       };
     }
 
-    // Numerical input - construct unit display string
+    // Numerical Market - Calculate unitDisplay
     const base = marketData.baseTokenName;
     const quote = marketData.quoteTokenName;
-    let displayString = base || 'units';
-    if (base && quote) {
-      displayString = `${quote} / ${base}`;
+    let displayString: string = 'units'; // Default fallback
+
+    if (quote === 'sUSDS' && base) {
+      displayString = base;
+    } else if (base && quote) {
+      displayString = `${quote}/${base}`;
     } else if (quote) {
       displayString = quote;
+    } else if (base) {
+      displayString = base;
     }
+    // If neither base nor quote exists, it remains 'units'
 
     return {
-      activeOptionNames: null,
+      activeOptionNames: null, // No options displayed for numerical
       unitDisplay: displayString,
       displayMarketId: currentDisplayMarketId,
     };
