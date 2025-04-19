@@ -179,12 +179,16 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
+                      {header.isPlaceholder ? null : (
+                        <>
+                          {String(
+                            flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )
                           )}
+                        </>
+                      )}
                     </TableHead>
                   ))}
                 </TableRow>
@@ -199,10 +203,14 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        <>
+                          {String(
+                            flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )
+                          )}
+                        </>
                       </TableCell>
                     ))}
                   </TableRow>

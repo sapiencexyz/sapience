@@ -1,6 +1,7 @@
 import { formatEther, createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
-import { Market, MarketGroup } from '../interfaces/interfaces';
+
+import type { Market, MarketGroup } from '../interfaces/interfaces';
 
 export const foilApi = {
   baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
