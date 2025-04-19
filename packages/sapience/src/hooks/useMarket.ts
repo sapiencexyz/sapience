@@ -96,7 +96,6 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
 
   const numericMarketId = Number(marketId);
 
-  // Fetch market data including all epochs
   const { data: marketData, isLoading: isLoadingMarket } = useQuery({
     queryKey: ['market', chainId, marketAddress, numericMarketId],
     queryFn: async () => {

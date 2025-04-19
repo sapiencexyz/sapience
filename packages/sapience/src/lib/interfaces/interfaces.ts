@@ -38,20 +38,6 @@ export interface MarketParams {
   uniswapQuoter: `0x${string}`;
   uniswapSwapRouter: `0x${string}`;
 }
-export interface EpochData {
-  epochId: string;
-  startTime: bigint;
-  endTime: bigint;
-  pool: `0x${string}`;
-  ethToken: string;
-  gasToken: string;
-  minPriceD18: bigint;
-  maxPriceD18: bigint;
-  baseAssetMinPriceTick: number;
-  baseAssetMaxPriceTick: number;
-  settled: boolean;
-  settlementPriceD18: bigint;
-}
 
 export enum TimeWindow {
   D = '1D',
@@ -86,15 +72,4 @@ export interface PriceChartData {
   low: number;
   open: number;
   close: number;
-}
-
-export interface RenderJob {
-  id: string;
-  serviceId: string;
-  startCommand: string;
-  planId: string;
-  status?: string;
-  createdAt: string;
-  startedAt?: string;
-  finishedAt?: string;
 }
