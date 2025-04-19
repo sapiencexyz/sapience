@@ -32,6 +32,23 @@ import { formatQuestion } from '~/lib/utils/util';
 
 import MarketGroupsRow from './MarketGroupsRow';
 
+// Custom hook for debouncing values
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
@@ -210,6 +227,7 @@ const ForecastingTable = () => {
 
   // State for text filter
   const [searchTerm, setSearchTerm] = React.useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Add state for filter sheet
   const [filterOpen, setFilterOpen] = React.useState(false);
@@ -367,7 +385,7 @@ const ForecastingTable = () => {
     );
 
     // 6. Filter by Search Term *after* determining display question
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    const lowerCaseSearchTerm = debouncedSearchTerm.toLowerCase();
     const filteredBySearch = marketGroupsWithQuestions.filter((marketGroup) => {
       if (!lowerCaseSearchTerm) return true; // Show all if search is empty
 
@@ -388,7 +406,12 @@ const ForecastingTable = () => {
     );
 
     return filteredBySearch; // Return the final filtered list
-  }, [enrichedMarketGroups, selectedCategorySlug, statusFilter, searchTerm]); // Added searchTerm dependency
+  }, [
+    enrichedMarketGroups,
+    selectedCategorySlug,
+    statusFilter,
+    debouncedSearchTerm,
+  ]); // Changed searchTerm to debouncedSearchTerm
   // --- End of refactored useMemo ---
 
   // Group market groups by day based on their earliest active market
@@ -466,6 +489,11 @@ const ForecastingTable = () => {
   const sortedDays = React.useMemo(() => {
     return Object.keys(marketGroupsByDay).sort();
   }, [marketGroupsByDay]);
+
+  // Create a key that changes whenever filters change to force complete re-render
+  const filterKey = React.useMemo(() => {
+    return `${selectedCategorySlug || 'all'}-${statusFilter}-${debouncedSearchTerm}`;
+  }, [selectedCategorySlug, statusFilter, debouncedSearchTerm]);
 
   // Update click handler for focus areas
   const handleCategoryClick = (categorySlug: string | null) => {
@@ -591,7 +619,7 @@ const ForecastingTable = () => {
 
         {/* Removed the inline loading checks here */}
         <div className="relative min-h-[300px]">
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence mode="wait" key={filterKey}>
             {groupedMarketGroups.length === 0 && (
               <motion.div
                 key="zero-state"
@@ -599,7 +627,7 @@ const ForecastingTable = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.25 }}
                 className="w-full pt-48 text-center text-muted-foreground"
               >
                 <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
@@ -607,44 +635,55 @@ const ForecastingTable = () => {
               </motion.div>
             )}
 
-            {sortedDays.map((dayKey) => (
+            {groupedMarketGroups.length > 0 && (
               <motion.div
-                key={dayKey}
-                className="mb-8"
+                key="results-container"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
               >
-                <div className="flex flex-col mb-2">
-                  <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                    {formatEndDate(dayEndTimes[dayKey])}
-                  </h3>
-                  <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
-                    {marketGroupsByDay[dayKey].map((marketGroup) => (
-                      <motion.div
-                        layout
-                        key={marketGroup.key}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="border-b last:border-b-0 border-border"
-                      >
-                        <MarketGroupsRow
-                          marketAddress={marketGroup.marketAddress}
-                          chainId={marketGroup.chainId}
-                          displayQuestion={
-                            marketGroup.displayQuestion || 'Loading...'
-                          }
-                          color={marketGroup.color}
-                          markets={marketGroup.markets}
-                        />
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                {sortedDays.map((dayKey) => (
+                  <motion.div
+                    key={dayKey}
+                    className="mb-8"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <div className="flex flex-col mb-2">
+                      <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                        {formatEndDate(dayEndTimes[dayKey])}
+                      </h3>
+                      <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
+                        {marketGroupsByDay[dayKey].map((marketGroup) => (
+                          <motion.div
+                            layout
+                            key={marketGroup.key}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="border-b last:border-b-0 border-border"
+                          >
+                            <MarketGroupsRow
+                              marketAddress={marketGroup.marketAddress}
+                              chainId={marketGroup.chainId}
+                              displayQuestion={
+                                marketGroup.displayQuestion || 'Loading...'
+                              }
+                              color={marketGroup.color}
+                              markets={marketGroup.markets}
+                            />
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
+            )}
           </AnimatePresence>
         </div>
       </div>

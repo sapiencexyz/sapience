@@ -66,6 +66,9 @@ export class MarketGroup {
   @Column({ type: 'varchar', nullable: true })
   collateralAsset: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  collateralSymbol: string | null;
+
   @Column({ type: 'integer', nullable: true })
   collateralDecimals: number | null;
 
