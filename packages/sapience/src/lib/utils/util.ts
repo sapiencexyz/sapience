@@ -1,5 +1,6 @@
 import { formatEther, createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
+import { Market, MarketGroup } from '../interfaces/interfaces';
 
 export const foilApi = {
   baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
@@ -67,28 +68,6 @@ export const formatNumber = (value: number, decimals: number = 2): string => {
     maximumFractionDigits: decimals,
   });
 };
-
-// Consider moving these to a shared types file if used more broadly
-export interface Market {
-  id: string;
-  marketId: string;
-  question?: string | null; // Question can be null
-  startTimestamp: number;
-  endTimestamp: number;
-  settled: boolean;
-}
-
-export interface MarketGroup {
-  id: string;
-  address: string;
-  chainId: number;
-  question?: string | null; // Question can be null
-  markets: Market[];
-  placeholder?: boolean; // Keep placeholder for loading/error states
-  optionNames?: string[];
-  baseTokenName?: string;
-  quoteTokenName?: string;
-}
 
 /**
  * Formats a question string by capitalizing the first letter and ensuring it ends with a question mark

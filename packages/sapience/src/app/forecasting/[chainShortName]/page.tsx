@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
+import { Market } from '~/lib/interfaces/interfaces';
 
 import PredictionForm from '../../../components/forecasting/PredictionForm';
 import ComingSoonScrim from '../../../components/shared/ComingSoonScrim';
@@ -308,7 +309,7 @@ const ForecastingDetailPage = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 pb-2">
-            {marketData?.markets?.map((market) => (
+            {marketData?.markets?.map((market: Market) => (
               <Link
                 key={market.id}
                 href={`${window.location.pathname}/${market.marketId}`}

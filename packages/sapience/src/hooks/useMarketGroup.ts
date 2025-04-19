@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
-import type { Market, MarketGroup } from '../lib/utils/util';
+import type { Market, MarketGroup } from '../lib/interfaces/interfaces';
 import {
   findActiveMarkets,
   getDisplayQuestion,
