@@ -13,7 +13,7 @@ import { Market } from '../models/Market';
 import { Position } from '../models/Position';
 import { Transaction, TransactionType } from '../models/Transaction';
 import { CollateralTransfer } from '../models/CollateralTransfer';
-import { PublicClient } from 'viem';
+import { PublicClient, erc20Abi } from 'viem';
 import {
   Deployment,
   EpochCreatedEventLog,
@@ -374,23 +374,19 @@ export const createOrUpdateMarketFromContract = async (
     try {
       const decimals = await client.readContract({
         address: updatedMarket.collateralAsset as `0x${string}`,
-        abi: [
-          {
-            constant: true,
-            inputs: [],
-            name: 'decimals',
-            outputs: [{ name: '', type: 'uint8' }],
-            payable: false,
-            stateMutability: 'view',
-            type: 'function',
-          },
-        ],
+        abi: erc20Abi,
         functionName: 'decimals',
       });
       updatedMarket.collateralDecimals = Number(decimals);
+      const symbol = await client.readContract({
+        address: updatedMarket.collateralAsset as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'symbol',
+      });
+      updatedMarket.collateralSymbol = symbol as string;
     } catch (error) {
       console.error(
-        `Failed to fetch decimals for token ${updatedMarket.collateralAsset}:`,
+        `Failed to fetch decimals or symbol for token ${updatedMarket.collateralAsset}:`,
         error
       );
     }

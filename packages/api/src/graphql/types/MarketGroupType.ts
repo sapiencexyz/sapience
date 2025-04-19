@@ -45,6 +45,9 @@ export class MarketGroupType {
   @Field(() => String, { nullable: true })
   collateralAsset: string | null;
 
+  @Field(() => String, { nullable: true })
+  collateralSymbol: string | null;
+
   @Field(() => Int, { nullable: true })
   collateralDecimals: number | null;
 
