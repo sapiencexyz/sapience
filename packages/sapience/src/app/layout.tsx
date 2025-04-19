@@ -1,15 +1,21 @@
 import type { Metadata, Viewport } from 'next';
+import dynamic from 'next/dynamic';
 import type React from 'react';
 
 import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
 import '../lib/styles/globals.css';
 import Layout from '~/components/layout';
-import LottieLoader from '~/components/shared/LottieLoader';
+// import LottieLoader from '~/components/shared/LottieLoader';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 
 import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from '@foil/ui/components/ui/toaster';
+
+// Dynamically import LottieLoader only on the client-side
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+  ssr: false,
+});
 
 type RootLayoutProps = {
   children: React.ReactNode;
