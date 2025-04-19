@@ -1,9 +1,9 @@
 'use client';
 
-import BotSection from '~/components/BotSection';
-import TopicsOfInterest from '~/components/FocusAreas';
-import FutarchySection from '~/components/FutarchySection';
-import Hero from '~/components/Hero';
+import BotSection from '~/components/home/BotSection';
+import TopicsOfInterest from '~/components/home/FocusAreas';
+import FutarchySection from '~/components/home/FutarchySection';
+import Hero from '~/components/home/Hero';
 
 export default function HomePage() {
   return (

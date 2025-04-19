@@ -1,11 +1,7 @@
-import JSBI from 'jsbi';
 import { formatEther, createPublicClient, http } from 'viem';
-import type { Chain } from 'viem/chains';
-import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
 
-import type { FoilPosition } from '../interfaces/interfaces';
-import { TimeWindow } from '../interfaces/interfaces';
+import type { Market, MarketGroup } from '../interfaces/interfaces';
 
 export const foilApi = {
   baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
@@ -60,52 +56,6 @@ export const mainnetClient = createPublicClient({
     : http('https://ethereum-rpc.publicnode.com'),
 });
 
-export function convertHundredthsOfBipToPercent(
-  hundredthsOfBip: number
-): number {
-  // 1 bip = 0.01%
-  // 1 hundredth of bip = 0.01/100 = 0.0001
-  return (hundredthsOfBip * 0.0001) / 100;
-}
-
-export function getDisplayTextForVolumeWindow(volumeWindow: TimeWindow) {
-  if (volumeWindow === TimeWindow.D) {
-    return 'Past Day';
-  }
-  if (volumeWindow === TimeWindow.W) {
-    return 'Past Week';
-  }
-  if (volumeWindow === TimeWindow.M) {
-    return 'Past Month';
-  }
-  return '';
-}
-
-// TODO: Adjust this based on fee rate on the market
-export const tickToPrice = (tick: number): number => 1.0001 ** tick;
-
-export function getChain(chainId: number): Chain {
-  for (const chain of Object.values(chains)) {
-    if (chain.id === chainId) {
-      return chain;
-    }
-  }
-
-  throw new Error(`Chain with id ${chainId} not found`);
-}
-
-export const convertGgasPerWstEthToGwei = (
-  wstEth: number,
-  wstEthinEth: number | undefined
-) => {
-  // wstEthinEth = (how many ETH in wstETH) * 1e9; units = wstETH / ETH
-  // For Ggas/wstETH to gwei:
-  // 1. Remove redundant decimals from wstEthinEth by dividing it by 1e9
-  // 2. Convert Ggas/wstETH to gas/gwei by multiplying by wstEthinEth
-  // Explanation to 2: GGas/stETH == gas/gwei, just need to remove the wstETH part
-  return wstEth * ((wstEthinEth || 1e9) / 1e9);
-};
-
 export const gweiToEther = (gweiValue: bigint): string => {
   // First, convert gwei to wei (multiply by 10^9)
   const weiValue = gweiValue * BigInt(1e9);
@@ -113,73 +63,112 @@ export const gweiToEther = (gweiValue: bigint): string => {
   return formatEther(weiValue);
 };
 
-export const shortenAddress = (address: string) => {
-  if (address.length < 12) {
-    return address;
-  }
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-};
-
-/**
- * Removes leading zeros from a string or number input while preserving valid number format
- * @param input - The input string or number to process
- * @returns A string with leading zeros removed while maintaining decimal points and negative signs
- */
-export const removeLeadingZeros = (input: string | number): string => {
-  // Convert input to string if it's a number
-  const str = input.toString();
-
-  // Handle empty string
-  if (!str) return str;
-
-  // Handle zero
-  if (str === '0') return '0';
-
-  // Handle decimal numbers starting with 0 (e.g., 0.123)
-  if (str.match(/^0\./)) return str;
-
-  // Handle negative numbers
-  if (str.startsWith('-')) {
-    const withoutMinus = str.slice(1);
-    const processed = removeLeadingZeros(withoutMinus);
-    return processed === '0' ? '0' : `-${processed}`;
-  }
-
-  // Remove leading zeros and return
-  return str.replace(/^0+/, '') || '0';
-};
-
-export function JSBIAbs(value: JSBI): JSBI {
-  return JSBI.lessThan(value, JSBI.BigInt(0))
-    ? JSBI.multiply(value, JSBI.BigInt(-1))
-    : value;
-}
-
-export const convertToSqrtPriceX96 = (priceD18: number) => {
-  const Q96 = BigInt('0x1000000000000000000000000');
-  return BigInt(Math.floor(Math.sqrt(priceD18) * Number(Q96)));
-};
-
-export const getExplorerUrl = (chainId: number, address: string) => {
-  const chain = Object.values(chains).find((c) => c.id === chainId);
-  return chain?.blockExplorers?.default?.url
-    ? `${chain.blockExplorers.default.url}/address/${address}`
-    : `https://etherscan.io/address/${address}`;
-};
-
-export const priceToTick = (price: number, tickSpacing: number): number => {
-  const tick = Math.log(price) / Math.log(1.0001);
-  return Math.round(tick / tickSpacing) * tickSpacing;
-};
-
-// checks if an nft position has a balance
-export const positionHasBalance = (position: FoilPosition): boolean => {
-  return Number(position.vEthAmount) > 0 || Number(position.vGasAmount) > 0;
-};
-
 export const formatNumber = (value: number, decimals: number = 2): string => {
   return value.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
+};
+
+/**
+ * Formats a question string by capitalizing the first letter and ensuring it ends with a question mark
+ */
+export const formatQuestion = (
+  rawQuestion: string | null | undefined
+): string | null => {
+  if (!rawQuestion) {
+    return null; // Return null if input is null or undefined
+  }
+  // Format the question - ensure it has proper capitalization and ends with a question mark
+  let formattedQuestion = rawQuestion.trim();
+
+  // Capitalize first letter if it's not already capitalized
+  if (formattedQuestion.length > 0 && !/^[A-Z]/.test(formattedQuestion)) {
+    formattedQuestion =
+      formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
+  }
+
+  // Add question mark if missing
+  if (!formattedQuestion.endsWith('?')) {
+    formattedQuestion += '?';
+  }
+
+  return formattedQuestion;
+};
+
+/**
+ * Determines which question to display based on active markets and market group data
+ */
+export const getDisplayQuestion = (
+  marketGroupData: MarketGroup | null | undefined, // Use MarketGroup type, allow null/undefined
+  activeMarkets: Market[], // Use Market[] type
+  isLoading: boolean,
+  defaultLoadingMessage: string = '', // Default loading message
+  defaultErrorMessage: string = 'This market question is not available' // Default error message
+): string => {
+  // Helper function to format question or return default message
+  const formatOrDefault = (question: string | null | undefined): string => {
+    const formatted = formatQuestion(question);
+    return formatted || defaultErrorMessage; // Use the provided default error message
+  };
+
+  // Handle loading state first
+  if (isLoading) {
+    return defaultLoadingMessage;
+  }
+
+  // Handle null, undefined, or placeholder data
+  if (!marketGroupData || marketGroupData.placeholder) {
+    return defaultErrorMessage;
+  }
+
+  // Primary Logic:
+  // 1. If exactly one market is active and has a question, use its question.
+  if (activeMarkets.length === 1 && activeMarkets[0]?.question) {
+    return formatOrDefault(activeMarkets[0].question);
+  }
+
+  // 2. Otherwise (multiple active markets OR zero active markets OR the single active market has no question),
+  //    use the market group's question if available.
+  if (marketGroupData.question) {
+    return formatOrDefault(marketGroupData.question);
+  }
+
+  // 3. Fallback: If group question isn't available, find the first market (active or not) with a question.
+  //    (Consider if this fallback is truly desired, might be better to show defaultErrorMessage)
+  const firstMarketWithQuestion = marketGroupData.markets?.find(
+    (market) => market.question
+  );
+  if (firstMarketWithQuestion?.question) {
+    return formatOrDefault(firstMarketWithQuestion.question);
+  }
+
+  // Final Fallback: If no question found anywhere, return the default error message.
+  return defaultErrorMessage;
+};
+
+/**
+ * Finds active markets for a market group based on current timestamp
+ */
+export const findActiveMarkets = (
+  marketGroupData: MarketGroup | null | undefined // Use MarketGroup type, allow null/undefined
+): Market[] => {
+  // Return type Market[]
+  if (
+    !marketGroupData ||
+    marketGroupData.placeholder ||
+    !Array.isArray(marketGroupData.markets)
+  ) {
+    return [];
+  }
+
+  const nowInSeconds = Date.now() / 1000;
+  // Filter markets based on timestamps
+  return marketGroupData.markets.filter(
+    (
+      market: Market // Use Market type here
+    ) =>
+      nowInSeconds >= market.startTimestamp &&
+      nowInSeconds < market.endTimestamp
+  );
 };

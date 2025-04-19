@@ -301,6 +301,3 @@ export const useSapience = () => {
   }
   return context;
 };
-
-// Alias for backward compatibility
-export const useFoil = useSapience;

@@ -1,35 +1,7 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@foil/ui/components/ui/table';
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from '@foil/ui/components/ui/toggle-group';
-import { cn } from '@foil/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import {
-  useReactTable,
-  flexRender,
-  getCoreRowModel,
-  type ColumnDef,
-} from '@tanstack/react-table';
-import dynamic from 'next/dynamic';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 
-import { AddressDisplay } from '~/components/AddressDisplay';
 import { foilApi } from '~/lib/utils/util';
-
-// Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
-  ssr: false,
-  // Use a simple div as placeholder during load
-  loading: () => <div className="w-8 h-8" />,
-});
 
 // Interface for aggregated data after processing
 interface AggregatedLeaderboardEntry {
@@ -231,47 +203,6 @@ const useAllTimeLeaderboard = () => {
   });
 };
 
-// Moved component definitions outside of Leaderboard component
-const PnLCell = ({
-  value, // Pass value directly
-  wstEthPriceUsd,
-}: {
-  value: number;
-  wstEthPriceUsd: number | null;
-}) => {
-  // Add logging here
-  console.log(`PnLCell - value: ${value}, wstEthPriceUsd: ${wstEthPriceUsd}`);
-
-  const displayValue = value / 1e18;
-  const effectivePrice = wstEthPriceUsd || 1800; // Default price if needed
-  const usdValue = displayValue * effectivePrice;
-
-  console.log(
-    `PnLCell calculated - displayValue: ${displayValue}, effectivePrice: ${effectivePrice}, usdValue: ${usdValue}`
-  );
-
-  // Check if usdValue is NaN and render differently or log more if needed
-  if (isNaN(usdValue)) {
-    console.error('usdValue is NaN!', { value, wstEthPriceUsd });
-    // Optionally return a placeholder or error indication
-    // return <span>Error</span>;
-  }
-
-  return <span>${usdValue.toFixed(2)}</span>;
-};
-
-// New stable cell renderer component using table meta for price
-const PnLCellFromMeta = ({ row, table }: any) => {
-  // Use 'any' for simplicity or define proper types
-  // Use the column ID 'totalPnL' here, matching the column definition change
-  const value = row.getValue('totalPnL') as number;
-  const meta = table.options.meta as { wstEthPriceUsd: number | null };
-  const wstEthPriceUsd = meta?.wstEthPriceUsd;
-
-  // Pass values down to the actual cell renderer
-  return <PnLCell value={value} wstEthPriceUsd={wstEthPriceUsd} />;
-};
-
 // Query hook for crypto prices
 const useCryptoPrices = () => {
   return useQuery({
@@ -370,190 +301,33 @@ const useStEthPerToken = (chainId = 1) => {
   });
 };
 
-const RankCell = ({ row }: { row: { index: number } }) => (
-  <span className="text-base md:text-2xl font-heading font-normal flex justify-center">
-    {row.index + 1}
-  </span>
-);
+// --- Main Hook ---
 
-// LoadingIndicator component moved outside of Leaderboard
-const LoadingIndicator = () => (
-  <div className="flex justify-center items-center min-h-[100vh] w-full">
-    <LottieLoader width={32} height={32} />
-  </div>
-);
-
-// Removed params from component signature
-const Leaderboard = () => {
-  // Use the new hook, remove params usage
+export const useLeaderboard = () => {
   const { data: leaderboardData, isLoading } = useAllTimeLeaderboard();
-  // Add crypto prices query
   const { data: cryptoPrices } = useCryptoPrices();
-  // Add stETH per token query
-  const { data: stEthPerToken } = useStEthPerToken();
+  const { data: stEthPerToken } = useStEthPerToken(); // Using default chainId 1
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('all');
 
-  // Calculate wstETH price in USD using actual ETH price from API
+  // Calculate wstETH price in USD
   const ethPriceUsd = cryptoPrices?.ethereum?.usd || null;
-
-  // stEthPerToken is in wei (1e18), so we divide by 1e18 to get the actual ratio
-  // Ensure stEthPerToken is treated as a string before Number conversion
   const stEthPerTokenNormalized =
     stEthPerToken && typeof stEthPerToken === 'string'
       ? Number(stEthPerToken) / 1e18
       : null;
-
-  // Calculate wstETH price by multiplying the ratio by ETH price
   const wstEthPriceUsd =
     stEthPerTokenNormalized !== null && ethPriceUsd !== null
       ? stEthPerTokenNormalized * ethPriceUsd
       : null;
 
-  // Update columns definition to use AggregatedLeaderboardEntry and PnLCellFromMeta
-  const columns = useMemo<ColumnDef<AggregatedLeaderboardEntry>[]>(
-    () => [
-      {
-        id: 'rank',
-        header: () => '', // Explicitly return string
-        cell: RankCell,
-      },
-      {
-        id: 'owner',
-        header: () => 'Ethereum Account Address', // Explicitly return string
-        accessorKey: 'owner',
-        cell: OwnerCell,
-      },
-      {
-        id: 'totalPnL', // Changed ID to match accessorKey and error message expectation
-        header: () => 'Profit', // Explicitly return string
-        accessorKey: 'totalPnL',
-        cell: PnLCellFromMeta,
-      },
-    ],
-    []
-  );
-
-  // Update useReactTable type argument and add meta
-  const table = useReactTable<AggregatedLeaderboardEntry>({
-    data: leaderboardData ?? [], // Use fetched data or empty array
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    meta: {
-      // Pass wstEthPriceUsd via meta
-      wstEthPriceUsd,
-    },
-  });
-
-  // Original return statement (now restored)
-  if (isLoading) {
-    return <LoadingIndicator />;
-  }
-
-  return (
-    <div className="container max-w-[440px] mx-auto py-32">
-      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-10">
-        Leaderboard
-      </h1>
-
-      <div className="mb-6">
-        <ToggleGroup
-          type="single"
-          value={selectedTimeframe}
-          onValueChange={(value) => {
-            if (value) setSelectedTimeframe(value);
-          }}
-          aria-label="Select timeframe"
-          className="justify-start flex-wrap gap-2"
-        >
-          <ToggleGroupItem value="all" aria-label="All Time" size="sm">
-            All Time
-          </ToggleGroupItem>
-          <ToggleGroupItem value="year" aria-label="Last Year" size="sm">
-            Last Year
-          </ToggleGroupItem>
-          <ToggleGroupItem value="month" aria-label="Last Month" size="sm">
-            Last Month
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </div>
-
-      {/* Changed grid layout to accommodate only the main column */}
-      <div className="grid grid-cols-1 gap-8">
-        {/* Main Column (Leaderboard Table) */}
-        <div>
-          {/* Leaderboard Table */}
-          <div className="border border-border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow
-                    key={headerGroup.id}
-                    className="hover:bg-transparent border-b"
-                  >
-                    {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className={cn(
-                          'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
-                          {
-                            'text-center': header.id === 'rank',
-                            'text-right': header.id === 'totalPnL', // Use new ID here
-                          }
-                        )}
-                      >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.length > 0 ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className="hover:bg-muted/50 border-b last:border-b-0"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          className={cn('p-3 text-sm md:text-base', {
-                            'text-right font-normal': cell.column.id === 'rank',
-                            'text-right': cell.column.id === 'totalPnL', // Use new ID here
-                          })}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center text-muted-foreground text-sm md:text-base"
-                    >
-                      No results found for this period
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return {
+    leaderboardData,
+    isLoading,
+    wstEthPriceUsd,
+    selectedTimeframe,
+    setSelectedTimeframe,
+  };
 };
 
-const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
-  <AddressDisplay address={cell.getValue() as string} />
-);
-
-export default Leaderboard;
+// Export the interface for use in the component
+export type { AggregatedLeaderboardEntry };

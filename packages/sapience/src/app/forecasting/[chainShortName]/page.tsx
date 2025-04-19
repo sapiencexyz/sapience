@@ -1,14 +1,11 @@
 'use client';
 
-import { gql } from '@apollo/client';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@foil/ui/components/ui/dialog';
-import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
 import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -16,61 +13,22 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
-import ComingSoonScrim from '../../../components/ComingSoonScrim';
-import PredictionForm from '../../../components/PredictionForm';
+import PredictionForm from '../../../components/forecasting/PredictionForm';
+import ComingSoonScrim from '../../../components/shared/ComingSoonScrim';
 import { useSapience } from '../../../lib/context/SapienceProvider';
-import {
-  findActiveMarkets,
-  getDisplayQuestion,
-} from '../../../lib/utils/questionUtils';
-import { foilApi } from '../../../lib/utils/util';
-import PredictionsList from '~/components/PredictionsList';
+import PredictionsList from '~/components/forecasting/PredictionsList';
+import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
+import type { Market } from '~/lib/interfaces/interfaces';
 
 // Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('../../../components/LottieLoader'), {
-  ssr: false,
-  // Use a simple div as placeholder during load
-  loading: () => <div className="w-8 h-8" />,
-});
-
-// GraphQL query to fetch market data - updated to match schema exactly
-const MARKET_GROUP_QUERY = gql`
-  query GetMarketGroup($chainId: Int!, $address: String!) {
-    marketGroup(chainId: $chainId, address: $address) {
-      id
-      address
-      chainId
-      question
-      baseTokenName
-      quoteTokenName
-      optionNames
-      markets {
-        id
-        marketId
-        question
-        startTimestamp
-        endTimestamp
-        settled
-      }
-    }
+const LottieLoader = dynamic(
+  () => import('../../../components/shared/LottieLoader'),
+  {
+    ssr: false,
+    // Use a simple div as placeholder during load
+    loading: () => <div className="w-8 h-8" />,
   }
-`;
-
-// Utility to get chainId from chain short name
-const getChainIdFromShortName = (shortName: string): number => {
-  // This should be replaced with proper chain mapping logic
-  switch (shortName.toLowerCase()) {
-    case 'base':
-      return 8453;
-    case 'arbitrum':
-      return 42161;
-    case 'ethereum':
-    case 'mainnet':
-      return 1;
-    default:
-      return 0;
-  }
-};
+);
 
 // Parse URL parameter to extract chain and market address
 const parseUrlParameter = (
@@ -100,7 +58,6 @@ const parseUrlParameter = (
     }
   }
 
-  console.log('Parsed parameters:', { chainShortName, marketAddress });
   return { chainShortName, marketAddress };
 };
 
@@ -126,101 +83,22 @@ const ForecastingDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
-  const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
-  const [currentMarketId, setCurrentMarketId] = useState<string | null>(null);
-  const [activeMarkets, setActiveMarkets] = useState<any[]>([]);
   const [showMarketSelector, setShowMarketSelector] = useState(false);
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
   const { chainShortName, marketAddress } = parseUrlParameter(paramString);
-  const chainId = getChainIdFromShortName(chainShortName);
 
-  // Fetch market data
+  // Fetch market data using the hook with correct variable names
   const {
-    data: marketData,
-    isLoading: isLoadingMarket,
+    marketData,
+    isLoadingMarket,
     isSuccess,
-  } = useQuery({
-    queryKey: ['marketGroup', chainId, marketAddress],
-    queryFn: async () => {
-      // Don't attempt to fetch if we don't have valid params
-      if (!chainId || !marketAddress || chainId === 0) {
-        console.log('Missing required parameters for query:', {
-          chainId,
-          marketAddress,
-        });
-        return { placeholder: true }; // Return a non-undefined placeholder value
-      }
+    displayQuestion,
+    currentMarketId,
+  } = useMarketGroup({ chainShortName, marketAddress });
 
-      try {
-        console.log('Fetching market group with:', {
-          chainId,
-          address: marketAddress,
-        });
-        const response = await foilApi.post('/graphql', {
-          query: print(MARKET_GROUP_QUERY),
-          variables: {
-            chainId,
-            address: marketAddress,
-          },
-        });
-
-        console.log(
-          'GraphQL response:',
-          JSON.stringify(response.data, null, 2)
-        );
-
-        // Check if we have data in the expected structure - the data is directly in response.data.marketGroup
-        const marketResponse = response.data?.marketGroup;
-
-        if (!marketResponse) {
-          console.error('No market group data in response:', response.data);
-          return { placeholder: true }; // Return a non-undefined placeholder value
-        }
-
-        return marketResponse;
-      } catch (error) {
-        console.error('Error fetching market group:', error);
-        return { placeholder: true }; // Return a non-undefined placeholder value
-      }
-    },
-    enabled: !!chainId && !!marketAddress,
-    retry: 3,
-    retryDelay: 1000,
-  });
-
-  // Find active epochs based on timestamps
-  useEffect(() => {
-    if (marketData && !marketData.placeholder) {
-      const currentlyActiveMarkets = findActiveMarkets(marketData);
-
-      setActiveMarkets(currentlyActiveMarkets);
-
-      // If we have active epochs, set the currentEpochId to the first one
-      if (currentlyActiveMarkets.length > 0) {
-        console.log('Found active markets:', currentlyActiveMarkets.length);
-        setCurrentMarketId(currentlyActiveMarkets[0].marketId);
-      } else {
-        console.log('No active markets found.');
-        setCurrentMarketId(null);
-      }
-    }
-  }, [marketData]); // Dependency: run when marketData changes
-
-  // Process and format the question, using the consolidated logic
-  useEffect(() => {
-    // Use the updated helper function to determine the question
-    const question = getDisplayQuestion(
-      marketData,
-      activeMarkets,
-      isLoadingMarket,
-      'Loading question...'
-    );
-    setDisplayQuestion(question);
-  }, [marketData, isLoadingMarket, activeMarkets]); // Dependencies updated to include activeMarkets
-
-  // Redirect or show epoch selector based on epoch count
+  // Keep useEffect for checking market count (if needed for UI logic)
   useEffect(() => {
     console.log('Epoch Check Effect Triggered:', {
       isLoadingMarket,
@@ -230,23 +108,15 @@ const ForecastingDetailPage = () => {
     });
 
     // Wait until loading is finished, the query was successful, and we have valid, non-placeholder data
-    if (
-      isLoadingMarket ||
-      !isSuccess ||
-      !marketData ||
-      marketData.placeholder
-    ) {
-      console.log(
-        'Epoch Check: Exiting early (loading/failed/no data/placeholder).'
-      );
+    if (isLoadingMarket || !isSuccess || !marketData) {
+      console.log('Epoch Check: Exiting early (loading/failed/no data).');
       return; // Exit early if still loading, query failed, data is invalid/placeholder
     }
 
     // Ensure epochs is an array before proceeding
     if (!Array.isArray(marketData.markets)) {
       console.log(
-        'Epoch Check: Exiting (epochs data is not an array or is missing).',
-        marketData.markets
+        'Epoch Check: Exiting (epochs data is not an array or is missing).'
       );
       return; // Exit if epochs structure is incorrect
     }
@@ -259,10 +129,9 @@ const ForecastingDetailPage = () => {
       console.log('Market Check: Zero markets found.');
       // No action needed here, the other useEffect handles the display question
     }
-  }, [marketData, isLoadingMarket, isSuccess]); // Removed router dependency as it's no longer used here
+  }, [marketData, isLoadingMarket, isSuccess]); // Dependencies remain the same for now
 
   // Form data with tab selection
-  const [activeTab, setActiveTab] = useState<'predict' | 'wager'>('predict');
   const [formData, setFormData] = useState<{
     predictionValue: string | number;
     wagerAmount: string; // Keep wager amount as string for input control
@@ -273,7 +142,7 @@ const ForecastingDetailPage = () => {
 
   // Update state initialization based on market data
   useEffect(() => {
-    if (marketData && !marketData.placeholder) {
+    if (marketData) {
       let initialPredictionValue: string | number = '';
       // Use optional chaining for safer access
       if (marketData.optionNames && marketData.optionNames.length > 0) {
@@ -293,28 +162,13 @@ const ForecastingDetailPage = () => {
     }
   }, [marketData]);
 
-  // Handle tab change
-  const handleTabChange = (tab: 'predict' | 'wager') => {
-    setActiveTab(tab);
-  };
-
-  // Updated handler for prediction change
-  const handlePredictionChange = (value: string | number) => {
-    setFormData((prev) => ({ ...prev, predictionValue: value })); // Use functional update
-  };
-
   // Form submission handler (basic example)
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log('Form submitted:', { activeTab, formData });
+    console.log('Form submitted:', { formData });
     // Add actual submission logic here (e.g., API call)
-    alert(`Submitting ${activeTab}: ${JSON.stringify(formData)}`);
+    alert(`Submitting: ${JSON.stringify(formData)}`);
   };
-
-  const activeButtonStyle =
-    'bg-primary text-primary-foreground hover:bg-primary/90';
-  const inactiveButtonStyle =
-    'bg-secondary text-secondary-foreground hover:bg-secondary/80';
 
   // Mock data for the chart
   const chartData = [
@@ -367,17 +221,10 @@ const ForecastingDetailPage = () => {
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
                 <PredictionForm
                   marketData={marketData}
-                  formData={formData}
-                  setFormData={setFormData}
-                  activeTab={activeTab}
-                  handleTabChange={handleTabChange}
-                  handlePredictionChange={handlePredictionChange}
-                  handleSubmit={handleSubmit}
+                  externalHandleSubmit={handleSubmit}
                   isPermitLoadingPermit={isPermitLoadingPermit}
                   permitData={permitData}
                   currentMarketId={currentMarketId}
-                  activeButtonStyle={activeButtonStyle}
-                  inactiveButtonStyle={inactiveButtonStyle}
                 />
               </div>
             </div>
@@ -439,24 +286,22 @@ const ForecastingDetailPage = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 pb-2">
-            {marketData?.markets?.map(
-              (market: { marketId: string; question?: string; id: string }) => (
-                <Link
-                  key={market.id}
-                  href={`${window.location.pathname}/${market.marketId}`}
+            {marketData?.markets?.map((market: Market) => (
+              <Link
+                key={market.id}
+                href={`${window.location.pathname}/${market.marketId}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowMarketSelector(false)}
+                  className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
                 >
-                  <button
-                    type="button"
-                    onClick={() => setShowMarketSelector(false)}
-                    className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
-                  >
-                    {market.question
-                      ? formatQuestion(market.question)
-                      : `Market ${market.marketId}`}
-                  </button>
-                </Link>
-              )
-            )}
+                  {market.question
+                    ? formatQuestion(market.question)
+                    : `Market ${market.marketId}`}
+                </button>
+              </Link>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

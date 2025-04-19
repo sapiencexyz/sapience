@@ -22,18 +22,18 @@ import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 
-import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import {
   useEnrichedMarketGroups,
   useCategories,
   type Market,
-} from '~/lib/hooks/useMarketGroups';
-import { formatQuestion } from '~/lib/utils/questionUtils';
+} from '~/hooks/graphql/useMarketGroups';
+import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
+import { formatQuestion } from '~/lib/utils/util';
 
-import { MarketGroupPreview } from './MarketGroupPreview';
+import MarketGroupsRow from './MarketGroupsRow';
 
 // Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
   // Use a simple div as placeholder during load
   loading: () => <div className="w-8 h-8" />,
@@ -109,7 +109,10 @@ const FocusAreaFilter = ({
         {!isLoadingCategories &&
           categories &&
           categories
-            // Display all categories, not just those with icons
+            // Display only categories that are also in FOCUS_AREAS
+            .filter((category) =>
+              FOCUS_AREAS.some((fa) => fa.id === category.slug)
+            )
             .map((category) => {
               const styleInfo = getCategoryStyle(category.slug);
               const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
@@ -326,7 +329,7 @@ const ForecastingTable = () => {
           (market) => now >= market.startTimestamp && now < market.endTimestamp
         );
 
-        // Determine the raw question (will be formatted by MarketGroupPreview)
+        // Determine the raw question (will be formatted by MarketGroupsRow)
         let rawQuestion: string | null = null;
 
         // If we have multiple active markets, use market question
@@ -627,7 +630,7 @@ const ForecastingTable = () => {
                         transition={{ duration: 0.2 }}
                         className="border-b last:border-b-0 border-border"
                       >
-                        <MarketGroupPreview
+                        <MarketGroupsRow
                           marketAddress={marketGroup.marketAddress}
                           chainId={marketGroup.chainId}
                           displayQuestion={

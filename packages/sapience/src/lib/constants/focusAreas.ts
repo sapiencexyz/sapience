@@ -1,9 +1,7 @@
-import type { ResourceSlug } from './resources';
-
 export interface FocusArea {
   id: string;
   name: string;
-  resources: ResourceSlug[];
+  resources: string[];
   iconSvg: string;
   color: string;
 }

@@ -1,33 +1,10 @@
 import { gql } from '@apollo/client';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@foil/ui/components/ui/table';
 import { useQuery } from '@tanstack/react-query';
-import type { ColumnDef } from '@tanstack/react-table';
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import { formatDistanceToNow } from 'date-fns';
 import { print } from 'graphql';
-import { ChevronRight } from 'lucide-react';
 import React from 'react';
 import { getAddress } from 'viem';
 
-import { AddressDisplay } from '~/components/AddressDisplay';
-import LottieLoader from '~/components/LottieLoader';
-
-interface PredictionsListProps {
-  marketAddress?: string;
-  schemaId?: string;
-  optionNames?: string[];
-}
+import { SCHEMA_UID } from '../../lib/constants/eas';
 
 // Type for the raw data fetched from the API
 interface RawAttestation {
@@ -62,7 +39,7 @@ const PARAMETERIZED_QUERY = gql`
   }
 `;
 
-interface DecodedField {
+export interface DecodedField {
   name: string;
   value:
     | {
@@ -75,7 +52,7 @@ interface DecodedField {
 }
 
 // Define the data type for the formatted attestation record used in the table
-type FormattedAttestation = {
+export type FormattedAttestation = {
   id: string;
   attester: string;
   shortAttester: string;
@@ -84,21 +61,6 @@ type FormattedAttestation = {
   rawTime: number; // Original timestamp
   decodedData: DecodedField[];
 };
-
-// Define AddressLink component outside of the PredictionsList
-const AddressLink: React.FC<{ href: string; children: React.ReactNode }> = ({
-  href,
-  children,
-}) => (
-  <a
-    href={href}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-muted-foreground hover:text-foreground underline"
-  >
-    {children}
-  </a>
-);
 
 // Helper function to parse the JSON string in decodedDataJson
 const parseDecodedData = (decodedDataJson: string): DecodedField[] => {
@@ -111,7 +73,7 @@ const parseDecodedData = (decodedDataJson: string): DecodedField[] => {
 };
 
 // Helper function to extract market ID from decoded data
-const extractMarketId = (decodedData: DecodedField[]): number | null => {
+export const extractMarketId = (decodedData: DecodedField[]): number | null => {
   const marketIdField = decodedData.find((field) => field.name === 'marketId');
 
   if (marketIdField?.value) {
@@ -229,63 +191,22 @@ const formatAttestationData = (
   }
 };
 
-// --- Cell Renderers ---
+interface UsePredictionsProps {
+  marketAddress?: string;
+  schemaId?: string;
+  optionNames?: string[];
+}
 
-const renderSubmittedCell = ({
-  row,
-}: {
-  row: { original: FormattedAttestation };
-}) => {
-  const date = new Date(Number(row.original.rawTime) * 1000);
-  return formatDistanceToNow(date, { addSuffix: true });
-};
-
-const renderPredictionCell = (
-  { row }: { row: { original: FormattedAttestation } },
-  optionNames?: string[]
-) => {
-  const marketId = extractMarketId(row.original.decodedData);
-
-  // Use optionNames if available and marketId is valid
-  if (optionNames && marketId !== null && marketId > 0) {
-    const optionIndex = marketId - 1; // Convert from base 1 to base 0
-    if (optionIndex >= 0 && optionIndex < optionNames.length) {
-      return optionNames[optionIndex];
-    }
-  }
-
-  // Fallback to showing the already processed value
-  return row.original.value;
-};
-
-const renderAttesterCell = ({
-  row,
-}: {
-  row: { original: FormattedAttestation };
-}) => <AddressDisplay address={row.original.attester} />;
-
-const renderActionsCell = ({
-  row,
-}: {
-  row: { original: FormattedAttestation };
-}) => (
-  <AddressLink
-    href={`https://base.easscan.org/attestation/view/${row.original.id}`}
-  >
-    <ChevronRight className="h-4 w-4" />
-  </AddressLink>
-);
-
-const PredictionsList: React.FC<PredictionsListProps> = ({
+export const usePredictions = ({
   marketAddress,
-  schemaId = '0x8c6ff62d30ea7aa47f0651cd5c1757d47539f8a303888c61d3f19c7502fa9a24', // Default schema ID - update this with the correct one
+  schemaId = SCHEMA_UID,
   optionNames,
-}) => {
+}: UsePredictionsProps) => {
   const {
     data: attestationsData,
     isLoading,
     error,
-  } = useQuery({
+  } = useQuery<{ attestations: RawAttestation[] } | undefined>({
     queryKey: ['attestations', marketAddress, schemaId],
     queryFn: async () => {
       if (!marketAddress) {
@@ -342,34 +263,6 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
     retryDelay: 1000,
   });
 
-  // Define table columns using extracted cell renderers
-  const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
-    () => [
-      {
-        accessorKey: 'rawTime',
-        header: 'Submitted',
-        cell: renderSubmittedCell,
-      },
-      {
-        accessorKey: 'value',
-        header: 'Prediction',
-        // Pass optionNames to the cell renderer
-        cell: (props) => renderPredictionCell(props, optionNames),
-      },
-      {
-        accessorKey: 'attester',
-        header: 'Ethereum Account Address',
-        cell: renderAttesterCell,
-      },
-      {
-        id: 'actions',
-        header: '',
-        cell: renderActionsCell,
-      },
-    ],
-    [optionNames] // Dependency array includes optionNames as it's used in a cell renderer
-  );
-
   // Transform raw attestations data into the proper format for the table
   const data: FormattedAttestation[] = React.useMemo(() => {
     if (!attestationsData?.attestations) return [];
@@ -379,100 +272,5 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
     );
   }, [attestationsData, optionNames]); // Added optionNames dependency
 
-  // Set up the table
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  if (isLoading) {
-    return (
-      <>
-        <h3 className="font-medium mb-4">Recent Predictions</h3>
-        <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
-          <div className="py-16 text-muted-foreground flex justify-center items-center">
-            <LottieLoader className="h-8 w-8" />
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (error) {
-    return (
-      <>
-        <h3 className="font-medium mb-4">Recent Predictions</h3>
-        <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
-          <div className="py-16 text-muted-foreground flex justify-center items-center">
-            Error loading predictions: {String(error)}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <h3 className="font-medium mb-4">Recent Predictions</h3>
-      <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
-        {data.length === 0 ? (
-          <div className="py-16 text-muted-foreground flex justify-center items-center">
-            <p className="text-center text-base">
-              No predictions yet... what&apos;s yours?
-            </p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="hover:bg-secondary/10 transition-colors"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-    </>
-  );
+  return { data, isLoading, error };
 };
-
-export default PredictionsList;
