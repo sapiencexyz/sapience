@@ -133,7 +133,7 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
 
         // The response structure might return an array or a single object depending on the query
         // Adapting based on the provided query which filters by marketId server-side
-        const marketsData = response.data?.data?.markets; // Adjusted path based on typical GraphQL responses
+        const marketsData = response.data?.markets; // Corrected access path
 
         if (!marketsData) {
           console.error('No market data in response:', response.data);
@@ -178,34 +178,61 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
 
   // Process and format the question
   useEffect(() => {
+    console.log('useMarket useEffect - isLoadingMarket:', isLoadingMarket); // Log loading state
     if (isLoadingMarket) {
       setDisplayQuestion('Loading question...');
       setMarketQuestionDisplay(null);
       return;
     }
 
+    console.log('useMarket useEffect - marketData (raw):', marketData); // Log raw data before stringify
+
     if (!marketData) {
+      console.log('useMarket useEffect - No marketData found.'); // Log if data is missing
       setDisplayQuestion('Market data not available.');
       setMarketQuestionDisplay(null);
       return;
     }
 
     console.log(
-      'Market data received in hook useEffect:',
+      'useMarket useEffect - Market data received:', // Keep existing log
       JSON.stringify(marketData, null, 2)
     );
 
+    const marketGroupQuestion = marketData?.marketGroup?.question;
+    const marketSpecificQuestion = marketData?.question;
+
+    console.log(
+      'useMarket useEffect - Market Group Question:',
+      marketGroupQuestion
+    ); // Log group question
+    console.log(
+      'useMarket useEffect - Market Specific Question:',
+      marketSpecificQuestion
+    ); // Log specific question
+
     // Set Market Group Question as the context question if available
-    if (marketData?.marketGroup?.question) {
-      setMarketQuestionDisplay(formatQuestion(marketData.marketGroup.question));
+    if (marketGroupQuestion) {
+      setMarketQuestionDisplay(formatQuestion(marketGroupQuestion));
+      console.log(
+        'useMarket useEffect - Setting marketQuestionDisplay with:',
+        formatQuestion(marketGroupQuestion)
+      ); // Log what's being set
     } else {
       setMarketQuestionDisplay(null);
+      console.log(
+        'useMarket useEffect - Setting marketQuestionDisplay to null.'
+      ); // Log null setting
     }
 
     // Determine the main display question
-    const mainQuestionSource =
-      marketData?.question || marketData?.marketGroup?.question;
-    setDisplayQuestion(formatQuestion(mainQuestionSource));
+    const mainQuestionSource = marketSpecificQuestion || marketGroupQuestion;
+    const formattedMainQuestion = formatQuestion(mainQuestionSource);
+    setDisplayQuestion(formattedMainQuestion);
+    console.log(
+      'useMarket useEffect - Setting displayQuestion with:',
+      formattedMainQuestion
+    ); // Log what's being set
   }, [marketData, isLoadingMarket]);
 
   return {
