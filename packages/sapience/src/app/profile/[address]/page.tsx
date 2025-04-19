@@ -6,7 +6,7 @@ import ErrorState from '~/components/profile/ErrorState';
 import LoadingState from '~/components/profile/LoadingState';
 import PositionsTable from '~/components/profile/PositionsTable';
 import ProfileHeader from '~/components/profile/ProfileHeader';
-import { usePositions } from '~/hooks/usePositions';
+import { usePositions } from '~/hooks/graphql/usePositions';
 
 export default function PortfolioPage() {
   const params = useParams();

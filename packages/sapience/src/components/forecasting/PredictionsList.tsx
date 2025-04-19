@@ -18,8 +18,11 @@ import React from 'react';
 
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import LottieLoader from '~/components/shared/LottieLoader';
-import type { FormattedAttestation } from '~/hooks/usePredictions';
-import { extractMarketId, usePredictions } from '~/hooks/usePredictions'; // Import hook and necessary items
+import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
+import {
+  extractMarketId,
+  usePredictions,
+} from '~/hooks/graphql/usePredictions'; // Import hook and necessary items
 
 interface PredictionsListProps {
   marketAddress?: string;
@@ -179,16 +182,12 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
                     <TableHead key={header.id}>
-                      {header.isPlaceholder ? null : (
-                        <>
-                          {String(
-                            flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
                           )}
-                        </>
-                      )}
                     </TableHead>
                   ))}
                 </TableRow>
@@ -203,14 +202,10 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
-                        <>
-                          {String(
-                            flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )
-                          )}
-                        </>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>

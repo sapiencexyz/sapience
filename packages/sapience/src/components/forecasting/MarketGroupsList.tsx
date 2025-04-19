@@ -26,7 +26,7 @@ import {
   useEnrichedMarketGroups,
   useCategories,
   type Market,
-} from '~/hooks/useMarketGroups';
+} from '~/hooks/graphql/useMarketGroups';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import { formatQuestion } from '~/lib/utils/util';
 

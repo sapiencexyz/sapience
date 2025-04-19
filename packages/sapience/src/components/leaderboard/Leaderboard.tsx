@@ -23,8 +23,8 @@ import dynamic from 'next/dynamic';
 import { useMemo } from 'react';
 
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import type { AggregatedLeaderboardEntry } from '~/hooks/useLeaderboard';
-import { useLeaderboard } from '~/hooks/useLeaderboard';
+import type { AggregatedLeaderboardEntry } from '~/hooks/graphql/useLeaderboard';
+import { useLeaderboard } from '~/hooks/graphql/useLeaderboard';
 
 import ProfitCell from './ProfitCell';
 

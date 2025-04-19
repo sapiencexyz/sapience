@@ -3,12 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
-import type { Market, MarketGroup } from '../lib/interfaces/interfaces';
+import type { Market, MarketGroup } from '../../lib/interfaces/interfaces';
 import {
   findActiveMarkets,
   getDisplayQuestion,
   foilApi,
-} from '../lib/utils/util';
+} from '../../lib/utils/util';
 
 // GraphQL query to fetch market data
 const MARKET_GROUP_QUERY = gql`

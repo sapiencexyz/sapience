@@ -4,6 +4,8 @@ import { print } from 'graphql';
 import React from 'react';
 import { getAddress } from 'viem';
 
+import { SCHEMA_UID } from '../../lib/constants/eas';
+
 // Type for the raw data fetched from the API
 interface RawAttestation {
   id: string;
@@ -197,7 +199,7 @@ interface UsePredictionsProps {
 
 export const usePredictions = ({
   marketAddress,
-  schemaId = '0x8c6ff62d30ea7aa47f0651cd5c1757d47539f8a303888c61d3f19c7502fa9a24', // Default schema ID
+  schemaId = SCHEMA_UID,
   optionNames,
 }: UsePredictionsProps) => {
   const {

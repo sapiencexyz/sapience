@@ -17,7 +17,7 @@ import PredictionForm from '../../../components/forecasting/PredictionForm';
 import ComingSoonScrim from '../../../components/shared/ComingSoonScrim';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import PredictionsList from '~/components/forecasting/PredictionsList';
-import { useMarketGroup } from '~/hooks/useMarketGroup';
+import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
 import type { Market } from '~/lib/interfaces/interfaces';
 
 // Dynamically import LottieLoader
@@ -132,7 +132,6 @@ const ForecastingDetailPage = () => {
   }, [marketData, isLoadingMarket, isSuccess]); // Dependencies remain the same for now
 
   // Form data with tab selection
-  const [activeTab, setActiveTab] = useState<'predict' | 'wager'>('predict');
   const [formData, setFormData] = useState<{
     predictionValue: string | number;
     wagerAmount: string; // Keep wager amount as string for input control
@@ -163,28 +162,13 @@ const ForecastingDetailPage = () => {
     }
   }, [marketData]);
 
-  // Handle tab change
-  const handleTabChange = (tab: 'predict' | 'wager') => {
-    setActiveTab(tab);
-  };
-
-  // Updated handler for prediction change
-  const handlePredictionChange = (value: string | number) => {
-    setFormData((prev) => ({ ...prev, predictionValue: value })); // Use functional update
-  };
-
   // Form submission handler (basic example)
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    console.log('Form submitted:', { activeTab, formData });
+    console.log('Form submitted:', { formData });
     // Add actual submission logic here (e.g., API call)
-    alert(`Submitting ${activeTab}: ${JSON.stringify(formData)}`);
+    alert(`Submitting: ${JSON.stringify(formData)}`);
   };
-
-  const activeButtonStyle =
-    'bg-primary text-primary-foreground hover:bg-primary/90';
-  const inactiveButtonStyle =
-    'bg-secondary text-secondary-foreground hover:bg-secondary/80';
 
   // Mock data for the chart
   const chartData = [
@@ -237,17 +221,10 @@ const ForecastingDetailPage = () => {
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
                 <PredictionForm
                   marketData={marketData}
-                  formData={formData}
-                  setFormData={setFormData}
-                  activeTab={activeTab}
-                  handleTabChange={handleTabChange}
-                  handlePredictionChange={handlePredictionChange}
-                  handleSubmit={handleSubmit}
+                  externalHandleSubmit={handleSubmit}
                   isPermitLoadingPermit={isPermitLoadingPermit}
                   permitData={permitData}
                   currentMarketId={currentMarketId}
-                  activeButtonStyle={activeButtonStyle}
-                  inactiveButtonStyle={inactiveButtonStyle}
                 />
               </div>
             </div>

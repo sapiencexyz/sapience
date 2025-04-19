@@ -15,7 +15,7 @@ import { useState } from 'react';
 import { ResponsiveContainer } from 'recharts';
 
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
-import { useMarket } from '~/hooks/useMarket';
+import { useMarket } from '~/hooks/graphql/useMarket';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
