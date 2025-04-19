@@ -23,6 +23,7 @@ import { useEffect } from 'react';
 import { formatUnits } from 'viem';
 
 // Import the new hooks
+import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useMarketCalculations } from '~/hooks/forms/useMarketCalculations';
 import {
   usePredictionFormState,
@@ -144,7 +145,7 @@ const getWagerButtonText = (
   wagerAmount: string | undefined,
   quoteError: string | null | undefined
 ): string => {
-  if (isQuoteLoading) return 'Getting Quote...';
+  if (isQuoteLoading) return 'Loading...';
   if (!wagerAmount || parseFloat(wagerAmount) <= 0) return 'Enter Wager Amount';
   if (quoteError) return 'Wager Unavailable';
   return 'Submit Wager';
@@ -155,7 +156,7 @@ const getPredictButtonText = (
   submissionValue: string | number | null | undefined
 ): string => {
   if (submissionValue === 'N/A') {
-    return 'Enter Prediction Above';
+    return 'Enter Prediction';
   }
   return 'Submit Prediction';
 };
@@ -234,11 +235,11 @@ const PredictTabContent: React.FC<{
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="ml-1 text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5 pointer-events-auto"
+                className="ml-0.5 text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5 pointer-events-auto"
                 aria-label="Information about Sapience account connection"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Info size={14} />
+                <Info size={12} />
               </button>
             </PopoverTrigger>
             <PopoverContent side="top" className="w-52 p-2 text-sm">
@@ -299,7 +300,9 @@ const WagerTabContent: React.FC<{
           If this market {unitDisplay ? 'resolves near' : 'resolves to'}{' '}
           <span className="italic">
             {(() => {
+              // Check for group market first
               if (
+                isGroupMarket && // Use isGroupMarket prop directly
                 activeOptionNames &&
                 typeof formData.predictionValue === 'number' &&
                 formData.predictionValue > 0 &&
@@ -307,97 +310,185 @@ const WagerTabContent: React.FC<{
               ) {
                 return activeOptionNames[formData.predictionValue - 1];
               }
-              if (formData.predictionValue === '1') {
-                return 'Yes';
+
+              // Check for Yes/No market type *before* checking the value
+              const isYesNoMarket =
+                marketData?.baseTokenName?.toLowerCase() === 'yes';
+
+              if (isYesNoMarket) {
+                if (formData.predictionValue === '1') {
+                  return 'Yes';
+                }
+                if (formData.predictionValue === '0') {
+                  return 'No';
+                }
               }
-              if (formData.predictionValue === '0') {
-                return 'No';
-              }
-              return formData.predictionValue; // Fallback for numerical or other cases
+
+              // Fallback for numerical or other cases (or Yes/No with unexpected value)
+              return formData.predictionValue;
             })()}
           </span>
           , you will be able to redeem{' '}
           {unitDisplay ? 'as much as' : 'approximately'}{' '}
           <span className="font-medium">
-            {Number(
-              formatUnits(
-                BigInt(
-                  quoteData.maxSize.startsWith('-')
-                    ? quoteData.maxSize.substring(1)
-                    : quoteData.maxSize
-                ),
-                18 // Assuming 18 decimals, might need adjustment based on token
-              )
-            ).toFixed(2)}{' '}
+            <NumberDisplay
+              value={Number(
+                formatUnits(
+                  BigInt(
+                    quoteData.maxSize.startsWith('-')
+                      ? quoteData.maxSize.substring(1)
+                      : quoteData.maxSize
+                  ),
+                  18 // Assuming 18 decimals, might need adjustment based on token
+                )
+              )}
+              className=""
+            />{' '}
             {marketData?.collateralSymbol || 'tokens'}{' '}
           </span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5 pointer-events-auto"
-                aria-label="Information about payout"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Info size={14} />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent side="top" className="w-52 p-2 text-sm">
-              The prediction market runs onchain using the open source{' '}
-              <a
-                href="https://docs.foil.xyz"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                Foil Protocol
-              </a>
-              .
-            </PopoverContent>
-          </Popover>
         </p>
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="quote-details">
-            <AccordionTrigger className="text-xs py-2 text-muted-foreground hover:no-underline [&[data-state=open]]:text-foreground mt-4 border-t pt-2">
-              Quote Details
+            <AccordionTrigger className="text-xs py-2 px-2 text-muted-foreground hover:no-underline [&[data-state=open]]:text-foreground mt-4 border-t pt-2">
+              Wager Details
             </AccordionTrigger>
-            <AccordionContent className="text-xs pt-2 space-y-2">
+            <AccordionContent className="text-xs pt-2 px-2 space-y-2">
+              <div>
+                <p className="text-muted-foreground pb-4 font-medium">
+                  The prediction market runs onchain using the open source{' '}
+                  <a
+                    href="https://docs.foil.xyz"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    Foil Protocol
+                  </a>
+                  .
+                </p>
+                <p className="text-muted-foreground">
+                  Current Market Prediction{' '}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="ml-0.5 text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5 pointer-events-auto"
+                        aria-label="Information about current market prediction"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Info size={12} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" className="w-52 p-2 text-sm">
+                      This is how the market currently predicts this market will
+                      resolve.
+                    </PopoverContent>
+                  </Popover>
+                </p>
+                <p className="mt-0.5">
+                  <span className="font-medium">
+                    <NumberDisplay
+                      value={Number(quoteData.currentPrice)}
+                      className=""
+                    />{' '}
+                    {unitDisplay || ''}
+                  </span>
+                </p>
+              </div>
               <div>
                 <p className="text-muted-foreground">
-                  Quoted Max Position Size:
+                  Trade Size{' '}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="ml-0.5 text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5 pointer-events-auto"
+                        aria-label="Information about trade size"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Info size={12} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" className="w-64 p-2 text-sm">
+                      A positive (long) position will profit if the
+                      market&apos;s prediction or outcome is higher than the
+                      current, negative (short) if lower.
+                    </PopoverContent>
+                  </Popover>
                 </p>
-                <p>
+                <p className="mt-0.5">
                   <span className="font-medium">
-                    {quoteData.direction}{' '}
-                    {Number(
-                      formatUnits(
-                        BigInt(
-                          quoteData.maxSize.startsWith('-')
-                            ? quoteData.maxSize.substring(1)
-                            : quoteData.maxSize
-                        ),
-                        18 // Assuming 18 decimals
-                      )
-                    ).toFixed(2)}{' '}
-                    {marketData?.collateralSymbol || 'Tokens'}
-                  </span>
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Current Price:</p>
-                <p>
-                  <span className="font-medium">
-                    {Number(quoteData.currentPrice).toFixed(4)}{' '}
+                    {quoteData.maxSize.startsWith('-') ? '-' : ''}
+                    <NumberDisplay
+                      value={Number(
+                        formatUnits(
+                          BigInt(
+                            quoteData.maxSize.startsWith('-')
+                              ? quoteData.maxSize.substring(1)
+                              : quoteData.maxSize
+                          ),
+                          18
+                        )
+                      )}
+                      className=""
+                    />{' '}
                     {unitDisplay || ''}
                   </span>
                 </p>
               </div>
               <div>
-                <p className="text-muted-foreground">Expected Price:</p>
-                <p>
+                <p className="text-muted-foreground">
+                  Resulting Market Prediction{' '}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="ml-0.5 text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5 pointer-events-auto"
+                        aria-label="Information about resulting market prediction"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Info size={12} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" className="w-64 p-2 text-sm">
+                      After your wager is placed, this is what the market will
+                      predict.
+                    </PopoverContent>
+                  </Popover>
+                </p>
+                <p className="mt-0.5">
                   <span className="font-medium">
-                    {Number(quoteData.expectedPrice).toFixed(4)}{' '}
+                    <NumberDisplay
+                      value={Number(quoteData.expectedPrice)}
+                      className=""
+                    />{' '}
                     {unitDisplay || ''}
+                  </span>
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">
+                  Maximum Cost{' '}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="ml-0.5 text-muted-foreground hover:text-foreground inline-flex cursor-pointer align-middle -translate-y-0.5 pointer-events-auto"
+                        aria-label="Information about maximum cost"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Info size={12} />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top" className="w-64 p-2 text-sm">
+                      This is the most you are authorizing to transfer for this
+                      wager.
+                    </PopoverContent>
+                  </Popover>
+                </p>
+                <p className="mt-0.5">
+                  <span className="font-medium">
+                    1 {marketData?.collateralSymbol || 'Token'}
                   </span>
                 </p>
               </div>
@@ -490,10 +581,7 @@ const WagerTabContent: React.FC<{
           </div>
         </div>
         <div className="mt-2 text-xs text-muted-foreground space-y-1">
-          {isQuoteLoading && <p>Loading quote...</p>}
-          {quoteError && (
-            <p className="text-destructive">Error: {quoteError}</p>
-          )}
+          {quoteError && <p className="text-destructive">{quoteError}</p>}
           {quoteData && !isQuoteLoading && !quoteError && renderQuoteData()}
         </div>
       </div>
@@ -694,7 +782,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         activeTab === 'wager' && (
           <Alert
             variant="destructive"
-            className="mb-4 bg-destructive/10 rounded-sm"
+            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
           >
             <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
             <AlertDescription>

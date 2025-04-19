@@ -240,7 +240,7 @@ const ForecastingDetailPage = () => {
           />
         </div>
 
-        <div className="flex justify-end px-4 md:px-3 pt-8">
+        <div className="flex justify-end px-4 md:px-3 pt-8 pb-16">
           <button
             type="button"
             onClick={(e) => {
