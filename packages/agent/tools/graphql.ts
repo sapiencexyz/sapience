@@ -1,4 +1,7 @@
-const FOIL_GRAPHQL_ENDPOINT = 'https://api.foil.xyz/graphql';
+'use strict';
+
+const FOIL_API_BASE_URL = process.env.FOIL_API_URL || 'https://api.foil.xyz';
+const FOIL_GRAPHQL_ENDPOINT = `${FOIL_API_BASE_URL}/graphql`;
 
 interface GraphQLResponse {
   data?: any;
