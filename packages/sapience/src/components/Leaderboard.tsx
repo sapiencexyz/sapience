@@ -21,7 +21,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useState, useMemo } from 'react';
 
-import { AddressDisplay } from '~/components/address-display';
+import { AddressDisplay } from '~/components/AddressDisplay';
 import { foilApi } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader

@@ -15,9 +15,9 @@ import { blo } from 'blo';
 import { print } from 'graphql';
 import { useParams } from 'next/navigation';
 
-import { AddressDisplay } from '~/components/address-display';
+import { AddressDisplay } from '~/components/AddressDisplay';
 import LottieLoader from '~/components/LottieLoader';
-import NumberDisplay from '~/components/numberDisplay';
+import NumberDisplay from '~/components/NumberDisplay';
 import { foilApi } from '~/lib/utils/util';
 
 // GraphQL query to fetch positions by owner address
