@@ -414,18 +414,18 @@ const Leaderboard = () => {
     () => [
       {
         id: 'rank',
-        header: '',
+        header: () => '', // Explicitly return string
         cell: RankCell,
       },
       {
         id: 'owner',
-        header: 'Ethereum Account Address',
+        header: () => 'Ethereum Account Address', // Explicitly return string
         accessorKey: 'owner',
         cell: OwnerCell,
       },
       {
         id: 'totalPnL', // Changed ID to match accessorKey and error message expectation
-        header: 'Profit',
+        header: () => 'Profit', // Explicitly return string
         accessorKey: 'totalPnL',
         cell: PnLCellFromMeta,
       },
