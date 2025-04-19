@@ -9,8 +9,8 @@ import {
   getDisplayQuestion,
 } from '~/lib/utils/questionUtils';
 
-// Update MarketGroupPreviewProps to accept displayQuestion
-export interface MarketGroupPreviewProps {
+// Update MarketGroupsPreviewProps to accept displayQuestion
+export interface MarketGroupsRowProps {
   chainId: number;
   marketAddress: string;
   markets: any[]; // Consider using MarketWithMarketInfo[] from MarketGroupsList if exported
@@ -19,14 +19,14 @@ export interface MarketGroupPreviewProps {
   marketData?: any; // Add optional market data for calculating the question
 }
 
-export const MarketGroupPreview = ({
+const MarketGroupsRow = ({
   chainId,
   marketAddress,
   markets,
   color,
   displayQuestion: providedDisplayQuestion,
   marketData,
-}: MarketGroupPreviewProps) => {
+}: MarketGroupsRowProps) => {
   // Get chain short name for the URL
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
@@ -70,6 +70,8 @@ export const MarketGroupPreview = ({
     </Link>
   );
 };
+
+export default MarketGroupsRow;
 
 // Helper function to get chain short name from chainId
 const getChainShortName = (id: number): string => {

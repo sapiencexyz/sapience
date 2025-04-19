@@ -30,7 +30,7 @@ import {
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import { formatQuestion } from '~/lib/utils/questionUtils';
 
-import { MarketGroupPreview } from './MarketGroupPreview';
+import MarketGroupsRow from './MarketGroupsRow';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -329,7 +329,7 @@ const ForecastingTable = () => {
           (market) => now >= market.startTimestamp && now < market.endTimestamp
         );
 
-        // Determine the raw question (will be formatted by MarketGroupPreview)
+        // Determine the raw question (will be formatted by MarketGroupsRow)
         let rawQuestion: string | null = null;
 
         // If we have multiple active markets, use market question
@@ -630,7 +630,7 @@ const ForecastingTable = () => {
                         transition={{ duration: 0.2 }}
                         className="border-b last:border-b-0 border-border"
                       >
-                        <MarketGroupPreview
+                        <MarketGroupsRow
                           marketAddress={marketGroup.marketAddress}
                           chainId={marketGroup.chainId}
                           displayQuestion={
