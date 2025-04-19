@@ -4,28 +4,22 @@ import Link from 'next/link';
 import * as React from 'react';
 import * as chains from 'viem/chains';
 
-import {
-  findActiveMarkets,
-  getDisplayQuestion,
-} from '~/lib/utils/questionUtils';
-
-// Update MarketGroupsPreviewProps to accept displayQuestion
 export interface MarketGroupsRowProps {
   chainId: number;
   marketAddress: string;
-  markets: any[]; // Consider using MarketWithMarketInfo[] from MarketGroupsList if exported
+  markets: any[]; // Keep for now, might be needed for other logic or can be removed if unused
   color: string;
-  displayQuestion?: string; // Optional provided question
-  marketData?: any; // Add optional market data for calculating the question
+  displayQuestion: string; // Make displayQuestion required
+  // Remove marketData prop
+  // marketData?: any;
 }
 
 const MarketGroupsRow = ({
   chainId,
   marketAddress,
-  markets,
+  markets, // Keep destructured for now
   color,
-  displayQuestion: providedDisplayQuestion,
-  marketData,
+  displayQuestion, // Use the required prop directly
 }: MarketGroupsRowProps) => {
   // Get chain short name for the URL
   const chainShortName = React.useMemo(
@@ -33,19 +27,7 @@ const MarketGroupsRow = ({
     [chainId]
   );
 
-  // Calculate display question - prioritize market data calculation
-  const finalDisplayQuestion = React.useMemo(() => {
-    if (marketData) {
-      // Find active markets if market data is available
-      const activeMarkets = findActiveMarkets(marketData);
-      // Use shared logic to determine question
-      return getDisplayQuestion(marketData, activeMarkets, false);
-    }
-    // Fallback to provided display question
-    return providedDisplayQuestion || 'Market question not available';
-  }, [marketData, providedDisplayQuestion]);
-
-  // Early return if no markets
+  // Early return if no markets - Keep this check based on 'markets' prop for now
   if (!markets || markets.length === 0) {
     return null;
   }
@@ -63,7 +45,8 @@ const MarketGroupsRow = ({
         />
         <div className="px-4 py-3">
           <h3 className="text-xl font-heading font-normal">
-            {finalDisplayQuestion}
+            {/* Use the displayQuestion prop directly */}
+            {displayQuestion}
           </h3>
         </div>
       </div>

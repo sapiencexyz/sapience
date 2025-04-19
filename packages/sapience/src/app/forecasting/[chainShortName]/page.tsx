@@ -308,24 +308,22 @@ const ForecastingDetailPage = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 pb-2">
-            {marketData?.markets?.map(
-              (market: { marketId: string; question?: string; id: string }) => (
-                <Link
-                  key={market.id}
-                  href={`${window.location.pathname}/${market.marketId}`}
+            {marketData?.markets?.map((market) => (
+              <Link
+                key={market.id}
+                href={`${window.location.pathname}/${market.marketId}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShowMarketSelector(false)}
+                  className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
                 >
-                  <button
-                    type="button"
-                    onClick={() => setShowMarketSelector(false)}
-                    className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
-                  >
-                    {market.question
-                      ? formatQuestion(market.question)
-                      : `Market ${market.marketId}`}
-                  </button>
-                </Link>
-              )
-            )}
+                  {market.question
+                    ? formatQuestion(market.question)
+                    : `Market ${market.marketId}`}
+                </button>
+              </Link>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

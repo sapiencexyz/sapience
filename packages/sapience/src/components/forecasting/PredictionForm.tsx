@@ -41,7 +41,7 @@ interface PredictionMarketType {
   markets?: {
     id?: string;
     marketId: string | number;
-    question?: string;
+    question?: string | null | undefined;
     startTimestamp?: number | string | null;
     endTimestamp?: number | string | null;
     settled?: boolean;

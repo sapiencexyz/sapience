@@ -28,7 +28,7 @@ import {
   type Market,
 } from '~/hooks/useMarketGroups';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
-import { formatQuestion } from '~/lib/utils/questionUtils';
+import { formatQuestion } from '~/lib/utils/util';
 
 import MarketGroupsRow from './MarketGroupsRow';
 

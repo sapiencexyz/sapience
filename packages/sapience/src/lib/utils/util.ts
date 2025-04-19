@@ -67,3 +67,128 @@ export const formatNumber = (value: number, decimals: number = 2): string => {
     maximumFractionDigits: decimals,
   });
 };
+
+// Consider moving these to a shared types file if used more broadly
+export interface Market {
+  id: string;
+  marketId: string;
+  question?: string | null; // Question can be null
+  startTimestamp: number;
+  endTimestamp: number;
+  settled: boolean;
+}
+
+export interface MarketGroup {
+  id: string;
+  address: string;
+  chainId: number;
+  question?: string | null; // Question can be null
+  markets: Market[];
+  placeholder?: boolean; // Keep placeholder for loading/error states
+  optionNames?: string[];
+  baseTokenName?: string;
+  quoteTokenName?: string;
+}
+
+/**
+ * Formats a question string by capitalizing the first letter and ensuring it ends with a question mark
+ */
+export const formatQuestion = (
+  rawQuestion: string | null | undefined
+): string | null => {
+  if (!rawQuestion) {
+    return null; // Return null if input is null or undefined
+  }
+  // Format the question - ensure it has proper capitalization and ends with a question mark
+  let formattedQuestion = rawQuestion.trim();
+
+  // Capitalize first letter if it's not already capitalized
+  if (formattedQuestion.length > 0 && !/^[A-Z]/.test(formattedQuestion)) {
+    formattedQuestion =
+      formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
+  }
+
+  // Add question mark if missing
+  if (!formattedQuestion.endsWith('?')) {
+    formattedQuestion += '?';
+  }
+
+  return formattedQuestion;
+};
+
+/**
+ * Determines which question to display based on active markets and market group data
+ */
+export const getDisplayQuestion = (
+  marketGroupData: MarketGroup | null | undefined, // Use MarketGroup type, allow null/undefined
+  activeMarkets: Market[], // Use Market[] type
+  isLoading: boolean,
+  defaultLoadingMessage: string = '', // Default loading message
+  defaultErrorMessage: string = 'This market question is not available' // Default error message
+): string => {
+  // Helper function to format question or return default message
+  const formatOrDefault = (question: string | null | undefined): string => {
+    const formatted = formatQuestion(question);
+    return formatted || defaultErrorMessage; // Use the provided default error message
+  };
+
+  // Handle loading state first
+  if (isLoading) {
+    return defaultLoadingMessage;
+  }
+
+  // Handle null, undefined, or placeholder data
+  if (!marketGroupData || marketGroupData.placeholder) {
+    return defaultErrorMessage;
+  }
+
+  // Primary Logic:
+  // 1. If exactly one market is active and has a question, use its question.
+  if (activeMarkets.length === 1 && activeMarkets[0]?.question) {
+    return formatOrDefault(activeMarkets[0].question);
+  }
+
+  // 2. Otherwise (multiple active markets OR zero active markets OR the single active market has no question),
+  //    use the market group's question if available.
+  if (marketGroupData.question) {
+    return formatOrDefault(marketGroupData.question);
+  }
+
+  // 3. Fallback: If group question isn't available, find the first market (active or not) with a question.
+  //    (Consider if this fallback is truly desired, might be better to show defaultErrorMessage)
+  const firstMarketWithQuestion = marketGroupData.markets?.find(
+    (market) => market.question
+  );
+  if (firstMarketWithQuestion?.question) {
+    return formatOrDefault(firstMarketWithQuestion.question);
+  }
+
+  // Final Fallback: If no question found anywhere, return the default error message.
+  return defaultErrorMessage;
+};
+
+/**
+ * Finds active markets for a market group based on current timestamp
+ */
+export const findActiveMarkets = (
+  marketGroupData: MarketGroup | null | undefined // Use MarketGroup type, allow null/undefined
+): Market[] => {
+  // Return type Market[]
+  if (
+    !marketGroupData ||
+    marketGroupData.placeholder ||
+    !Array.isArray(marketGroupData.markets)
+  ) {
+    return [];
+  }
+
+  const nowInSeconds = Date.now() / 1000;
+  // Filter markets based on timestamps
+  return marketGroupData.markets.filter(
+    (
+      market: Market // Use Market type here
+    ) =>
+      nowInSeconds >= market.startTimestamp &&
+      nowInSeconds < market.endTimestamp
+  );
+};

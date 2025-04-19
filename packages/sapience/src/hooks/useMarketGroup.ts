@@ -3,11 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
+import type { Market, MarketGroup } from '../lib/utils/util';
 import {
   findActiveMarkets,
   getDisplayQuestion,
-} from '../lib/utils/questionUtils';
-import { foilApi } from '../lib/utils/util';
+  foilApi,
+} from '../lib/utils/util';
 
 // GraphQL query to fetch market data
 const MARKET_GROUP_QUERY = gql`
@@ -47,34 +48,13 @@ const getChainIdFromShortName = (shortName: string): number => {
   }
 };
 
-interface Market {
-  id: string;
-  marketId: string;
-  question?: string;
-  startTimestamp: number;
-  endTimestamp: number;
-  settled: boolean;
-}
-
-interface MarketGroupData {
-  id: string;
-  address: string;
-  chainId: number;
-  question: string;
-  baseTokenName: string;
-  quoteTokenName: string;
-  optionNames: string[];
-  markets: Market[];
-  placeholder?: boolean; // Added placeholder property
-}
-
 interface UseMarketGroupProps {
   chainShortName: string;
   marketAddress: string;
 }
 
 interface UseMarketGroupReturn {
-  marketData: MarketGroupData | null | undefined;
+  marketData: MarketGroup | null | undefined;
   isLoadingMarket: boolean;
   isSuccess: boolean;
   displayQuestion: string;
@@ -96,7 +76,7 @@ export const useMarketGroup = ({
     data: marketData,
     isLoading: isLoadingMarket,
     isSuccess,
-  } = useQuery<MarketGroupData | { placeholder: true }>({
+  } = useQuery<MarketGroup | { placeholder: true }>({
     // Type assertion needed for placeholder
     queryKey: ['marketGroup', chainId, marketAddress],
     queryFn: async () => {
@@ -119,7 +99,7 @@ export const useMarketGroup = ({
           console.error('No market group data in response:', response.data);
           return { placeholder: true };
         }
-        return marketResponse as MarketGroupData; // Type assertion
+        return marketResponse as MarketGroup; // Use imported MarketGroup type
       } catch (error) {
         console.error('Error fetching market group:', error);
         return { placeholder: true };
@@ -132,31 +112,35 @@ export const useMarketGroup = ({
 
   // Process market data to find active markets and set current market ID
   useEffect(() => {
-    if (marketData && !marketData.placeholder) {
-      const currentlyActiveMarkets = findActiveMarkets(marketData);
-      setActiveMarkets(currentlyActiveMarkets);
+    // Only process if marketData is valid and not a placeholder
+    const currentlyActiveMarkets =
+      marketData && !marketData.placeholder
+        ? findActiveMarkets(marketData)
+        : [];
+    setActiveMarkets(currentlyActiveMarkets);
 
-      if (currentlyActiveMarkets.length > 0) {
-        setCurrentMarketId(currentlyActiveMarkets[0].marketId);
-      } else {
-        setCurrentMarketId(null);
-      }
+    if (currentlyActiveMarkets.length > 0) {
+      setCurrentMarketId(currentlyActiveMarkets[0].marketId);
     } else {
-      // Reset if data is loading, placeholder, or invalid
-      setActiveMarkets([]);
       setCurrentMarketId(null);
     }
+    // marketData is the dependency
   }, [marketData]);
 
   // Process and format the display question
   useEffect(() => {
+    // Pass valid marketData or null to the utility function
+    const dataForQuestion =
+      marketData && !marketData.placeholder ? marketData : null;
     const question = getDisplayQuestion(
-      marketData,
+      dataForQuestion,
       activeMarkets,
       isLoadingMarket,
       'Loading question...'
+      // defaultErrorMessage is optional, defaults to 'This market question is not available'
     );
     setDisplayQuestion(question);
+    // Dependencies: marketData, activeMarkets, isLoadingMarket
   }, [marketData, isLoadingMarket, activeMarkets]);
 
   // Ensure marketData returned is not the placeholder
