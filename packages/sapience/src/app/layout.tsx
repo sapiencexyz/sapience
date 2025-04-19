@@ -4,7 +4,7 @@ import type React from 'react';
 
 import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
-import '../lib/styles/globals.css';
+import '../styles/globals.css';
 import Layout from '~/components/layout';
 // import LottieLoader from '~/components/shared/LottieLoader';
 import { LoadingProvider } from '~/lib/context/LoadingContext';

@@ -109,7 +109,10 @@ const FocusAreaFilter = ({
         {!isLoadingCategories &&
           categories &&
           categories
-            // Display all categories, not just those with icons
+            // Display only categories that are also in FOCUS_AREAS
+            .filter((category) =>
+              FOCUS_AREAS.some((fa) => fa.id === category.slug)
+            )
             .map((category) => {
               const styleInfo = getCategoryStyle(category.slug);
               const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
