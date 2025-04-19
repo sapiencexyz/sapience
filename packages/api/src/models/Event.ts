@@ -9,16 +9,16 @@ import {
   Index,
 } from 'typeorm';
 import { Transaction } from './Transaction';
-import { Market } from './Market';
+import { MarketGroup } from './MarketGroup';
 
 @Entity()
-@Unique(['transactionHash', 'market', 'blockNumber', 'logIndex'])
+@Unique(['transactionHash', 'marketGroup', 'blockNumber', 'logIndex'])
 export class Event {
   @OneToOne(() => Transaction, (transaction) => transaction.event)
   transaction: Transaction;
 
-  @ManyToOne(() => Market, (market) => market.events)
-  market: Market;
+  @ManyToOne(() => MarketGroup, (marketGroup) => marketGroup.events)
+  marketGroup: MarketGroup;
 
   @PrimaryGeneratedColumn()
   id: number;

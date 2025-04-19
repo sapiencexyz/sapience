@@ -1,3 +1,5 @@
+'use client';
+
 /* eslint-disable sonarjs/no-duplicate-string */
 import { Button } from '@foil/ui/components/ui/button';
 import {
@@ -10,12 +12,13 @@ import { ExternalLink, Menu } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAccount } from 'wagmi';
 
-import ConnectButton from '../ConnectButton';
-import ModeToggle from '../ModeToggle';
+import ConnectButton from './ConnectButton';
+import ModeToggle from './ModeToggle';
 
 // Dynamically import LottieIcon
-const LottieIcon = dynamic(() => import('../LottieIcon'), {
+const LottieIcon = dynamic(() => import('./LottieIcon'), {
   ssr: false,
   // Optional: Add a simple placeholder or skeleton
   loading: () => <div className="w-8 h-8 opacity-80" />,
@@ -92,7 +95,7 @@ const NavLinks = ({
         </Button>
       </Link>
       <Link
-        href="https://discord.com"
+        href="https://discord.gg/Hn2vzMDCSs"
         passHref
         className="flex w-fit"
         target="_blank"
@@ -115,6 +118,7 @@ const NavLinks = ({
 
 const Header = () => {
   const pathname = usePathname();
+  const { address, isConnected } = useAccount();
 
   return (
     <>
@@ -143,9 +147,9 @@ const Header = () => {
           {/* Mobile Sidebar Trigger Button (fixed left, with border, hover effect) */}
           <SidebarTrigger
             id="nav-sidebar"
-            className="fixed left-0 top-20 z-[51] flex items-center justify-center md:hidden border border-l-0 border-border bg-background/30 p-4 pl-3.5 backdrop-blur-sm rounded-r-full opacity-60 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-opacity"
+            className="fixed left-0 top-16 z-[51] flex items-center justify-center md:hidden border border-l-0 border-border bg-background/30 p-5 pl-4 backdrop-blur-sm rounded-r-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-6 w-6" />
           </SidebarTrigger>
 
           <div className="flex items-center gap-5">
@@ -153,6 +157,11 @@ const Header = () => {
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
             <ConnectButton />
+            {isConnected && address && (
+              <Link href={`/profile/${address}`} passHref>
+                <Button className="rounded-full px-8">Your Profile</Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>

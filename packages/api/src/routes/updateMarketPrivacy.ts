@@ -2,17 +2,17 @@ import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
 import dataSource from '../db';
+import { MarketGroup } from '../models/MarketGroup';
 import { Market } from '../models/Market';
-import { Epoch } from '../models/Epoch';
 
 const router = Router();
+const marketGroupRepository = dataSource.getRepository(MarketGroup);
 const marketRepository = dataSource.getRepository(Market);
-const epochRepository = dataSource.getRepository(Epoch);
 
 router.post(
   '/',
   handleAsyncErrors(async (req, res) => {
-    const { address, chainId, epochId, signature, timestamp } = req.body;
+    const { address, chainId, marketId, signature, timestamp } = req.body;
 
     const isAuthenticated = await isValidWalletSignature(
       signature as `0x${string}`,
@@ -23,12 +23,24 @@ router.post(
       return;
     }
 
-    const market = await marketRepository.findOne({
+    const marketGroup = await marketGroupRepository.findOne({
       where: {
         chainId: Number(chainId),
         address: address,
       },
-      relations: ['epochs'],
+      relations: ['markets'],
+    });
+
+    if (!marketGroup) {
+      res.status(404).json({ error: 'MarketGroup not found' });
+      return;
+    }
+
+    const market = await marketRepository.findOne({
+      where: {
+        marketGroup: { id: marketGroup.id },
+        marketId: Number(marketId),
+      },
     });
 
     if (!market) {
@@ -36,20 +48,8 @@ router.post(
       return;
     }
 
-    const epoch = await epochRepository.findOne({
-      where: {
-        market: { id: market.id },
-        epochId: Number(epochId),
-      },
-    });
-
-    if (!epoch) {
-      res.status(404).json({ error: 'Epoch not found' });
-      return;
-    }
-
-    epoch.public = !epoch.public;
-    await epochRepository.save(epoch);
+    market.public = !market.public;
+    await marketRepository.save(market);
 
     res.json({ success: true });
   })

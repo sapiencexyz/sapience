@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { epochRepository } from 'src/db';
-import { Epoch } from 'src/models/Epoch';
+import { marketRepository } from 'src/db';
+import { Market } from 'src/models/Market';
 import { z } from 'zod';
 import { getProviderForChain } from '../utils';
 import { formatUnits, parseUnits } from 'viem';
@@ -35,15 +35,15 @@ router.get('/:chainId/:marketAddress/:epochId/', async (req, res) => {
     }
 
     // Get the epoch data
-    const epoch = await getEpoch(chainId, marketAddress, epochId);
-    if (!epoch) {
-      return res.status(404).json({ error: 'Epoch not found' });
+    const market = await getMarket(chainId, marketAddress, epochId);
+    if (!market) {
+      return res.status(404).json({ error: 'Market not found' });
     }
 
     const currentPrice = await getCurrentPrice(
-      epoch.market.chainId,
-      epoch.market.address,
-      epoch.epochId
+      market.marketGroup.chainId,
+      market.marketGroup.address,
+      market.marketId
     );
     if (!currentPrice) {
       return res.status(404).json({ error: 'Current price not found' });
@@ -219,22 +219,22 @@ async function getMaxSizeForCollateral(
   return positionSize;
 }
 
-async function getEpoch(
+async function getMarket(
   chainId: string,
   marketAddress: string,
-  epochId: string
-): Promise<Epoch | null> {
-  const epoch = await epochRepository.findOne({
+  marketId: string
+): Promise<Market | null> {
+  const market = await marketRepository.findOne({
     where: {
-      market: {
+      marketGroup: {
         chainId: parseInt(chainId),
         address: marketAddress.toLowerCase(),
       },
-      epochId: parseInt(epochId),
+      marketId: parseInt(marketId),
     },
-    relations: ['market'],
+    relations: ['marketGroup'],
   });
-  return epoch;
+  return market;
 }
 
 // Use viem to get the current price

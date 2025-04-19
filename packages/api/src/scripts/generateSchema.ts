@@ -1,6 +1,6 @@
 import { buildSchema } from 'type-graphql';
 import {
-  EpochResolver,
+  MarketGroupResolver,
   MarketResolver,
   PositionResolver,
   ResourceResolver,
@@ -17,7 +17,7 @@ async function generateSchema() {
         ResourceResolver,
         PositionResolver,
         TransactionResolver,
-        EpochResolver,
+        MarketGroupResolver,
         VolumeResolver,
         CategoryResolver,
       ],

@@ -7,10 +7,9 @@ import { sepolia, base, cannon } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
-import ThemeProvider from '~/components/ThemeProvider';
 import { ConnectWalletProvider } from '~/lib/context/ConnectWalletProvider';
-import { FoilProvider } from '~/lib/context/FoilProvider';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
+import ThemeProvider from '~/lib/context/ThemeProvider';
 
 const queryClient = new QueryClient();
 
@@ -68,9 +67,7 @@ const Providers = ({ children }: { children: JSX.Element }) => {
             )}
           >
             <ConnectWalletProvider>
-              <SapienceProvider>
-                <FoilProvider>{children}</FoilProvider>
-              </SapienceProvider>
+              <SapienceProvider>{children}</SapienceProvider>
             </ConnectWalletProvider>
           </RainbowKitProvider>
         </QueryClientProvider>

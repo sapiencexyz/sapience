@@ -8,13 +8,13 @@ const INDEX_PRICE_AT_TIME_QUERY = gql`
   query IndexPriceAtTime(
     $address: String!
     $chainId: Int!
-    $epochId: String!
+    $marketId: String!
     $timestamp: Int!
   ) {
     indexPriceAtTime(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       timestamp: $timestamp
     ) {
       timestamp
@@ -26,18 +26,18 @@ const INDEX_PRICE_AT_TIME_QUERY = gql`
 export function useIndexPriceAtTime(
   marketAddress: string,
   chainId: number,
-  epochId: number,
+  marketId: number,
   timestamp: number
 ) {
   const { data, isLoading, error } = useQuery({
     queryKey: [
       'indexPriceAtTime',
       `${chainId}:${marketAddress}`,
-      epochId,
+      marketId,
       timestamp,
     ],
     queryFn: async () => {
-      if (!marketAddress || !chainId || !epochId || !timestamp) {
+      if (!marketAddress || !chainId || !marketId || !timestamp) {
         return null;
       }
 
@@ -46,7 +46,7 @@ export function useIndexPriceAtTime(
         variables: {
           address: marketAddress,
           chainId,
-          epochId: epochId.toString(),
+          marketId: marketId.toString(),
           timestamp,
         },
       });
@@ -61,7 +61,7 @@ export function useIndexPriceAtTime(
         value: Number(gweiToEther(BigInt(priceData.close))),
       };
     },
-    enabled: !!marketAddress && !!chainId && !!epochId && !!timestamp,
+    enabled: !!marketAddress && !!chainId && !!marketId && !!timestamp,
   });
 
   return {

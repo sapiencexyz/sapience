@@ -21,17 +21,44 @@ interface Positions {
   tradePositions: FoilPosition[];
 }
 
+interface ProcessedPosition extends FoilPosition {
+  type: 'lp' | 'trade';
+  marketID: string;
+}
+
 interface AddEditPositionContextType {
   nftId: number;
   setNftId: (id: number | undefined) => void;
   positions: Positions;
+  processedPositions: ProcessedPosition[];
   refreshPositions: () => Promise<void>;
   isLoading: boolean;
+  getPositionMarketId: (position: FoilPosition) => string;
 }
 
 const AddEditPositionContext = createContext<
   AddEditPositionContextType | undefined
 >(undefined);
+
+//
+const getPositionMarketId = (position: FoilPosition): string => {
+  if (
+    'epochId' in position &&
+    position.epochId !== undefined &&
+    position.epochId !== null
+  ) {
+    return String(position.epochId);
+  }
+
+  if (
+    'marketId' in position &&
+    position.marketId !== undefined &&
+    position.marketId !== null
+  ) {
+    return String(position.marketId);
+  }
+  return '0';
+};
 
 export const AddEditPositionProvider: React.FC<{
   children: React.ReactNode;
@@ -88,6 +115,22 @@ export const AddEditPositionProvider: React.FC<{
     }
     return _positions;
   }, [positionsData]);
+
+  const processedPositions = useMemo(() => {
+    const liquidityPositions = positions.liquidityPositions.map((pos) => ({
+      ...pos,
+      type: 'lp' as const,
+      marketID: getPositionMarketId(pos),
+    }));
+
+    const tradePositions = positions.tradePositions.map((pos) => ({
+      ...pos,
+      type: 'trade' as const,
+      marketID: getPositionMarketId(pos),
+    }));
+
+    return [...liquidityPositions, ...tradePositions];
+  }, [positions]);
 
   useEffect(() => {
     if (
@@ -189,8 +232,10 @@ export const AddEditPositionProvider: React.FC<{
         nftId: nftId ?? 0,
         setNftId: updateUrlWithPositionId,
         positions,
+        processedPositions,
         refreshPositions,
         isLoading,
+        getPositionMarketId,
       }}
     >
       {children}

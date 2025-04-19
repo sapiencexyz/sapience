@@ -1,11 +1,11 @@
-export interface Market {
+export interface MarketGroup {
   chainId: number;
   address: string;
   owner: string;
   collateralAsset: string;
 }
 
-export interface Epoch {
-  epochId: number;
+export interface Market {
+  marketId: number;
   endTimestamp: number;
 }

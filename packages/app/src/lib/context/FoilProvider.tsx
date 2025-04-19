@@ -9,7 +9,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 
 import { gweiToEther, mainnetClient, foilApi } from '../utils/util';
 
-export interface Market {
+export interface MarketGroup {
   id: number;
   name: string;
   chainId: number;
@@ -23,25 +23,25 @@ export interface Market {
     name: string;
     slug: string;
   };
-  epochs: Array<{
+  markets: Array<{
     id: number;
-    epochId: number;
+    marketId: number;
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
     question?: string;
   }>;
-  currentEpoch: {
+  currentMarket: {
     id: number;
-    epochId: number;
+    marketId: number;
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
     question?: string;
   } | null;
-  nextEpoch: {
+  nextMarket: {
     id: number;
-    epochId: number;
+    marketId: number;
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
@@ -50,12 +50,12 @@ export interface Market {
 }
 
 interface FoilContextType {
-  markets: Market[];
+  marketGroups: MarketGroup[];
   isLoading: boolean;
   error: Error | null;
-  refetchMarkets: (
+  refetchMarketGroups: (
     options?: RefetchOptions
-  ) => Promise<QueryObserverResult<Market[], Error>>;
+  ) => Promise<QueryObserverResult<MarketGroup[], Error>>;
   stEthPerToken: number | undefined;
 }
 
@@ -107,41 +107,41 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const {
-    data: markets,
+    data: marketGroups,
     isLoading,
     error,
-    refetch: refetchMarkets,
-  } = useQuery<Market[], Error>({
-    queryKey: ['markets'],
+    refetch: refetchMarketGroups,
+  } = useQuery<MarketGroup[], Error>({
+    queryKey: ['marketGroups'],
     queryFn: async () => {
-      const data = await foilApi.get('/markets');
+      const data = await foilApi.get('/marketGroups');
       const currentTimestamp = Math.floor(Date.now() / 1000);
 
-      return data.map((market: Market) => {
-        const sortedEpochs = [...market.epochs].sort(
+      return data.map((marketGroup: MarketGroup) => {
+        const sortedMarkets = [...marketGroup.markets].sort(
           (a, b) => a.startTimestamp - b.startTimestamp
         );
 
-        const currentEpoch =
-          sortedEpochs.find(
-            (epoch) =>
-              epoch.startTimestamp <= currentTimestamp &&
-              epoch.endTimestamp > currentTimestamp
+        const currentMarket =
+          sortedMarkets.find(
+            (market) =>
+              market.startTimestamp <= currentTimestamp &&
+              market.endTimestamp > currentTimestamp
           ) ||
-          sortedEpochs[sortedEpochs.length - 1] ||
+          sortedMarkets[sortedMarkets.length - 1] ||
           null;
 
-        const nextEpoch =
-          sortedEpochs.find(
-            (epoch) => epoch.startTimestamp > currentTimestamp
+        const nextMarket =
+          sortedMarkets.find(
+            (market) => market.startTimestamp > currentTimestamp
           ) ||
-          sortedEpochs[sortedEpochs.length - 1] ||
+          sortedMarkets[sortedMarkets.length - 1] ||
           null;
 
         return {
-          ...market,
-          currentEpoch,
-          nextEpoch,
+          ...marketGroup,
+          currentMarket,
+          nextMarket,
         };
       });
     },
@@ -152,10 +152,10 @@ export const FoilProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <FoilContext.Provider
       value={{
-        markets: markets || [],
+        marketGroups: marketGroups || [],
         isLoading,
         error,
-        refetchMarkets,
+        refetchMarketGroups,
         stEthPerToken,
       }}
     >

@@ -70,12 +70,12 @@ const LP_POSITIONS_QUERY = `
       lpQuoteToken
       lowPriceTick
       highPriceTick
-      epoch {
+      market {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
-        market {
+        marketGroup {
           id
           chainId
           address
@@ -110,17 +110,23 @@ const useLPPositions = (
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) => {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketGroupAddress, market } = periodContext;
 
   return useQuery({
-    queryKey: ['lpPositions', walletAddress, chainId, marketAddress, epoch],
+    queryKey: [
+      'lpPositions',
+      walletAddress,
+      chainId,
+      marketGroupAddress,
+      market,
+    ],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: LP_POSITIONS_QUERY,
         variables: {
           owner: walletAddress || undefined,
           chainId: walletAddress ? undefined : Number(chainId),
-          marketAddress: walletAddress ? undefined : marketAddress,
+          marketAddress: walletAddress ? undefined : marketGroupAddress,
         },
       });
 
@@ -128,15 +134,16 @@ const useLPPositions = (
         throw new Error(errors[0].message);
       }
 
-      // Filter for LP positions only and within the current epoch
+      // Filter for LP positions only and within the current market
       return data.positions.filter((position: any) => {
         const { isLP } = position;
-        const positionEpochId = Number(position.epoch?.epochId);
-        return isLP && positionEpochId === epoch;
+        const positionMarketId = Number(position.market?.marketId);
+        return isLP && positionMarketId === market;
       });
     },
     enabled:
-      Boolean(walletAddress) || (Boolean(chainId) && Boolean(marketAddress)),
+      Boolean(walletAddress) ||
+      (Boolean(chainId) && Boolean(marketGroupAddress)),
     refetchInterval: POLLING_INTERVAL,
   });
 };
@@ -271,11 +278,12 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         return (
           <MarketCell
             marketName={
-              row.original.epoch?.market?.resource?.name || 'Unknown Market'
+              row.original.market?.marketGroup?.resource?.name ||
+              'Unknown Market'
             }
-            resourceSlug={row.original.epoch?.market?.resource?.slug}
-            startTimestamp={row.original.epoch?.startTimestamp}
-            endTimestamp={row.original.epoch?.endTimestamp}
+            resourceSlug={row.original.market?.marketGroup?.resource?.slug}
+            startTimestamp={row.original.market?.startTimestamp}
+            endTimestamp={row.original.market?.endTimestamp}
             resources={resources}
           />
         );
@@ -284,7 +292,9 @@ const LiquidityPositionsTable: React.FC<Props> = ({
           <div className="flex items-center gap-1">
             <PositionDisplay
               positionId={row.original.positionId.toString()}
-              marketType={row.original.epoch?.market?.isYin ? 'yin' : 'yang'}
+              marketType={
+                row.original.market?.marketGroup?.isYin ? 'yin' : 'yang'
+              }
             />
           </div>
         );
@@ -340,7 +350,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
           />
         );
       case 'more': {
-        const positionUrl = `/positions/${row.original.epoch?.market?.chainId}:${row.original.epoch?.market?.address}/${row.original.positionId}`;
+        const positionUrl = `/positions/${row.original.market?.marketGroup?.chainId}:${row.original.market?.marketGroup?.address}/${row.original.positionId}`;
         return (
           <Link href={positionUrl} target="_blank" rel="noopener noreferrer">
             <Button size="sm" className="float-right">
@@ -360,7 +370,7 @@ const LiquidityPositionsTable: React.FC<Props> = ({
         id: 'market',
         header: 'Market',
         accessorFn: (row) =>
-          row.epoch?.market?.resource?.name || 'Unknown Market',
+          row.market?.marketGroup?.resource?.name || 'Unknown Market',
       },
       {
         id: 'position',

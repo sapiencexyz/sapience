@@ -3,33 +3,25 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  Unique,
-  OneToMany,
   ManyToOne,
+  OneToMany,
+  Unique,
   Index,
 } from 'typeorm';
-import { Epoch } from './Epoch';
+import { MarketGroup } from './MarketGroup';
+import { Position } from './Position';
+import { NUMERIC_PRECISION } from '../constants';
 import { MarketParams } from './MarketParams';
-import { Event } from './Event';
-import { Resource } from './Resource';
-import { Category } from './Category';
 
 @Entity()
-@Unique(['address', 'chainId'])
+@Unique(['marketGroup', 'marketId'])
 export class Market {
-  @OneToMany(() => Epoch, (epoch) => epoch.market, {
-    cascade: true,
-  })
-  epochs: Epoch[];
+  @ManyToOne(() => MarketGroup, (marketGroup) => marketGroup.markets)
+  @Index()
+  marketGroup: MarketGroup;
 
-  @OneToMany(() => Event, (event) => event.market)
-  events: Event[];
-
-  @ManyToOne(() => Resource, (resource) => resource.markets)
-  resource: Resource;
-
-  @ManyToOne(() => Category, (category) => category.markets)
-  category: Category;
+  @OneToMany(() => Position, (position) => position.market)
+  positions: Position[];
 
   @PrimaryGeneratedColumn()
   id: number;
@@ -37,38 +29,66 @@ export class Market {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: 'varchar' })
-  @Index()
-  address: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  vaultAddress: string;
-
-  @Column({ type: 'boolean', default: false })
-  isYin: boolean;
-
-  @Column({ type: 'boolean', default: false })
-  isCumulative: boolean;
-
   @Column({ type: 'integer' })
   @Index()
-  chainId: number;
+  marketId: number;
 
   @Column({ type: 'integer', nullable: true })
-  deployTimestamp: number | null;
+  startTimestamp: number | null;
 
   @Column({ type: 'integer', nullable: true })
-  deployTxnBlockNumber: number | null;
+  endTimestamp: number | null;
 
-  @Column({ type: 'varchar', nullable: true })
-  owner: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  collateralAsset: string | null;
-
-  @Column({ type: 'text', nullable: true })
-  question: string | null;
+  @Column({
+    type: 'numeric',
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  startingSqrtPriceX96: string | null;
 
   @Column(() => MarketParams)
   marketParams: MarketParams;
+
+  @Column({
+    type: 'numeric',
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  settlementPriceD18: string | null;
+
+  @Column({
+    type: 'boolean',
+    nullable: true,
+  })
+  settled: boolean | null;
+
+  @Column('int', { nullable: true })
+  baseAssetMinPriceTick: number | null;
+
+  @Column('int', { nullable: true })
+  baseAssetMaxPriceTick: number | null;
+
+  @Column({
+    type: 'numeric',
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  minPriceD18: string | null;
+
+  @Column({
+    type: 'numeric',
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  maxPriceD18: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  public: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  question: string | null;
 }

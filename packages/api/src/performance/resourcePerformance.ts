@@ -1,13 +1,13 @@
 import { Resource } from 'src/models/Resource';
 import {
-  epochRepository,
-  marketPriceRepository,
   marketRepository,
+  marketPriceRepository,
+  marketGroupRepository,
   resourcePriceRepository,
 } from 'src/db';
 import { ResourcePrice } from 'src/models/ResourcePrice';
+import { MarketGroup } from 'src/models/MarketGroup';
 import { Market } from 'src/models/Market';
-import { Epoch } from 'src/models/Epoch';
 import {
   CandleData,
   MarketPriceData,
@@ -37,8 +37,8 @@ export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
 
   private resource: Resource;
+  private marketGroups: MarketGroup[];
   private markets: Market[];
-  private epochs: Epoch[];
   private intervals: number[] = [
     TIME_INTERVALS.intervals.INTERVAL_1_MINUTE,
     TIME_INTERVALS.intervals.INTERVAL_5_MINUTES,
@@ -342,10 +342,10 @@ export class ResourcePerformance {
       .createQueryBuilder('marketPrice')
       .leftJoinAndSelect('marketPrice.transaction', 'transaction')
       .leftJoinAndSelect('transaction.event', 'event')
-      .leftJoinAndSelect('event.market', 'market')
-      .leftJoinAndSelect('market.resource', 'resource')
+      .leftJoinAndSelect('event.marketGroup', 'marketGroup')
+      .leftJoinAndSelect('marketGroup.resource', 'resource')
       .leftJoinAndSelect('transaction.position', 'position')
-      .leftJoinAndSelect('position.epoch', 'epoch')
+      .leftJoinAndSelect('position.market', 'market')
       .where('resource.id = :resourceId', { resourceId: this.resource.id })
       .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
         from: initialTimestamp?.toString() ?? '0',
@@ -356,7 +356,7 @@ export class ResourcePerformance {
     const reducedDbMarketPrices = dbMarketPrices.map((item) => ({
       value: item.value,
       timestamp: Number(item.timestamp),
-      epoch: item.transaction.position.epoch.id,
+      epoch: item.transaction.position.market.id,
     }));
 
     console.timeEnd(
@@ -372,39 +372,43 @@ export class ResourcePerformance {
   }
 
   private async pullMarketsAndEpochs(onlyIfMissing: boolean = true) {
-    // Find markets if not already loaded
+    // Find marketGroups if not already loaded
     // Notice: doing it everytime since we don't know if a new market was added
+    if (
+      !this.marketGroups ||
+      this.marketGroups.length === 0 ||
+      !onlyIfMissing
+    ) {
+      console.time(
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketGroups`
+      );
+      this.marketGroups = await marketGroupRepository.find({
+        where: {
+          resource: { id: this.resource.id },
+        },
+      });
+      console.timeEnd(
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketGroups`
+      );
+    }
+
+    // Find epochs if not already loaded
+    // Notice: doing it everytime since we don't know if a new epoch was added
     if (!this.markets || this.markets.length === 0 || !onlyIfMissing) {
       console.time(
         ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
       );
       this.markets = await marketRepository.find({
         where: {
-          resource: { id: this.resource.id },
-        },
-      });
-      console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
-      );
-    }
-
-    // Find epochs if not already loaded
-    // Notice: doing it everytime since we don't know if a new epoch was added
-    if (!this.epochs || this.epochs.length === 0 || !onlyIfMissing) {
-      console.time(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.epochs`
-      );
-      this.epochs = await epochRepository.find({
-        where: {
-          market: { resource: { id: this.resource.id } },
+          marketGroup: { resource: { id: this.resource.id } },
         },
         order: {
           startTimestamp: 'ASC',
         },
-        relations: ['market'],
+        relations: ['marketGroup'],
       });
       console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.epochs`
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
       );
     }
   }
@@ -466,7 +470,7 @@ export class ResourcePerformance {
       this.runtime.indexProcessData[interval] = {};
       this.runtime.marketProcessData[interval] = {};
 
-      for (const epoch of this.epochs) {
+      for (const epoch of this.markets) {
         this.runtime.indexProcessData[interval][epoch.id] = {
           used: 0n,
           feePaid: 0n,
@@ -497,7 +501,7 @@ export class ResourcePerformance {
       this.resource,
       this.intervals,
       this.trailingAvgTime,
-      this.epochs
+      this.markets
     );
     console.timeEnd('LLL ResourcePerformance.persistStorage');
   }
@@ -516,7 +520,7 @@ export class ResourcePerformance {
       this.resource,
       this.intervals,
       this.trailingAvgTime,
-      this.epochs
+      this.markets
     );
 
     return restored
@@ -669,7 +673,7 @@ export class ResourcePerformance {
     currentIdx: number,
     interval: number
   ) {
-    for (const epoch of this.epochs) {
+    for (const epoch of this.markets) {
       const epochStartTime = epoch.startTimestamp;
       const epochEndTime = epoch.endTimestamp;
       // Skip data points that are not in the epoch
@@ -1037,7 +1041,7 @@ export class ResourcePerformance {
     interval: number,
     isLastItem: boolean
   ) {
-    for (const epoch of this.epochs) {
+    for (const epoch of this.markets) {
       if (epoch.id != item.e) {
         continue;
       }
@@ -1178,20 +1182,20 @@ export class ResourcePerformance {
     }
   }
 
-  private getEpochId(chainId: number, address: string, epoch: string) {
-    const theEpoch = this.epochs.find(
+  private getMarketId(chainId: number, address: string, market: string) {
+    const theMarket = this.markets.find(
       (e) =>
-        e.market.chainId === chainId &&
-        e.market.address === address.toLowerCase() &&
-        e.epochId === Number(epoch)
+        e.marketGroup.chainId === chainId &&
+        e.marketGroup.address === address.toLowerCase() &&
+        e.marketId === Number(market)
     );
-    if (!theEpoch) {
-      throw new Error(`Epoch not found for ${chainId}-${address}-${epoch}`);
+    if (!theMarket) {
+      throw new Error(`Epoch not found for ${chainId}-${address}-${market}`);
     }
 
     return {
-      id: theEpoch.id,
-      isCumulative: theEpoch.market.isCumulative,
+      id: theMarket.id,
+      isCumulative: theMarket.marketGroup.isCumulative,
     };
   }
 
@@ -1221,7 +1225,7 @@ export class ResourcePerformance {
     epoch: string
   ) {
     this.checkInterval(interval);
-    const { id: epochId, isCumulative } = this.getEpochId(
+    const { id: epochId, isCumulative } = this.getMarketId(
       chainId,
       address,
       epoch
@@ -1273,7 +1277,7 @@ export class ResourcePerformance {
     epoch: string
   ) {
     this.checkInterval(interval);
-    const { id: epochId } = this.getEpochId(chainId, address, epoch);
+    const { id: epochId } = this.getMarketId(chainId, address, epoch);
     if (!this.persistentStorage[interval].marketStore[epochId]) {
       return [];
     }
@@ -1300,7 +1304,7 @@ export class ResourcePerformance {
   }
 
   getMarketFromChainAndAddress(chainId: number, address: string) {
-    return this.markets.find(
+    return this.marketGroups.find(
       (m) =>
         m.chainId === chainId &&
         m.address.toLowerCase() === address.toLowerCase()

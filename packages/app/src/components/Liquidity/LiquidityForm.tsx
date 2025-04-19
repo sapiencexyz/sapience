@@ -54,7 +54,7 @@ const priceToTick = (price: number, tickSpacing: number): number => {
 const LiquidityForm: React.FC = () => {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
   const {
-    epoch,
+    market,
     pool,
     collateralAsset,
     collateralAssetTicker,
@@ -69,13 +69,13 @@ const LiquidityForm: React.FC = () => {
     useMarketUnits,
     valueDisplay,
     unitDisplay,
-    market,
+    marketGroup,
   } = useContext(PeriodContext);
 
   const { stEthPerToken } = useFoil();
 
-  if (!epoch) {
-    throw new Error('Epoch is not defined');
+  if (!market) {
+    throw new Error('Market is not defined');
   }
 
   const { toast } = useToast();
@@ -292,15 +292,15 @@ const LiquidityForm: React.FC = () => {
     abi: foilData.abi,
     functionName: 'quoteLiquidityPositionTokens',
     args: [
-      epoch.toString(),
+      market.toString(),
       parseUnits(depositAmount.toString(), collateralAssetDecimals),
       pool ? pool.sqrtRatioX96.toString() : '0',
-      tickLower > 0 ? TickMath.getSqrtRatioAtTick(tickLower).toString() : '0',
-      tickUpper > 0 ? TickMath.getSqrtRatioAtTick(tickUpper).toString() : '0',
+      TickMath.getSqrtRatioAtTick(tickLower).toString(),
+      TickMath.getSqrtRatioAtTick(tickUpper).toString(),
     ],
     chainId,
     query: {
-      enabled: Boolean(pool && isValid && tickLower > 0 && tickUpper > 0),
+      enabled: Boolean(pool && isValid),
     },
   });
 
@@ -387,8 +387,8 @@ const LiquidityForm: React.FC = () => {
   });
 
   /// ///// MEMOIZED VALUES ////////
-  const liquidity: undefined | bigint = useMemo(() => {
-    if (!uniswapPosition) return;
+  const liquidity: bigint = useMemo(() => {
+    if (!uniswapPosition) return BigInt(0);
     const uniswapData = uniswapPosition as any[];
     return uniswapData[7];
   }, [uniswapPosition]);
@@ -404,8 +404,6 @@ const LiquidityForm: React.FC = () => {
   }, [positionData, collateralAssetDecimals]);
 
   const newLiquidity = useMemo(() => {
-    if (!liquidity) return BigInt(0);
-
     // Handle empty or invalid input
     const inputValue = modifyLiquidity === '' ? '0' : modifyLiquidity;
     const percentage = parseFloat(inputValue) / 100;
@@ -712,7 +710,7 @@ const LiquidityForm: React.FC = () => {
         duration: 5000,
       });
       router.push(
-        `/markets/${chainId}%3A${marketAddress}/periods/${epoch}/pool?positionId=${nftId}`
+        `/markets/${chainId}%3A${marketAddress}/periods/${market}/pool?positionId=${nftId}`
       );
     }
   }, [positionData, toast]);
@@ -854,7 +852,7 @@ const LiquidityForm: React.FC = () => {
         functionName: 'createLiquidityPosition',
         args: [
           {
-            epochId: epoch,
+            epochId: market,
             amountTokenA: parseUnits(
               adjustedBaseToken.toString(),
               TOKEN_DECIMALS
@@ -1036,7 +1034,7 @@ const LiquidityForm: React.FC = () => {
 
   // Convert price from display units to market units
   const convertDisplayToMarketPrice = (displayPrice: number): number => {
-    if (useMarketUnits || market?.isCumulative) {
+    if (useMarketUnits || marketGroup?.isCumulative) {
       return displayPrice;
     }
     // Convert from gwei to Ggas/wstETH
@@ -1045,7 +1043,7 @@ const LiquidityForm: React.FC = () => {
 
   // Convert price from market units to display units
   const convertMarketToDisplayPrice = (marketPrice: number): number => {
-    if (useMarketUnits || market?.isCumulative) {
+    if (useMarketUnits || marketGroup?.isCumulative) {
       return marketPrice;
     }
     // Convert from Ggas/wstETH to gwei

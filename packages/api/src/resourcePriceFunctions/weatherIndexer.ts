@@ -37,7 +37,6 @@ interface WeatherSummary {
   };
 }
 
-// Create a single shared weather service instance
 const sharedWeatherService = new WeatherService();
 
 export class WeatherIndexer implements IResourcePriceIndexer {
@@ -304,6 +303,18 @@ export class WeatherIndexer implements IResourcePriceIndexer {
   }
 
   async watchBlocksForResource(resource: Resource): Promise<void> {
+    if (!process.env.NOAA_TOKEN) {
+      console.log(
+        'SF API token not found; skip intializing the watch procedure for weather indexers...'
+      );
+      return;
+    }
+
+    sharedWeatherService.start().catch((error) => {
+      console.error('Failed to start weather service:', error);
+      process.exit(1);
+    });
+
     console.log(
       `[WeatherIndexer.${this.resourceType}] Starting to watch blocks for resource ${resource.slug}`
     );
@@ -372,7 +383,6 @@ export class WeatherIndexer implements IResourcePriceIndexer {
           Sentry.captureException(error);
         });
       }
-
 
       this.pollInterval = setInterval(async () => {
         try {
@@ -454,9 +464,3 @@ export class WeatherIndexer implements IResourcePriceIndexer {
     }
   }
 }
-
-// Start the shared weather service
-sharedWeatherService.start().catch((error) => {
-  console.error('Failed to start weather service:', error);
-  process.exit(1);
-});

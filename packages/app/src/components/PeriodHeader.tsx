@@ -29,7 +29,7 @@ const PeriodHeader = () => {
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
     useMarketUnits,
-    market,
+    marketGroup,
     resource,
     unitDisplay,
     question,
@@ -52,7 +52,7 @@ const PeriodHeader = () => {
   }
 
   const minPrice =
-    useMarketUnits || market?.isCumulative
+    useMarketUnits || marketGroup?.isCumulative
       ? tickToPrice(baseAssetMinPriceTick)
       : convertGgasPerWstEthToGwei(
           tickToPrice(baseAssetMinPriceTick),
@@ -60,7 +60,7 @@ const PeriodHeader = () => {
         );
 
   const maxPrice =
-    useMarketUnits || market?.isCumulative
+    useMarketUnits || marketGroup?.isCumulative
       ? tickToPrice(baseAssetMaxPriceTick)
       : convertGgasPerWstEthToGwei(
           tickToPrice(baseAssetMaxPriceTick),
@@ -134,7 +134,7 @@ const PeriodHeader = () => {
         </span>
         <span className="font-medium mr-1">Market Type:</span>
         <span>
-          {market?.isCumulative ? 'Cumulative Spent' : 'Average Price'}
+          {marketGroup?.isCumulative ? 'Cumulative Spent' : 'Average Price'}
         </span>
       </div>
     </>

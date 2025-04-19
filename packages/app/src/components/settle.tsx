@@ -24,7 +24,7 @@ export default function Settle() {
     address: marketAddress,
     foilData,
     chainId,
-    epochSettled,
+    marketSettled,
     settlementPrice,
     collateralAssetTicker,
     unitDisplay,
@@ -137,7 +137,7 @@ export default function Settle() {
       {withdrawableCollateral > BigInt(0) && (
         <div className="mb-4">
           <p className="text-sm font-semibold mb-0.5">
-            {!(epochSettled && settlementPrice) ? 'Anticipated' : null}{' '}
+            {!(marketSettled && settlementPrice) ? 'Anticipated' : null}{' '}
             Withdrawable Collateral
           </p>
           <p className="text-sm">
@@ -146,7 +146,7 @@ export default function Settle() {
           </p>
         </div>
       )}
-      {epochSettled && settlementPrice ? (
+      {marketSettled && settlementPrice ? (
         <>
           <div className="mb-6">
             <p className="text-sm font-semibold mb-0.5">Settlement Price</p>

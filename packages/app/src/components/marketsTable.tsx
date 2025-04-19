@@ -137,30 +137,30 @@ const MarketsTable = () => {
   const data = React.useMemo(
     () =>
       resources?.flatMap((resource) =>
-        resource.markets
+        resource.marketGroups
           .filter(() => {
             if (!selectedResource) return true;
             return resource.slug === selectedResource;
           })
-          .flatMap((market) =>
-            market.epochs
-              .filter((epoch) => epoch.public)
-              .map((epoch) => {
-                const startDate = new Date(epoch.startTimestamp * 1000);
-                const endDate = new Date(epoch.endTimestamp * 1000);
+          .flatMap((marketGroup) =>
+            marketGroup.markets
+              .filter((market) => market.public)
+              .map((market) => {
+                const startDate = new Date(market.startTimestamp * 1000);
+                const endDate = new Date(market.endTimestamp * 1000);
                 return {
                   marketName: resource.name,
                   iconPath: resource.iconPath,
-                  epochId: epoch.epochId,
+                  marketId: market.marketId,
                   period: `${format(startDate, 'PPpp')} → ${format(
                     endDate,
                     'PPpp'
                   )}`,
-                  startTimestamp: epoch.startTimestamp,
-                  endTimestamp: epoch.endTimestamp,
-                  chainId: market.chainId,
-                  marketAddress: market.address,
-                  settled: epoch.settled,
+                  startTimestamp: market.startTimestamp,
+                  endTimestamp: market.endTimestamp,
+                  chainId: marketGroup.chainId,
+                  marketAddress: marketGroup.address,
+                  settled: market.settled,
                 };
               })
           )
@@ -219,7 +219,7 @@ const MarketsTable = () => {
     <div className="max-w-4xl mx-auto px-4">
       <div className="my-6">
         <h1 className="scroll-m-20 text-4xl lg:text-5xl font-bold tracking-tight mb-6">
-          Foil Markets
+          Foil Markets Groups
         </h1>
         <p className="text-sm text-muted-foreground mb-1.5 block">
           Filter by Resource
@@ -273,7 +273,7 @@ const MarketsTable = () => {
       {data.length === 0 ? (
         <div className="w-full py-24 text-center text-muted-foreground">
           <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-          No markets for the selected resource
+          No market groups for the selected resource
         </div>
       ) : (
         <div className="rounded-md border">
@@ -315,13 +315,13 @@ const MarketsTable = () => {
                   ))}
                   <TableCell className="text-right whitespace-nowrap">
                     <Link
-                      href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/trade`}
+                      href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.marketId}/trade`}
                       className="mr-3 md:mr-6"
                     >
                       <Button>Trade</Button>
                     </Link>
                     <Link
-                      href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.epochId}/pool`}
+                      href={`/markets/${row.original.chainId}:${row.original.marketAddress}/periods/${row.original.marketId}/pool`}
                     >
                       <Button>Pool</Button>
                     </Link>

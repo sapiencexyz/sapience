@@ -55,8 +55,8 @@
       "slug": "biosecurity"
     },
     {
-      "name": "International Relations",
-      "slug": "international-relations"
+      "name": "Geopolitics",
+      "slug": "geopolitics"
     }
   ],
   "MARKETS": [
@@ -69,7 +69,9 @@
       "question": "What will be the cumulative rainfall in San Francisco in a given period?",
       "questions": [
         "What will be the cumulative rainfall in San Francisco in April 2024?"
-      ]
+      ],
+      "baseTokenName": "Inches",
+      "quoteTokenName": "sUSDS"
     },
     {
       "chainId": 8453,
@@ -79,7 +81,9 @@
       "question": "What will be the average air temperature in New York City in a given period?",
       "questions": [
         "What will be the average air temperature in New York City in April 2024?"
-      ]
+      ],
+      "baseTokenName": "Fahrenheit",
+      "quoteTokenName": "sUSDS"
     },
     {
       "chainId": 8453,
@@ -88,18 +92,22 @@
       "question": "Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025?",
       "questions": [
         "Will the FDA grant full approval (BLA) for the Novavax COVID-19 vaccine by April 30, 2025?"
-      ]
+      ],
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
     },
     {
       "chainId": 8453,
       "address": "0x78d120b363a23cc513e903ca00e9e4bf6c823f7c",
-      "category": "international-relations",
+      "category": "geopolitics",
       "question": "Which party will hold a plurality in the US House of Representatives after the 2026 midterm elections?",
       "questions": [
         "Will the Democrats hold a plurality in the US House of Representatives after the 2026 midterm elections?",
-        "Will the Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?",
-        "Will a party other than the Democrats or Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?"
-      ]
+        "Will the Republicans hold a plurality in the US House of Representatives after the 2026 midterm elections?"
+      ],
+      "optionNames": ["Democrats", "Republicans"],
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
     },
     {
       "questions": ["How much blob data will be posted to Celestia in April?"],
@@ -108,29 +116,36 @@
       "chainId": 8453,
       "address": "0x497057F1dBdaFBeD7a052dEa366e72c04de7A370",
       "isCumulative": true,
-      "category": "decentralized-compute"
+      "category": "decentralized-compute",
+      "baseTokenName": "GB",
+      "quoteTokenName": "wstEth"
     },
     {
       "questions": [
-        "What will be the average blob gas cost on Ethereum in April?"
+        "What will be the average blob gas price on Ethereum in April?"
       ],
-      "question": "What will be the average blob gas cost on Ethereum in a given month?",
+      "question": "What will be the average blob gas price on Ethereum in a given month?",
       "resource": "ethereum-blobspace",
       "chainId": 8453,
       "address": "0x301f7f583A6850d8D6e0Ea0a86205f905B91e255",
       "isYin": false,
-      "category": "decentralized-compute"
+      "category": "decentralized-compute",
+      "baseTokenName": "GGas",
+      "quoteTokenName": "wstEth"
     },
     {
       "questions": [
-        "What will be the average gas cost on Ethereum on the week of April 1st?",
-        "What will be the average gas cost on Ethereum on the week of April 8th?"
+        "What will be the average gas price on Ethereum on the week of April 1st?",
+        "What will be the average gas price on Ethereum on the week of April 8th?",
+        "What will be the average gas price on Ethereum on the week of April 15th?"
       ],
-      "question": "What will be the average gas cost on Ethereum in a given week?",
+      "question": "What will be the average gas price on Ethereum in a given week?",
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x914126c7BFA849055bE8230975e0665De985f03A",
-      "category": "decentralized-compute"
+      "category": "decentralized-compute",
+      "baseTokenName": "GGas",
+      "quoteTokenName": "wstEth"
     },
     {
       "question": null,
