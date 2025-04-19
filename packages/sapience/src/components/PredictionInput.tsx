@@ -56,58 +56,34 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
   activeButtonStyle = defaultActiveStyle,
   inactiveButtonStyle = defaultInactiveStyle,
 }: PredictionInputProps) => {
-  // Render nothing or a loading/disabled state if inputType isn't determined
-  if (!market) {
-    console.log('PredictionInput: Not rendering - market is null/undefined');
-    return null; // Or a placeholder/spinner
-  }
+  // Helper to render group market buttons
+  const renderGroupMarketOptions = () => (
+    <div className="flex flex-wrap gap-4">
+      {/* Add non-null assertions as market and optionNames are checked before calling */}
+      {market!.optionNames!.map((option: string, index: number) => {
+        const optionValue = index + 1;
+        const isActive = value === optionValue;
+        return (
+          <Button
+            key={option}
+            type="button"
+            className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
+              isActive ? activeButtonStyle : inactiveButtonStyle
+            }`}
+            // Clicking sets the value to the 1-based index
+            onClick={() => onChange(optionValue)}
+            disabled={disabled}
+            data-testid={`option-button-${index}`}
+          >
+            {option}
+          </Button>
+        );
+      })}
+    </div>
+  );
 
-  // Debug the market object to see what's coming in
-  console.log('PredictionInput market:', {
-    baseTokenName: market.baseTokenName,
-    quoteTokenName: market.quoteTokenName,
-    hasOptionNames: !!market.optionNames,
-    optionCount: market.optionNames?.length,
-    isGroupMarket: market.isGroupMarket,
-  });
-
-  // --- Start of Prioritized Rendering Logic ---
-
-  // HIGHEST PRIORITY: Group market with multiple options
-  if (
-    market.isGroupMarket &&
-    market.optionNames &&
-    market.optionNames.length > 0
-  ) {
-    console.log('Rendering group market options (Priority 1: isGroupMarket)');
-    return (
-      <div className="flex flex-wrap gap-4">
-        {market.optionNames.map((option: string, index: number) => {
-          // Value should correspond to the 1-based index of the selected market
-          const optionValue = index + 1;
-          const isActive = value === optionValue;
-          return (
-            <Button
-              key={option}
-              type="button"
-              className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
-                isActive ? activeButtonStyle : inactiveButtonStyle
-              }`}
-              // Clicking sets the value to the 1-based index
-              onClick={() => onChange(optionValue)}
-              disabled={disabled}
-              data-testid={`option-button-${index}`}
-            >
-              {option}
-            </Button>
-          );
-        })}
-      </div>
-    );
-  }
-  // Case 2: Single market with Yes/No options (baseTokenName = "Yes")
-  if (market.baseTokenName === 'Yes') {
-    console.log('Rendering Yes/No buttons (Priority 2: baseTokenName=Yes)');
+  // Helper to render Yes/No buttons
+  const renderYesNoButtons = () => {
     const yesValue = '1'; // Represents prediction of 1
     const noValue = '0'; // Represents prediction of 0
 
@@ -138,21 +114,23 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
         </Button>
       </div>
     );
-  }
-  // Case 3 & 4: Number input (sUSDS or default quote/base)
-  // Combine number input logic
-  if (market.quoteTokenName && market.baseTokenName) {
-    // Determine unit based on quote token
-    const unit =
-      market.quoteTokenName === 'sUSDS'
-        ? market.baseTokenName
-        : `${market.quoteTokenName}/${market.baseTokenName}`;
+  };
 
-    console.log(
-      `Rendering number input (Combined sUSDS/Default - Unit: ${unit})`
-    );
-    const displayValue =
-      typeof value === 'string' ? parseFloat(value) || '' : value;
+  // Helper to render number input
+  const renderNumberInput = () => {
+    // Determine unit based on quote token, add non-null assertions
+    const unit =
+      market!.quoteTokenName === 'sUSDS'
+        ? market!.baseTokenName!
+        : `${market!.quoteTokenName}/${market!.baseTokenName}`;
+
+    // Calculate displayValue without nested ternary
+    let displayValue = '';
+    if (typeof value === 'string') {
+      displayValue = value;
+    } else if (typeof value === 'number' && !isNaN(value)) {
+      displayValue = String(value);
+    }
 
     return (
       <div className="relative">
@@ -166,8 +144,8 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
           className="w-full p-2 border rounded pr-28 pl-4" // Adjust padding if unit length varies significantly
           value={displayValue}
           onChange={(e) => {
-            const numValue = parseFloat(e.target.value) || 0;
-            onChange(convertToSqrtPriceX96(numValue)); // Convert to sqrtPriceX96
+            // Pass the raw string value from the input directly to the parent onChange handler.
+            onChange(e.target.value);
           }}
           placeholder="Enter value"
           disabled={disabled}
@@ -178,9 +156,48 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
         </div>
       </div>
     );
-  }
-  // Final fallback if nothing matches
+  };
 
+  // Render nothing or a loading/disabled state if market isn't determined
+  if (!market) {
+    console.log('PredictionInput: Not rendering - market is null/undefined');
+    return null; // Or a placeholder/spinner
+  }
+
+  // Debug the market object to see what's coming in
+  console.log('PredictionInput market:', {
+    baseTokenName: market.baseTokenName,
+    quoteTokenName: market.quoteTokenName,
+    hasOptionNames: !!market.optionNames,
+    optionCount: market.optionNames?.length,
+    isGroupMarket: market.isGroupMarket,
+  });
+
+  // --- Start of Prioritized Rendering Logic ---
+
+  // HIGHEST PRIORITY: Group market with multiple options
+  if (
+    market.isGroupMarket &&
+    market.optionNames &&
+    market.optionNames.length > 0
+  ) {
+    console.log('Rendering group market options (Priority 1: isGroupMarket)');
+    return renderGroupMarketOptions();
+  }
+
+  // Case 2: Single market with Yes/No options (baseTokenName = "Yes")
+  if (market.baseTokenName === 'Yes') {
+    console.log('Rendering Yes/No buttons (Priority 2: baseTokenName=Yes)');
+    return renderYesNoButtons();
+  }
+
+  // Case 3 & 4: Number input (sUSDS or default quote/base)
+  if (market.quoteTokenName && market.baseTokenName) {
+    console.log(`Rendering number input (Combined sUSDS/Default)`);
+    return renderNumberInput();
+  }
+
+  // Final fallback if nothing matches
   console.error(
     'PredictionInput: Invalid input configuration. Market data:',
     market

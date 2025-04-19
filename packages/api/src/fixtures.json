@@ -118,34 +118,34 @@
       "isCumulative": true,
       "category": "decentralized-compute",
       "baseTokenName": "GB",
-      "quoteTokenName": "WstEth"
+      "quoteTokenName": "wstEth"
     },
     {
       "questions": [
-        "What will be the average blob gas cost on Ethereum in April?"
+        "What will be the average blob gas price on Ethereum in April?"
       ],
-      "question": "What will be the average blob gas cost on Ethereum in a given month?",
+      "question": "What will be the average blob gas price on Ethereum in a given month?",
       "resource": "ethereum-blobspace",
       "chainId": 8453,
       "address": "0x301f7f583A6850d8D6e0Ea0a86205f905B91e255",
       "isYin": false,
       "category": "decentralized-compute",
       "baseTokenName": "GGas",
-      "quoteTokenName": "WstEth"
+      "quoteTokenName": "wstEth"
     },
     {
       "questions": [
-        "What will be the average gas cost on Ethereum on the week of April 1st?",
-        "What will be the average gas cost on Ethereum on the week of April 8th?",
-        "What will be the average gas cost on Ethereum on the week of April 15th?"
+        "What will be the average gas price on Ethereum on the week of April 1st?",
+        "What will be the average gas price on Ethereum on the week of April 8th?",
+        "What will be the average gas price on Ethereum on the week of April 15th?"
       ],
-      "question": "What will be the average gas cost on Ethereum in a given week?",
+      "question": "What will be the average gas price on Ethereum in a given week?",
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x914126c7BFA849055bE8230975e0665De985f03A",
       "category": "decentralized-compute",
       "baseTokenName": "GGas",
-      "quoteTokenName": "WstEth"
+      "quoteTokenName": "wstEth"
     },
     {
       "question": null,

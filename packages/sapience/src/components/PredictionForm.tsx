@@ -11,8 +11,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@foil/ui/components/ui/popover';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import debounce from 'lodash/debounce';
 import { HelpCircle, Info } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import type React from 'react';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
@@ -88,6 +90,29 @@ const defaultActiveStyle =
 const defaultInactiveStyle =
   'bg-secondary text-secondary-foreground hover:bg-secondary/80';
 
+// Helper function to check if a market is active (extracted for complexity reduction)
+const isMarketActive = (
+  market: {
+    marketId: string | number;
+    startTimestamp?: number | string | null;
+    endTimestamp?: number | string | null;
+  },
+  now: number
+): boolean => {
+  const start = market.startTimestamp
+    ? parseInt(String(market.startTimestamp), 10)
+    : null;
+  const end = market.endTimestamp
+    ? parseInt(String(market.endTimestamp), 10)
+    : null;
+
+  if (start === null || isNaN(start) || end === null || isNaN(end)) {
+    console.warn(`Market ${market.marketId} has invalid or missing timestamps`);
+    return false;
+  }
+  return now >= start && now < end;
+};
+
 const PredictionForm: React.FC<PredictionFormProps> = ({
   marketData,
   formData,
@@ -104,6 +129,8 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
 }) => {
   // Wagmi hooks
   const { address } = useAccount();
+  const router = useRouter(); // Get router instance
+  const { toast } = useToast(); // Get toast function
 
   // --- New logic to determine input type based on active markets ---
   const { activeOptionNames, unitDisplay, displayMarketId } = useMemo<{
@@ -111,7 +138,8 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     unitDisplay: string | null;
     displayMarketId: string | number | null;
   }>(() => {
-    if (!marketData?.markets || !marketData.markets.length) {
+    // Simplified check and early return
+    if (!marketData?.markets?.length) {
       return {
         activeOptionNames: null,
         unitDisplay: null,
@@ -121,35 +149,31 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
 
     const now = Math.floor(Date.now() / 1000); // Current time in seconds
 
-    const activeMarkets = marketData.markets.filter((market) => {
-      // Ensure startTime and endTime are valid numbers
-      // Use the correct property names from the GraphQL response
-      const start = market.startTimestamp
-        ? parseInt(String(market.startTimestamp), 10)
-        : null;
-      const end = market.endTimestamp
-        ? parseInt(String(market.endTimestamp), 10)
-        : null;
+    // Use helper function for filtering active markets
+    const activeMarkets = marketData.markets.filter((market) =>
+      isMarketActive(market, now)
+    );
 
-      if (start === null || isNaN(start) || end === null || isNaN(end)) {
-        console.warn(
-          `Market ${market.marketId} has invalid or missing timestamps`
-        );
-        return false; // Skip markets with invalid/missing times
-      }
-      return now >= start && now < end;
-    });
+    // Handle no active markets
+    if (!activeMarkets.length) {
+      return {
+        activeOptionNames: null,
+        unitDisplay: null,
+        displayMarketId: null,
+      };
+    }
 
     // Determine the display market (prioritize currentMarketId if valid & active)
     const activeMarketIds = activeMarkets.map((m) => m.marketId);
     let currentDisplayMarketId = null;
+    // Simplified conditional assignment
     if (currentMarketId && activeMarketIds.includes(currentMarketId)) {
       currentDisplayMarketId = currentMarketId;
-    } else if (activeMarkets.length > 0) {
-      // Fallback to the first active market if currentMarketId is not active or not provided
-      currentDisplayMarketId = activeMarkets[0].marketId;
+    } else {
+      currentDisplayMarketId = activeMarkets[0].marketId; // Fallback to first active
     }
 
+    // Determine output based on number of active markets
     if (activeMarkets.length > 1) {
       // Multiple active markets: Use optionNames from the market group
       return {
@@ -158,41 +182,78 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         displayMarketId: currentDisplayMarketId,
       };
     }
-    if (activeMarkets.length === 1) {
-      // Single active market: Check bounds
-      const isYesNoRange =
-        marketData.lowerBound === '-92200' && marketData.upperBound === '0';
-      if (isYesNoRange) {
-        return {
-          activeOptionNames: null,
-          unitDisplay: null,
-          displayMarketId: currentDisplayMarketId,
-        };
-      }
-      // Numerical input - construct unit display string
-      const base = marketData.baseTokenName;
-      const quote = marketData.quoteTokenName;
-      let displayString = base || 'units'; // Default to base or 'units'
-      if (base && quote) {
-        displayString = `${quote} / ${base}`;
-      } else if (quote) {
-        displayString = quote; // Fallback if only quote exists
-      }
 
+    // Single active market logic (since length > 0 and not > 1)
+    const isYesNoRange =
+      marketData.lowerBound === '-92200' && marketData.upperBound === '0';
+    if (isYesNoRange) {
       return {
         activeOptionNames: null,
-        unitDisplay: displayString,
+        unitDisplay: null,
         displayMarketId: currentDisplayMarketId,
       };
     }
-    // No active markets
+
+    // Numerical input - construct unit display string
+    const base = marketData.baseTokenName;
+    const quote = marketData.quoteTokenName;
+    let displayString = base || 'units'; // Default to base or 'units'
+    if (base && quote) {
+      displayString = `${quote} / ${base}`;
+    } else if (quote) {
+      displayString = quote; // Fallback if only quote exists
+    }
+
     return {
       activeOptionNames: null,
-      unitDisplay: null,
-      displayMarketId: null,
+      unitDisplay: displayString,
+      displayMarketId: currentDisplayMarketId,
     };
   }, [marketData, currentMarketId]);
   // --- End of new logic ---
+
+  // Effect to set default prediction value based on market type
+  useEffect(() => {
+    // Only run if an active market is identified
+    if (!displayMarketId) return;
+
+    setFormData((prevFormData) => {
+      let newPredictionValue = prevFormData.predictionValue;
+      const currentPredictionValue = prevFormData.predictionValue;
+
+      if (activeOptionNames && activeOptionNames.length > 0) {
+        // Group market: Default to first option (value = 1) if current value is invalid
+        const isValidOption =
+          typeof currentPredictionValue === 'number' &&
+          currentPredictionValue >= 1 &&
+          currentPredictionValue <= activeOptionNames.length;
+        if (!isValidOption) {
+          newPredictionValue = 1; // Default to the first option (index 0 -> value 1)
+        }
+      } else if (marketData?.baseTokenName?.toLowerCase() === 'yes') {
+        // Yes/No market: Default to 'Yes' (value = '1') if current value isn't '0' or '1'
+        if (currentPredictionValue !== '0' && currentPredictionValue !== '1') {
+          newPredictionValue = '1'; // Default to 'Yes'
+        }
+      } else if (
+        unitDisplay &&
+        (currentPredictionValue === '0' || currentPredictionValue === '1')
+      ) {
+        newPredictionValue = ''; // Reset to empty string for numerical input
+      }
+      // Only update state if the value needs to change
+      if (newPredictionValue !== currentPredictionValue) {
+        return { ...prevFormData, predictionValue: newPredictionValue };
+      }
+      return prevFormData; // No change needed
+    });
+  }, [
+    displayMarketId,
+    activeOptionNames,
+    marketData?.baseTokenName,
+    unitDisplay,
+    setFormData,
+  ]);
 
   // Add debugging information
   console.log('PredictionForm calculated values:', {
@@ -314,30 +375,45 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     // Check specifically for "No"
     if (
       typeof formData.predictionValue === 'string' &&
-      formData.predictionValue.toLowerCase() === 'no'
+      formData.predictionValue === '0' &&
+      marketData.baseTokenName?.toLowerCase() === 'yes'
     ) {
       return '0';
     }
 
-    // Case 1: Multiple optionNames or Yes/No market (excluding the explicit "No" handled above)
+    // Case 1: Multiple optionNames OR Yes/No market where 'Yes' is selected
     if (
-      (marketData.optionNames && marketData.optionNames.length > 1) ||
+      (marketData.optionNames &&
+        marketData.optionNames.length > 1 &&
+        typeof formData.predictionValue === 'number' &&
+        formData.predictionValue >= 1 &&
+        formData.predictionValue <= marketData.optionNames.length) ||
       (marketData.baseTokenName?.toLowerCase() === 'yes' &&
-        typeof formData.predictionValue === 'string' &&
-        formData.predictionValue.toLowerCase() === 'yes') // Ensure it's 'yes' if that's the baseTokenName
+        formData.predictionValue === '1')
     ) {
       // For options or yes, the price is 1. The sqrtPriceX96 value is 2^96.
       return TWO_POW_96.toString();
     }
 
-    // Case 3: Numerical input
-    if (typeof formData.predictionValue === 'number') {
-      return convertToSqrtPriceX96(formData.predictionValue);
+    // Case 3: Numerical input (check if unitDisplay exists, indicating numerical market)
+    if (unitDisplay && typeof formData.predictionValue === 'string') {
+      const numValue = parseFloat(formData.predictionValue);
+      // Check if parsing was successful and the number is non-negative
+      if (
+        !isNaN(numValue) &&
+        numValue >= 0 &&
+        formData.predictionValue.trim() !== '' &&
+        formData.predictionValue.trim() !== '.'
+      ) {
+        return convertToSqrtPriceX96(numValue);
+      }
+      // If input is invalid (NaN, negative, empty, or just "."), return N/A for submission
+      return 'N/A';
     }
 
     // Default case or if predictionValue is not a number for numerical market
     return 'N/A';
-  }, [marketData, formData.predictionValue, TWO_POW_96]); // Added TWO_POW_96 to dependency array
+  }, [marketData, formData.predictionValue, TWO_POW_96, unitDisplay]);
   console.log('submissionValue', submissionValue);
 
   // Calculate expectedPrice for the quoter
@@ -389,7 +465,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         marketId: string;
         expectedPrice: number;
         collateralAvailable: bigint;
-        wagerAmountStr: string; // Pass original wager amount string for check
       }) => {
         const {
           chainId,
@@ -397,11 +472,10 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           marketId,
           expectedPrice,
           collateralAvailable,
-          wagerAmountStr,
         } = params;
 
-        // Only fetch if wager amount is positive
-        if (Number(wagerAmountStr) <= 0 || collateralAvailable <= BigInt(0)) {
+        // Only fetch if collateral amount is positive
+        if (collateralAvailable <= BigInt(0)) {
           setQuoteData(null);
           setQuoteError(null);
           setIsQuoteLoading(false);
@@ -432,13 +506,14 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         } catch (error: unknown) {
           console.error('Error fetching quote:', error);
           // Check for the specific error message and replace it
-          const errorMessage =
-            error instanceof Error ? error.message : 'Failed to fetch quote';
-          const finalErrorMessage =
-            errorMessage ===
-            'Could not find a valid position size that satisfies the price constraints'
-              ? 'The market cannot accept this wager due insufficient liquidity.'
-              : errorMessage;
+          let finalErrorMessage = 'Failed to fetch quote'; // Default message
+          if (error instanceof Error) {
+            finalErrorMessage =
+              error.message ===
+              'Could not find a valid position size that satisfies the price constraints'
+                ? 'The market cannot accept this wager due insufficient liquidity.'
+                : error.message;
+          }
           setQuoteError(finalErrorMessage);
           setQuoteData(null); // Clear data on error
         } finally {
@@ -467,6 +542,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           18
         );
 
+        // Merge the check for > 0 here
         if (collateralAmountBI > BigInt(0)) {
           debouncedFetchQuote({
             chainId: marketData.chainId,
@@ -474,7 +550,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
             marketId: displayMarketId.toString(),
             expectedPrice: expectedPriceForQuoter,
             collateralAvailable: collateralAmountBI,
-            wagerAmountStr: formData.wagerAmount, // Pass original string for check inside debounced function
           });
         } else {
           // If wager is zero or invalid, clear quote state
@@ -528,11 +603,24 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   // Set success message when transaction completes
   useEffect(() => {
     if (txSuccess && txReceipt) {
+      // Set success state locally (optional, as we redirect)
       setAttestationSuccess(
         `Prediction submitted successfully! Transaction: ${txReceipt.hash}`
       );
+
+      // Show toast
+      toast({
+        title: 'Prediction Submitted',
+        description: 'Your position will appear on your profile shortly.',
+        duration: 5000, // Optional: duration in ms
+      });
+
+      // Redirect
+      if (address) {
+        router.push(`/profile/${address}`);
+      }
     }
-  }, [txSuccess, txReceipt]);
+  }, [txSuccess, txReceipt, address, router, toast]); // Add dependencies
 
   // Set error message if write fails
   useEffect(() => {
@@ -560,6 +648,169 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     []
   );
 
+  // Determine the market ID corresponding to the selected option index
+  const selectedMarketId = useMemo(() => {
+    if (
+      !marketData?.markets ||
+      !activeOptionNames ||
+      typeof formData.predictionValue !== 'number'
+    ) {
+      // Not a group market, options not loaded, or selection not a number
+      return displayMarketId; // Fallback to the primary display market ID
+    }
+
+    const selectedIndex = formData.predictionValue - 1; // Convert 1-based index to 0-based
+
+    // Find active markets again (similar logic to displayMarketId derivation)
+    const now = Math.floor(Date.now() / 1000);
+    const activeMarkets = marketData.markets.filter((market) => {
+      const start = market.startTimestamp
+        ? parseInt(String(market.startTimestamp), 10)
+        : null;
+      const end = market.endTimestamp
+        ? parseInt(String(market.endTimestamp), 10)
+        : null;
+      if (start === null || isNaN(start) || end === null || isNaN(end)) {
+        return false;
+      }
+      return now >= start && now < end;
+    });
+
+    if (selectedIndex >= 0 && selectedIndex < activeMarkets.length) {
+      // Return the marketId of the market at the selected index
+      return activeMarkets[selectedIndex].marketId;
+    }
+
+    // Fallback if index is out of bounds (shouldn't happen with validation)
+    return displayMarketId;
+  }, [
+    marketData?.markets,
+    activeOptionNames,
+    formData.predictionValue,
+    displayMarketId,
+  ]);
+
+  // Helper function for handling wager submission
+  const handleWagerSubmit = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      try {
+        // Await the external handler
+        await externalHandleSubmit(event);
+        // Show toast on success
+        toast({
+          title: 'Wager Submitted',
+          description: 'Your position will appear on your profile shortly.',
+          duration: 5000,
+        });
+        // Redirect on success
+        if (address) {
+          router.push(`/profile/${address}`);
+        }
+      } catch (error) {
+        // Let the external handler manage its own errors/toasts if needed
+        console.error('Error during wager submission:', error);
+        // Optionally show an error toast here if externalHandleSubmit doesn't
+        // toast({ variant: 'destructive', title: 'Wager Failed', description: ... });
+      }
+    },
+    [externalHandleSubmit, toast, address, router] // Dependencies
+  );
+
+  // Helper function for handling prediction (EAS Attestation) submission
+  const handlePredictSubmit = useCallback(async () => {
+    try {
+      // Early exits for invalid states
+      if (!address) {
+        throw new Error('Wallet not connected');
+      }
+      if (!marketData?.address) {
+        throw new Error('Market address not available');
+      }
+      // Explicitly check submissionValue validity before proceeding
+      if (submissionValue === 'N/A') {
+        console.error(
+          'Attempted to submit prediction with invalid submission value.'
+        );
+        setAttestationError('Cannot submit prediction with the current input.');
+        return; // Stop execution if value is invalid
+      }
+
+      const finalMarketId = selectedMarketId
+        ? selectedMarketId.toString()
+        : '0';
+
+      // Encode the schema data (only if submissionValue is valid)
+      const encodedData = encodeSchemaData(
+        marketData.address,
+        finalMarketId,
+        submissionValue
+      );
+
+      // Submit the attestation using wagmi's writeContract
+      writeContract({
+        address: EAS_CONTRACT_ADDRESS as `0x${string}`,
+        abi: [
+          {
+            name: 'attest',
+            type: 'function',
+            stateMutability: 'payable',
+            inputs: [
+              {
+                name: 'request',
+                type: 'tuple',
+                components: [
+                  { name: 'schema', type: 'bytes32' },
+                  {
+                    name: 'data',
+                    type: 'tuple',
+                    components: [
+                      { name: 'recipient', type: 'address' },
+                      { name: 'expirationTime', type: 'uint64' },
+                      { name: 'revocable', type: 'bool' },
+                      { name: 'refUID', type: 'bytes32' },
+                      { name: 'data', type: 'bytes' },
+                      { name: 'value', type: 'uint256' },
+                    ],
+                  },
+                ],
+              },
+            ],
+            outputs: [{ name: 'uid', type: 'bytes32' }],
+          },
+        ],
+        functionName: 'attest',
+        args: [
+          {
+            schema: SCHEMA_UID as `0x${string}`,
+            data: {
+              recipient:
+                '0x0000000000000000000000000000000000000000' as `0x${string}`,
+              expirationTime: BigInt(0),
+              revocable: true,
+              refUID:
+                '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+              data: encodedData,
+              value: BigInt(0),
+            },
+          },
+        ],
+      });
+    } catch (error) {
+      console.error('Attestation error:', error);
+      setAttestationError(
+        error instanceof Error ? error.message : 'Failed to submit prediction'
+      );
+    }
+  }, [
+    address,
+    marketData,
+    submissionValue,
+    selectedMarketId,
+    encodeSchemaData,
+    writeContract,
+    setAttestationError, // Add setAttestationError as dependency
+  ]); // Dependencies for handlePredictSubmit
+
   // Custom handleSubmit that handles predict vs wager differently
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -568,84 +819,13 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     setAttestationError(null);
     setAttestationSuccess(null);
 
-    // For the wager tab, use the existing handleSubmit function
+    // For the wager tab, use the wager helper function
     if (activeTab === 'wager') {
-      return externalHandleSubmit(event);
+      await handleWagerSubmit(event);
     }
-
-    // For the predict tab, implement EAS attestation
-    if (activeTab === 'predict') {
-      try {
-        if (!address) {
-          throw new Error('Wallet not connected');
-        }
-
-        if (!marketData?.address) {
-          throw new Error('Market address not available');
-        }
-
-        // Encode the schema data
-        const encodedData = encodeSchemaData(
-          marketData.address,
-          currentMarketId || '0',
-          submissionValue
-        );
-
-        // Submit the attestation using wagmi's writeContract
-        writeContract({
-          address: EAS_CONTRACT_ADDRESS as `0x${string}`,
-          abi: [
-            {
-              name: 'attest',
-              type: 'function',
-              stateMutability: 'payable',
-              inputs: [
-                {
-                  name: 'request',
-                  type: 'tuple',
-                  components: [
-                    { name: 'schema', type: 'bytes32' },
-                    {
-                      name: 'data',
-                      type: 'tuple',
-                      components: [
-                        { name: 'recipient', type: 'address' },
-                        { name: 'expirationTime', type: 'uint64' },
-                        { name: 'revocable', type: 'bool' },
-                        { name: 'refUID', type: 'bytes32' },
-                        { name: 'data', type: 'bytes' },
-                        { name: 'value', type: 'uint256' },
-                      ],
-                    },
-                  ],
-                },
-              ],
-              outputs: [{ name: 'uid', type: 'bytes32' }],
-            },
-          ],
-          functionName: 'attest',
-          args: [
-            {
-              schema: SCHEMA_UID as `0x${string}`,
-              data: {
-                recipient:
-                  '0x0000000000000000000000000000000000000000' as `0x${string}`,
-                expirationTime: BigInt(0),
-                revocable: true,
-                refUID:
-                  '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
-                data: encodedData,
-                value: BigInt(0),
-              },
-            },
-          ],
-        });
-      } catch (error) {
-        console.error('Attestation error:', error);
-        setAttestationError(
-          error instanceof Error ? error.message : 'Failed to submit prediction'
-        );
-      }
+    // For the predict tab, use the predict helper function
+    else if (activeTab === 'predict') {
+      await handlePredictSubmit();
     }
   };
 
@@ -933,12 +1113,17 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           disabled={
             isAttesting ||
             isPermitLoadingPermit ||
-            (activeTab === 'wager' && permitData?.permitted === false)
+            (activeTab === 'wager' && permitData?.permitted === false) ||
+            (activeTab === 'predict' && submissionValue === 'N/A')
           }
           className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {(() => {
             if (isAttesting) return 'Submitting...';
+            // Conditionally disable button text change if submissionValue is N/A
+            if (activeTab === 'predict' && submissionValue === 'N/A') {
+              return 'Enter Prediction Above';
+            }
             return activeTab === 'wager' ? 'Submit Wager' : 'Submit Prediction';
           })()}
         </Button>
