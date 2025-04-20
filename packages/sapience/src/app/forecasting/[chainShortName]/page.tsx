@@ -200,8 +200,14 @@ const ForecastingDetailPage = () => {
               {displayQuestion}
             </h1>
           )}
+        </div>
+
+        {/* Main content layout: 2x2 grid on md+, single column stack on mobile */}
+        <div className="flex flex-col gap-8 px-4 md:px-3">
+          {/* Row 1: Chart + Form */}
           <div className="flex flex-col md:flex-row gap-12">
-            <div className="flex flex-col w-full relative">
+            {/* Chart (Left Column) */}
+            <div className="w-full md:flex-1 relative">
               <ComingSoonScrim className="absolute rounded-lg" />
               <ResponsiveContainer width="100%" height={400}>
                 <LineChart data={chartData}>
@@ -216,8 +222,10 @@ const ForecastingDetailPage = () => {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="w-full md:max-w-[340px] pb-4">
-              <div className="bg-card p-6 rounded-lg shadow-sm border mb-5">
+
+            {/* Form (Right Column) */}
+            <div className="w-full md:w-[340px]">
+              <div className="bg-card p-6 rounded-lg shadow-sm border h-full">
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
                 <PredictionForm
                   marketData={marketData}
@@ -229,51 +237,54 @@ const ForecastingDetailPage = () => {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* PredictionsList Component */}
-        <div className="flex flex-col px-4 md:px-3 mt-8 w-full md:w-2/3 mx-auto">
-          <PredictionsList
-            marketAddress={marketAddress}
-            schemaId="0x8c6ff62d30ea7aa47f0651cd5c1757d47539f8a303888c61d3f19c7502fa9a24"
-            optionNames={marketData?.optionNames}
-          />
-        </div>
+          {/* Row 2: Predictions List + Advanced View */}
+          <div className="flex flex-col md:flex-row gap-12">
+            {/* Predictions List (Left Column) */}
+            <div className="w-full md:flex-1">
+              <PredictionsList
+                marketAddress={marketAddress}
+                optionNames={marketData?.optionNames}
+              />
+            </div>
 
-        <div className="flex justify-end px-4 md:px-3 pt-8 pb-16">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              if (!marketData?.markets) return; // Guard clause
+            {/* Advanced View (Right Column) */}
+            <div className="w-full md:w-[340px] flex justify-end items-start md:pb-0">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!marketData?.markets) return; // Guard clause
 
-              const numberOfMarkets = marketData.markets.length;
-              const currentPath = window.location.pathname;
+                  const numberOfMarkets = marketData.markets.length;
+                  const currentPath = window.location.pathname;
 
-              if (numberOfMarkets === 1) {
-                // Navigate to the single epoch page if not already there
-                const { marketId } = marketData.markets[0];
-                if (!currentPath.endsWith(`/${marketId}`)) {
-                  router.push(`${currentPath}/${marketId}`);
+                  if (numberOfMarkets === 1) {
+                    // Navigate to the single epoch page if not already there
+                    const { marketId } = marketData.markets[0];
+                    if (!currentPath.endsWith(`/${marketId}`)) {
+                      router.push(`${currentPath}/${marketId}`);
+                    }
+                  } else if (numberOfMarkets > 1) {
+                    // Open selector if there are multiple epochs
+                    setShowMarketSelector(true);
+                  }
+                  // If 0 epochs, the button is disabled, so onClick won't trigger.
+                }}
+                disabled={
+                  isLoadingMarket ||
+                  !marketData ||
+                  marketData.placeholder ||
+                  !marketData.markets ||
+                  marketData.markets.length === 0
                 }
-              } else if (numberOfMarkets > 1) {
-                // Open selector if there are multiple epochs
-                setShowMarketSelector(true);
-              }
-              // If 0 epochs, the button is disabled, so onClick won't trigger.
-            }}
-            disabled={
-              isLoadingMarket ||
-              !marketData ||
-              marketData.placeholder ||
-              !marketData.markets ||
-              marketData.markets.length === 0
-            }
-            className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            ADVANCED VIEW
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
+                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ADVANCED VIEW
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -23,10 +23,10 @@ import {
   extractMarketId,
   usePredictions,
 } from '~/hooks/graphql/usePredictions'; // Import hook and necessary items
+import { SCHEMA_UID } from '~/lib/constants/eas'; // Import SCHEMA_UID
 
 interface PredictionsListProps {
   marketAddress?: string;
-  schemaId?: string;
   optionNames?: string[];
 }
 
@@ -94,13 +94,12 @@ const renderActionsCell = ({
 
 const PredictionsList: React.FC<PredictionsListProps> = ({
   marketAddress,
-  schemaId, // Keep schemaId prop if you want to override default
   optionNames,
 }) => {
   // Use the custom hook to fetch and process data
   const { data, isLoading, error } = usePredictions({
     marketAddress,
-    schemaId, // Pass schemaId to the hook
+    schemaId: SCHEMA_UID, // Pass imported SCHEMA_UID to the hook
     optionNames,
   });
 
