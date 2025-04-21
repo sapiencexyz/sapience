@@ -48,7 +48,7 @@ export interface PredictionMarketType {
     question?: string | null | undefined;
     startTimestamp?: number | string | null;
     endTimestamp?: number | string | null;
-    settled?: boolean;
+    settled?: boolean | null;
   }[];
   address?: string;
   chainId?: number;

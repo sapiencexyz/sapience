@@ -154,19 +154,8 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
 
   // Render nothing or a loading/disabled state if market isn't determined
   if (!market) {
-    console.log('PredictionInput: Not rendering - market is null/undefined');
     return null; // Or a placeholder/spinner
   }
-
-  // Debug the market object to see what's coming in
-  console.log('PredictionInput market:', {
-    baseTokenName: market.baseTokenName,
-    quoteTokenName: market.quoteTokenName,
-    hasOptionNames: !!market.optionNames,
-    optionCount: market.optionNames?.length,
-    isGroupMarket: market.isGroupMarket,
-    unitDisplay,
-  });
 
   // --- Start of Prioritized Rendering Logic ---
 
@@ -176,21 +165,16 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
     market.optionNames &&
     market.optionNames.length > 0
   ) {
-    console.log('Rendering group market options (Priority 1: isGroupMarket)');
     return renderGroupMarketOptions();
   }
 
   // Case 2: Single market with Yes/No options (baseTokenName = "Yes")
   if (market.baseTokenName === 'Yes') {
-    console.log('Rendering Yes/No buttons (Priority 2: baseTokenName=Yes)');
     return renderYesNoButtons();
   }
 
   // Case 3 & 4: Number input (sUSDS or default quote/base)
   if (unitDisplay) {
-    console.log(
-      `Rendering number input (unitDisplay provided: ${unitDisplay})`
-    );
     return renderNumberInput();
   }
 

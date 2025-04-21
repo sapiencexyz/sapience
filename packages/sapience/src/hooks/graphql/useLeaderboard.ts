@@ -51,7 +51,6 @@ const useAllTimeLeaderboard = () => {
   return useQuery<AggregatedLeaderboardEntry[]>({
     queryKey: ['allTimeLeaderboard'], // Query key remains simple for now
     queryFn: async () => {
-      console.log('Fetching all markets...');
       const graphqlEndpoint =
         process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || '/graphql';
 
@@ -95,13 +94,8 @@ const useAllTimeLeaderboard = () => {
         });
 
         if (publicMarketIdentifiers.length === 0) {
-          console.log('No public epochs found.');
           return [];
         }
-
-        console.log(
-          `Found ${publicMarketIdentifiers.length} public epochs. Fetching leaderboards...`
-        );
 
         // 3. Fetch leaderboards for all public epochs in parallel
         const leaderboardPromises = publicMarketIdentifiers.map((identifier) =>
@@ -161,9 +155,7 @@ const useAllTimeLeaderboard = () => {
                 return;
               }
 
-              // console.log(`Aggregating for ${owner}: current = ${aggregatedPnL[owner]}, adding = ${pnlNumber}`); // Optional: verbose log
               aggregatedPnL[owner] += pnlNumber;
-              // console.log(`Aggregated for ${owner}: new total = ${aggregatedPnL[owner]}`); // Optional: verbose log
             });
           } else {
             console.warn(
@@ -179,20 +171,8 @@ const useAllTimeLeaderboard = () => {
           .map(([owner, totalPnL]) => ({ owner, totalPnL }))
           .sort((a, b) => b.totalPnL - a.totalPnL);
 
-        console.log(
-          `Aggregated leaderboard generated with ${finalLeaderboard.length} entries.`
-        );
-        // console.log('Sample data:', finalLeaderboard.slice(0, 5)); // Optional: Log sample data
-        // Log final aggregated values before sorting (optional)
-        // console.log('Final aggregated PnL before sorting:', aggregatedPnL);
-
         // Trim to top 10
-        const topTenLeaderboard = finalLeaderboard.slice(0, 10);
-        console.log(
-          `Trimmed leaderboard to top ${topTenLeaderboard.length} entries.`
-        );
-
-        return topTenLeaderboard; // Return only the top 10
+        return finalLeaderboard.slice(0, 10); // Return only the top 10
       } catch (error) {
         console.error('Error in useAllTimeLeaderboard:', error);
         return []; // Return empty array on error
@@ -210,7 +190,6 @@ const useCryptoPrices = () => {
     queryFn: async () => {
       try {
         const response = await foilApi.get('/crypto-prices');
-        console.log('Crypto Prices API response:', response); // Log API response
 
         // The response itself is the data object, not response.data
         const prices = {
@@ -218,7 +197,6 @@ const useCryptoPrices = () => {
           bitcoin: { usd: response?.btc ?? null },
           solana: { usd: response?.sol ?? null },
         };
-        console.log('Parsed Crypto Prices:', prices); // Log parsed prices
         // Ensure prices are numbers or null
         prices.ethereum.usd =
           prices.ethereum.usd !== null ? Number(prices.ethereum.usd) : null;
@@ -226,9 +204,6 @@ const useCryptoPrices = () => {
           prices.bitcoin.usd !== null ? Number(prices.bitcoin.usd) : null;
         prices.solana.usd =
           prices.solana.usd !== null ? Number(prices.solana.usd) : null;
-
-        // Log final prices after potential conversion/NaN check
-        console.log('Final Crypto Prices (post-Number conversion):', prices);
 
         // Check for NaN explicitly after conversion
         if (isNaN(prices.ethereum.usd as number)) {
@@ -276,14 +251,12 @@ const useStEthPerToken = (chainId = 1) => {
         const response = await foilApi.get(
           `/getStEthPerTokenAtTimestamps?chainId=${chainId}`
         );
-        console.log('stEthPerToken API response:', response); // Log API response
 
         // The stEthPerToken is directly in the response, not in response.data
         if (
           response?.stEthPerToken &&
           typeof response.stEthPerToken === 'string'
         ) {
-          console.log('Using stEthPerToken from API:', response.stEthPerToken);
           return response.stEthPerToken;
         }
         console.warn('Using fallback stEthPerToken');

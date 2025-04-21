@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
-import { foilApi } from '~/lib/utils/util';
+import { foilApi, getChainIdFromShortName } from '~/lib/utils/util';
 
 // Updated query to fetch the specific market directly, filtered by chainId and marketGroup address
 const MARKET_QUERY = gql`
@@ -27,23 +27,6 @@ const MARKET_QUERY = gql`
     }
   }
 `;
-
-// Helper function to get chainId from chain short name
-const getChainIdFromShortName = (shortName: string): number => {
-  switch (shortName.toLowerCase()) {
-    case 'base':
-      return 8453;
-    case 'arbitrum':
-      return 42161;
-    case 'ethereum':
-    case 'mainnet':
-      return 1;
-    default:
-      // Consider throwing an error or returning a specific value for unknown chains
-      console.warn(`Unknown chain short name: ${shortName}`);
-      return 0;
-  }
-};
 
 // Helper function to format and set the question
 const formatQuestion = (rawQuestion: string | undefined | null): string => {
@@ -100,22 +83,11 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
     queryKey: ['market', chainId, marketAddress, numericMarketId],
     queryFn: async () => {
       if (!chainId || !numericMarketId || !marketAddress) {
-        console.log('Missing required parameters for market query:', {
-          chainId,
-          marketAddress,
-          marketId: numericMarketId,
-        });
         // Returning null or a specific error state might be better than placeholder
         return null; // Changed from { placeholder: true }
       }
 
       try {
-        console.log('Fetching market with:', {
-          chainId,
-          address: marketAddress,
-          marketId: numericMarketId,
-        });
-
         const response = await foilApi.post('/graphql', {
           query: print(MARKET_QUERY),
           variables: {
@@ -124,11 +96,6 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
             marketId: numericMarketId,
           },
         });
-
-        console.log(
-          'GraphQL response:',
-          JSON.stringify(response.data, null, 2)
-        );
 
         // The response structure might return an array or a single object depending on the query
         // Adapting based on the provided query which filters by marketId server-side
@@ -177,61 +144,32 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
 
   // Process and format the question
   useEffect(() => {
-    console.log('useMarket useEffect - isLoadingMarket:', isLoadingMarket); // Log loading state
     if (isLoadingMarket) {
       setDisplayQuestion('Loading question...');
       setMarketQuestionDisplay(null);
       return;
     }
 
-    console.log('useMarket useEffect - marketData (raw):', marketData); // Log raw data before stringify
-
     if (!marketData) {
-      console.log('useMarket useEffect - No marketData found.'); // Log if data is missing
       setDisplayQuestion('Market data not available.');
       setMarketQuestionDisplay(null);
       return;
     }
 
-    console.log(
-      'useMarket useEffect - Market data received:', // Keep existing log
-      JSON.stringify(marketData, null, 2)
-    );
-
     const marketGroupQuestion = marketData?.marketGroup?.question;
     const marketSpecificQuestion = marketData?.question;
-
-    console.log(
-      'useMarket useEffect - Market Group Question:',
-      marketGroupQuestion
-    ); // Log group question
-    console.log(
-      'useMarket useEffect - Market Specific Question:',
-      marketSpecificQuestion
-    ); // Log specific question
 
     // Set Market Group Question as the context question if available
     if (marketGroupQuestion) {
       setMarketQuestionDisplay(formatQuestion(marketGroupQuestion));
-      console.log(
-        'useMarket useEffect - Setting marketQuestionDisplay with:',
-        formatQuestion(marketGroupQuestion)
-      ); // Log what's being set
     } else {
       setMarketQuestionDisplay(null);
-      console.log(
-        'useMarket useEffect - Setting marketQuestionDisplay to null.'
-      ); // Log null setting
     }
 
     // Determine the main display question
     const mainQuestionSource = marketSpecificQuestion || marketGroupQuestion;
     const formattedMainQuestion = formatQuestion(mainQuestionSource);
     setDisplayQuestion(formattedMainQuestion);
-    console.log(
-      'useMarket useEffect - Setting displayQuestion with:',
-      formattedMainQuestion
-    ); // Log what's being set
   }, [marketData, isLoadingMarket]);
 
   return {

@@ -11,10 +11,9 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
 
+import MarketGroupChart from '../../../components/forecasting/MarketGroupChart';
 import PredictionForm from '../../../components/forecasting/PredictionForm';
-import ComingSoonScrim from '../../../components/shared/ComingSoonScrim';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import PredictionsList from '~/components/forecasting/PredictionsList';
 import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
@@ -34,11 +33,8 @@ const LottieLoader = dynamic(
 const parseUrlParameter = (
   paramString: string
 ): { chainShortName: string; marketAddress: string } => {
-  console.log('URL parameter:', paramString);
-
   // URL decode the parameter first, then parse
   const decodedParam = decodeURIComponent(paramString);
-  console.log('Decoded URL parameter:', decodedParam);
 
   // More robust parsing to handle various URL format possibilities
   let chainShortName = '';
@@ -96,38 +92,27 @@ const ForecastingDetailPage = () => {
     isSuccess,
     displayQuestion,
     currentMarketId,
+    activeMarkets,
   } = useMarketGroup({ chainShortName, marketAddress });
+
+  // Calculate the minimum start timestamp from active markets
+  const minTimestamp =
+    activeMarkets.length > 0
+      ? Math.min(
+          ...activeMarkets.map((market) => Number(market.startTimestamp))
+        )
+      : undefined;
 
   // Keep useEffect for checking market count (if needed for UI logic)
   useEffect(() => {
-    console.log('Epoch Check Effect Triggered:', {
-      isLoadingMarket,
-      isSuccess,
-      hasMarketData: !!marketData,
-      isPlaceholder: marketData?.placeholder,
-    });
-
     // Wait until loading is finished, the query was successful, and we have valid, non-placeholder data
     if (isLoadingMarket || !isSuccess || !marketData) {
-      console.log('Epoch Check: Exiting early (loading/failed/no data).');
       return; // Exit early if still loading, query failed, data is invalid/placeholder
     }
 
     // Ensure epochs is an array before proceeding
     if (!Array.isArray(marketData.markets)) {
-      console.log(
-        'Epoch Check: Exiting (epochs data is not an array or is missing).'
-      );
-      return; // Exit if epochs structure is incorrect
-    }
-
-    const numberOfMarkets = marketData.markets.length;
-    console.log(`Market Check: Found ${numberOfMarkets} markets.`);
-
-    if (numberOfMarkets === 0) {
-      // Handle case with zero markets
-      console.log('Market Check: Zero markets found.');
-      // No action needed here, the other useEffect handles the display question
+      // Exit if epochs structure is incorrect
     }
   }, [marketData, isLoadingMarket, isSuccess]); // Dependencies remain the same for now
 
@@ -170,19 +155,6 @@ const ForecastingDetailPage = () => {
     alert(`Submitting: ${JSON.stringify(formData)}`);
   };
 
-  // Mock data for the chart
-  const chartData = [
-    { date: 'Jan', value: 30 },
-    { date: 'Feb', value: 40 },
-    { date: 'Mar', value: 45 },
-    { date: 'Apr', value: 60 },
-    { date: 'May', value: 55 },
-    { date: 'Jun', value: 75 },
-    { date: 'Jul', value: 70 },
-    { date: 'Aug', value: 80 },
-  ];
-
-  // MOVED LOADING CHECK HERE - after all hooks
   if (isLoadingMarket || isPermitLoadingPermit) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
@@ -207,21 +179,13 @@ const ForecastingDetailPage = () => {
           {/* Row 1: Chart + Form */}
           <div className="flex flex-col md:flex-row gap-12">
             {/* Chart (Left Column) */}
-            <div className="w-full md:flex-1 relative">
-              <ComingSoonScrim className="absolute rounded-lg" />
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={chartData}>
-                  <XAxis dataKey="date" axisLine tickLine={false} />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <MarketGroupChart
+              chainShortName={chainShortName}
+              marketAddress={marketAddress}
+              marketIds={activeMarkets.map((market) => Number(market.marketId))}
+              market={marketData}
+              minTimestamp={minTimestamp}
+            />
 
             {/* Form (Right Column) */}
             <div className="w-full md:w-[340px]">

@@ -386,7 +386,7 @@ const ForecastingTable = () => {
 
     // 6. Filter by Search Term *after* determining display question
     const lowerCaseSearchTerm = debouncedSearchTerm.toLowerCase();
-    const filteredBySearch = marketGroupsWithQuestions.filter((marketGroup) => {
+    return marketGroupsWithQuestions.filter((marketGroup) => {
       if (!lowerCaseSearchTerm) return true; // Show all if search is empty
 
       const nameMatch = marketGroup.marketName
@@ -398,14 +398,7 @@ const ForecastingTable = () => {
         marketGroup.displayQuestion.toLowerCase().includes(lowerCaseSearchTerm);
 
       return nameMatch || questionMatch;
-    });
-
-    console.log(
-      '[Memo] Final filtered market groups length:',
-      filteredBySearch.length
-    );
-
-    return filteredBySearch; // Return the final filtered list
+    }); // Return the final filtered list
   }, [
     enrichedMarketGroups,
     selectedCategorySlug,

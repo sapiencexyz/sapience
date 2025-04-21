@@ -74,7 +74,6 @@ export function useQuoter({
             throw new Error('API URL not configured.');
           }
           const apiUrl = `${apiBaseUrl}/quoter/${chainId}/${marketAddress}/${marketId}/?expectedPrice=${expectedPrice}&collateralAvailable=${collateralAvailable.toString()}`;
-          // console.log('Fetching quote from:', apiUrl); // Keep console logs minimal in hooks
 
           const response = await fetch(apiUrl);
           const data = await response.json();
@@ -85,7 +84,6 @@ export function useQuoter({
             );
           }
 
-          // console.log('Quote received:', data); // Keep console logs minimal in hooks
           setQuoteData(data as QuoteData);
         } catch (error: unknown) {
           console.error('Error fetching quote:', error);
