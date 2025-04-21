@@ -24,7 +24,8 @@ export interface MarketCandleDataWithId {
 // Refactored function
 export const processCandleData = (
   marketDataWithIds: MarketCandleDataWithId[], // Input now includes market IDs
-  indexCandleData: IndexCandleData[] | null // Changed type and name
+  indexCandleData: IndexCandleData[] | null, // Changed type and name
+  indexMultiplier: number // Added indexMultiplier, removed quoteTokenName
 ): MultiMarketChartDataPoint[] => {
   // Use a record keyed by timestamp, holding partial new data points
   const combinedData: Record<
@@ -94,7 +95,7 @@ export const processCandleData = (
       try {
         const closeValue = parseFloat(String(candle.close));
         if (!isNaN(closeValue)) {
-          combinedData[ts]!.indexClose = closeValue; // Assign to indexClose
+          combinedData[ts]!.indexClose = closeValue * indexMultiplier;
         } else {
           console.warn(
             `Invalid index close value encountered: ${candle.close} at timestamp ${ts}`

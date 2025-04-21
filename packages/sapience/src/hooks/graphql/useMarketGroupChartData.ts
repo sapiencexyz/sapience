@@ -12,6 +12,7 @@ import {
   type MarketCandleDataWithId, // Use helper type for input
 } from '../../lib/utils/chartUtils';
 import { foilApi } from '../../lib/utils/util'; // Assuming foilApi is exported from util
+import { useSapience } from '~/lib/context/SapienceProvider'; // Import useSapience
 
 // Adjust marketId type if needed (String! vs Int!) based on schema
 const GET_MARKET_CANDLES = gql`
@@ -86,6 +87,7 @@ interface UseMarketGroupChartDataProps {
   activeMarketIds: number[];
   fromTimestamp?: number; // Optional start time
   toTimestamp?: number; // Optional end time
+  quoteTokenName?: string; // Added quoteTokenName prop
 }
 
 // Update return type
@@ -111,6 +113,7 @@ export const useMarketGroupChartData = ({
   activeMarketIds,
   fromTimestamp: propFromTimestamp, // Use optional prop
   toTimestamp: propToTimestamp, // Use optional prop
+  quoteTokenName, // Destructure quoteTokenName
 }: UseMarketGroupChartDataProps): UseMarketGroupChartDataReturn => {
   // Update state type
   const [chartData, setChartData] = useState<MultiMarketChartDataPoint[]>([]);
@@ -118,6 +121,9 @@ export const useMarketGroupChartData = ({
   const [isLoadingCandles, setIsLoadingCandles] = useState<boolean>(false);
   const [isErrorCandles, setIsErrorCandles] = useState<boolean>(false);
   const [errorCandles, setErrorCandles] = useState<Error | null>(null);
+
+  // Get stEthPerToken from context
+  const { stEthPerToken } = useSapience();
 
   const chainId = getChainIdFromShortName(chainShortName); // Calculate chainId outside useEffect
 
@@ -309,11 +315,29 @@ export const useMarketGroupChartData = ({
               candles: r.candles as CandleType[], // Type assertion safe due to filter
             }));
 
+        // Determine the index multiplier based on quoteTokenName and stEthPerToken.
+        // The goal is to scale the raw indexClose value (integer gwei) so that
+        // the chart's `formatTokenValue` (which divides by 1e18) displays the correct units.
+        let indexMultiplier: number;
+        if (quoteTokenName?.toLowerCase() === 'wsteth') {
+          // Target value for chart formatter = Ggas/wstETH scaled by 1e18
+          // Ggas/wstETH = (raw_gwei / 1e9) / (stEthPerToken / 1e9) = raw_gwei / stEthPerToken
+          // Multiplier = (target / raw_gwei) = (raw_gwei / stEthPerToken * 1e18) / raw_gwei = 1e18 / stEthPerToken
+          indexMultiplier =
+            stEthPerToken && stEthPerToken > 0 ? 1e18 / stEthPerToken : 1e18; // Fallback: Treat as if stEthPerToken = 1 if invalid/missing
+        } else {
+          // Target value for chart formatter = wei (scaled by 1e18)
+          // wei = raw_gwei * 1e9
+          // Multiplier = (target / raw_gwei) = (raw_gwei * 1e9) / raw_gwei = 1e9
+          indexMultiplier = 1e9;
+        }
+
         // Process data using the refactored function
-        // Pass indexCandles data to the processing function
+        // Pass indexCandles data and the calculated indexMultiplier
         const processedData = processCandleData(
           marketDataForProcessing,
-          indexCandles
+          indexCandles,
+          indexMultiplier // Pass calculated multiplier
         );
         console.log('Processed Chart Data:', processedData);
         setChartData(processedData); // Set state with the new structure
@@ -341,6 +365,8 @@ export const useMarketGroupChartData = ({
     marketAddress,
     propFromTimestamp,
     propToTimestamp,
+    quoteTokenName,
+    stEthPerToken,
   ]);
 
   // Consolidate loading and error states - simplified as we removed provider dependency

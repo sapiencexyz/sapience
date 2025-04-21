@@ -62,8 +62,8 @@ const getYAxisConfig = (market: PredictionMarketType | null | undefined) => {
   // Construct the unit string as base/quote
   let unit = '';
   if (market?.baseTokenName && market?.quoteTokenName) {
-    // Construct unit like "base/quote"
-    unit = `${market.baseTokenName}/${market.quoteTokenName}`;
+    // Construct unit like "quote/base"
+    unit = `${market.quoteTokenName}/${market.baseTokenName}`;
   } else if (market?.quoteTokenName) {
     // Fallback to just quote token name if base is missing
     unit = market.quoteTokenName;
@@ -108,6 +108,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     chainShortName,
     marketAddress,
     activeMarketIds: marketIds,
+    quoteTokenName: market?.quoteTokenName,
   });
   const [showIndexLine, setShowIndexLine] = useState(true);
 
