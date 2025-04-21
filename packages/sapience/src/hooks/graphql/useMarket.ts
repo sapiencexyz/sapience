@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
-import { foilApi } from '~/lib/utils/util';
+import { foilApi, getChainIdFromShortName } from '~/lib/utils/util';
 
 // Updated query to fetch the specific market directly, filtered by chainId and marketGroup address
 const MARKET_QUERY = gql`
@@ -27,23 +27,6 @@ const MARKET_QUERY = gql`
     }
   }
 `;
-
-// Helper function to get chainId from chain short name
-const getChainIdFromShortName = (shortName: string): number => {
-  switch (shortName.toLowerCase()) {
-    case 'base':
-      return 8453;
-    case 'arbitrum':
-      return 42161;
-    case 'ethereum':
-    case 'mainnet':
-      return 1;
-    default:
-      // Consider throwing an error or returning a specific value for unknown chains
-      console.warn(`Unknown chain short name: ${shortName}`);
-      return 0;
-  }
-};
 
 // Helper function to format and set the question
 const formatQuestion = (rawQuestion: string | undefined | null): string => {

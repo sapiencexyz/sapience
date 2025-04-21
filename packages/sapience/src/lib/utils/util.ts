@@ -1,7 +1,11 @@
 import { formatEther, createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
 
-import type { Market, MarketGroup } from '../interfaces/interfaces';
+import type {
+  Market,
+  MarketGroup,
+  PredictionMarketType,
+} from '../interfaces/interfaces';
 
 export const foilApi = {
   baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
@@ -181,4 +185,79 @@ export const findActiveMarkets = (
       );
     }
   );
+};
+
+// Helper to format value as percentage (0-1 -> 0%-100%)
+export const formatPercentage = (value: number): string => {
+  if (value == null || isNaN(value)) return ''; // Handle null/NaN
+  return `${(value * 100).toFixed(0)}%`; // Multiply by 100, format, add %
+};
+
+// Updated helper to format currency/token value, handling 18 decimals
+// Places the unit string AFTER the value
+export const formatTokenValue = (value: number, unit: string = ''): string => {
+  // Adjust for 18 decimals
+  const adjustedValue = value / 1e18;
+  // Format number and append unit (if provided)
+  const formattedNumber = adjustedValue.toFixed(2);
+  return unit ? `${formattedNumber} ${unit}` : formattedNumber;
+};
+
+// Helper to determine Y-axis configuration based on market type
+export const getYAxisConfig = (
+  market: PredictionMarketType | null | undefined
+) => {
+  // Check for Yes/No OR Group Market
+  if (market?.baseTokenName === 'Yes' || market?.isGroupMarket) {
+    // Yes/No or Group market: Percentage 0%-100%
+    return {
+      tickFormatter: formatPercentage, // Use percentage formatter
+      tooltipValueFormatter: (val: number) => formatPercentage(val), // Use percentage formatter
+      domain: [0, 1] as [number, number], // Domain remains 0-1 (representing 0% to 100%)
+      unit: '%', // Unit symbol (kept for tooltip logic maybe, but not used in tick formatter)
+    };
+  }
+
+  // Default/Numerical/Group market: Use quote token name, adjust decimals
+  // Construct the unit string as base/quote
+  let unit = '';
+  if (market?.baseTokenName && market?.quoteTokenName) {
+    // Construct unit like "quote/base"
+    unit = `${market.quoteTokenName}/${market.baseTokenName}`;
+  } else if (market?.quoteTokenName) {
+    // Fallback to just quote token name if base is missing
+    unit = market.quoteTokenName;
+  }
+  // No default $ sign anymore, handled by formatTokenValue
+
+  return {
+    tickFormatter: (val: number) => formatTokenValue(val), // Remove unit from tick formatter call
+    tooltipValueFormatter: (val: number) => formatTokenValue(val, unit), // Keep unit for tooltip
+    domain: ['auto', 'auto'] as [string | number, string | number], // Auto-scale
+    unit, // Keep the constructed unit for potential future use (e.g., tooltips)
+  };
+};
+
+// Helper to format timestamp for XAxis ticks (example: DD/MM)
+export const formatTimestamp = (timestamp: number): string => {
+  const date = new Date(timestamp * 1000); // Convert seconds to milliseconds
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0'); // Month is 0-indexed
+  return `${month}/${day}`;
+};
+
+// Utility to get chainId from chain short name
+export const getChainIdFromShortName = (shortName: string): number => {
+  switch (shortName?.toLowerCase()) {
+    case 'base':
+      return 8453;
+    case 'arbitrum':
+      return 42161;
+    case 'ethereum':
+    case 'mainnet':
+      return 1;
+    default:
+      console.warn(`Unknown chain short name: ${shortName}`);
+      return 0; // Return 0 or handle error appropriately
+  }
 };

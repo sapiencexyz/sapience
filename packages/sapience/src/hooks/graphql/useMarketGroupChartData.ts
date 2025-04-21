@@ -11,7 +11,7 @@ import {
   type MultiMarketChartDataPoint, // Use new data point type
   type MarketCandleDataWithId, // Use helper type for input
 } from '../../lib/utils/chartUtils';
-import { foilApi } from '../../lib/utils/util'; // Assuming foilApi is exported from util
+import { foilApi, getChainIdFromShortName } from '../../lib/utils/util'; // Import getChainIdFromShortName
 import { useSapience } from '~/lib/context/SapienceProvider'; // Import useSapience
 
 // Adjust marketId type if needed (String! vs Int!) based on schema
@@ -64,22 +64,6 @@ const GET_INDEX_CANDLES = gql`
     }
   }
 `;
-
-// Utility to get chainId from chain short name (consistent with useMarketGroup.ts)
-const getChainIdFromShortName = (shortName: string): number => {
-  switch (shortName?.toLowerCase()) {
-    case 'base':
-      return 8453;
-    case 'arbitrum':
-      return 42161;
-    case 'ethereum':
-    case 'mainnet':
-      return 1;
-    default:
-      console.warn(`Unknown chain short name: ${shortName}`);
-      return 0; // Return 0 or handle error appropriately
-  }
-};
 
 interface UseMarketGroupChartDataProps {
   chainShortName: string;

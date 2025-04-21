@@ -7,6 +7,7 @@ import type { Market, MarketGroup } from '../../lib/interfaces/interfaces';
 import {
   findActiveMarkets,
   getDisplayQuestion,
+  getChainIdFromShortName,
   foilApi,
 } from '../../lib/utils/util';
 
@@ -32,21 +33,6 @@ const MARKET_GROUP_QUERY = gql`
     }
   }
 `;
-
-// Utility to get chainId from chain short name
-const getChainIdFromShortName = (shortName: string): number => {
-  switch (shortName?.toLowerCase()) {
-    case 'base':
-      return 8453;
-    case 'arbitrum':
-      return 42161;
-    case 'ethereum':
-    case 'mainnet':
-      return 1;
-    default:
-      return 0; // Return 0 or handle error appropriately
-  }
-};
 
 interface UseMarketGroupProps {
   chainShortName: string;

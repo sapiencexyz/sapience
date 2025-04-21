@@ -1,3 +1,6 @@
+// It's generally better practice to generate these types from your schema
+// using tools like GraphQL Code Generator to ensure they stay in sync.
+
 // Define CandleType based on schema.graphql
 export interface CandleType {
   timestamp: number;
@@ -68,5 +71,10 @@ export interface CategoryType {
   slug: string;
 }
 
-// It's generally better practice to generate these types from your schema
-// using tools like GraphQL Code Generator to ensure they stay in sync.
+// Define PredictionMarketType (can potentially be merged/refined with MarketGroup)
+export interface PredictionMarketType {
+  optionNames?: string[] | null;
+  baseTokenName?: string;
+  quoteTokenName?: string;
+  isGroupMarket?: boolean;
+}
