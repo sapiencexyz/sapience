@@ -41,18 +41,6 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
           </TableHeader>
           <TableBody>
             {positions.map((position: Position) => {
-              let displayQuestion = 'Legacy Market'; // Default fallback
-
-              if (
-                position.market?.marketGroup?.optionNames &&
-                position.market.marketGroup.optionNames.length > 0 &&
-                position.market.marketGroup.question
-              ) {
-                displayQuestion = position.market.marketGroup.question;
-              } else if (position.market?.question) {
-                displayQuestion = position.market.question;
-              }
-
               const isOwner =
                 connectedAddress &&
                 position.owner &&
@@ -60,7 +48,7 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
 
               return (
                 <TableRow key={position.id}>
-                  <TableCell>{displayQuestion}</TableCell>
+                  <TableCell>{position.market.question}</TableCell>
                   <TableCell>
                     {position.isLP ? (
                       <span>

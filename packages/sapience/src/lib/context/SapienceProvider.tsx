@@ -39,6 +39,7 @@ export interface MarketGroup {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   }>;
   currentMarket: {
     id: number;
@@ -46,6 +47,7 @@ export interface MarketGroup {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   } | null;
   nextMarket: {
     id: number;
@@ -53,6 +55,7 @@ export interface MarketGroup {
     startTimestamp: number;
     endTimestamp: number;
     public: boolean;
+    question?: string;
   } | null;
 }
 
@@ -150,6 +153,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
             startTimestamp: market.startTimestamp,
             endTimestamp: market.endTimestamp,
             public: market.settled !== undefined ? !market.settled : true,
+            question: market.question,
           }));
 
           const sortedMarkets = [...markets].sort(

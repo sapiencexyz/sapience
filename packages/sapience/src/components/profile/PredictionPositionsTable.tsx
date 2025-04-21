@@ -18,8 +18,9 @@ import Link from 'next/link';
 import React from 'react';
 
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
+import { useSapience } from '~/lib/context/SapienceProvider';
 
-interface PredictionsTableProps {
+interface PredictionPositionsTableProps {
   attestations: FormattedAttestation[] | undefined;
 }
 
@@ -43,27 +44,75 @@ const renderPredictionCell = ({
 
 const renderQuestionCell = ({
   row,
+  marketGroups,
+  isMarketsLoading,
 }: {
   row: { original: FormattedAttestation };
+  marketGroups: ReturnType<typeof useSapience>['marketGroups'];
+  isMarketsLoading: boolean;
 }) => {
-  // Attempt to find the marketAddress in the decoded data
   const marketAddressField = row.original.decodedData.find(
     (field) => field.name === 'marketAddress'
   );
 
-  if (marketAddressField && typeof marketAddressField.value === 'string') {
-    const marketAddress = marketAddressField.value;
-    // Link to the specific market page
+  // Safely extract marketAddress string
+  const potentialMarketAddress =
+    marketAddressField &&
+    typeof marketAddressField.value === 'object' &&
+    marketAddressField.value !== null &&
+    'value' in marketAddressField.value
+      ? marketAddressField.value.value
+      : null;
+  const marketAddress =
+    typeof potentialMarketAddress === 'string'
+      ? (potentialMarketAddress as string).toLowerCase()
+      : null;
+
+  const marketIdField = row.original.decodedData.find(
+    (field) => field.name === 'marketId'
+  );
+
+  // Safely extract marketId hex string
+  const marketIdHex =
+    marketIdField &&
+    typeof marketIdField.value === 'object' &&
+    marketIdField.value !== null &&
+    'value' in marketIdField.value &&
+    typeof marketIdField.value.value === 'object' &&
+    marketIdField.value.value !== null &&
+    'hex' in marketIdField.value.value &&
+    typeof marketIdField.value.value.hex === 'string'
+      ? marketIdField.value.value.hex
+      : null;
+
+  if (isMarketsLoading) {
     return (
-      <Link href={`/market/${marketAddress}`}>
-        <span className="text-muted-foreground hover:text-foreground underline flex items-center">
-          View Question <ChevronRight className="h-4 w-4 ml-1" />
-        </span>
-      </Link>
+      <span className="text-muted-foreground italic">Loading question...</span>
     );
   }
 
-  // Fallback if marketAddress is not found or not a string
+  if (marketAddress && marketIdHex) {
+    const marketId = parseInt(marketIdHex, 16); // Convert hex to number
+
+    const marketGroup = marketGroups.find(
+      (group) => group.address.toLowerCase() === marketAddress
+    );
+
+    if (marketGroup) {
+      const market = marketGroup.markets.find((m) => m.marketId === marketId);
+
+      if (market && typeof market.question === 'string') {
+        return (
+          <Link href={`/market/${marketAddress}`}>
+            <span className="text-foreground hover:underline">
+              {market.question}
+            </span>
+          </Link>
+        );
+      }
+    }
+  }
+
   return (
     <span className="text-muted-foreground italic">Question not available</span>
   );
@@ -84,13 +133,11 @@ const renderActionsCell = ({
   </a>
 );
 
-const PredictionsTable: React.FC<PredictionsTableProps> = ({
+const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
   attestations,
-  // Remove isLoading and error from destructuring
-  // isLoading,
-  // error,
 }) => {
-  // Move hooks before the early return
+  const { marketGroups, isMarketsLoading } = useSapience();
+
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
       {
@@ -101,7 +148,8 @@ const PredictionsTable: React.FC<PredictionsTableProps> = ({
       {
         id: 'question',
         header: 'Question',
-        cell: renderQuestionCell,
+        cell: (props) =>
+          renderQuestionCell({ ...props, marketGroups, isMarketsLoading }),
       },
       {
         accessorKey: 'value',
@@ -114,7 +162,7 @@ const PredictionsTable: React.FC<PredictionsTableProps> = ({
         cell: renderActionsCell,
       },
     ],
-    [] // Dependencies - add optionNames if used in renderPredictionCell
+    [marketGroups, isMarketsLoading]
   );
 
   const table = useReactTable({
@@ -127,10 +175,6 @@ const PredictionsTable: React.FC<PredictionsTableProps> = ({
   if (!attestations || attestations.length === 0) {
     return null;
   }
-
-  // Data is guaranteed to be non-empty array here
-  // Remove the redundant 'data' variable assignment
-  // const data = attestations;
 
   return (
     <div>
@@ -187,4 +231,4 @@ const PredictionsTable: React.FC<PredictionsTableProps> = ({
   );
 };
 
-export default PredictionsTable;
+export default PredictionPositionsTable;

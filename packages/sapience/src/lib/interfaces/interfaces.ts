@@ -92,6 +92,8 @@ export interface Position {
   market: {
     question: string;
     marketGroup: {
+      baseTokenName: string;
+      collateralSymbol: string;
       question: string;
       optionNames: string[];
     };

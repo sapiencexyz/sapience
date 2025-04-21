@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import ErrorState from '~/components/profile/ErrorState';
 import LoadingState from '~/components/profile/LoadingState';
 import LpPositionsTable from '~/components/profile/LpPositionsTable';
-import PredictionsTable from '~/components/profile/PredictionsTable';
+import PredictionPositionsTable from '~/components/profile/PredictionPositionsTable';
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
@@ -60,7 +60,7 @@ export default function PortfolioPage() {
         <div className="space-y-8">
           <TraderPositionsTable positions={traderPositions} />
           <LpPositionsTable positions={lpPositions} />
-          <PredictionsTable attestations={safeAttestations} />
+          <PredictionPositionsTable attestations={safeAttestations} />
         </div>
       );
     }

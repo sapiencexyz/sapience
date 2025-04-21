@@ -4,6 +4,7 @@ import { Position } from '../../models/Position';
 import { PositionType } from '../types';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
 import { mapPositionToType } from './mappers';
+
 @Resolver(() => PositionType)
 export class PositionResolver {
   @Query(() => [PositionType])

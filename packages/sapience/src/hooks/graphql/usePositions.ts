@@ -36,6 +36,8 @@ export const POSITIONS_QUERY = gql`
           address
           question
           optionNames
+          collateralSymbol
+          baseTokenName
           resource {
             name
             slug
