@@ -98,6 +98,14 @@ const ForecastingDetailPage = () => {
     activeMarkets,
   } = useMarketGroup({ chainShortName, marketAddress });
 
+  // Calculate the minimum start timestamp from active markets
+  const minTimestamp =
+    activeMarkets.length > 0
+      ? Math.min(
+          ...activeMarkets.map((market) => Number(market.startTimestamp))
+        )
+      : undefined;
+
   // Keep useEffect for checking market count (if needed for UI logic)
   useEffect(() => {
     console.log('Epoch Check Effect Triggered:', {
@@ -198,6 +206,8 @@ const ForecastingDetailPage = () => {
               chainShortName={chainShortName}
               marketAddress={marketAddress}
               marketIds={activeMarkets.map((market) => Number(market.marketId))}
+              market={marketData}
+              minTimestamp={minTimestamp}
             />
 
             {/* Form (Right Column) */}
