@@ -94,7 +94,7 @@ export default function Hero() {
             <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
               The World&apos;s Frontier
               <br />
-              Prediction Community
+              Forecasting Community
             </h1>
 
             <p className="text-xl md:text-2xl mb-6 text-muted-foreground max-w-2xl">
