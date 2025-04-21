@@ -148,7 +148,8 @@
       "quoteTokenName": "wstEth"
     },
     {
-      "question": null,
+      "questions": ["What will be the average gas price on Ethereum in March?"],
+      "question": "What will be the average gas price on Ethereum in a given month?",
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x0D70bE0BA7d58cd414B01C4e8a1bB5A1Dd212bDc",
@@ -156,7 +157,10 @@
       "category": "decentralized-compute"
     },
     {
-      "question": null,
+      "questions": [
+        "What will be the average blob gas price on Ethereum in March?"
+      ],
+      "question": "What will be the average blob gas price on Ethereum in a given month?",
       "resource": "ethereum-blobspace",
       "chainId": 8453,
       "address": "0x2883610d2c5A2C2b8EBacfa5c8F8035F60b9C850",
@@ -164,7 +168,10 @@
       "category": "decentralized-compute"
     },
     {
-      "question": null,
+      "questions": [
+        "What will be the average gas price on Ethereum in February?"
+      ],
+      "question": "What will be the average gas price on Ethereum in a given month?",
       "resource": "ethereum-gas",
       "chainId": 8453,
       "address": "0x20Ba5e24aD8a5b9502D4882607f0C8526A1F3205",
