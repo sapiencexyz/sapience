@@ -16,7 +16,7 @@ const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 const getMissingBlocks = async (
   chainId: string,
   address: string,
-  epochId: string
+  marketId: string
 ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
   // Find the market
   const market = await marketRepository.findOne({
@@ -46,7 +46,7 @@ const getMissingBlocks = async (
 
   // Get block numbers using the price indexer client
   const { startBlockNumber, endBlockNumber, error } =
-    await getMarketStartEndBlock(market, epochId, indexer.client);
+    await getMarketStartEndBlock(market, marketId, indexer.client);
 
   if (error || !startBlockNumber || !endBlockNumber) {
     return { missingBlockNumbers: null, error };
@@ -82,18 +82,18 @@ const getMissingBlocks = async (
 
 router.get(
   '/',
-  validateRequestParams(['chainId', 'address', 'epochId']),
+  validateRequestParams(['chainId', 'address', 'marketId']),
   handleAsyncErrors(async (req: Request, res: Response) => {
-    const { chainId, address, epochId } = req.query as {
+    const { chainId, address, marketId } = req.query as {
       chainId: string;
       address: string;
-      epochId: string;
+      marketId: string;
     };
 
     const { missingBlockNumbers, error } = await getMissingBlocks(
       chainId,
       address,
-      epochId
+      marketId
     );
 
     if (error) {
