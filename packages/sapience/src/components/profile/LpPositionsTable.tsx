@@ -7,6 +7,13 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
+import { Info } from 'lucide-react';
 import Link from 'next/link';
 import { formatEther } from 'viem';
 
@@ -71,12 +78,34 @@ function PriceTickCell({
   );
 }
 
+// Helper component for PnL Header Cell
+function PnLHeaderCell() {
+  return (
+    <span className="flex items-center gap-1">
+      Unrealized PnL{' '}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger>
+            <Info className="h-4 w-4 text-muted-foreground" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="font-normal">
+              Estimate ignoring slippage and fees. May not be applicable if
+              market is closed.
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </span>
+  );
+}
+
 export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
   if (!positions || positions.length === 0) {
     return null;
   }
 
-  const validPositions = positions.filter(
+  const validPositions = (positions as Position[]).filter(
     (p) =>
       p &&
       p.market &&
@@ -106,6 +135,9 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
               <TableHead>Quote Tokens</TableHead> {/* Updated Header */}
               <TableHead>Low Price</TableHead>
               <TableHead>High Price</TableHead>
+              <TableHead>
+                <PnLHeaderCell />
+              </TableHead>
               <TableHead /> {/* Header for More Info */}
             </TableRow>
           </TableHeader>
@@ -115,6 +147,9 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
               const baseUnit = `v${marketGroup?.baseTokenName || 'Base'}`;
               const quoteUnit = `v${marketGroup?.collateralSymbol || 'Quote'}`;
               const priceUnit = `${marketGroup?.collateralSymbol || 'Quote'}/${marketGroup?.baseTokenName || 'Base'}`;
+              const collateralDecimals = marketGroup?.collateralDecimals || 18; // Default needed for PnLCell/direct render
+              const collateralSymbol =
+                marketGroup?.collateralSymbol || 'Tokens'; // Default needed for PnLCell/direct render
 
               const isClosed =
                 position.lpBaseToken === '0' && position.lpQuoteToken === '0';
@@ -124,6 +159,30 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
                 : 'unknown';
               const positionUrl = `/positions/${chainShortName}:${marketGroup?.address}/${position.market.marketId}?positionId=${position.positionId}`;
 
+              // Prepare PnL rendering - use direct value from position object
+              let pnlContent;
+              if (
+                position.totalPnL !== undefined &&
+                position.totalPnL !== null
+              ) {
+                // Render PnL directly from the position object
+                const pnlValue =
+                  Number(position.totalPnL) / 10 ** collateralDecimals;
+                pnlContent = (
+                  <div className="flex items-center gap-1">
+                    <NumberDisplay value={pnlValue} />
+                    <span className="text-muted-foreground text-sm">
+                      {collateralSymbol}
+                    </span>
+                  </div>
+                );
+              } else {
+                // PnL data is missing or null on the position object
+                pnlContent = (
+                  <span className="text-xs text-muted-foreground">N/A</span>
+                );
+              }
+
               return (
                 <TableRow key={position.id}>
                   <TableCell>
@@ -131,7 +190,7 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
                   </TableCell>
                   {isClosed ? (
                     <TableCell
-                      colSpan={5} // Spans Collateral, VBase, VQuote, Low, High
+                      colSpan={7} // Adjusted colSpan to 7 to include the "More Info" column
                       className="text-center font-medium text-muted-foreground"
                     >
                       CLOSED
@@ -165,17 +224,21 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
                           unit={priceUnit}
                         />
                       </TableCell>
+                      <TableCell>
+                        {/* Render the prepared PnL content */}
+                        {pnlContent}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={positionUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Button size="sm">More Info</Button>
+                        </Link>
+                      </TableCell>
                     </>
                   )}
-                  <TableCell className="text-right">
-                    <Link
-                      href={positionUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button size="sm">More Info</Button>
-                    </Link>
-                  </TableCell>
                 </TableRow>
               );
             })}
