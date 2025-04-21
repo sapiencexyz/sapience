@@ -14,34 +14,31 @@ export class PositionResolver {
     marketAddress?: string
   ): Promise<PositionType[]> {
     try {
-      const where: {
-        owner?: string;
-        market?: { marketGroup: { chainId: number; address: string } };
-      } = {};
-      if (owner) {
-        where.owner = owner.toLowerCase();
-      }
+      const positionsQuery = await dataSource
+        .getRepository(Position)
+        .createQueryBuilder('position')
+        .leftJoinAndSelect('position.market', 'market')
+        .leftJoinAndSelect('market.marketGroup', 'marketGroup')
+        .leftJoinAndSelect('marketGroup.resource', 'resource')
+        .leftJoinAndSelect('position.transactions', 'transactions')
+        .leftJoinAndSelect('transactions.event', 'event')
+        .where('LOWER(position.owner) = :owner', {
+          owner: owner?.toLowerCase(),
+        });
+
       if (chainId && marketAddress) {
-        where.market = {
-          marketGroup: {
+        positionsQuery.andWhere(
+          'marketGroup.chainId = :chainId AND LOWER(marketGroup.address) = :marketAddress',
+          {
             chainId,
-            address: marketAddress.toLowerCase(),
-          },
-        };
+            marketAddress: marketAddress.toLowerCase(),
+          }
+        );
       }
 
-      const positions = await dataSource.getRepository(Position).find({
-        where,
-        relations: [
-          'market',
-          'market.marketGroup',
-          'market.marketGroup.resource',
-          'transactions',
-          'transactions.event',
-        ],
-      });
+      const positionsResult = await positionsQuery.getMany();
 
-      const hydratedPositions = positions.map((position) => {
+      const hydratedPositions = positionsResult.map((position) => {
         const hydratedTransactions = hydrateTransactions(
           position.transactions,
           false
