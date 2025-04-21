@@ -74,7 +74,7 @@ async function getMarketStartEndTimestamps(
         marketId: marketId, // Use number
         marketGroup: {
           chainId: chainId, // Use number
-          address: marketAddress,
+          address: marketAddress.toLowerCase(),
         },
       },
       relations: ['marketGroup'], // Ensure market relation is loaded
