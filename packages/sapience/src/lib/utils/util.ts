@@ -167,8 +167,18 @@ export const findActiveMarkets = (
   return marketGroupData.markets.filter(
     (
       market: Market // Use Market type here
-    ) =>
-      nowInSeconds >= market.startTimestamp &&
-      nowInSeconds < market.endTimestamp
+    ) => {
+      // Check if timestamps are valid numbers before comparison
+      const start = market.startTimestamp;
+      const end = market.endTimestamp;
+      return (
+        typeof start === 'number' &&
+        !isNaN(start) &&
+        typeof end === 'number' &&
+        !isNaN(end) &&
+        nowInSeconds >= start &&
+        nowInSeconds < end
+      );
+    }
   );
 };

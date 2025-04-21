@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
 import MarketGroupChart from '../../../components/forecasting/MarketGroupChart';
 import PredictionForm from '../../../components/forecasting/PredictionForm';
 import { useSapience } from '../../../lib/context/SapienceProvider';
