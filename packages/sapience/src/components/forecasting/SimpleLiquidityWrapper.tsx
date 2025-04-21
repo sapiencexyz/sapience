@@ -1,8 +1,8 @@
 import type { LiquidityFormValues } from '@foil/ui';
 import { LiquidityForm } from '@foil/ui';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useState } from 'react';
 import type React from 'react';
+import { useState } from 'react';
 
 interface SimpleLiquidityWrapperProps {
   collateralAssetTicker: string;
@@ -38,7 +38,6 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
     <div className="h-full">
       <LiquidityForm
         onLiquiditySubmit={handleLiquiditySubmit}
-        collateralAssetTicker={collateralAssetTicker}
         virtualBaseTokensName={baseTokenName}
         virtualQuoteTokensName={quoteTokenName}
         isConnected={isConnected}

@@ -7,10 +7,10 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
 import PriceChart from '~/components/charts/PriceChart';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
 import { useMarket } from '~/hooks/graphql/useMarket';
-
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
@@ -44,6 +44,9 @@ const ForecastingDetailPage = () => {
   const marketId = params.marketId as string;
   const chainShortName = params.chainShortName as string;
 
+  const { abi } = useFoilAbi(8453);
+
+  // Call the custom hook to get market data and related state
   const {
     marketData,
     isLoadingMarket,
@@ -53,6 +56,19 @@ const ForecastingDetailPage = () => {
     marketAddress,
     numericMarketId,
   } = useMarket({ chainShortName, marketId });
+
+  const {
+    marketData: marketContractData,
+    marketGroupParams,
+    isLoading: isLoadingMarketContract,
+  } = useMarketContract({
+    marketAddress: marketAddress as `0x${string}`,
+    marketId: BigInt(marketId),
+    abi,
+  });
+
+  console.log('marketContractData', marketContractData);
+  console.log('marketGroupParams', marketGroupParams);
 
   // Extract resource slug
   const resourceSlug = marketData?.marketGroup?.resource?.slug;
@@ -81,8 +97,8 @@ const ForecastingDetailPage = () => {
     });
   };
 
-  // Loader now only depends on market data loading
-  if (isLoadingMarket) {
+  // Show loader while market data is loading
+  if (isLoadingMarket || isLoadingMarketContract) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
         <LottieLoader width={32} height={32} />
@@ -189,7 +205,9 @@ const ForecastingDetailPage = () => {
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper
-                        collateralAssetTicker="sUSDS"
+                        collateralAssetTicker={
+                          marketData?.marketGroup?.baseTokenName || 'sUSDS'
+                        }
                         baseTokenName={
                           marketData?.marketGroup?.baseTokenName || 'Yes'
                         }
