@@ -16,6 +16,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
+import { formatEther } from 'viem';
 
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
 import { useSapience } from '~/lib/context/SapienceProvider';
@@ -35,11 +36,55 @@ const renderSubmittedCell = ({
 
 const renderPredictionCell = ({
   row,
+  marketGroups,
+  isMarketsLoading,
 }: {
   row: { original: FormattedAttestation };
+  marketGroups: ReturnType<typeof useSapience>['marketGroups'];
+  isMarketsLoading: boolean;
 }) => {
-  // Display the pre-formatted value from the hook
-  return row.original.value;
+  const marketAddressField = row.original.decodedData.find(
+    (field) => field.name === 'marketAddress'
+  );
+
+  // Safely extract marketAddress string
+  const potentialMarketAddress =
+    marketAddressField &&
+    typeof marketAddressField.value === 'object' &&
+    marketAddressField.value !== null &&
+    'value' in marketAddressField.value
+      ? marketAddressField.value.value
+      : null;
+  const marketAddress =
+    typeof potentialMarketAddress === 'string'
+      ? (potentialMarketAddress as string).toLowerCase()
+      : null;
+
+  let baseTokenName = '';
+  if (!isMarketsLoading && marketAddress) {
+    const marketGroup = marketGroups.find(
+      (group) => group.address.toLowerCase() === marketAddress
+    );
+    if (marketGroup) {
+      baseTokenName = marketGroup.baseTokenName || '';
+    }
+  }
+
+  // Conditionally render 'Yes'/'No' if baseTokenName is 'Yes'
+  if (baseTokenName === 'Yes') {
+    const { value } = row.original; // Assuming value is a string representation
+    if (value === '1000000000000000000') {
+      return 'Yes';
+    }
+    if (value === '0') {
+      return 'No';
+    }
+
+    return formatEther(BigInt(value));
+  }
+
+  // Default: Display the pre-formatted value from the hook along with the token name
+  return `${row.original.value} ${baseTokenName}`;
 };
 
 const renderQuestionCell = ({
@@ -154,7 +199,8 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
       {
         accessorKey: 'value',
         header: 'Prediction',
-        cell: renderPredictionCell,
+        cell: (props) =>
+          renderPredictionCell({ ...props, marketGroups, isMarketsLoading }),
       },
       {
         id: 'actions',

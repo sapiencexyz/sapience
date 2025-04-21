@@ -26,6 +26,7 @@ export interface MarketGroup {
   address: string;
   vaultAddress: string;
   collateralAsset: string;
+  baseTokenName?: string;
   owner: string;
   isCumulative: boolean;
   resource: {
@@ -183,6 +184,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
             address: marketGroup.address,
             vaultAddress: marketGroup.address, // Fallback
             collateralAsset: marketGroup.baseTokenName || 'ETH', // Fallback
+            baseTokenName: marketGroup.baseTokenName,
             owner: marketGroup.address, // Fallback
             isCumulative: false, // Default
             resource: {
