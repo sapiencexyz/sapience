@@ -76,7 +76,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   if (!hasMarketData) {
     return (
       <div className="w-full md:flex-1 h-[400px] flex items-center justify-center text-muted-foreground">
-        No chart data available for active markets.
+        No data available
       </div>
     );
   }
@@ -110,8 +110,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       <div className="flex-1 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            data={filteredChartData} // Use filtered data
-            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+            data={filteredChartData}
+            margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
             <XAxis

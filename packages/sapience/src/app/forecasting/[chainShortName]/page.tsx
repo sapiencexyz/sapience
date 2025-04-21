@@ -219,29 +219,29 @@ const ForecastingDetailPage = () => {
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
-                  if (!marketData?.markets) return; // Guard clause
+                  if (!activeMarkets || activeMarkets.length === 0) return; // Guard clause using activeMarkets
 
-                  const numberOfMarkets = marketData.markets.length;
+                  const numberOfActiveMarkets = activeMarkets.length; // Use activeMarkets length
                   const currentPath = window.location.pathname;
 
-                  if (numberOfMarkets === 1) {
-                    // Navigate to the single epoch page if not already there
-                    const { marketId } = marketData.markets[0];
+                  if (numberOfActiveMarkets === 1) {
+                    // Navigate to the single active epoch page if not already there
+                    const { marketId } = activeMarkets[0]; // Use the first active market
                     if (!currentPath.endsWith(`/${marketId}`)) {
                       router.push(`${currentPath}/${marketId}`);
                     }
-                  } else if (numberOfMarkets > 1) {
-                    // Open selector if there are multiple epochs
+                  } else if (numberOfActiveMarkets > 1) {
+                    // Open selector if there are multiple active epochs
                     setShowMarketSelector(true);
                   }
-                  // If 0 epochs, the button is disabled, so onClick won't trigger.
+                  // If 0 active epochs, the button is disabled, so onClick won't trigger.
                 }}
                 disabled={
                   isLoadingMarket ||
                   !marketData ||
                   marketData.placeholder ||
-                  !marketData.markets ||
-                  marketData.markets.length === 0
+                  !activeMarkets || // Check activeMarkets existence
+                  activeMarkets.length === 0 // Disable if no active markets
                 }
                 className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -262,22 +262,26 @@ const ForecastingDetailPage = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 pb-2">
-            {marketData?.markets?.map((market: Market) => (
-              <Link
-                key={market.id}
-                href={`${window.location.pathname}/${market.marketId}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setShowMarketSelector(false)}
-                  className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
+            {activeMarkets?.map(
+              (
+                market: Market // Map over activeMarkets
+              ) => (
+                <Link
+                  key={market.id}
+                  href={`${window.location.pathname}/${market.marketId}`}
                 >
-                  {market.question
-                    ? formatQuestion(market.question)
-                    : `Market ${market.marketId}`}
-                </button>
-              </Link>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => setShowMarketSelector(false)}
+                    className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
+                  >
+                    {market.question
+                      ? formatQuestion(market.question)
+                      : `Market ${market.marketId}`}
+                  </button>
+                </Link>
+              )
+            )}
           </div>
         </DialogContent>
       </Dialog>
