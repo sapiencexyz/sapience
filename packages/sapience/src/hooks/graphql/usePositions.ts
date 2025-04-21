@@ -34,6 +34,8 @@ export const POSITIONS_QUERY = gql`
           id
           chainId
           address
+          question
+          optionNames
           resource {
             name
             slug

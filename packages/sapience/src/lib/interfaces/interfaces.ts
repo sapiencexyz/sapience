@@ -78,3 +78,23 @@ export interface PredictionMarketType {
   quoteTokenName?: string;
   isGroupMarket?: boolean;
 }
+
+export interface Position {
+  id: string;
+  positionId: string;
+  collateral: string;
+  baseToken: string;
+  borrowedBaseToken?: string;
+  isLP: boolean;
+  isSettled: boolean;
+  lpBaseToken?: string;
+  owner: string;
+  market: {
+    question: string;
+    marketGroup: {
+      question: string;
+      optionNames: string[];
+    };
+  };
+  [key: string]: any;
+}
