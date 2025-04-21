@@ -117,9 +117,6 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
     : chartData;
 
-  console.log('chartData', chartData);
-  console.log('filteredChartData', filteredChartData); // Log filtered data
-
   if (isLoading) {
     return (
       <div className="w-full md:flex-1 h-[400px] flex items-center justify-center">
@@ -168,7 +165,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
           <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
           <XAxis
             dataKey="timestamp"
-            axisLine={false}
+            axisLine
             tickLine={false}
             tickFormatter={formatTimestamp}
             fontSize={12}

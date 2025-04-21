@@ -361,9 +361,6 @@ export const useMarketCandles = (market: {
   const to = now;
   const interval = 3600;
 
-  // Add debugging info
-  console.log('useMarketCandles called with:', market);
-
   return useQuery<Candle[] | null>({
     queryKey: [
       'marketCandles',
@@ -372,20 +369,10 @@ export const useMarketCandles = (market: {
     ],
     queryFn: async () => {
       if (!market.address || !market.chainId || market.marketId === 0) {
-        console.log('useMarketCandles early return - invalid params:', market);
         return null;
       }
 
       try {
-        console.log('Fetching market candles for:', {
-          address: market.address,
-          chainId: market.chainId,
-          marketId: market.marketId,
-          from,
-          to,
-          interval,
-        });
-
         const { data } = await foilApi.post('/graphql', {
           query: print(MARKET_CANDLES_QUERY),
           variables: {
@@ -396,11 +383,6 @@ export const useMarketCandles = (market: {
             to,
             interval,
           },
-        });
-
-        console.log('Market candles response:', {
-          candlesCount: data.marketCandles?.length || 0,
-          sample: data.marketCandles?.slice(0, 2) || [],
         });
 
         return data.marketCandles || [];

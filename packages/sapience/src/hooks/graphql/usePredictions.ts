@@ -222,12 +222,6 @@ export const usePredictions = ({
         normalizedAddress = marketAddress; // Fallback to the original address
       }
 
-      console.log('Query params:', {
-        marketAddress,
-        normalizedAddress,
-        schemaId,
-      });
-
       // Make the request to the EAS GraphQL API
       const response = await fetch('https://base.easscan.org/graphql', {
         method: 'POST',
@@ -245,7 +239,6 @@ export const usePredictions = ({
       });
 
       const result = await response.json();
-      console.log('GraphQL response:', result);
 
       if (!response.ok) {
         throw new Error('Network response was not ok');

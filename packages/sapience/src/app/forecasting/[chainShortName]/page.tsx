@@ -33,11 +33,8 @@ const LottieLoader = dynamic(
 const parseUrlParameter = (
   paramString: string
 ): { chainShortName: string; marketAddress: string } => {
-  console.log('URL parameter:', paramString);
-
   // URL decode the parameter first, then parse
   const decodedParam = decodeURIComponent(paramString);
-  console.log('Decoded URL parameter:', decodedParam);
 
   // More robust parsing to handle various URL format possibilities
   let chainShortName = '';
@@ -108,34 +105,14 @@ const ForecastingDetailPage = () => {
 
   // Keep useEffect for checking market count (if needed for UI logic)
   useEffect(() => {
-    console.log('Epoch Check Effect Triggered:', {
-      isLoadingMarket,
-      isSuccess,
-      hasMarketData: !!marketData,
-      isPlaceholder: marketData?.placeholder,
-    });
-
     // Wait until loading is finished, the query was successful, and we have valid, non-placeholder data
     if (isLoadingMarket || !isSuccess || !marketData) {
-      console.log('Epoch Check: Exiting early (loading/failed/no data).');
       return; // Exit early if still loading, query failed, data is invalid/placeholder
     }
 
     // Ensure epochs is an array before proceeding
     if (!Array.isArray(marketData.markets)) {
-      console.log(
-        'Epoch Check: Exiting (epochs data is not an array or is missing).'
-      );
-      return; // Exit if epochs structure is incorrect
-    }
-
-    const numberOfMarkets = marketData.markets.length;
-    console.log(`Market Check: Found ${numberOfMarkets} markets.`);
-
-    if (numberOfMarkets === 0) {
-      // Handle case with zero markets
-      console.log('Market Check: Zero markets found.');
-      // No action needed here, the other useEffect handles the display question
+      // Exit if epochs structure is incorrect
     }
   }, [marketData, isLoadingMarket, isSuccess]); // Dependencies remain the same for now
 

@@ -81,10 +81,6 @@ export const useMarketGroup = ({
     queryKey: ['marketGroup', chainId, marketAddress],
     queryFn: async () => {
       if (!chainId || !marketAddress || chainId === 0) {
-        console.log('Missing required parameters for query:', {
-          chainId,
-          marketAddress,
-        });
         return { placeholder: true };
       }
 

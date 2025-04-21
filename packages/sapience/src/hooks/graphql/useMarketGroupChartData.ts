@@ -157,10 +157,6 @@ export const useMarketGroupChartData = ({
         propFromTimestamp ?? now - defaultLookbackSeconds;
       const overallEndTime = propToTimestamp ?? now;
 
-      console.log(
-        `Fetching candles for markets ${activeMarketIds.join(', ')} between ${overallStartTime} and ${overallEndTime}`
-      );
-
       try {
         // Fetch Market Candles for each active market ID
         const marketCandlePromises = activeMarketIds.map(
@@ -169,7 +165,6 @@ export const useMarketGroupChartData = ({
             // Use calculated time range
             const from = overallStartTime; // Renamed variable for clarity
             const to = overallEndTime; // Renamed variable for clarity
-
             const response = await foilApi.post('/graphql', {
               query: print(GET_MARKET_CANDLES),
               variables: {
@@ -185,13 +180,6 @@ export const useMarketGroupChartData = ({
             const responseData = response.data as
               | MarketCandlesResponse
               | { errors?: any[] };
-
-            // Remove detailed logging now that the issue is found
-            // console.log(`Response for Market ${marketIdString}:`, response);
-            // console.log(`Response Data (response.data) for Market ${marketIdString}:`, response.data);
-            // console.log(`Parsed responseData for Market ${marketIdString}:`, responseData);
-            // console.log(`Accessing responseData.data for Market ${marketIdString}:`, responseData?.data); // This was undefined
-            // console.log(`Accessing responseData.data.marketCandles for Market ${marketIdString}:`, responseData?.data?.marketCandles); // This was undefined
 
             // Check for GraphQL errors (using type guard might be safer)
             if (
@@ -288,9 +276,6 @@ export const useMarketGroupChartData = ({
           indexCandlePromise,
         ]);
 
-        // Error handling for overall fetch
-        console.log('Raw Market Candle Results:', marketCandleResults);
-        console.log('Raw Index Candle Results:', indexCandles); // Log index results
         const marketErrors = marketCandleResults
           .map((r) => r.error)
           .filter(Boolean);
@@ -339,7 +324,6 @@ export const useMarketGroupChartData = ({
           indexCandles,
           indexMultiplier // Pass calculated multiplier
         );
-        console.log('Processed Chart Data:', processedData);
         setChartData(processedData); // Set state with the new structure
       } catch (err) {
         console.error('Error fetching or processing candle data:', err);
