@@ -108,6 +108,7 @@ export interface Position {
   lowPriceTick: string | null; // Added & nullable
   lpBaseToken: string | null; // Changed from optional string to nullable
   lpQuoteToken: string | null; // Added & nullable
+  totalPnL: string | null; // Added & nullable
   market: {
     // Updated market structure
     id: string;
