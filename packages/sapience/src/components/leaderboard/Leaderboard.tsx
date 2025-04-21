@@ -8,10 +8,6 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from '@foil/ui/components/ui/toggle-group';
 import { cn } from '@foil/ui/lib/utils';
 import {
   useReactTable,
@@ -46,13 +42,7 @@ const LoadingIndicator = () => (
 );
 
 const Leaderboard = () => {
-  const {
-    leaderboardData,
-    isLoading,
-    wstEthPriceUsd,
-    selectedTimeframe,
-    setSelectedTimeframe,
-  } = useLeaderboard();
+  const { leaderboardData, isLoading, wstEthPriceUsd } = useLeaderboard();
 
   const columns = useMemo<ColumnDef<AggregatedLeaderboardEntry>[]>(
     () => [
@@ -95,28 +85,6 @@ const Leaderboard = () => {
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-10">
         Leaderboard
       </h1>
-
-      <div className="mb-6">
-        <ToggleGroup
-          type="single"
-          value={selectedTimeframe}
-          onValueChange={(value) => {
-            if (value) setSelectedTimeframe(value);
-          }}
-          aria-label="Select timeframe"
-          className="justify-start flex-wrap gap-2"
-        >
-          <ToggleGroupItem value="all" aria-label="All Time" size="sm">
-            All Time
-          </ToggleGroupItem>
-          <ToggleGroupItem value="year" aria-label="Last Year" size="sm">
-            Last Year
-          </ToggleGroupItem>
-          <ToggleGroupItem value="month" aria-label="Last Month" size="sm">
-            Last Month
-          </ToggleGroupItem>
-        </ToggleGroup>
-      </div>
 
       <div className="grid grid-cols-1 gap-8">
         <div>
