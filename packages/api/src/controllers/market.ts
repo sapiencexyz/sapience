@@ -608,7 +608,7 @@ const upsertEvent = async (
 
   // Find market with relations
   const market = await marketGroupRepository.findOne({
-    where: { chainId, address },
+    where: { chainId, address: address.toLowerCase() },
     relations: ['marketParams'],
   });
 
