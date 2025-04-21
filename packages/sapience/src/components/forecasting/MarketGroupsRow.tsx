@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import * as React from 'react';
-import * as chains from 'viem/chains';
+
+import { getChainShortName } from '~/lib/utils/util';
 
 export interface MarketGroupsRowProps {
   chainId: number;
@@ -57,9 +58,9 @@ const MarketGroupsRow = ({
 export default MarketGroupsRow;
 
 // Helper function to get chain short name from chainId
-const getChainShortName = (id: number): string => {
-  const chainObj = Object.values(chains).find((chain) => chain.id === id);
-  return chainObj
-    ? chainObj.name.toLowerCase().replace(/\s+/g, '')
-    : id.toString();
-};
+// const getChainShortName = (id: number): string => {
+//   const chainObj = Object.values(chains).find((chain) => chain.id === id);
+//   return chainObj
+//     ? chainObj.name.toLowerCase().replace(/\s+/g, '')
+//     : id.toString();
+// };

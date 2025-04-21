@@ -1,5 +1,8 @@
+import { type ClassValue, clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 import { formatEther, createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
+import * as chains from 'viem/chains';
 
 import type {
   Market,
@@ -263,6 +266,14 @@ export const getChainIdFromShortName = (shortName: string): number => {
   }
 };
 
+// Helper function to get chain short name from chainId
+export const getChainShortName = (id: number): string => {
+  const chainObj = Object.values(chains).find((chain) => chain.id === id);
+  return chainObj
+    ? chainObj.name.toLowerCase().replace(/\s+/g, '')
+    : id.toString();
+};
+
 // --- Constants ---
 const WEI_PER_ETHER_UTIL = 1e18; // Renamed to avoid potential global scope issues if used elsewhere
 
@@ -336,4 +347,25 @@ export function calculateEffectiveEntryPrice(
   }
 
   return finalEntryPrice;
+}
+
+/**
+ * Converts a Uniswap V3 tick index to a price.
+ * Formula: price = 1.0001^tick
+ * @param tick The tick index.
+ * @returns The price corresponding to the tick.
+ */
+export function tickToPrice(tick: number | string | undefined | null): number {
+  if (tick === undefined || tick === null) {
+    return 0; // Or handle as appropriate, e.g., throw an error or return NaN
+  }
+  const numericTick = typeof tick === 'string' ? Number(tick) : tick;
+  if (isNaN(numericTick)) {
+    return 0; // Handle invalid string input
+  }
+  return 1.0001 ** numericTick;
+}
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }

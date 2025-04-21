@@ -125,6 +125,7 @@ export interface Position {
       question: string | null;
       optionNames: string[] | null;
       collateralSymbol: string | null;
+      collateralDecimals?: number | null;
       baseTokenName: string | null;
       resource?: {
         // Added optional resource

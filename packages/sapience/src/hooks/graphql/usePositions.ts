@@ -37,6 +37,7 @@ export const POSITIONS_QUERY = gql`
           question
           optionNames
           collateralSymbol
+          collateralDecimals
           baseTokenName
           resource {
             name
