@@ -119,7 +119,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   );
   updatedMarket.deployTimestamp = Number(marketInfo.deployment.deployTimestamp);
   updatedMarket.chainId = marketInfo.marketChainId;
-  updatedMarket.owner = marketReadResult[0];
+  updatedMarket.owner = marketReadResult[0].toLowerCase();
   updatedMarket.collateralAsset = marketReadResult[1];
   if (updatedMarket.collateralAsset) {
     try {
@@ -509,7 +509,7 @@ const alertEvent = async (
       let marketName = 'Foil Market';
       try {
         const marketObj = await marketGroupRepository.findOne({
-          where: { address, chainId },
+          where: { address: address.toLowerCase(), chainId },
           relations: ['resource'],
         });
 

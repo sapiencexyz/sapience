@@ -26,7 +26,7 @@ router.post(
     const marketGroup = await marketGroupRepository.findOne({
       where: {
         chainId: Number(chainId),
-        address: address,
+        address: address.toLowerCase(),
       },
       relations: ['markets'],
     });
