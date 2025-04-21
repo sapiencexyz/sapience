@@ -79,24 +79,59 @@ export interface PredictionMarketType {
   isGroupMarket?: boolean;
 }
 
+// Define PositionTransaction based on schema and usage
+export interface PositionTransaction {
+  id: string;
+  timestamp: number; // Schema uses Int!, assuming number
+  type: string;
+  baseTokenDelta: string | null;
+  quoteTokenDelta: string | null;
+  collateralDelta: string | null;
+  tradeRatioD18: string | null;
+  transactionHash: string | null;
+  // Add other fields from TransactionType if needed
+}
+
+// Updated Position interface to match usePositions query results
 export interface Position {
   id: string;
-  positionId: string;
-  collateral: string;
-  baseToken: string;
-  borrowedBaseToken?: string;
-  isLP: boolean;
-  isSettled: boolean;
-  lpBaseToken?: string;
+  positionId: number; // Changed from string to number
   owner: string;
+  baseToken: string;
+  quoteToken: string; // Added based on usePositions query
+  collateral: string;
+  borrowedBaseToken: string | null; // Changed from optional string to nullable
+  borrowedQuoteToken: string | null; // Added & nullable
+  isLP: boolean;
+  isSettled: boolean | null; // Changed from boolean to nullable
+  highPriceTick: string | null; // Added & nullable
+  lowPriceTick: string | null; // Added & nullable
+  lpBaseToken: string | null; // Changed from optional string to nullable
+  lpQuoteToken: string | null; // Added & nullable
   market: {
-    question: string;
+    // Updated market structure
+    id: string;
+    marketId: number; // Changed from string to number
+    startTimestamp: number | null;
+    endTimestamp: number | null;
+    settled: boolean | null;
+    settlementPriceD18: string | null;
+    question: string | null;
     marketGroup: {
-      baseTokenName: string;
-      collateralSymbol: string;
-      question: string;
-      optionNames: string[];
+      // Updated marketGroup structure
+      id: string;
+      chainId: number;
+      address: string;
+      question: string | null;
+      optionNames: string[] | null;
+      collateralSymbol: string | null;
+      baseTokenName: string | null;
+      resource?: {
+        // Added optional resource
+        name: string;
+        slug: string;
+      } | null;
     };
   };
-  [key: string]: any;
+  transactions: PositionTransaction[]; // Added transactions array
 }

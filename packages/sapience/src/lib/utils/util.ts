@@ -5,6 +5,7 @@ import type {
   Market,
   MarketGroup,
   PredictionMarketType,
+  PositionTransaction,
 } from '../interfaces/interfaces';
 
 export const foilApi = {
@@ -261,3 +262,78 @@ export const getChainIdFromShortName = (shortName: string): number => {
       return 0; // Return 0 or handle error appropriately
   }
 };
+
+// --- Constants ---
+const WEI_PER_ETHER_UTIL = 1e18; // Renamed to avoid potential global scope issues if used elsewhere
+
+// --- Function: Calculate Effective Entry Price ---
+
+/**
+ * Calculates the weighted average entry price for a position based on its transaction history.
+ * Weights long positions by base token acquired and short positions by quote token acquired.
+ *
+ * @param transactions - Array of transactions associated with the position, ordered by timestamp ASC.
+ * @param isLong - Boolean indicating if the position is long.
+ * @param baseTokenName - The name of the base token (currently unused but kept for potential future logic).
+ * @returns The calculated effective entry price (not scaled by 1e18).
+ */
+export function calculateEffectiveEntryPrice(
+  transactions: PositionTransaction[],
+  isLong: boolean
+): number {
+  if (!transactions || transactions.length === 0) {
+    console.warn('No transactions provided for entry price calculation.');
+    return 0;
+  }
+
+  let weightedSum = 0;
+  let totalWeight = 0;
+  let entryPriceD18 = 0; // Price will be calculated scaled by 1e18 initially
+
+  transactions.forEach((tx) => {
+    if (tx.tradeRatioD18 === null || tx.tradeRatioD18 === undefined) {
+      return; // Skip non-trade transactions
+    }
+
+    const tradeRatio = Number(tx.tradeRatioD18);
+    if (isNaN(tradeRatio) || tradeRatio < 0) {
+      console.warn(
+        `Invalid tradeRatioD18 (${tx.tradeRatioD18}) in transaction ${tx.id}, skipping.`
+      );
+      return;
+    }
+
+    if (isLong) {
+      const baseDelta = tx.baseTokenDelta ? Number(tx.baseTokenDelta) : 0;
+      if (baseDelta > 0) {
+        weightedSum += tradeRatio * baseDelta;
+        totalWeight += baseDelta;
+      }
+    } else {
+      const quoteDelta = tx.quoteTokenDelta ? Number(tx.quoteTokenDelta) : 0;
+      if (quoteDelta > 0) {
+        weightedSum += tradeRatio * quoteDelta;
+        totalWeight += quoteDelta;
+      }
+    }
+  });
+
+  if (totalWeight > 0) {
+    entryPriceD18 = weightedSum / totalWeight;
+  } else {
+    return 0;
+  }
+
+  const finalEntryPrice = entryPriceD18 / WEI_PER_ETHER_UTIL;
+
+  if (isNaN(finalEntryPrice)) {
+    console.error('NaN result during entry price calculation.', {
+      weightedSum,
+      totalWeight,
+      isLong,
+    });
+    return 0;
+  }
+
+  return finalEntryPrice;
+}
