@@ -16,16 +16,21 @@ interface RawAttestation {
 }
 
 // Parameterized version of the query
-const PARAMETERIZED_QUERY = gql`
-  query FindAttestationByMarketAddressWithFilters(
+const GET_ATTESTATIONS_QUERY = gql`
+  query FindAttestations(
     $schemaId: String!
-    $marketAddress: String!
     $take: Int!
+    $marketAddress: String
+    $attesterAddress: String
   ) {
     attestations(
       where: {
         schemaId: { equals: $schemaId }
-        decodedDataJson: { contains: $marketAddress }
+        # Conditionally include filters based on provided parameters
+        AND: [
+          { decodedDataJson: { contains: $marketAddress } } # Filter by market if provided
+          { attester: { equals: $attesterAddress } } # Filter by attester if provided
+        ]
       }
       orderBy: { time: desc }
       take: $take
@@ -195,31 +200,53 @@ interface UsePredictionsProps {
   marketAddress?: string;
   schemaId?: string;
   optionNames?: string[];
+  attesterAddress?: string;
 }
 
 export const usePredictions = ({
   marketAddress,
   schemaId = SCHEMA_UID,
   optionNames,
+  attesterAddress,
 }: UsePredictionsProps) => {
   const {
     data: attestationsData,
     isLoading,
     error,
   } = useQuery<{ attestations: RawAttestation[] } | undefined>({
-    queryKey: ['attestations', marketAddress, schemaId],
+    queryKey: ['attestations', schemaId, marketAddress, attesterAddress],
     queryFn: async () => {
-      if (!marketAddress) {
-        return { attestations: [] };
+      // Normalize addresses if provided
+      let normalizedMarketAddress = marketAddress;
+      if (marketAddress) {
+        try {
+          normalizedMarketAddress = getAddress(marketAddress);
+        } catch (e) {
+          console.error('Failed to normalize market address:', e);
+          // Fallback to the original address
+        }
       }
 
-      // Normalize the market address to checksum format using viem
-      let normalizedAddress;
-      try {
-        normalizedAddress = getAddress(marketAddress);
-      } catch (e) {
-        console.error('Failed to normalize market address:', e);
-        normalizedAddress = marketAddress; // Fallback to the original address
+      let normalizedAttesterAddress = attesterAddress;
+      if (attesterAddress) {
+        try {
+          normalizedAttesterAddress = getAddress(attesterAddress);
+        } catch (e) {
+          console.error('Failed to normalize attester address:', e);
+          // Fallback to the original address
+        }
+      }
+
+      // Prepare variables, omitting undefined ones
+      const variables: Record<string, any> = {
+        schemaId,
+        take: 10, // Consider making 'take' a parameter if needed
+      };
+      if (normalizedMarketAddress) {
+        variables.marketAddress = normalizedMarketAddress;
+      }
+      if (normalizedAttesterAddress) {
+        variables.attesterAddress = normalizedAttesterAddress;
       }
 
       // Make the request to the EAS GraphQL API
@@ -229,12 +256,8 @@ export const usePredictions = ({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query: print(PARAMETERIZED_QUERY),
-          variables: {
-            schemaId,
-            marketAddress: normalizedAddress, // Use the normalized address
-            take: 10,
-          },
+          query: print(GET_ATTESTATIONS_QUERY),
+          variables,
         }),
       });
 
@@ -251,7 +274,7 @@ export const usePredictions = ({
       console.error('Unexpected response structure:', result);
       throw new Error('Failed to load predictions');
     },
-    enabled: Boolean(marketAddress),
+    enabled: Boolean(schemaId && (marketAddress || attesterAddress)),
     retry: 3,
     retryDelay: 1000,
   });
