@@ -185,10 +185,11 @@ const ForecastingDetailPage = () => {
               marketIds={activeMarkets.map((market) => Number(market.marketId))}
               market={marketData}
               minTimestamp={minTimestamp}
+              optionNames={marketData?.optionNames}
             />
 
             {/* Form (Right Column) */}
-            <div className="w-full md:w-[340px]">
+            <div className="w-full md:w-[340px] md:pb-8">
               <div className="bg-card p-6 rounded-lg shadow-sm border h-full">
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
                 <PredictionForm

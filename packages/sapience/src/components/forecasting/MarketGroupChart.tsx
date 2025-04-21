@@ -1,13 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
   XAxis,
   YAxis,
   Tooltip,
-  Legend,
   Line,
   CartesianGrid,
 } from 'recharts';
@@ -17,8 +15,11 @@ import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData
 import type { PredictionMarketType } from '~/lib/interfaces/interfaces'; // Updated import
 import { formatTimestamp, getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
 
+import ChartLegend from './ChartLegend';
+
 // Define a simple color palette for the lines
-const lineColors = ['#3B82F6', '#C084FC'];
+const lineColors = ['#3B82F6', '#F87171', '#4ADE80'];
+const indexLineColor = '#3B82F6';
 
 interface MarketGroupChartProps {
   chainShortName: string;
@@ -26,6 +27,7 @@ interface MarketGroupChartProps {
   marketIds: number[];
   market: PredictionMarketType | null | undefined;
   minTimestamp?: number;
+  optionNames?: string[] | null;
 }
 
 const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
@@ -34,6 +36,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   marketIds,
   market,
   minTimestamp,
+  optionNames,
 }) => {
   const { chartData, isLoading, isError, error } = useMarketGroupChartData({
     chainShortName,
@@ -41,7 +44,6 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     activeMarketIds: marketIds,
     quoteTokenName: market?.quoteTokenName,
   });
-  const [showIndexLine, setShowIndexLine] = useState(true);
 
   // Filter chartData based on minTimestamp if provided
   const filteredChartData = minTimestamp
@@ -85,115 +87,114 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   // Determine if index data exists to potentially show a second line
   const hasIndexData = chartData.some((d) => d.indexClose != null);
 
+  // Get the latest data point for the legend
+  const latestDataPoint =
+    filteredChartData.length > 0
+      ? filteredChartData[filteredChartData.length - 1]
+      : null;
+
   return (
-    // Removed relative positioning and ComingSoonScrim
-    <div className="w-full md:flex-1 h-[400px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={filteredChartData} // Use filtered data
-          margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-          <XAxis
-            dataKey="timestamp"
-            axisLine
-            tickLine={false}
-            tickFormatter={formatTimestamp}
-            fontSize={12}
-            dy={10} // Adjust vertical position of ticks
-            domain={minTimestamp ? [minTimestamp, 'auto'] : ['auto', 'auto']}
-          />
-          <YAxis
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={yAxisConfig.tickFormatter}
-            fontSize={12}
-            dx={-10} // Adjust horizontal position of ticks
-            domain={yAxisConfig.domain}
-            // Consider width adjustment if currency values get very large
-            // width={80} // Example: Adjust width if needed
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--background))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '0.5rem',
-            }}
-            labelFormatter={(label) => formatTimestamp(label as number)}
-            formatter={(value, name) => {
-              const marketIdMatch = (name as string)?.match(/^markets\.(\d+)$/);
-              let displayName: string;
-
-              if (marketIdMatch) {
-                displayName = 'Prediction Market';
-              } else if (name === 'Index') {
-                displayName = 'Index';
-                // Potentially format index differently if needed, for now uses same yAxisConfig
-              } else {
-                displayName = name as string;
-              }
-              // Use the determined value formatter from yAxisConfig
-              return [
-                yAxisConfig.tooltipValueFormatter(value as number),
-                displayName,
-              ];
-            }}
-          />
-          <Legend
-            verticalAlign="top"
-            height={36}
-            wrapperStyle={{ paddingBottom: '10px' }}
-          />
-
-          {/* Button to toggle index line */}
-          {hasIndexData && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '5px',
-                right: '60px',
-                zIndex: 10,
+    // Adjust main container for flex column layout and height
+    <div className="w-full md:flex-1 flex flex-col min-h-[420px]">
+      {/* Render the custom legend */}
+      <ChartLegend
+        latestDataPoint={latestDataPoint}
+        marketIds={marketIds}
+        hasIndexData={hasIndexData}
+        showIndexLine
+        lineColors={lineColors}
+        indexLineColor={indexLineColor}
+        yAxisConfig={yAxisConfig}
+        optionNames={optionNames}
+      />
+      <div className="flex-1 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={filteredChartData} // Use filtered data
+            margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+            <XAxis
+              dataKey="timestamp"
+              axisLine
+              tickLine={false}
+              tickFormatter={formatTimestamp}
+              fontSize={12}
+              dy={10} // Adjust vertical position of ticks
+              domain={minTimestamp ? [minTimestamp, 'auto'] : ['auto', 'auto']}
+              stroke="rgba(0, 0, 0, 0.5)"
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={yAxisConfig.tickFormatter}
+              fontSize={12}
+              dx={0}
+              domain={yAxisConfig.domain}
+              width={40}
+              stroke="rgba(0, 0, 0, 0.5)"
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '0.5rem',
               }}
-            >
-              <button
-                type="button"
-                className="px-2 py-1 text-xs border rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={() => setShowIndexLine(!showIndexLine)}
-              >
-                {showIndexLine ? 'Hide' : 'Show'} Index Price
-              </button>
-            </div>
-          )}
+              labelFormatter={(label) => formatTimestamp(label as number)}
+              formatter={(value, name) => {
+                const marketIdMatch = (name as string)?.match(
+                  /^markets\.(\d+)$/
+                );
+                let displayName: string;
 
-          {/* Dynamically render a Line for each marketId */}
-          {marketIds.map((marketId, index) => (
-            <Line
-              key={marketId} // Use marketId as key
-              type="monotone"
-              dataKey={`markets.${marketId}`} // Dynamic dataKey
-              name="Prediction Market" // Updated general name
-              stroke={lineColors[index % lineColors.length]} // Cycle through colors
-              strokeWidth={2}
-              dot={false}
-              connectNulls // Connect lines across null data points
+                if (marketIdMatch) {
+                  displayName = 'Prediction Market';
+                } else if (name === 'Index') {
+                  displayName = 'Index';
+                  // Potentially format index differently if needed, for now uses same yAxisConfig
+                } else {
+                  displayName = name as string;
+                }
+                // Use the determined value formatter from yAxisConfig
+                return [
+                  yAxisConfig.tooltipValueFormatter(value as number),
+                  displayName,
+                ];
+              }}
             />
-          ))}
 
-          {/* Render index line if data exists and toggle is on */}
-          {hasIndexData && showIndexLine && (
-            <Line
-              key="indexClose"
-              type="monotone"
-              dataKey="indexClose"
-              name="Index" // Updated name
-              stroke={lineColors[1]}
-              strokeWidth={2}
-              dot={false}
-              connectNulls
-            />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
+            {/* Dynamically render a Line for each marketId */}
+            {marketIds.map((marketId, index) => (
+              <Line
+                key={marketId} // Use marketId as key
+                type="monotone"
+                dataKey={`markets.${marketId}`} // Dynamic dataKey
+                name="Prediction Market" // Updated general name
+                stroke={lineColors[index % lineColors.length]} // Cycle through colors
+                strokeWidth={2}
+                dot={false}
+                connectNulls // Connect lines across null data points
+              />
+            ))}
+
+            {/* Render index line if data exists and toggle is on */}
+            {hasIndexData && (
+              <Line
+                key="indexClose"
+                type="monotone"
+                dataKey="indexClose"
+                name="Index"
+                stroke={indexLineColor}
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                strokeOpacity={0.5}
+                dot={false}
+                connectNulls
+              />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };
