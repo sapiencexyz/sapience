@@ -26,6 +26,7 @@ type MarketGroupType {
   claimStatement: String
   collateralAsset: String
   collateralDecimals: Int
+  collateralSymbol: String
   deployTimestamp: Int
   deployTxnBlockNumber: Int
   id: ID!

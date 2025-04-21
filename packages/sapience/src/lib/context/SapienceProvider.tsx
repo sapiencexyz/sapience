@@ -139,11 +139,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
           query: print(MARKET_GROUPS_QUERY),
         });
 
-        if (!response.data?.data?.marketGroups) {
-          throw new Error('No market groups found in the response');
-        }
-
-        const { marketGroups } = response.data.data;
+        const { marketGroups } = response.data;
         const currentTimestamp = Math.floor(Date.now() / 1000);
 
         return marketGroups.map((marketGroup: any) => {

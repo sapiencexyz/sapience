@@ -11,10 +11,8 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LineChart, Line, XAxis, ResponsiveContainer } from 'recharts';
-
+import MarketGroupChart from '../../../components/forecasting/MarketGroupChart';
 import PredictionForm from '../../../components/forecasting/PredictionForm';
-import ComingSoonScrim from '../../../components/shared/ComingSoonScrim';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import PredictionsList from '~/components/forecasting/PredictionsList';
 import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
@@ -96,6 +94,7 @@ const ForecastingDetailPage = () => {
     isSuccess,
     displayQuestion,
     currentMarketId,
+    activeMarkets,
   } = useMarketGroup({ chainShortName, marketAddress });
 
   // Keep useEffect for checking market count (if needed for UI logic)
@@ -170,19 +169,6 @@ const ForecastingDetailPage = () => {
     alert(`Submitting: ${JSON.stringify(formData)}`);
   };
 
-  // Mock data for the chart
-  const chartData = [
-    { date: 'Jan', value: 30 },
-    { date: 'Feb', value: 40 },
-    { date: 'Mar', value: 45 },
-    { date: 'Apr', value: 60 },
-    { date: 'May', value: 55 },
-    { date: 'Jun', value: 75 },
-    { date: 'Jul', value: 70 },
-    { date: 'Aug', value: 80 },
-  ];
-
-  // MOVED LOADING CHECK HERE - after all hooks
   if (isLoadingMarket || isPermitLoadingPermit) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
@@ -207,21 +193,11 @@ const ForecastingDetailPage = () => {
           {/* Row 1: Chart + Form */}
           <div className="flex flex-col md:flex-row gap-12">
             {/* Chart (Left Column) */}
-            <div className="w-full md:flex-1 relative">
-              <ComingSoonScrim className="absolute rounded-lg" />
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart data={chartData}>
-                  <XAxis dataKey="date" axisLine tickLine={false} />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#2563eb"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <MarketGroupChart
+              chainShortName={chainShortName}
+              marketAddress={marketAddress}
+              marketIds={activeMarkets.map((market) => Number(market.marketId))}
+            />
 
             {/* Form (Right Column) */}
             <div className="w-full md:w-[340px]">
