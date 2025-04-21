@@ -20,7 +20,7 @@ const getMissingBlocks = async (
 ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
   // Find the market
   const market = await marketRepository.findOne({
-    where: { chainId: Number(chainId), address },
+    where: { chainId: Number(chainId), address: address.toLowerCase() },
     relations: ['resource'],
   });
   if (!market) {

@@ -208,7 +208,7 @@ export class CandleResolver {
   ): Promise<CandleType | null> {
     try {
       const marketGroup = await dataSource.getRepository(MarketGroup).findOne({
-        where: { chainId, address },
+        where: { chainId, address: address.toLowerCase() },
       });
 
       if (!marketGroup) {
@@ -310,7 +310,7 @@ export class CandleResolver {
   ): Promise<CandleType[]> {
     try {
       const marketGroup = await dataSource.getRepository(MarketGroup).findOne({
-        where: { chainId, address },
+        where: { chainId, address: address.toLowerCase() },
       });
 
       if (!marketGroup) {
