@@ -79,10 +79,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
           ),
           value: temperatureValue,
           used: '1',
-          feePaid: (
-            Number(weatherData.temperature.latest.temperature.toFixed(2)) *
-            10 ** 9
-          ).toString(),
+          feePaid: temperatureValue,
           blockNumber: 0,
         };
         console.log(
