@@ -1,19 +1,19 @@
 import 'tsconfig-paths/register';
 import {
-  epochRepository,
-  marketPriceRepository,
   marketRepository,
+  marketPriceRepository,
+  marketGroupRepository,
   positionRepository,
   collateralTransferRepository,
 } from '../db';
 import { Event } from '../models/Event';
 import { MarketParams } from '../models/MarketParams';
+import { MarketGroup } from '../models/MarketGroup';
 import { Market } from '../models/Market';
-import { Epoch } from '../models/Epoch';
 import { Position } from '../models/Position';
 import { Transaction, TransactionType } from '../models/Transaction';
 import { CollateralTransfer } from '../models/CollateralTransfer';
-import { PublicClient } from 'viem';
+import { PublicClient, erc20Abi } from 'viem';
 import {
   Deployment,
   EpochCreatedEventLog,
@@ -37,10 +37,10 @@ export const handleTransferEvent = async (event: Event) => {
   const existingPosition = await positionRepository.findOne({
     where: {
       positionId: Number(tokenId),
-      epoch: {
-        market: {
-          address: event.market.address.toLowerCase(),
-          chainId: event.market.chainId,
+      market: {
+        marketGroup: {
+          address: event.marketGroup.address.toLowerCase(),
+          chainId: event.marketGroup.chainId,
         },
       },
     },
@@ -98,10 +98,12 @@ export const createOrModifyPositionFromTransaction = async (
       return;
     }
 
-    const epoch = await epochRepository.findOne({
+    const epoch = await marketRepository.findOne({
       where: {
-        epochId: Number(epochId),
-        market: { address: transaction.event.market.address.toLowerCase() },
+        marketId: Number(epochId),
+        marketGroup: {
+          address: transaction.event.marketGroup.address.toLowerCase(),
+        },
       },
     });
     if (!epoch) {
@@ -109,7 +111,7 @@ export const createOrModifyPositionFromTransaction = async (
         'Epoch not found: ',
         epochId,
         'market:',
-        transaction.event.market.address
+        transaction.event.marketGroup.address
       );
       return;
     }
@@ -125,16 +127,18 @@ export const createOrModifyPositionFromTransaction = async (
 
     const existingPosition = await positionRepository.findOne({
       where: {
-        epoch: {
-          epochId: Number(epochId),
-          market: { address: transaction.event.market.address.toLowerCase() },
+        market: {
+          marketId: Number(epochId),
+          marketGroup: {
+            address: transaction.event.marketGroup.address.toLowerCase(),
+          },
         },
         positionId: positionId,
       },
       relations: [
         'transactions',
-        'epoch',
-        'epoch.market',
+        'market',
+        'market.marketGroup',
         'transactions.event',
         'transactions.marketPrice',
         'transactions.collateralTransfer',
@@ -152,7 +156,7 @@ export const createOrModifyPositionFromTransaction = async (
 
     // Set all required fields explicitly
     position.positionId = positionId;
-    position.epoch = epoch;
+    position.market = epoch;
     position.owner = (
       (eventArgs.sender as string) ||
       position.owner ||
@@ -334,7 +338,7 @@ export const createOrUpdateMarketFromContract = async (
   client: PublicClient,
   contractDeployment: Deployment,
   chainId: number,
-  initialMarket?: Market
+  initialMarket?: MarketGroup
 ) => {
   const address = contractDeployment.address.toLowerCase();
   // get market and epoch from contract
@@ -348,11 +352,11 @@ export const createOrUpdateMarketFromContract = async (
   let updatedMarket = initialMarket;
   if (!updatedMarket) {
     // check if market already exists in db
-    const existingMarket = await marketRepository.findOne({
+    const existingMarket = await marketGroupRepository.findOne({
       where: { address: address.toLowerCase(), chainId },
-      relations: ['epochs'],
+      relations: ['markets'],
     });
-    updatedMarket = existingMarket || new Market();
+    updatedMarket = existingMarket || new MarketGroup();
   }
 
   // update market params appropriately
@@ -370,23 +374,19 @@ export const createOrUpdateMarketFromContract = async (
     try {
       const decimals = await client.readContract({
         address: updatedMarket.collateralAsset as `0x${string}`,
-        abi: [
-          {
-            constant: true,
-            inputs: [],
-            name: 'decimals',
-            outputs: [{ name: '', type: 'uint8' }],
-            payable: false,
-            stateMutability: 'view',
-            type: 'function',
-          },
-        ],
+        abi: erc20Abi,
         functionName: 'decimals',
       });
       updatedMarket.collateralDecimals = Number(decimals);
+      const symbol = await client.readContract({
+        address: updatedMarket.collateralAsset as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'symbol',
+      });
+      updatedMarket.collateralSymbol = symbol as string;
     } catch (error) {
       console.error(
-        `Failed to fetch decimals for token ${updatedMarket.collateralAsset}:`,
+        `Failed to fetch decimals or symbol for token ${updatedMarket.collateralAsset}:`,
         error
       );
     }
@@ -398,12 +398,12 @@ export const createOrUpdateMarketFromContract = async (
     bondAmount: marketParamsRaw.bondAmount?.toString() ?? '0',
   };
   updatedMarket.marketParams = marketParams;
-  await marketRepository.save(updatedMarket);
+  await marketGroupRepository.save(updatedMarket);
   return updatedMarket;
 };
 
 export const createOrUpdateEpochFromContract = async (
-  market: Market,
+  market: MarketGroup,
   epochId?: number
 ) => {
   const functionName = epochId ? 'getEpoch' : 'getLatestEpoch';
@@ -422,15 +422,15 @@ export const createOrUpdateEpochFromContract = async (
   const _epochId = epochId || Number(epochData.epochId);
 
   // check if epoch already exists in db
-  const existingEpoch = await epochRepository.findOne({
+  const existingEpoch = await marketRepository.findOne({
     where: {
-      market: { address: market.address.toLowerCase() },
-      epochId: _epochId,
-    } satisfies FindOptionsWhere<Epoch>,
+      marketGroup: { address: market.address.toLowerCase() },
+      marketId: _epochId,
+    } satisfies FindOptionsWhere<Market>,
   });
-  const updatedEpoch = existingEpoch || new Epoch();
+  const updatedEpoch = existingEpoch || new Market();
 
-  updatedEpoch.epochId = _epochId;
+  updatedEpoch.marketId = _epochId;
   updatedEpoch.startTimestamp = Number(epochData.startTime.toString());
   updatedEpoch.endTimestamp = Number(epochData.endTime.toString());
   updatedEpoch.settled = epochData.settled;
@@ -445,9 +445,9 @@ export const createOrUpdateEpochFromContract = async (
     assertionLiveness: marketParamsRaw.assertionLiveness?.toString() ?? '0',
     bondAmount: marketParamsRaw.bondAmount?.toString() ?? '0',
   };
-  updatedEpoch.market = market;
+  updatedEpoch.marketGroup = market;
   updatedEpoch.marketParams = marketParams;
-  await epochRepository.save(updatedEpoch);
+  await marketRepository.save(updatedEpoch);
 };
 
 /**
@@ -463,9 +463,9 @@ export const createOrUpdateMarketFromEvent = async (
   eventArgs: MarketCreatedUpdatedEventLog,
   chainId: number,
   address: string,
-  originalMarket?: Market | null
+  originalMarket?: MarketGroup | null
 ) => {
-  const market = originalMarket || new Market();
+  const market = originalMarket || new MarketGroup();
   market.chainId = chainId;
   market.address = address.toLowerCase();
   if (eventArgs.collateralAsset) {
@@ -480,7 +480,7 @@ export const createOrUpdateMarketFromEvent = async (
     assertionLiveness: eventArgs?.marketParams?.assertionLiveness.toString(),
     bondAmount: eventArgs?.marketParams?.bondAmount.toString(),
   };
-  const newMarket = await marketRepository.save(market);
+  const newMarket = await marketGroupRepository.save(market);
   return newMarket;
 };
 
@@ -710,11 +710,11 @@ export const updateTransactionFromPositionSettledEvent = async (
   const epochId = event.logData.args.epochId;
   newTransaction.type = TransactionType.SETTLE_POSITION;
 
-  const epoch = await epochRepository.findOne({
+  const epoch = await marketRepository.findOne({
     where: {
-      epochId: Number(epochId),
-      market: { address: event.market.address.toLowerCase() },
-    } satisfies FindOptionsWhere<Epoch>,
+      marketId: Number(epochId),
+      marketGroup: { address: event.marketGroup.address.toLowerCase() },
+    } satisfies FindOptionsWhere<Market>,
   });
 
   if (!epoch) {
@@ -760,38 +760,38 @@ export const updateTransactionFromPositionSettledEvent = async (
  */
 export const createEpochFromEvent = async (
   eventArgs: EpochCreatedEventLog,
-  market: Market
+  market: MarketGroup
 ) => {
   // first check if there's an existing epoch in the database before creating a new one
-  const existingEpoch = await epochRepository.findOne({
+  const existingEpoch = await marketRepository.findOne({
     where: {
-      epochId: Number(eventArgs.epochId),
-      market: {
+      marketId: Number(eventArgs.epochId),
+      marketGroup: {
         address: market.address.toLowerCase(),
         chainId: market.chainId,
       },
     },
   });
 
-  const newEpoch = existingEpoch || new Epoch();
-  newEpoch.epochId = Number(eventArgs.epochId);
-  newEpoch.market = market;
+  const newEpoch = existingEpoch || new Market();
+  newEpoch.marketId = Number(eventArgs.epochId);
+  newEpoch.marketGroup = market;
   newEpoch.startTimestamp = Number(eventArgs.startTime);
   newEpoch.endTimestamp = Number(eventArgs.endTime);
   newEpoch.startingSqrtPriceX96 = eventArgs.startingSqrtPriceX96;
   newEpoch.marketParams = market.marketParams;
 
-  const epoch = await epochRepository.save(newEpoch);
+  const epoch = await marketRepository.save(newEpoch);
   return epoch;
 };
 
 export const getMarketStartEndBlock = async (
-  market: Market,
+  market: MarketGroup,
   epochId: string,
   overrideClient?: PublicClient
 ) => {
-  const epoch = await epochRepository.findOne({
-    where: { market: { id: market.id }, epochId: Number(epochId) },
+  const epoch = await marketRepository.findOne({
+    where: { marketGroup: { id: market.id }, marketId: Number(epochId) },
   });
 
   if (!epoch) {

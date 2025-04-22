@@ -1,209 +1,87 @@
 'use client';
 
-import { gql } from '@apollo/client';
-import {
-  Chart,
-  ChartSelector,
-  IntervalSelector,
-  WindowSelector,
-} from '@foil/ui/components/charts';
-import type { TimeWindow } from '@foil/ui/types/charts';
-import { ChartType, TimeInterval } from '@foil/ui/types/charts';
-import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
+import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
+import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
 import { ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { ResponsiveContainer } from 'recharts';
+import { useState } from 'react';
 
-import ComingSoonScrim from '~/components/ComingSoonScrim';
-import SimpleLiquidityWrapper from '~/components/SimpleLiquidityWrapper';
-import SimpleTradeWrapper from '~/components/SimpleTradeWrapper';
-import { foilApi } from '~/lib/utils/util';
+import PriceChart from '~/components/charts/PriceChart';
+import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
+import { useMarket } from '~/hooks/graphql/useMarket';
 
 // Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/LottieLoader'), {
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
   // Use a simple div as placeholder during load
   loading: () => <div className="w-8 h-8" />,
 });
 
-// Updated query to match schema structure
-const EPOCH_QUERY = gql`
-  query GetEpochData($chainId: Int!, $address: String!) {
-    market(chainId: $chainId, address: $address) {
-      id
-      address
-      chainId
-      question
-      baseTokenName
-      quoteTokenName
-      optionNames
-      epochs {
-        id
-        epochId
-        question
-        startTimestamp
-        endTimestamp
-        settled
-      }
-    }
+const SimpleTradeWrapper = dynamic(
+  () => import('~/components/forecasting/SimpleTradeWrapper'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 animate-pulse bg-muted/40 rounded-md" />
+    ),
   }
-`;
+);
+
+const SimpleLiquidityWrapper = dynamic(
+  () => import('~/components/forecasting/SimpleLiquidityWrapper'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-64 animate-pulse bg-muted/40 rounded-md" />
+    ),
+  }
+);
 
 const ForecastingDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const marketId = params.marketId as string;
   const chainShortName = params.chainShortName as string;
-  const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
-  const [marketQuestionDisplay, setMarketQuestionDisplay] = useState<
-    string | null
-  >(null);
 
-  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(null);
+  const {
+    marketData,
+    isLoadingMarket,
+    displayQuestion,
+    marketQuestionDisplay,
+    chainId,
+    marketAddress,
+    numericMarketId,
+  } = useMarket({ chainShortName, marketId });
+
+  // Extract resource slug
+  const resourceSlug = marketData?.marketGroup?.resource?.slug;
+
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
-    TimeInterval.I15M
+    TimeInterval.I4H
   );
-  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+  const [chartType] = useState<ChartType>(ChartType.PRICE);
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
-
-  // Get chainId from chain short name
-  const getChainIdFromShortName = (shortName: string): number => {
-    switch (shortName.toLowerCase()) {
-      case 'base':
-        return 8453;
-      case 'arbitrum':
-        return 42161;
-      case 'ethereum':
-      case 'mainnet':
-        return 1;
-      default:
-        return 0;
-    }
-  };
-
-  // Parse chain and market address from URL
-  const decodedParam = decodeURIComponent(chainShortName);
-  let marketAddress = '';
-  let chainId = 0;
-
-  if (decodedParam.includes(':')) {
-    const [parsedChain, parsedAddress] = decodedParam.split(':');
-    chainId = getChainIdFromShortName(parsedChain);
-    marketAddress = parsedAddress;
-  } else {
-    marketAddress = decodedParam;
-    chainId = getChainIdFromShortName('base'); // Default to base if not specified
-  }
-
-  // Fetch market data including all epochs
-  const { data: marketData, isLoading: isLoadingMarket } = useQuery({
-    queryKey: ['market', chainId, marketAddress],
-    queryFn: async () => {
-      if (!chainId || !marketAddress) {
-        console.log('Missing required parameters for market query:', {
-          chainId,
-          marketAddress,
-        });
-        return { placeholder: true };
-      }
-
-      try {
-        console.log('Fetching market with:', {
-          chainId,
-          address: marketAddress,
-        });
-
-        const response = await foilApi.post('/graphql', {
-          query: print(EPOCH_QUERY),
-          variables: {
-            chainId,
-            address: marketAddress,
-          },
-        });
-
-        console.log(
-          'GraphQL response:',
-          JSON.stringify(response.data, null, 2)
-        );
-
-        const marketResponse = response.data?.market;
-        if (!marketResponse) {
-          console.error('No market data in response:', response.data);
-          return { placeholder: true };
-        }
-
-        return marketResponse;
-      } catch (error) {
-        console.error('Error fetching market:', error);
-        return { placeholder: true };
-      }
-    },
-    enabled: !!chainId && !!marketAddress,
-    retry: 3,
-    retryDelay: 1000,
+  const [selectedPrices, setSelectedPrices] = useState<
+    Record<LineType, boolean>
+  >({
+    [LineType.MarketPrice]: true,
+    [LineType.IndexPrice]: true,
+    [LineType.ResourcePrice]: false,
+    [LineType.TrailingAvgPrice]: false,
   });
 
-  // Process and format the question
-  useEffect(() => {
-    if (isLoadingMarket) {
-      setDisplayQuestion('Loading question...');
-      setMarketQuestionDisplay(null);
-      return;
-    }
+  // Handler for updating selected prices
+  const handlePriceSelection = (line: LineType, selected: boolean) => {
+    setSelectedPrices((prev) => {
+      return {
+        ...prev,
+        [line]: selected,
+      };
+    });
+  };
 
-    // Handle the placeholder value case
-    if (marketData?.placeholder) {
-      setDisplayQuestion('This market question is not available');
-      setMarketQuestionDisplay(null);
-      return;
-    }
-
-    console.log(
-      'Market data received in useEffect:',
-      JSON.stringify(marketData, null, 2)
-    );
-
-    // Set Market Question first if available
-    if (marketData?.question) {
-      setMarketQuestionDisplay(marketData.question);
-    } else {
-      setMarketQuestionDisplay(null);
-    }
-
-    // Look for the specific epoch based on marketId
-    if (marketData?.epochs && marketData.epochs.length > 0 && marketId) {
-      const targetEpoch = marketData.epochs.find(
-        (epoch: { epochId: number | string }) =>
-          epoch.epochId.toString() === marketId.toString()
-      );
-
-      if (targetEpoch?.question) {
-        console.log('Found specific epoch question:', targetEpoch.question);
-        formatAndSetQuestion(targetEpoch.question);
-        return;
-      }
-    }
-
-    // Fallback to market question for the main display IF no specific epoch question was found
-    if (marketData?.question) {
-      console.log(
-        'Using market question as main display (no specific epoch found):',
-        marketData.question
-      );
-      formatAndSetQuestion(marketData.question);
-      return;
-    }
-
-    // If we get here with actual data but no question (neither market nor epoch), show a default
-    console.log('No question found in market data:', marketData);
-    setDisplayQuestion('Market question not available');
-    setMarketQuestionDisplay(null);
-  }, [marketData, marketId, isLoadingMarket]);
-
-  // Show loader while market data is loading
+  // Loader now only depends on market data loading
   if (isLoadingMarket) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
@@ -212,24 +90,14 @@ const ForecastingDetailPage = () => {
     );
   }
 
-  // Helper function to format and set the question
-  const formatAndSetQuestion = (rawQuestion: string) => {
-    // Format the question - ensure it has proper capitalization and ends with a question mark
-    let formattedQuestion = rawQuestion.trim();
-
-    // Capitalize first letter if it's not already capitalized
-    if (formattedQuestion.length > 0 && !/^[A-Z]/.test(formattedQuestion)) {
-      formattedQuestion =
-        formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
-    }
-
-    // Add question mark if missing
-    if (!formattedQuestion.endsWith('?')) {
-      formattedQuestion += '?';
-    }
-
-    setDisplayQuestion(formattedQuestion);
-  };
+  // Handle case where market data failed to load or is missing essentials
+  if (!marketData || !chainId || !marketAddress || !numericMarketId) {
+    return (
+      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+        <p className="text-destructive">Failed to load market data.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-32">
@@ -250,42 +118,38 @@ const ForecastingDetailPage = () => {
           )}
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex flex-col w-full relative">
-              <ComingSoonScrim className="absolute rounded-lg" />
-              <ResponsiveContainer width="100%" height="100%">
-                <Chart
-                  resourceSlug="prediction"
+              <div className="w-full h-full">
+                <PriceChart
                   market={{
-                    epochId: Number(marketId),
-                    chainId: Number(chainId),
-                    address: marketAddress as string,
+                    marketId: numericMarketId,
+                    chainId,
+                    address: marketAddress,
+                    quoteTokenName: marketData?.marketGroup?.quoteTokenName,
                   }}
-                  selectedWindow={selectedWindow}
                   selectedInterval={selectedInterval}
+                  selectedPrices={selectedPrices}
+                  resourceSlug={resourceSlug}
                 />
-              </ResponsiveContainer>
+              </div>
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
-                <div className="flex flex-row flex-wrap gap-3 w-full">
-                  <div className="order-2 sm:order-none">
-                    <ChartSelector
-                      chartType={chartType}
-                      setChartType={setChartType}
-                    />
-                  </div>
-                  {chartType !== ChartType.LIQUIDITY && (
-                    <div className="order-2 sm:order-none">
-                      <WindowSelector
-                        selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow}
-                      />
-                    </div>
-                  )}
+                <div className="flex flex-row flex-wrap gap-3 w-full items-center">
                   {chartType === ChartType.PRICE && (
-                    <div className="order-2 sm:order-none">
-                      <IntervalSelector
-                        selectedInterval={selectedInterval}
-                        setSelectedInterval={setSelectedInterval}
-                      />
-                    </div>
+                    <>
+                      <div className="order-2 sm:order-1">
+                        <IntervalSelector
+                          selectedInterval={selectedInterval}
+                          setSelectedInterval={setSelectedInterval}
+                        />
+                      </div>
+                      {marketData?.marketGroup?.resource?.slug && (
+                        <div className="order-1 sm:order-2 sm:ml-auto">
+                          <PriceSelector
+                            selectedPrices={selectedPrices}
+                            setSelectedPrices={handlePriceSelection}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -326,8 +190,12 @@ const ForecastingDetailPage = () => {
                     {activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper
                         collateralAssetTicker="sUSDS"
-                        baseTokenName={marketData?.baseTokenName || 'Yes'}
-                        quoteTokenName={marketData?.quoteTokenName || 'No'}
+                        baseTokenName={
+                          marketData?.marketGroup?.baseTokenName || 'Yes'
+                        }
+                        quoteTokenName={
+                          marketData?.marketGroup?.quoteTokenName || 'No'
+                        }
                       />
                     )}
                   </div>

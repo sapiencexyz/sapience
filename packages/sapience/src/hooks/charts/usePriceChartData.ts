@@ -1,0 +1,432 @@
+import { gql } from '@apollo/client'; // Keep for gql tag
+import { useQuery } from '@tanstack/react-query';
+import { print } from 'graphql';
+
+import type { CandleType } from '../../lib/interfaces/interfaces'; // Adjust path as needed
+import { foilApi } from '../../lib/utils/util'; // Adjust path as needed
+import { useSapience } from '~/lib/context/SapienceProvider'; // Adjust path as needed
+
+// GraphQL Queries
+const GET_MARKET_CANDLES = gql`
+  query MarketCandles(
+    $address: String!
+    $chainId: Int!
+    $marketId: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    marketCandles(
+      address: $address
+      chainId: $chainId
+      marketId: $marketId
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
+      timestamp
+      open
+      high
+      low
+      close
+    }
+  }
+`;
+
+const GET_INDEX_CANDLES = gql`
+  query IndexCandles(
+    $address: String!
+    $chainId: Int!
+    $marketId: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    indexCandles(
+      address: $address
+      chainId: $chainId
+      marketId: $marketId
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
+      timestamp
+      close # Only need close for the index line
+    }
+  }
+`;
+
+// Add Resource Candles Query
+const GET_RESOURCE_CANDLES = gql`
+  query ResourceCandles(
+    $slug: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
+      timestamp
+      close # Assuming we only need close for the line
+    }
+  }
+`;
+
+// TODO: Make this dynamic?
+const TRAILING_AVG_TIME_SECONDS = 604800; // 7 day trailing average
+const GET_RESOURCE_TRAILING_AVG_CANDLES = gql`
+  query ResourceTrailingAverageCandles(
+    $slug: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+    $trailingAvgTime: Int!
+  ) {
+    resourceTrailingAverageCandles(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+      trailingAvgTime: $trailingAvgTime
+    ) {
+      timestamp
+      close # Assuming we only need close for the line
+    }
+  }
+`;
+
+// Interfaces for API responses
+interface MarketCandlesResponse {
+  marketCandles: CandleType[] | null;
+}
+
+interface IndexCandlesResponse {
+  indexCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+}
+
+// Add Resource Candles Response Interface
+interface ResourceCandlesResponse {
+  resourceCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+}
+
+// Add Trailing Average Candles Response Interface
+interface TrailingAvgCandlesResponse {
+  resourceTrailingAverageCandles:
+    | Pick<CandleType, 'timestamp' | 'close'>[]
+    | null;
+}
+
+// Type for individual data points in the returned chartData array
+export interface PriceChartDataPoint {
+  timestamp: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  indexPrice?: number; // Scaled index price
+  resourcePrice?: number; // Add resource price (scaled if needed)
+  trailingAvgPrice?: number; // Add trailing average price (scaled if needed)
+}
+
+// Hook Props Interface
+interface UsePriceChartDataProps {
+  marketAddress: string;
+  chainId: number;
+  marketId: string;
+  resourceSlug?: string; // Add optional resource slug
+  interval: number; // Time interval in seconds
+  quoteTokenName?: string; // Needed for correct index price scaling
+  fromTimestamp?: number; // Optional start time (Unix seconds)
+  toTimestamp?: number; // Optional end time (Unix seconds)
+}
+
+// Hook Return Interface
+interface UsePriceChartDataReturn {
+  chartData: PriceChartDataPoint[];
+  isLoading: boolean;
+  isError: boolean;
+  error: Error | null;
+}
+
+// Helper to safely parse string numbers, returning null if invalid
+const safeParseFloat = (value: string | null | undefined): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const num = parseFloat(value);
+  return isNaN(num) ? null : num;
+};
+
+// Helper function to merge price data into the map
+const mergePriceData = (
+  map: Map<number, PriceChartDataPoint>,
+  candles: Pick<CandleType, 'timestamp' | 'close'>[],
+  priceFieldName: keyof PriceChartDataPoint,
+  multiplier: number
+) => {
+  candles.forEach((candle) => {
+    const closeNum = safeParseFloat(candle.close);
+    if (closeNum !== null) {
+      const scaledPrice = closeNum * multiplier;
+      map.set(candle.timestamp, {
+        timestamp: candle.timestamp, // Ensure timestamp is always present
+        ...map.get(candle.timestamp), // Spread existing data first
+        [priceFieldName]: scaledPrice, // Add/overwrite the specific price
+      });
+    }
+  });
+};
+
+// Helper function to parse GraphQL candle responses
+const parseCandleResponse = <T extends object, K extends keyof T>(
+  response: any,
+  dataKey: K,
+  entityName: string
+): T[K] | null => {
+  if (!response || typeof response !== 'object' || !response.data) {
+    console.warn(`Invalid or missing response data for ${entityName} candles.`);
+    return null;
+  }
+  const data = response.data as T | { errors?: any[] };
+
+  // Type guard for error checking
+  if (data && typeof data === 'object' && 'errors' in data && data.errors) {
+    console.error(`GraphQL error fetching ${entityName} candles:`, data.errors);
+    throw new Error(
+      (data.errors[0] as any)?.message || `Error fetching ${entityName} candles`
+    );
+  }
+
+  // Type guard for data key check
+  if (data && typeof data === 'object' && dataKey in data) {
+    return (data as T)[dataKey] ?? null; // Return null if data[dataKey] is null/undefined
+  }
+  console.warn(`Unexpected ${entityName} candle response structure:`, data);
+  return null;
+};
+
+// Helper function to parse multiple candle responses
+const parseCandleResponses = (
+  marketResponse: any,
+  indexResponse: any,
+  resourceResponse: any,
+  trailingAvgResponse: any,
+  resourceSlug: string | undefined
+) => {
+  let marketCandles: CandleType[];
+  let indexCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[];
+
+  // Parse required responses, re-throwing errors for useQuery
+  try {
+    marketCandles =
+      parseCandleResponse<MarketCandlesResponse, 'marketCandles'>(
+        marketResponse,
+        'marketCandles',
+        'market'
+      ) ?? [];
+    indexCandlesRaw =
+      parseCandleResponse<IndexCandlesResponse, 'indexCandles'>(
+        indexResponse,
+        'indexCandles',
+        'index'
+      ) ?? [];
+  } catch (error) {
+    console.error('Error parsing required candle data:', error);
+    throw error;
+  }
+
+  // Parse optional responses (parseCandleResponse handles internal errors/warnings)
+  const resourceCandlesRaw =
+    resourceSlug && resourceResponse
+      ? (parseCandleResponse<ResourceCandlesResponse, 'resourceCandles'>(
+          resourceResponse,
+          'resourceCandles',
+          'resource'
+        ) ?? [])
+      : [];
+
+  const trailingAvgCandlesRaw =
+    resourceSlug && trailingAvgResponse
+      ? (parseCandleResponse<
+          TrailingAvgCandlesResponse,
+          'resourceTrailingAverageCandles'
+        >(
+          trailingAvgResponse,
+          'resourceTrailingAverageCandles',
+          'trailing average'
+        ) ?? [])
+      : [];
+
+  return {
+    marketCandles,
+    indexCandlesRaw,
+    resourceCandlesRaw,
+    trailingAvgCandlesRaw,
+  };
+};
+
+export const usePriceChartData = ({
+  marketAddress,
+  chainId,
+  marketId,
+  resourceSlug, // Destructure resourceSlug
+  interval,
+  quoteTokenName,
+  fromTimestamp: propFromTimestamp,
+  toTimestamp: propToTimestamp,
+}: UsePriceChartDataProps): UsePriceChartDataReturn => {
+  const { stEthPerToken } = useSapience(); // Still needed for index scaling
+
+  const fetchData = async (): Promise<PriceChartDataPoint[]> => {
+    // Determine time range
+    const now = Math.floor(Date.now() / 1000);
+    const defaultLookbackSeconds = 30 * 24 * 60 * 60; // 30 days default
+    const from = propFromTimestamp ?? now - defaultLookbackSeconds;
+    const to = propToTimestamp ?? now;
+
+    // Base queries
+    const marketQuery = foilApi.post('/graphql', {
+      query: print(GET_MARKET_CANDLES),
+      variables: {
+        address: marketAddress,
+        chainId,
+        marketId,
+        from,
+        to,
+        interval,
+      },
+    });
+    const indexQuery = foilApi.post('/graphql', {
+      query: print(GET_INDEX_CANDLES),
+      variables: {
+        address: marketAddress,
+        chainId,
+        marketId,
+        from,
+        to,
+        interval,
+      },
+    });
+
+    // Conditional queries for resource data
+    const resourceQuery = resourceSlug
+      ? foilApi.post('/graphql', {
+          query: print(GET_RESOURCE_CANDLES),
+          variables: { slug: resourceSlug, from, to, interval },
+        })
+      : Promise.resolve(null); // Resolve null if no slug
+
+    const trailingAvgQuery = resourceSlug
+      ? foilApi.post('/graphql', {
+          query: print(GET_RESOURCE_TRAILING_AVG_CANDLES),
+          variables: {
+            slug: resourceSlug,
+            from,
+            to,
+            interval,
+            trailingAvgTime: TRAILING_AVG_TIME_SECONDS,
+          },
+        })
+      : Promise.resolve(null); // Resolve null if no slug
+
+    // Fetch all data concurrently
+    const [
+      marketResponse,
+      indexResponse,
+      resourceResponse,
+      trailingAvgResponse,
+    ] = await Promise.all([
+      marketQuery,
+      indexQuery,
+      resourceQuery,
+      trailingAvgQuery,
+    ]);
+
+    // Parse responses using the new helper function
+    const {
+      marketCandles,
+      indexCandlesRaw,
+      resourceCandlesRaw,
+      trailingAvgCandlesRaw,
+    } = parseCandleResponses(
+      marketResponse,
+      indexResponse,
+      resourceResponse,
+      trailingAvgResponse,
+      resourceSlug
+    );
+
+    // --- Data Processing ---
+
+    // 1. Determine Index Multiplier (assuming resource/avg prices don't need scaling for now)
+    // TODO: Confirm if resource/trailing avg prices need scaling
+    let indexMultiplier: number;
+    if (quoteTokenName?.toLowerCase() === 'wsteth') {
+      indexMultiplier =
+        stEthPerToken && stEthPerToken > 0 ? 1e18 / stEthPerToken : 1e18;
+    } else {
+      indexMultiplier = 1e9; // Scale gwei to wei (Assuming default)
+    }
+
+    // 2. Combine data using a Map
+    const combinedDataMap = new Map<number, PriceChartDataPoint>();
+
+    // Process market candles
+    marketCandles.forEach((candle) => {
+      const dataPoint: PriceChartDataPoint = {
+        timestamp: candle.timestamp,
+        open: safeParseFloat(candle.open) ?? undefined,
+        high: safeParseFloat(candle.high) ?? undefined,
+        low: safeParseFloat(candle.low) ?? undefined,
+        close: safeParseFloat(candle.close) ?? undefined,
+      };
+      combinedDataMap.set(candle.timestamp, dataPoint);
+    });
+
+    // Process and merge index candles
+    mergePriceData(
+      combinedDataMap,
+      indexCandlesRaw,
+      'indexPrice',
+      indexMultiplier
+    );
+
+    // Process and merge resource candles
+    mergePriceData(combinedDataMap, resourceCandlesRaw, 'resourcePrice', 1e9); // Assuming 1e9 multiplier
+
+    // Process and merge trailing average candles
+    mergePriceData(
+      combinedDataMap,
+      trailingAvgCandlesRaw,
+      'trailingAvgPrice',
+      1e9
+    ); // Assuming 1e9 multiplier
+
+    // 3. Convert map values to array and sort
+    return Array.from(combinedDataMap.values()).sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
+  };
+
+  const { data, isLoading, isError, error } = useQuery<
+    PriceChartDataPoint[],
+    Error
+  >({
+    // Update query key
+    queryKey: [
+      'priceChart',
+      marketAddress,
+      chainId,
+      marketId,
+      resourceSlug, // Add resourceSlug
+      interval,
+      quoteTokenName,
+      propFromTimestamp,
+      propToTimestamp,
+    ],
+    queryFn: fetchData,
+    // Enable query only if essential base params are present
+    enabled: !!marketAddress && !!chainId && !!marketId && interval > 0,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
+  return { chartData: data ?? [], isLoading, isError, error };
+};

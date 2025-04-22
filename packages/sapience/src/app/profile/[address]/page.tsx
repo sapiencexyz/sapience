@@ -1,270 +1,75 @@
 'use client';
 
-import { gql } from '@apollo/client';
-import { Button } from '@foil/ui/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@foil/ui/components/ui/table';
-import { useToast } from '@foil/ui/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-import { blo } from 'blo';
-import { print } from 'graphql';
-import { Copy } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
 
-import LottieLoader from '~/components/LottieLoader';
-import NumberDisplay from '~/components/numberDisplay';
-import { foilApi } from '~/lib/utils/util';
-
-// Create a public client for ENS resolution
-const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http(),
-});
-
-// Hook to fetch ENS name
-const useEnsName = (address: string) => {
-  return useQuery({
-    queryKey: ['ensName', address],
-    queryFn: async () => {
-      try {
-        if (!address) return null;
-        return await publicClient.getEnsName({
-          address: address as `0x${string}`,
-        });
-      } catch (error) {
-        console.error('Error fetching ENS name:', error);
-        return null;
-      }
-    },
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
-  });
-};
-
-// GraphQL query to fetch positions by owner address
-const POSITIONS_QUERY = gql`
-  query GetPositions($owner: String!) {
-    positions(owner: $owner) {
-      id
-      positionId
-      owner
-      baseToken
-      quoteToken
-      collateral
-      borrowedBaseToken
-      borrowedQuoteToken
-      isLP
-      isSettled
-      highPriceTick
-      lowPriceTick
-      lpBaseToken
-      lpQuoteToken
-      epoch {
-        id
-        epochId
-        startTimestamp
-        endTimestamp
-        settled
-        settlementPriceD18
-        question
-        market {
-          id
-          chainId
-          address
-          resource {
-            name
-            slug
-          }
-        }
-      }
-      transactions {
-        id
-        type
-        timestamp
-        transactionHash
-      }
-    }
-  }
-`;
+import ErrorState from '~/components/profile/ErrorState';
+import LoadingState from '~/components/profile/LoadingState';
+import LpPositionsTable from '~/components/profile/LpPositionsTable';
+import PredictionPositionsTable from '~/components/profile/PredictionPositionsTable';
+import ProfileHeader from '~/components/profile/ProfileHeader';
+import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
+import { usePositions } from '~/hooks/graphql/usePositions';
+import { usePredictions } from '~/hooks/graphql/usePredictions';
+import { SCHEMA_UID } from '~/lib/constants/eas';
 
 export default function PortfolioPage() {
   const params = useParams();
   const address = (params.address as string).toLowerCase();
-  const { toast } = useToast();
-  const { data: ensName } = useEnsName(address);
 
   const {
     data: positions,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['positions', address],
-    queryFn: async () => {
-      const { data, errors } = await foilApi.post('/graphql', {
-        query: print(POSITIONS_QUERY),
-        variables: {
-          owner: address,
-        },
-      });
+    isLoading: isLoadingPositions,
+    error: positionsError,
+  } = usePositions(address);
+  const {
+    data: attestations,
+    isLoading: isLoadingAttestations,
+    error: attestationsError,
+  } = usePredictions({ attesterAddress: address, schemaId: SCHEMA_UID });
 
-      if (errors) {
-        throw new Error(errors[0].message);
-      }
+  const isLoading = isLoadingPositions || isLoadingAttestations;
+  const error = positionsError || attestationsError;
 
-      return data.positions;
-    },
-    enabled: Boolean(address),
-    staleTime: 30000, // 30 seconds
-  });
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(address);
-    toast({
-      title: 'Copied to clipboard',
-      description: 'Address copied successfully',
-      duration: 2000,
-    });
-  };
-
+  let content;
   if (isLoading) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center">
-        <LottieLoader width={32} height={32} />
-      </div>
-    );
-  }
+    content = <LoadingState />;
+  } else if (error) {
+    content = <ErrorState error={error} />;
+  } else {
+    const traderPositions =
+      positions?.filter((position: any) => !position.isLP) || [];
+    const lpPositions =
+      positions?.filter((position: any) => position.isLP) || [];
+    const safeAttestations = attestations || [];
 
-  if (error) {
-    return (
-      <div className="flex h-96 w-full flex-col items-center justify-center gap-4">
-        <p className="text-destructive">Failed to load positions</p>
-        <Button onClick={() => window.location.reload()} variant="outline">
-          Retry
-        </Button>
-      </div>
-    );
-  }
+    const hasTraderPositions = traderPositions.length > 0;
+    const hasLpPositions = lpPositions.length > 0;
+    const hasAttestations = safeAttestations.length > 0;
+    const hasAnyData = hasTraderPositions || hasLpPositions || hasAttestations;
 
-  const truncatedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
-  const displayName = ensName || truncatedAddress;
+    if (!hasAnyData) {
+      content = (
+        <div className="py-16 text-muted-foreground flex justify-center items-center">
+          <p className="text-center text-base">
+            This profile has no positions or predictions yet.
+          </p>
+        </div>
+      );
+    } else {
+      content = (
+        <div className="space-y-8">
+          <TraderPositionsTable positions={traderPositions} />
+          <LpPositionsTable positions={lpPositions} />
+          <PredictionPositionsTable attestations={safeAttestations} />
+        </div>
+      );
+    }
+  }
 
   return (
     <div className="container max-w-6xl mx-auto py-32 px-4">
-      <div className="mb-8 flex flex-row items-center gap-4">
-        <img
-          alt={address}
-          src={blo(address as `0x${string}`)}
-          className="w-16 h-16 rounded-md"
-        />
-        <div>
-          <p className="text-muted-foreground block mb-1">
-            Ethereum Account Address
-          </p>
-          <div className="flex items-center gap-2">
-            <p className="font-mono text-2xl">{displayName}</p>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleCopy}
-            >
-              <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {!positions || positions.length === 0 ? (
-        <div className="flex h-96 w-full flex-col items-center justify-center gap-4">
-          <p className="text-muted-foreground">
-            No positions found for this address
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Question</TableHead>
-                <TableHead>Prediction</TableHead>
-                <TableHead>Wager</TableHead>
-                <TableHead>Profit/Loss</TableHead>
-                <TableHead>Potential Profit</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {positions?.map((position: any) => (
-                <TableRow key={position.id}>
-                  <TableCell>
-                    {position.epoch.question || 'No question provided'}
-                  </TableCell>
-                  <TableCell>
-                    {position.isLP ? (
-                      <span>
-                        <NumberDisplay
-                          value={
-                            (position.lpBaseToken
-                              ? Number(position.lpBaseToken)
-                              : Number(position.baseToken) -
-                                Number(position.borrowedBaseToken || 0)) /
-                            10 ** 18
-                          }
-                        />{' '}
-                        Ggas
-                      </span>
-                    ) : (
-                      <span>
-                        <NumberDisplay
-                          value={
-                            (Number(position.baseToken) -
-                              Number(position.borrowedBaseToken || 0)) /
-                            10 ** 18
-                          }
-                        />{' '}
-                        Ggas
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <NumberDisplay
-                      value={Number(position.collateral) / 10 ** 18}
-                    />{' '}
-                    wstETH
-                  </TableCell>
-                  <TableCell>
-                    {/* Actual or realized profit/loss */}
-                    {position.isSettled ? '+' : ''}
-                    <NumberDisplay value={0} /> wstETH
-                  </TableCell>
-                  <TableCell>
-                    {/* Potential profit calculation */}
-                    <NumberDisplay
-                      value={(Number(position.collateral) / 10 ** 18) * 0.2}
-                    />{' '}
-                    wstETH
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant={position.isSettled ? 'default' : 'secondary'}
-                    >
-                      {position.isSettled ? 'Claim' : 'Sell'}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      <ProfileHeader address={address} />
+      <div className="mt-12">{content}</div>
     </div>
   );
 }

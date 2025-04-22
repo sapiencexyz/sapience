@@ -16,7 +16,7 @@ import type { TimeWindow, TimeInterval } from '~/lib/interfaces/interfaces';
 interface Props {
   resourceSlug?: string;
   market?: {
-    epochId: number;
+    marketId: number;
     chainId: number;
     address: string;
   };

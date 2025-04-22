@@ -1,4 +1,4 @@
-import type { Market } from '~/lib/context/FoilProvider';
+import type { MarketGroup } from '~/lib/context/FoilProvider';
 
 export interface MissingBlocks {
   [key: string]: {
@@ -14,26 +14,26 @@ export interface AddressCellProps {
 export interface PublicCellProps {
   isPublic: boolean;
   loading: boolean;
-  market: Market;
-  epochId: number;
-  onUpdate: (market: Market, epochId: number) => void;
+  marketGroup: MarketGroup;
+  marketId: number;
+  onUpdate: (marketGroup: MarketGroup, marketId: number) => void;
 }
 
 export interface BondCellProps {
-  market: Market;
-  epoch: any;
+  marketGroup: MarketGroup;
+  market: any;
   bondAmount?: bigint;
   bondCurrency?: string;
   vaultAddress?: string;
 }
 
 export interface SettlementPriceCellProps {
-  market: Market;
-  epoch: any;
+  marketGroup: MarketGroup;
+  market: any;
 }
 
-export interface EpochItemProps {
-  epoch: Market['epochs'][0];
-  market: Market;
+export interface MarketItemProps {
+  market: MarketGroup['markets'][0];
+  marketGroup: MarketGroup;
   missingBlocks: MissingBlocks;
 }

@@ -68,12 +68,12 @@ const POSITIONS_QUERY = `
       borrowedQuoteToken
       collateral
       isSettled
-      epoch {
+      market {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
-        market {
+        marketGroup {
           id
           chainId
           address
@@ -106,10 +106,10 @@ const usePositions = (
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) => {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketAddress, market } = periodContext;
 
   return useQuery({
-    queryKey: ['positions', walletAddress, chainId, marketAddress, epoch],
+    queryKey: ['positions', walletAddress, chainId, marketAddress, market],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: POSITIONS_QUERY,
@@ -124,11 +124,11 @@ const usePositions = (
         throw new Error(errors[0].message);
       }
 
-      // Filter for non-LP positions and within the current epoch
+      // Filter for non-LP positions and within the current market
       return data.positions.filter((position: any) => {
         const isTrader = !position.isLP;
-        const positionEpochId = Number(position.epoch?.epochId);
-        return isTrader && positionEpochId === epoch;
+        const positionMarketId = Number(position.market?.marketId);
+        return isTrader && positionMarketId === market;
       });
     },
     enabled:
@@ -274,10 +274,10 @@ const TraderPositionsTable: React.FC<Props> = ({
 
   const renderMarketCell = (row: any) => (
     <MarketCell
-      marketName={row.epoch?.market?.resource?.name || 'Unknown Market'}
-      resourceSlug={row.epoch?.market?.resource?.slug}
-      startTimestamp={row.epoch?.startTimestamp}
-      endTimestamp={row.epoch?.endTimestamp}
+      marketName={row.market?.marketGroup?.resource?.name || 'Unknown Market'}
+      resourceSlug={row.market?.marketGroup?.resource?.slug}
+      startTimestamp={row.market?.startTimestamp}
+      endTimestamp={row.market?.endTimestamp}
       resources={resources}
     />
   );
@@ -286,7 +286,7 @@ const TraderPositionsTable: React.FC<Props> = ({
     <div className="flex items-center gap-1">
       <PositionDisplay
         positionId={row.positionId.toString()}
-        marketType={row.epoch?.market?.isYin ? 'yin' : 'yang'}
+        marketType={row.market?.marketGroup?.isYin ? 'yin' : 'yang'}
       />
     </div>
   );
@@ -377,7 +377,7 @@ const TraderPositionsTable: React.FC<Props> = ({
   };
 
   const renderMoreCell = (row: any) => {
-    const positionUrl = `/positions/${row.epoch?.market?.chainId}:${row.epoch?.market?.address}/${row.positionId}`;
+    const positionUrl = `/positions/${row.market?.marketGroup?.chainId}:${row.market?.marketGroup?.address}/${row.positionId}`;
     return (
       <Link href={positionUrl} target="_blank" rel="noopener noreferrer">
         <Button size="sm" className="float-right">
@@ -417,7 +417,7 @@ const TraderPositionsTable: React.FC<Props> = ({
         id: 'market',
         header: 'Market',
         accessorFn: (row) =>
-          row.epoch?.market?.resource?.name || 'Unknown Market',
+          row.market?.marketGroup?.resource?.name || 'Unknown Market',
       },
       {
         id: 'position',

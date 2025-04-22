@@ -30,10 +30,10 @@ interface TraderStats {
   averageReturn: number;
 }
 
-const GET_EPOCH_LEADERBOARD = `
-  query GetEpochLeaderboard($chainId: Int!, $address: String!, $epochId: String!) {
-    getEpochLeaderboard(chainId: $chainId, address: $address, epochId: $epochId) {
-      epochId
+const GET_MARKET_LEADERBOARD = `
+  query GetMarketLeaderboard($chainId: Int!, $address: String!, $marketId: String!) {
+    getMarketLeaderboard(chainId: $chainId, address: $address, marketId: $marketId) {
+      marketId
       owner
       totalDeposits
       totalWithdrawals
@@ -89,59 +89,59 @@ const useGlobalLeaderboard = () => {
     queryFn: async () => {
       if (!resources) return [];
 
-      // Define specific epochs to fetch
-      const specificEpochs = [
+      // Define specific markets to fetch
+      const specificMarkets = [
         {
           chainId: 8453,
           address: '0x497057F1dBdaFBeD7a052dEa366e72c04de7A370',
-          epochId: '1',
+          marketId: '1',
         },
         {
           chainId: 8453,
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
-          epochId: '1',
+          marketId: '1',
         },
         {
           chainId: 8453,
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
-          epochId: '2',
+          marketId: '2',
         },
         {
           chainId: 8453,
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
-          epochId: '3',
+          marketId: '3',
         },
         {
           chainId: 8453,
           address: '0x914126c7bfa849055be8230975e0665de985f03a',
-          epochId: '4',
+          marketId: '4',
         },
       ];
 
-      // Fetch leaderboard data for each specific epoch using GraphQL
-      const leaderboardPromises = specificEpochs.map((epoch) =>
+      // Fetch leaderboard data for each specific market using GraphQL
+      const leaderboardPromises = specificMarkets.map((market) =>
         foilApi
           .post('/graphql', {
-            query: GET_EPOCH_LEADERBOARD,
+            query: GET_MARKET_LEADERBOARD,
             variables: {
-              chainId: epoch.chainId,
-              address: epoch.address,
-              epochId: epoch.epochId,
+              chainId: market.chainId,
+              address: market.address,
+              marketId: market.marketId,
             },
           })
-          .then((response) => response.data.getEpochLeaderboard)
+          .then((response) => response.data.getMarketLeaderboard)
       );
 
       const leaderboards = await Promise.all(leaderboardPromises);
 
       // Fetch positions data for each market
-      const positionsPromises = specificEpochs.map((epoch) =>
+      const positionsPromises = specificMarkets.map((market) =>
         foilApi
           .post('/graphql', {
             query: GET_POSITIONS,
             variables: {
-              chainId: epoch.chainId,
-              marketAddress: epoch.address,
+              chainId: market.chainId,
+              marketAddress: market.address,
             },
           })
           .then((response) => response.data.positions)
@@ -153,8 +153,8 @@ const useGlobalLeaderboard = () => {
       const traderStats: Record<string, TraderStats> = {};
 
       // Process each leaderboard entry
-      for (const epochLeaderboard of leaderboards) {
-        for (const position of epochLeaderboard) {
+      for (const marketLeaderboard of leaderboards) {
+        for (const position of marketLeaderboard) {
           if (!traderStats[position.owner]) {
             traderStats[position.owner] = {
               address: position.owner,

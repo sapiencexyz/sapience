@@ -3,9 +3,9 @@ import type React from 'react';
 
 import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
-import '../lib/styles/globals.css';
+import '../styles/globals.css';
 import Layout from '~/components/layout';
-import LoadingSpinner from '~/components/loadingSpinner';
+import GlobalLoader from '~/components/shared/GlobalLoader';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 
 import { Analytics } from '@vercel/analytics/react';
@@ -105,7 +105,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       <body>
         <Providers>
           <LoadingProvider>
-            <LoadingSpinner />
+            <GlobalLoader />
             <Layout>{children}</Layout>
             <Toaster />
           </LoadingProvider>

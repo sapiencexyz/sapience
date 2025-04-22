@@ -35,7 +35,8 @@ import {
 
 import {
   approveToken,
-  balanceOfToken
+  balanceOfToken,
+  getSizeForCreateTraderPosition,
 } from './misc';
 
 export const graphql = {
@@ -75,5 +76,6 @@ export const writeFoilContracts = {
 
 export const misc = {
   approve_token: approveToken,
-  balance_of_token: balanceOfToken
+  balance_of_token: balanceOfToken,
+  get_size_for_create_trader_position: getSizeForCreateTraderPosition
 };

@@ -1,20 +1,20 @@
 import DataLoader from 'dataloader';
 import { In } from 'typeorm';
 import dataSource from '../db';
-import { Market } from '../models/Market';
+import { MarketGroup } from '../models/MarketGroup';
 import { Resource } from '../models/Resource';
 import { Position } from '../models/Position';
 import { Transaction } from '../models/Transaction';
-import { Epoch } from '../models/Epoch';
+import { Market } from '../models/Market';
 
 // Batch function to load markets by IDs
-const batchMarkets = async (ids: readonly number[]) => {
-  const markets = await dataSource.getRepository(Market).find({
+const batchMarketGroups = async (ids: readonly number[]) => {
+  const marketGroups = await dataSource.getRepository(MarketGroup).find({
     where: { id: In([...ids]) },
-    relations: ['epochs', 'resource'],
+    relations: ['markets', 'resource'],
   });
 
-  const marketMap = new Map(markets.map((market) => [market.id, market]));
+  const marketMap = new Map(marketGroups.map((market) => [market.id, market]));
   return ids.map((id) => marketMap.get(id));
 };
 
@@ -22,7 +22,7 @@ const batchMarkets = async (ids: readonly number[]) => {
 const batchResources = async (ids: readonly number[]) => {
   const resources = await dataSource.getRepository(Resource).find({
     where: { id: In([...ids]) },
-    relations: ['markets', 'resourcePrices'],
+    relations: ['marketGroups', 'resourcePrices'],
   });
 
   const resourceMap = new Map(
@@ -35,7 +35,7 @@ const batchResources = async (ids: readonly number[]) => {
 const batchPositions = async (ids: readonly number[]) => {
   const positions = await dataSource.getRepository(Position).find({
     where: { id: In([...ids]) },
-    relations: ['epoch', 'epoch.market', 'transactions'],
+    relations: ['market', 'market.marketGroup', 'transactions'],
   });
 
   const positionMap = new Map(
@@ -45,13 +45,13 @@ const batchPositions = async (ids: readonly number[]) => {
 };
 
 // Batch function to load epochs by IDs
-const batchEpochs = async (ids: readonly number[]) => {
-  const epochs = await dataSource.getRepository(Epoch).find({
+const batchMarkets = async (ids: readonly number[]) => {
+  const markets = await dataSource.getRepository(Market).find({
     where: { id: In([...ids]) },
-    relations: ['market', 'positions'],
+    relations: ['marketGroup', 'positions'],
   });
 
-  const epochMap = new Map(epochs.map((epoch) => [epoch.id, epoch]));
+  const epochMap = new Map(markets.map((epoch) => [epoch.id, epoch]));
   return ids.map((id) => epochMap.get(id));
 };
 
@@ -59,7 +59,7 @@ const batchEpochs = async (ids: readonly number[]) => {
 const batchTransactionsByPosition = async (positionIds: readonly number[]) => {
   const transactions = await dataSource.getRepository(Transaction).find({
     where: { position: { id: In([...positionIds]) } },
-    relations: ['position', 'position.epoch', 'position.epoch.market'],
+    relations: ['position', 'position.market', 'position.market.marketGroup'],
   });
 
   const transactionMap = new Map<number, Transaction[]>();
@@ -76,9 +76,9 @@ const batchTransactionsByPosition = async (positionIds: readonly number[]) => {
 
 // Create DataLoader instances
 export const createLoaders = () => ({
-  marketLoader: new DataLoader(batchMarkets),
+  marketGroupLoader: new DataLoader(batchMarketGroups),
   resourceLoader: new DataLoader(batchResources),
   positionLoader: new DataLoader(batchPositions),
-  epochLoader: new DataLoader(batchEpochs),
+  marketLoader: new DataLoader(batchMarkets),
   transactionsByPositionLoader: new DataLoader(batchTransactionsByPosition),
 });

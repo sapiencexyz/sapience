@@ -18,7 +18,7 @@ const router = Router();
 
 router.use('/estimate', estimateRoutes);
 router.use('/getStEthPerTokenAtTimestamps', getStEthPerTokenAtTimestampsRoutes);
-router.use('/markets', marketRoutes);
+router.use('/marketGroups', marketRoutes);
 router.use('/missing-blocks', missingBlocksRoutes);
 router.use('/positions', positionRoutes);
 router.use('/reindex', reindexRoutes);

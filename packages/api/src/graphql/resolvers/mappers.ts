@@ -1,18 +1,18 @@
 import { Buffer } from 'buffer';
-import { Market } from '../../models/Market';
+import { MarketGroup } from '../../models/MarketGroup';
 import { Resource } from '../../models/Resource';
 import { Position } from '../../models/Position';
 import { Transaction } from '../../models/Transaction';
-import { Epoch } from '../../models/Epoch';
+import { Market } from '../../models/Market';
 import { ResourcePrice } from '../../models/ResourcePrice';
 import { Category } from '../../models/Category';
 import { HydratedTransaction } from '../../helpers/hydrateTransactions';
 import {
-  MarketType,
+  MarketGroupType,
   ResourceType,
   PositionType,
   TransactionType,
-  EpochType,
+  MarketType,
   ResourcePriceType,
   CategoryType,
 } from '../types';
@@ -32,26 +32,33 @@ const hexToString = (hex: string | null | undefined): string | null => {
   }
 };
 
-export const mapMarketToType = (market: Market): MarketType => ({
-  id: market.id,
-  address: market.address?.toLowerCase(),
-  vaultAddress: market.vaultAddress,
-  chainId: market.chainId,
-  isYin: market.isYin,
-  isCumulative: market.isCumulative,
-  epochs: market.epochs?.map(mapEpochToType) || [],
-  resource: market.resource ? mapResourceToType(market.resource) : null,
-  category: market.category ? mapCategoryToType(market.category) : null,
-  deployTimestamp: market.deployTimestamp,
-  deployTxnBlockNumber: market.deployTxnBlockNumber,
-  owner: market.owner?.toLowerCase() || null,
-  collateralAsset: market.collateralAsset,
-  collateralDecimals: market.collateralDecimals,
-  question: market.question,
-  claimStatement: hexToString(market.marketParams?.claimStatement),
-  baseTokenName: market.baseTokenName,
-  quoteTokenName: market.quoteTokenName,
-  optionNames: market.optionNames,
+export const mapMarketGroupToType = (
+  marketGroup: MarketGroup
+): MarketGroupType => ({
+  id: marketGroup.id,
+  address: marketGroup.address?.toLowerCase(),
+  vaultAddress: marketGroup.vaultAddress,
+  chainId: marketGroup.chainId,
+  isYin: marketGroup.isYin,
+  isCumulative: marketGroup.isCumulative,
+  markets: marketGroup.markets?.map(mapMarketToType) || [],
+  resource: marketGroup.resource
+    ? mapResourceToType(marketGroup.resource)
+    : null,
+  category: marketGroup.category
+    ? mapCategoryToType(marketGroup.category)
+    : null,
+  deployTimestamp: marketGroup.deployTimestamp,
+  deployTxnBlockNumber: marketGroup.deployTxnBlockNumber,
+  owner: marketGroup.owner?.toLowerCase() || null,
+  collateralAsset: marketGroup.collateralAsset,
+  collateralSymbol: marketGroup.collateralSymbol,
+  collateralDecimals: marketGroup.collateralDecimals,
+  question: marketGroup.question,
+  claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
+  baseTokenName: marketGroup.baseTokenName,
+  quoteTokenName: marketGroup.quoteTokenName,
+  optionNames: marketGroup.optionNames,
 });
 
 export const mapResourceToType = (resource: Resource): ResourceType => ({
@@ -59,7 +66,7 @@ export const mapResourceToType = (resource: Resource): ResourceType => ({
   name: resource.name,
   slug: resource.slug,
   category: resource.category ? mapCategoryToType(resource.category) : null,
-  markets: resource.markets?.map(mapMarketToType) || [],
+  marketGroups: resource.marketGroups?.map(mapMarketGroupToType) || [],
   resourcePrices: resource.resourcePrices?.map(mapResourcePriceToType) || [],
 });
 
@@ -67,20 +74,22 @@ export const mapCategoryToType = (category: Category): CategoryType => ({
   id: category.id,
   name: category.name,
   slug: category.slug,
-  markets: category.markets?.map(mapMarketToType) || [],
+  marketGroups: category.marketGroups?.map(mapMarketGroupToType) || [],
 });
 
-export const mapEpochToType = (epoch: Epoch): EpochType => ({
-  id: epoch.id,
-  epochId: epoch.epochId,
-  startTimestamp: epoch.startTimestamp,
-  endTimestamp: epoch.endTimestamp,
-  market: epoch.market ? mapMarketToType(epoch.market) : null,
-  positions: epoch.positions?.map(mapPositionToType) || [],
-  settled: epoch.settled,
-  settlementPriceD18: epoch.settlementPriceD18,
-  public: epoch.public,
-  question: epoch.question || '',
+export const mapMarketToType = (market: Market): MarketType => ({
+  id: market.id,
+  marketId: market.marketId,
+  startTimestamp: market.startTimestamp,
+  endTimestamp: market.endTimestamp,
+  marketGroup: market.marketGroup
+    ? mapMarketGroupToType(market.marketGroup)
+    : null,
+  positions: market.positions?.map(mapPositionToType) || [],
+  settled: market.settled,
+  settlementPriceD18: market.settlementPriceD18,
+  public: market.public,
+  question: market.question || '',
 });
 
 export const mapPositionToType = (position: Position): PositionType => ({
@@ -91,7 +100,7 @@ export const mapPositionToType = (position: Position): PositionType => ({
   baseToken: position.baseToken,
   quoteToken: position.quoteToken,
   collateral: position.collateral,
-  epoch: mapEpochToType(position.epoch),
+  market: mapMarketToType(position.market),
   transactions: position.transactions?.map(mapTransactionToType) || [],
   borrowedBaseToken: position.borrowedBaseToken,
   borrowedQuoteToken: position.borrowedQuoteToken,

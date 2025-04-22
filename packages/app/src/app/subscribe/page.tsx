@@ -44,12 +44,12 @@ const SUBSCRIPTIONS_QUERY = gql`
       borrowedQuoteToken
       collateral
       isSettled
-      epoch {
+      market {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
-        market {
+        marketGroup {
           id
           chainId
           address
@@ -62,11 +62,11 @@ const SUBSCRIPTIONS_QUERY = gql`
 interface Subscription {
   id: number;
   positionId: number;
-  epoch: {
+  market: {
     id: number;
     startTimestamp: number;
     endTimestamp: number;
-    market: {
+    marketGroup: {
       chainId: number;
       address: string;
       name: string;
@@ -159,7 +159,7 @@ const useSubscriptions = (address?: string) => {
     // For each position, fetch its transactions
     return Promise.all(
       activePositions.map(async (position: any) => {
-        const contractId = `${position.epoch.market.chainId}:${position.epoch.market.address}`;
+        const contractId = `${position.market.marketGroup.chainId}:${position.market.marketGroup.address}`;
         const transactions = await foilApi.get(
           `/transactions?contractId=${contractId}&positionId=${position.positionId}`
         );
@@ -258,11 +258,11 @@ const SubscriptionsList = () => {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {subscriptions.map((subscription) => {
         const resource = resources?.find((r) =>
-          r.markets.some(
+          r.marketGroups.some(
             (m) =>
-              m.chainId === subscription.epoch.market.chainId &&
+              m.chainId === subscription.market.marketGroup.chainId &&
               m.address.toLowerCase() ===
-                subscription.epoch.market.address.toLowerCase()
+                subscription.market.marketGroup.address.toLowerCase()
           )
         );
 
@@ -314,14 +314,14 @@ const SubscriptionsList = () => {
                 <span className="text-sm text-muted-foreground">Term</span>
                 <span className="text-sm font-medium">
                   {new Date(
-                    subscription.epoch.startTimestamp * 1000
+                    subscription.market.startTimestamp * 1000
                   ).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
                   })}{' '}
                   -{' '}
                   {new Date(
-                    subscription.epoch.endTimestamp * 1000
+                    subscription.market.endTimestamp * 1000
                   ).toLocaleDateString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -329,12 +329,12 @@ const SubscriptionsList = () => {
                 </span>
               </div>
 
-              {subscription.epoch.endTimestamp * 1000 > Date.now() && (
+              {subscription.market.endTimestamp * 1000 > Date.now() && (
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Ends in</span>
                   <span className="text-sm font-medium">
                     {formatDistanceToNow(
-                      new Date(subscription.epoch.endTimestamp * 1000),
+                      new Date(subscription.market.endTimestamp * 1000),
                       { addSuffix: false }
                     )}
                   </span>
@@ -350,7 +350,7 @@ const SubscriptionsList = () => {
                 setSellDialogOpen(true);
               }}
             >
-              {subscription.epoch.endTimestamp * 1000 > Date.now()
+              {subscription.market.endTimestamp * 1000 > Date.now()
                 ? 'Close Early'
                 : 'Settle'}
             </Button>
@@ -367,9 +367,11 @@ const SubscriptionsList = () => {
           </DialogHeader>
           {selectedPosition && (
             <PeriodProvider
-              chainId={selectedPosition.epoch.market.chainId}
-              address={selectedPosition.epoch.market.address as `0x${string}`}
-              epoch={selectedPosition.epoch.id}
+              chainId={selectedPosition.market.marketGroup.chainId}
+              address={
+                selectedPosition.market.marketGroup.address as `0x${string}`
+              }
+              market={selectedPosition.market.id}
             >
               <Subscribe
                 positionId={selectedPosition.positionId}
@@ -388,7 +390,7 @@ const SubscribeContent = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [prefilledSize, setPrefilledSize] = useState<bigint | null>(null);
-  const [showActiveEpoch, setShowActiveEpoch] = useState(true);
+  const [showActiveMarket, setShowActiveMarket] = useState(true);
   const { address } = useAccount();
   const [shouldOpenAfterConnect, setShouldOpenAfterConnect] = useState(false);
 
@@ -400,7 +402,7 @@ const SubscribeContent = () => {
     }
   }, [address, shouldOpenAfterConnect]);
 
-  const { markets } = useFoil();
+  const { marketGroups } = useFoil();
   const currentTime = Math.floor(Date.now() / 1000);
 
   // Find all gas markets
@@ -410,71 +412,74 @@ const SubscribeContent = () => {
     if (!ethGasResource) return [];
 
     // Filter markets based on the resource's markets array
-    const filteredMarkets = markets.filter((market) =>
-      ethGasResource.markets.some(
-        (resourceMarket) =>
-          resourceMarket.chainId === market.chainId &&
-          resourceMarket.address.toLowerCase() === market.address.toLowerCase()
+    const filteredMarkets = marketGroups.filter((marketGroup) =>
+      ethGasResource.marketGroups.some(
+        (resourceMarketGroup) =>
+          resourceMarketGroup.chainId === marketGroup.chainId &&
+          resourceMarketGroup.address.toLowerCase() ===
+            marketGroup.address.toLowerCase()
       )
     );
 
     console.log('Filtered Gas Markets:', filteredMarkets);
     return filteredMarkets;
-  }, [markets, resources]);
+  }, [marketGroups, resources]);
 
-  // Get all epochs from gas markets and find the target epoch
-  const targetEpoch = useMemo(() => {
+  // Get all markets from gas markets and find the target market
+  const targetMarket = useMemo(() => {
     if (!gasMarkets.length) return null;
 
-    // Collect all epochs from gas markets with their corresponding market data
-    const allEpochs = gasMarkets.flatMap((market) =>
-      market.epochs.map((epoch) => ({
-        ...epoch,
-        market,
+    // Collect all markets from gas markets with their corresponding market group data
+    const allMarkets = gasMarkets.flatMap((marketGroup) =>
+      marketGroup.markets.map((market) => ({
+        ...market,
+        marketGroup,
       }))
     );
 
-    // Filter for monthly epochs (28 days duration)
-    const monthlyEpochs = allEpochs.filter(
-      (epoch) => epoch.endTimestamp - epoch.startTimestamp === 28 * 24 * 60 * 60
+    // Filter for monthly markets (28 days duration)
+    const monthlyMarkets = allMarkets.filter(
+      (market) =>
+        market.endTimestamp - market.startTimestamp === 28 * 24 * 60 * 60
     );
 
-    // Sort epochs by start time
-    const sortedEpochs = monthlyEpochs.sort(
+    // Sort markets by start time
+    const sortedMarkets = monthlyMarkets.sort(
       (a, b) => a.startTimestamp - b.startTimestamp
     );
 
-    // Find the next epoch that starts in the future
-    const nextEpoch = sortedEpochs.find(
-      (epoch) => epoch.startTimestamp > currentTime
+    // Find the next market that starts in the future
+    const nextMarket = sortedMarkets.find(
+      (market) => market.startTimestamp > currentTime
     );
 
-    // Find the active epoch (current epoch that has started but not ended)
-    const activeEpoch = sortedEpochs.find(
-      (epoch) =>
-        epoch.startTimestamp <= currentTime && epoch.endTimestamp > currentTime
+    // Find the active market (current market that has started but not ended)
+    const activeMarket = sortedMarkets.find(
+      (market) =>
+        market.startTimestamp <= currentTime &&
+        market.endTimestamp > currentTime
     );
 
-    // Find the most recent epoch if no active or next epoch
-    const mostRecentEpoch = sortedEpochs[sortedEpochs.length - 1] || null;
+    // Find the most recent market if no active or next market
+    const mostRecentMarket = sortedMarkets[sortedMarkets.length - 1] || null;
 
-    // Check if we're within 7 days of active epoch's start time
-    const isWithin7DaysOfActiveEpochStart =
-      activeEpoch &&
-      currentTime - activeEpoch.startTimestamp < 7 * 24 * 60 * 60; // 7 days in seconds
+    // Check if we're within 7 days of active market's start time
+    const isWithin7DaysOfActiveMarketStart =
+      activeMarket &&
+      currentTime - activeMarket.startTimestamp < 7 * 24 * 60 * 60; // 7 days in seconds
 
-    // If we're not within 7 days of active epoch start and showActiveEpoch is false,
-    // or if we are within 7 days and showActiveEpoch is true, show active epoch
+    // If we're not within 7 days of active market start and showActiveMarket is false,
+    // or if we are within 7 days and showActiveMarket is true, show active market
     if (
-      (!isWithin7DaysOfActiveEpochStart && !showActiveEpoch) ||
-      (isWithin7DaysOfActiveEpochStart && showActiveEpoch)
+      (!isWithin7DaysOfActiveMarketStart && !showActiveMarket) ||
+      (isWithin7DaysOfActiveMarketStart && showActiveMarket)
     ) {
-      return activeEpoch;
+      return activeMarket;
     }
 
-    // Otherwise show next epoch
-    return nextEpoch || mostRecentEpoch;
-  }, [gasMarkets, currentTime, showActiveEpoch]);
+    // Otherwise show next market
+    return nextMarket || mostRecentMarket;
+  }, [gasMarkets, currentTime, showActiveMarket]);
 
   const handleNewSubscription = () => {
     setIsDialogOpen(true);
@@ -484,8 +489,8 @@ const SubscribeContent = () => {
     setIsAnalyticsOpen(true);
   };
 
-  const toggleEpochView = () => {
-    setShowActiveEpoch(!showActiveEpoch);
+  const toggleMarketView = () => {
+    setShowActiveMarket(!showActiveMarket);
   };
 
   if (isLoading) {
@@ -496,7 +501,7 @@ const SubscribeContent = () => {
     );
   }
 
-  if (!gasMarkets.length || !targetEpoch) {
+  if (!gasMarkets.length || !targetMarket) {
     return (
       <div className="text-muted-foreground text-center my-6">
         Gas market not found
@@ -506,9 +511,9 @@ const SubscribeContent = () => {
 
   return (
     <PeriodProvider
-      chainId={targetEpoch.market.chainId}
-      address={targetEpoch.market.address}
-      epoch={targetEpoch.epochId}
+      chainId={targetMarket.marketGroup.chainId}
+      address={targetMarket.marketGroup.address}
+      market={targetMarket.id}
     >
       <div className="flex-1 flex flex-col">
         <div className="py-9 px-4">
@@ -538,8 +543,8 @@ const SubscribeContent = () => {
             <Subscribe
               initialSize={prefilledSize}
               onClose={() => setIsDialogOpen(false)}
-              onPeriodToggle={toggleEpochView}
-              isActiveEpoch={showActiveEpoch}
+              onPeriodToggle={toggleMarketView}
+              isActiveMarket={showActiveMarket}
             />
           </DialogContent>
         </Dialog>
@@ -556,8 +561,8 @@ const SubscribeContent = () => {
                 setIsDialogOpen(true);
               }}
               isAnalyticsMode
-              onPeriodToggle={toggleEpochView}
-              isActiveEpoch={showActiveEpoch}
+              onPeriodToggle={toggleMarketView}
+              isActiveMarket={showActiveMarket}
             />
           </DialogContent>
         </Dialog>

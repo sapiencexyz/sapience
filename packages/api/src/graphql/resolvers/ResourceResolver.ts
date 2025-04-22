@@ -13,9 +13,9 @@ export class ResourceResolver {
     try {
       const resources = await dataSource.getRepository(Resource).find({
         relations: [
-          'markets',
-          'markets.epochs',
-          'markets.category',
+          'marketGroups',
+          'marketGroups.markets',
+          'marketGroups.category',
           'category',
         ],
       });
@@ -34,9 +34,9 @@ export class ResourceResolver {
       const resource = await dataSource.getRepository(Resource).findOne({
         where: { slug },
         relations: [
-          'markets',
+          'marketGroups',
           'resourcePrices',
-          'markets.category',
+          'marketGroups.category',
           'category',
         ],
       });

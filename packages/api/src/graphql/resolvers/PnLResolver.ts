@@ -5,22 +5,22 @@ import { PnLPerformance } from '../../performance';
 @Resolver(() => PnLType)
 export class PnLResolver {
   @Query(() => [PnLType])
-  async getEpochLeaderboard(
+  async getMarketLeaderboard(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
-    @Arg('epochId', () => String) epochId: string
+    @Arg('marketId', () => String) marketId: string
   ): Promise<PnLType[]> {
     try {
       const pnlPerformance = PnLPerformance.getInstance();
       const pnlData = await pnlPerformance.getEpochPnLs(
         chainId,
         address,
-        parseInt(epochId)
+        parseInt(marketId)
       );
 
       return pnlData.map((pnl) => {
         return {
-          epochId: parseInt(epochId),
+          marketId: parseInt(marketId),
           owner: pnl.owner.toLowerCase(),
           totalDeposits: pnl.totalDeposits.toString(),
           totalWithdrawals: pnl.totalWithdrawals.toString(),

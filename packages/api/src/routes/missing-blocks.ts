@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { validateRequestParams } from '../helpers';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { Between } from 'typeorm';
-import { Market } from '../models/Market';
+import { MarketGroup } from '../models/MarketGroup';
 import { ResourcePrice } from '../models/ResourcePrice';
 import { getMarketStartEndBlock } from 'src/controllers/marketHelpers';
 import dataSource from 'src/db';
@@ -10,17 +10,17 @@ import { INDEXERS } from '../fixtures';
 
 const router = Router();
 
-const marketRepository = dataSource.getRepository(Market);
+const marketRepository = dataSource.getRepository(MarketGroup);
 const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 
 const getMissingBlocks = async (
   chainId: string,
   address: string,
-  epochId: string
+  marketId: string
 ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
   // Find the market
   const market = await marketRepository.findOne({
-    where: { chainId: Number(chainId), address },
+    where: { chainId: Number(chainId), address: address.toLowerCase() },
     relations: ['resource'],
   });
   if (!market) {
@@ -46,7 +46,7 @@ const getMissingBlocks = async (
 
   // Get block numbers using the price indexer client
   const { startBlockNumber, endBlockNumber, error } =
-    await getMarketStartEndBlock(market, epochId, indexer.client);
+    await getMarketStartEndBlock(market, marketId, indexer.client);
 
   if (error || !startBlockNumber || !endBlockNumber) {
     return { missingBlockNumbers: null, error };
@@ -82,18 +82,18 @@ const getMissingBlocks = async (
 
 router.get(
   '/',
-  validateRequestParams(['chainId', 'address', 'epochId']),
+  validateRequestParams(['chainId', 'address', 'marketId']),
   handleAsyncErrors(async (req: Request, res: Response) => {
-    const { chainId, address, epochId } = req.query as {
+    const { chainId, address, marketId } = req.query as {
       chainId: string;
       address: string;
-      epochId: string;
+      marketId: string;
     };
 
     const { missingBlockNumbers, error } = await getMissingBlocks(
       chainId,
       address,
-      epochId
+      marketId
     );
 
     if (error) {
