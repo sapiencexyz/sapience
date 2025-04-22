@@ -366,24 +366,6 @@ async function createBarChartTicks(
 
   if (processedTicks.length === 0) return []; // Handle case with no processable ticks
 
-  // 2. Calculate token amounts locked between ticks
-  // Note: This step might be too slow or complex if only depth is needed.
-  // Consider simplifying if performance becomes an issue.
-  // Post-processing step from original code (purpose might be specific to depth chart rendering)
-  // It seems to assign the locked amounts from tick N+1 to tick N. Re-evaluate if needed.
-  // For a standard order book, we might want liquidity AT the price point (tick).
-  /*
-  barTicks.forEach((entry, i) => {
-    if (i > 0) {
-      // Assigns the calculated locked amounts from the *next* tick's calculation
-      // to the *previous* tick entry. This seems counter-intuitive for an order book.
-      // Let's comment this out for now and see if direct values work.
-      // barTicks[i - 1].liquidityLockedToken0 = entry.liquidityLockedToken0;
-      // barTicks[i - 1].liquidityLockedToken1 = entry.liquidityLockedToken1;
-    }
-  });
-  */
-
   // Return the ticks, potentially without the post-processing adjustment
   return Promise.all(
     processedTicks.map(async (tick: TickProcessed) => {
