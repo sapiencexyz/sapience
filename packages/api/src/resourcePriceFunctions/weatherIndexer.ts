@@ -70,7 +70,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
       ) {
         const temperatureValue = (
           Number(weatherData.temperature.latest.temperature.toFixed(2)) *
-          10 ** 9
+          10 ** 18
         ).toString();
         const price = {
           resource: { id: resource.id },
@@ -136,7 +136,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
           ),
           value: (
             weatherData.precipitation.latest.precipitation *
-            10 ** 9
+            10 ** 18
           ).toString(),
           used: '1',
           feePaid: '1',

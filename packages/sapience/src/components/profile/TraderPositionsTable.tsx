@@ -1,3 +1,4 @@
+import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Table,
@@ -7,13 +8,175 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
+import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
 import type { Position } from '~/lib/interfaces/interfaces';
+import { calculateEffectiveEntryPrice } from '~/lib/utils/util';
 
 interface TraderPositionsTableProps {
   positions: Position[];
+}
+
+function PositionCell({ position }: { position: Position }) {
+  const baseTokenBI = BigInt(position.baseToken || '0');
+  const borrowedBaseTokenBI = BigInt(position.borrowedBaseToken || '0');
+  const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
+  const value = Number(formatEther(netPositionBI));
+
+  const { baseTokenName } = position.market.marketGroup;
+
+  if (baseTokenName === 'Yes') {
+    if (value >= 0) {
+      return (
+        <Badge variant="default">
+          <NumberDisplay value={value} /> YES
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="destructive">
+        <NumberDisplay value={Math.abs(value)} /> NO
+      </Badge>
+    );
+  }
+  // Removed redundant isNaN check as formatEther/Number handles it reasonably
+  return (
+    <span>
+      <NumberDisplay value={value} /> {baseTokenName || 'Tokens'}
+    </span>
+  );
+}
+
+function MaxPayoutCell({ position }: { position: Position }) {
+  const { baseTokenName } = position.market.marketGroup;
+
+  if (baseTokenName === 'Yes') {
+    const baseTokenBI = BigInt(position.baseToken || '0');
+    const borrowedBaseTokenBI = BigInt(position.borrowedBaseToken || '0');
+    const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
+    const value = Number(formatEther(netPositionBI)); // Used for determining sign
+
+    let maxPayoutAmountBI: bigint;
+    if (value >= 0) {
+      maxPayoutAmountBI = baseTokenBI;
+    } else {
+      maxPayoutAmountBI = borrowedBaseTokenBI;
+    }
+    const displayAmount = Number(formatEther(maxPayoutAmountBI));
+    // Removed redundant isNaN check
+
+    return (
+      <>
+        <NumberDisplay value={displayAmount} /> {baseTokenName}
+      </>
+    );
+  }
+  return <span className="text-muted-foreground">N/A</span>;
+}
+
+function PositionValueCell({ position }: { position: Position }) {
+  const { transactions } = position;
+  const { marketGroup, marketId } = position.market;
+  const { address, chainId, baseTokenName, collateralSymbol } = marketGroup;
+
+  // --- Fetch Current Market Price ---
+  const { data: currentMarketPriceRaw, isLoading: priceLoading } =
+    useMarketPrice(address, chainId, marketId);
+
+  // Default to 0 if undefined after loading, handling the linter error
+  const currentMarketPrice = currentMarketPriceRaw ?? 0;
+
+  const baseTokenAmount = Number(
+    formatEther(BigInt(position.baseToken || '0'))
+  );
+  const borrowedBaseTokenAmount = Number(
+    formatEther(BigInt(position.borrowedBaseToken || '0'))
+  );
+
+  const netPosition = baseTokenAmount - borrowedBaseTokenAmount;
+  const isLong = netPosition >= 0;
+  // const { baseTokenName, collateralSymbol } = position.market.marketGroup; // Moved up
+
+  // --- Calculate Effective Entry Price ---
+  const entryPrice = calculateEffectiveEntryPrice(transactions, isLong);
+
+  // --- Calculate Position Size, Value, PnL ---
+  let positionSize = 0;
+  let currentPositionValue = 0;
+  let costBasis = 0; // The value at entry
+
+  if (baseTokenName === 'Yes') {
+    // Yes/No Market
+    if (isLong) {
+      // Long YES
+      positionSize = baseTokenAmount;
+      currentPositionValue = positionSize * currentMarketPrice;
+      costBasis = positionSize * entryPrice;
+    } else {
+      // Short YES (Long NO)
+      positionSize = borrowedBaseTokenAmount;
+      // Current value of a short YES position = Size * (1 - CurrentPrice)
+      currentPositionValue = positionSize * (1 - currentMarketPrice);
+      // Cost basis of a short YES position = Size * (1 - EntryPrice)
+      // This represents the collateral 'locked' or the value obtained at entry
+      costBasis = positionSize * (1 - entryPrice);
+    }
+  } else if (isLong) {
+    // Linear or other Market Types - Long Position
+    positionSize = baseTokenAmount;
+    currentPositionValue = positionSize * currentMarketPrice;
+    costBasis = positionSize * entryPrice;
+  } else {
+    // Linear or other Market Types - Short Position
+    positionSize = borrowedBaseTokenAmount;
+    // Current value of a short position = Size * (EntryPrice - CurrentPrice) + CostBasis ? Needs verification.
+    // Let's try: Value = Initial Collateral + PnL = CostBasis + PnL
+    // PnL = Size * (EntryPrice - CurrentPrice)
+    // simpler: represent value based on closing the position
+    const pnlPerUnit = entryPrice - currentMarketPrice;
+    const totalPnl = positionSize * pnlPerUnit;
+    // Assuming cost basis represents initial collateral required or value at entry
+    // For a simple short, cost basis might be complex. Let's use entryPrice * size for now,
+    // but this needs validation based on the specific market mechanics.
+    costBasis = positionSize * entryPrice; // This might not be the intuitive 'cost'
+    // Current Value = Cost Basis + PnL
+    // OR Current Value could be seen as liability: -(PositionSize * CurrentMarketPrice) ?
+    // Let's stick to PnL calculation for display consistency.
+    currentPositionValue = costBasis + totalPnl; // Value = What you started with + Profit/Loss
+  }
+
+  // --- PnL Calculation ---
+  // Ensure values are numbers before calculation (redundant as Number() already used)
+  // currentPositionValue = isNaN(currentPositionValue) ? 0 : currentPositionValue;
+  // costBasis = isNaN(costBasis) ? 0 : costBasis;
+
+  const pnl = currentPositionValue - costBasis;
+  // Calculate PnL percentage, handle division by zero if costBasis is 0
+  const pnlPercentage = costBasis !== 0 ? (pnl / costBasis) * 100 : 0;
+
+  const displayCollateralSymbol = collateralSymbol;
+
+  // Display loading state or handle potential errors
+  if (priceLoading) {
+    return (
+      <span className="text-muted-foreground text-xs">Loading price...</span>
+    );
+    // Or return a spinner, skeleton loader, etc.
+  }
+
+  // TODO: Add more robust error handling from useMarketPrice if needed
+
+  return (
+    <>
+      <NumberDisplay value={currentPositionValue} /> {displayCollateralSymbol}{' '}
+      <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
+        ({pnlPercentage.toFixed(2)}%)
+      </small>
+    </>
+  );
 }
 
 export default function TraderPositionsTable({
@@ -21,8 +184,17 @@ export default function TraderPositionsTable({
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
-  // Return null if there are no positions to display
   if (!positions || positions.length === 0) {
+    return null;
+  }
+
+  const validPositions = positions.filter(
+    (p) => p && p.market && p.market.marketGroup && p.id && !p.isLP // Added !isLP check
+  );
+
+  if (validPositions.length === 0) {
+    // Optionally return null or a message if only LP positions were passed
+    // return <p className="text-muted-foreground text-sm">No non-LP positions found.</p>;
     return null;
   }
 
@@ -37,86 +209,67 @@ export default function TraderPositionsTable({
               <TableHead>Position</TableHead>
               <TableHead>Wager</TableHead>
               <TableHead>Position Value</TableHead>
-              <TableHead>Max Profit</TableHead>
+              <TableHead>Max Payout</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {positions.map((position: Position) => {
-              let displayQuestion = 'Legacy Market'; // Default fallback
-
-              if (
-                position.market?.marketGroup?.optionNames &&
-                position.market.marketGroup.optionNames.length > 0 &&
-                position.market.marketGroup.question
-              ) {
-                displayQuestion = position.market.marketGroup.question;
-              } else if (position.market?.question) {
-                displayQuestion = position.market.question;
-              }
-
+            {validPositions.map((position: Position) => {
               const isOwner =
                 connectedAddress &&
                 position.owner &&
                 connectedAddress.toLowerCase() === position.owner.toLowerCase();
 
+              if (!position.market?.marketGroup) {
+                console.warn(
+                  'Skipping position render due to missing market data:',
+                  position.id
+                );
+                return null;
+              }
+
+              const isClosed = Number(position.collateral) === 0;
+
               return (
                 <TableRow key={position.id}>
-                  <TableCell>{displayQuestion}</TableCell>
-                  <TableCell>
-                    {position.isLP ? (
-                      <span>
-                        <NumberDisplay
-                          value={
-                            (position.lpBaseToken
-                              ? Number(position.lpBaseToken)
-                              : Number(position.baseToken) -
-                                Number(position.borrowedBaseToken || 0)) /
-                            10 ** 18
-                          }
-                        />{' '}
-                        Ggas
-                      </span>
-                    ) : (
-                      <span>
-                        <NumberDisplay
-                          value={
-                            (Number(position.baseToken) -
-                              Number(position.borrowedBaseToken || 0)) /
-                            10 ** 18
-                          }
-                        />{' '}
-                        Ggas
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <NumberDisplay
-                      value={Number(position.collateral) / 10 ** 18}
-                    />{' '}
-                    wstETH
-                  </TableCell>
-                  <TableCell>
-                    {/* Actual or realized profit/loss */}
-                    {position.isSettled ? '+' : ''}
-                    <NumberDisplay value={0} /> wstETH
-                  </TableCell>
-                  <TableCell>
-                    {/* Potential profit calculation */}
-                    <NumberDisplay
-                      value={(Number(position.collateral) / 10 ** 18) * 0.2}
-                    />{' '}
-                    wstETH
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant={position.isSettled ? 'default' : 'secondary'}
-                      disabled={!isOwner}
+                  <TableCell>{position.market.question || 'N/A'}</TableCell>
+                  {isClosed ? (
+                    <TableCell
+                      colSpan={5}
+                      className="text-center font-medium text-muted-foreground"
                     >
-                      {position.isSettled ? 'Claim' : 'Sell'}
-                    </Button>
-                  </TableCell>
+                      CLOSED
+                    </TableCell>
+                  ) : (
+                    <>
+                      <TableCell>
+                        <PositionCell position={position} />
+                      </TableCell>
+                      <TableCell>
+                        <NumberDisplay
+                          value={Number(
+                            formatEther(BigInt(position.collateral || '0'))
+                          )}
+                        />{' '}
+                        {position.market.marketGroup.collateralSymbol}
+                      </TableCell>
+                      <TableCell>
+                        <PositionValueCell position={position} />
+                      </TableCell>
+                      <TableCell>
+                        <MaxPayoutCell position={position} />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant={position.isSettled ? 'default' : 'secondary'}
+                          disabled={!isOwner} // Keep disabled logic based on ownership
+                        >
+                          {position.isSettled ? 'Claim' : 'Sell'}
+                        </Button>
+                      </TableCell>
+                    </>
+                  )}
                 </TableRow>
               );
             })}

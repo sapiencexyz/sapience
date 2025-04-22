@@ -7,20 +7,89 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
-import { useAccount } from 'wagmi';
+import Link from 'next/link';
+import { formatEther } from 'viem';
 
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import type { Position } from '~/lib/interfaces/interfaces';
+import { tickToPrice, getChainShortName } from '~/lib/utils/util';
 
 interface LpPositionsTableProps {
   positions: Position[];
 }
 
-export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
-  const { address: connectedAddress } = useAccount();
+// Helper component for Market Cell (similar to app package but simpler for now)
+function MarketCell({ position }: { position: Position }) {
+  return position.market.question;
+}
 
-  // Return null if there are no positions to display
+// Helper component for Collateral Cell
+function CollateralCell({ position }: { position: Position }) {
+  const decimals = position.market.marketGroup?.collateralDecimals || 18; // Default to 18 if not provided
+  const symbol = position.market.marketGroup?.collateralSymbol || 'Tokens';
+  const displayValue = Number(position.collateral) / 10 ** decimals;
+
+  return (
+    <div className="flex items-center gap-1">
+      <NumberDisplay value={displayValue} />
+      <span className="text-muted-foreground text-sm">{symbol}</span>
+    </div>
+  );
+}
+
+// Helper component for Virtual Token Cells
+function VirtualTokenCell({
+  value,
+  unit,
+}: {
+  value: string | number | undefined | null;
+  unit: string;
+}) {
+  const displayValue = Number(formatEther(BigInt(value?.toString() || '0')));
+  return (
+    <div className="flex items-center gap-1">
+      <NumberDisplay value={displayValue} />
+      <span className="text-muted-foreground text-sm">{unit}</span>
+    </div>
+  );
+}
+
+// Helper component for Price Tick Cells
+function PriceTickCell({
+  tick,
+  unit,
+}: {
+  tick: string | number | undefined | null;
+  unit: string;
+}) {
+  const price = tickToPrice(tick);
+  return (
+    <div className="flex items-center gap-1">
+      <NumberDisplay value={price} />
+      <span className="text-muted-foreground text-sm">{unit}</span>
+    </div>
+  );
+}
+
+export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
   if (!positions || positions.length === 0) {
+    return null;
+  }
+
+  const validPositions = positions.filter(
+    (p) =>
+      p &&
+      p.market &&
+      p.market.marketGroup &&
+      p.id &&
+      p.isLP && // Ensure it's an LP position
+      p.lowPriceTick !== undefined && // Check necessary fields exist
+      p.highPriceTick !== undefined &&
+      p.lpBaseToken !== undefined &&
+      p.lpQuoteToken !== undefined
+  );
+
+  if (validPositions.length === 0) {
     return null;
   }
 
@@ -32,88 +101,80 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Question</TableHead>
-              <TableHead>Position</TableHead>
-              <TableHead>Wager</TableHead>
-              <TableHead>Position Value</TableHead>
-              <TableHead>Max Profit</TableHead>
-              <TableHead />
+              <TableHead>Collateral</TableHead>
+              <TableHead>Base Tokens</TableHead> {/* Updated Header */}
+              <TableHead>Quote Tokens</TableHead> {/* Updated Header */}
+              <TableHead>Low Price</TableHead>
+              <TableHead>High Price</TableHead>
+              <TableHead /> {/* Header for More Info */}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {positions.map((position: Position) => {
-              let displayQuestion = 'Legacy Market'; // Default fallback
+            {validPositions.map((position: Position) => {
+              const { marketGroup } = position.market;
+              const baseUnit = `v${marketGroup?.baseTokenName || 'Base'}`;
+              const quoteUnit = `v${marketGroup?.collateralSymbol || 'Quote'}`;
+              const priceUnit = `${marketGroup?.collateralSymbol || 'Quote'}/${marketGroup?.baseTokenName || 'Base'}`;
 
-              if (
-                position.market?.marketGroup?.optionNames &&
-                position.market.marketGroup.optionNames.length > 0 &&
-                position.market.marketGroup.question
-              ) {
-                displayQuestion = position.market.marketGroup.question;
-              } else if (position.market?.question) {
-                displayQuestion = position.market.question;
-              }
+              const isClosed =
+                position.lpBaseToken === '0' && position.lpQuoteToken === '0';
 
-              const isOwner =
-                connectedAddress &&
-                position.owner &&
-                connectedAddress.toLowerCase() === position.owner.toLowerCase();
+              const chainShortName = marketGroup?.chainId
+                ? getChainShortName(marketGroup.chainId)
+                : 'unknown';
+              const positionUrl = `/positions/${chainShortName}:${marketGroup?.address}/${position.market.marketId}?positionId=${position.positionId}`;
 
               return (
                 <TableRow key={position.id}>
-                  <TableCell>{displayQuestion}</TableCell>
                   <TableCell>
-                    {position.isLP ? (
-                      <span>
-                        <NumberDisplay
-                          value={
-                            (position.lpBaseToken
-                              ? Number(position.lpBaseToken)
-                              : Number(position.baseToken) -
-                                Number(position.borrowedBaseToken || 0)) /
-                            10 ** 18
-                          }
-                        />{' '}
-                        Ggas
-                      </span>
-                    ) : (
-                      <span>
-                        <NumberDisplay
-                          value={
-                            (Number(position.baseToken) -
-                              Number(position.borrowedBaseToken || 0)) /
-                            10 ** 18
-                          }
-                        />{' '}
-                        Ggas
-                      </span>
-                    )}
+                    <MarketCell position={position} />
                   </TableCell>
-                  <TableCell>
-                    <NumberDisplay
-                      value={Number(position.collateral) / 10 ** 18}
-                    />{' '}
-                    wstETH
-                  </TableCell>
-                  <TableCell>
-                    {/* Actual or realized profit/loss */}
-                    {position.isSettled ? '+' : ''}
-                    <NumberDisplay value={0} /> wstETH
-                  </TableCell>
-                  <TableCell>
-                    {/* Potential profit calculation */}
-                    <NumberDisplay
-                      value={(Number(position.collateral) / 10 ** 18) * 0.2}
-                    />{' '}
-                    wstETH
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant={position.isSettled ? 'default' : 'secondary'}
-                      disabled={!isOwner}
+                  {isClosed ? (
+                    <TableCell
+                      colSpan={5} // Spans Collateral, VBase, VQuote, Low, High
+                      className="text-center font-medium text-muted-foreground"
                     >
-                      {position.isSettled ? 'Claim' : 'Sell'}
-                    </Button>
+                      CLOSED
+                    </TableCell>
+                  ) : (
+                    <>
+                      <TableCell>
+                        <CollateralCell position={position} />
+                      </TableCell>
+                      <TableCell>
+                        <VirtualTokenCell
+                          value={position.lpBaseToken}
+                          unit={baseUnit}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <VirtualTokenCell
+                          value={position.lpQuoteToken}
+                          unit={quoteUnit}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <PriceTickCell
+                          tick={position.lowPriceTick}
+                          unit={priceUnit}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <PriceTickCell
+                          tick={position.highPriceTick}
+                          unit={priceUnit}
+                        />
+                      </TableCell>
+                    </>
+                  )}
+                  <TableCell className="text-right">
+                    <Link
+                      href={positionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button size="sm">More Info</Button>
+                    </Link>
                   </TableCell>
                 </TableRow>
               );
