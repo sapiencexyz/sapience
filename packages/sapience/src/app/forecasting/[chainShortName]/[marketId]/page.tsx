@@ -1,22 +1,21 @@
 'use client';
 
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
-import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
-import dynamic from 'next/dynamic';
-import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
-
+import { Button } from '@foil/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
-import { Button } from '@foil/ui/components/ui/button';
+import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
+import { ChevronLeft, ChevronDown } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
-import PriceChart from '~/components/charts/PriceChart';
 import OrderBookChart from '~/components/charts/OrderBookChart';
+import PriceChart from '~/components/charts/PriceChart';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
 import { useMarket } from '~/hooks/graphql/useMarket';
 
@@ -144,7 +143,9 @@ const ForecastingDetailPage = () => {
                 {chartType === ChartType.ORDER_BOOK && (
                   <OrderBookChart
                     chainId={chainId}
-                    poolAddress={marketData?.poolAddress as (`0x${string}` | undefined)}
+                    poolAddress={
+                      marketData?.poolAddress as `0x${string}` | undefined
+                    }
                     baseAssetMinPriceTick={marketData?.baseAssetMinPriceTick}
                     baseAssetMaxPriceTick={marketData?.baseAssetMaxPriceTick}
                     quoteTokenName={marketData?.marketGroup?.quoteTokenName}
@@ -156,7 +157,10 @@ const ForecastingDetailPage = () => {
                   <div className="order-1 sm:order-1">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
                           {chartType}
                           <ChevronDown className="h-4 w-4 opacity-50" />
                         </Button>
