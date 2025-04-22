@@ -71,9 +71,8 @@ const GET_RESOURCE_CANDLES = gql`
   }
 `;
 
-// Add Resource Trailing Average Candles Query
-// TODO: Determine the correct trailingAvgTime or make it configurable
-const TRAILING_AVG_TIME_SECONDS = 86400; // Example: 1 day average
+// TODO: Make this dynamic?
+const TRAILING_AVG_TIME_SECONDS = 604800; // 7 day trailing average
 const GET_RESOURCE_TRAILING_AVG_CANDLES = gql`
   query ResourceTrailingAverageCandles(
     $slug: String!
