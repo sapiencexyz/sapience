@@ -1,19 +1,13 @@
 'use client';
 
-import {
-  Chart,
-  ChartSelector,
-  IntervalSelector,
-  WindowSelector,
-} from '@foil/ui/components/charts';
-import type { TimeWindow } from '@foil/ui/types/charts';
+import { IntervalSelector } from '@foil/ui/components/charts';
 import { ChartType, TimeInterval } from '@foil/ui/types/charts';
 import { ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { ResponsiveContainer } from 'recharts';
 
+import PriceChart from '~/components/charts/PriceChart';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
 import { useMarket } from '~/hooks/graphql/useMarket';
 
@@ -50,7 +44,6 @@ const ForecastingDetailPage = () => {
   const marketId = params.marketId as string;
   const chainShortName = params.chainShortName as string;
 
-  // Call the custom hook to get market data and related state
   const {
     marketData,
     isLoadingMarket,
@@ -61,18 +54,26 @@ const ForecastingDetailPage = () => {
     numericMarketId,
   } = useMarket({ chainShortName, marketId });
 
-  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(null);
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I15M
   );
-  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+  const [chartType] = useState<ChartType>(ChartType.PRICE);
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
 
-  // Show loader while market data is loading
+  // Loader now only depends on market data loading
   if (isLoadingMarket) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
         <LottieLoader width={32} height={32} />
+      </div>
+    );
+  }
+
+  // Handle case where market data failed to load or is missing essentials
+  if (!marketData || !chainId || !marketAddress || !numericMarketId) {
+    return (
+      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+        <p className="text-destructive">Failed to load market data.</p>
       </div>
     );
   }
@@ -96,35 +97,19 @@ const ForecastingDetailPage = () => {
           )}
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex flex-col w-full relative">
-              <ComingSoonScrim className="absolute rounded-lg" />
-              <ResponsiveContainer width="100%" height="100%">
-                <Chart
-                  resourceSlug="prediction"
+              <div className="w-full h-full">
+                <PriceChart
                   market={{
                     marketId: numericMarketId,
                     chainId,
                     address: marketAddress,
+                    quoteTokenName: marketData?.marketGroup?.quoteTokenName,
                   }}
-                  selectedWindow={selectedWindow}
                   selectedInterval={selectedInterval}
                 />
-              </ResponsiveContainer>
+              </div>
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
                 <div className="flex flex-row flex-wrap gap-3 w-full">
-                  <div className="order-2 sm:order-none">
-                    <ChartSelector
-                      chartType={chartType}
-                      setChartType={setChartType}
-                    />
-                  </div>
-                  {chartType !== ChartType.LIQUIDITY && (
-                    <div className="order-2 sm:order-none">
-                      <WindowSelector
-                        selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow}
-                      />
-                    </div>
-                  )}
                   {chartType === ChartType.PRICE && (
                     <div className="order-2 sm:order-none">
                       <IntervalSelector

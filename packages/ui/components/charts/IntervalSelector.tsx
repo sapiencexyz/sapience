@@ -34,13 +34,6 @@ export const IntervalSelector = ({
         30m
       </Button>
       <Button
-        variant={selectedInterval === TimeInterval.I1H ? 'default' : 'outline'}
-        size="sm"
-        onClick={() => setSelectedInterval(TimeInterval.I1H)}
-      >
-        1h
-      </Button>
-      <Button
         variant={selectedInterval === TimeInterval.I4H ? 'default' : 'outline'}
         size="sm"
         onClick={() => setSelectedInterval(TimeInterval.I4H)}
