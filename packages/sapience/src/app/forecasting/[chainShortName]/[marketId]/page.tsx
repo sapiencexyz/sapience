@@ -54,6 +54,9 @@ const ForecastingDetailPage = () => {
     numericMarketId,
   } = useMarket({ chainShortName, marketId });
 
+  // Extract resource slug
+  const resourceSlug = marketData?.marketGroup?.resource?.slug;
+
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
   );
@@ -124,6 +127,8 @@ const ForecastingDetailPage = () => {
                     quoteTokenName: marketData?.marketGroup?.quoteTokenName,
                   }}
                   selectedInterval={selectedInterval}
+                  selectedPrices={selectedPrices}
+                  resourceSlug={resourceSlug}
                 />
               </div>
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">

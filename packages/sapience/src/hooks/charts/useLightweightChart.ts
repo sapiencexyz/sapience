@@ -1,3 +1,4 @@
+import { LineType } from '@foil/ui/types/charts'; // Import LineType
 import type {
   UTCTimestamp,
   IChartApi,
@@ -20,7 +21,7 @@ export const BLUE = '#3F59DA';
 interface UseLightweightChartProps {
   containerRef: React.RefObject<HTMLDivElement>;
   priceData: PriceChartDataPoint[]; // Accept pre-fetched data
-  // Removed dependencies on contexts and complex props
+  selectedPrices: Record<LineType, boolean>; // Add selectedPrices prop
 }
 
 // Helper function for price extraction (kept from original)
@@ -52,11 +53,14 @@ const extractPriceFromData = (
 export const useLightweightChart = ({
   containerRef,
   priceData,
+  selectedPrices, // Destructure selectedPrices
 }: UseLightweightChartProps) => {
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const indexPriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const resourcePriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null); // Add ref for resource price
+  const trailingAvgPriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null); // Add ref for trailing avg price
   const { theme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
   const [hoverData, setHoverData] = useState<{
@@ -156,6 +160,26 @@ export const useLightweightChart = ({
       // pointMarkersVisible: false,
     });
 
+    // Add Resource Price Line Series
+    resourcePriceSeriesRef.current = chart.addLineSeries({
+      color: GREEN,
+      lineStyle: 0, // Solid line style
+      lineWidth: 1,
+      priceScaleId: 'right',
+      visible: selectedPrices[LineType.ResourcePrice], // Set initial visibility
+      // pointMarkersVisible: false,
+    });
+
+    // Add Trailing Average Price Line Series
+    trailingAvgPriceSeriesRef.current = chart.addLineSeries({
+      color: BLUE,
+      lineStyle: 0,
+      lineWidth: 1,
+      priceScaleId: 'right',
+      visible: selectedPrices[LineType.TrailingAvgPrice], // Set initial visibility
+      // pointMarkersVisible: false,
+    });
+
     // Subscribe to crosshair movement for hover data
     chart.subscribeCrosshairMove((param) => {
       if (
@@ -184,6 +208,20 @@ export const useLightweightChart = ({
       if (price === null && indexPriceSeriesRef.current) {
         const indexData = param.seriesData.get(indexPriceSeriesRef.current);
         price = extractPriceFromData(indexData, 'value');
+      }
+
+      // If no index price, try resource series
+      if (price === null && resourcePriceSeriesRef.current) {
+        const resourceData = param.seriesData.get(
+          resourcePriceSeriesRef.current
+        );
+        price = extractPriceFromData(resourceData, 'value');
+      }
+
+      // If no resource price, try trailing avg series
+      if (price === null && trailingAvgPriceSeriesRef.current) {
+        const avgData = param.seriesData.get(trailingAvgPriceSeriesRef.current);
+        price = extractPriceFromData(avgData, 'value');
       }
 
       setHoverData({ price, timestamp });
@@ -228,7 +266,9 @@ export const useLightweightChart = ({
     if (
       !chartRef.current ||
       !candlestickSeriesRef.current ||
-      !indexPriceSeriesRef.current
+      !indexPriceSeriesRef.current ||
+      !resourcePriceSeriesRef.current || // Add check
+      !trailingAvgPriceSeriesRef.current // Add check
     )
       return;
 
@@ -257,8 +297,26 @@ export const useLightweightChart = ({
         value: d.indexPrice!,
       }));
 
+    // Prepare data for resource price series
+    const resourceLineData: LineData[] = priceData
+      .filter((d) => d.resourcePrice !== undefined)
+      .map((d) => ({
+        time: d.timestamp as UTCTimestamp,
+        value: d.resourcePrice!,
+      }));
+
+    // Prepare data for trailing average price series
+    const trailingAvgLineData: LineData[] = priceData
+      .filter((d) => d.trailingAvgPrice !== undefined)
+      .map((d) => ({
+        time: d.timestamp as UTCTimestamp,
+        value: d.trailingAvgPrice!,
+      }));
+
     candlestickSeriesRef.current.setData(candleSeriesData);
     indexPriceSeriesRef.current.setData(indexLineData);
+    resourcePriceSeriesRef.current.setData(resourceLineData); // Set data
+    trailingAvgPriceSeriesRef.current.setData(trailingAvgLineData); // Set data
 
     // Set initial time scale visibility only once after data is loaded
     if (!hasSetTimeScale.current && candleSeriesData.length > 0) {
@@ -279,6 +337,39 @@ export const useLightweightChart = ({
       mode: isLogarithmic ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
     });
   }, [isLogarithmic]);
+
+  // Effect to toggle series visibility based on selectedPrices
+  useEffect(() => {
+    if (
+      !chartRef.current ||
+      !candlestickSeriesRef.current ||
+      !indexPriceSeriesRef.current ||
+      !resourcePriceSeriesRef.current || // Add check
+      !trailingAvgPriceSeriesRef.current // Add check
+    ) {
+      return;
+    }
+
+    // Toggle Candlestick (Market Price) visibility
+    candlestickSeriesRef.current.applyOptions({
+      visible: selectedPrices[LineType.MarketPrice],
+    });
+
+    // Toggle Line (Index Price) visibility
+    indexPriceSeriesRef.current.applyOptions({
+      visible: selectedPrices[LineType.IndexPrice],
+    });
+
+    // Toggle Resource Price visibility
+    resourcePriceSeriesRef.current.applyOptions({
+      visible: selectedPrices[LineType.ResourcePrice],
+    });
+
+    // Toggle Trailing Average Price visibility
+    trailingAvgPriceSeriesRef.current.applyOptions({
+      visible: selectedPrices[LineType.TrailingAvgPrice],
+    });
+  }, [selectedPrices]); // Rerun when selectedPrices change
 
   return {
     isLogarithmic,

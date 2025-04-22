@@ -5,6 +5,7 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip'; // Assuming shared UI components
 import { cn } from '@foil/ui/lib/utils'; // Assuming shared utils
+import type { LineType } from '@foil/ui/types/charts';
 import { TimeInterval } from '@foil/ui/types/charts'; // Assuming shared types
 import { Loader2 } from 'lucide-react';
 import { useRef, useEffect } from 'react';
@@ -31,6 +32,8 @@ interface PriceChartProps {
     quoteTokenName?: string; // Pass from parent if available
   };
   selectedInterval: TimeInterval;
+  selectedPrices: Record<LineType, boolean>;
+  resourceSlug?: string; // Add optional resourceSlug prop
   onHoverChange?: (
     data: { price: number | null; timestamp: number | null } | null
   ) => void; // Optional hover callback
@@ -39,6 +42,8 @@ interface PriceChartProps {
 const PriceChart: React.FC<PriceChartProps> = ({
   market,
   selectedInterval,
+  selectedPrices,
+  resourceSlug, // Destructure resourceSlug
   onHoverChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +55,8 @@ const PriceChart: React.FC<PriceChartProps> = ({
     marketId: market.marketId.toString(), // Convert marketId to string for the hook
     interval: intervalToSecondsMap[selectedInterval],
     quoteTokenName: market.quoteTokenName,
+    resourceSlug, // Pass resourceSlug to the hook
+    trailingAvgTimeSeconds: 604800, // Pass the 7-day average time (in seconds)
     // Add fromTimestamp/toTimestamp based on selectedWindow if needed in the future
   });
 
@@ -57,6 +64,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
   const { isLogarithmic, setIsLogarithmic, hoverData } = useLightweightChart({
     containerRef,
     priceData: chartData,
+    selectedPrices,
   });
 
   // Propagate hover changes
