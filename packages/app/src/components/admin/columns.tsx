@@ -79,17 +79,12 @@ const ResourceCell = ({
   const foundResource = resources.find((resource) =>
     resource.marketGroups.some((marketGroup) => {
       // console.log('marketGroup', marketGroup.question)
-      if (marketGroup.id === '32') {
-        console.log('marketGroup', marketGroup.address === marketAddress)
-        console.log('chainId', marketGroup.chainId === chainId)
-      }
       return (
         marketGroup.address === marketAddress && marketGroup.chainId === chainId
       );
     })
   );
 
-  console.log('foundResource', foundResource);
 
   if (!foundResource) {
     return <span>Unknown</span>;

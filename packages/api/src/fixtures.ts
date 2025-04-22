@@ -90,7 +90,6 @@ export const initializeFixtures = async (): Promise<void> => {
 
   // Initialize resources from fixtures.json
   for (const resourceData of fixturesData.RESOURCES) {
-    console.log('Initializing resource:', resourceData.name);
     let resource = await resourceRepository.findOne({
       where: { name: resourceData.name },
     });
@@ -187,7 +186,6 @@ export const initializeFixtures = async (): Promise<void> => {
       continue;
     }
 
-    console.log('Initializing resource for market:', resource.name);
 
     // Check if market already exists by address and chainId
     let marketGroup = await marketGroupRepository.findOne({
@@ -225,14 +223,6 @@ export const initializeFixtures = async (): Promise<void> => {
         await handleMarketQuestions(marketGroup, marketData.questions);
       }
     } else {
-      console.log('Market already exists:', marketGroup.address);
-      // Set the resource for the market
-      console.log(
-        'Setting resource for market2:',
-        marketGroup.address,
-        resource
-      );
-
       marketGroup.resource = resource;
       marketGroup.isYin = marketData.isYin || marketGroup.isYin || false;
       marketGroup.isCumulative =
