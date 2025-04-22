@@ -439,6 +439,7 @@ export const createOrUpdateEpochFromContract = async (
   updatedEpoch.baseAssetMaxPriceTick = epochData.baseAssetMaxPriceTick;
   updatedEpoch.maxPriceD18 = epochData.maxPriceD18.toString();
   updatedEpoch.minPriceD18 = epochData.minPriceD18.toString();
+  updatedEpoch.poolAddress = epochData.pool;
   const marketParamsRaw = (epochReadResult as EpochReadResult)[1];
   const marketParams: MarketParams = {
     ...marketParamsRaw,
