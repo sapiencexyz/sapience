@@ -39,4 +39,10 @@ export class MarketType {
 
   @Field(() => String, { nullable: true })
   question: string | null;
+
+  @Field(() => Int, { nullable: true })
+  baseAssetMinPriceTick: number | null;
+
+  @Field(() => Int, { nullable: true })
+  baseAssetMaxPriceTick: number | null;
 }
