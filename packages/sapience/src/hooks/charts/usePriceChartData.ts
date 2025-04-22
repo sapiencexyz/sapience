@@ -104,6 +104,34 @@ const safeParseFloat = (value: string | null | undefined): number | null => {
   return isNaN(num) ? null : num;
 };
 
+// Helper function to parse GraphQL candle responses
+const parseCandleResponse = <T extends object, K extends keyof T>(
+  response: any, // Consider using a more specific type if possible
+  dataKey: K,
+  entityName: string // e.g., 'market', 'index'
+): T[K] | null => {
+  if (!response || typeof response !== 'object' || !response.data) {
+    console.warn(`Invalid or missing response data for ${entityName} candles.`);
+    return null;
+  }
+  const data = response.data as T | { errors?: any[] };
+
+  // Type guard for error checking
+  if (data && typeof data === 'object' && 'errors' in data && data.errors) {
+    console.error(`GraphQL error fetching ${entityName} candles:`, data.errors);
+    throw new Error(
+      (data.errors[0] as any)?.message || `Error fetching ${entityName} candles`
+    );
+  }
+
+  // Type guard for data key check
+  if (data && typeof data === 'object' && dataKey in data) {
+    return (data as T)[dataKey] ?? null; // Return null if data[dataKey] is null/undefined
+  }
+  console.warn(`Unexpected ${entityName} candle response structure:`, data);
+  return null;
+};
+
 export const usePriceChartData = ({
   marketAddress,
   chainId,
@@ -123,7 +151,7 @@ export const usePriceChartData = ({
     const to = propToTimestamp ?? now;
 
     // Fetch Market and Index Candles concurrently
-    const promises = [
+    const [marketResponse, indexResponse] = await Promise.all([
       foilApi.post('/graphql', {
         query: print(GET_MARKET_CANDLES),
         variables: {
@@ -146,59 +174,30 @@ export const usePriceChartData = ({
           interval,
         },
       }),
-    ];
+    ]);
 
-    const [marketResponse, indexResponse] = await Promise.all(promises);
-
+    // Parse responses using the helper function
+    // A single try-catch block handles errors from either fetch or parsing
     let marketCandles: CandleType[] = [];
     let indexCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[] = [];
-    let fetchError: Error | null = null;
 
-    // Process Market Candle Response
-    if (marketResponse) {
-      const marketData = marketResponse.data as
-        | MarketCandlesResponse
-        | { errors?: any[] };
-      if (marketData && 'errors' in marketData && marketData.errors) {
-        console.error(
-          'GraphQL error fetching market candles:',
-          marketData.errors
-        );
-        fetchError = new Error(
-          marketData.errors[0]?.message || 'Error fetching market candles'
-        );
-      } else if (marketData && 'marketCandles' in marketData) {
-        marketCandles = marketData.marketCandles ?? [];
-      } else {
-        console.warn(
-          'Unexpected market candle response structure:',
-          marketData
-        );
-      }
-    }
-
-    // Process Index Candle Response
-    if (!fetchError && indexResponse) {
-      const indexData = indexResponse.data as
-        | IndexCandlesResponse
-        | { errors?: any[] };
-      if (indexData && 'errors' in indexData && indexData.errors) {
-        console.error(
-          'GraphQL error fetching index candles:',
-          indexData.errors
-        );
-        fetchError = new Error(
-          indexData.errors[0]?.message || 'Error fetching index candles'
-        );
-      } else if (indexData && 'indexCandles' in indexData) {
-        indexCandlesRaw = indexData.indexCandles ?? [];
-      } else {
-        console.warn('Unexpected index candle response structure:', indexData);
-      }
-    }
-
-    if (fetchError) {
-      throw fetchError; // Propagate the first error encountered
+    try {
+      marketCandles =
+        parseCandleResponse<MarketCandlesResponse, 'marketCandles'>(
+          marketResponse,
+          'marketCandles',
+          'market'
+        ) || [];
+      indexCandlesRaw =
+        parseCandleResponse<IndexCandlesResponse, 'indexCandles'>(
+          indexResponse,
+          'indexCandles',
+          'index'
+        ) || [];
+    } catch (error) {
+      // Re-throw the error to be caught by useQuery
+      console.error('Error fetching or parsing candle data:', error);
+      throw error;
     }
 
     // --- Data Processing ---
@@ -212,49 +211,43 @@ export const usePriceChartData = ({
       indexMultiplier = 1e9; // Scale gwei to wei (Assuming default)
     }
 
-    // 2. Create map for index prices
-    const indexPriceMap = new Map<number, number | null>();
+    // 2. Combine data using a Map for efficient merging
+    const combinedDataMap = new Map<number, PriceChartDataPoint>();
+
+    // Process market candles
+    marketCandles.forEach((candle) => {
+      const dataPoint: PriceChartDataPoint = {
+        timestamp: candle.timestamp,
+        open: safeParseFloat(candle.open) ?? undefined,
+        high: safeParseFloat(candle.high) ?? undefined,
+        low: safeParseFloat(candle.low) ?? undefined,
+        close: safeParseFloat(candle.close) ?? undefined,
+      };
+      combinedDataMap.set(candle.timestamp, dataPoint);
+    });
+
+    // Process and merge index candles
     indexCandlesRaw.forEach((candle) => {
       const closeNum = safeParseFloat(candle.close);
       if (closeNum !== null) {
-        indexPriceMap.set(candle.timestamp, closeNum * indexMultiplier);
+        const scaledIndexPrice = closeNum * indexMultiplier;
+        const existingDataPoint = combinedDataMap.get(candle.timestamp);
+        if (existingDataPoint) {
+          existingDataPoint.indexPrice = scaledIndexPrice;
+        } else {
+          // Create a new point if no market data exists for this timestamp
+          combinedDataMap.set(candle.timestamp, {
+            timestamp: candle.timestamp,
+            indexPrice: scaledIndexPrice,
+          });
+        }
       }
     });
 
-    // 3. Combine data
-    const timestamps = new Set<number>(); // Keep track of all unique timestamps
-    marketCandles.forEach((c) => timestamps.add(c.timestamp));
-    indexCandlesRaw.forEach((c) => timestamps.add(c.timestamp));
-
-    const sortedTimestamps = Array.from(timestamps).sort((a, b) => a - b);
-
-    // Create map for market candles
-    const marketCandleMap = new Map<number, CandleType>();
-    marketCandles.forEach((c) => marketCandleMap.set(c.timestamp, c));
-
-    // Build the final combined data array
-    const combinedData: PriceChartDataPoint[] = sortedTimestamps.map((ts) => {
-      const dataPoint: PriceChartDataPoint = { timestamp: ts };
-      const marketCandle = marketCandleMap.get(ts);
-
-      // Add market candle data
-      if (marketCandle) {
-        dataPoint.open = safeParseFloat(marketCandle.open) ?? undefined;
-        dataPoint.high = safeParseFloat(marketCandle.high) ?? undefined;
-        dataPoint.low = safeParseFloat(marketCandle.low) ?? undefined;
-        dataPoint.close = safeParseFloat(marketCandle.close) ?? undefined;
-      }
-
-      // Add index price data
-      const indexPrice = indexPriceMap.get(ts);
-      if (indexPrice !== undefined && indexPrice !== null) {
-        dataPoint.indexPrice = indexPrice;
-      }
-
-      return dataPoint;
-    });
-
-    return combinedData;
+    // 3. Convert map values to an array and sort by timestamp
+    return Array.from(combinedDataMap.values()).sort(
+      (a, b) => a.timestamp - b.timestamp
+    );
   };
 
   const { data, isLoading, isError, error } = useQuery<

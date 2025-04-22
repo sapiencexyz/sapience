@@ -2,13 +2,12 @@ import type {
   UTCTimestamp,
   IChartApi,
   ISeriesApi,
-  MouseEventParams,
   CandlestickData,
   LineData,
 } from 'lightweight-charts';
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { PriceChartDataPoint } from './usePriceChartData'; // Import the shared type
 
@@ -233,7 +232,7 @@ export const useLightweightChart = ({
           d.close !== undefined
       )
       .map((d) => ({
-        time: (d.timestamp / 1000) as UTCTimestamp,
+        time: d.timestamp as UTCTimestamp,
         open: d.open!,
         high: d.high!,
         low: d.low!,
@@ -244,7 +243,7 @@ export const useLightweightChart = ({
     const indexLineData: LineData[] = priceData
       .filter((d) => d.indexPrice !== undefined)
       .map((d) => ({
-        time: (d.timestamp / 1000) as UTCTimestamp,
+        time: d.timestamp as UTCTimestamp,
         value: d.indexPrice!,
       }));
 

@@ -1,17 +1,13 @@
 'use client';
 
-import {
-  ChartSelector,
-  IntervalSelector,
-  WindowSelector,
-} from '@foil/ui/components/charts';
+import { IntervalSelector } from '@foil/ui/components/charts';
 import { TimeWindow, ChartType, TimeInterval } from '@foil/ui/types/charts';
 import { ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
-import { PriceChart as Chart } from '~/components/charts';
+import PriceChart from '~/components/charts/PriceChart';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
 import { useMarket } from '~/hooks/graphql/useMarket';
 
@@ -42,16 +38,6 @@ const SimpleLiquidityWrapper = dynamic(
   }
 );
 
-// Map TimeInterval enum to seconds for the hook
-const intervalToSecondsMap: Record<TimeInterval, number> = {
-  [TimeInterval.I5M]: 300,
-  [TimeInterval.I15M]: 900,
-  [TimeInterval.I30M]: 1800,
-  [TimeInterval.I1H]: 3600,
-  [TimeInterval.I4H]: 14400,
-  [TimeInterval.I1D]: 86400,
-};
-
 const ForecastingDetailPage = () => {
   const params = useParams();
   const router = useRouter();
@@ -68,13 +54,13 @@ const ForecastingDetailPage = () => {
     numericMarketId,
   } = useMarket({ chainShortName, marketId });
 
-  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
+  const [selectedWindow] = useState<TimeWindow | null>(
     TimeWindow.D // Default to Day window initially
   );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I15M
   );
-  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
+  const [chartType] = useState<ChartType>(ChartType.PRICE);
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
 
   // Loader now only depends on market data loading
@@ -115,7 +101,7 @@ const ForecastingDetailPage = () => {
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex flex-col w-full relative">
               <div className="w-full h-[400px]">
-                <Chart
+                <PriceChart
                   market={{
                     marketId: numericMarketId,
                     chainId,
@@ -128,20 +114,6 @@ const ForecastingDetailPage = () => {
               </div>
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
                 <div className="flex flex-row flex-wrap gap-3 w-full">
-                  <div className="order-2 sm:order-none">
-                    <ChartSelector
-                      chartType={chartType}
-                      setChartType={setChartType}
-                    />
-                  </div>
-                  {chartType !== ChartType.LIQUIDITY && (
-                    <div className="order-2 sm:order-none">
-                      <WindowSelector
-                        selectedWindow={selectedWindow}
-                        setSelectedWindow={setSelectedWindow}
-                      />
-                    </div>
-                  )}
                   {chartType === ChartType.PRICE && (
                     <div className="order-2 sm:order-none">
                       <IntervalSelector

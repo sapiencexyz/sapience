@@ -5,7 +5,6 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip'; // Assuming shared UI components
 import { cn } from '@foil/ui/lib/utils'; // Assuming shared utils
-import type { TimeWindow } from '@foil/ui/types/charts';
 import { TimeInterval } from '@foil/ui/types/charts'; // Assuming shared types
 import { Loader2 } from 'lucide-react';
 import { useRef, useEffect } from 'react';
@@ -33,22 +32,20 @@ interface PriceChartProps {
     quoteTokenName?: string; // Pass from parent if available
   };
   selectedInterval: TimeInterval;
-  selectedWindow: TimeWindow | null; // Pass selectedWindow for potential future use (e.g., time range)
   onHoverChange?: (
     data: { price: number | null; timestamp: number | null } | null
   ) => void; // Optional hover callback
 }
 
-export const PriceChart: React.FC<PriceChartProps> = ({
+const PriceChart: React.FC<PriceChartProps> = ({
   market,
   selectedInterval,
-  selectedWindow, // Keep selectedWindow prop
   onHoverChange,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch data using the data hook
-  const { chartData, isLoading, isError, error } = usePriceChartData({
+  const { chartData, isLoading, isError } = usePriceChartData({
     marketAddress: market.address,
     chainId: market.chainId,
     marketId: market.marketId.toString(), // Convert marketId to string for the hook
@@ -120,3 +117,5 @@ export const PriceChart: React.FC<PriceChartProps> = ({
     </div>
   );
 };
+
+export default PriceChart;
