@@ -1,7 +1,7 @@
 'use client';
 
 import { IntervalSelector } from '@foil/ui/components/charts';
-import { TimeWindow, ChartType, TimeInterval } from '@foil/ui/types/charts';
+import { ChartType, TimeInterval } from '@foil/ui/types/charts';
 import { ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
@@ -54,9 +54,6 @@ const ForecastingDetailPage = () => {
     numericMarketId,
   } = useMarket({ chainShortName, marketId });
 
-  const [selectedWindow] = useState<TimeWindow | null>(
-    TimeWindow.D // Default to Day window initially
-  );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I15M
   );
@@ -108,7 +105,6 @@ const ForecastingDetailPage = () => {
                     address: marketAddress,
                     quoteTokenName: marketData?.marketGroup?.quoteTokenName,
                   }}
-                  selectedWindow={selectedWindow}
                   selectedInterval={selectedInterval}
                 />
               </div>
