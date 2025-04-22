@@ -10,7 +10,9 @@ import { useState } from 'react';
 import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
 import PriceChart from '~/components/charts/PriceChart';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
+import { useMarketRead } from '~/hooks/contract';
 import { useMarket } from '~/hooks/graphql/useMarket';
+
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
@@ -61,7 +63,7 @@ const ForecastingDetailPage = () => {
     marketData: marketContractData,
     marketGroupParams,
     isLoading: isLoadingMarketContract,
-  } = useMarketContract({
+  } = useMarketRead({
     marketAddress: marketAddress as `0x${string}`,
     marketId: BigInt(marketId),
     abi,
@@ -69,6 +71,7 @@ const ForecastingDetailPage = () => {
 
   console.log('marketContractData', marketContractData);
   console.log('marketGroupParams', marketGroupParams);
+  console.log('marketData', marketData);
 
   // Extract resource slug
   const resourceSlug = marketData?.marketGroup?.resource?.slug;
@@ -140,7 +143,8 @@ const ForecastingDetailPage = () => {
                     marketId: numericMarketId,
                     chainId,
                     address: marketAddress,
-                    quoteTokenName: marketData?.marketGroup?.quoteTokenName,
+                    quoteTokenName:
+                      marketData?.marketGroup?.quoteTokenName || undefined,
                   }}
                   selectedInterval={selectedInterval}
                   selectedPrices={selectedPrices}
@@ -206,7 +210,7 @@ const ForecastingDetailPage = () => {
                     {activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper
                         collateralAssetTicker={
-                          marketData?.marketGroup?.baseTokenName || 'sUSDS'
+                          marketData?.marketGroup?.quoteTokenName || 'sUSDS'
                         }
                         baseTokenName={
                           marketData?.marketGroup?.baseTokenName || 'Yes'
@@ -214,6 +218,8 @@ const ForecastingDetailPage = () => {
                         quoteTokenName={
                           marketData?.marketGroup?.quoteTokenName || 'No'
                         }
+                        minTick={marketContractData?.baseAssetMinPriceTick || 0}
+                        maxTick={marketContractData?.baseAssetMaxPriceTick || 0}
                       />
                     )}
                   </div>

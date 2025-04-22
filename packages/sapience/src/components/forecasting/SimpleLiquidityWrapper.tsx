@@ -1,47 +1,52 @@
-import type { LiquidityFormValues } from '@foil/ui';
-import { LiquidityForm } from '@foil/ui';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import type React from 'react';
-import { useState } from 'react';
+import { useAccount } from 'wagmi';
+import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
+import { LiquidityForm } from './forms';
 
 interface SimpleLiquidityWrapperProps {
   collateralAssetTicker: string;
   baseTokenName: string;
   quoteTokenName: string;
+  minTick: number;
+  maxTick: number;
 }
 
 const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   collateralAssetTicker,
   baseTokenName,
   quoteTokenName,
+  minTick,
+  maxTick,
 }) => {
   const { toast } = useToast();
-  const [isConnected, setIsConnected] = useState(false);
+  const { isConnected } = useAccount();
+  const { setIsOpen } = useConnectWallet();
 
-  const handleLiquiditySubmit = (data: LiquidityFormValues) => {
-    toast({
-      title: 'Liquidity Added',
-      description: `Deposit: ${data.depositAmount} ${collateralAssetTicker}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
-    });
-  };
+  // const handleLiquiditySubmit = useCallback(
+  //   (data: LiquidityFormValues) => {
+  //     toast({
+  //       title: 'Liquidity Added',
+  //       description: `Deposit: ${data.depositAmount} ${collateralAssetTicker}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
+  //     });
+  //   },
+  //   [toast, collateralAssetTicker]
+  // );
 
-  const handleConnectWallet = () => {
-    // In a real implementation, this would connect to a wallet
-    setIsConnected(true);
-    toast({
-      title: 'Wallet Connected',
-      description: 'Your wallet has been successfully connected',
-    });
+  const handleConnectWallet = async () => {
+    setIsOpen(true);
   };
 
   return (
     <div className="h-full">
       <LiquidityForm
-        onLiquiditySubmit={handleLiquiditySubmit}
         virtualBaseTokensName={baseTokenName}
         virtualQuoteTokensName={quoteTokenName}
         isConnected={isConnected}
         onConnectWallet={handleConnectWallet}
+        collateralAssetTicker={collateralAssetTicker}
+        lowPriceTick={minTick}
+        highPriceTick={maxTick}
       />
     </div>
   );

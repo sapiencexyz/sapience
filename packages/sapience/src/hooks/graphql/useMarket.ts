@@ -21,6 +21,9 @@ export interface MarketData {
     baseTokenName: string | null;
     quoteTokenName: string | null;
     optionNames: string[] | null;
+    resource: {
+      slug: string;
+    } | null;
   } | null;
 }
 
