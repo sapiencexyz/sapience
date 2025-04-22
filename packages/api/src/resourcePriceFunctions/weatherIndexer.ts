@@ -70,7 +70,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
       ) {
         const temperatureValue = (
           Number(weatherData.temperature.latest.temperature.toFixed(2)) *
-          10 ** 18
+          10 ** 9
         ).toString();
         const price = {
           resource: { id: resource.id },
@@ -79,7 +79,10 @@ export class WeatherIndexer implements IResourcePriceIndexer {
           ),
           value: temperatureValue,
           used: '1',
-          feePaid: '1',
+          feePaid: (
+            Number(weatherData.temperature.latest.temperature.toFixed(2)) *
+            10 ** 9
+          ).toString(),
           blockNumber: 0,
         };
         console.log(
@@ -136,10 +139,13 @@ export class WeatherIndexer implements IResourcePriceIndexer {
           ),
           value: (
             weatherData.precipitation.latest.precipitation *
-            10 ** 18
+            10 ** 9
           ).toString(),
           used: '1',
-          feePaid: '1',
+          feePaid: (
+            weatherData.precipitation.latest.precipitation *
+            10 ** 9
+          ).toString(),
           blockNumber: 0,
         };
         // console.log(`[WeatherIndexer.${this.resourceType}] Prepared precipitation price data:`, price);
