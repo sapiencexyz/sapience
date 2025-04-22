@@ -39,6 +39,9 @@ export class Market {
   @Column({ type: 'integer', nullable: true })
   endTimestamp: number | null;
 
+  @Column({ type: 'text', nullable: true })
+  poolAddress: string | null;
+
   @Column({
     type: 'numeric',
     precision: NUMERIC_PRECISION,
