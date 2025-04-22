@@ -9,6 +9,7 @@ interface OrderBookRowProps {
   size: string;
   total: string;
   type: 'ask' | 'bid';
+  percentage: number; // Percentage of the largest size in the visible book
 }
 
 const OrderBookRow: React.FC<OrderBookRowProps> = ({
@@ -16,13 +17,25 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
   size,
   total,
   type,
+  percentage,
 }) => {
   const priceColor = type === 'ask' ? 'text-red-500' : 'text-green-500';
+  const bgColor = type === 'ask' ? 'bg-red-500/10' : 'bg-green-500/10'; // Use subtle opacity
+  // const barPosition = type === 'ask' ? 'right-0' : 'left-0'; // Removed conditional positioning
+
   return (
-    <div className="grid grid-cols-3 gap-4 text-sm py-1 px-2 hover:bg-muted/50">
-      <span className={`font-mono ${priceColor}`}>{price}</span>
-      <span className="text-right font-mono">{size}</span>
-      <span className="text-right font-mono">{total}</span>
+    // Add relative positioning and overflow hidden
+    <div className="relative grid grid-cols-3 gap-4 text-sm py-1 px-2 hover:bg-muted/50 overflow-hidden">
+      {/* Background bar - Always left-justified */}
+      <div
+        className={`absolute top-0 bottom-0 left-0 ${bgColor}`}
+        style={{ width: `${percentage}%` }}
+        aria-hidden="true" // Hide from screen readers
+      />
+      {/* Content - ensure it's above the background */}
+      <span className={`relative font-mono ${priceColor}`}>{price}</span>
+      <span className="relative text-right font-mono">{size}</span>
+      <span className="relative text-right font-mono">{total}</span>
     </div>
   );
 };
@@ -116,6 +129,28 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
     );
   }
 
+  // Calculate cumulative sizes for visualization
+  let cumulativeAskSize = 0;
+  const cumulativeAsks = asks.map((ask) => {
+    cumulativeAskSize += ask.rawSize;
+    return { ...ask, cumulativeSize: cumulativeAskSize };
+  });
+  const maxCumulativeAskSize = cumulativeAskSize;
+
+  let cumulativeBidSize = 0;
+  const cumulativeBids = bids.map((bid) => {
+    cumulativeBidSize += bid.rawSize;
+    return { ...bid, cumulativeSize: cumulativeBidSize };
+  });
+  const maxCumulativeBidSize = cumulativeBidSize;
+
+  // Use the larger of the two total cumulative sizes for consistent scaling
+  const maxOverallCumulativeSize = Math.max(
+    maxCumulativeAskSize,
+    maxCumulativeBidSize,
+    1 // Avoid division by zero if both are 0
+  );
+
   return (
     <div
       className={`w-full border rounded-md bg-background text-foreground ${className} h-full flex flex-col`}
@@ -136,13 +171,17 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
       <div className="flex-1 overflow-y-auto">
         {/* Asks (Sell Orders) - Rendered bottom-up */}
         <div className="flex flex-col-reverse">
-          {asks.map((ask, index) => (
-            <OrderBookRow
-              key={`ask-${ask.rawPrice}-${index}`}
-              {...ask}
-              type="ask"
-            />
-          ))}
+          {cumulativeAsks.map((ask, index) => {
+            const percentage = (ask.cumulativeSize / maxOverallCumulativeSize) * 100;
+            return (
+              <OrderBookRow
+                key={`ask-${ask.rawPrice}-${index}`}
+                {...ask}
+                type="ask"
+                percentage={percentage}
+              />
+            );
+          })}
         </div>
 
         {/* Spread / Last Price */}
@@ -153,13 +192,17 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 
         {/* Bids (Buy Orders) - Rendered top-down */}
         <div className="flex flex-col">
-          {bids.map((bid, index) => (
-            <OrderBookRow
-              key={`bid-${bid.rawPrice}-${index}`}
-              {...bid}
-              type="bid"
-            />
-          ))}
+          {cumulativeBids.map((bid, index) => {
+            const percentage = (bid.cumulativeSize / maxOverallCumulativeSize) * 100;
+            return (
+              <OrderBookRow
+                key={`bid-${bid.rawPrice}-${index}`}
+                {...bid}
+                type="bid"
+                percentage={percentage}
+              />
+            );
+          })}
         </div>
       </div>
     </div>
