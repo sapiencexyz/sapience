@@ -17,7 +17,7 @@ import NumberDisplay from '~/components/numberDisplay';
 import type { MarketGroup } from '~/lib/context/FoilProvider';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useMarketPriceData } from '~/lib/hooks/useMarketPriceData';
-import { useResources, useResourcesAdmin } from '~/lib/hooks/useResources';
+import { useResources } from '~/lib/hooks/useResources';
 
 import AddressCell from './AddressCell';
 import PublicCell from './PublicCell';
@@ -68,13 +68,12 @@ const ResourceCell = ({
   marketAddress: string;
   chainId: number;
 }) => {
-  const { data: resources } = useResourcesAdmin();
+  const { data: resources } = useResources();
 
   if (!resources) {
     return <span>Loading...</span>;
   }
 
-  console.log('resources', resources);
   // Find the resource that contains this market
   const foundResource = resources.find((resource) =>
     resource.marketGroups.some((marketGroup) => {
@@ -84,7 +83,6 @@ const ResourceCell = ({
       );
     })
   );
-
 
   if (!foundResource) {
     return <span>Unknown</span>;

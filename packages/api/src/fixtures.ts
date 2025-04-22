@@ -186,7 +186,6 @@ export const initializeFixtures = async (): Promise<void> => {
       continue;
     }
 
-
     // Check if market already exists by address and chainId
     let marketGroup = await marketGroupRepository.findOne({
       where: {

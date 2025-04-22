@@ -135,7 +135,6 @@ export const useResources = () => {
   });
 };
 
-
 export const useLatestResourcePrice = (slug: string) => {
   return useQuery({
     queryKey: ['resourcePrice', slug],
