@@ -2,7 +2,7 @@ import { useUniswapPool } from '~/hooks/charts/useUniswapPool'; // Import from U
 import { Loader2 } from 'lucide-react'; // For loading state
 import type React from 'react';
 
-import { usePoolData } from '~/hooks/charts/usePoolData';
+import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 
 interface OrderBookRowProps {
   price: string;
@@ -59,8 +59,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
     poolAddress ?? '0x' // Provide a default address if undefined initially
   );
 
-  console.log('pool', pool);
-
   // 2. Fetch and process order book data
   const {
     asks,
@@ -69,7 +67,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
     spread,
     isLoading: isLoadingBook,
     isError: isErrorBook,
-  } = usePoolData({
+  } = useOrderBookData({
     pool,
     chainId,
     poolAddress: poolAddress || undefined,
@@ -77,6 +75,15 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
     baseAssetMaxPriceTick,
     tickSpacing,
     quoteTokenName,
+  });
+
+  console.log('debug',  {
+    asks,
+    bids,
+    lastPrice,
+    spread,
+    isLoading: isLoadingBook,
+    isError: isErrorBook,
   });
 
   const isLoading = isLoadingPool || isLoadingBook;

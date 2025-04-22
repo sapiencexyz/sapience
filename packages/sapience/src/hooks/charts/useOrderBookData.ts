@@ -16,7 +16,7 @@ const TICK_SPACING_DEFAULT = 60;
 // --- Types ---
 
 // Input props for the hook
-interface UsePoolDataProps {
+interface UsePoolOrderBookDataProps {
   pool: Pool | null;
   chainId: number | undefined;
   poolAddress: string | undefined; // Allow undefined initially
@@ -38,7 +38,7 @@ export interface OrderBookLevel {
 }
 
 // Return type of the hook
-interface UsePoolDataReturn {
+interface UsePoolOrderBookDataReturn {
   asks: OrderBookLevel[];
   bids: OrderBookLevel[];
   lastPrice: string | null;
@@ -108,7 +108,7 @@ const formatSize = (size: number, pool: Pool | null): string => {
 
 // --- Hook Implementation ---
 
-export function usePoolData({
+export function useOrderBookData({
   pool,
   chainId,
   poolAddress,
@@ -116,12 +116,12 @@ export function usePoolData({
   baseAssetMaxPriceTick,
   tickSpacing = TICK_SPACING_DEFAULT, // Default tick spacing
   quoteTokenName,
-}: UsePoolDataProps): UsePoolDataReturn {
+}: UsePoolOrderBookDataProps): UsePoolOrderBookDataReturn {
   const [processedPoolData, setProcessedPoolData] = useState<
     PoolData | undefined
   >();
   const [orderBookData, setOrderBookData] = useState<
-    Omit<UsePoolDataReturn, 'poolData' | 'isLoading' | 'isError' | 'error'>
+    Omit<UsePoolOrderBookDataReturn, 'poolData' | 'isLoading' | 'isError' | 'error'>
   >({
     asks: [],
     bids: [],
