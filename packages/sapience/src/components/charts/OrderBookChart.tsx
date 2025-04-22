@@ -34,7 +34,6 @@ interface OrderBookChartProps {
   poolAddress: `0x${string}` | undefined;
   baseAssetMinPriceTick: number | undefined;
   baseAssetMaxPriceTick: number | undefined;
-  tickSpacing?: number;
   quoteTokenName?: string;
   // Add className for styling from parent
   className?: string;
@@ -45,7 +44,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   poolAddress,
   baseAssetMinPriceTick,
   baseAssetMaxPriceTick,
-  tickSpacing, // Optional, hook has default
   quoteTokenName, // Optional
   className,
 }) => {
@@ -73,17 +71,8 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
     poolAddress: poolAddress || undefined,
     baseAssetMinPriceTick,
     baseAssetMaxPriceTick,
-    tickSpacing,
+    tickSpacing: pool?.tickSpacing,
     quoteTokenName,
-  });
-
-  console.log('debug',  {
-    asks,
-    bids,
-    lastPrice,
-    spread,
-    isLoading: isLoadingBook,
-    isError: isErrorBook,
   });
 
   const isLoading = isLoadingPool || isLoadingBook;

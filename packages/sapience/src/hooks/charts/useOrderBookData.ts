@@ -114,9 +114,10 @@ export function useOrderBookData({
   poolAddress,
   baseAssetMinPriceTick,
   baseAssetMaxPriceTick,
-  tickSpacing = TICK_SPACING_DEFAULT, // Default tick spacing
+  tickSpacing: tickSpacingProp,
   quoteTokenName,
 }: UsePoolOrderBookDataProps): UsePoolOrderBookDataReturn {
+
   const [processedPoolData, setProcessedPoolData] = useState<
     PoolData | undefined
   >();
@@ -130,21 +131,31 @@ export function useOrderBookData({
   });
   const [hookError, setHookError] = useState<Error | null>(null);
 
+  // Determine the actual tick spacing to use, prioritizing the pool's value
+  const actualTickSpacing = useMemo(() => {
+    // Use pool's spacing if available and valid, otherwise fall back to prop or default
+    const resolvedSpacing = pool?.tickSpacing ?? tickSpacingProp ?? TICK_SPACING_DEFAULT;
+    // Ensure spacing is a positive integer
+    const validSpacing = Math.max(1, Math.floor(resolvedSpacing));
+    return validSpacing;
+  }, [pool?.tickSpacing, tickSpacingProp]);
+
   // 1. Generate Tick Range for Querying
   const ticks = useMemo(() => {
+    // Use the determined actualTickSpacing
+    const spacing = actualTickSpacing;
     // Ensure ticks are valid numbers and min < max
     if (
       baseAssetMinPriceTick === undefined ||
       baseAssetMaxPriceTick === undefined ||
       isNaN(baseAssetMinPriceTick) ||
       isNaN(baseAssetMaxPriceTick) ||
-      baseAssetMinPriceTick >= baseAssetMaxPriceTick
+      baseAssetMinPriceTick >= baseAssetMaxPriceTick ||
+      spacing <= 0 // Check if actual spacing is valid
     ) {
       return [];
     }
     const tickRange: number[] = [];
-    // Ensure tick spacing is positive
-    const spacing = Math.max(1, tickSpacing);
     // Align min/max ticks to the tick spacing grid
     const alignedMinTick = Math.ceil(baseAssetMinPriceTick / spacing) * spacing;
     const alignedMaxTick =
@@ -156,8 +167,9 @@ export function useOrderBookData({
         tickRange.push(i);
       }
     }
+    // Log using the actual spacing determined
     return tickRange;
-  }, [tickSpacing, baseAssetMaxPriceTick, baseAssetMinPriceTick]);
+  }, [actualTickSpacing, baseAssetMaxPriceTick, baseAssetMinPriceTick]);
 
   // 2. Prepare Contracts for useReadContracts
   const contracts = useMemo(() => {
@@ -169,13 +181,14 @@ export function useOrderBookData({
     ) {
       return [];
     }
-    return ticks.map((tick) => ({
+    const contracts = ticks.map((tick) => ({
       abi: IUniswapV3PoolABI.abi as AbiFunction[], // Cast ABI
       address: poolAddress as `0x${string}`, // Ensure address format
       functionName: 'ticks',
       args: [tick],
       chainId,
     }));
+    return contracts;
   }, [ticks, poolAddress, chainId]);
 
   // 3. Fetch Raw Tick Data
@@ -208,45 +221,53 @@ export function useOrderBookData({
     if (!rawTickData || rawTickData.length === 0) {
       return [];
     }
-    return rawTickData
+    const translated = rawTickData
       .map((tickResult, idx) => {
         const typedResult = tickResult as TickData; // Type assertion
         if (typedResult.status === 'success' && typedResult.result) {
-          // Only include initialized ticks (liquidityNet !== 0)
+          // We need ticks even if liquidityNet is 0 for getFullPool to calculate active liquidity correctly.
+          const liquidityGross = typedResult.result[0];
           const liquidityNet = typedResult.result[1];
-          // Convert bigint to JSBI for comparison
-          if (!JSBI.EQ(JSBI.BigInt(liquidityNet.toString()), JSBI.BigInt(0))) {
-            // Check if liquidityNet is non-zero using JSBI
-            return {
-              tickIdx: ticks[idx].toString(),
-              liquidityGross: typedResult.result[0].toString(), // liquidityGross
-              liquidityNet: liquidityNet.toString(), // liquidityNet
-            };
-          }
+
+          // Return the tick data regardless of liquidityNet, as long as the fetch succeeded.
+          // getFullPool needs the gross liquidity to calculate ranges.
+          return {
+            tickIdx: ticks[idx].toString(),
+            liquidityGross: liquidityGross.toString(),
+            liquidityNet: liquidityNet.toString(),
+          };
         }
-        return null; // Exclude failed reads or uninitialized ticks
+        return null; // Exclude failed reads
       })
-      .filter((tick): tick is GraphTick => tick !== null); // Filter out nulls and type guard
+      .filter((tick): tick is GraphTick => tick !== null); // Filter out nulls (failed reads) and type guard
+    console.log('[useOrderBookData] Translated GraphTicks (including zero net liquidity):', translated.length, translated);
+    return translated;
   }, [rawTickData, ticks]);
 
   // 5. Process Ticks with getFullPool
   useEffect(() => {
-    // Requires the pool object, graph ticks, and valid tick spacing
+    // Requires the pool object, graph ticks, and *valid pool tick spacing*
+    const currentPoolTickSpacing = pool?.tickSpacing;
+
     if (
       pool &&
       graphTicks.length > 0 &&
-      tickSpacing > 0 &&
+      // Use the actual spacing from the pool object for the check and the call
+      currentPoolTickSpacing && currentPoolTickSpacing > 0 &&
       !isLoadingTicks &&
       !isErrorTicks
     ) {
       // Set loading state for processing? Maybe not needed if covered by isLoadingTicks
-      getFullPool(pool, graphTicks, tickSpacing)
+      // Log the spacing being passed to getFullPool
+      console.log(`[useOrderBookData] Calling getFullPool with Pool Spacing: ${currentPoolTickSpacing}`);
+      getFullPool(pool, graphTicks, currentPoolTickSpacing) // Pass pool's actual spacing
         .then((fullPoolData) => {
+          console.log('[useOrderBookData] getFullPool Success:', fullPoolData);
           setProcessedPoolData(fullPoolData);
           setHookError(null); // Clear error on success
         })
         .catch((err) => {
-          console.error('Error processing pool data with getFullPool:', err);
+          console.error('[useOrderBookData] Error processing pool data with getFullPool:', err);
           setHookError(
             err instanceof Error
               ? err
@@ -254,8 +275,9 @@ export function useOrderBookData({
           );
           setProcessedPoolData(undefined); // Clear data on error
         });
-    } else if (!isLoadingTicks && !pool) {
-      // console.warn("Pool object not available for processing.");
+    } else if (!isLoadingTicks && (!pool || !currentPoolTickSpacing || currentPoolTickSpacing <= 0)) {
+      // Update warning log
+      console.warn("[useOrderBookData] Pool object or valid pool.tickSpacing not available for processing after ticks loaded.", { hasPool: !!pool, poolTickSpacing: currentPoolTickSpacing });
       setProcessedPoolData(undefined); // Clear data if pool disappears
     } else if (
       !isLoadingTicks &&
@@ -263,20 +285,24 @@ export function useOrderBookData({
       ticks.length > 0 &&
       rawTickData
     ) {
-      // Handle case where ticks were fetched but all uninitialized / filtered out
-      // console.warn("No initialized ticks found in the provided range.");
+      console.warn("[useOrderBookData] No initialized/valid graph ticks found after fetch.");
       setProcessedPoolData({ pool: pool as Pool, ticks: [] }); // Set empty ticks, ensure pool is not null here
       setHookError(null);
+    } else {
+      // Log skip reason
+      console.log('[useOrderBookData] Skipping getFullPool call due to conditions:', { poolExists: !!pool, graphTicksCount: graphTicks.length, isLoadingTicks, isErrorTicks, poolTickSpacing: currentPoolTickSpacing });
     }
   }, [
-    pool,
+    pool, // Keep pool dependency
     graphTicks,
-    tickSpacing,
+    // Explicitly depend on pool.tickSpacing for the check and call within the effect
+    pool?.tickSpacing,
     isLoadingTicks,
     isErrorTicks,
-    ticks.length,
-    rawTickData,
-  ]); // Add dependencies
+    // No need for ticks.length or rawTickData directly if graphTicks covers the empty case
+    // Ticks array itself depends on actualTickSpacing -> pool?.tickSpacing
+    // rawTickData, // Keep if logic for empty graphTicks needs it
+  ]); // Refined dependencies
 
   // 6. Derive Order Book Levels from Processed Data
   useEffect(() => {
@@ -286,16 +312,17 @@ export function useOrderBookData({
     }
 
     const { ticks: processedTicks } = processedPoolData;
-    const currentTickIndex = processedTicks.findIndex((tick) => tick.isCurrent);
+    const currentTickExact = pool.tickCurrent;
+    const currentTickIndex = processedTicks.findIndex((tick) => tick.tickIdx === currentTickExact);
 
     if (currentTickIndex < 0) {
-      // console.warn("Current tick not found in processed data.");
+      console.warn("[useOrderBookData] Exact current tick not found in processed data.");
       // Attempt to find nearest tick if current not exact
-      if (processedTicks.length > 0 && pool.tickCurrent !== undefined) {
+      if (processedTicks.length > 0 && currentTickExact !== undefined) {
         let nearestTickIdx = -1;
         let minDist = Infinity;
         processedTicks.forEach((t, idx) => {
-          const dist = Math.abs(t.tickIdx - pool.tickCurrent);
+          const dist = Math.abs(t.tickIdx - currentTickExact);
           if (dist < minDist) {
             minDist = dist;
             nearestTickIdx = idx;
@@ -311,6 +338,7 @@ export function useOrderBookData({
             pool,
             quoteTokenName
           );
+          console.warn(`[useOrderBookData] Using nearest tick ${currentTick.tickIdx} as reference. Last price: ${lastPriceFormatted}`);
           setOrderBookData({
             asks: [],
             bids: [],
@@ -321,9 +349,11 @@ export function useOrderBookData({
           // Let's skip for now and return empty if exact current is missing
           return;
         }
+        console.warn('[useOrderBookData] Could not find nearest tick.');
         setOrderBookData({ asks: [], bids: [], lastPrice: null, spread: null });
         return; // Still couldn't find a reference point
       }
+      console.warn('[useOrderBookData] Cannot derive order book without current/reference tick.');
       setOrderBookData({ asks: [], bids: [], lastPrice: null, spread: null });
       return; // Cannot proceed without current tick
     }
