@@ -606,15 +606,15 @@ const upsertEvent = async (
     logData,
   });
 
-  // Find market with relations
-  const market = await marketGroupRepository.findOne({
+  // Find marke group with relations
+  const marketGroup = await marketGroupRepository.findOne({
     where: { chainId, address: address.toLowerCase() },
     relations: ['marketParams'],
   });
 
-  if (!market) {
+  if (!marketGroup) {
     throw new Error(
-      `Market not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`
+      `Market group not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`
     );
   }
 
@@ -623,7 +623,7 @@ const upsertEvent = async (
     const existingEvent = await eventRepository.findOne({
       where: {
         transactionHash: logData.transactionHash,
-        marketGroup: { id: market.id },
+        marketGroup: { id: marketGroup.id },
         blockNumber: Number(blockNumber),
         logIndex: logIndex,
       },
@@ -642,7 +642,7 @@ const upsertEvent = async (
 
     console.log('inserting new event..');
     const newEvent = new Event();
-    newEvent.marketGroup = market;
+    newEvent.marketGroup = marketGroup;
     newEvent.blockNumber = Number(blockNumber);
     newEvent.timestamp = timeStamp.toString();
     newEvent.logIndex = logIndex;
