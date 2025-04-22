@@ -15,6 +15,7 @@ const MARKET_QUERY = gql`
       startTimestamp
       endTimestamp
       settled
+      poolAddress
       marketGroup {
         id
         address

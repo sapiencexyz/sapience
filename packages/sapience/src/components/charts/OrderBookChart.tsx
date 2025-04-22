@@ -1,4 +1,4 @@
-import { useUniswapPool } from '@foil/ui/hooks/useUniswapPool'; // Import from UI package
+import { useUniswapPool } from '~/hooks/charts/useUniswapPool'; // Import from UI package
 import { Loader2 } from 'lucide-react'; // For loading state
 import type React from 'react';
 
@@ -58,6 +58,8 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
     chainId ?? 0, // Provide a default chainId if undefined initially
     poolAddress ?? '0x' // Provide a default address if undefined initially
   );
+
+  console.log('pool', pool);
 
   // 2. Fetch and process order book data
   const {
