@@ -135,32 +135,12 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
               stroke="rgba(0, 0, 0, 0.5)"
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--background))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '0.5rem',
-              }}
-              labelFormatter={(label) => formatTimestamp(label as number)}
-              formatter={(value, name) => {
-                const marketIdMatch = (name as string)?.match(
-                  /^markets\.(\d+)$/
-                );
-                let displayName: string;
-
-                if (marketIdMatch) {
-                  displayName = 'Prediction Market';
-                } else if (name === 'Index') {
-                  displayName = 'Index';
-                  // Potentially format index differently if needed, for now uses same yAxisConfig
-                } else {
-                  displayName = name as string;
-                }
-                // Use the determined value formatter from yAxisConfig
-                return [
-                  yAxisConfig.tooltipValueFormatter(value as number),
-                  displayName,
-                ];
-              }}
+              content={
+                <CustomTooltip
+                  yAxisConfig={yAxisConfig}
+                  optionNames={optionNames}
+                />
+              }
             />
 
             {/* Dynamically render a Line for each marketId */}
@@ -198,5 +178,65 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     </div>
   );
 };
+
+// --- Custom Tooltip Component ---
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  label?: number | string;
+  yAxisConfig: ReturnType<typeof getYAxisConfig>;
+  optionNames?: string[] | null;
+}
+
+const CustomTooltip: React.FC<CustomTooltipProps> = ({
+  active,
+  payload,
+  label,
+  yAxisConfig,
+  optionNames,
+}) => {
+  if (active && payload && payload.length && label != null) {
+    const formattedLabel = formatTimestamp(label as number);
+
+    return (
+      <div className="p-3.5 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-md shadow-sm">
+        <p className="mb-1.5 font-semibold text-black">{formattedLabel}</p>
+        <div className="flex flex-col gap-2 text-sm">
+          {payload.map((pld, index) => {
+            const marketIdMatch = pld.name?.match(/^markets\.(\d+)$/);
+            let displayName: string;
+
+            if (marketIdMatch) {
+              const marketIndex = parseInt(marketIdMatch[1], 10);
+              // Attempt to use optionNames if available
+              displayName =
+                optionNames?.[marketIndex] ?? `Option ${marketIndex + 1}`;
+            } else if (pld.name === 'indexClose') {
+              displayName = 'Index';
+            } else {
+              displayName = pld.name as string;
+            }
+
+            const formattedValue = yAxisConfig.tooltipValueFormatter(
+              pld.value as number
+            );
+
+            return (
+              <div key={`${pld.name}-${index}`} className="flex flex-col">
+                <div className="font-medium text-muted-foreground">
+                  {displayName}
+                </div>
+                {formattedValue}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
+// --- End Custom Tooltip Component ---
 
 export default MarketGroupChart;

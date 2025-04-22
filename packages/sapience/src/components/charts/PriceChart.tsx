@@ -19,7 +19,6 @@ const intervalToSecondsMap: Record<TimeInterval, number> = {
   [TimeInterval.I5M]: 300,
   [TimeInterval.I15M]: 900,
   [TimeInterval.I30M]: 1800,
-  [TimeInterval.I1H]: 3600,
   [TimeInterval.I4H]: 14400,
   [TimeInterval.I1D]: 86400,
 };
@@ -96,7 +95,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
               type="button"
               onClick={() => setIsLogarithmic(!isLogarithmic)}
               className={cn(
-                'absolute bottom-1 right-1 w-6 h-6 rounded-sm bg-background border border-border text-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-10 text-xs font-mono',
+                'absolute bottom-1 right-1 w-8 h-6 rounded-sm bg-background border border-border text-muted-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-10 text-xs font-mono',
                 isLogarithmic &&
                   'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:border-primary/90'
               )}

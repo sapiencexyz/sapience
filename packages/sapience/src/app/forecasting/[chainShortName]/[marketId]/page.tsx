@@ -1,7 +1,7 @@
 'use client';
 
-import { IntervalSelector } from '@foil/ui/components/charts';
-import { ChartType, TimeInterval } from '@foil/ui/types/charts';
+import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
+import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
 import { ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
@@ -55,10 +55,28 @@ const ForecastingDetailPage = () => {
   } = useMarket({ chainShortName, marketId });
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
-    TimeInterval.I15M
+    TimeInterval.I4H
   );
   const [chartType] = useState<ChartType>(ChartType.PRICE);
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
+  const [selectedPrices, setSelectedPrices] = useState<
+    Record<LineType, boolean>
+  >({
+    [LineType.MarketPrice]: true,
+    [LineType.IndexPrice]: true,
+    [LineType.ResourcePrice]: false,
+    [LineType.TrailingAvgPrice]: false,
+  });
+
+  // Handler for updating selected prices
+  const handlePriceSelection = (line: LineType, selected: boolean) => {
+    setSelectedPrices((prev) => {
+      return {
+        ...prev,
+        [line]: selected,
+      };
+    });
+  };
 
   // Loader now only depends on market data loading
   if (isLoadingMarket) {
@@ -109,14 +127,24 @@ const ForecastingDetailPage = () => {
                 />
               </div>
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
-                <div className="flex flex-row flex-wrap gap-3 w-full">
+                <div className="flex flex-row flex-wrap gap-3 w-full items-center">
                   {chartType === ChartType.PRICE && (
-                    <div className="order-2 sm:order-none">
-                      <IntervalSelector
-                        selectedInterval={selectedInterval}
-                        setSelectedInterval={setSelectedInterval}
-                      />
-                    </div>
+                    <>
+                      <div className="order-2 sm:order-1">
+                        <IntervalSelector
+                          selectedInterval={selectedInterval}
+                          setSelectedInterval={setSelectedInterval}
+                        />
+                      </div>
+                      {marketData?.marketGroup?.resource?.slug && (
+                        <div className="order-1 sm:order-2 sm:ml-auto">
+                          <PriceSelector
+                            selectedPrices={selectedPrices}
+                            setSelectedPrices={handlePriceSelection}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>

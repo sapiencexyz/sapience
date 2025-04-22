@@ -14,7 +14,14 @@ export enum TimeInterval {
   I5M = 'I5M',
   I15M = 'I15M',
   I30M = 'I30M',
-  I1H = 'I1H',
   I4H = 'I4H',
   I1D = 'I1D',
+}
+
+// Define the types for the lines that can be selected
+export enum LineType {
+  MarketPrice = 'marketPrice',
+  IndexPrice = 'indexPrice',
+  ResourcePrice = 'resourcePrice',
+  TrailingAvgPrice = 'trailingAvgPrice',
 }

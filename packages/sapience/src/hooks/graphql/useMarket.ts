@@ -23,6 +23,9 @@ const MARKET_QUERY = gql`
         baseTokenName
         quoteTokenName
         optionNames
+        resource {
+          slug
+        }
       }
     }
   }
@@ -96,6 +99,8 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
             marketId: numericMarketId,
           },
         });
+
+        console.log('response', response.data);
 
         // The response structure might return an array or a single object depending on the query
         // Adapting based on the provided query which filters by marketId server-side

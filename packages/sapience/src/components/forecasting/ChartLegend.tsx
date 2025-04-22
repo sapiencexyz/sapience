@@ -84,10 +84,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
                 <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
               </TooltipTrigger>
               <TooltipContent>
-                <p>
-                  The index represents how this market would resolve if it ended
-                  right now.
-                </p>
+                <p>The index is the answer to the question so far</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

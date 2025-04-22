@@ -16,12 +16,13 @@ export class MarketResolver {
       const queryBuilder = dataSource
         .getRepository(Market)
         .createQueryBuilder('market')
-        .leftJoinAndSelect('market.marketGroup', 'marketGroup');
+        .leftJoinAndSelect('market.marketGroup', 'marketGroup')
+        .leftJoinAndSelect('marketGroup.resource', 'resource');
 
       queryBuilder.andWhere('market.marketId = :marketId', { marketId });
       queryBuilder.andWhere('marketGroup.chainId = :chainId', { chainId });
       queryBuilder.andWhere('marketGroup.address = :marketAddress', {
-        marketAddress,
+        marketAddress: marketAddress.toLowerCase(),
       });
 
       const markets = await queryBuilder.getMany();
