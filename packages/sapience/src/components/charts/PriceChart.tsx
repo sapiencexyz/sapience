@@ -56,7 +56,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
     interval: intervalToSecondsMap[selectedInterval],
     quoteTokenName: market.quoteTokenName,
     resourceSlug, // Pass resourceSlug to the hook
-    trailingAvgTimeSeconds: 604800, // Pass the 7-day average time (in seconds)
+    // trailingAvgTimeSeconds: 604800, // Pass the 7-day average time (in seconds)
     // Add fromTimestamp/toTimestamp based on selectedWindow if needed in the future
   });
 
