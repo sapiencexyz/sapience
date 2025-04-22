@@ -97,7 +97,7 @@ const ForecastingDetailPage = () => {
           )}
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex flex-col w-full relative">
-              <div className="w-full h-[400px]">
+              <div className="w-full h-full">
                 <PriceChart
                   market={{
                     marketId: numericMarketId,

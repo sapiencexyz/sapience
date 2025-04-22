@@ -8,6 +8,7 @@ import type {
 import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
+import { formatEther } from 'viem'; // Import formatEther
 
 import type { PriceChartDataPoint } from './usePriceChartData'; // Import the shared type
 
@@ -103,23 +104,32 @@ export const useLightweightChart = ({
         secondsVisible: false,
         // fixRightEdge: true, // Often not desired, allow scrolling past last bar
         // fixLeftEdge: true, // Avoid fixing left edge
-        rightOffset: 12, // Give some space on the right
       },
       rightPriceScale: {
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
         visible: true,
         autoScale: true, // Enable auto-scaling
-        // Consider adding scaleMargins for better padding
-        // scaleMargins: {
-        //   top: 0.1,
-        //   bottom: 0.1,
-        // },
       },
       localization: {
         priceFormatter: (price: number) => {
-          // Basic formatter, adjust precision as needed
-          if (price < 0) return '';
-          return price.toFixed(4);
+          // Use viem's formatEther
+          if (typeof price !== 'number' || isNaN(price) || price < 0) {
+            return ''; // Return empty for invalid inputs
+          }
+          try {
+            // Lightweight Charts provides price as number, viem expects bigint.
+            // Rounding might be needed if intermediate calcs create decimals,
+            // though raw wei should be integers. Use Math.round for safety.
+            const priceBigInt = BigInt(Math.round(price));
+            const formattedPrice = formatEther(priceBigInt);
+            // formatEther returns string, convert back to number for toFixed
+            // Limit to desired decimal places (e.g., 4)
+            return Number(formattedPrice).toFixed(4);
+          } catch (e) {
+            console.error('Error formatting price with formatEther:', e);
+            // Fallback or default display in case of error
+            return price.toString(); // Display raw number as fallback
+          }
         },
       },
     });
