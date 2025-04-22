@@ -1,0 +1,36 @@
+name="foil"
+version="1.0.3"
+preset="pce-2025-04"
+
+include = [
+  "templates/generic-marketgroup.toml",
+  "templates/buckets-for-six.toml"
+]
+
+[setting.claimStatement]
+defaultValue = "<%= stringToHex('What will the year-over-year Core PCE inflation rate be in March 2025?') %>"
+
+[setting.marketStartingTime]
+defaultValue = "1745586000"
+
+[setting.marketEndingTime]
+defaultValue = "1746018000"
+
+[setting.bucket1Name]
+defaultValue = "<%= stringToHex('bucket 1') %>"
+
+[setting.bucket2Name]
+defaultValue = "<%= stringToHex('bucket 2') %>"
+
+[setting.bucket3Name]
+defaultValue = "<%= stringToHex('bucket 3') %>"
+
+[setting.bucket4Name]
+defaultValue = "<%= stringToHex('bucket 4') %>"
+
+[setting.bucket5Name]
+defaultValue = "<%= stringToHex('bucket 5') %>"
+
+[setting.bucket6Name]
+defaultValue = "<%= stringToHex('bucket 6') %>"
+

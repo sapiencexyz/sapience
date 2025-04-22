@@ -1,0 +1,25 @@
+# Yes/No Epoch
+[invoke.createYesNoEpoch]
+target="Foil"
+func="createEpoch"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.marketStartingTime %>", 
+  "<%= settings.marketEndingTime %>", 
+  "<%= settings.initialPrice %>",
+  "<%= settings.baseAssetTickZero %>", 
+  "<%= settings.baseAssetTickOne %>",  
+  "<%= settings.yesNoBucketName %>"
+]
+depends=["invoke.initializeMarket"]
+
+# Nominate safe owner after creation of epoch
+[invoke.transferOwnership]
+target="Foil"
+func="transferOwnership"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.owner %>"
+]
+depends=["invoke.createYesNoEpoch"]
+

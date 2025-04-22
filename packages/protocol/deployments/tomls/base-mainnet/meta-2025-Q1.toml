@@ -1,0 +1,33 @@
+name="foil"
+version="1.0.3"
+preset="meta-2025-q1"
+
+include = [
+  "templates/generic-marketgroup.toml",
+  "templates/buckets-for-five.toml"
+]
+
+[setting.claimStatement]
+defaultValue = "<%= stringToHex('What will Meta’s earnings per share (EPS) be for Q1 2025?') %>"
+
+[setting.marketStartingTime]
+defaultValue = "1745586000"
+
+[setting.marketEndingTime]
+defaultValue = "1746045000"
+
+[setting.bucket1Name]
+defaultValue = "<%= stringToHex('bucket 1') %>"
+
+[setting.bucket2Name]
+defaultValue = "<%= stringToHex('bucket 2') %>"
+
+[setting.bucket3Name]
+defaultValue = "<%= stringToHex('bucket 3') %>"
+
+[setting.bucket4Name]
+defaultValue = "<%= stringToHex('bucket 4') %>"
+
+[setting.bucket5Name]
+defaultValue = "<%= stringToHex('bucket 5') %>"
+

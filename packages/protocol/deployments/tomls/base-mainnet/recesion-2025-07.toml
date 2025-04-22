@@ -1,0 +1,21 @@
+name="foil"
+version="1.0.3"
+preset="recession-2025-07"
+
+include = [
+  "templates/generic-marketgroup.toml",
+  "templates/yes-no-market.toml"
+]
+
+[setting.claimStatement]
+defaultValue = "<%= stringToHex('Will the U.S. be in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration?') %>"
+
+[setting.marketStartingTime]
+defaultValue = "1745586000"
+
+[setting.marketEndingTime]
+defaultValue = "" # TBD
+
+[setting.yesNoBucketName]
+defaultValue = "<%= stringToHex('yes or no') %>"
+
