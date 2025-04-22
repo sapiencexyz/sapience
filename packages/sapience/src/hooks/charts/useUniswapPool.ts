@@ -1,11 +1,10 @@
+import erc20ABI from '@foil/ui/abis/erc20abi.json';
 import { Token } from '@uniswap/sdk-core';
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { FeeAmount } from '@uniswap/v3-sdk';
 import { Pool } from '@uniswap/v3-sdk';
 import { useCallback, useEffect, useState } from 'react';
 import { useReadContract, useReadContracts } from 'wagmi';
-
-import erc20ABI from '../../../../ui/abis/erc20abi.json';
 
 const REFETCH_INTERVAL = 60000; // 1 minute
 

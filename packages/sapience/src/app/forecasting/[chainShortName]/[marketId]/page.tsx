@@ -126,7 +126,7 @@ const ForecastingDetailPage = () => {
           )}
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex flex-col w-full relative">
-              <div className="w-full h-full">
+              <div className="w-full h-[500px]">
                 {chartType === ChartType.PRICE && (
                   <PriceChart
                     market={{
@@ -149,6 +149,7 @@ const ForecastingDetailPage = () => {
                     baseAssetMinPriceTick={marketData?.baseAssetMinPriceTick}
                     baseAssetMaxPriceTick={marketData?.baseAssetMaxPriceTick}
                     quoteTokenName={marketData?.marketGroup?.quoteTokenName}
+                    className="h-full"
                   />
                 )}
               </div>

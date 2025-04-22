@@ -1,8 +1,8 @@
-import { useUniswapPool } from '~/hooks/charts/useUniswapPool'; // Import from UI package
 import { Loader2 } from 'lucide-react'; // For loading state
 import type React from 'react';
 
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
+import { useUniswapPool } from '~/hooks/charts/useUniswapPool'; // Import from UI package
 
 interface OrderBookRowProps {
   price: string;
@@ -118,46 +118,49 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 
   return (
     <div
-      className={`w-full border rounded-md bg-background text-foreground ${className}`}
+      className={`w-full border rounded-md bg-background text-foreground ${className} h-full flex flex-col`}
     >
       {/* Header */}
-      <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground py-2 px-2 border-b">
+      <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground/70 tracking-widest transition-all duration-300 font-semibold flex-shrink-0 py-2 px-2 border-b">
         {/* TODO: Make header dynamic based on pool tokens? */}
-        <span>price ({quoteTokenName ?? pool?.token1?.symbol ?? 'Quote'})</span>
+        <span>PRICE</span>
         <span className="text-right">
-          size ({pool?.token0?.symbol ?? 'Base'})
+          SIZE
         </span>
         <span className="text-right">
-          total ({pool?.token0?.symbol ?? 'Base'})
+          TOTAL
         </span>
       </div>
 
-      {/* Asks (Sell Orders) - Rendered bottom-up */}
-      <div className="flex flex-col-reverse min-h-[100px]">
-        {asks.map((ask, index) => (
-          <OrderBookRow
-            key={`ask-${ask.rawPrice}-${index}`}
-            {...ask}
-            type="ask"
-          />
-        ))}
-      </div>
+      {/* Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Asks (Sell Orders) - Rendered bottom-up */}
+        <div className="flex flex-col-reverse">
+          {asks.map((ask, index) => (
+            <OrderBookRow
+              key={`ask-${ask.rawPrice}-${index}`}
+              {...ask}
+              type="ask"
+            />
+          ))}
+        </div>
 
-      {/* Spread / Last Price */}
-      <div className="flex justify-between items-center py-2 px-2 border-y my-1 bg-muted/10">
-        <span className="text-sm">Last: {lastPrice ?? '-'}</span>
-        <span className="text-sm">Spread: {spread ?? '-'}</span>
-      </div>
+        {/* Spread / Last Price */}
+        <div className="flex justify-between items-center py-2 px-2 border-y my-1 bg-muted/10 flex-shrink-0">
+          <span className="text-sm">Last: {lastPrice ?? '-'}</span>
+          <span className="text-sm">Spread: {spread ?? '-'}</span>
+        </div>
 
-      {/* Bids (Buy Orders) - Rendered top-down */}
-      <div className="flex flex-col min-h-[100px]">
-        {bids.map((bid, index) => (
-          <OrderBookRow
-            key={`bid-${bid.rawPrice}-${index}`}
-            {...bid}
-            type="bid"
-          />
-        ))}
+        {/* Bids (Buy Orders) - Rendered top-down */}
+        <div className="flex flex-col">
+          {bids.map((bid, index) => (
+            <OrderBookRow
+              key={`bid-${bid.rawPrice}-${index}`}
+              {...bid}
+              type="bid"
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
