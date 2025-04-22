@@ -11,7 +11,7 @@ import { Market } from '../models/Market';
 const batchMarketGroups = async (ids: readonly number[]) => {
   const marketGroups = await dataSource.getRepository(MarketGroup).find({
     where: { id: In([...ids]) },
-    relations: ['market', 'resource'],
+    relations: ['markets', 'resource'],
   });
 
   const marketMap = new Map(marketGroups.map((market) => [market.id, market]));
