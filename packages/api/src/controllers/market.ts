@@ -627,7 +627,7 @@ const upsertEvent = async (
         blockNumber: Number(blockNumber),
         logIndex: logIndex,
       },
-      relations: ['market'],
+      relations: ['marketGroup'],
     });
 
     if (existingEvent) {
@@ -654,7 +654,7 @@ const upsertEvent = async (
     // Reload the event with all necessary relations
     const loadedEvent = await eventRepository.findOne({
       where: { id: savedEvent.id },
-      relations: ['market'],
+      relations: ['marketGroup'],
     });
 
     if (!loadedEvent) {
@@ -751,7 +751,7 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
           },
           marketId: Number(event.logData.args.epochId),
         },
-        relations: ['market'],
+        relations: ['marketGroup'],
       });
       if (epoch) {
         epoch.settled = true;
