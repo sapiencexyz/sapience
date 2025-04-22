@@ -1,6 +1,5 @@
 import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import type { Pool } from '@uniswap/v3-sdk';
-import JSBI from 'jsbi'; // Placeholder: Replace with actual import or definition
 import { useEffect, useMemo, useState } from 'react';
 import type { AbiFunction } from 'viem';
 import { useReadContracts } from 'wagmi';
@@ -42,7 +41,6 @@ interface UsePoolOrderBookDataReturn {
   asks: OrderBookLevel[];
   bids: OrderBookLevel[];
   lastPrice: string | null;
-  spread: string | null;
   poolData: PoolData | undefined; // Raw processed data
   isLoading: boolean;
   isError: boolean;
@@ -129,7 +127,6 @@ export function useOrderBookData({
     asks: [],
     bids: [],
     lastPrice: null,
-    spread: null,
   });
   const [hookError, setHookError] = useState<Error | null>(null);
 
@@ -335,7 +332,7 @@ export function useOrderBookData({
   // 6. Derive Order Book Levels from Processed Data
   useEffect(() => {
     if (!processedPoolData || !pool) {
-      setOrderBookData({ asks: [], bids: [], lastPrice: null, spread: null });
+      setOrderBookData({ asks: [], bids: [], lastPrice: null });
       return;
     }
 
@@ -377,20 +374,19 @@ export function useOrderBookData({
             asks: [],
             bids: [],
             lastPrice: lastPriceFormatted,
-            spread: null,
           });
           // Potentially still build asks/bids based on this nearest split point?
           // Let's skip for now and return empty if exact current is missing
           return;
         }
         console.warn('[useOrderBookData] Could not find nearest tick.');
-        setOrderBookData({ asks: [], bids: [], lastPrice: null, spread: null });
+        setOrderBookData({ asks: [], bids: [], lastPrice: null });
         return; // Still couldn't find a reference point
       }
       console.warn(
         '[useOrderBookData] Cannot derive order book without current/reference tick.'
       );
-      setOrderBookData({ asks: [], bids: [], lastPrice: null, spread: null });
+      setOrderBookData({ asks: [], bids: [], lastPrice: null });
       return; // Cannot proceed without current tick
     }
 
@@ -439,34 +435,10 @@ export function useOrderBookData({
       })
       .filter((level) => level.rawSize > 1e-9); // Filter out negligible dust liquidity
 
-    // Calculate Spread
-    const lowestAskPrice = asks[0]?.rawPrice; // Asks are sorted ascending price [0] is lowest
-    const highestBidPrice = bids[0]?.rawPrice; // Bids are sorted descending price [0] is highest
-    let spreadFormatted: string | null = null;
-
-    if (
-      lowestAskPrice !== undefined &&
-      highestBidPrice !== undefined &&
-      lowestAskPrice > highestBidPrice
-    ) {
-      const spreadRaw = lowestAskPrice - highestBidPrice;
-      // Format spread similar to price
-      spreadFormatted = formatPrice(spreadRaw, pool, quoteTokenName);
-    } else if (asks.length > 0 || bids.length > 0) {
-      // Handle one-sided book - spread is effectively from last price to nearest level
-      const nearestLevelPrice =
-        asks.length > 0 ? lowestAskPrice : highestBidPrice;
-      if (nearestLevelPrice !== undefined) {
-        const spreadRaw = Math.abs(lastPriceRaw - nearestLevelPrice);
-        spreadFormatted = formatPrice(spreadRaw, pool, quoteTokenName);
-      }
-    }
-
     setOrderBookData({
       asks,
       bids,
       lastPrice: lastPriceFormatted,
-      spread: spreadFormatted,
     });
   }, [processedPoolData, pool, quoteTokenName]);
 
