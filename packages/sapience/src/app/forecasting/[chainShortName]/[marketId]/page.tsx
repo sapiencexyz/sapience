@@ -1,19 +1,17 @@
 'use client';
 
 import {
-  Chart,
   ChartSelector,
   IntervalSelector,
   WindowSelector,
 } from '@foil/ui/components/charts';
-import type { TimeWindow } from '@foil/ui/types/charts';
-import { ChartType, TimeInterval } from '@foil/ui/types/charts';
+import { TimeWindow, ChartType, TimeInterval } from '@foil/ui/types/charts';
 import { ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { ResponsiveContainer } from 'recharts';
+import { useState, useEffect } from 'react';
 
+import { PriceChart as Chart } from '~/components/charts';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
 import { useMarket } from '~/hooks/graphql/useMarket';
 
@@ -44,13 +42,22 @@ const SimpleLiquidityWrapper = dynamic(
   }
 );
 
+// Map TimeInterval enum to seconds for the hook
+const intervalToSecondsMap: Record<TimeInterval, number> = {
+  [TimeInterval.I5M]: 300,
+  [TimeInterval.I15M]: 900,
+  [TimeInterval.I30M]: 1800,
+  [TimeInterval.I1H]: 3600,
+  [TimeInterval.I4H]: 14400,
+  [TimeInterval.I1D]: 86400,
+};
+
 const ForecastingDetailPage = () => {
   const params = useParams();
   const router = useRouter();
   const marketId = params.marketId as string;
   const chainShortName = params.chainShortName as string;
 
-  // Call the custom hook to get market data and related state
   const {
     marketData,
     isLoadingMarket,
@@ -61,18 +68,29 @@ const ForecastingDetailPage = () => {
     numericMarketId,
   } = useMarket({ chainShortName, marketId });
 
-  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(null);
+  const [selectedWindow, setSelectedWindow] = useState<TimeWindow | null>(
+    TimeWindow.D // Default to Day window initially
+  );
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I15M
   );
   const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
 
-  // Show loader while market data is loading
+  // Loader now only depends on market data loading
   if (isLoadingMarket) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
         <LottieLoader width={32} height={32} />
+      </div>
+    );
+  }
+
+  // Handle case where market data failed to load or is missing essentials
+  if (!marketData || !chainId || !marketAddress || !numericMarketId) {
+    return (
+      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+        <p className="text-destructive">Failed to load market data.</p>
       </div>
     );
   }
@@ -96,19 +114,18 @@ const ForecastingDetailPage = () => {
           )}
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex flex-col w-full relative">
-              <ComingSoonScrim className="absolute rounded-lg" />
-              <ResponsiveContainer width="100%" height="100%">
+              <div className="w-full h-[400px]">
                 <Chart
-                  resourceSlug="prediction"
                   market={{
                     marketId: numericMarketId,
                     chainId,
                     address: marketAddress,
+                    quoteTokenName: marketData?.marketGroup?.quoteTokenName,
                   }}
                   selectedWindow={selectedWindow}
                   selectedInterval={selectedInterval}
                 />
-              </ResponsiveContainer>
+              </div>
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
                 <div className="flex flex-row flex-wrap gap-3 w-full">
                   <div className="order-2 sm:order-none">
