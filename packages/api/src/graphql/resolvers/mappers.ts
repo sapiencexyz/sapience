@@ -92,6 +92,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   question: market.question || '',
   baseAssetMinPriceTick: market.baseAssetMinPriceTick,
   baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
+  poolAddress: market.poolAddress,
 });
 
 export const mapPositionToType = (position: Position): PositionType => ({
