@@ -1,48 +1,63 @@
-import type { LiquidityFormValues } from '@foil/ui';
-import { LiquidityForm } from '@foil/ui';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useState } from 'react';
 import type React from 'react';
+import { useAccount } from 'wagmi';
+import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
+import { useForecast } from '~/lib/context/ForecastProvider';
+import { LiquidityForm } from './forms';
 
-interface SimpleLiquidityWrapperProps {
-  collateralAssetTicker: string;
-  baseTokenName: string;
-  quoteTokenName: string;
-}
-
-const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
-  collateralAssetTicker,
-  baseTokenName,
-  quoteTokenName,
-}) => {
+const SimpleLiquidityWrapper: React.FC = () => {
   const { toast } = useToast();
-  const [isConnected, setIsConnected] = useState(false);
+  const { isConnected } = useAccount();
+  const { setIsOpen } = useConnectWallet();
 
-  const handleLiquiditySubmit = (data: LiquidityFormValues) => {
-    toast({
-      title: 'Liquidity Added',
-      description: `Deposit: ${data.depositAmount} ${collateralAssetTicker}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
-    });
+  // Get data from the forecast context
+  const {
+    collateralAssetTicker,
+    baseTokenName,
+    quoteTokenName,
+    minTick,
+    maxTick,
+    marketAddress,
+    chainId,
+    abi,
+    marketContractData,
+  } = useForecast();
+
+  // const handleLiquiditySubmit = useCallback(
+  //   (data: LiquidityFormValues) => {
+  //     toast({
+  //       title: 'Liquidity Added',
+  //       description: `Deposit: ${data.depositAmount} ${collateralAssetTicker}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
+  //     });
+  //   },
+  //   [toast, collateralAssetTicker]
+  // );
+
+  const handleConnectWallet = async () => {
+    setIsOpen(true);
   };
 
-  const handleConnectWallet = () => {
-    // In a real implementation, this would connect to a wallet
-    setIsConnected(true);
-    toast({
-      title: 'Wallet Connected',
-      description: 'Your wallet has been successfully connected',
-    });
+  const handleSuccess = (txHash: `0x${string}`) => {
+    console.log('txHash', txHash);
   };
 
   return (
     <div className="h-full">
       <LiquidityForm
-        onLiquiditySubmit={handleLiquiditySubmit}
-        collateralAssetTicker={collateralAssetTicker}
-        virtualBaseTokensName={baseTokenName}
-        virtualQuoteTokensName={quoteTokenName}
+        marketDetails={{
+          marketAddress: marketAddress as `0x${string}`,
+          chainId: chainId as number,
+          marketId: marketContractData.epochId,
+          marketAbi: abi,
+          collateralAssetTicker,
+          virtualBaseTokensName: baseTokenName,
+          virtualQuoteTokensName: quoteTokenName,
+          lowPriceTick: minTick,
+          highPriceTick: maxTick,
+        }}
         isConnected={isConnected}
         onConnectWallet={handleConnectWallet}
+        onSuccess={handleSuccess}
       />
     </div>
   );

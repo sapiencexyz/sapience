@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
 
-import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
-import '../styles/globals.css';
+import Providers from '~/app/providers';
 import Layout from '~/components/layout';
 import GlobalLoader from '~/components/shared/GlobalLoader';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
+import '../styles/globals.css';
 
-import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from '@foil/ui/components/ui/toaster';
+import { Analytics } from '@vercel/analytics/react';
 
 type RootLayoutProps = {
   children: React.ReactNode;
@@ -100,6 +100,7 @@ export const viewport: Viewport = {
 };
 
 const RootLayout = ({ children }: RootLayoutProps) => {
+  console.log('HELLOWORLD');
   return (
     <html lang="en">
       <body>

@@ -20,27 +20,35 @@ export interface LiquidityFormValues {
   slippage: string;
 }
 
-export function useLiquidityForm() {
+export interface UseLiquidityFormProps {
+  lowPrice?: string;
+  highPrice?: string;
+}
+
+export function useLiquidityForm({
+  lowPrice = '0',
+  highPrice = '0',
+}: UseLiquidityFormProps = {}) {
   const form = useForm<LiquidityFormValues>({
     defaultValues: {
       depositAmount: '0',
-      lowPrice: '0',
-      highPrice: '0',
+      lowPrice,
+      highPrice,
       slippage: '0.5',
     },
   });
 
   // Register fields with validation
-  form.register('depositAmount', { 
-    required: 'Deposit amount is required'
+  form.register('depositAmount', {
+    required: 'Deposit amount is required',
   });
-  
+
   form.register('lowPrice', {
-    required: 'Low price is required'
+    required: 'Low price is required',
   });
-  
+
   form.register('highPrice', {
-    required: 'High price is required'
+    required: 'High price is required',
   });
 
   // Example of form submission
@@ -53,4 +61,4 @@ export function useLiquidityForm() {
     ...form,
     onSubmit,
   };
-} 
+}
