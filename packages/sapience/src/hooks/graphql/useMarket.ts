@@ -18,6 +18,7 @@ export interface MarketData {
     address: string;
     chainId: number;
     question: string | null;
+    collateralAsset: string | null;
     baseTokenName: string | null;
     quoteTokenName: string | null;
     optionNames: string[] | null;
@@ -45,6 +46,7 @@ const MARKET_QUERY = gql`
         baseTokenName
         quoteTokenName
         optionNames
+        collateralAsset
         resource {
           slug
         }

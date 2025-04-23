@@ -10,46 +10,19 @@ interface QuoteResult {
 }
 
 interface LiquidityQuoterProps {
-  marketAddress: `0x${string}`;
+  marketAddress?: `0x${string}`;
   collateralAmount: string;
   lowPriceInput: string;
   highPriceInput: string;
   epochId?: number;
   enabled?: boolean;
   chainId?: number;
+  marketAbi: any;
+  marketId: bigint;
 }
 
-// ABI fragments needed for the calls
-const marketAbi = [
-  {
-    inputs: [],
-    name: 'getSqrtPriceX96',
-    outputs: [{ internalType: 'uint160', name: '', type: 'uint160' }],
-    stateMutability: 'view',
-    type: 'function',
-  },
-  {
-    inputs: [
-      { internalType: 'uint256', name: 'epochId', type: 'uint256' },
-      {
-        internalType: 'uint256',
-        name: 'depositedCollateralAmount',
-        type: 'uint256',
-      },
-      { internalType: 'uint160', name: 'sqrtPriceX96', type: 'uint160' },
-      { internalType: 'uint160', name: 'sqrtPriceAX96', type: 'uint160' },
-      { internalType: 'uint160', name: 'sqrtPriceBX96', type: 'uint160' },
-    ],
-    name: 'quoteLiquidityPositionTokens',
-    outputs: [
-      { internalType: 'uint256', name: 'amount0', type: 'uint256' },
-      { internalType: 'uint256', name: 'amount1', type: 'uint256' },
-      { internalType: 'uint128', name: 'liquidity', type: 'uint128' },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
+// Type for the quoteLiquidityPositionTokens return value
+type QuoteLiquidityResult = readonly [bigint, bigint, bigint];
 
 /**
  * Hook to fetch liquidity position quotes from the contract
@@ -62,17 +35,16 @@ export function useLiquidityQuoter({
   epochId = 0,
   enabled = true,
   chainId,
+  marketAbi,
+  marketId,
 }: LiquidityQuoterProps): QuoteResult {
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [quoteResult, setQuoteResult] = useState<{
     amount0: bigint;
     amount1: bigint;
-    liquidity: bigint;
   }>({
     amount0: BigInt(0),
     amount1: BigInt(0),
-    liquidity: BigInt(0),
   });
 
   // Parse and validate inputs
@@ -89,11 +61,17 @@ export function useLiquidityQuoter({
   const inputsAreValid = isValidCollateral && arePricesValid;
 
   // Fetch the current sqrt price
-  const { data: currentSqrtPrice, isError: isPriceError } = useReadContract({
+  const {
+    data: currentSqrtPrice,
+    isError: isPriceError,
+    isLoading: isCurrentPoolPriceLoading,
+    error: currentPoolPriceError,
+  } = useReadContract({
     address: marketAddress,
     abi: marketAbi,
     functionName: 'getSqrtPriceX96',
     chainId,
+    args: [marketId],
     query: {
       enabled: enabled && !!marketAddress,
     },
@@ -124,7 +102,7 @@ export function useLiquidityQuoter({
     args: [
       BigInt(epochId),
       depositedCollateralAmount,
-      currentSqrtPrice || BigInt(0),
+      (currentSqrtPrice as bigint) || BigInt(0),
       sqrtPriceAX96,
       sqrtPriceBX96,
     ],
@@ -137,19 +115,15 @@ export function useLiquidityQuoter({
   // Update the quote result when data changes
   useEffect(() => {
     if (quoteData) {
+      // Safely cast quoteData to the expected type
+      const typedQuoteData = quoteData as QuoteLiquidityResult;
       setQuoteResult({
-        amount0: quoteData[0] || BigInt(0),
-        amount1: quoteData[1] || BigInt(0),
-        liquidity: quoteData[2] || BigInt(0),
+        amount0: typedQuoteData[0] || BigInt(0),
+        amount1: typedQuoteData[1] || BigInt(0),
       });
       setError(null);
     }
   }, [quoteData]);
-
-  // Update loading state
-  useEffect(() => {
-    setLoading(isQuoteLoading);
-  }, [isQuoteLoading]);
 
   // Handle errors
   useEffect(() => {
@@ -162,7 +136,7 @@ export function useLiquidityQuoter({
 
   return {
     ...quoteResult,
-    loading,
+    loading: isCurrentPoolPriceLoading || isQuoteLoading,
     error,
   };
 }

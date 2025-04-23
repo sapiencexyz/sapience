@@ -10,56 +10,79 @@ import {
   FormMessage,
 } from '@foil/ui/components/ui/form';
 import { Input } from '@foil/ui/components/ui/input';
+import { useToast } from '@foil/ui/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
+import { useCreateLP } from '~/hooks/contract/useCreateLP';
+import { useLiquidityQuoter } from '~/hooks/contract/useLiquidityQuoter';
+import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import {
   LiquidityFormValues,
   useLiquidityForm,
 } from '~/hooks/forms/useLiquidityForm';
-import { useLiquidityQuoter } from '~/hooks/forms/useLiquidityQuoter';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
+import { useForecast } from '~/lib/context/ForecastProvider';
 
-export interface LiquidityFormProps {
-  onLiquiditySubmit?: (data: LiquidityFormValues) => void;
+export type LiquidityFormMarketDetails = {
+  marketAddress: `0x${string}`;
+  chainId: number;
+  marketAbi: any;
   collateralAssetTicker: string;
   virtualBaseTokensName?: string;
   virtualQuoteTokensName?: string;
-  isConnected?: boolean;
-  onConnectWallet?: () => void;
-  // Tick values
   lowPriceTick?: number;
   highPriceTick?: number;
-  // Market details
-  marketAddress?: `0x${string}`;
-  chainId?: number;
+  marketId: bigint;
+};
+
+export interface LiquidityFormProps {
+  marketDetails: LiquidityFormMarketDetails;
+  isConnected?: boolean;
+  onConnectWallet?: () => void;
+  onSuccess?: (txHash: `0x${string}`) => void;
 }
 
 export function LiquidityForm({
-  onLiquiditySubmit,
-  collateralAssetTicker,
-  virtualBaseTokensName = 'Yes',
-  virtualQuoteTokensName = 'No',
+  marketDetails,
   isConnected = false,
   onConnectWallet,
-  lowPriceTick: initialLowPriceTick,
-  highPriceTick: initialHighPriceTick,
-  marketAddress,
-  chainId,
+  onSuccess,
 }: LiquidityFormProps) {
-  // Mock state values
-  const [walletBalance, setWalletBalance] = useState('100.0');
+  const { toast } = useToast();
+  const { marketData } = useForecast();
+
+  // Get collateral asset address from marketData
+  const collateralAssetAddress = marketData?.marketGroup?.collateralAsset as
+    | `0x${string}`
+    | undefined;
+
+  // Use the token balance hook
+  const { balance: walletBalance } = useTokenBalance({
+    tokenAddress: collateralAssetAddress,
+    chainId: marketDetails.chainId,
+    enabled: isConnected && !!collateralAssetAddress,
+  });
+
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
     useState(walletBalance);
 
-  const onCollateralChange = (value: string) => {
-    console.log('onCollateralChange', value);
-  };
+  const {
+    marketAddress,
+    chainId,
+    marketAbi,
+    collateralAssetTicker,
+    virtualBaseTokensName,
+    virtualQuoteTokensName,
+    lowPriceTick,
+    highPriceTick,
+    marketId,
+  } = marketDetails;
 
   // Pass tick values and callback to the form hook
   const form = useLiquidityForm({
-    lowPriceTick: initialLowPriceTick,
-    highPriceTick: initialHighPriceTick,
-    onCollateralChange,
+    lowPriceTick,
+    highPriceTick,
   });
 
   const { control, watch, handleSubmit } = form;
@@ -67,6 +90,10 @@ export function LiquidityForm({
   const depositAmount = watch('depositAmount');
   const lowPriceInput = watch('lowPriceInput');
   const highPriceInput = watch('highPriceInput');
+  const slippage = watch('slippage');
+
+  // Ensure slippage is a valid number
+  const slippageAsNumber = slippage ? Number(slippage) : 0.5;
 
   // Use the liquidity quoter to get real-time token amounts
   const {
@@ -81,6 +108,33 @@ export function LiquidityForm({
     highPriceInput,
     enabled: isConnected && !!marketAddress,
     chainId,
+    marketAbi,
+    marketId,
+  });
+
+  // Use the enhanced LP creation hook (now handles token approval internally)
+  const {
+    createLP,
+    isLoading: isCreatingLP,
+    isSuccess: isLPCreated,
+    isError: isLPError,
+    error: lpError,
+    txHash,
+    isApproving,
+    needsApproval,
+  } = useCreateLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    marketId,
+    collateralAmount: depositAmount,
+    lowPriceTick: lowPriceTick || 0,
+    highPriceTick: highPriceTick || 0,
+    amount0,
+    amount1,
+    slippagePercent: slippageAsNumber,
+    enabled: isConnected && !!marketAddress,
+    collateralTokenAddress: collateralAssetAddress,
   });
 
   // Format token amounts for display
@@ -100,16 +154,69 @@ export function LiquidityForm({
     setEstimatedResultingBalance(newBalance);
   }, [depositAmount, walletBalance]);
 
-  const submitForm = (data: LiquidityFormValues) => {
-    if (onLiquiditySubmit) {
-      onLiquiditySubmit(data);
-    } else {
-      form.onSubmit(data);
+  // Handle successful LP creation
+  useEffect(() => {
+    if (isLPCreated && txHash && onSuccess) {
+      toast({
+        title: 'Liquidity Position Created',
+        description: 'Your liquidity position has been successfully created!',
+      });
+      onSuccess(txHash);
     }
+  }, [isLPCreated, txHash, onSuccess, toast]);
+
+  // Handle LP creation errors
+  useEffect(() => {
+    if (isLPError && lpError) {
+      toast({
+        title: 'Error Creating Position',
+        description: lpError.message,
+        variant: 'destructive',
+      });
+    }
+  }, [isLPError, lpError, toast]);
+
+  const submitForm = async (data: LiquidityFormValues) => {
+    if (!isConnected) return;
+
+    // createLP now handles approval internally if needed
+    await createLP();
   };
 
-  // Determine if the submit button should be disabled - only check if connected
-  const isSubmitDisabled = !isConnected || quoteLoading;
+  // Determine button state and text
+  const getButtonContent = () => {
+    if (isApproving) {
+      return (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Approving {collateralAssetTicker}...
+        </>
+      );
+    }
+
+    if (isCreatingLP) {
+      return (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Creating Position...
+        </>
+      );
+    }
+
+    if (quoteLoading) {
+      return 'Calculating...';
+    }
+
+    if (needsApproval) {
+      return `Approve & Add Liquidity`;
+    }
+
+    return 'Add Liquidity';
+  };
+
+  // Determine if the submit button should be disabled
+  const isSubmitDisabled =
+    !isConnected || quoteLoading || isCreatingLP || isApproving;
 
   return (
     <Form {...form}>
@@ -201,7 +308,7 @@ export function LiquidityForm({
               className="w-full"
               disabled={isSubmitDisabled}
             >
-              {quoteLoading ? 'Calculating...' : 'Add Liquidity'}
+              {getButtonContent()}
             </Button>
           ) : (
             <Button type="button" className="w-full" onClick={onConnectWallet}>
@@ -253,6 +360,12 @@ export function LiquidityForm({
             {quoteError && (
               <div className="text-red-500 text-sm mt-2">
                 Failed to load quote: {quoteError.message}
+              </div>
+            )}
+
+            {lpError && (
+              <div className="text-red-500 text-sm mt-2">
+                Failed to create position: {lpError.message}
               </div>
             )}
           </div>

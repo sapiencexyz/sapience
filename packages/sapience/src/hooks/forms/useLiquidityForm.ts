@@ -16,7 +16,6 @@ export interface UseLiquidityFormProps {
   highPriceTick?: number;
   tickSpacing?: number;
   priceDecimals?: number;
-  onCollateralChange?: (value: string) => void;
 }
 
 export function useLiquidityForm({
@@ -24,7 +23,6 @@ export function useLiquidityForm({
   highPriceTick = 0,
   tickSpacing = 200,
   priceDecimals = 6,
-  onCollateralChange,
 }: UseLiquidityFormProps = {}) {
   // Convert initial ticks to price display values
   const initialLowPrice = formatPrice(
@@ -52,11 +50,6 @@ export function useLiquidityForm({
     validate: {
       positive: (value) =>
         parseFloat(value) > 0 || 'Amount must be greater than 0',
-    },
-    onChange: (e) => {
-      if (onCollateralChange) {
-        onCollateralChange(e.target.value);
-      }
     },
   });
 
@@ -134,15 +127,8 @@ export function useLiquidityForm({
     });
   }
 
-  // Example of form submission
-  function onSubmit(data: LiquidityFormValues) {
-    console.log('Liquidity form submission:', data);
-    // You could call your contract functions here
-  }
-
   return {
     ...form,
-    onSubmit,
     handleSubmit,
     tickToDisplayPrice,
     displayPriceToTick,

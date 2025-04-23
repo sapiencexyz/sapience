@@ -2,26 +2,26 @@ import { useToast } from '@foil/ui/hooks/use-toast';
 import type React from 'react';
 import { useAccount } from 'wagmi';
 import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
+import { useForecast } from '~/lib/context/ForecastProvider';
 import { LiquidityForm } from './forms';
 
-interface SimpleLiquidityWrapperProps {
-  collateralAssetTicker: string;
-  baseTokenName: string;
-  quoteTokenName: string;
-  minTick: number;
-  maxTick: number;
-}
-
-const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
-  collateralAssetTicker,
-  baseTokenName,
-  quoteTokenName,
-  minTick,
-  maxTick,
-}) => {
+const SimpleLiquidityWrapper: React.FC = () => {
   const { toast } = useToast();
   const { isConnected } = useAccount();
   const { setIsOpen } = useConnectWallet();
+
+  // Get data from the forecast context
+  const {
+    collateralAssetTicker,
+    baseTokenName,
+    quoteTokenName,
+    minTick,
+    maxTick,
+    marketAddress,
+    chainId,
+    abi,
+    marketContractData,
+  } = useForecast();
 
   // const handleLiquiditySubmit = useCallback(
   //   (data: LiquidityFormValues) => {
@@ -37,16 +37,27 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
     setIsOpen(true);
   };
 
+  const handleSuccess = (txHash: `0x${string}`) => {
+    console.log('txHash', txHash);
+  };
+
   return (
     <div className="h-full">
       <LiquidityForm
-        virtualBaseTokensName={baseTokenName}
-        virtualQuoteTokensName={quoteTokenName}
+        marketDetails={{
+          marketAddress: marketAddress as `0x${string}`,
+          chainId: chainId as number,
+          marketId: marketContractData.epochId,
+          marketAbi: abi,
+          collateralAssetTicker,
+          virtualBaseTokensName: baseTokenName,
+          virtualQuoteTokensName: quoteTokenName,
+          lowPriceTick: minTick,
+          highPriceTick: maxTick,
+        }}
         isConnected={isConnected}
         onConnectWallet={handleConnectWallet}
-        collateralAssetTicker={collateralAssetTicker}
-        lowPriceTick={minTick}
-        highPriceTick={maxTick}
+        onSuccess={handleSuccess}
       />
     </div>
   );

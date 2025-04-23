@@ -7,11 +7,9 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
 import PriceChart from '~/components/charts/PriceChart';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
-import { useMarketRead } from '~/hooks/contract';
-import { useMarket } from '~/hooks/graphql/useMarket';
+import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -40,41 +38,22 @@ const SimpleLiquidityWrapper = dynamic(
   }
 );
 
-const ForecastingDetailPage = () => {
-  const params = useParams();
+// Main content component that consumes the forecast context
+const ForecastContent = () => {
   const router = useRouter();
-  const marketId = params.marketId as string;
+  const params = useParams();
   const chainShortName = params.chainShortName as string;
 
-  const { abi } = useFoilAbi(8453);
-
-  // Call the custom hook to get market data and related state
   const {
     marketData,
     isLoadingMarket,
+    isLoadingMarketContract,
     displayQuestion,
     marketQuestionDisplay,
     chainId,
     marketAddress,
     numericMarketId,
-  } = useMarket({ chainShortName, marketId });
-
-  const {
-    marketData: marketContractData,
-    marketGroupParams,
-    isLoading: isLoadingMarketContract,
-  } = useMarketRead({
-    marketAddress: marketAddress as `0x${string}`,
-    marketId: BigInt(marketId),
-    abi,
-  });
-
-  console.log('marketContractData', marketContractData);
-  console.log('marketGroupParams', marketGroupParams);
-  console.log('marketData', marketData);
-
-  // Extract resource slug
-  const resourceSlug = marketData?.marketGroup?.resource?.slug;
+  } = useForecast();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
@@ -89,6 +68,9 @@ const ForecastingDetailPage = () => {
     [LineType.ResourcePrice]: false,
     [LineType.TrailingAvgPrice]: false,
   });
+
+  // Extract resource slug
+  const resourceSlug = marketData?.marketGroup?.resource?.slug;
 
   // Handler for updating selected prices
   const handlePriceSelection = (line: LineType, selected: boolean) => {
@@ -208,19 +190,7 @@ const ForecastingDetailPage = () => {
                     <ComingSoonScrim className="absolute rounded-lg" />
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
-                      <SimpleLiquidityWrapper
-                        collateralAssetTicker={
-                          marketData?.marketGroup?.quoteTokenName || 'sUSDS'
-                        }
-                        baseTokenName={
-                          marketData?.marketGroup?.baseTokenName || 'Yes'
-                        }
-                        quoteTokenName={
-                          marketData?.marketGroup?.quoteTokenName || 'No'
-                        }
-                        minTick={marketContractData?.baseAssetMinPriceTick || 0}
-                        maxTick={marketContractData?.baseAssetMaxPriceTick || 0}
-                      />
+                      <SimpleLiquidityWrapper />
                     )}
                   </div>
                 </div>
@@ -243,6 +213,19 @@ const ForecastingDetailPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Wrapper component that provides the forecast context
+const ForecastingDetailPage = () => {
+  const params = useParams();
+  const marketId = params.marketId as string;
+  const chainShortName = params.chainShortName as string;
+
+  return (
+    <ForecastProvider chainShortName={chainShortName} marketId={marketId}>
+      <ForecastContent />
+    </ForecastProvider>
   );
 };
 
