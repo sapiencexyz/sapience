@@ -135,7 +135,7 @@ export function useSubmitPrediction({
               recipient:
                 '0x0000000000000000000000000000000000000000' as `0x${string}`,
               expirationTime: BigInt(0),
-              revocable: true,
+              revocable: false,
               refUID:
                 '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
               data: encodedData,
