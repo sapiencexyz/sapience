@@ -3,11 +3,8 @@ import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
 import type { Address } from 'viem';
 
-import {
-  useMarketRead,
-  usePositions,
-  UsePositionsResult,
-} from '~/hooks/contract';
+import type { UsePositionsResult } from '~/hooks/contract';
+import { useMarketRead, usePositions } from '~/hooks/contract';
 import { useMarket } from '~/hooks/graphql/useMarket';
 
 interface ForecastContextType {
