@@ -315,13 +315,6 @@ export function CreateLiquidityForm({
           <div className="flex flex-col gap-3">
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-1">
-                Position
-              </p>
-              <p className="text-sm">New Position</p>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">
                 {virtualBaseTokensName} Tokens
               </p>
               <p className="text-sm">
