@@ -17,7 +17,7 @@ import NumberDisplay from '~/components/numberDisplay';
 import type { MarketGroup } from '~/lib/context/FoilProvider';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useMarketPriceData } from '~/lib/hooks/useMarketPriceData';
-import { useResources } from '~/lib/hooks/useResources';
+import { useResourcesAdmin } from '~/lib/hooks/useResources';
 
 import AddressCell from './AddressCell';
 import PublicCell from './PublicCell';
@@ -68,7 +68,7 @@ const ResourceCell = ({
   marketAddress: string;
   chainId: number;
 }) => {
-  const { data: resources } = useResources();
+  const { data: resources } = useResourcesAdmin();
 
   if (!resources) {
     return <span>Loading...</span>;

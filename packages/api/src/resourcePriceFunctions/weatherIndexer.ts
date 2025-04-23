@@ -120,14 +120,6 @@ export class WeatherIndexer implements IResourcePriceIndexer {
         this.resourceType === 'precipitation' &&
         weatherData.precipitation.latest?.precipitation !== undefined
       ) {
-        console.log(
-          'Precipitation saved timestamps',
-          weatherData.precipitation.latest.timestamp,
-          Math.floor(
-            new Date(weatherData.precipitation.latest.timestamp).getTime() /
-              1000
-          )
-        );
         const price = {
           resource: { id: resource.id },
           timestamp: Math.floor(

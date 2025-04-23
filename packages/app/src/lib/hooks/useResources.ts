@@ -135,6 +135,26 @@ export const useResources = () => {
   });
 };
 
+export const useResourcesAdmin = () => {
+  return useQuery<Resource[]>({
+    queryKey: ['resources'],
+    queryFn: async () => {
+      const { data } = await foilApi.post('/graphql', {
+        query: print(RESOURCES_QUERY),
+      });
+      const resources = data.resources.sort((a: Resource, b: Resource) => {
+        const indexA = RESOURCE_ORDER.indexOf(a.slug);
+        const indexB = RESOURCE_ORDER.indexOf(b.slug);
+        return indexA - indexB;
+      });
+      return resources.map((resource: Resource) => ({
+        ...resource,
+        iconPath: `/resources/${resource.slug}.svg`,
+      }));
+    },
+  });
+};
+
 export const useLatestResourcePrice = (slug: string) => {
   return useQuery({
     queryKey: ['resourcePrice', slug],
