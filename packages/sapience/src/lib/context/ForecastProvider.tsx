@@ -105,8 +105,6 @@ export function ForecastProvider({
     maxTick,
   };
 
-  console.log('DATA', marketContractData, marketGroupParams);
-
   return (
     <ForecastContext.Provider value={value}>
       {children}

@@ -50,6 +50,8 @@ interface OrderBookChartProps {
   quoteTokenName?: string;
   // Add className for styling from parent
   className?: string;
+  // Explicitly pass the desired base token name for display
+  baseTokenName?: string;
 }
 
 const OrderBookChart: React.FC<OrderBookChartProps> = ({
@@ -59,6 +61,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   baseAssetMaxPriceTick,
   quoteTokenName, // Optional
   className,
+  baseTokenName, // Destructure the new prop
 }) => {
   // 1. Fetch base pool info
   const {
@@ -85,6 +88,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
     baseAssetMaxPriceTick,
     tickSpacing: pool?.tickSpacing,
     quoteTokenName,
+    baseTokenName,
   });
 
   const isLoading = isLoadingPool || isLoadingBook;
@@ -143,13 +147,6 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   });
   const maxCumulativeBidSize = cumulativeBidSize;
 
-  // Use the larger of the two total cumulative sizes for consistent scaling
-  const maxOverallCumulativeSize = Math.max(
-    maxCumulativeAskSize,
-    maxCumulativeBidSize,
-    1 // Avoid division by zero if both are 0
-  );
-
   return (
     <div
       className={`w-full border rounded-md bg-background text-foreground ${className} h-full flex flex-col`}
@@ -167,8 +164,11 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
         {/* Asks (Sell Orders) - Rendered bottom-up */}
         <div className="flex flex-col-reverse">
           {cumulativeAsks.map((ask, index) => {
+            // Calculate percentage relative to total ask size
             const percentage =
-              (ask.cumulativeSize / maxOverallCumulativeSize) * 100;
+              maxCumulativeAskSize > 0
+                ? (ask.cumulativeSize / maxCumulativeAskSize) * 100
+                : 0;
             return (
               <OrderBookRow
                 key={`ask-${ask.rawPrice}-${index}`}
@@ -188,8 +188,11 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
         {/* Bids (Buy Orders) - Rendered top-down */}
         <div className="flex flex-col">
           {cumulativeBids.map((bid, index) => {
+            // Calculate percentage relative to total bid size
             const percentage =
-              (bid.cumulativeSize / maxOverallCumulativeSize) * 100;
+              maxCumulativeBidSize > 0
+                ? (bid.cumulativeSize / maxCumulativeBidSize) * 100
+                : 0;
             return (
               <OrderBookRow
                 key={`bid-${bid.rawPrice}-${index}`}
