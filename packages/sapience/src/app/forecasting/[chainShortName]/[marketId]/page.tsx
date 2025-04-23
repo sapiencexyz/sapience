@@ -112,19 +112,20 @@ const ForecastContent = () => {
   useEffect(() => {
     const positionId = searchParams.get('positionId');
     if (!positionId) {
-      // Check if there's any position to add to URL
-      if (lpPositionsArray.length > 0) {
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set(
-          'positionId',
-          lpPositionsArray[0].id.toString()
-        );
-        router.push(newUrl.pathname + newUrl.search);
-      } else if (traderPositionsArray.length > 0) {
+      if (traderPositionsArray.length > 0) {
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.set(
           'positionId',
           traderPositionsArray[0].id.toString()
+        );
+        router.push(newUrl.pathname + newUrl.search);
+      }
+      // Check if there's any position to add to URL
+      else if (lpPositionsArray.length > 0) {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set(
+          'positionId',
+          lpPositionsArray[0].id.toString()
         );
         router.push(newUrl.pathname + newUrl.search);
       }
