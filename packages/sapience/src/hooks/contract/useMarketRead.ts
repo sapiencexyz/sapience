@@ -1,6 +1,6 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { useEffect } from 'react';
-import { Abi, Address } from 'viem';
+import type { Abi, Address } from 'viem';
 import { useReadContract } from 'wagmi';
 
 // Define the types based on the provided structs

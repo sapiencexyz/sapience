@@ -148,9 +148,15 @@ const ForecastContent = () => {
                     poolAddress={
                       marketData?.poolAddress as `0x${string}` | undefined
                     }
-                    baseAssetMinPriceTick={marketData?.baseAssetMinPriceTick || undefined}
-                    baseAssetMaxPriceTick={marketData?.baseAssetMaxPriceTick || undefined}
-                    quoteTokenName={marketData?.marketGroup?.quoteTokenName || undefined}
+                    baseAssetMinPriceTick={
+                      marketData?.baseAssetMinPriceTick || undefined
+                    }
+                    baseAssetMaxPriceTick={
+                      marketData?.baseAssetMaxPriceTick || undefined
+                    }
+                    quoteTokenName={
+                      marketData?.marketGroup?.quoteTokenName || undefined
+                    }
                     className="h-full"
                   />
                 )}

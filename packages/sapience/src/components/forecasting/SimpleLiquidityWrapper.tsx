@@ -1,12 +1,12 @@
-import { useToast } from '@foil/ui/hooks/use-toast';
 import type React from 'react';
 import { useAccount } from 'wagmi';
+
 import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
 import { useForecast } from '~/lib/context/ForecastProvider';
+
 import { LiquidityForm } from './forms';
 
 const SimpleLiquidityWrapper: React.FC = () => {
-  const { toast } = useToast();
   const { isConnected } = useAccount();
   const { setIsOpen } = useConnectWallet();
 

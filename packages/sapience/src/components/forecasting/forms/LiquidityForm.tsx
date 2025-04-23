@@ -14,13 +14,11 @@ import { useToast } from '@foil/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
+
 import { useCreateLP } from '~/hooks/contract/useCreateLP';
 import { useLiquidityQuoter } from '~/hooks/contract/useLiquidityQuoter';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
-import {
-  LiquidityFormValues,
-  useLiquidityForm,
-} from '~/hooks/forms/useLiquidityForm';
+import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
@@ -176,7 +174,7 @@ export function LiquidityForm({
     }
   }, [isLPError, lpError, toast]);
 
-  const submitForm = async (data: LiquidityFormValues) => {
+  const submitForm = async () => {
     if (!isConnected) return;
 
     // createLP now handles approval internally if needed
