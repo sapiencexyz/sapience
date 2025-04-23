@@ -20,13 +20,13 @@ import { useLiquidityQuoter } from '~/hooks/contract/useLiquidityQuoter';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
-import { useForecast } from '~/lib/context/ForecastProvider';
 
 export type LiquidityFormMarketDetails = {
   marketAddress: `0x${string}`;
   chainId: number;
   marketAbi: any;
   collateralAssetTicker: string;
+  collateralAssetAddress: `0x${string}`;
   virtualBaseTokensName?: string;
   virtualQuoteTokensName?: string;
   lowPriceTick?: number;
@@ -41,19 +41,26 @@ export interface LiquidityFormProps {
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-export function LiquidityForm({
+export function CreateLiquidityForm({
   marketDetails,
   isConnected = false,
   onConnectWallet,
   onSuccess,
 }: LiquidityFormProps) {
   const { toast } = useToast();
-  const { marketData } = useForecast();
 
-  // Get collateral asset address from marketData
-  const collateralAssetAddress = marketData?.marketGroup?.collateralAsset as
-    | `0x${string}`
-    | undefined;
+  const {
+    marketAddress,
+    chainId,
+    marketAbi,
+    collateralAssetTicker,
+    collateralAssetAddress,
+    virtualBaseTokensName,
+    virtualQuoteTokensName,
+    lowPriceTick,
+    highPriceTick,
+    marketId,
+  } = marketDetails;
 
   // Use the token balance hook
   const { balance: walletBalance } = useTokenBalance({
@@ -64,18 +71,6 @@ export function LiquidityForm({
 
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
     useState(walletBalance);
-
-  const {
-    marketAddress,
-    chainId,
-    marketAbi,
-    collateralAssetTicker,
-    virtualBaseTokensName,
-    virtualQuoteTokensName,
-    lowPriceTick,
-    highPriceTick,
-    marketId,
-  } = marketDetails;
 
   // Pass tick values and callback to the form hook
   const form = useLiquidityForm({
