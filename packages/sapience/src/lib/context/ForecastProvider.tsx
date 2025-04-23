@@ -1,5 +1,7 @@
 import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
-import { createContext, ReactNode, useContext } from 'react';
+import type { ReactNode } from 'react';
+import { createContext, useContext } from 'react';
+
 import { useMarketRead } from '~/hooks/contract';
 import { useMarket } from '~/hooks/graphql/useMarket';
 

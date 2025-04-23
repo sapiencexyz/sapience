@@ -74,12 +74,11 @@ export const createTickPriceValue = (
       tick: numValue,
       price: tickToPrice(numValue, tickSpacing),
     };
-  } else {
-    return {
-      tick: priceToTick(numValue, tickSpacing),
-      price: numValue,
-    };
   }
+  return {
+    tick: priceToTick(numValue, tickSpacing),
+    price: numValue,
+  };
 };
 
 /**

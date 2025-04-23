@@ -1,12 +1,20 @@
 'use client';
 
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@foil/ui/components/ui/dropdown-menu';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
@@ -58,7 +66,7 @@ const ForecastContent = () => {
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
   );
-  const [chartType] = useState<ChartType>(ChartType.PRICE);
+  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
   const [selectedPrices, setSelectedPrices] = useState<
     Record<LineType, boolean>
@@ -119,32 +127,78 @@ const ForecastContent = () => {
           )}
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex flex-col w-full relative">
-              <div className="w-full h-full">
-                <PriceChart
-                  market={{
-                    marketId: numericMarketId,
-                    chainId,
-                    address: marketAddress,
-                    quoteTokenName:
-                      marketData?.marketGroup?.quoteTokenName || undefined,
-                  }}
-                  selectedInterval={selectedInterval}
-                  selectedPrices={selectedPrices}
-                  resourceSlug={resourceSlug}
-                />
+              <div className="w-full h-[500px]">
+                {chartType === ChartType.PRICE && (
+                  <PriceChart
+                    market={{
+                      marketId: numericMarketId!,
+                      chainId: chainId!,
+                      address: marketAddress!,
+                      quoteTokenName:
+                        marketData?.marketGroup?.quoteTokenName || undefined,
+                    }}
+                    selectedInterval={selectedInterval}
+                    selectedPrices={selectedPrices}
+                    resourceSlug={resourceSlug}
+                  />
+                )}
+                {chartType === ChartType.ORDER_BOOK && (
+                  <OrderBookChart
+                    chainId={chainId!}
+                    poolAddress={
+                      marketData?.poolAddress as `0x${string}` | undefined
+                    }
+                    baseAssetMinPriceTick={
+                      marketData?.baseAssetMinPriceTick || undefined
+                    }
+                    baseAssetMaxPriceTick={
+                      marketData?.baseAssetMaxPriceTick || undefined
+                    }
+                    quoteTokenName={
+                      marketData?.marketGroup?.quoteTokenName || undefined
+                    }
+                    className="h-full"
+                  />
+                )}
               </div>
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
                 <div className="flex flex-row flex-wrap gap-3 w-full items-center">
+                  <div className="order-1 sm:order-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
+                          {chartType}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          onSelect={() => setChartType(ChartType.PRICE)}
+                        >
+                          {ChartType.PRICE}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => setChartType(ChartType.ORDER_BOOK)}
+                        >
+                          {ChartType.ORDER_BOOK}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
                   {chartType === ChartType.PRICE && (
                     <>
-                      <div className="order-2 sm:order-1">
+                      <div className="order-2 sm:order-2 ml-auto">
                         <IntervalSelector
                           selectedInterval={selectedInterval}
                           setSelectedInterval={setSelectedInterval}
                         />
                       </div>
                       {marketData?.marketGroup?.resource?.slug && (
-                        <div className="order-1 sm:order-2 sm:ml-auto">
+                        <div className="order-3 sm:order-3">
                           <PriceSelector
                             selectedPrices={selectedPrices}
                             setSelectedPrices={handlePriceSelection}

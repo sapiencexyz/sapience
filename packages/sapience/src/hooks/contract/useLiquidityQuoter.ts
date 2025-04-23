@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useReadContract } from 'wagmi';
+
 import { priceToSqrtPriceX96 } from '~/lib/utils/tickUtils';
 
 interface QuoteResult {
@@ -65,7 +66,6 @@ export function useLiquidityQuoter({
     data: currentSqrtPrice,
     isError: isPriceError,
     isLoading: isCurrentPoolPriceLoading,
-    error: currentPoolPriceError,
   } = useReadContract({
     address: marketAddress,
     abi: marketAbi,

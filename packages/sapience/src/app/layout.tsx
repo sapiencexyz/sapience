@@ -100,7 +100,6 @@ export const viewport: Viewport = {
 };
 
 const RootLayout = ({ children }: RootLayoutProps) => {
-  console.log('HELLOWORLD');
   return (
     <html lang="en">
       <body>

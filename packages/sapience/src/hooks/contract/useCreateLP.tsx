@@ -2,7 +2,9 @@ import { useToast } from '@foil/ui/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import { parseUnits } from 'viem';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+
 import { CREATE_LIQUIDITY_REDUCTION_PERCENT } from '~/lib/constants/numbers';
+
 import { useTokenApproval } from './useTokenApproval';
 
 /**

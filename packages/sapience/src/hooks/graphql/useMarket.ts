@@ -38,6 +38,9 @@ const MARKET_QUERY = gql`
       startTimestamp
       endTimestamp
       settled
+      poolAddress
+      baseAssetMinPriceTick
+      baseAssetMaxPriceTick
       marketGroup {
         id
         address
