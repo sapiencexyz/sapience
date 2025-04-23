@@ -1,5 +1,5 @@
 export enum ChartType {
-  PRICE = 'Price',
+  PRICE = 'Price Chart',
   DEPTH = 'Depth',
   ORDER_BOOK = 'Order Book',
   VOLUME = 'VOLUME',
