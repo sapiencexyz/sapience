@@ -63,9 +63,12 @@ export const handleTransferEvent = async (event: Event) => {
  */
 export const handlePositionSettledEvent = async (event: Event) => {
   const { positionId } = event.logData.args;
-  
+
   if (!positionId) {
-    console.error('No positionId found in PositionSettled event args:', event.logData.args);
+    console.error(
+      'No positionId found in PositionSettled event args:',
+      event.logData.args
+    );
     return;
   }
 
@@ -721,7 +724,7 @@ export const updateTransactionFromPositionSettledEvent = async (
 
   // PositionSettled event doesn't include epochId, so we need to find it via the position
   const { positionId } = event.logData.args;
-  
+
   // Find position in the database first
   const position = await positionRepository.findOne({
     where: {
@@ -732,7 +735,9 @@ export const updateTransactionFromPositionSettledEvent = async (
   });
 
   if (!position) {
-    console.error(`Position not found for PositionSettled event: positionId=${positionId}`);
+    console.error(
+      `Position not found for PositionSettled event: positionId=${positionId}`
+    );
     // Set default values even if position not found
     updateTransactionStateFromEvent(newTransaction, event);
     newTransaction.tradeRatioD18 = '0';
@@ -742,7 +747,7 @@ export const updateTransactionFromPositionSettledEvent = async (
 
   // Get the market/epoch from the position
   const epoch = position.market;
-  
+
   if (!epoch) {
     console.error(`Epoch not found for position: ${positionId}`);
     updateTransactionStateFromEvent(newTransaction, event);
@@ -752,16 +757,21 @@ export const updateTransactionFromPositionSettledEvent = async (
   }
 
   // Verify this position belongs to the same market as the event
-  if (epoch.marketGroup.address.toLowerCase() !== event.marketGroup.address.toLowerCase()) {
-    console.error(`Position market mismatch: position market=${epoch.marketGroup.address}, event market=${event.marketGroup.address}`);
+  if (
+    epoch.marketGroup.address.toLowerCase() !==
+    event.marketGroup.address.toLowerCase()
+  ) {
+    console.error(
+      `Position market mismatch: position market=${epoch.marketGroup.address}, event market=${event.marketGroup.address}`
+    );
     // Try to find the correct epoch in this market
     const correctEpoch = await marketRepository.findOne({
       where: {
         marketGroup: { address: event.marketGroup.address.toLowerCase() },
       },
-      order: { marketId: 'DESC' }, 
+      order: { marketId: 'DESC' },
     });
-    
+
     if (correctEpoch) {
       updateTransactionStateFromEvent(newTransaction, event);
       newTransaction.tradeRatioD18 = correctEpoch.settlementPriceD18 || '0';
@@ -787,10 +797,7 @@ const setDefaultTransactionValues = (transaction: Transaction) => {
     transaction.quoteToken = '0';
   }
 
-  if (
-    !transaction.borrowedBaseToken ||
-    transaction.borrowedBaseToken === ''
-  ) {
+  if (!transaction.borrowedBaseToken || transaction.borrowedBaseToken === '') {
     transaction.borrowedBaseToken = '0';
   }
 
