@@ -8,7 +8,7 @@ include = [
 ]
 
 [setting.claimStatement]
-defaultValue = "<%= stringToHex('What will the year-over-year Core PCE inflation rate be in March 2025?') %>"
+defaultValue = "<%= stringToHex('What will the year-over-year Core PCE inflation rate be in March 2025? (Zero if no)') %>"
 
 [setting.marketStartingTime]
 defaultValue = "1745586000"

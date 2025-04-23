@@ -8,7 +8,7 @@ include = [
 ]
 
 [setting.claimStatement]
-defaultValue = "<%= stringToHex('What will the ISM Manufacturing PMI reading be for April 2025?') %>"
+defaultValue = "<%= stringToHex('What will the ISM Manufacturing PMI reading be for April 2025? (Zero if no)') %>"
 
 [setting.marketStartingTime]
 defaultValue = "1745586000"

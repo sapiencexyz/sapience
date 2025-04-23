@@ -8,7 +8,7 @@ include = [
 ]
 
 [setting.claimStatement]
-defaultValue = "<%= stringToHex('What will the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025?') %>"
+defaultValue = "<%= stringToHex('What will the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025? (Zero if no)') %>"
 
 [setting.marketStartingTime]
 defaultValue = "1745586000"

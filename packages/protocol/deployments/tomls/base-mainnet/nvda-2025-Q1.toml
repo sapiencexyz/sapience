@@ -8,7 +8,7 @@ include = [
 ]
 
 [setting.claimStatement]
-defaultValue = "<%= stringToHex('What will NVIDIA’s earnings per share (EPS) be for Q1 2025?') %>"
+defaultValue = "<%= stringToHex('What will NVIDIA’s earnings per share (EPS) be for Q1 2025? (Zero if no)') %>"
 
 [setting.marketStartingTime]
 defaultValue = "1745586000"

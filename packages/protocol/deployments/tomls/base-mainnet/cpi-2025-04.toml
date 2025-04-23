@@ -8,7 +8,7 @@ include = [
 ]
 
 [setting.claimStatement]
-defaultValue = "<%= stringToHex('What will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025?') %>"
+defaultValue = "<%= stringToHex('What will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025? (Zero if no)') %>"
 
 [setting.marketStartingTime]
 defaultValue = "1745586000"
