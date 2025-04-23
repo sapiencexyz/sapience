@@ -1,17 +1,14 @@
-import { TradeForm } from './forms';
-import type { TradeFormValues } from '@foil/ui/hooks/useTradeForm';
 import type React from 'react';
 import { useAccount } from 'wagmi';
-import { useToast } from '@foil/ui/hooks/use-toast';
 
 import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
+import { TradeForm } from './forms';
 
 const SimpleTradeWrapper: React.FC = () => {
   const { isConnected } = useAccount();
   const { setIsOpen } = useConnectWallet();
-  const { toast } = useToast();
 
   // Get data from the forecast context
   const {
@@ -37,17 +34,18 @@ const SimpleTradeWrapper: React.FC = () => {
     // toast({ title: 'Trade Submitted', description: `Transaction: ${txHash}` });
   };
 
-
   return (
     <div className="h-full">
       <TradeForm
-         marketDetails={{
+        marketDetails={{
           marketAddress: marketAddress as `0x${string}`,
           numericMarketId: numericMarketId as number,
           chainId: chainId as number,
           marketAbi: abi,
           collateralAssetTicker,
-          collateralAssetAddress: collateralAssetAddress as `0x${string}` | undefined,
+          collateralAssetAddress: collateralAssetAddress as
+            | `0x${string}`
+            | undefined,
         }}
         isConnected={isConnected}
         onConnectWallet={handleConnectWallet}

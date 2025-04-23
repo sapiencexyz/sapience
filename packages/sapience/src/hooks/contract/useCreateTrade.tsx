@@ -158,10 +158,15 @@ export function useCreateTrade({
       } catch (err) {
         setProcessingTx(false); // Stop processing if performCreateTrade fails immediately
         console.error('Error creating trade after approval:', err);
-        setError(err instanceof Error ? err : new Error('Failed to create trade after approval'));
+        setError(
+          err instanceof Error
+            ? err
+            : new Error('Failed to create trade after approval')
+        );
         toast({
           title: 'Error',
-          description: 'Failed to create trade after approval. Please try again.',
+          description:
+            'Failed to create trade after approval. Please try again.',
           variant: 'destructive',
         });
       }
@@ -179,7 +184,8 @@ export function useCreateTrade({
       size === BigInt(0) ||
       limitCollateral === BigInt(0)
     ) {
-      const errorMsg = 'Missing or invalid parameters for creating trade position';
+      const errorMsg =
+        'Missing or invalid parameters for creating trade position';
       console.error('performCreateTrade check failed:', errorMsg);
       setError(new Error(errorMsg));
       throw new Error(errorMsg);
@@ -222,7 +228,10 @@ export function useCreateTrade({
       });
     } catch (err: any) {
       console.error('Error creating trade position:', err);
-      const errorMessage = err?.shortMessage || err?.message || 'Failed to submit trade transaction.';
+      const errorMessage =
+        err?.shortMessage ||
+        err?.message ||
+        'Failed to submit trade transaction.';
       setError(err instanceof Error ? err : new Error(errorMessage));
       toast({
         title: 'Transaction Failed',
@@ -240,13 +249,13 @@ export function useCreateTrade({
       return;
     }
     if (size === BigInt(0) || parsedCollateralAmount === BigInt(0)) {
-       toast({
-          title: 'Invalid Input',
-          description: 'Size and collateral amount must be greater than zero.',
-          variant: 'destructive',
-        });
-       setError(new Error('Size and collateral amount must be > 0'));
-       return;
+      toast({
+        title: 'Invalid Input',
+        description: 'Size and collateral amount must be greater than zero.',
+        variant: 'destructive',
+      });
+      setError(new Error('Size and collateral amount must be > 0'));
+      return;
     }
 
     setProcessingTx(true);
@@ -271,9 +280,12 @@ export function useCreateTrade({
       console.error('Error in createTrade flow:', err);
       // Error toast is likely handled within approve() or performCreateTrade()
       // If not, add a generic one here. Let's rely on specific handlers for now.
-       if (!error) { // Set error state if not already set by specific handlers
-         setError(err instanceof Error ? err : new Error('An unexpected error occurred'));
-       }
+      if (!error) {
+        // Set error state if not already set by specific handlers
+        setError(
+          err instanceof Error ? err : new Error('An unexpected error occurred')
+        );
+      }
     }
   };
 
@@ -284,8 +296,8 @@ export function useCreateTrade({
     }
   }, [isSuccess, error]);
 
-
-  const isLoading = isWritePending || isConfirming || processingTx || isApproving;
+  const isLoading =
+    isWritePending || isConfirming || processingTx || isApproving;
   const isError = !!error;
 
   return {

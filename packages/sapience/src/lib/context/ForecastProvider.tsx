@@ -76,7 +76,9 @@ export function ForecastProvider({
   // Derived values for convenience
   const collateralAssetTicker =
     marketData?.marketGroup?.quoteTokenName || 'sUSDS';
-  const collateralAssetAddress = marketData?.marketGroup?.collateralAsset as Address | undefined;
+  const collateralAssetAddress = marketData?.marketGroup?.collateralAsset as
+    | Address
+    | undefined;
   const baseTokenName = marketData?.marketGroup?.baseTokenName || 'Yes';
   const quoteTokenName = marketData?.marketGroup?.quoteTokenName || 'No';
   const minTick = marketContractData?.baseAssetMinPriceTick || 0;

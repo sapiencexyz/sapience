@@ -17,10 +17,10 @@ import React, { useEffect, useState } from 'react';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { useAccount, useSimulateContract } from 'wagmi';
 
+import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import { useTradeForm } from '~/hooks/forms/useTradeForm';
-import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { TOKEN_DECIMALS, HIGH_PRICE_IMPACT } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
@@ -59,12 +59,12 @@ export function TradeForm({
     marketAbi,
     collateralAssetTicker,
     collateralAssetAddress,
-    numericMarketId
+    numericMarketId,
   } = marketDetails;
 
   const { balance: walletBalance } = useTokenBalance({
     tokenAddress: collateralAssetAddress,
-    chainId: chainId,
+    chainId,
     enabled: isConnected && !!collateralAssetAddress,
   });
 
@@ -79,12 +79,15 @@ export function TradeForm({
 
   const sizeBigInt = React.useMemo(() => {
     try {
-      const parsedSize = parseUnits(sizeInput || '0', TOKEN_DECIMALS);
-      return parsedSize;
+      return parseUnits(sizeInput || '0', TOKEN_DECIMALS);
     } catch (e) {
       return BigInt(0);
     }
   }, [sizeInput]);
+
+  const signedSizeBigInt = React.useMemo(() => {
+    return direction === 'Long' ? sizeBigInt : -sizeBigInt;
+  }, [sizeBigInt, direction]);
 
   const {
     data: quoteSimulationResult,
@@ -94,8 +97,8 @@ export function TradeForm({
     address: marketAddress,
     abi: marketAbi,
     functionName: 'quoteCreateTraderPosition',
-    args: [numericMarketId, sizeBigInt],
-    chainId: chainId,
+    args: [numericMarketId, signedSizeBigInt],
+    chainId,
     account: accountAddress || zeroAddress,
     query: {
       enabled: !!marketAddress && !!marketAbi && sizeBigInt > BigInt(0),
@@ -107,7 +110,9 @@ export function TradeForm({
     if (!result || !Array.isArray(result)) {
       return [BigInt(0), BigInt(0)];
     }
-    const requiredCollateral = result[0] ? BigInt(result[0].toString()) : BigInt(0);
+    const requiredCollateral = result[0]
+      ? BigInt(result[0].toString())
+      : BigInt(0);
     const fillPrice = result[1] ? BigInt(result[1].toString()) : BigInt(0);
     return [requiredCollateral, fillPrice];
   }, [quoteSimulationResult]);
@@ -122,24 +127,24 @@ export function TradeForm({
 
   const poolAddress = marketContractData?.pool as `0x${string}` | undefined;
 
-  const {
-    pool,
-  } = useUniswapPool(
-      chainId ?? undefined,
-      poolAddress
-    );
+  const { pool } = useUniswapPool(
+    chainId ?? undefined,
+    poolAddress ?? zeroAddress
+  );
 
   const priceImpact: number = React.useMemo(() => {
     if (pool?.token0Price && quotedFillPriceBI > BigInt(0)) {
       try {
-        const fillPrice = parseFloat(formatUnits(quotedFillPriceBI, TOKEN_DECIMALS));
+        const fillPrice = parseFloat(
+          formatUnits(quotedFillPriceBI, TOKEN_DECIMALS)
+        );
         const referencePrice = parseFloat(pool.token0Price.toSignificant(18));
 
         if (referencePrice === 0) return 0;
 
         return Math.abs((fillPrice / referencePrice - 1) * 100);
       } catch (e) {
-        console.error("Error calculating price impact:", e);
+        console.error('Error calculating price impact:', e);
         return 0;
       }
     }
@@ -161,7 +166,7 @@ export function TradeForm({
     marketAddress,
     marketAbi,
     chainId,
-    size: direction === 'Long' ? sizeBigInt : -sizeBigInt,
+    size: signedSizeBigInt,
     collateralAmount: estimatedCollateral,
     slippagePercent: slippageAsNumber,
     enabled: isConnected && !!marketAddress,
@@ -209,53 +214,43 @@ export function TradeForm({
     await createTrade();
   };
 
-  const getButtonContent = () => {
+  const getButtonState = () => {
     if (!isConnected) {
-      return 'Connect Wallet';
+      return { text: 'Connect Wallet', loading: false };
     }
     if (quoteLoading && sizeBigInt > BigInt(0)) {
-      return (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Generating Quote...
-        </>
-      );
+      return { text: 'Generating Quote...', loading: true };
     }
     if (isApproving) {
-      return (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Approving {collateralAssetTicker}...
-        </>
-      );
+      return { text: `Approving ${collateralAssetTicker}...`, loading: true };
     }
     if (isCreatingTrade) {
-      return (
-        <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Opening Position...
-        </>
-      );
+      return { text: 'Opening Position...', loading: true };
     }
-    if (needsApproval) {
-      if (estimatedCollateralBI > BigInt(0)) {
-        return `Approve & Open ${direction}`;
-      } else {
-        return `Open ${direction}`;
-      }
+    if (needsApproval && estimatedCollateralBI > BigInt(0)) {
+      return { text: `Approve & Open ${direction}`, loading: false };
     }
-    return `Open ${direction}`;
+    // Default case (needsApproval false or estimatedCollateralBI <= 0, or already approved)
+    return { text: `Open ${direction}`, loading: false };
   };
 
-  const isSubmitDisabled = !
-    isConnected ||
-    (quoteLoading && sizeBigInt > BigInt(0)) ||
-    isCreatingTrade ||
-    isApproving ||
-    sizeBigInt === BigInt(0) ||
-    !formState.isValid ||
-    (sizeBigInt > BigInt(0) && estimatedCollateralBI <= BigInt(0) && !quoteError) ||
-    (sizeBigInt > BigInt(0) && !!quoteError);
+  const calculateIsSubmitDisabled = () => {
+    if (!isConnected) return true; // Explicitly disable if not connected, though button changes
+    if (quoteLoading && sizeBigInt > BigInt(0)) return true;
+    if (isCreatingTrade) return true;
+    if (isApproving) return true;
+    if (sizeBigInt === BigInt(0)) return true;
+    if (!formState.isValid) return true;
+    // Disable if quote is required but not available or errored
+    if (sizeBigInt > BigInt(0)) {
+      if (estimatedCollateralBI <= BigInt(0) && !quoteError) return true; // Quote needed but not ready
+      if (quoteError) return true; // Quote resulted in error
+    }
+    return false;
+  };
+
+  const buttonState = getButtonState();
+  const isSubmitDisabled = calculateIsSubmitDisabled();
 
   const handleDirectionChange = (value: string) => {
     setValue('direction', value as 'Long' | 'Short', { shouldValidate: true });
@@ -282,7 +277,7 @@ export function TradeForm({
             name="size"
             render={({ field }) => (
               <FormItem>
-                 <FormLabel>Size</FormLabel>
+                <FormLabel>Size</FormLabel>
                 <FormControl>
                   <div className="flex">
                     <Input
@@ -312,31 +307,48 @@ export function TradeForm({
               className="w-full"
               disabled={isSubmitDisabled}
             >
-              {getButtonContent()}
+              {buttonState.loading && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              {buttonState.text}
             </Button>
           ) : (
-            <Button type="button" className="w-full" onClick={onConnectWallet}>
+            <Button
+              type="button"
+              className="w-full"
+              size="lg"
+              onClick={onConnectWallet}
+            >
               Connect Wallet
             </Button>
           )}
-           {showPriceImpactWarning && (
-              <p className="text-red-500 text-sm text-center mt-1 font-medium">
-                <AlertTriangle className="inline-block w-4 h-4 mr-1" />
-                Very high price impact ({Number(priceImpact.toFixed(2)).toString()}%) 
-              </p>
-            )}
+          {showPriceImpactWarning && (
+            <p className="text-red-500 text-sm text-center mt-2 font-medium">
+              <AlertTriangle className="inline-block w-4 h-4 mr-1" />
+              Very high price impact (
+              {Number(priceImpact.toFixed(2)).toString()}%)
+            </p>
+          )}
         </div>
 
         <div className="pt-4 mt-4 border-t">
-           <h4 className="text-sm font-medium mb-2">Preview {(quoteLoading && sizeBigInt > BigInt(0)) ? '(Loading Quote...)' : ''}</h4>
+          <h4 className="text-sm font-medium mb-2">
+            Details{' '}
+            {quoteLoading && sizeBigInt > BigInt(0) ? '(Loading Quote...)' : ''}
+          </h4>
           <div className="flex flex-col gap-2 text-sm">
-
             <div className="flex justify-between">
               <span className="text-muted-foreground">Direction</span>
-              <span className={direction === 'Long' ? 'text-green-500' : 'text-red-500'}>{direction}</span>
+              <span
+                className={
+                  direction === 'Long' ? 'text-green-500' : 'text-red-500'
+                }
+              >
+                {direction}
+              </span>
             </div>
 
-             <div className="flex justify-between">
+            <div className="flex justify-between">
               <span className="text-muted-foreground">Size</span>
               <span>
                 <NumberDisplay value={sizeInput || '0'} /> {baseTokenName}
@@ -345,24 +357,36 @@ export function TradeForm({
 
             {estimatedCollateralBI > BigInt(0) && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Position Collateral</span>
+                <span className="text-muted-foreground">
+                  Position Collateral
+                </span>
                 <span>
-                  0 {collateralAssetTicker} → <NumberDisplay value={estimatedCollateral} /> {collateralAssetTicker}
+                  0 {collateralAssetTicker} →{' '}
+                  <NumberDisplay value={estimatedCollateral} />{' '}
+                  {collateralAssetTicker}
                 </span>
               </div>
             )}
 
             {quotedFillPriceBI > BigInt(0) && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Estimated Fill Price</span>
-                <span><NumberDisplay value={estimatedFillPrice} /> {quoteTokenName}</span>
+                <span className="text-muted-foreground">
+                  Estimated Fill Price
+                </span>
+                <span>
+                  <NumberDisplay value={estimatedFillPrice} /> {quoteTokenName}
+                </span>
               </div>
             )}
 
             {priceImpact > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Estimated Price Impact</span>
-                <span className={`${showPriceImpactWarning ? 'text-red-500' : ''}`}>
+                <span className="text-muted-foreground">
+                  Estimated Price Impact
+                </span>
+                <span
+                  className={`${showPriceImpactWarning ? 'text-red-500' : ''}`}
+                >
                   {Number(priceImpact.toFixed(2)).toString()}%
                 </span>
               </div>
@@ -372,24 +396,23 @@ export function TradeForm({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Wallet Balance</span>
                 <span>
-                  <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
+                  <NumberDisplay value={walletBalance} />{' '}
+                  {collateralAssetTicker}
                 </span>
               </div>
             )}
 
             {isConnected && estimatedCollateralBI > BigInt(0) && (
-               <div className="flex justify-between">
-                <span className="text-muted-foreground">Est. Resulting Balance</span>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">
+                  Est. Resulting Balance
+                </span>
                 <span>
-                  <NumberDisplay value={estimatedResultingBalance} /> {collateralAssetTicker}
+                  <NumberDisplay value={estimatedResultingBalance} />{' '}
+                  {collateralAssetTicker}
                 </span>
               </div>
             )}
-
-             <div className="flex justify-between">
-              <span className="text-muted-foreground">Slippage Tolerance</span>
-              <span>{slippageAsNumber}%</span>
-            </div>
 
             {tradeError && (
               <div className="text-red-500 text-sm mt-2">
@@ -398,7 +421,7 @@ export function TradeForm({
             )}
             {quoteError && sizeBigInt > BigInt(0) && (
               <div className="text-red-500 text-sm mt-2">
-                Quote Error: {quoteError.message} 
+                Quote Error: {quoteError.message}
               </div>
             )}
           </div>
