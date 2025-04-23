@@ -1,6 +1,7 @@
 import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
 import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
+import type { Address } from 'viem';
 
 import { useMarketRead } from '~/hooks/contract';
 import { useMarket } from '~/hooks/graphql/useMarket';
@@ -12,7 +13,7 @@ interface ForecastContextType {
   displayQuestion: string | null;
   marketQuestionDisplay: string | null;
   chainId: number | null;
-  marketAddress: string | null;
+  marketAddress: Address | null;
   numericMarketId: number | null;
 
   // Market contract data
@@ -25,6 +26,7 @@ interface ForecastContextType {
 
   // Market token details
   collateralAssetTicker: string;
+  collateralAssetAddress: Address | undefined;
   baseTokenName: string;
   quoteTokenName: string;
   minTick: number;
@@ -74,6 +76,7 @@ export function ForecastProvider({
   // Derived values for convenience
   const collateralAssetTicker =
     marketData?.marketGroup?.quoteTokenName || 'sUSDS';
+  const collateralAssetAddress = marketData?.marketGroup?.collateralAsset as Address | undefined;
   const baseTokenName = marketData?.marketGroup?.baseTokenName || 'Yes';
   const quoteTokenName = marketData?.marketGroup?.quoteTokenName || 'No';
   const minTick = marketContractData?.baseAssetMinPriceTick || 0;
@@ -86,7 +89,7 @@ export function ForecastProvider({
     displayQuestion,
     marketQuestionDisplay,
     chainId,
-    marketAddress,
+    marketAddress: marketAddress as Address | null,
     numericMarketId,
 
     // Market contract data
@@ -99,6 +102,7 @@ export function ForecastProvider({
 
     // Market token details
     collateralAssetTicker,
+    collateralAssetAddress,
     baseTokenName,
     quoteTokenName,
     minTick,

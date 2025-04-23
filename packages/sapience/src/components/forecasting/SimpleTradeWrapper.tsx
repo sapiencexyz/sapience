@@ -1,26 +1,65 @@
-import type { TradeFormValues } from '@foil/ui';
-import { TradeForm } from '@foil/ui';
-import { useToast } from '@foil/ui/hooks/use-toast';
+import { TradeForm } from './forms';
+import type { TradeFormValues } from '@foil/ui/hooks/useTradeForm';
 import type React from 'react';
+import { useAccount } from 'wagmi';
+import { useToast } from '@foil/ui/hooks/use-toast';
+
+import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
+import { useForecast } from '~/lib/context/ForecastProvider';
+
 
 const SimpleTradeWrapper: React.FC = () => {
+  const { isConnected } = useAccount();
+  const { setIsOpen } = useConnectWallet();
   const { toast } = useToast();
 
-  const handleTradeSubmit = (data: TradeFormValues) => {
-    // In a real implementation, you would handle the trade logic here
-    // For example, call your contract functions
+  // Get data from the forecast context
+  const {
+    collateralAssetTicker,
+    marketAddress,
+    numericMarketId,
+    chainId,
+    abi,
+    collateralAssetAddress,
+    // baseTokenName, // Example: Add if needed by TradeForm or handlers
+    // quoteTokenName, // Example: Add if needed by TradeForm or handlers
+    // marketContractData, // Example: Add if needed for contract calls
+  } = useForecast();
 
-    toast({
-      title: 'Trade submitted',
-      description: `Size: ${data.size}, Direction: ${data.direction}, Slippage: ${data.slippage}%`,
-    });
+  const handleConnectWallet = () => {
+    setIsOpen(true);
   };
+
+  // Handle successful transaction submission
+  const handleSuccess = (txHash: `0x${string}`) => {
+    console.log('Trade transaction submitted, txHash:', txHash);
+    // Toast is likely handled within the form/hook now
+    // toast({ title: 'Trade Submitted', description: `Transaction: ${txHash}` });
+  };
+
 
   return (
     <div className="h-full">
       <TradeForm
-        onTradeSubmit={handleTradeSubmit}
-        collateralAssetTicker="sUSDS"
+         marketDetails={{
+          marketAddress: marketAddress as `0x${string}`,
+          numericMarketId: numericMarketId as number,
+          chainId: chainId as number,
+          marketAbi: abi,
+          collateralAssetTicker,
+          collateralAssetAddress: collateralAssetAddress as `0x${string}` | undefined,
+        }}
+        isConnected={isConnected}
+        onConnectWallet={handleConnectWallet}
+        onSuccess={handleSuccess}
+        // Remove props handled internally by the new form/hooks:
+        // onTradeSubmit={...}
+        // getEstimatedCost={...}
+        // collateralAssetTicker={...} // Passed via marketDetails
+        // isLoading={...} // Handled by useCreateTrade hook
+        // isApproving={...} // Handled by useCreateTrade hook
+        // needsApproval={...} // Handled by useCreateTrade hook
+        // submitError={...} // Handled by useCreateTrade hook
       />
     </div>
   );
