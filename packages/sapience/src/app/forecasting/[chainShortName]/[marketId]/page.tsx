@@ -9,10 +9,10 @@ import {
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
@@ -50,6 +50,7 @@ const SimpleLiquidityWrapper = dynamic(
 const ForecastContent = () => {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const chainShortName = params.chainShortName as string;
 
   const {
@@ -61,6 +62,11 @@ const ForecastContent = () => {
     chainId,
     marketAddress,
     numericMarketId,
+    // lpPositions,
+    // traderPositions,
+    lpPositionsArray,
+    traderPositionsArray,
+    getPositionById,
   } = useForecast();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
@@ -89,6 +95,42 @@ const ForecastContent = () => {
       };
     });
   };
+
+  // Set active tab based on URL position ID
+  useEffect(() => {
+    const positionId = searchParams.get('positionId');
+    if (positionId) {
+      const position = getPositionById(positionId);
+      if (position) {
+        // Set tab based on position kind (1 = Liquidity, 2 = Trade)
+        setActiveFormTab(position.kind === 1 ? 'liquidity' : 'trade');
+      }
+    }
+  }, [searchParams, getPositionById]);
+
+  // Add position ID to URL if it exists but isn't in URL
+  useEffect(() => {
+    const positionId = searchParams.get('positionId');
+    if (!positionId) {
+      if (traderPositionsArray.length > 0) {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set(
+          'positionId',
+          traderPositionsArray[0].id.toString()
+        );
+        router.push(newUrl.pathname + newUrl.search);
+      }
+      // Check if there's any position to add to URL
+      else if (lpPositionsArray.length > 0) {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.set(
+          'positionId',
+          lpPositionsArray[0].id.toString()
+        );
+        router.push(newUrl.pathname + newUrl.search);
+      }
+    }
+  }, [lpPositionsArray, traderPositionsArray, searchParams, router]);
 
   // Show loader while market data is loading
   if (isLoadingMarket || isLoadingMarketContract) {
@@ -243,7 +285,9 @@ const ForecastContent = () => {
                     <ComingSoonScrim className="absolute rounded-lg" />
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
-                      <SimpleLiquidityWrapper />
+                      <SimpleLiquidityWrapper
+                        positionId={searchParams.get('positionId') || undefined}
+                      />
                     )}
                   </div>
                 </div>
