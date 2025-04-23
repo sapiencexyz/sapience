@@ -10,10 +10,11 @@ import {
 } from '@foil/ui/components/ui/form';
 import { Input } from '@foil/ui/components/ui/input';
 import Slider from '@foil/ui/components/ui/slider';
-import React from 'react';
+import type React from 'react';
 import { useForm } from 'react-hook-form';
 
 import { useForecast } from '~/lib/context/ForecastProvider';
+
 import type { LiquidityFormMarketDetails } from './CreateLiquidityForm';
 
 interface ModifyLiquidityFormValues {

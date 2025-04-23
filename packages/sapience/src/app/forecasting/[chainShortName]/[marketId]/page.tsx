@@ -16,7 +16,6 @@ import { useEffect, useState } from 'react';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
-import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 
 // Dynamically import LottieLoader
@@ -281,8 +280,7 @@ const ForecastContent = () => {
                       Liquidity
                     </button>
                   </div>
-                  <div className="mt-4 relative p-1">
-                    <ComingSoonScrim className="absolute rounded-lg" />
+                  <div className="mt-4 relative">
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper
