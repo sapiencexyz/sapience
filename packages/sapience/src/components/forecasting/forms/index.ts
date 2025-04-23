@@ -1,1 +1,1 @@
-export * from './LiquidityForm';
+export * from './CreateLiquidityForm';

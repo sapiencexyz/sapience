@@ -4,7 +4,7 @@ import { useAccount } from 'wagmi';
 import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
-import { LiquidityForm } from './forms';
+import { CreateLiquidityForm } from './forms';
 
 const SimpleLiquidityWrapper: React.FC = () => {
   const { isConnected } = useAccount();
@@ -23,16 +23,6 @@ const SimpleLiquidityWrapper: React.FC = () => {
     marketContractData,
   } = useForecast();
 
-  // const handleLiquiditySubmit = useCallback(
-  //   (data: LiquidityFormValues) => {
-  //     toast({
-  //       title: 'Liquidity Added',
-  //       description: `Deposit: ${data.depositAmount} ${collateralAssetTicker}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
-  //     });
-  //   },
-  //   [toast, collateralAssetTicker]
-  // );
-
   const handleConnectWallet = async () => {
     setIsOpen(true);
   };
@@ -43,13 +33,14 @@ const SimpleLiquidityWrapper: React.FC = () => {
 
   return (
     <div className="h-full">
-      <LiquidityForm
+      <CreateLiquidityForm
         marketDetails={{
           marketAddress: marketAddress as `0x${string}`,
           chainId: chainId as number,
           marketId: marketContractData.epochId,
           marketAbi: abi,
           collateralAssetTicker,
+          collateralAssetAddress: marketContractData.collateralAsset,
           virtualBaseTokensName: baseTokenName,
           virtualQuoteTokensName: quoteTokenName,
           lowPriceTick: minTick,
