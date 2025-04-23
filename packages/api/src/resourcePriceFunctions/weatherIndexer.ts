@@ -79,7 +79,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
           ),
           value: temperatureValue,
           used: '1',
-          feePaid: '1',
+          feePaid: temperatureValue,
           blockNumber: 0,
         };
         console.log(
@@ -120,14 +120,6 @@ export class WeatherIndexer implements IResourcePriceIndexer {
         this.resourceType === 'precipitation' &&
         weatherData.precipitation.latest?.precipitation !== undefined
       ) {
-        console.log(
-          'Precipitation saved timestamps',
-          weatherData.precipitation.latest.timestamp,
-          Math.floor(
-            new Date(weatherData.precipitation.latest.timestamp).getTime() /
-              1000
-          )
-        );
         const price = {
           resource: { id: resource.id },
           timestamp: Math.floor(
@@ -139,7 +131,10 @@ export class WeatherIndexer implements IResourcePriceIndexer {
             10 ** 9
           ).toString(),
           used: '1',
-          feePaid: '1',
+          feePaid: (
+            weatherData.precipitation.latest.precipitation *
+            10 ** 9
+          ).toString(),
           blockNumber: 0,
         };
         // console.log(`[WeatherIndexer.${this.resourceType}] Prepared precipitation price data:`, price);

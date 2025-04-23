@@ -2,7 +2,6 @@
 
 'use client';
 
-import { gql } from '@apollo/client';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
@@ -19,28 +18,17 @@ import {
   SelectValue,
 } from '@foil/ui/components/ui/select';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useQuery } from '@tanstack/react-query';
-import { print } from 'graphql';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useSignMessage } from 'wagmi';
 
 import AdminTable from '~/components/admin/AdminTable';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
+import { useResourcesAdmin } from '~/lib/hooks/useResources';
 import type { RenderJob } from '~/lib/interfaces/interfaces';
 import { foilApi } from '~/lib/utils/util';
 
 const DEFAULT_ERROR_MESSAGE = 'An error occurred. Please try again.';
-
-const GET_RESOURCES = gql`
-  query GetResources {
-    resources {
-      id
-      slug
-      name
-    }
-  }
-`;
 
 const Admin = () => {
   const [job, setJob] = useState<RenderJob | undefined>();
@@ -58,16 +46,7 @@ const Admin = () => {
   const [endTimestamp, setEndTimestamp] = useState('');
   const { signMessageAsync } = useSignMessage();
   const { toast } = useToast();
-
-  const { data: resourcesData, isLoading: resourcesLoading } = useQuery({
-    queryKey: ['resources'],
-    queryFn: async () => {
-      const { data } = await foilApi.post('/graphql', {
-        query: print(GET_RESOURCES),
-      });
-      return data.resources;
-    },
-  });
+  const { data: resourcesData } = useResourcesAdmin();
 
   const handleGetStatus = async () => {
     const serviceId = manualServiceId || job?.serviceId;
@@ -261,11 +240,7 @@ const Admin = () => {
                   onValueChange={setSelectedResource}
                 >
                   <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        resourcesLoading ? 'Loading...' : 'Select a resource'
-                      }
-                    />
+                    <SelectValue placeholder="Select a resource" />
                   </SelectTrigger>
                   <SelectContent>
                     {resourcesData?.map(
@@ -368,13 +343,7 @@ const Admin = () => {
                   onValueChange={setRefreshResourceSlug}
                 >
                   <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        resourcesLoading
-                          ? 'Loading...'
-                          : 'All resources (default)'
-                      }
-                    />
+                    <SelectValue placeholder="All resources (default)" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All resources</SelectItem>
