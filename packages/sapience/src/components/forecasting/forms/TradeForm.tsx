@@ -12,11 +12,13 @@ import {
 import { Input } from '@foil/ui/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
 import { useToast } from '@foil/ui/hooks/use-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { useAccount, useSimulateContract } from 'wagmi';
 
+import LottieLoader from '~/components/shared/LottieLoader';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
@@ -322,110 +324,138 @@ export function TradeForm({
               Connect Wallet
             </Button>
           )}
+          {quoteError && sizeBigInt > BigInt(0) && (
+            <p className="text-red-500 text-sm text-center mt-2 font-medium">
+              <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
+              Insufficient liquidity. Try a smaller size.
+            </p>
+          )}
           {showPriceImpactWarning && (
             <p className="text-red-500 text-sm text-center mt-2 font-medium">
-              <AlertTriangle className="inline-block w-4 h-4 mr-1" />
+              <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
               Very high price impact (
               {Number(priceImpact.toFixed(2)).toString()}%)
             </p>
           )}
         </div>
 
-        <div className="pt-4 mt-4 border-t">
-          <h4 className="text-sm font-medium mb-2">
-            Details{' '}
-            {quoteLoading && sizeBigInt > BigInt(0) ? '(Loading Quote...)' : ''}
-          </h4>
-          <div className="flex flex-col gap-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Direction</span>
-              <span
-                className={
-                  direction === 'Long' ? 'text-green-500' : 'text-red-500'
-                }
-              >
-                {direction}
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Size</span>
-              <span>
-                <NumberDisplay value={sizeInput || '0'} /> {baseTokenName}
-              </span>
-            </div>
-
-            {estimatedCollateralBI > BigInt(0) && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Position Collateral
-                </span>
-                <span>
-                  0 {collateralAssetTicker} →{' '}
-                  <NumberDisplay value={estimatedCollateral} />{' '}
-                  {collateralAssetTicker}
-                </span>
-              </div>
-            )}
-
-            {quotedFillPriceBI > BigInt(0) && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Estimated Fill Price
-                </span>
-                <span>
-                  <NumberDisplay value={estimatedFillPrice} /> {quoteTokenName}
-                </span>
-              </div>
-            )}
-
-            {priceImpact > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Estimated Price Impact
-                </span>
-                <span
-                  className={`${showPriceImpactWarning ? 'text-red-500' : ''}`}
+        <AnimatePresence mode="wait">
+          {sizeBigInt > BigInt(0) && !quoteError && (
+            <div className="pt-2">
+              {quoteLoading ? (
+                <motion.div
+                  key="loader"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="my-2 flex flex-col justify-center items-center"
                 >
-                  {Number(priceImpact.toFixed(2)).toString()}%
-                </span>
-              </div>
-            )}
+                  <LottieLoader width={40} height={40} />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Generating Quote...
+                  </p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="details"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <h4 className="text-sm font-medium mb-2 flex items-center">
+                    Order Quote
+                  </h4>
+                  <div className="flex flex-col gap-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Direction</span>
+                      <span
+                        className={
+                          direction === 'Long'
+                            ? 'text-green-500'
+                            : 'text-red-500'
+                        }
+                      >
+                        {direction}
+                      </span>
+                    </div>
 
-            {isConnected && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Wallet Balance</span>
-                <span>
-                  <NumberDisplay value={walletBalance} />{' '}
-                  {collateralAssetTicker}
-                </span>
-              </div>
-            )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Size</span>
+                      <span>
+                        <NumberDisplay value={sizeInput || '0'} />{' '}
+                        {baseTokenName}
+                      </span>
+                    </div>
 
-            {isConnected && estimatedCollateralBI > BigInt(0) && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Est. Resulting Balance
-                </span>
-                <span>
-                  <NumberDisplay value={estimatedResultingBalance} />{' '}
-                  {collateralAssetTicker}
-                </span>
-              </div>
-            )}
+                    {estimatedCollateralBI > BigInt(0) && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Position Collateral
+                        </span>
+                        <span>
+                          0 {collateralAssetTicker} →{' '}
+                          <NumberDisplay value={estimatedCollateral} />{' '}
+                          {collateralAssetTicker}
+                        </span>
+                      </div>
+                    )}
 
-            {tradeError && (
-              <div className="text-red-500 text-sm mt-2">
-                Trade Error: {tradeError.message}
-              </div>
-            )}
-            {quoteError && sizeBigInt > BigInt(0) && (
-              <div className="text-red-500 text-sm mt-2">
-                Quote Error: {quoteError.message}
-              </div>
-            )}
-          </div>
-        </div>
+                    {quotedFillPriceBI > BigInt(0) && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Estimated Fill Price
+                        </span>
+                        <span>
+                          <NumberDisplay value={estimatedFillPrice} />{' '}
+                          {quoteTokenName}
+                        </span>
+                      </div>
+                    )}
+
+                    {priceImpact > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Estimated Price Impact
+                        </span>
+                        <span
+                          className={`${showPriceImpactWarning ? 'text-red-500' : ''}`}
+                        >
+                          {Number(priceImpact.toFixed(2)).toString()}%
+                        </span>
+                      </div>
+                    )}
+
+                    {isConnected && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Wallet Balance
+                        </span>
+                        <span>
+                          <NumberDisplay value={walletBalance} />{' '}
+                          {collateralAssetTicker}
+                        </span>
+                      </div>
+                    )}
+
+                    {isConnected && estimatedCollateralBI > BigInt(0) && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Est. Resulting Balance
+                        </span>
+                        <span>
+                          <NumberDisplay value={estimatedResultingBalance} />{' '}
+                          {collateralAssetTicker}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          )}
+        </AnimatePresence>
       </form>
     </Form>
   );
