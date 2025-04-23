@@ -42,10 +42,13 @@ type MarketGroupType {
 }
 
 type MarketType {
+  baseAssetMaxPriceTick: Int
+  baseAssetMinPriceTick: Int
   endTimestamp: Int
   id: ID!
   marketGroup: MarketGroupType
   marketId: Int!
+  poolAddress: String
   positions: [PositionType!]!
   public: Boolean!
   question: String
