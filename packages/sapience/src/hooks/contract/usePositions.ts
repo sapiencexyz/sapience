@@ -164,6 +164,7 @@ export function usePositions({
     if (!positionsData) return result;
 
     for (const response of positionsData) {
+      // eslint-disable-next-line no-continue
       if (!response.result) continue;
 
       const position = response.result as unknown as FoilPosition;
@@ -175,6 +176,7 @@ export function usePositions({
         position.epochId !== undefined &&
         position.epochId.toString() !== marketId.toString()
       ) {
+        // eslint-disable-next-line no-continue
         continue;
       }
 

@@ -30,6 +30,7 @@ type ModifyLiquidityFormProps = {
   mode: 'add' | 'remove';
 };
 
+// eslint-disable-next-line import/prefer-default-export
 export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
   marketDetails,
   isConnected,
