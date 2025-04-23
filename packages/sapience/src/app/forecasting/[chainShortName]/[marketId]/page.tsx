@@ -102,14 +102,11 @@ const ForecastContent = () => {
     if (positionId) {
       const position = getPositionById(positionId);
       if (position) {
-        // Set tab based on position type
-        const isLpPosition = lpPositionsArray.some(
-          (p) => p.id.toString() === positionId
-        );
-        setActiveFormTab(isLpPosition ? 'liquidity' : 'trade');
+        // Set tab based on position kind (1 = Liquidity, 2 = Trade)
+        setActiveFormTab(position.kind === 1 ? 'liquidity' : 'trade');
       }
     }
-  }, [searchParams, getPositionById, lpPositionsArray]);
+  }, [searchParams, getPositionById]);
 
   // Add position ID to URL if it exists but isn't in URL
   useEffect(() => {
@@ -287,7 +284,9 @@ const ForecastContent = () => {
                     <ComingSoonScrim className="absolute rounded-lg" />
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
-                      <SimpleLiquidityWrapper />
+                      <SimpleLiquidityWrapper
+                        positionId={searchParams.get('positionId') || undefined}
+                      />
                     )}
                   </div>
                 </div>
