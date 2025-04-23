@@ -195,7 +195,7 @@ export class CandleResolver {
       );
 
       return prices;
-    } catch (error) {
+    } catch {
       return [];
     }
   }
