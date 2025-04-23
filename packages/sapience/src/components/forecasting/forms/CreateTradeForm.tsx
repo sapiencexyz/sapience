@@ -45,7 +45,7 @@ export interface TradeFormProps {
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-export function TradeForm({
+export function CreateTradeForm({
   marketDetails,
   isConnected = false,
   onConnectWallet,
