@@ -5,6 +5,29 @@ import { useEffect, useState } from 'react';
 
 import { foilApi, getChainIdFromShortName } from '~/lib/utils/util';
 
+// Define the market data structure based on the GraphQL query response
+export interface MarketData {
+  id: string;
+  marketId: number;
+  question: string | null;
+  startTimestamp: string;
+  endTimestamp: string;
+  settled: boolean;
+  marketGroup: {
+    id: string;
+    address: string;
+    chainId: number;
+    question: string | null;
+    collateralAsset: string | null;
+    baseTokenName: string | null;
+    quoteTokenName: string | null;
+    optionNames: string[] | null;
+    resource: {
+      slug: string;
+    } | null;
+  } | null;
+}
+
 // Updated query to fetch the specific market directly, filtered by chainId and marketGroup address
 const MARKET_QUERY = gql`
   query GetMarketData($chainId: Int!, $address: String!, $marketId: Int!) {
@@ -23,6 +46,7 @@ const MARKET_QUERY = gql`
         baseTokenName
         quoteTokenName
         optionNames
+        collateralAsset
         resource {
           slug
         }
@@ -133,7 +157,7 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
           return null;
         }
 
-        return targetMarket;
+        return targetMarket as MarketData;
       } catch (error) {
         console.error('Error fetching market:', error);
         // Propagate error state or return null

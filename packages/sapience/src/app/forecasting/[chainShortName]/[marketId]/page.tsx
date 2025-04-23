@@ -9,7 +9,7 @@ import { useState } from 'react';
 
 import PriceChart from '~/components/charts/PriceChart';
 import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
-import { useMarket } from '~/hooks/graphql/useMarket';
+import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -38,24 +38,22 @@ const SimpleLiquidityWrapper = dynamic(
   }
 );
 
-const ForecastingDetailPage = () => {
-  const params = useParams();
+// Main content component that consumes the forecast context
+const ForecastContent = () => {
   const router = useRouter();
-  const marketId = params.marketId as string;
+  const params = useParams();
   const chainShortName = params.chainShortName as string;
 
   const {
     marketData,
     isLoadingMarket,
+    isLoadingMarketContract,
     displayQuestion,
     marketQuestionDisplay,
     chainId,
     marketAddress,
     numericMarketId,
-  } = useMarket({ chainShortName, marketId });
-
-  // Extract resource slug
-  const resourceSlug = marketData?.marketGroup?.resource?.slug;
+  } = useForecast();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
@@ -71,6 +69,9 @@ const ForecastingDetailPage = () => {
     [LineType.TrailingAvgPrice]: false,
   });
 
+  // Extract resource slug
+  const resourceSlug = marketData?.marketGroup?.resource?.slug;
+
   // Handler for updating selected prices
   const handlePriceSelection = (line: LineType, selected: boolean) => {
     setSelectedPrices((prev) => {
@@ -81,8 +82,8 @@ const ForecastingDetailPage = () => {
     });
   };
 
-  // Loader now only depends on market data loading
-  if (isLoadingMarket) {
+  // Show loader while market data is loading
+  if (isLoadingMarket || isLoadingMarketContract) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
         <LottieLoader width={32} height={32} />
@@ -124,7 +125,8 @@ const ForecastingDetailPage = () => {
                     marketId: numericMarketId,
                     chainId,
                     address: marketAddress,
-                    quoteTokenName: marketData?.marketGroup?.quoteTokenName,
+                    quoteTokenName:
+                      marketData?.marketGroup?.quoteTokenName || undefined,
                   }}
                   selectedInterval={selectedInterval}
                   selectedPrices={selectedPrices}
@@ -188,15 +190,7 @@ const ForecastingDetailPage = () => {
                     <ComingSoonScrim className="absolute rounded-lg" />
                     {activeFormTab === 'trade' && <SimpleTradeWrapper />}
                     {activeFormTab === 'liquidity' && (
-                      <SimpleLiquidityWrapper
-                        collateralAssetTicker="sUSDS"
-                        baseTokenName={
-                          marketData?.marketGroup?.baseTokenName || 'Yes'
-                        }
-                        quoteTokenName={
-                          marketData?.marketGroup?.quoteTokenName || 'No'
-                        }
-                      />
+                      <SimpleLiquidityWrapper />
                     )}
                   </div>
                 </div>
@@ -219,6 +213,19 @@ const ForecastingDetailPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Wrapper component that provides the forecast context
+const ForecastingDetailPage = () => {
+  const params = useParams();
+  const marketId = params.marketId as string;
+  const chainShortName = params.chainShortName as string;
+
+  return (
+    <ForecastProvider chainShortName={chainShortName} marketId={marketId}>
+      <ForecastContent />
+    </ForecastProvider>
   );
 };
 
