@@ -9,7 +9,8 @@ args=[
   "<%= settings.initialPricePointFive %>",
   "<%= settings.baseAssetTickZero %>", 
   "<%= settings.baseAssetTickOne %>",  
-  "<%= settings.bucket1Name %>"
+  "<%= settings.bucket1Name %>",
+  "<%= settings.bucket1Claim %>"
 ]
 depends=["invoke.initializeMarket"]
 
@@ -24,7 +25,8 @@ args=[
   "<%= settings.initialPricePointFive %>",
   "<%= settings.baseAssetTickZero %>", 
   "<%= settings.baseAssetTickOne %>",  
-  "<%= settings.bucket2Name %>"
+  "<%= settings.bucket2Name %>",
+  "<%= settings.bucket2Claim %>"
 ]
 depends=["invoke.initializeMarket"]
 
@@ -39,7 +41,8 @@ args=[
   "<%= settings.initialPricePointFive %>",
   "<%= settings.baseAssetTickZero %>", 
   "<%= settings.baseAssetTickOne %>",  
-  "<%= settings.bucket3Name %>"
+  "<%= settings.bucket3Name %>",
+  "<%= settings.bucket3Claim %>"
 ]
 depends=["invoke.initializeMarket"]
 
@@ -54,7 +57,8 @@ args=[
   "<%= settings.initialPricePointFive %>",
   "<%= settings.baseAssetTickZero %>", 
   "<%= settings.baseAssetTickOne %>",  
-  "<%= settings.bucket4Name %>"
+  "<%= settings.bucket4Name %>",
+  "<%= settings.bucket4Claim %>"
 ]
 depends=["invoke.initializeMarket"]
 
@@ -69,7 +73,8 @@ args=[
   "<%= settings.initialPricePointFive %>",
   "<%= settings.baseAssetTickZero %>", 
   "<%= settings.baseAssetTickOne %>",  
-  "<%= settings.bucket5Name %>"
+  "<%= settings.bucket5Name %>",
+  "<%= settings.bucket5Claim %>"
 ]
 depends=["invoke.initializeMarket"]
 
@@ -84,7 +89,8 @@ args=[
   "<%= settings.initialPricePointFive %>",
   "<%= settings.baseAssetTickZero %>", 
   "<%= settings.baseAssetTickOne %>",  
-  "<%= settings.bucket6Name %>"
+  "<%= settings.bucket6Name %>",
+  "<%= settings.bucket6Claim %>"
 ]
 depends=["invoke.initializeMarket"]
 

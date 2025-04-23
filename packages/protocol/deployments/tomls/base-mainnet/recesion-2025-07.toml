@@ -19,3 +19,8 @@ defaultValue = "" # TBD
 [setting.yesNoBucketName]
 defaultValue = "<%= stringToHex('yes or no') %>"
 
+[setting.yesNoBucketClaim]
+defaultValue = "<%= stringToHex('Was U.S. in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration? Zero if no') %>"
+
+
+# TODO Check end time

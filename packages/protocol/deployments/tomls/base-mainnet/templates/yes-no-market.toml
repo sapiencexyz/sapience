@@ -9,7 +9,8 @@ args=[
   "<%= settings.initialPrice %>",
   "<%= settings.baseAssetTickZero %>", 
   "<%= settings.baseAssetTickOne %>",  
-  "<%= settings.yesNoBucketName %>"
+  "<%= settings.yesNoBucketName %>",
+  "<%= settings.yesNoBucketClaim %>"
 ]
 depends=["invoke.initializeMarket"]
 

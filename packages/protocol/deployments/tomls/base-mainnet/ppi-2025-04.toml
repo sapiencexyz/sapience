@@ -34,3 +34,20 @@ defaultValue = "<%= stringToHex('bucket 5') %>"
 [setting.bucket6Name]
 defaultValue = "<%= stringToHex('bucket 6') %>"
 
+[setting.bucket1Claim]
+defaultValue = "<%= stringToHex('Was the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025 between -3.00% and -2.50%? Zero if no') %>"
+
+[setting.bucket2Claim]
+defaultValue = "<%= stringToHex('Was the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025 between -2.51% and -2.00%? Zero if no') %>"
+
+[setting.bucket3Claim]
+defaultValue = "<%= stringToHex('Was the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025 between -2.01% and -1.50%? Zero if no') %>"
+
+[setting.bucket4Claim]
+defaultValue = "<%= stringToHex('Was the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025 between -1.51% and -1.00%? Zero if no') %>"
+
+[setting.bucket5Claim]
+defaultValue = "<%= stringToHex('Was the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025 between -1.01% and -0.50%? Zero if no') %>"
+
+[setting.bucket6Claim]
+defaultValue = "<%= stringToHex('Was the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025 between -0.51% and 0.00%? Zero if no') %>"

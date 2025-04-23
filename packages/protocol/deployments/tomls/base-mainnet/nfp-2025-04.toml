@@ -31,3 +31,17 @@ defaultValue = "<%= stringToHex('bucket 4') %>"
 [setting.bucket5Name]
 defaultValue = "<%= stringToHex('bucket 5') %>"
 
+[setting.bucket1Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 between 0 and 40000? Zero if no') %>"
+
+[setting.bucket2Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 between 40001 and 80000? Zero if no') %>"
+
+[setting.bucket3Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 between 80001 and 120000? Zero if no') %>"
+
+[setting.bucket4Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 between 120001 and 160000? Zero if no') %>"
+
+[setting.bucket5Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 between 160001 and 200000? Zero if no') %>"
