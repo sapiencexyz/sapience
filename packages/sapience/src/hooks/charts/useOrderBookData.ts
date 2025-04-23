@@ -24,6 +24,7 @@ interface UsePoolOrderBookDataProps {
   tickSpacing?: number; // Optional, defaults below
   quoteTokenName?: string; // Optional for formatting
   // Add price range/zoom level if needed later
+  baseTokenName?: string; // Add base token name for display
 }
 
 // Structure for each level in the order book UI
@@ -77,31 +78,37 @@ const formatPrice = (
   pool: Pool | null,
   quoteTokenName?: string
 ): string => {
-  if (!pool) return formatNumber(price, 4); // Default if pool not loaded
-  // Use quoteTokenName if provided, otherwise token1 symbol
+  if (!pool) return formatNumber(price, 2); // Default if pool not loaded, use 2 decimals
+
+  const formattedNumber = formatNumber(price, 2); // Always use 2 decimals
+  // Use provided quoteTokenName, fallback to pool's token1 symbol
   const symbol = quoteTokenName ?? pool.token1.symbol ?? '';
-  // Basic formatting, assumes price is already in terms of token1
-  // Consider using pool.token1.decimals for better precision
-  // Example: Add currency symbol ($, ¢, etc.) based on token name/symbol
-  if (
-    symbol.toLowerCase().includes('usd') ||
-    symbol.toLowerCase().includes('dai')
-  ) {
-    return `$${formatNumber(price, 2)}`;
-  }
-  if (price < 1) {
-    return `${formatNumber(price * 100, 0)}¢`; // Example for sub-dollar prices
-  }
-  return `${formatNumber(price, 2)} ${symbol}`;
+
+  // Append symbol if it exists
+  return symbol ? `${formattedNumber} ${symbol}` : formattedNumber;
+
+  /* Previous logic removed/modified:
+  // Consider pool.token1.decimals for precision if needed later
+  // const decimals = pool.token1.decimals < 4 ? 4 : pool.token1.decimals; // Reverted this logic
+  // Example: Format with significant digits if needed
+  // const formattedPrice = price.toPrecision(6);
+  // return formattedPrice;
+  return formatNumber(price, 2); // Always use 2 decimals
+  */
 };
 
 // Format size (improve with actual symbols/decimals)
-const formatSize = (size: number, pool: Pool | null): string => {
+const formatSize = (
+  size: number,
+  pool: Pool | null,
+  baseTokenName?: string // Accept optional baseTokenName
+): string => {
   if (!pool) return formatNumber(size, 2);
-  // Use token0 symbol for size (usually the base asset being traded)
-  const symbol = pool.token0.symbol ?? '';
-  // Use pool.token0.decimals for better precision
-  return `${formatNumber(size, 2)} ${symbol}`;
+  // Use provided baseTokenName, fallback to pool's token0 symbol
+  const symbol = baseTokenName ?? pool.token0.symbol ?? '';
+  // Use pool.token0.decimals for better precision (optional, currently using fixed decimals)
+  const formattedSize = formatNumber(size, 2); // Or adjust precision based on pool.token0.decimals if needed
+  return symbol ? `${formattedSize} ${symbol}` : formattedSize; // Append symbol if it exists
 };
 
 // --- Hook Implementation ---
@@ -114,6 +121,7 @@ export function useOrderBookData({
   baseAssetMaxPriceTick,
   tickSpacing: tickSpacingProp,
   quoteTokenName,
+  baseTokenName, // Destructure baseTokenName
 }: UsePoolOrderBookDataProps): UsePoolOrderBookDataReturn {
   const [processedPoolData, setProcessedPoolData] = useState<
     PoolData | undefined
@@ -368,16 +376,53 @@ export function useOrderBookData({
             quoteTokenName
           );
           console.warn(
-            `[useOrderBookData] Using nearest tick ${currentTick.tickIdx} as reference. Last price: ${lastPriceFormatted}`
+            `[useOrderBookData] Exact tick ${currentTickExact} not found. Using nearest tick ${currentTick.tickIdx} as reference. Last price: ${lastPriceFormatted}`
           );
+
+          const referenceIndex = nearestTickIdx; // Use the found nearest index
+
+          // Separate ticks into bids (below reference) and asks (above reference)
+          const rawBids = processedTicks.slice(0, referenceIndex).reverse(); // Reverse for descending price order
+          const rawAsks = processedTicks.slice(referenceIndex + 1);
+
+          let cumulativeBidSize = 0;
+          const bids: OrderBookLevel[] = rawBids
+            .map((tick) => {
+              const size = tick.liquidityLockedToken0;
+              cumulativeBidSize += size;
+              return {
+                rawPrice: tick.price0,
+                rawSize: size,
+                rawTotal: cumulativeBidSize,
+                price: formatPrice(tick.price0, pool, quoteTokenName),
+                size: formatSize(size, pool, baseTokenName),
+                total: formatSize(cumulativeBidSize, pool, baseTokenName),
+              };
+            })
+            .filter((level) => level.rawSize > 1e-9);
+
+          let cumulativeAskSize = 0;
+          const asks: OrderBookLevel[] = rawAsks
+            .map((tick) => {
+              const size = tick.liquidityLockedToken0;
+              cumulativeAskSize += size;
+              return {
+                rawPrice: tick.price0,
+                rawSize: size,
+                rawTotal: cumulativeAskSize,
+                price: formatPrice(tick.price0, pool, quoteTokenName),
+                size: formatSize(size, pool, baseTokenName),
+                total: formatSize(cumulativeAskSize, pool, baseTokenName),
+              };
+            })
+            .filter((level) => level.rawSize > 1e-9);
+
           setOrderBookData({
-            asks: [],
-            bids: [],
-            lastPrice: lastPriceFormatted,
+            asks,
+            bids,
+            lastPrice: lastPriceFormatted, // Use price from nearest tick
           });
-          // Potentially still build asks/bids based on this nearest split point?
-          // Let's skip for now and return empty if exact current is missing
-          return;
+          return; // Exit after processing with nearest tick
         }
         console.warn('[useOrderBookData] Could not find nearest tick.');
         setOrderBookData({ asks: [], bids: [], lastPrice: null });
@@ -411,8 +456,8 @@ export function useOrderBookData({
           rawSize: size,
           rawTotal: cumulativeBidSize,
           price: formatPrice(tick.price0, pool, quoteTokenName),
-          size: formatSize(size, pool),
-          total: formatSize(cumulativeBidSize, pool),
+          size: formatSize(size, pool, baseTokenName),
+          total: formatSize(cumulativeBidSize, pool, baseTokenName),
         };
       })
       .filter((level) => level.rawSize > 1e-9); // Filter out negligible dust liquidity
@@ -429,8 +474,8 @@ export function useOrderBookData({
           rawSize: size,
           rawTotal: cumulativeAskSize,
           price: formatPrice(tick.price0, pool, quoteTokenName),
-          size: formatSize(size, pool),
-          total: formatSize(cumulativeAskSize, pool),
+          size: formatSize(size, pool, baseTokenName),
+          total: formatSize(cumulativeAskSize, pool, baseTokenName),
         };
       })
       .filter((level) => level.rawSize > 1e-9); // Filter out negligible dust liquidity
@@ -440,7 +485,7 @@ export function useOrderBookData({
       bids,
       lastPrice: lastPriceFormatted,
     });
-  }, [processedPoolData, pool, quoteTokenName]);
+  }, [processedPoolData, pool, quoteTokenName, baseTokenName]);
 
   // 7. Combine loading states and return
   const isLoading =
