@@ -33,35 +33,20 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
   const priceUnit = quoteTokenName ? ` ${quoteTokenName}${baseUnitPart}` : ''; // Combine without nesting
 
   return (
-    // Add relative positioning and overflow hidden
     <div className="relative grid grid-cols-3 gap-4 text-sm py-1 px-2 hover:bg-muted/50 overflow-hidden">
-      {/* Background bar - Always left-justified */}
       <div
         className={`absolute top-0 bottom-0 left-0 ${bgColor}`}
         style={{ width: `${percentage}%` }}
         aria-hidden="true" // Hide from screen readers
       />
-      {/* Content - ensure it's above the background */}
       <div className={`relative font-mono ${priceColor} flex items-center`}>
-        {' '}
-        {/* Use flex for alignment */}
-        <NumberDisplay value={price} />
-        <span className="text-xs ml-1 opacity-70">{priceUnit}</span>{' '}
-        {/* Unit for price */}
+        <NumberDisplay value={price} appendedText={priceUnit.trim()} />
       </div>
       <div className="relative text-right font-mono flex items-center justify-end">
-        {' '}
-        {/* Use flex for alignment */}
-        <NumberDisplay value={size} />
-        <span className="text-xs ml-1 opacity-70">{baseUnit}</span>{' '}
-        {/* Unit for size */}
+        <NumberDisplay value={size} appendedText={baseUnit.trim()} />
       </div>
       <div className="relative text-right font-mono flex items-center justify-end">
-        {' '}
-        {/* Use flex for alignment */}
-        <NumberDisplay value={total} />
-        <span className="text-xs ml-1 opacity-70">{baseUnit}</span>{' '}
-        {/* Unit for total */}
+        <NumberDisplay value={total} appendedText={baseUnit.trim()} />
       </div>
     </div>
   );
