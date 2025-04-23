@@ -116,14 +116,14 @@ export const initializeFixtures = async (): Promise<void> => {
         console.error(
           `Category not found for resource ${resourceData.name}: ${resourceData.category}`
         );
-        continue; 
+        continue;
       }
 
       if (!resource) {
         resource = new Resource();
         resource.name = resourceData.name;
         resource.slug = resourceData.slug;
-        resource.category = category; 
+        resource.category = category;
         await resourceRepository.save(resource);
         console.log('Created resource:', resourceData.name);
       } else {
@@ -132,7 +132,7 @@ export const initializeFixtures = async (): Promise<void> => {
           resource.slug = resourceData.slug;
           updated = true;
         }
-        
+
         if (!resource.category || resource.category.id !== category.id) {
           const currentResource = await resourceRepository.findOne({
             where: { id: resource.id },
@@ -146,7 +146,6 @@ export const initializeFixtures = async (): Promise<void> => {
             resource.category = category;
             updated = true;
           } else if (!currentResource) {
-            
             console.log(`Resource ${resource.name} not found for update.`);
             continue;
           }
@@ -158,17 +157,19 @@ export const initializeFixtures = async (): Promise<void> => {
         }
       }
     } catch (error) {
-      console.error(`Error creating/updating resource ${resourceData.name}:`, error);
+      console.error(
+        `Error creating/updating resource ${resourceData.name}:`,
+        error
+      );
     }
   }
 
- 
   for (const marketData of fixturesData.MARKETS) {
-    
-    const resource = marketData.resource ? 
-      await resourceRepository.findOne({
-        where: { slug: marketData.resource },
-      }) : null;
+    const resource = marketData.resource
+      ? await resourceRepository.findOne({
+          where: { slug: marketData.resource },
+        })
+      : null;
 
     const category = await categoryRepository.findOne({
       where: { slug: marketData.category },
@@ -184,7 +185,6 @@ export const initializeFixtures = async (): Promise<void> => {
       continue;
     }
 
-    
     let marketGroup = await marketGroupRepository.findOne({
       where: {
         address: marketData.address.toLowerCase(),
@@ -205,8 +205,9 @@ export const initializeFixtures = async (): Promise<void> => {
       marketGroup.quoteTokenName = marketData.quoteTokenName || null;
       marketGroup.optionNames = marketData.optionNames || null;
 
-      
-      marketGroup.resource = resource as any;
+      if (resource) {
+        marketGroup.resource = resource;
+      }
       await marketGroupRepository.save(marketGroup);
       console.log(
         'Created market:',
@@ -220,7 +221,9 @@ export const initializeFixtures = async (): Promise<void> => {
         await handleMarketQuestions(marketGroup, marketData.questions);
       }
     } else {
-      marketGroup.resource = resource as any;
+      if (resource) {
+        marketGroup.resource = resource;
+      }
       marketGroup.isYin = marketData.isYin || marketGroup.isYin || false;
       marketGroup.isCumulative =
         marketData.isCumulative || marketGroup.isCumulative || false;

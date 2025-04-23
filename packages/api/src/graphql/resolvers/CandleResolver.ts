@@ -173,7 +173,7 @@ export class CandleResolver {
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
-    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();  
+    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
     try {
       const resourcePerformance =
         resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
@@ -182,7 +182,6 @@ export class CandleResolver {
         );
 
       if (!resourcePerformance) {
-        console.log(`No resource performance found for ${chainId}-${address}, returning empty array`);
         return [];
       }
 
@@ -196,8 +195,7 @@ export class CandleResolver {
       );
 
       return prices;
-    } catch (error: any) {
-      console.log(`Error getting index candles for market without resource: ${chainId}-${address}: ${error.message}`);
+    } catch (error) {
       return [];
     }
   }
@@ -288,7 +286,9 @@ export class CandleResolver {
         );
 
       if (!resourcePerformance) {
-        console.log(`No resource performance found for ${chainId}-${address}, returning empty array`);
+        console.log(
+          `No resource performance found for ${chainId}-${address}, returning empty array`
+        );
         return [];
       }
 
@@ -301,8 +301,10 @@ export class CandleResolver {
         marketId
       );
       return prices;
-    } catch (error: any) {
-      console.log(`Error getting market candles for market without resource: ${chainId}-${address}: ${error.message}`);
+    } catch (error) {
+      console.log(
+        `Error getting market candles for market without resource: ${chainId}-${address}: ${error instanceof Error ? error.message : String(error)}`
+      );
       return [];
     }
   }
