@@ -90,6 +90,9 @@ export const mapMarketToType = (market: Market): MarketType => ({
   settlementPriceD18: market.settlementPriceD18,
   public: market.public,
   question: market.question || '',
+  baseAssetMinPriceTick: market.baseAssetMinPriceTick,
+  baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
+  poolAddress: market.poolAddress,
 });
 
 export const mapPositionToType = (position: Position): PositionType => ({
