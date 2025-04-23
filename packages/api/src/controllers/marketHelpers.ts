@@ -58,28 +58,37 @@ export const handleTransferEvent = async (event: Event) => {
 };
 
 /**
- * Handles a Transfer event by updating the owner of the corresponding Position.
- * @param event The Transfer event
+ * Handles a PositionSettled event by updating the isSettled flag of the corresponding Position.
+ * @param event The PositionSettled event
  */
 export const handlePositionSettledEvent = async (event: Event) => {
   const { positionId } = event.logData.args;
-
-  const existingPosition = await positionRepository.findOne({
-    where: {
-      positionId: Number(positionId),
-    },
-  });
-
-  if (!existingPosition) {
-    // Ignore the settled event until the position is created from another event
-    console.log('Position not found for settled event: ', event);
+  
+  if (!positionId) {
+    console.error('No positionId found in PositionSettled event args:', event.logData.args);
     return;
   }
 
-  existingPosition.isSettled = true;
+  try {
+    const existingPosition = await positionRepository.findOne({
+      where: {
+        positionId: Number(positionId),
+      },
+    });
 
-  await positionRepository.save(existingPosition);
-  console.log(`Updated isSettled state of position ${positionId} to true`);
+    if (!existingPosition) {
+      // Ignore the settled event until the position is created from another event
+      console.log('Position not found for settled event: ', event);
+      return;
+    }
+
+    existingPosition.isSettled = true;
+
+    await positionRepository.save(existingPosition);
+    console.log(`Updated isSettled state of position ${positionId} to true`);
+  } catch (error) {
+    console.error('Error handling PositionSettled event:', error);
+  }
 };
 
 /**
@@ -708,48 +717,92 @@ export const updateTransactionFromPositionSettledEvent = async (
   newTransaction: Transaction,
   event: Event
 ) => {
-  const epochId = event.logData.args.epochId;
   newTransaction.type = TransactionType.SETTLE_POSITION;
 
-  const epoch = await marketRepository.findOne({
+  // PositionSettled event doesn't include epochId, so we need to find it via the position
+  const { positionId } = event.logData.args;
+  
+  // Find position in the database first
+  const position = await positionRepository.findOne({
     where: {
-      marketId: Number(epochId),
-      marketGroup: { address: event.marketGroup.address.toLowerCase() },
-    } satisfies FindOptionsWhere<Market>,
+      positionId: Number(positionId),
+      // Don't filter by owner since the sender field might not be in the event
+    },
+    relations: ['market', 'market.marketGroup'],
   });
 
+  if (!position) {
+    console.error(`Position not found for PositionSettled event: positionId=${positionId}`);
+    // Set default values even if position not found
+    updateTransactionStateFromEvent(newTransaction, event);
+    newTransaction.tradeRatioD18 = '0';
+    setDefaultTransactionValues(newTransaction);
+    return;
+  }
+
+  // Get the market/epoch from the position
+  const epoch = position.market;
+  
   if (!epoch) {
-    throw new Error(`Epoch not found: ${epochId}`);
+    console.error(`Epoch not found for position: ${positionId}`);
+    updateTransactionStateFromEvent(newTransaction, event);
+    newTransaction.tradeRatioD18 = '0';
+    setDefaultTransactionValues(newTransaction);
+    return;
+  }
+
+  // Verify this position belongs to the same market as the event
+  if (epoch.marketGroup.address.toLowerCase() !== event.marketGroup.address.toLowerCase()) {
+    console.error(`Position market mismatch: position market=${epoch.marketGroup.address}, event market=${event.marketGroup.address}`);
+    // Try to find the correct epoch in this market
+    const correctEpoch = await marketRepository.findOne({
+      where: {
+        marketGroup: { address: event.marketGroup.address.toLowerCase() },
+      },
+      order: { marketId: 'DESC' }, 
+    });
+    
+    if (correctEpoch) {
+      updateTransactionStateFromEvent(newTransaction, event);
+      newTransaction.tradeRatioD18 = correctEpoch.settlementPriceD18 || '0';
+      setDefaultTransactionValues(newTransaction);
+      return;
+    }
   }
 
   updateTransactionStateFromEvent(newTransaction, event);
   newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || '0';
 
+  setDefaultTransactionValues(newTransaction);
+};
+
+// Extract this common code to a helper function to avoid duplication
+const setDefaultTransactionValues = (transaction: Transaction) => {
   // Ensure all required fields have default values if not set
-  if (!newTransaction.baseToken || newTransaction.baseToken === '') {
-    newTransaction.baseToken = '0';
+  if (!transaction.baseToken || transaction.baseToken === '') {
+    transaction.baseToken = '0';
   }
 
-  if (!newTransaction.quoteToken || newTransaction.quoteToken === '') {
-    newTransaction.quoteToken = '0';
-  }
-
-  if (
-    !newTransaction.borrowedBaseToken ||
-    newTransaction.borrowedBaseToken === ''
-  ) {
-    newTransaction.borrowedBaseToken = '0';
+  if (!transaction.quoteToken || transaction.quoteToken === '') {
+    transaction.quoteToken = '0';
   }
 
   if (
-    !newTransaction.borrowedQuoteToken ||
-    newTransaction.borrowedQuoteToken === ''
+    !transaction.borrowedBaseToken ||
+    transaction.borrowedBaseToken === ''
   ) {
-    newTransaction.borrowedQuoteToken = '0';
+    transaction.borrowedBaseToken = '0';
   }
 
-  if (!newTransaction.collateral || newTransaction.collateral === '') {
-    newTransaction.collateral = '0';
+  if (
+    !transaction.borrowedQuoteToken ||
+    transaction.borrowedQuoteToken === ''
+  ) {
+    transaction.borrowedQuoteToken = '0';
+  }
+
+  if (!transaction.collateral || transaction.collateral === '') {
+    transaction.collateral = '0';
   }
 };
 
