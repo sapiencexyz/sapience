@@ -297,7 +297,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             startingSqrtPriceX96,
             baseAssetMinPriceTick,
             baseAssetMaxPriceTick,
-            block.timestamp
+            block.timestamp,
+            "" // empty claim statement, will default to market claim statement
         );
 
         if (collateralAmount > minimumCollateral) {

@@ -44,7 +44,8 @@ contract TradesQuotePriceValidationTest is TestTrade {
             minTick,
             maxTick,
             startingSqrtPriceX96,
-            minTradeSize
+            minTradeSize,
+            "" // empty claim statement, will default to market claim statement
         );
         foilAddress = address(foil);
 

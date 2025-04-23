@@ -61,7 +61,8 @@ contract LiquidityFeeCollectorTest is TestTrade {
             MAX_TICK,
             startingSqrtPriceX96,
             feeCollectors,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            "" // empty claim statement, will default to market claim statement
         );
 
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();

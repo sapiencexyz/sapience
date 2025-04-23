@@ -45,7 +45,8 @@ contract DecreaseLiquidityPosition is TestTrade {
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            "" // empty claim statement, will default to market claim statement
         );
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);

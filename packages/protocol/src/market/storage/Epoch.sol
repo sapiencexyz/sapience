@@ -63,7 +63,8 @@ library Epoch {
         uint160 startingSqrtPriceX96,
         int24 baseAssetMinPriceTick,
         int24 baseAssetMaxPriceTick,
-        uint256 salt
+        uint256 salt,
+        bytes calldata claimStatement
     ) internal returns (Data storage epoch) {
         Market.Data storage market = Market.loadValid();
         IFoilStructs.MarketParams storage marketParams = market.marketParams;
@@ -101,12 +102,18 @@ library Epoch {
         epoch.marketParams.assertionLiveness = marketParams.assertionLiveness;
         epoch.marketParams.bondCurrency = marketParams.bondCurrency;
         epoch.marketParams.bondAmount = marketParams.bondAmount;
-        epoch.marketParams.claimStatement = marketParams.claimStatement;
         epoch.marketParams.uniswapPositionManager = marketParams
             .uniswapPositionManager;
         epoch.marketParams.uniswapSwapRouter = marketParams.uniswapSwapRouter;
         epoch.marketParams.uniswapQuoter = marketParams.uniswapQuoter;
         epoch.marketParams.optimisticOracleV3 = marketParams.optimisticOracleV3;
+
+        // override claim statement if provided
+        if (claimStatement.length > 0) {
+            epoch.marketParams.claimStatement = claimStatement;
+        } else {
+            epoch.marketParams.claimStatement = marketParams.claimStatement;
+        }
 
         validateEpochBounds(
             epoch,
