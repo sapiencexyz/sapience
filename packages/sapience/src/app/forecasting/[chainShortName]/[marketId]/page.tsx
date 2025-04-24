@@ -27,7 +27,10 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 });
 
 const SimpleTradeWrapper = dynamic(
-  () => import('~/components/forecasting/SimpleTradeWrapper'),
+  () =>
+    import('~/components/forecasting/SimpleTradeWrapper').then(
+      (mod) => mod.default
+    ),
   {
     ssr: false,
     loading: () => (
@@ -259,7 +262,9 @@ const ForecastContent = () => {
                   <div className="mt-4 relative">
                     {/* If positionId exists, show form based on selectedPosition.kind */}
                     {selectedPosition && selectedPosition.kind === 2 && (
-                      <SimpleTradeWrapper />
+                      <SimpleTradeWrapper
+                        positionId={positionId || undefined}
+                      />
                     )}
                     {selectedPosition && selectedPosition.kind === 1 && (
                       <SimpleLiquidityWrapper
@@ -268,7 +273,9 @@ const ForecastContent = () => {
                     )}
                     {/* If no positionId, show form based on selected tab */}
                     {!selectedPosition && activeFormTab === 'trade' && (
-                      <SimpleTradeWrapper />
+                      <SimpleTradeWrapper
+                        positionId={positionId || undefined}
+                      />
                     )}
                     {!selectedPosition && activeFormTab === 'liquidity' && (
                       <SimpleLiquidityWrapper

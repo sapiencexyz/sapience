@@ -30,6 +30,14 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
   const position = positionId ? getPositionById(positionId) : null;
   const hasPosition = !!position && position.kind === 2;
 
+  // Add logging to check state
+  console.log('SimpleTradeWrapper state:', {
+    positionId,
+    position,
+    hasPosition,
+    isConnected,
+  });
+
   const handleConnectWallet = () => {
     setIsOpen(true);
   };

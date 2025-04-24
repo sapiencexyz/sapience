@@ -1,5 +1,6 @@
 import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Form,
@@ -10,6 +11,13 @@ import {
   FormMessage,
 } from '@foil/ui/components/ui/form';
 import { Input } from '@foil/ui/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, AlertTriangle } from 'lucide-react';
@@ -38,10 +46,7 @@ import type { TradeFormMarketDetails } from './CreateTradeForm';
 // Action type constants
 const ACTION_TYPE_CLOSE = 'close';
 const ACTION_TYPE_UPDATE = 'update';
-// Noun constant for buttons
 const NOUN_POSITION = 'Position';
-const GREEN_TEXT = 'text-green-500';
-const RED_TEXT = 'text-red-500';
 
 // Define Props including marketDetails
 interface ModifyTradeFormProps {
@@ -135,55 +140,6 @@ function determineUpdateButtonState({
   return { text: buttonText, loading: false, disabled: isDisabled };
 }
 
-interface CloseButtonStateParams extends ButtonStateBaseParams {
-  originalPositionSizeInContractUnit: bigint;
-}
-
-function determineCloseButtonState({
-  isConnected,
-  positionData,
-  originalPositionSizeInContractUnit,
-  isLoading,
-  needsApproval,
-  actionType,
-  modifyTrade,
-  isError,
-}: CloseButtonStateParams): ButtonState {
-  const actionText = 'Close';
-
-  // Initial disabled states
-  if (
-    !isConnected ||
-    !positionData ||
-    originalPositionSizeInContractUnit === BigInt(0)
-  ) {
-    return { text: `Close ${NOUN_POSITION}`, loading: false, disabled: true };
-  }
-
-  // Loading states (disable if *any* loading is happening)
-  if (isLoading) {
-    // Covers quoting, approving, modifying, confirming
-    return { text: 'Processing...', loading: true, disabled: true };
-  }
-
-  // Approval Needed state (only show "Approve & Close" if closing is the intended action)
-  if (needsApproval && actionType === ACTION_TYPE_CLOSE) {
-    return {
-      text: `Approve & ${actionText} ${NOUN_POSITION}`,
-      loading: false,
-      disabled: !modifyTrade,
-    };
-  }
-
-  // Default state for the close button
-  const isDisabled = isError || !modifyTrade || isLoading; // Disable on any error, if modify function not ready, or any operation is in progress
-  return {
-    text: `Close ${NOUN_POSITION}`,
-    loading: false,
-    disabled: isDisabled,
-  };
-}
-
 function calculateResultingBalances(
   walletBalanceStr: string | undefined,
   quotedCollateralDeltaStr: string | undefined,
@@ -233,6 +189,9 @@ interface PoolData {
   token0Price?: { toSignificant: (decimals: number) => string };
 }
 
+// Helper function to check if inputs are valid for price impact calculation
+// Removed: hasValidInputsForPriceImpact
+
 function calculatePriceImpact(
   pool: PoolData | null | undefined, // Allow null/undefined
   quotedFillPriceStr: string,
@@ -240,177 +199,44 @@ function calculatePriceImpact(
   targetSizeForHook: bigint,
   originalPositionSizeInContractUnit: bigint
 ): number {
+  // Basic input validation first
   if (
-    pool?.token0Price &&
-    quotedFillPriceBI &&
-    quotedFillPriceBI > BigInt(0) &&
-    targetSizeForHook !== originalPositionSizeInContractUnit
+    !pool?.token0Price || // Check pool and price exist
+    !quotedFillPriceBI || // Check quoted price BI exists
+    quotedFillPriceBI <= BigInt(0) || // Check quoted price BI is positive
+    targetSizeForHook === originalPositionSizeInContractUnit // Check size actually changed
   ) {
-    try {
-      const fillPrice = parseFloat(quotedFillPriceStr);
-      // Use optional chaining for safety
-      const referencePriceStr = pool.token0Price?.toSignificant(18);
-      if (!referencePriceStr) return 0; // Handle case where price isn't available
+    return 0;
+  }
 
-      const referencePrice = parseFloat(referencePriceStr);
+  try {
+    const fillPrice = parseFloat(quotedFillPriceStr);
+    // If fillPriceStr is invalid, fillPrice will be NaN
 
-      if (isNaN(fillPrice) || isNaN(referencePrice) || referencePrice === 0)
-        return 0;
+    const referencePriceStr = pool.token0Price.toSignificant(18); // Now safe due to initial check
+    const referencePrice = parseFloat(referencePriceStr);
+    // If referencePriceStr is invalid (e.g., empty), referencePrice will be NaN
 
-      // Calculate impact based on fill price vs reference price
-      return Math.abs((fillPrice / referencePrice - 1) * 100);
-    } catch (e) {
-      console.error('Error calculating price impact:', e);
+    // Combine NaN checks and zero check
+    if (isNaN(fillPrice) || isNaN(referencePrice) || referencePrice === 0) {
+      // Log potential issue if referencePrice is NaN/0 from a seemingly valid pool price object
+      if (isNaN(referencePrice) || referencePrice === 0) {
+        console.warn(
+          'Reference price calculation resulted in NaN or zero:',
+          referencePriceStr
+        );
+      }
       return 0;
     }
+
+    // Calculate impact
+    return Math.abs((fillPrice / referencePrice - 1) * 100);
+  } catch (e) {
+    // Keep catch for potential toSignificant errors or other unexpected issues
+    console.error('Error calculating price impact:', e);
+    return 0;
   }
-  return 0;
 }
-
-// --- Preview Component ---
-interface ModifyTradePreviewProps {
-  actionType: typeof ACTION_TYPE_UPDATE | typeof ACTION_TYPE_CLOSE;
-  isQuoteLoading: boolean;
-  originalSizeFormatted: string;
-  targetSizeFormatted: string;
-  baseTokenName: string | undefined;
-  collateralAssetTicker: string | undefined;
-  positionData: any; // Type properly
-  resultingPositionCollateral: string;
-  quotedCollateralDeltaBI: bigint | undefined;
-  quotedCollateralDelta: string;
-  quotedFillPriceBI: bigint | undefined;
-  quotedFillPrice: string;
-  quoteTokenName: string | undefined;
-  priceImpact: number;
-  showPriceImpactWarning: boolean;
-  walletBalance: string | undefined;
-  estimatedResultingBalance: string;
-  collateralDecimals: number; // Pass decimals
-}
-
-const ModifyTradePreview: React.FC<ModifyTradePreviewProps> = ({
-  actionType,
-  isQuoteLoading,
-  originalSizeFormatted,
-  targetSizeFormatted,
-  baseTokenName,
-  collateralAssetTicker,
-  positionData, // Make sure this is not null/undefined here
-  resultingPositionCollateral,
-  quotedCollateralDeltaBI,
-  quotedCollateralDelta,
-  quotedFillPriceBI,
-  quotedFillPrice,
-  quoteTokenName,
-  priceImpact,
-  showPriceImpactWarning,
-  walletBalance,
-  estimatedResultingBalance,
-  collateralDecimals, // Use passed prop
-}) => {
-  if (isQuoteLoading) {
-    return (
-      <motion.div
-        key="loader_modify"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.2 }}
-        className="my-2 flex flex-col justify-center items-center"
-      >
-        <LottieLoader width={40} height={40} />
-        <p className="text-xs text-muted-foreground mt-2">
-          Generating Quote...
-        </p>
-      </motion.div>
-    );
-  }
-
-  return (
-    <motion.div
-      key="details_modify"
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2 }}
-    >
-      <h4 className="text-sm font-medium mb-2 flex items-center">
-        {actionType === ACTION_TYPE_CLOSE
-          ? 'Close Position Quote'
-          : 'Update Quote'}
-      </h4>
-      <div className="flex flex-col gap-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Size Change</span>
-          <span>
-            <NumberDisplay value={originalSizeFormatted} /> →{' '}
-            <NumberDisplay
-              value={
-                actionType === ACTION_TYPE_CLOSE ? '0' : targetSizeFormatted
-              }
-            />{' '}
-            {baseTokenName}
-          </span>
-        </div>
-
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Collateral Change</span>
-          <span>
-            <NumberDisplay
-              value={formatUnits(
-                positionData?.depositedCollateralAmount ?? BigInt(0), // Add safe access
-                collateralDecimals
-              )}
-            />{' '}
-            → <NumberDisplay value={resultingPositionCollateral} />{' '}
-            {collateralAssetTicker}
-            {quotedCollateralDeltaBI &&
-              quotedCollateralDeltaBI !== BigInt(0) && ( // Check if non-zero
-                <span
-                  className={`ml-1 ${quotedCollateralDeltaBI > BigInt(0) ? GREEN_TEXT : RED_TEXT}`}
-                >
-                  ({quotedCollateralDeltaBI > BigInt(0) ? '+' : ''}
-                  <NumberDisplay value={quotedCollateralDelta} />)
-                </span>
-              )}
-          </span>
-        </div>
-
-        {quotedFillPriceBI &&
-          quotedFillPriceBI > BigInt(0) && // Check if non-zero
-          actionType !== ACTION_TYPE_CLOSE && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Est. Fill Price</span>
-              <span>
-                <NumberDisplay value={quotedFillPrice} /> {quoteTokenName}
-              </span>
-            </div>
-          )}
-
-        {priceImpact > 0 && (
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Price Impact</span>
-            <span className={`${showPriceImpactWarning ? 'text-red-500' : ''}`}>
-              {/* Ensure display even if small, format consistently */}
-              {Number(priceImpact.toFixed(2)).toString()}%
-            </span>
-          </div>
-        )}
-
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Wallet Balance</span>
-          <span>
-            <NumberDisplay value={walletBalance || '0'} /> →{' '}
-            {/* Handle undefined */}
-            <NumberDisplay value={estimatedResultingBalance} />{' '}
-            {collateralAssetTicker}
-          </span>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
 // --- Main Component (Internal Implementation) ---
 // Rename to avoid conflict if needed, or keep as is if ModifyTradePreview is internal
@@ -457,6 +283,34 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     return BigInt(0);
   }, [positionData]);
 
+  // Add useEffect to log positionData when it changes
+  useEffect(() => {
+    // Log unconditionally to see if the effect runs
+    console.log(
+      'ModifyTradeForm - useEffect triggered. positionData:',
+      positionData
+    );
+    if (positionData) {
+      console.log('ModifyTradeForm - Position Data Loaded:', positionData);
+      // You can specifically log the collateral amount too:
+      console.log(
+        'ModifyTradeForm - Deposited Collateral Amount (BigInt):',
+        positionData.depositedCollateralAmount?.toString()
+      );
+    }
+  }, [positionData]);
+
+  // Log dependencies for useReadContract enabled condition
+  useEffect(() => {
+    console.log('ModifyTradeForm - useReadContract dependencies:', {
+      isConnected,
+      positionId,
+      marketAddress,
+      marketAbi: !!marketAbi, // Log boolean for ABI presence
+      isEnabled: isConnected && !!positionId && !!marketAddress && !!marketAbi,
+    });
+  }, [isConnected, positionId, marketAddress, marketAbi]);
+
   const originalPositionDirection = useMemo(() => {
     return originalPositionSizeInContractUnit > BigInt(0) ? 'Long' : 'Short';
   }, [originalPositionSizeInContractUnit]);
@@ -474,6 +328,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   // Watch form fields
   const sizeChangeInput = watch('size'); // Represents the target absolute size
   const slippage = watch('slippage');
+  const direction = watch('direction');
   const slippageAsNumber = slippage ? Number(slippage) : 0.5;
 
   const sizeChangeBigInt = useMemo(() => {
@@ -485,14 +340,15 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     }
   }, [sizeChangeInput]);
 
-  // Calculate the desired *final* size based on original size and user input (TARGET size)
+  // Calculate the desired *final* size based on user input (TARGET size) and SELECTED direction
   const desiredTargetSizeBigInt = useMemo(() => {
-    // Since input is target size, desired is simply the parsed input, respecting direction
-    // Ensure target size is not negative if direction is Long, or positive if Short (though input 'min' handles this)
-    return originalPositionDirection === 'Long'
-      ? sizeChangeBigInt
-      : -sizeChangeBigInt;
-  }, [sizeChangeBigInt, originalPositionDirection]);
+    // Use the watched direction from the Tabs
+    return direction === 'Long' ? sizeChangeBigInt : -sizeChangeBigInt;
+    // Old logic based on original direction:
+    // return originalPositionDirection === 'Long'
+    //   ? sizeChangeBigInt
+    //   : -sizeChangeBigInt;
+  }, [sizeChangeBigInt, direction]); // Depend on watched direction
 
   // State to track the intended action for the hook
   const [actionType, setActionType] = useState<
@@ -645,18 +501,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     }
   }, [isError]);
 
-  // Handler for the Close Position button click
-  const handleClosePosition = async () => {
-    setActionType(ACTION_TYPE_CLOSE);
-    // We don't call submitClose immediately here. The hook will re-run with
-    // actionType='close', recalculate targetSizeForHook=0, get a new quote/approval state.
-    // The user then clicks the main button (which now reads "Approve & Close" or "Close")
-    // which calls submitUpdate or submitClose based on the button logic,
-    // *but* we should adjust the main form handler.
-    // Let's make the main button always call modifyTrade, as the hook knows the target size.
-    // No need for separate submitUpdate/submitClose in handleSubmit.
-  };
-
   // Unified form submission handler
   const handleFormSubmit = async () => {
     // modifyTrade hook internally knows whether it's closing (targetSizeForHook=0) or updating
@@ -701,30 +545,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     ]
   );
 
-  const closeBtnState = useMemo(
-    () =>
-      determineCloseButtonState({
-        isConnected,
-        positionData,
-        originalPositionSizeInContractUnit,
-        isLoading,
-        needsApproval,
-        actionType,
-        modifyTrade,
-        isError,
-      }),
-    [
-      isConnected,
-      positionData,
-      originalPositionSizeInContractUnit,
-      isLoading,
-      needsApproval,
-      actionType,
-      modifyTrade,
-      isError,
-    ]
-  );
-
   // Reset size input to current position size when component loads or position changes
   useEffect(() => {
     if (positionData) {
@@ -740,8 +560,19 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         shouldValidate: true, // Validate the initial value
         shouldDirty: false, // Don't mark the form as dirty initially
       });
+      // Also set the initial direction based on the loaded position
+      setValue('direction', originalPositionDirection, {
+        shouldValidate: true,
+        shouldDirty: false,
+      });
     }
-  }, [positionData, originalPositionSizeInContractUnit, setValue]); // Removed actionType dependency
+    // Removed actionType dependency to prevent resetting direction on error/close attempt
+  }, [
+    positionData,
+    originalPositionSizeInContractUnit,
+    setValue,
+    originalPositionDirection,
+  ]);
 
   // Determine if quote should be shown
   const shouldShowQuote = useMemo(() => {
@@ -773,8 +604,20 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
   // --- Render Logic ---
 
-  // Handle loading position data state
-  if (!positionData && isConnected) {
+  // Handle disconnected state first
+  if (!isConnected) {
+    return (
+      <div className="text-center p-4 border rounded-md bg-muted/30">
+        <Button size="lg" onClick={onConnectWallet}>
+          Connect Wallet
+        </Button>
+      </div>
+    );
+  }
+
+  // Handle loading position data state (only if connected)
+  // Assuming useReadContract manages its loading/error state internally
+  if (!positionData) {
     return (
       <div className="flex justify-center items-center h-40">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -783,29 +626,9 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     );
   }
 
-  // Handle disconnected state
-  if (!isConnected) {
-    return (
-      <div className="text-center p-4 border rounded-md bg-muted/30">
-        <p className="text-muted-foreground mb-2">
-          Please connect your wallet to manage this position.
-        </p>
-        <Button onClick={onConnectWallet}>Connect Wallet</Button>
-      </div>
-    );
-  }
+  // At this point, we are connected and have positionData.
 
-  // Handle case where position data failed to load after connection attempt
-  // This might be redundant if useReadContract handles errors well, but good safeguard.
-  if (!positionData) {
-    return (
-      <div className="text-center p-4 text-red-500">
-        Error: Position data could not be loaded.
-      </div>
-    );
-  }
-
-  // Format values needed for rendering (safe now that positionData exists)
+  // Format values needed for rendering
   const originalSizeFormatted = formatUnits(
     originalPositionSizeInContractUnit > BigInt(0)
       ? originalPositionSizeInContractUnit
@@ -822,17 +645,25 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     <Form {...form}>
       {/* Use the unified handler */}
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-        {/* Display Position Direction */}
-        <div className="p-3 rounded-md border bg-muted/50 text-center">
-          <span className="text-sm text-muted-foreground">
-            Position Direction:{' '}
-          </span>
-          <span
-            className={`font-medium ${originalPositionDirection === 'Long' ? 'text-green-500' : RED_TEXT}`}
-          >
-            {originalPositionDirection}
-          </span>
-        </div>
+        {/* Add Direction Tabs */}
+        <Tabs
+          value={direction} // Controlled by form state
+          onValueChange={(value) => {
+            setValue('direction', value as 'Long' | 'Short', {
+              shouldValidate: true,
+            });
+            // Reset action type to update when direction changes, allowing quote refresh
+            if (actionType === ACTION_TYPE_CLOSE) {
+              setActionType(ACTION_TYPE_UPDATE);
+            }
+          }}
+          className="mb-4"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="Long">Target Long</TabsTrigger>
+            <TabsTrigger value="Short">Target Short</TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {/* Size Input - Target Size */}
         <div className="mb-6">
@@ -861,10 +692,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
               </FormItem>
             )}
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Current Size: <NumberDisplay value={originalSizeFormatted} />{' '}
-            {baseTokenName}
-          </p>
         </div>
 
         {/* Slippage Tolerance */}
@@ -874,6 +701,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         <div className="mt-6 space-y-2">
           {/* Main action button (Update or Approve & Update / Close or Approve & Close) */}
           <Button
+            size="lg"
             type="submit" // This button now triggers the main action
             disabled={updateButtonState.disabled}
             className="w-full"
@@ -882,26 +710,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
             {updateButtonState.text}{' '}
             {/* Text dynamically changes based on actionType */}
           </Button>
-
-          {/* Separate "Close Position" button to initiate the close flow */}
-          {/* Only show if position is not already zero */}
-          {originalPositionSizeInContractUnit !== BigInt(0) && (
-            <Button
-              type="button"
-              variant="destructive"
-              className="w-full"
-              onClick={handleClosePosition} // Sets actionType to 'close', triggers hook refresh
-              // Disable if the main button is already processing, or if closing isn't possible
-              disabled={
-                closeBtnState.disabled ||
-                actionType === ACTION_TYPE_CLOSE ||
-                isLoading
-              }
-            >
-              {/* No spinner here, spinner shows on the main button when closing */}
-              Close {NOUN_POSITION}
-            </Button>
-          )}
 
           {/* Error Display */}
           {/* Show error only if it's relevant (hook enabled) and not just a quote loading issue */}
@@ -913,41 +721,140 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                 'Could not get quote or execute.'}
             </p>
           )}
-          {/* Price Impact Warning */}
-          {showPriceImpactWarning &&
-            !isError && ( // Don't show impact warning if there's a general error
-              <p className="text-red-500 text-sm text-center mt-1 font-medium">
-                <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
-                High price impact ({Number(priceImpact.toFixed(2)).toString()}%)
-              </p>
-            )}
         </div>
 
-        {/* Preview Section */}
+        {/* Preview Section - Replace with inline structure */}
         <AnimatePresence mode="wait">
           {shouldShowQuote && (
-            <div className="pt-2">
-              <ModifyTradePreview
-                actionType={actionType}
-                isQuoteLoading={isQuoteLoading}
-                originalSizeFormatted={originalSizeFormatted}
-                targetSizeFormatted={targetSizeFormatted}
-                baseTokenName={baseTokenName}
-                collateralAssetTicker={collateralAssetTicker}
-                positionData={positionData}
-                resultingPositionCollateral={resultingPositionCollateral}
-                quotedCollateralDeltaBI={quotedCollateralDeltaBI}
-                quotedCollateralDelta={quotedCollateralDelta}
-                quotedFillPriceBI={quotedFillPriceBI}
-                quotedFillPrice={quotedFillPrice}
-                quoteTokenName={quoteTokenName}
-                priceImpact={priceImpact}
-                showPriceImpactWarning={showPriceImpactWarning}
-                walletBalance={walletBalance}
-                estimatedResultingBalance={estimatedResultingBalance}
-                collateralDecimals={COLLATERAL_DECIMALS} // Pass decimals
-              />
-            </div>
+            <motion.div
+              key="details-container-modify"
+              layout
+              initial={{ opacity: 0, height: 0, transformOrigin: 'top' }}
+              animate={{ opacity: 1, height: 'auto', transformOrigin: 'top' }}
+              exit={{ opacity: 0, height: 0, transformOrigin: 'top' }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="mb-6 relative overflow-hidden"
+            >
+              <div
+                className={`transition-opacity duration-150 ${isQuoteLoading ? 'opacity-30' : 'opacity-100'}`}
+              >
+                <h4 className="text-sm font-medium mb-2.5 flex items-center">
+                  {actionType === ACTION_TYPE_CLOSE
+                    ? 'Close Position Quote'
+                    : 'Update Quote'}
+                </h4>
+                <div className="flex flex-col gap-2.5 text-sm">
+                  {/* Size Change */}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Size</span>
+                    <span className="flex items-center">
+                      <Badge
+                        variant="outline"
+                        className={`mr-2 px-1.5 py-0.5 text-xs font-medium ${
+                          direction === 'Long' // Use target direction for badge color
+                            ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                            : 'border-red-500/40 bg-red-500/10 text-red-600'
+                        }`}
+                      >
+                        {direction} {/* Show target direction */}
+                      </Badge>
+                      <NumberDisplay value={originalSizeFormatted} />
+                      <span className="mx-1">→</span>
+                      <NumberDisplay
+                        value={
+                          actionType === ACTION_TYPE_CLOSE
+                            ? '0'
+                            : targetSizeFormatted
+                        }
+                      />{' '}
+                      <span className="ml-1">{baseTokenName}</span>
+                    </span>
+                  </div>
+
+                  {/* Collateral Change */}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      Position Collateral
+                    </span>
+                    <span>
+                      <NumberDisplay
+                        value={formatUnits(
+                          positionData?.depositedCollateralAmount ?? BigInt(0),
+                          COLLATERAL_DECIMALS
+                        )}
+                      />{' '}
+                      → <NumberDisplay value={resultingPositionCollateral} />{' '}
+                      {collateralAssetTicker}
+                    </span>
+                  </div>
+
+                  {/* Estimated Fill Price */}
+                  {quotedFillPriceBI &&
+                    quotedFillPriceBI > BigInt(0) &&
+                    actionType !== ACTION_TYPE_CLOSE && (
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-muted-foreground">
+                          Estimated Fill Price
+                        </span>
+                        <span className="flex items-baseline">
+                          <NumberDisplay value={quotedFillPrice} />{' '}
+                          {quoteTokenName}
+                          {/* Re-add price impact display with Tooltip */}
+                          {priceImpact > 0 && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    className={`ml-2 text-xs cursor-help ${showPriceImpactWarning ? 'text-red-500' : 'text-muted-foreground'}`}
+                                  >
+                                    {Number(priceImpact.toFixed(2)).toString()}%
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p>
+                                    This is the impact your order will make on
+                                    the current market price.
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                  {/* Wallet Balance Change */}
+                  {isConnected && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Wallet Balance
+                      </span>
+                      <span>
+                        <NumberDisplay value={walletBalance || '0'} /> →{' '}
+                        <NumberDisplay value={estimatedResultingBalance} />{' '}
+                        {collateralAssetTicker}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Loading Overlay */}
+              <AnimatePresence>
+                {isQuoteLoading && (
+                  <motion.div
+                    key="quote-loader-modify"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <LottieLoader className="invert" width={30} height={30} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           )}
         </AnimatePresence>
       </form>
