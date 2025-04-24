@@ -1,6 +1,6 @@
 
 name="foil"
-version="1.0.2"
+version="1.0.4"
 preset="gepo-uti"
 
 [var.settings]
