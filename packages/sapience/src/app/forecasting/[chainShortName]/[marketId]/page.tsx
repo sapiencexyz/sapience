@@ -9,14 +9,14 @@ import {
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
-import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
+import PositionSelector from '~/components/forecasting/PositionSelector';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 
 // Dynamically import LottieLoader
@@ -27,7 +27,10 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 });
 
 const SimpleTradeWrapper = dynamic(
-  () => import('~/components/forecasting/SimpleTradeWrapper'),
+  () =>
+    import('~/components/forecasting/SimpleTradeWrapper').then(
+      (mod) => mod.default
+    ),
   {
     ssr: false,
     loading: () => (
@@ -50,7 +53,9 @@ const SimpleLiquidityWrapper = dynamic(
 const ForecastContent = () => {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const chainShortName = params.chainShortName as string;
+  const positionId = searchParams.get('positionId');
 
   const {
     marketData,
@@ -61,6 +66,7 @@ const ForecastContent = () => {
     chainId,
     marketAddress,
     numericMarketId,
+    getPositionById,
   } = useForecast();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
@@ -80,6 +86,9 @@ const ForecastContent = () => {
   // Extract resource slug
   const resourceSlug = marketData?.marketGroup?.resource?.slug;
 
+  // Determine the selected position if positionId exists
+  const selectedPosition = positionId ? getPositionById(positionId) : null;
+
   // Handler for updating selected prices
   const handlePriceSelection = (line: LineType, selected: boolean) => {
     setSelectedPrices((prev) => {
@@ -89,6 +98,14 @@ const ForecastContent = () => {
       };
     });
   };
+
+  // Set active tab based on URL position ID (only relevant if positionId exists initially)
+  useEffect(() => {
+    if (selectedPosition) {
+      // Set tab based on position kind (1 = Liquidity, 2 = Trade)
+      setActiveFormTab(selectedPosition.kind === 1 ? 'liquidity' : 'trade');
+    }
+  }, [selectedPosition]);
 
   // Show loader while market data is loading
   if (isLoadingMarket || isLoadingMarketContract) {
@@ -215,35 +232,55 @@ const ForecastContent = () => {
                   <h3 className="text-3xl font-normal mb-4">
                     Prediction Market
                   </h3>
-                  <div className="flex w-full border-b">
-                    <button
-                      type="button"
-                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                        activeFormTab === 'trade'
-                          ? 'border-b-2 border-primary text-primary'
-                          : 'text-muted-foreground'
-                      }`}
-                      onClick={() => setActiveFormTab('trade')}
-                    >
-                      Trade
-                    </button>
-                    <button
-                      type="button"
-                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                        activeFormTab === 'liquidity'
-                          ? 'border-b-2 border-primary text-primary'
-                          : 'text-muted-foreground'
-                      }`}
-                      onClick={() => setActiveFormTab('liquidity')}
-                    >
-                      Liquidity
-                    </button>
-                  </div>
-                  <div className="mt-4 relative p-1">
-                    <ComingSoonScrim className="absolute rounded-lg" />
-                    {activeFormTab === 'trade' && <SimpleTradeWrapper />}
-                    {activeFormTab === 'liquidity' && (
-                      <SimpleLiquidityWrapper />
+                  <PositionSelector />
+                  {!positionId && (
+                    <div className="flex w-full border-b">
+                      <button
+                        type="button"
+                        className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+                          activeFormTab === 'trade'
+                            ? 'border-b-2 border-primary text-primary'
+                            : 'text-muted-foreground'
+                        }`}
+                        onClick={() => setActiveFormTab('trade')}
+                      >
+                        Trade
+                      </button>
+                      <button
+                        type="button"
+                        className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+                          activeFormTab === 'liquidity'
+                            ? 'border-b-2 border-primary text-primary'
+                            : 'text-muted-foreground'
+                        }`}
+                        onClick={() => setActiveFormTab('liquidity')}
+                      >
+                        Liquidity
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-4 relative">
+                    {/* If positionId exists, show form based on selectedPosition.kind */}
+                    {selectedPosition && selectedPosition.kind === 2 && (
+                      <SimpleTradeWrapper
+                        positionId={positionId || undefined}
+                      />
+                    )}
+                    {selectedPosition && selectedPosition.kind === 1 && (
+                      <SimpleLiquidityWrapper
+                        positionId={positionId || undefined}
+                      />
+                    )}
+                    {/* If no positionId, show form based on selected tab */}
+                    {!selectedPosition && activeFormTab === 'trade' && (
+                      <SimpleTradeWrapper
+                        positionId={positionId || undefined}
+                      />
+                    )}
+                    {!selectedPosition && activeFormTab === 'liquidity' && (
+                      <SimpleLiquidityWrapper
+                        positionId={positionId || undefined}
+                      />
                     )}
                   </div>
                 </div>
