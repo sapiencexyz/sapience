@@ -30,7 +30,7 @@ export function useTradeForm() {
     required: 'Size is required',
     validate: {
       positive: (value) =>
-        parseFloat(value) > 0 || 'Size must be greater than 0',
+        parseFloat(value) >= 0 || 'Size must be zero or greater',
       isNumber: (value) =>
         !isNaN(parseFloat(value)) || 'Size must be a valid number',
     },

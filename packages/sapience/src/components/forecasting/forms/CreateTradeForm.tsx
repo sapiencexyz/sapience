@@ -440,21 +440,6 @@ export function CreateTradeForm({
                     )}
                   </div>
                 </div>
-
-                <AnimatePresence>
-                  {quoteLoading && (
-                    <motion.div
-                      key="quote-loader"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute inset-0 flex items-center justify-center"
-                    >
-                      <LottieLoader className="invert" width={30} height={30} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
             )}
           </AnimatePresence>

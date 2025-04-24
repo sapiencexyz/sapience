@@ -20,7 +20,7 @@ import {
 } from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState, useMemo } from 'react';
 import type { FormState } from 'react-hook-form'; // Or import specific type if known
@@ -44,8 +44,6 @@ import { useForecast } from '~/lib/context/ForecastProvider';
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 
 // Action type constants
-const ACTION_TYPE_CLOSE = 'close';
-const ACTION_TYPE_UPDATE = 'update';
 const NOUN_POSITION = 'Position';
 
 // Define Props including marketDetails
@@ -71,7 +69,6 @@ interface ButtonStateBaseParams {
   isLoading: boolean;
   needsApproval: boolean;
   modifyTrade: (() => Promise<void>) | undefined; // Type of modifyTrade
-  actionType: typeof ACTION_TYPE_UPDATE | typeof ACTION_TYPE_CLOSE;
   isError: boolean;
 }
 
@@ -95,13 +92,14 @@ function determineUpdateButtonState({
   needsApproval,
   modifyTrade,
   collateralAssetTicker,
-  actionType,
   targetSizeForHook,
   originalPositionSizeInContractUnit,
   formState,
   isError,
 }: UpdateButtonStateParams): ButtonState {
-  const actionText = actionType === ACTION_TYPE_CLOSE ? 'Close' : 'Update';
+  // Determine action based on target size
+  const isClosing = targetSizeForHook === BigInt(0);
+  const actionText = isClosing ? 'Close' : 'Update';
 
   if (!isConnected)
     return { text: 'Connect Wallet', loading: false, disabled: true };
@@ -118,7 +116,7 @@ function determineUpdateButtonState({
     };
   if (isModifying || isConfirming)
     return {
-      text: `${actionType === ACTION_TYPE_CLOSE ? 'Closing' : 'Updating'} Position...`,
+      text: `${isClosing ? 'Closing' : 'Updating'} Position...`,
       loading: true,
       disabled: true,
     };
@@ -131,7 +129,7 @@ function determineUpdateButtonState({
 
   const buttonText = `${actionText} ${NOUN_POSITION}`;
   const isDisabled =
-    (actionType !== ACTION_TYPE_CLOSE &&
+    (!isClosing && // Don't disable Close button based on size matching
       targetSizeForHook === originalPositionSizeInContractUnit) ||
     !formState.isValid || // Check form validity
     isError ||
@@ -249,6 +247,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { baseTokenName, quoteTokenName, marketContractData } = useForecast(); // Get marketContractData
+  const [processedTxHash, setProcessedTxHash] = useState<string | null>(null); // Track processed success
 
   const {
     marketAddress,
@@ -323,7 +322,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
   // Use useTradeForm, potentially adapting it if needed for modification logic
   const form = useTradeForm();
-  const { control, watch, handleSubmit, setValue, reset, formState } = form;
+  const { control, watch, handleSubmit, setValue, formState } = form;
 
   // Watch form fields
   const sizeChangeInput = watch('size'); // Represents the target absolute size
@@ -350,17 +349,15 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     //   : -sizeChangeBigInt;
   }, [sizeChangeBigInt, direction]); // Depend on watched direction
 
-  // State to track the intended action for the hook
-  const [actionType, setActionType] = useState<
-    typeof ACTION_TYPE_UPDATE | typeof ACTION_TYPE_CLOSE
-  >(ACTION_TYPE_UPDATE);
-
   // Determine the size to use for quoting and execution
   const targetSizeForHook = useMemo(() => {
-    return actionType === ACTION_TYPE_CLOSE
-      ? BigInt(0)
-      : desiredTargetSizeBigInt;
-  }, [actionType, desiredTargetSizeBigInt]);
+    // Target size is now directly the desired target size based on input and direction
+    return desiredTargetSizeBigInt;
+    // Old logic:
+    // return actionType === ACTION_TYPE_CLOSE
+    //   ? BigInt(0)
+    //   : desiredTargetSizeBigInt;
+  }, [desiredTargetSizeBigInt]);
 
   const isHookEnabled = useMemo(() => {
     return (
@@ -369,8 +366,8 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
       !!marketAddress &&
       !!marketAbi &&
       !!positionData && // Ensure position data is loaded
-      (targetSizeForHook !== originalPositionSizeInContractUnit ||
-        actionType === ACTION_TYPE_CLOSE) // Enable if size changes or closing
+      // Enable if size changes (implicitly includes closing to zero)
+      targetSizeForHook !== originalPositionSizeInContractUnit
     );
   }, [
     isConnected,
@@ -380,7 +377,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     positionData,
     targetSizeForHook,
     originalPositionSizeInContractUnit,
-    actionType,
   ]);
 
   // Use the modify trade hook
@@ -467,7 +463,10 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
   // Handle successful modification
   useEffect(() => {
-    if (isSuccess && txHash && onSuccess) {
+    // Only process if success, txHash is present, and it's a *new* txHash
+    if (isSuccess && txHash && txHash !== processedTxHash && onSuccess) {
+      setProcessedTxHash(txHash); // Mark this txHash as processed
+
       const isClosing = targetSizeForHook === BigInt(0);
       toast({
         title: isClosing ? 'Position Closed' : 'Trade Position Updated',
@@ -476,35 +475,27 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
           : 'Your trade position has been successfully updated!',
       });
       onSuccess(txHash);
-      reset(); // Reset form
-      setActionType(ACTION_TYPE_UPDATE); // Reset action type
       refetchPositionData();
       refetchQuote(); // Refetch quote via hook
       refetchAllowance(); // Refetch allowance via hook
+      // Do *not* reset the form here, let the useEffect below sync with new positionData
     }
   }, [
     isSuccess,
     txHash,
     onSuccess,
     toast,
-    reset,
     refetchPositionData,
     refetchQuote,
     refetchAllowance,
     targetSizeForHook, // Include hook dependency
+    processedTxHash, // Add dependency to prevent re-running for same hash
   ]);
-
-  // Reset action type on error
-  useEffect(() => {
-    if (isError) {
-      setActionType(ACTION_TYPE_UPDATE);
-    }
-  }, [isError]);
 
   // Unified form submission handler
   const handleFormSubmit = async () => {
     // modifyTrade hook internally knows whether it's closing (targetSizeForHook=0) or updating
-    // based on the current actionType state.
+    // based on the current targetSizeForHook value.
     await modifyTrade();
   };
 
@@ -521,7 +512,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         needsApproval,
         modifyTrade,
         collateralAssetTicker,
-        actionType,
         targetSizeForHook,
         originalPositionSizeInContractUnit,
         formState,
@@ -537,7 +527,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
       needsApproval,
       modifyTrade,
       collateralAssetTicker,
-      actionType,
       targetSizeForHook,
       originalPositionSizeInContractUnit,
       formState,
@@ -579,15 +568,14 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     return (
       isHookEnabled && // Ensure hook is intended to run
       !isError && // No errors from the hook
-      (targetSizeForHook !== originalPositionSizeInContractUnit ||
-        actionType === ACTION_TYPE_CLOSE) // Size change or closing action attempted
+      // Show quote if size is changing (implicitly includes closing)
+      targetSizeForHook !== originalPositionSizeInContractUnit
     );
   }, [
     isHookEnabled,
     isError,
     targetSizeForHook,
     originalPositionSizeInContractUnit,
-    actionType,
   ]);
 
   // Determine if quote is currently loading
@@ -619,9 +607,11 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   // Assuming useReadContract manages its loading/error state internally
   if (!positionData) {
     return (
-      <div className="flex justify-center items-center h-40">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        <span className="ml-2">Loading position details...</span>
+      <div className="flex flex-col justify-center items-center h-40">
+        <LottieLoader className="invert" width={40} height={40} />
+        <span className="mt-2 text-sm text-muted-foreground">
+          Loading position details...
+        </span>
       </div>
     );
   }
@@ -639,7 +629,9 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   const targetSizeFormatted = formatUnits(sizeChangeBigInt, TOKEN_DECIMALS); // Target absolute size
 
   // Define constant for repeated literals
-  const LOADING_SPINNER = <Loader2 className="mr-2 h-4 w-4 animate-spin" />;
+  const LOADING_SPINNER = (
+    <LottieLoader className="invert" width={20} height={20} />
+  );
 
   return (
     <Form {...form}>
@@ -652,16 +644,16 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
             setValue('direction', value as 'Long' | 'Short', {
               shouldValidate: true,
             });
-            // Reset action type to update when direction changes, allowing quote refresh
-            if (actionType === ACTION_TYPE_CLOSE) {
-              setActionType(ACTION_TYPE_UPDATE);
-            }
+            // No need to reset actionType here
+            // if (actionType === ACTION_TYPE_CLOSE) {
+            //   setActionType(ACTION_TYPE_UPDATE);
+            // }
           }}
           className="mb-4"
         >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="Long">Target Long</TabsTrigger>
-            <TabsTrigger value="Short">Target Short</TabsTrigger>
+            <TabsTrigger value="Long">Long</TabsTrigger>
+            <TabsTrigger value="Short">Short</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -679,7 +671,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                       placeholder={originalSizeFormatted} // Show current abs size as placeholder
                       type="number"
                       step="any"
-                      min="0" // Target size is absolute
                       className="rounded-r-none"
                       {...field}
                     />
@@ -708,23 +699,20 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
           >
             {updateButtonState.loading && LOADING_SPINNER}
             {updateButtonState.text}{' '}
-            {/* Text dynamically changes based on actionType */}
           </Button>
 
           {/* Error Display */}
-          {/* Show error only if it's relevant (hook enabled) and not just a quote loading issue */}
           {isError && error && isHookEnabled && (
             <p className="text-red-500 text-sm text-center mt-2 font-medium">
               <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
-              {(error as any)?.shortMessage ||
-                error.message ||
-                'Could not get quote or execute.'}
+              Insufficient liquidity. Try a smaller size.
             </p>
           )}
         </div>
 
-        {/* Preview Section - Replace with inline structure */}
+        {/* Preview Section - Show if quote is expected, dim if loading new one */}
         <AnimatePresence mode="wait">
+          {/* Only render the motion.div if we should show the quote */}
           {shouldShowQuote && (
             <motion.div
               key="details-container-modify"
@@ -735,38 +723,48 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
               transition={{ duration: 0.3, ease: 'easeInOut' }}
               className="mb-6 relative overflow-hidden"
             >
+              {/* Wrapper for content dimming during load */}
               <div
-                className={`transition-opacity duration-150 ${isQuoteLoading ? 'opacity-30' : 'opacity-100'}`}
+                className={`transition-opacity duration-150 ${isQuoteLoading ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
               >
                 <h4 className="text-sm font-medium mb-2.5 flex items-center">
-                  {actionType === ACTION_TYPE_CLOSE
-                    ? 'Close Position Quote'
-                    : 'Update Quote'}
+                  Order Quote
                 </h4>
                 <div className="flex flex-col gap-2.5 text-sm">
                   {/* Size Change */}
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Size</span>
-                    <span className="flex items-center">
+                    <span className="flex items-center space-x-1">
+                      {/* Original Size and Direction */}
                       <Badge
                         variant="outline"
-                        className={`mr-2 px-1.5 py-0.5 text-xs font-medium ${
-                          direction === 'Long' // Use target direction for badge color
+                        className={`px-1.5 py-0.5 text-xs font-medium ${
+                          originalPositionDirection === 'Long'
                             ? 'border-green-500/40 bg-green-500/10 text-green-600'
                             : 'border-red-500/40 bg-red-500/10 text-red-600'
                         }`}
                       >
-                        {direction} {/* Show target direction */}
+                        {originalPositionDirection}
                       </Badge>
                       <NumberDisplay value={originalSizeFormatted} />
+                      <span className="ml-1">{baseTokenName}</span>
                       <span className="mx-1">→</span>
+                      {/* Target Size and Direction - Conditionally render badge based on target size being non-zero */}
+                      {sizeChangeBigInt !== BigInt(0) && ( // Use sizeChangeBigInt to check if target is zero
+                        <Badge
+                          variant="outline"
+                          className={`px-1.5 py-0.5 text-xs font-medium ${
+                            direction === 'Long'
+                              ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                              : 'border-red-500/40 bg-red-500/10 text-red-600'
+                          }`}
+                        >
+                          {direction}
+                        </Badge>
+                      )}
                       <NumberDisplay
-                        value={
-                          actionType === ACTION_TYPE_CLOSE
-                            ? '0'
-                            : targetSizeFormatted
-                        }
-                      />{' '}
+                        value={targetSizeFormatted} // Display the formatted target size directly
+                      />
                       <span className="ml-1">{baseTokenName}</span>
                     </span>
                   </div>
@@ -791,7 +789,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                   {/* Estimated Fill Price */}
                   {quotedFillPriceBI &&
                     quotedFillPriceBI > BigInt(0) &&
-                    actionType !== ACTION_TYPE_CLOSE && (
+                    targetSizeForHook !== BigInt(0) && ( // Only show fill price if not closing
                       <div className="flex justify-between items-baseline">
                         <span className="text-muted-foreground">
                           Estimated Fill Price
@@ -805,7 +803,11 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span
-                                    className={`ml-2 text-xs cursor-help ${showPriceImpactWarning ? 'text-red-500' : 'text-muted-foreground'}`}
+                                    className={`ml-2 text-xs cursor-help ${
+                                      showPriceImpactWarning
+                                        ? 'text-red-500'
+                                        : 'text-muted-foreground'
+                                    }`}
                                   >
                                     {Number(priceImpact.toFixed(2)).toString()}%
                                   </span>
@@ -838,22 +840,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                   )}
                 </div>
               </div>
-
-              {/* Loading Overlay */}
-              <AnimatePresence>
-                {isQuoteLoading && (
-                  <motion.div
-                    key="quote-loader-modify"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute inset-0 flex items-center justify-center"
-                  >
-                    <LottieLoader className="invert" width={30} height={30} />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* End of dimming wrapper */}
             </motion.div>
           )}
         </AnimatePresence>
