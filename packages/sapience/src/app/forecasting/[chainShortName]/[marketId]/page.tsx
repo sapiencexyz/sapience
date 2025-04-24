@@ -63,10 +63,6 @@ const ForecastContent = () => {
     chainId,
     marketAddress,
     numericMarketId,
-    // lpPositions,
-    // traderPositions,
-    lpPositionsArray,
-    traderPositionsArray,
     getPositionById,
   } = useForecast();
 
@@ -106,31 +102,7 @@ const ForecastContent = () => {
       // Set tab based on position kind (1 = Liquidity, 2 = Trade)
       setActiveFormTab(selectedPosition.kind === 1 ? 'liquidity' : 'trade');
     }
-  }, [selectedPosition]); // Depend on selectedPosition
-
-  // Add position ID to URL if it exists but isn't in URL
-  useEffect(() => {
-    const positionId = searchParams.get('positionId');
-    if (!positionId) {
-      if (traderPositionsArray.length > 0) {
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set(
-          'positionId',
-          traderPositionsArray[0].id.toString()
-        );
-        router.push(newUrl.pathname + newUrl.search);
-      }
-      // Check if there's any position to add to URL
-      else if (lpPositionsArray.length > 0) {
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set(
-          'positionId',
-          lpPositionsArray[0].id.toString()
-        );
-        router.push(newUrl.pathname + newUrl.search);
-      }
-    }
-  }, [lpPositionsArray, traderPositionsArray, searchParams, router]);
+  }, [selectedPosition]);
 
   // Show loader while market data is loading
   if (isLoadingMarket || isLoadingMarketContract) {

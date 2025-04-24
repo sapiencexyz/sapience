@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -8,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
+import { Label } from '@foil/ui/components/ui/label';
 import { ChevronDown } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
@@ -27,6 +29,9 @@ const PositionSelector: React.FC<PositionSelectorProps> = () => {
   const selectedPosition = currentPositionId
     ? getPositionById(currentPositionId)
     : null;
+
+  // // DEBUG:
+  // console.log('Selected Position:', selectedPosition);
 
   const hasPositions =
     lpPositionsArray.length > 0 || traderPositionsArray.length > 0;
@@ -61,12 +66,24 @@ const PositionSelector: React.FC<PositionSelectorProps> = () => {
   }
 
   return (
-    <div className="mb-4">
+    <div className="mb-6 space-y-1.5">
+      <Label>Position</Label>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-full justify-between">
-            {triggerText}
-            <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+          <Button variant="outline" className="w-full flex items-center">
+            <div className="flex items-center gap-2">
+              {selectedPosition ? (
+                <>
+                  <span>#{selectedPosition.id.toString()}</span>
+                  <Badge variant="outline">
+                    {selectedPosition.kind === 1 ? 'Liquidity' : 'Trader'}
+                  </Badge>
+                </>
+              ) : (
+                <span>{triggerText}</span>
+              )}
+            </div>
+            <ChevronDown className="ml-auto h-4 w-4 opacity-50 flex-shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
@@ -83,7 +100,7 @@ const PositionSelector: React.FC<PositionSelectorProps> = () => {
               key={`trade-${pos.id}`}
               onSelect={() => handleSelectPosition(pos.id.toString())}
             >
-              Trade #{pos.id.toString()}
+              #{pos.id.toString()} <Badge variant="outline">Trader</Badge>
             </DropdownMenuItem>
           ))}
 
@@ -92,7 +109,7 @@ const PositionSelector: React.FC<PositionSelectorProps> = () => {
               key={`lp-${pos.id}`}
               onSelect={() => handleSelectPosition(pos.id.toString())}
             >
-              Liquidity #{pos.id.toString()}
+              #{pos.id.toString()} <Badge variant="outline">Liquidity</Badge>
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>

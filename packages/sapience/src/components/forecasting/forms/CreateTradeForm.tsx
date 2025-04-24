@@ -23,7 +23,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
-import { useAccount, useSimulateContract } from 'wagmi';
+import {
+  useAccount,
+  useChainId,
+  useSimulateContract,
+  useSwitchChain,
+} from 'wagmi';
 
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
@@ -61,6 +66,12 @@ export function CreateTradeForm({
   const { toast } = useToast();
   const { baseTokenName, marketContractData, quoteTokenName } = useForecast();
   const { address: accountAddress } = useAccount();
+  const currentChainId = useChainId();
+  const {
+    switchChain,
+    isPending: isSwitchingChain,
+    error: switchChainError,
+  } = useSwitchChain();
 
   const {
     marketAddress,
@@ -70,6 +81,8 @@ export function CreateTradeForm({
     collateralAssetAddress,
     numericMarketId,
   } = marketDetails;
+
+  const isChainMismatch = isConnected && currentChainId !== chainId;
 
   const { balance: walletBalance } = useTokenBalance({
     tokenAddress: collateralAssetAddress,
@@ -110,7 +123,12 @@ export function CreateTradeForm({
     chainId,
     account: accountAddress || zeroAddress,
     query: {
-      enabled: !!marketAddress && !!marketAbi && sizeBigInt > BigInt(0),
+      enabled:
+        isConnected &&
+        !isChainMismatch &&
+        !!marketAddress &&
+        !!marketAbi &&
+        sizeBigInt > BigInt(0),
     },
   });
 
@@ -175,10 +193,11 @@ export function CreateTradeForm({
     marketAddress,
     marketAbi,
     chainId,
+    numericMarketId,
     size: signedSizeBigInt,
     collateralAmount: estimatedCollateral,
     slippagePercent: slippageAsNumber,
-    enabled: isConnected && !!marketAddress,
+    enabled: isConnected && !isChainMismatch && !!marketAddress,
     collateralTokenAddress: collateralAssetAddress,
   });
 
@@ -217,15 +236,36 @@ export function CreateTradeForm({
         variant: 'destructive',
       });
     }
-  }, [isTradeError, tradeError, toast]);
+  }, [isTradeError, tradeError, switchChainError, toast]);
 
   const submitForm = async () => {
+    if (!isConnected) {
+      console.warn('Attempted to submit form while disconnected.');
+      return;
+    }
+
+    if (isChainMismatch) {
+      if (switchChain) {
+        switchChain({ chainId });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Network switching is not available.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
+
     await createTrade();
   };
 
   const getButtonState = () => {
     if (!isConnected) {
       return { text: 'Connect Wallet', loading: false };
+    }
+    if (isSwitchingChain) {
+      return { text: 'Switching Network...', loading: true };
     }
     if (quoteLoading && sizeBigInt > BigInt(0)) {
       return { text: 'Generating Quote...', loading: true };
@@ -239,27 +279,24 @@ export function CreateTradeForm({
     if (needsApproval && estimatedCollateralBI > BigInt(0)) {
       return { text: `Approve & Open ${direction}`, loading: false };
     }
-    // Default case (needsApproval false or estimatedCollateralBI <= 0, or already approved)
     return { text: `Open ${direction}`, loading: false };
   };
 
   const calculateIsSubmitDisabled = () => {
-    if (!isConnected) return true; // Explicitly disable if not connected, though button changes
-    if (quoteLoading && sizeBigInt > BigInt(0)) return true;
-    if (isCreatingTrade) return true;
-    if (isApproving) return true;
-    if (sizeBigInt === BigInt(0)) return true;
-    if (!formState.isValid) return true;
-    // Disable if quote is required but not available or errored
-    if (sizeBigInt > BigInt(0)) {
-      if (estimatedCollateralBI <= BigInt(0) && !quoteError) return true; // Quote needed but not ready
-      if (quoteError) return true; // Quote resulted in error
-    }
-    return false;
+    return (
+      !isConnected ||
+      isSwitchingChain ||
+      (quoteLoading && sizeBigInt > BigInt(0)) ||
+      isCreatingTrade ||
+      isApproving ||
+      sizeBigInt === BigInt(0) ||
+      !formState.isValid ||
+      (!isChainMismatch && sizeBigInt > BigInt(0) && !!quoteError)
+    );
   };
 
   const buttonState = getButtonState();
-  const isSubmitDisabled = calculateIsSubmitDisabled();
+  const isSubmitButtonDisabled = calculateIsSubmitDisabled();
 
   const handleDirectionChange = (value: string) => {
     setValue('direction', value as 'Long' | 'Short', { shouldValidate: true });
@@ -312,7 +349,6 @@ export function CreateTradeForm({
             <SlippageTolerance />
           </div>
 
-          {/* Moved Order Quote Section */}
           <AnimatePresence>
             {sizeBigInt > BigInt(0) && !quoteError && (
               <motion.div
@@ -423,14 +459,13 @@ export function CreateTradeForm({
             )}
           </AnimatePresence>
 
-          {/* Button Section */}
           <div className="mt-0">
             {isConnected ? (
               <Button
                 type="submit"
                 className="w-full"
                 size="lg"
-                disabled={isSubmitDisabled}
+                disabled={isSubmitButtonDisabled}
               >
                 {buttonState.loading && (
                   <LottieLoader className="invert" width={20} height={20} />
@@ -447,12 +482,16 @@ export function CreateTradeForm({
                 Connect Wallet
               </Button>
             )}
-            {quoteError && sizeBigInt > BigInt(0) && (
-              <p className="text-red-500 text-sm text-center mt-2 font-medium">
-                <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
-                Insufficient liquidity. Try a smaller size.
-              </p>
-            )}
+            {isConnected &&
+              !isChainMismatch &&
+              quoteError &&
+              sizeBigInt > BigInt(0) && (
+                <p className="text-red-500 text-sm text-center mt-2 font-medium">
+                  <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
+                  Insufficient liquidity or error fetching quote. Try a smaller
+                  size.
+                </p>
+              )}
           </div>
         </form>
       </Form>
