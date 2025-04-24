@@ -8,7 +8,7 @@ include = [
 ]
 
 [setting.claimStatement]
-defaultValue = "<%= stringToHex('What will the annualized U.S. GDP growth rate be for Q1 2025? (Zero if no)') %>"
+defaultValue = "<%= stringToHex('What will the annualized U.S. GDP growth rate be for Q1 2025?') %>"
 
 [setting.marketStartingTime]
 defaultValue = "1745586000"
@@ -35,19 +35,19 @@ defaultValue = "<%= stringToHex('bucket 5') %>"
 defaultValue = "<%= stringToHex('bucket 6') %>"
 
 [setting.bucket1Claim]
-defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -3.00% and -2.50%? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -3.00% and -2.50%? Zero if no:') %>"
 
 [setting.bucket2Claim]
-defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -2.51% and -2.00%? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -2.51% and -2.00%? Zero if no:') %>"
 
 [setting.bucket3Claim]
-defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -2.01% and -1.50%? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -2.01% and -1.50%? Zero if no:') %>"
 
 [setting.bucket4Claim]
-defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -1.51% and -1.00%? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -1.51% and -1.00%? Zero if no:') %>"
 
 [setting.bucket5Claim]
-defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -1.01% and -0.50%? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -1.01% and -0.50%? Zero if no:') %>"
 
 [setting.bucket6Claim]
-defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -0.51% and 0.00%? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was the annualized U.S. GDP growth rate be for Q1 2025 between -0.51% and 0.00%? Zero if no:') %>"

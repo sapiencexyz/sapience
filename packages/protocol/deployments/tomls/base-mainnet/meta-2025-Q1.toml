@@ -8,7 +8,7 @@ include = [
 ]
 
 [setting.claimStatement]
-defaultValue = "<%= stringToHex('What will Meta’s earnings per share (EPS) be for Q1 2025? (Zero if no)') %>"
+defaultValue = "<%= stringToHex('What will Meta’s earnings per share (EPS) be for Q1 2025?') %>"
 
 [setting.marketStartingTime]
 defaultValue = "1745586000"
@@ -32,17 +32,17 @@ defaultValue = "<%= stringToHex('bucket 4') %>"
 defaultValue = "<%= stringToHex('bucket 5') %>"
 
 [setting.bucket1Claim]
-defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 2.00 and 3.00? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 2.00 and 3.00? Zero if no:') %>"
 
 [setting.bucket2Claim]
-defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 3.01 and 4.00? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 3.01 and 4.00? Zero if no:') %>"
 
 [setting.bucket3Claim]
-defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 4.01 and 5.00? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 4.01 and 5.00? Zero if no:') %>"
 
 [setting.bucket4Claim]
-defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 5.01 and 6.00? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 5.01 and 6.00? Zero if no:') %>"
 
 [setting.bucket5Claim]
-defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 6.01 and 7.00? Zero if no') %>"
+defaultValue = "<%= stringToHex('Was Meta’s earnings per share (EPS) be for Q1 2025 between 6.01 and 7.00? Zero if no:') %>"
 
