@@ -1,6 +1,6 @@
 
 name="foil"
-version="1.0.3"
+version="1.0.4"
 preset="house-reps-2026"
 
 [var.settings]
