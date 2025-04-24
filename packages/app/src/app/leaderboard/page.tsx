@@ -170,14 +170,14 @@ const useGlobalLeaderboard = () => {
               .filter((pos: any) => pos.owner === position.owner);
 
             const uniquePositionIdsForOwner = new Set();
-            const uniquePositionsForOwner = [];
+            const uniquePositionsForOwner: any[] = [];
 
-            for (const ownerPosition of ownerPositions) {
+            ownerPositions.forEach((ownerPosition) => {
               if (!uniquePositionIdsForOwner.has(ownerPosition.id)) {
                 uniquePositionIdsForOwner.add(ownerPosition.id);
                 uniquePositionsForOwner.push(ownerPosition);
               }
-            }
+            });
 
             // Count all relevant transactions (trades and LP events)
             const totalTrades = uniquePositionsForOwner.reduce(

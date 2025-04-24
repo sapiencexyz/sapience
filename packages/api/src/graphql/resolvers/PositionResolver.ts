@@ -23,13 +23,15 @@ export class PositionResolver {
         .leftJoinAndSelect('marketGroup.resource', 'resource')
         .leftJoinAndSelect('position.transactions', 'transactions')
         .leftJoinAndSelect('transactions.event', 'event');
-      
+
       if (owner) {
-        positionsQuery = positionsQuery.where('LOWER(position.owner) = :owner', {
-          owner: owner?.toLowerCase(),
-        });
+        positionsQuery = positionsQuery.where(
+          'LOWER(position.owner) = :owner',
+          {
+            owner: owner?.toLowerCase(),
+          }
+        );
       }
-      
 
       if (chainId && marketAddress) {
         positionsQuery.andWhere(
