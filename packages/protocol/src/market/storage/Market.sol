@@ -135,10 +135,6 @@ library Market {
             "bondAmount must be greater than 0"
         );
         require(
-            marketParams.claimStatement.length > 0,
-            "claimStatement must be non-empty"
-        );
-        require(
             marketParams.uniswapPositionManager != address(0),
             "uniswapPositionManager must be a non-zero address"
         );

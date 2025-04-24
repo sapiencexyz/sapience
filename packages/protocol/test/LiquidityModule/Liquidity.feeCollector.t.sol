@@ -62,7 +62,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
             startingSqrtPriceX96,
             feeCollectors,
             MIN_TRADE_SIZE,
-            "" // empty claim statement, will default to market claim statement
+            "wstGwei/gas"
         );
 
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();

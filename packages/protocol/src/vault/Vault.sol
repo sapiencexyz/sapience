@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {SetUtil} from "@synthetixio/core-contracts/contracts/utils/SetUtil.sol";
 import "../market/external/univ3/TickMath.sol";
@@ -89,6 +91,11 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
     bool __VAULT_HALTED;
 
     /**
+     * claim statement (initial part) for the markets
+     */
+    bytes public claimStatement;
+
+    /**
      * only address that has permission to submit market settlement prices
      */
     address public settlementPriceSubmitter;
@@ -103,7 +110,8 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         uint256 _duration,
         uint256 _vaultIndex,
         uint256 _totalVaults,
-        address _settlementPriceSubmitter
+        address _settlementPriceSubmitter,
+        bytes memory _claimStatement
     ) ERC20(_name, _symbol) {
         market = IFoil(_marketAddress);
         collateralAsset = IERC20(_collateralAssetAddress);
@@ -115,6 +123,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
         upperBoundMultiplier = _upperBoundMultiplier;
         vaultInitializer = msg.sender;
         settlementPriceSubmitter = _settlementPriceSubmitter;
+        claimStatement = _claimStatement;
     }
 
     /// @notice initializes the first epoch
@@ -291,6 +300,17 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             int24 baseAssetMaxPriceTick
         ) = _calculateTickBounds(startingSqrtPriceX96);
 
+        // Build the claim statement for the new epoch
+        bytes memory claim = abi.encodePacked(
+            string(claimStatement),
+            " between timestamps ",
+            Strings.toString(startTime),
+            " and ",
+            Strings.toString(startTime + duration),
+            " (inclusive) is "
+        );
+
+        // Build the claim statement for the new epoch
         currentEpochId = IFoil(market).createEpoch(
             startTime,
             startTime + duration,
@@ -298,7 +318,7 @@ contract Vault is IVault, ERC20, ERC165, ReentrancyGuardUpgradeable {
             baseAssetMinPriceTick,
             baseAssetMaxPriceTick,
             block.timestamp,
-            "" // empty claim statement, will default to market claim statement
+            claim
         );
 
         if (collateralAmount > minimumCollateral) {

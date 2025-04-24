@@ -45,7 +45,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
             maxTick,
             startingSqrtPriceX96,
             minTradeSize,
-            "" // empty claim statement, will default to market claim statement
+            "wstGwei/gas"
         );
         foilAddress = address(foil);
 

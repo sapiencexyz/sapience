@@ -67,7 +67,7 @@ contract SettleTradeTest is TestTrade {
             28200,
             startingSqrtPriceX96,
             MIN_TRADE_SIZE,
-            "" // empty claim statement, will default to market claim statement
+            "wstGwei/gas"
         ); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 20_000_000 ether);

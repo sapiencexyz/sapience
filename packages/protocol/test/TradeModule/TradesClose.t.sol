@@ -73,7 +73,7 @@ contract TradePositionClose is TestTrade {
             EPOCH_UPPER_TICK,
             startingSqrtPriceX96,
             MIN_TRADE_SIZE,
-            "" // empty claim statement, will default to market claim statement
+            "wstGwei/gas"
         );
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);

@@ -46,6 +46,7 @@ library Epoch {
         uint256 maxPriceD18;
         uint256 feeRateD18;
         uint256 id;
+        bytes claimStatement;
     }
 
     function load(uint256 id) internal pure returns (Data storage epoch) {
@@ -70,6 +71,11 @@ library Epoch {
         IFoilStructs.MarketParams storage marketParams = market.marketParams;
 
         epoch = load(id);
+
+        require(
+            claimStatement.length > 0,
+            "claimStatement must be non-empty"
+        );
 
         // can only be called once
         if (epoch.startTime != 0) {
@@ -97,6 +103,9 @@ library Epoch {
         epoch.startTime = startTime;
         epoch.endTime = endTime;
 
+        // claim statement is the statement that will be used to assert the truth of the epoch
+        epoch.claimStatement = claimStatement;
+
         // copy over market parameters into epoch (clone them to prevent any changes to market marketParams)
         epoch.marketParams.feeRate = marketParams.feeRate;
         epoch.marketParams.assertionLiveness = marketParams.assertionLiveness;
@@ -107,13 +116,6 @@ library Epoch {
         epoch.marketParams.uniswapSwapRouter = marketParams.uniswapSwapRouter;
         epoch.marketParams.uniswapQuoter = marketParams.uniswapQuoter;
         epoch.marketParams.optimisticOracleV3 = marketParams.optimisticOracleV3;
-
-        // override claim statement if provided
-        if (claimStatement.length > 0) {
-            epoch.marketParams.claimStatement = claimStatement;
-        } else {
-            epoch.marketParams.claimStatement = marketParams.claimStatement;
-        }
 
         validateEpochBounds(
             epoch,

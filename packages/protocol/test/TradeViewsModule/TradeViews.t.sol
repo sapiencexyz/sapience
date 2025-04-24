@@ -46,7 +46,7 @@ contract TradeViews is TestTrade {
             EPOCH_UPPER_TICK,
             INITIAL_PRICE_SQRT,
             MIN_TRADE_SIZE,
-            "" // empty claim statement, will default to market claim statement
+            "wstGwei/gas"
         ); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);
