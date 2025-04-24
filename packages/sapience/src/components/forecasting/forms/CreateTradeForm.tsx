@@ -1,5 +1,6 @@
 import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Form,
@@ -11,12 +12,23 @@ import {
 } from '@foil/ui/components/ui/form';
 import { Input } from '@foil/ui/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
-import { useAccount, useSimulateContract } from 'wagmi';
+import {
+  useAccount,
+  useChainId,
+  useSimulateContract,
+  useSwitchChain,
+} from 'wagmi';
 
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
@@ -45,7 +57,7 @@ export interface TradeFormProps {
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-export function TradeForm({
+export function CreateTradeForm({
   marketDetails,
   isConnected = false,
   onConnectWallet,
@@ -54,6 +66,12 @@ export function TradeForm({
   const { toast } = useToast();
   const { baseTokenName, marketContractData, quoteTokenName } = useForecast();
   const { address: accountAddress } = useAccount();
+  const currentChainId = useChainId();
+  const {
+    switchChain,
+    isPending: isSwitchingChain,
+    error: switchChainError,
+  } = useSwitchChain();
 
   const {
     marketAddress,
@@ -63,6 +81,8 @@ export function TradeForm({
     collateralAssetAddress,
     numericMarketId,
   } = marketDetails;
+
+  const isChainMismatch = isConnected && currentChainId !== chainId;
 
   const { balance: walletBalance } = useTokenBalance({
     tokenAddress: collateralAssetAddress,
@@ -103,7 +123,12 @@ export function TradeForm({
     chainId,
     account: accountAddress || zeroAddress,
     query: {
-      enabled: !!marketAddress && !!marketAbi && sizeBigInt > BigInt(0),
+      enabled:
+        isConnected &&
+        !isChainMismatch &&
+        !!marketAddress &&
+        !!marketAbi &&
+        sizeBigInt > BigInt(0),
     },
   });
 
@@ -168,10 +193,11 @@ export function TradeForm({
     marketAddress,
     marketAbi,
     chainId,
+    numericMarketId,
     size: signedSizeBigInt,
     collateralAmount: estimatedCollateral,
     slippagePercent: slippageAsNumber,
-    enabled: isConnected && !!marketAddress,
+    enabled: isConnected && !isChainMismatch && !!marketAddress,
     collateralTokenAddress: collateralAssetAddress,
   });
 
@@ -210,15 +236,36 @@ export function TradeForm({
         variant: 'destructive',
       });
     }
-  }, [isTradeError, tradeError, toast]);
+  }, [isTradeError, tradeError, switchChainError, toast]);
 
   const submitForm = async () => {
+    if (!isConnected) {
+      console.warn('Attempted to submit form while disconnected.');
+      return;
+    }
+
+    if (isChainMismatch) {
+      if (switchChain) {
+        switchChain({ chainId });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Network switching is not available.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
+
     await createTrade();
   };
 
   const getButtonState = () => {
     if (!isConnected) {
       return { text: 'Connect Wallet', loading: false };
+    }
+    if (isSwitchingChain) {
+      return { text: 'Switching Network...', loading: true };
     }
     if (quoteLoading && sizeBigInt > BigInt(0)) {
       return { text: 'Generating Quote...', loading: true };
@@ -232,160 +279,109 @@ export function TradeForm({
     if (needsApproval && estimatedCollateralBI > BigInt(0)) {
       return { text: `Approve & Open ${direction}`, loading: false };
     }
-    // Default case (needsApproval false or estimatedCollateralBI <= 0, or already approved)
     return { text: `Open ${direction}`, loading: false };
   };
 
   const calculateIsSubmitDisabled = () => {
-    if (!isConnected) return true; // Explicitly disable if not connected, though button changes
-    if (quoteLoading && sizeBigInt > BigInt(0)) return true;
-    if (isCreatingTrade) return true;
-    if (isApproving) return true;
-    if (sizeBigInt === BigInt(0)) return true;
-    if (!formState.isValid) return true;
-    // Disable if quote is required but not available or errored
-    if (sizeBigInt > BigInt(0)) {
-      if (estimatedCollateralBI <= BigInt(0) && !quoteError) return true; // Quote needed but not ready
-      if (quoteError) return true; // Quote resulted in error
-    }
-    return false;
+    return (
+      !isConnected ||
+      isSwitchingChain ||
+      (quoteLoading && sizeBigInt > BigInt(0)) ||
+      isCreatingTrade ||
+      isApproving ||
+      sizeBigInt === BigInt(0) ||
+      !formState.isValid ||
+      (!isChainMismatch && sizeBigInt > BigInt(0) && !!quoteError)
+    );
   };
 
   const buttonState = getButtonState();
-  const isSubmitDisabled = calculateIsSubmitDisabled();
+  const isSubmitButtonDisabled = calculateIsSubmitDisabled();
 
   const handleDirectionChange = (value: string) => {
     setValue('direction', value as 'Long' | 'Short', { shouldValidate: true });
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={handleSubmit(submitForm)} className="space-y-4">
-        <Tabs
-          defaultValue="Long"
-          value={direction}
-          onValueChange={handleDirectionChange}
-          className="mb-4"
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="Long">Long</TabsTrigger>
-            <TabsTrigger value="Short">Short</TabsTrigger>
-          </TabsList>
-        </Tabs>
+    <TooltipProvider>
+      <Form {...form}>
+        <form onSubmit={handleSubmit(submitForm)} className="space-y-4">
+          <Tabs
+            defaultValue="Long"
+            value={direction}
+            onValueChange={handleDirectionChange}
+            className="mb-4"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="Long">Long</TabsTrigger>
+              <TabsTrigger value="Short">Short</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-        <div className="mb-6">
-          <FormField
-            control={control}
-            name="size"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Size</FormLabel>
-                <FormControl>
-                  <div className="flex">
-                    <Input
-                      placeholder="0.0"
-                      type="number"
-                      step="any"
-                      className="rounded-r-none"
-                      {...field}
-                    />
-                    <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
-                      {baseTokenName}
+          <div className="mb-8">
+            <FormField
+              control={control}
+              name="size"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Size</FormLabel>
+                  <FormControl>
+                    <div className="flex">
+                      <Input
+                        placeholder="0.0"
+                        type="number"
+                        step="any"
+                        className="rounded-r-none"
+                        {...field}
+                      />
+                      <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
+                        {baseTokenName}
+                      </div>
                     </div>
-                  </div>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <SlippageTolerance />
-
-        <div className="mt-6">
-          {isConnected ? (
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isSubmitDisabled}
-            >
-              {buttonState.loading && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              {buttonState.text}
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              className="w-full"
-              size="lg"
-              onClick={onConnectWallet}
-            >
-              Connect Wallet
-            </Button>
-          )}
-          {quoteError && sizeBigInt > BigInt(0) && (
-            <p className="text-red-500 text-sm text-center mt-2 font-medium">
-              <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
-              Insufficient liquidity. Try a smaller size.
-            </p>
-          )}
-          {showPriceImpactWarning && (
-            <p className="text-red-500 text-sm text-center mt-2 font-medium">
-              <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
-              Very high price impact (
-              {Number(priceImpact.toFixed(2)).toString()}%)
-            </p>
-          )}
-        </div>
+            />
+          </div>
 
-        <AnimatePresence mode="wait">
-          {sizeBigInt > BigInt(0) && !quoteError && (
-            <div className="pt-2">
-              {quoteLoading ? (
-                <motion.div
-                  key="loader"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="my-2 flex flex-col justify-center items-center"
+          <div className="mb-8">
+            <SlippageTolerance />
+          </div>
+
+          <AnimatePresence>
+            {sizeBigInt > BigInt(0) && !quoteError && (
+              <motion.div
+                key="details-container"
+                layout
+                initial={{ opacity: 0, height: 0, transformOrigin: 'top' }}
+                animate={{ opacity: 1, height: 'auto', transformOrigin: 'top' }}
+                exit={{ opacity: 0, height: 0, transformOrigin: 'top' }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="mb-6 relative overflow-hidden"
+              >
+                <div
+                  className={`transition-opacity duration-150 ${quoteLoading ? 'opacity-30' : 'opacity-100'}`}
                 >
-                  <LottieLoader width={40} height={40} />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Generating Quote...
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="details"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <h4 className="text-sm font-medium mb-2 flex items-center">
+                  <h4 className="text-sm font-medium mb-2.5 flex items-center">
                     Order Quote
                   </h4>
-                  <div className="flex flex-col gap-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Direction</span>
-                      <span
-                        className={
-                          direction === 'Long'
-                            ? 'text-green-500'
-                            : 'text-red-500'
-                        }
-                      >
-                        {direction}
-                      </span>
-                    </div>
-
+                  <div className="flex flex-col gap-2.5 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Size</span>
-                      <span>
+                      <span className="flex items-center">
+                        <Badge
+                          variant="outline"
+                          className={`mr-2 px-1.5 py-0.5 text-xs font-medium ${
+                            direction === 'Long'
+                              ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                              : 'border-red-500/40 bg-red-500/10 text-red-600'
+                          }`}
+                        >
+                          {direction}
+                        </Badge>
                         <NumberDisplay value={sizeInput || '0'} />{' '}
-                        {baseTokenName}
+                        <span className="ml-1">{baseTokenName}</span>
                       </span>
                     </div>
 
@@ -395,34 +391,37 @@ export function TradeForm({
                           Position Collateral
                         </span>
                         <span>
-                          0 {collateralAssetTicker} →{' '}
-                          <NumberDisplay value={estimatedCollateral} />{' '}
+                          0 → <NumberDisplay value={estimatedCollateral} />{' '}
                           {collateralAssetTicker}
                         </span>
                       </div>
                     )}
 
                     {quotedFillPriceBI > BigInt(0) && (
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-baseline">
                         <span className="text-muted-foreground">
                           Estimated Fill Price
                         </span>
-                        <span>
-                          <NumberDisplay value={estimatedFillPrice} />{' '}
+                        <span className="flex items-baseline">
+                          <NumberDisplay value={estimatedFillPrice} />
                           {quoteTokenName}
-                        </span>
-                      </div>
-                    )}
-
-                    {priceImpact > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Estimated Price Impact
-                        </span>
-                        <span
-                          className={`${showPriceImpactWarning ? 'text-red-500' : ''}`}
-                        >
-                          {Number(priceImpact.toFixed(2)).toString()}%
+                          {priceImpact > 0 && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className={`ml-2 text-xs cursor-help ${showPriceImpactWarning ? 'text-red-500' : 'text-muted-foreground'}`}
+                                >
+                                  {Number(priceImpact.toFixed(2)).toString()}%
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>
+                                  This is the impact your order will make on the
+                                  current market price.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </span>
                       </div>
                     )}
@@ -433,30 +432,54 @@ export function TradeForm({
                           Wallet Balance
                         </span>
                         <span>
-                          <NumberDisplay value={walletBalance} />{' '}
-                          {collateralAssetTicker}
-                        </span>
-                      </div>
-                    )}
-
-                    {isConnected && estimatedCollateralBI > BigInt(0) && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Est. Resulting Balance
-                        </span>
-                        <span>
+                          <NumberDisplay value={walletBalance} /> →{' '}
                           <NumberDisplay value={estimatedResultingBalance} />{' '}
                           {collateralAssetTicker}
                         </span>
                       </div>
                     )}
                   </div>
-                </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="mt-0">
+            {isConnected ? (
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={isSubmitButtonDisabled}
+              >
+                {buttonState.loading && (
+                  <LottieLoader className="invert" width={20} height={20} />
+                )}
+                {buttonState.text}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="w-full"
+                size="lg"
+                onClick={onConnectWallet}
+              >
+                Connect Wallet
+              </Button>
+            )}
+            {isConnected &&
+              !isChainMismatch &&
+              quoteError &&
+              sizeBigInt > BigInt(0) && (
+                <p className="text-red-500 text-sm text-center mt-2 font-medium">
+                  <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
+                  Insufficient liquidity or error fetching quote. Try a smaller
+                  size.
+                </p>
               )}
-            </div>
-          )}
-        </AnimatePresence>
-      </form>
-    </Form>
+          </div>
+        </form>
+      </Form>
+    </TooltipProvider>
   );
 }

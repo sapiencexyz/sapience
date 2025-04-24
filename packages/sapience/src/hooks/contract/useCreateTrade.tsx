@@ -12,6 +12,7 @@ export interface CreateTradeParams {
   marketAddress: `0x${string}`;
   marketAbi: Abi; // Assuming ABI is passed in
   chainId?: number;
+  numericMarketId: number; // Added market ID
   // Market ID might not be needed directly for createTraderPosition, depends on contract
   size: bigint; // Signed size (positive for long, negative for short), already scaled (e.g., 18 decimals)
   collateralAmount: string; // Estimated/max collateral as a string (e.g., "100.5") for display and approval
@@ -46,6 +47,7 @@ export function useCreateTrade({
   marketAddress,
   marketAbi,
   chainId,
+  numericMarketId, // Added market ID
   size,
   collateralAmount, // User facing max collateral (string)
   slippagePercent,
@@ -199,6 +201,7 @@ export function useCreateTrade({
 
       console.log('Calling createTraderPosition with:', {
         marketAddress,
+        numericMarketId, // Log market ID
         size: size.toString(), // Log as string for readability
         limitCollateral: limitCollateral.toString(), // Log as string
         deadline: deadline.toString(),
@@ -210,13 +213,8 @@ export function useCreateTrade({
         abi: marketAbi,
         functionName: 'createTraderPosition',
         chainId,
-        args: [
-          {
-            size,
-            limitCollateral,
-            deadline,
-          },
-        ],
+        // Pass arguments as a flat array based on expected signature
+        args: [numericMarketId, size, limitCollateral, deadline],
         // Consider adding gas estimation or manual limit if needed
       });
 
@@ -291,10 +289,12 @@ export function useCreateTrade({
 
   // Reset processing state on final success or error
   useEffect(() => {
-    if (isSuccess || error) {
+    // Only update state if it needs changing
+    if ((isSuccess || error) && processingTx) {
       setProcessingTx(false);
     }
-  }, [isSuccess, error]);
+    // Keep dependencies simple: effect checks internal state (processingTx)
+  }, [isSuccess, error, processingTx]);
 
   const isLoading =
     isWritePending || isConfirming || processingTx || isApproving;
