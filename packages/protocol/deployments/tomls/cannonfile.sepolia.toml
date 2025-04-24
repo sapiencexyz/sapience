@@ -88,7 +88,7 @@ highlight=true
 highlight=true
 artifact="Vault"
 from="<%= settings.owner %>"
-args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>", "<%= settings.owner %>" ]
+args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>", "<%= settings.owner %>", "<%= settings.claimStatement %>" ]
 depends = ['router.FoilYin', 'pull.wstETH', 'var.settings']
 
 [invoke.initializeMarketForVaultYin]
@@ -101,7 +101,7 @@ args=[
   [],
   "<%= VaultYin.address %>",
   "<%= settings.minTradeSize %>",
-  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
 depends=["deploy.VaultYin"]
 
@@ -110,7 +110,7 @@ depends=["deploy.VaultYin"]
 highlight=true
 artifact="Vault"
 from="<%= settings.owner %>"
-args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>", "<%= settings.owner %>" ]
+args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= imports.wstETH.contracts.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>", "<%= settings.owner %>", "<%= settings.claimStatement %>" ]
 depends = ['router.FoilYang', 'pull.wstETH', 'var.settings']
 
 [invoke.initializeMarketForVaultYang]
@@ -123,7 +123,7 @@ args=[
   [],
   "<%= VaultYang.address %>", 
   "<%= settings.minTradeSize %>",
-  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.USDC.contracts.Token.address %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "0x1238536071E1c677A632429e3655c799b22cDA52", uniswapSwapRouter = "0x65669fe35312947050c450bd5d36e6361f85ec12", uniswapQuoter = "0xEd1f6473345F45b75F8179591dd5bA1888cf2FB3", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
 depends=["deploy.VaultYang"]
 
