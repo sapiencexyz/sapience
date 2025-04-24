@@ -14,6 +14,7 @@ import type React from 'react';
 import { useForm } from 'react-hook-form';
 
 import { useForecast } from '~/lib/context/ForecastProvider';
+import { tickToPrice } from '~/lib/utils/tickUtils';
 
 import type { LiquidityFormMarketDetails } from './CreateLiquidityForm';
 
@@ -133,18 +134,18 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FormLabel className="text-xs text-muted-foreground">
-                Low Price Tick
+                Low Price
               </FormLabel>
               <div className="border rounded-md p-2.5 bg-muted/30 text-sm">
-                {marketDetails.lowPriceTick}
+                {tickToPrice(Number(marketDetails.lowPriceTick)).toFixed(6)}
               </div>
             </div>
             <div>
               <FormLabel className="text-xs text-muted-foreground">
-                High Price Tick
+                High Price
               </FormLabel>
               <div className="border rounded-md p-2.5 bg-muted/30 text-sm">
-                {marketDetails.highPriceTick}
+                {tickToPrice(Number(marketDetails.highPriceTick)).toFixed(6)}
               </div>
             </div>
           </div>
