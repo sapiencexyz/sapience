@@ -5,6 +5,7 @@ import { Button } from '@foil/ui/components/ui/button';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarTrigger,
   useSidebar,
 } from '@foil/ui/components/ui/sidebar';
@@ -171,6 +172,32 @@ const Header = () => {
         <SidebarContent>
           <NavLinks />
         </SidebarContent>
+        <SidebarFooter>
+          <div className="flex items-start gap-2 text-xs w-full p-2 rounded-lg">
+            <span>🏗️</span>
+            <div>
+              We&apos;re{' '}
+              <a
+                href="https://github.com/foilxyz/foil/tree/main/packages/sapience"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline-offset-2 underline"
+              >
+                building in public
+              </a>{' '}
+              and{' '}
+              <a
+                href="https://discord.gg/Hn2vzMDCSs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline-offset-2 underline"
+              >
+                want your feedback
+              </a>
+              .
+            </div>
+          </div>
+        </SidebarFooter>
       </Sidebar>
     </>
   );

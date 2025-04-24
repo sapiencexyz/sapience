@@ -1,15 +1,23 @@
 'use client';
 
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
+import { Button } from '@foil/ui/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@foil/ui/components/ui/dropdown-menu';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronDown, ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
+import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
-import ComingSoonScrim from '~/components/shared/ComingSoonScrim';
-import { useMarket } from '~/hooks/graphql/useMarket';
+import PositionSelector from '~/components/forecasting/PositionSelector';
+import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -19,7 +27,10 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 });
 
 const SimpleTradeWrapper = dynamic(
-  () => import('~/components/forecasting/SimpleTradeWrapper'),
+  () =>
+    import('~/components/forecasting/SimpleTradeWrapper').then(
+      (mod) => mod.default
+    ),
   {
     ssr: false,
     loading: () => (
@@ -38,29 +49,30 @@ const SimpleLiquidityWrapper = dynamic(
   }
 );
 
-const ForecastingDetailPage = () => {
-  const params = useParams();
+// Main content component that consumes the forecast context
+const ForecastContent = () => {
   const router = useRouter();
-  const marketId = params.marketId as string;
+  const params = useParams();
+  const searchParams = useSearchParams();
   const chainShortName = params.chainShortName as string;
+  const positionId = searchParams.get('positionId');
 
   const {
     marketData,
     isLoadingMarket,
+    isLoadingMarketContract,
     displayQuestion,
     marketQuestionDisplay,
     chainId,
     marketAddress,
     numericMarketId,
-  } = useMarket({ chainShortName, marketId });
-
-  // Extract resource slug
-  const resourceSlug = marketData?.marketGroup?.resource?.slug;
+    getPositionById,
+  } = useForecast();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
   );
-  const [chartType] = useState<ChartType>(ChartType.PRICE);
+  const [chartType, setChartType] = useState<ChartType>(ChartType.PRICE);
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
   const [selectedPrices, setSelectedPrices] = useState<
     Record<LineType, boolean>
@@ -70,6 +82,12 @@ const ForecastingDetailPage = () => {
     [LineType.ResourcePrice]: false,
     [LineType.TrailingAvgPrice]: false,
   });
+
+  // Extract resource slug
+  const resourceSlug = marketData?.marketGroup?.resource?.slug;
+
+  // Determine the selected position if positionId exists
+  const selectedPosition = positionId ? getPositionById(positionId) : null;
 
   // Handler for updating selected prices
   const handlePriceSelection = (line: LineType, selected: boolean) => {
@@ -81,8 +99,16 @@ const ForecastingDetailPage = () => {
     });
   };
 
-  // Loader now only depends on market data loading
-  if (isLoadingMarket) {
+  // Set active tab based on URL position ID (only relevant if positionId exists initially)
+  useEffect(() => {
+    if (selectedPosition) {
+      // Set tab based on position kind (1 = Liquidity, 2 = Trade)
+      setActiveFormTab(selectedPosition.kind === 1 ? 'liquidity' : 'trade');
+    }
+  }, [selectedPosition]);
+
+  // Show loader while market data is loading
+  if (isLoadingMarket || isLoadingMarketContract) {
     return (
       <div className="flex justify-center items-center min-h-[100dvh] w-full">
         <LottieLoader width={32} height={32} />
@@ -118,31 +144,77 @@ const ForecastingDetailPage = () => {
           )}
           <div className="flex flex-col md:flex-row gap-12">
             <div className="flex flex-col w-full relative">
-              <div className="w-full h-full">
-                <PriceChart
-                  market={{
-                    marketId: numericMarketId,
-                    chainId,
-                    address: marketAddress,
-                    quoteTokenName: marketData?.marketGroup?.quoteTokenName,
-                  }}
-                  selectedInterval={selectedInterval}
-                  selectedPrices={selectedPrices}
-                  resourceSlug={resourceSlug}
-                />
+              <div className="w-full h-[500px]">
+                {chartType === ChartType.PRICE && (
+                  <PriceChart
+                    market={{
+                      marketId: numericMarketId!,
+                      chainId: chainId!,
+                      address: marketAddress!,
+                      quoteTokenName:
+                        marketData?.marketGroup?.quoteTokenName || undefined,
+                    }}
+                    selectedInterval={selectedInterval}
+                    selectedPrices={selectedPrices}
+                    resourceSlug={resourceSlug}
+                  />
+                )}
+                {chartType === ChartType.ORDER_BOOK && (
+                  <OrderBookChart
+                    chainId={chainId!}
+                    poolAddress={
+                      marketData?.poolAddress as `0x${string}` | undefined
+                    }
+                    baseAssetMinPriceTick={marketData?.baseAssetMinPriceTick}
+                    baseAssetMaxPriceTick={marketData?.baseAssetMaxPriceTick}
+                    quoteTokenName={
+                      marketData?.marketGroup?.quoteTokenName || undefined
+                    }
+                    baseTokenName={
+                      marketData?.marketGroup?.baseTokenName || undefined
+                    }
+                    className="h-full"
+                  />
+                )}
               </div>
               <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
                 <div className="flex flex-row flex-wrap gap-3 w-full items-center">
+                  <div className="order-1 sm:order-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-1"
+                        >
+                          {chartType}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem
+                          onSelect={() => setChartType(ChartType.PRICE)}
+                        >
+                          {ChartType.PRICE}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => setChartType(ChartType.ORDER_BOOK)}
+                        >
+                          {ChartType.ORDER_BOOK}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
                   {chartType === ChartType.PRICE && (
                     <>
-                      <div className="order-2 sm:order-1">
+                      <div className="order-2 sm:order-2 ml-auto">
                         <IntervalSelector
                           selectedInterval={selectedInterval}
                           setSelectedInterval={setSelectedInterval}
                         />
                       </div>
                       {marketData?.marketGroup?.resource?.slug && (
-                        <div className="order-1 sm:order-2 sm:ml-auto">
+                        <div className="order-3 sm:order-3">
                           <PriceSelector
                             selectedPrices={selectedPrices}
                             setSelectedPrices={handlePriceSelection}
@@ -160,42 +232,54 @@ const ForecastingDetailPage = () => {
                   <h3 className="text-3xl font-normal mb-4">
                     Prediction Market
                   </h3>
-                  <div className="flex w-full border-b">
-                    <button
-                      type="button"
-                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                        activeFormTab === 'trade'
-                          ? 'border-b-2 border-primary text-primary'
-                          : 'text-muted-foreground'
-                      }`}
-                      onClick={() => setActiveFormTab('trade')}
-                    >
-                      Trade
-                    </button>
-                    <button
-                      type="button"
-                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                        activeFormTab === 'liquidity'
-                          ? 'border-b-2 border-primary text-primary'
-                          : 'text-muted-foreground'
-                      }`}
-                      onClick={() => setActiveFormTab('liquidity')}
-                    >
-                      Liquidity
-                    </button>
-                  </div>
-                  <div className="mt-4 relative p-1">
-                    <ComingSoonScrim className="absolute rounded-lg" />
-                    {activeFormTab === 'trade' && <SimpleTradeWrapper />}
-                    {activeFormTab === 'liquidity' && (
+                  <PositionSelector />
+                  {!positionId && (
+                    <div className="flex w-full border-b">
+                      <button
+                        type="button"
+                        className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+                          activeFormTab === 'trade'
+                            ? 'border-b-2 border-primary text-primary'
+                            : 'text-muted-foreground'
+                        }`}
+                        onClick={() => setActiveFormTab('trade')}
+                      >
+                        Trade
+                      </button>
+                      <button
+                        type="button"
+                        className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+                          activeFormTab === 'liquidity'
+                            ? 'border-b-2 border-primary text-primary'
+                            : 'text-muted-foreground'
+                        }`}
+                        onClick={() => setActiveFormTab('liquidity')}
+                      >
+                        Liquidity
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-4 relative">
+                    {/* If positionId exists, show form based on selectedPosition.kind */}
+                    {selectedPosition && selectedPosition.kind === 2 && (
+                      <SimpleTradeWrapper
+                        positionId={positionId || undefined}
+                      />
+                    )}
+                    {selectedPosition && selectedPosition.kind === 1 && (
                       <SimpleLiquidityWrapper
-                        collateralAssetTicker="sUSDS"
-                        baseTokenName={
-                          marketData?.marketGroup?.baseTokenName || 'Yes'
-                        }
-                        quoteTokenName={
-                          marketData?.marketGroup?.quoteTokenName || 'No'
-                        }
+                        positionId={positionId || undefined}
+                      />
+                    )}
+                    {/* If no positionId, show form based on selected tab */}
+                    {!selectedPosition && activeFormTab === 'trade' && (
+                      <SimpleTradeWrapper
+                        positionId={positionId || undefined}
+                      />
+                    )}
+                    {!selectedPosition && activeFormTab === 'liquidity' && (
+                      <SimpleLiquidityWrapper
+                        positionId={positionId || undefined}
                       />
                     )}
                   </div>
@@ -219,6 +303,19 @@ const ForecastingDetailPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Wrapper component that provides the forecast context
+const ForecastingDetailPage = () => {
+  const params = useParams();
+  const marketId = params.marketId as string;
+  const chainShortName = params.chainShortName as string;
+
+  return (
+    <ForecastProvider chainShortName={chainShortName} marketId={marketId}>
+      <ForecastContent />
+    </ForecastProvider>
   );
 };
 

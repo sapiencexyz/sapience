@@ -1,27 +1,80 @@
-import type { TradeFormValues } from '@foil/ui';
-import { TradeForm } from '@foil/ui';
-import { useToast } from '@foil/ui/hooks/use-toast';
 import type React from 'react';
+import { useAccount } from 'wagmi';
 
-const SimpleTradeWrapper: React.FC = () => {
-  const { toast } = useToast();
+import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
+import { useForecast } from '~/lib/context/ForecastProvider';
 
-  const handleTradeSubmit = (data: TradeFormValues) => {
-    // In a real implementation, you would handle the trade logic here
-    // For example, call your contract functions
+import { CreateTradeForm, ModifyTradeForm } from './forms';
+import type { TradeFormMarketDetails } from './forms/CreateTradeForm';
 
-    toast({
-      title: 'Trade submitted',
-      description: `Size: ${data.size}, Direction: ${data.direction}, Slippage: ${data.slippage}%`,
-    });
+interface SimpleTradeWrapperProps {
+  positionId?: string;
+}
+
+const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
+  positionId,
+}) => {
+  const { isConnected } = useAccount();
+  const { setIsOpen } = useConnectWallet();
+
+  const {
+    collateralAssetTicker,
+    marketAddress,
+    numericMarketId,
+    chainId,
+    abi,
+    collateralAssetAddress,
+    getPositionById,
+  } = useForecast();
+
+  const position = positionId ? getPositionById(positionId) : null;
+  const hasPosition = !!position && position.kind === 2;
+
+  // Add logging to check state
+  console.log('SimpleTradeWrapper state:', {
+    positionId,
+    position,
+    hasPosition,
+    isConnected,
+  });
+
+  const handleConnectWallet = () => {
+    setIsOpen(true);
+  };
+
+  const handleSuccess = (txHash: `0x${string}`) => {
+    console.log('Trade transaction submitted, txHash:', txHash);
+  };
+
+  const marketDetails: TradeFormMarketDetails = {
+    marketAddress: marketAddress as `0x${string}`,
+    numericMarketId: numericMarketId as number,
+    chainId: chainId as number,
+    marketAbi: abi,
+    collateralAssetTicker,
+    collateralAssetAddress,
   };
 
   return (
     <div className="h-full">
-      <TradeForm
-        onTradeSubmit={handleTradeSubmit}
-        collateralAssetTicker="sUSDS"
-      />
+      {hasPosition ? (
+        <div className="space-y-4">
+          <ModifyTradeForm
+            marketDetails={marketDetails}
+            isConnected={isConnected}
+            onConnectWallet={handleConnectWallet}
+            onSuccess={handleSuccess}
+            positionId={positionId as string}
+          />
+        </div>
+      ) : (
+        <CreateTradeForm
+          marketDetails={marketDetails}
+          isConnected={isConnected}
+          onConnectWallet={handleConnectWallet}
+          onSuccess={handleSuccess}
+        />
+      )}
     </div>
   );
 };
