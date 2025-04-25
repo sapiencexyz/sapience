@@ -4,7 +4,11 @@ import { createContext, useContext } from 'react';
 import type { Address } from 'viem';
 
 import type { UsePositionsResult } from '~/hooks/contract';
-import { useMarketRead, usePositions } from '~/hooks/contract';
+import {
+  useMarketRead,
+  useMarketTickSpacing,
+  usePositions,
+} from '~/hooks/contract';
 import { useMarket } from '~/hooks/graphql/useMarket';
 
 interface ForecastContextType {
@@ -16,6 +20,8 @@ interface ForecastContextType {
   chainId: number | null;
   marketAddress: Address | null;
   numericMarketId: number | null;
+  tickSpacing: number;
+  isLoadingTickSpacing: boolean;
 
   // Market contract data
   marketContractData: any;
@@ -81,6 +87,16 @@ export function ForecastProvider({
     abi,
   });
 
+  // Get the market tick spacing
+  const { tickSpacing, isLoading: isLoadingTickSpacing } = useMarketTickSpacing(
+    {
+      marketAddress: marketAddress as Address,
+      abi,
+      chainId,
+      enabled: !!marketAddress && !!abi,
+    }
+  );
+
   const {
     lpPositions,
     traderPositions,
@@ -131,6 +147,8 @@ export function ForecastProvider({
     quoteTokenName,
     minTick,
     maxTick,
+    tickSpacing,
+    isLoadingTickSpacing,
 
     // User Positions (if wallet connected)
     lpPositions,

@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { TickMath } from '@uniswap/v3-sdk';
+import { useEffect, useMemo, useState } from 'react';
 import { useReadContract } from 'wagmi';
-
-import { priceToSqrtPriceX96 } from '~/lib/utils/tickUtils';
 
 import { useSqrtPriceX96 } from './useSqrtPriceX96';
 
@@ -15,13 +14,13 @@ interface QuoteResult {
 interface CreateLiquidityQuoterProps {
   marketAddress?: `0x${string}`;
   collateralAmount: string;
-  lowPriceInput: string;
-  highPriceInput: string;
-  epochId?: number;
+  lowTick: number;
+  highTick: number;
   enabled?: boolean;
   chainId?: number;
   marketAbi: any;
   marketId: bigint;
+  tickSpacing?: number;
 }
 
 // Type for the quoteLiquidityPositionTokens return value
@@ -33,13 +32,13 @@ type QuoteLiquidityResult = readonly [bigint, bigint, bigint];
 export function useCreateLiquidityQuoter({
   marketAddress,
   collateralAmount,
-  lowPriceInput,
-  highPriceInput,
-  epochId = 0,
+  lowTick,
+  highTick,
   enabled = true,
   chainId,
   marketAbi,
   marketId,
+  tickSpacing = 200, // Default tick spacing
 }: CreateLiquidityQuoterProps): QuoteResult {
   const [error, setError] = useState<Error | null>(null);
   const [quoteResult, setQuoteResult] = useState<{
@@ -55,13 +54,25 @@ export function useCreateLiquidityQuoter({
   const isValidCollateral =
     !isNaN(collateralAmountNumber) && collateralAmountNumber > 0;
 
-  const lowPrice = parseFloat(lowPriceInput);
-  const highPrice = parseFloat(highPriceInput);
-  const arePricesValid =
-    !isNaN(lowPrice) && !isNaN(highPrice) && lowPrice < highPrice;
+  // Convert price inputs to ticks and then to sqrt ratios
+  const { sqrtPriceAX96, sqrtPriceBX96 } = useMemo(() => {
+    // Use TickMath to get the exact sqrtRatio values that Uniswap uses
+    const lowSqrtRatio = BigInt(
+      TickMath.getSqrtRatioAtTick(lowTick).toString()
+    );
+    const highSqrtRatio = BigInt(
+      TickMath.getSqrtRatioAtTick(highTick).toString()
+    );
+
+    return {
+      sqrtPriceAX96: lowSqrtRatio,
+      sqrtPriceBX96: highSqrtRatio,
+    };
+  }, [lowTick, highTick, tickSpacing]);
 
   // Check if all inputs are valid
-  const inputsAreValid = isValidCollateral && arePricesValid;
+  const inputsAreValid =
+    isValidCollateral && sqrtPriceAX96 > BigInt(0) && sqrtPriceBX96 > BigInt(0);
 
   // Use the shared hook to fetch the current sqrt price
   const {
@@ -76,18 +87,21 @@ export function useCreateLiquidityQuoter({
     marketAbi,
   });
 
-  // Convert prices to sqrt ratios
-  const sqrtPriceAX96 = arePricesValid
-    ? priceToSqrtPriceX96(lowPrice)
-    : BigInt(0);
-  const sqrtPriceBX96 = arePricesValid
-    ? priceToSqrtPriceX96(highPrice)
-    : BigInt(0);
-
   // Prepare collateral amount with proper scaling (assuming 18 decimals)
   const depositedCollateralAmount = isValidCollateral
     ? BigInt(Math.floor(collateralAmountNumber * 1e18))
     : BigInt(0);
+
+  if (isValidCollateral) {
+    console.log(
+      'useCreateLiquidityQuoter args:',
+      BigInt(marketId),
+      depositedCollateralAmount,
+      currentSqrtPrice,
+      sqrtPriceAX96, // Use converted sqrt price
+      sqrtPriceBX96 // Use converted sqrt price
+    );
+  }
 
   // Fetch the quote from the contract
   const {
@@ -100,11 +114,11 @@ export function useCreateLiquidityQuoter({
     abi: marketAbi,
     functionName: 'quoteLiquidityPositionTokens',
     args: [
-      BigInt(epochId),
+      BigInt(marketId),
       depositedCollateralAmount,
       currentSqrtPrice,
-      sqrtPriceAX96,
-      sqrtPriceBX96,
+      sqrtPriceAX96, // Use converted sqrt price
+      sqrtPriceBX96, // Use converted sqrt price
     ],
     chainId,
     query: {
@@ -119,6 +133,7 @@ export function useCreateLiquidityQuoter({
   // Update the quote result when data changes
   useEffect(() => {
     if (quoteData) {
+      console.log('quoteData', quoteData);
       // Safely cast quoteData to the expected type
       const typedQuoteData = quoteData as QuoteLiquidityResult;
       setQuoteResult({

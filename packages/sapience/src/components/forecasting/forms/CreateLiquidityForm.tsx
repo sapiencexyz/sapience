@@ -18,6 +18,8 @@ import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateLP, useCreateLiquidityQuoter } from '~/hooks/contract';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
+import { useForecast } from '~/lib/context/ForecastProvider';
+import { priceToTick } from '~/lib/utils/tickUtils';
 
 import type { WalletData } from './ModifyLiquidityForm';
 
@@ -50,6 +52,8 @@ export function CreateLiquidityForm({
   const { isConnected, walletBalance, onConnectWallet } = walletData;
   const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false);
   const successHandled = useRef(false);
+  // Get the tickSpacing from the ForecastProvider context
+  const { tickSpacing: marketTickSpacing } = useForecast();
 
   const {
     marketAddress,
@@ -67,10 +71,14 @@ export function CreateLiquidityForm({
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
     useState(walletBalance);
 
+  // Use the tick spacing from the market contract, fallback to 200 if not available
+  const tickSpacing = marketTickSpacing || 200;
+
   // Pass tick values and callback to the form hook
   const form = useLiquidityForm({
     lowPriceTick,
     highPriceTick,
+    tickSpacing, // Pass the tick spacing to the form hook
   });
 
   const { control, watch, handleSubmit } = form;
@@ -79,6 +87,10 @@ export function CreateLiquidityForm({
   const lowPriceInput = watch('lowPriceInput');
   const highPriceInput = watch('highPriceInput');
   const slippage = watch('slippage');
+
+  // Convert price inputs to tick values using the market tick spacing
+  const lowTick = priceToTick(parseFloat(lowPriceInput || '0'), tickSpacing);
+  const highTick = priceToTick(parseFloat(highPriceInput || '0'), tickSpacing);
 
   // Ensure slippage is a valid number
   const slippageAsNumber = slippage ? Number(slippage) : 0.5;
@@ -105,12 +117,13 @@ export function CreateLiquidityForm({
   } = useCreateLiquidityQuoter({
     marketAddress: marketAddress || ('0x0' as `0x${string}`),
     collateralAmount: depositAmount,
-    lowPriceInput,
-    highPriceInput,
+    lowTick,
+    highTick,
     enabled: isConnected && !!marketAddress,
     chainId,
     marketAbi,
     marketId,
+    tickSpacing, // Pass the tick spacing to the quoter
   });
 
   // Use the enhanced LP creation hook (now handles token approval internally)
@@ -129,8 +142,8 @@ export function CreateLiquidityForm({
     chainId,
     marketId,
     collateralAmount: depositAmount,
-    lowPriceTick: lowPriceTick || 0,
-    highPriceTick: highPriceTick || 0,
+    lowPriceTick: lowTick, // Use the calculated low tick
+    highPriceTick: highTick, // Use the calculated high tick
     amount0,
     amount1,
     slippagePercent: slippageAsNumber,
