@@ -11,7 +11,7 @@ include = [
 defaultValue = "<%= stringToHex('What will the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025?') %>"
 
 [setting.marketStartingTime]
-defaultValue = "1745611200"
+defaultValue = "1745614800"
 
 [setting.marketEndingTime]
 defaultValue = "1747314000"

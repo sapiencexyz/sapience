@@ -357,7 +357,7 @@
       ],
       "question": "What will the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025?",
       "chainId": 8453,
-      "address": "0xf7bc2a49ef648dd00be991257eda5bb54926d16c",
+      "address": "0xdcbc0134f2b7500e97271b287c2d584d1b9ec583",
       "category": "economy-finance",
       "baseTokenName": "Yes",
       "quoteTokenName": "sUSDS"
