@@ -47,7 +47,6 @@ interface IFoilStructs {
         address uniswapSwapRouter;
         address uniswapQuoter;
         address optimisticOracleV3;
-        bytes claimStatement;
     }
 
     struct EpochData {

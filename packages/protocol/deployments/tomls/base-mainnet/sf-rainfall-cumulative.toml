@@ -71,7 +71,7 @@ args=[
   [],
   "<%= zeroAddress %>",
   "<%= settings.minTradeSize %>",
-  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.USDC %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.USDC %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
 depends=["router.Foil"]
 
@@ -85,7 +85,8 @@ args=[
   "56022770974786143748341366784", # starting price: 0.5,
   "-23200", # baseAssetMinPriceTick: 0.1
   "16000",  # baseAssetMaxPriceTick: 5
-  "<%= stringToHex('sf-rainfall-cum-2') %>"
+  "<%= stringToHex('sf-rainfall-cum-2') %>",
+  "<%= settings.claimStatement %>"
 ]
 depends=["invoke.initializeMarket"]
 

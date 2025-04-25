@@ -47,7 +47,8 @@ contract UmaSettleMarket is TestEpoch {
             16000,
             29800,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            "wstGwei/gas"
         );
 
         (owner, , , , ) = foil.getMarket();

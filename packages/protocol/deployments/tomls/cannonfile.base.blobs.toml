@@ -1,5 +1,5 @@
 name="foil"
-version="1.0.1"
+version="1.0.4"
 preset="eth-blobs"
 
 [var.settings]
@@ -87,7 +87,7 @@ highlight=true
 highlight=true
 artifact="Vault"
 from="<%= settings.deployer %>"
-args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= settings.wstETH %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>", "<%= settings.settlementPriceSubmitter %>"  ]
+args=[ "<%= settings.vault1Name %>", "<%= settings.vault1Symbol %>", "<%= FoilYin.address %>", "<%= settings.wstETH %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>", "<%= settings.settlementPriceSubmitter %>", "<%= settings.claimStatement %>"  ]
 depends = ['router.FoilYin', 'var.settings']
 
 [invoke.initializeMarketForVaultYin]
@@ -100,7 +100,7 @@ args=[
   [],
   "<%= VaultYin.address %>",
   "<%= settings.minTradeSize %>",
-  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.USDC %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.USDC %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
 depends=["deploy.VaultYin"]
 
@@ -109,7 +109,7 @@ depends=["deploy.VaultYin"]
 highlight=true
 artifact="Vault"
 from="<%= settings.deployer %>"
-args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= settings.wstETH %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>", "<%= settings.settlementPriceSubmitter %>"  ]
+args=[ "<%= settings.vault2Name %>", "<%= settings.vault2Symbol %>", "<%= FoilYang.address %>", "<%= settings.wstETH %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "1", "<%= settings.totalVaults %>", "<%= settings.settlementPriceSubmitter %>", "<%= settings.claimStatement %>"  ]
 depends = ['router.FoilYang',  'var.settings']
 
 [invoke.initializeMarketForVaultYang]
@@ -122,7 +122,7 @@ args=[
   [],
   "<%= VaultYang.address %>", 
   "<%= settings.minTradeSize %>",
-  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.USDC %>", bondAmount = "<%= settings.bondAmount %>", claimStatement = "<%= settings.claimStatement %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.USDC %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
 depends=["deploy.VaultYang"]
 
