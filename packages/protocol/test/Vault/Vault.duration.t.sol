@@ -49,7 +49,8 @@ contract VaultDurationTest is TestVault {
                 duration,
                 vaultIndex,
                 totalVaults,
-                vaultOwner
+                vaultOwner,
+                "wstGwei/gas"
             )
         );
         vm.stopPrank();

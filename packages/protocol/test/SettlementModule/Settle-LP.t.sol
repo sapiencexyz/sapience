@@ -54,7 +54,8 @@ contract SettleLPTest is TestTrade {
             MAX_TICK,
             startingSqrtPriceX96,
             vm.getAddress("MockVault"),
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            "wstGwei/gas"
         );
 
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
