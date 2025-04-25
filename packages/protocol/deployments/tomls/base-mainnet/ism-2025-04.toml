@@ -11,7 +11,7 @@ include = [
 defaultValue = "<%= stringToHex('What will the ISM Manufacturing PMI reading be for April 2025?') %>"
 
 [setting.marketStartingTime]
-defaultValue = "1745586000"
+defaultValue = "1745596800"
 
 [setting.marketEndingTime]
 defaultValue = "1746109800"
@@ -32,19 +32,19 @@ defaultValue = "<%= stringToHex('bucket 4') %>"
 defaultValue = "<%= stringToHex('bucket 5') %>"
 
 [setting.bucket1Claim]
-defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading be for April 2025 between 48.00 and 48.50? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 between 48.00 and 48.50? Zero if no:') %>"
 
 [setting.bucket2Claim]
-defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading be for April 2025 between 48.51 and 49.00? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 between 48.51 and 49.00? Zero if no:') %>"
 
 [setting.bucket3Claim]
-defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading be for April 2025 between 49.01 and 49.50? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 between 49.01 and 49.50? Zero if no:') %>"
 
 [setting.bucket4Claim]
-defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading be for April 2025 between 49.51 and 50.00? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 between 49.51 and 50.00? Zero if no:') %>"
 
 [setting.bucket5Claim]
-defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading be for April 2025 between 50.01 and 50.50? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 between 50.01 and 50.50? Zero if no:') %>"
 
 
 # TODO CHECK RANGES 

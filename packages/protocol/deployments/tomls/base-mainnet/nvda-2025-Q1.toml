@@ -11,7 +11,7 @@ include = [
 defaultValue = "<%= stringToHex('What will NVIDIA’s earnings per share (EPS) be for Q1 2025?') %>"
 
 [setting.marketStartingTime]
-defaultValue = "1745586000"
+defaultValue = "1745596800"
 
 [setting.marketEndingTime]
 defaultValue = "1748464200"
@@ -35,19 +35,19 @@ defaultValue = "<%= stringToHex('bucket 5') %>"
 defaultValue = "<%= stringToHex('bucket 6') %>"
 
 [setting.bucket1Claim]
-defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) be for Q1 2025 between 0.20 and 0.50? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.20 and 0.50? Zero if no:') %>"
 
 [setting.bucket2Claim]
-defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) be for Q1 2025 between 0.51 and 0.80? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.51 and 0.80? Zero if no:') %>"
 
 [setting.bucket3Claim]
-defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) be for Q1 2025 between 0.81 and 1.10? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.81 and 1.10? Zero if no:') %>"
 
 [setting.bucket4Claim]
-defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) be for Q1 2025 between 1.11 and 1.40? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.11 and 1.40? Zero if no:') %>"
 
 [setting.bucket5Claim]
-defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) be for Q1 2025 between 1.41 and 1.70? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.41 and 1.70? Zero if no:') %>"
 
 [setting.bucket6Claim]
-defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) be for Q1 2025 between 1.71 and 2.00? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.71 and 2.00? Zero if no:') %>"
