@@ -346,6 +346,30 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
 
         <SlippageTolerance />
 
+        <div className="pt-2">
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitButtonDisabled()}
+          >
+            {buttonState.loading && (
+              <LottieLoader
+                className="mr-2 text-primary-foreground"
+                width={20}
+                height={20}
+              />
+            )}
+            {buttonState.text}
+          </Button>
+
+          {isClosePosition && (
+            <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-xs">
+              <span className="font-medium">Note:</span> LP position could
+              convert to trader.
+            </div>
+          )}
+        </div>
+
         {percentage > 0 && (
           <motion.div
             layout
@@ -514,26 +538,6 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
             </div>
           </motion.div>
         )}
-
-        <div className="pt-2">
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitButtonDisabled()}
-          >
-            {buttonState.loading && (
-              <LottieLoader className="mr-2" width={20} height={20} />
-            )}
-            {buttonState.text}
-          </Button>
-
-          {isClosePosition && (
-            <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-xs">
-              <span className="font-medium">Note:</span> LP position could
-              convert to trader.
-            </div>
-          )}
-        </div>
       </form>
     </Form>
   );

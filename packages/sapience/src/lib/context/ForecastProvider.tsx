@@ -141,6 +141,9 @@ export function ForecastProvider({
     refetchPositions,
   };
 
+  console.log('lpPositions', lpPositions);
+  console.log('traderPositions', traderPositions);
+
   return (
     <ForecastContext.Provider value={value}>
       {children}

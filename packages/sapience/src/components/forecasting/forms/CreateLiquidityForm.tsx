@@ -153,6 +153,13 @@ export function CreateLiquidityForm({
     setEstimatedResultingBalance(newBalance);
   }, [depositAmount, walletBalance]);
 
+  // Handle successful LP creation
+  useEffect(() => {
+    if (isLPCreated && txHash && onSuccess) {
+      onSuccess(txHash);
+    }
+  }, [isLPCreated, txHash, onSuccess, toast]);
+
   // Handle LP creation errors
   useEffect(() => {
     if (isLPError && lpError) {
@@ -176,7 +183,7 @@ export function CreateLiquidityForm({
     if (isApproving) {
       return (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary-foreground" />
           Approving {collateralAssetTicker}...
         </>
       );
@@ -185,7 +192,7 @@ export function CreateLiquidityForm({
     if (isCreatingLP) {
       return (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary-foreground" />
           Creating Position...
         </>
       );
