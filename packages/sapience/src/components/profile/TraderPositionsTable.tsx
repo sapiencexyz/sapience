@@ -8,13 +8,17 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
+import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
 import type { Position } from '~/lib/interfaces/interfaces';
-import { calculateEffectiveEntryPrice } from '~/lib/utils/util';
+import {
+  calculateEffectiveEntryPrice,
+  getChainShortName,
+} from '~/lib/utils/util';
 
 interface TraderPositionsTableProps {
   positions: Position[];
@@ -25,33 +29,42 @@ function PositionCell({ position }: { position: Position }) {
   const borrowedBaseTokenBI = BigInt(position.borrowedBaseToken || '0');
   const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
   const value = Number(formatEther(netPositionBI));
-
+  const absValue = Math.abs(value);
   const { baseTokenName } = position.market.marketGroup;
 
-  if (baseTokenName === 'Yes') {
-    if (value >= 0) {
-      return (
-        <Badge variant="default">
-          <NumberDisplay value={value} /> YES
-        </Badge>
-      );
-    }
+  // Determine direction and styling based on net position value
+  if (value >= 0) {
+    // Long Position
     return (
-      <Badge variant="destructive">
-        <NumberDisplay value={Math.abs(value)} /> NO
-      </Badge>
+      <span className="flex items-center space-x-1.5">
+        <Badge
+          variant="outline"
+          className="px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0"
+        >
+          Long
+        </Badge>
+        <NumberDisplay value={absValue} />
+        <span>{baseTokenName || 'Tokens'}</span>
+      </span>
     );
   }
-  // Removed redundant isNaN check as formatEther/Number handles it reasonably
+  // Short Position
   return (
-    <span>
-      <NumberDisplay value={value} /> {baseTokenName || 'Tokens'}
+    <span className="flex items-center space-x-1.5">
+      <Badge
+        variant="outline"
+        className="px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0"
+      >
+        Short
+      </Badge>
+      <NumberDisplay value={absValue} />
+      <span>{baseTokenName || 'Tokens'}</span>
     </span>
   );
 }
 
 function MaxPayoutCell({ position }: { position: Position }) {
-  const { baseTokenName } = position.market.marketGroup;
+  const { baseTokenName, collateralSymbol } = position.market.marketGroup;
 
   if (baseTokenName === 'Yes') {
     const baseTokenBI = BigInt(position.baseToken || '0');
@@ -70,7 +83,7 @@ function MaxPayoutCell({ position }: { position: Position }) {
 
     return (
       <>
-        <NumberDisplay value={displayAmount} /> {baseTokenName}
+        <NumberDisplay value={displayAmount} /> {collateralSymbol}
       </>
     );
   }
@@ -157,8 +170,6 @@ function PositionValueCell({ position }: { position: Position }) {
   // Calculate PnL percentage, handle division by zero if costBasis is 0
   const pnlPercentage = costBasis !== 0 ? (pnl / costBasis) * 100 : 0;
 
-  const displayCollateralSymbol = collateralSymbol;
-
   // Display loading state or handle potential errors
   if (priceLoading) {
     return (
@@ -171,7 +182,7 @@ function PositionValueCell({ position }: { position: Position }) {
 
   return (
     <>
-      <NumberDisplay value={currentPositionValue} /> {displayCollateralSymbol}{' '}
+      <NumberDisplay value={currentPositionValue} /> {collateralSymbol}{' '}
       <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
         ({pnlPercentage.toFixed(2)}%)
       </small>
@@ -205,12 +216,14 @@ export default function TraderPositionsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Question</TableHead>
-              <TableHead>Position</TableHead>
-              <TableHead>Wager</TableHead>
-              <TableHead>Position Value</TableHead>
-              <TableHead>Max Payout</TableHead>
-              <TableHead />
+              <TableHead className="whitespace-nowrap">Question</TableHead>
+              <TableHead className="whitespace-nowrap">Position</TableHead>
+              <TableHead className="whitespace-nowrap">Wager</TableHead>
+              <TableHead className="whitespace-nowrap">
+                Position Value
+              </TableHead>
+              <TableHead className="whitespace-nowrap">Max Payout</TableHead>
+              <TableHead className="whitespace-nowrap" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -229,6 +242,10 @@ export default function TraderPositionsTable({
               }
 
               const isClosed = Number(position.collateral) === 0;
+              const chainShortName = getChainShortName(
+                position.market.marketGroup.chainId
+              );
+              const marketAddress = position.market.marketGroup.address;
 
               return (
                 <TableRow key={position.id}>
@@ -260,13 +277,25 @@ export default function TraderPositionsTable({
                         <MaxPayoutCell position={position} />
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          variant={position.isSettled ? 'default' : 'secondary'}
-                          disabled={!isOwner} // Keep disabled logic based on ownership
-                        >
-                          {position.isSettled ? 'Claim' : 'Sell'}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant={
+                              position.isSettled ? 'default' : 'secondary'
+                            }
+                            disabled={!isOwner} // Keep disabled logic based on ownership
+                          >
+                            {position.isSettled ? 'Claim' : 'Sell'}
+                          </Button>
+                          <Link
+                            href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
+                            passHref
+                          >
+                            <Button size="sm" variant="outline">
+                              View
+                            </Button>
+                          </Link>
+                        </div>
                       </TableCell>
                     </>
                   )}

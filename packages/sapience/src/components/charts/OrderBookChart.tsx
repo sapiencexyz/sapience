@@ -1,15 +1,18 @@
 import { Loader2 } from 'lucide-react'; // For loading state
 import type React from 'react';
 
+import NumberDisplay from '../shared/NumberDisplay'; // Import NumberDisplay
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool'; // Import from UI package
 
 interface OrderBookRowProps {
-  price: string;
-  size: string;
-  total: string;
+  price: number;
+  size: number;
+  total: number;
   type: 'ask' | 'bid';
   percentage: number; // Percentage of the largest size in the visible book
+  baseTokenName?: string; // Add base token name
+  quoteTokenName?: string; // Add quote token name
 }
 
 const OrderBookRow: React.FC<OrderBookRowProps> = ({
@@ -18,24 +21,33 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
   total,
   type,
   percentage,
+  baseTokenName,
+  quoteTokenName,
 }) => {
   const priceColor = type === 'ask' ? 'text-red-500' : 'text-green-500';
   const bgColor = type === 'ask' ? 'bg-red-500/10' : 'bg-green-500/10'; // Use subtle opacity
   // const barPosition = type === 'ask' ? 'right-0' : 'left-0'; // Removed conditional positioning
 
+  const baseUnit = baseTokenName ? ` ${baseTokenName}` : '';
+  const baseUnitPart = baseUnit ? `/${baseUnit.trim()}` : ''; // Create the conditional part separately
+  const priceUnit = quoteTokenName ? ` ${quoteTokenName}${baseUnitPart}` : ''; // Combine without nesting
+
   return (
-    // Add relative positioning and overflow hidden
     <div className="relative grid grid-cols-3 gap-4 text-sm py-1 px-2 hover:bg-muted/50 overflow-hidden">
-      {/* Background bar - Always left-justified */}
       <div
         className={`absolute top-0 bottom-0 left-0 ${bgColor}`}
         style={{ width: `${percentage}%` }}
         aria-hidden="true" // Hide from screen readers
       />
-      {/* Content - ensure it's above the background */}
-      <span className={`relative font-mono ${priceColor}`}>{price}</span>
-      <span className="relative text-right font-mono">{size}</span>
-      <span className="relative text-right font-mono">{total}</span>
+      <div className={`relative font-mono ${priceColor} flex items-center`}>
+        <NumberDisplay value={price} appendedText={priceUnit.trim()} />
+      </div>
+      <div className="relative text-right font-mono flex items-center justify-end">
+        <NumberDisplay value={size} appendedText={baseUnit.trim()} />
+      </div>
+      <div className="relative text-right font-mono flex items-center justify-end">
+        <NumberDisplay value={total} appendedText={baseUnit.trim()} />
+      </div>
     </div>
   );
 };
@@ -50,6 +62,8 @@ interface OrderBookChartProps {
   quoteTokenName?: string;
   // Add className for styling from parent
   className?: string;
+  // Explicitly pass the desired base token name for display
+  baseTokenName?: string;
 }
 
 const OrderBookChart: React.FC<OrderBookChartProps> = ({
@@ -59,6 +73,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   baseAssetMaxPriceTick,
   quoteTokenName, // Optional
   className,
+  baseTokenName, // Destructure the new prop
 }) => {
   // 1. Fetch base pool info
   const {
@@ -85,6 +100,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
     baseAssetMaxPriceTick,
     tickSpacing: pool?.tickSpacing,
     quoteTokenName,
+    baseTokenName,
   });
 
   const isLoading = isLoadingPool || isLoadingBook;
@@ -143,20 +159,12 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   });
   const maxCumulativeBidSize = cumulativeBidSize;
 
-  // Use the larger of the two total cumulative sizes for consistent scaling
-  const maxOverallCumulativeSize = Math.max(
-    maxCumulativeAskSize,
-    maxCumulativeBidSize,
-    1 // Avoid division by zero if both are 0
-  );
-
   return (
     <div
       className={`w-full border rounded-md bg-background text-foreground ${className} h-full flex flex-col`}
     >
       {/* Header */}
       <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground/70 tracking-widest transition-all duration-300 font-semibold flex-shrink-0 py-2 px-2 border-b">
-        {/* TODO: Make header dynamic based on pool tokens? */}
         <span>PRICE</span>
         <span className="text-right">SIZE</span>
         <span className="text-right">TOTAL</span>
@@ -167,35 +175,49 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
         {/* Asks (Sell Orders) - Rendered bottom-up */}
         <div className="flex flex-col-reverse">
           {cumulativeAsks.map((ask, index) => {
+            // Calculate percentage relative to total ask size
             const percentage =
-              (ask.cumulativeSize / maxOverallCumulativeSize) * 100;
+              maxCumulativeAskSize > 0
+                ? (ask.cumulativeSize / maxCumulativeAskSize) * 100
+                : 0;
             return (
               <OrderBookRow
                 key={`ask-${ask.rawPrice}-${index}`}
-                {...ask}
+                price={ask.rawPrice}
+                size={ask.rawSize}
+                total={ask.cumulativeSize}
                 type="ask"
                 percentage={percentage}
+                baseTokenName={baseTokenName} // Pass base token name
+                quoteTokenName={quoteTokenName} // Pass quote token name
               />
             );
           })}
         </div>
 
         {/* Last Price */}
-        <div className="flex font-medium py-2 px-2 border-y  bg-muted/20 flex-shrink-0">
+        <div className="flex font-medium py-2 px-2 border-y  bg-muted/30 flex-shrink-0">
           <span className="text-sm">Last Price: {lastPrice ?? '-'}</span>
         </div>
 
         {/* Bids (Buy Orders) - Rendered top-down */}
         <div className="flex flex-col">
           {cumulativeBids.map((bid, index) => {
+            // Calculate percentage relative to total bid size
             const percentage =
-              (bid.cumulativeSize / maxOverallCumulativeSize) * 100;
+              maxCumulativeBidSize > 0
+                ? (bid.cumulativeSize / maxCumulativeBidSize) * 100
+                : 0;
             return (
               <OrderBookRow
                 key={`bid-${bid.rawPrice}-${index}`}
-                {...bid}
+                price={bid.rawPrice}
+                size={bid.rawSize}
+                total={bid.cumulativeSize}
                 type="bid"
                 percentage={percentage}
+                baseTokenName={baseTokenName} // Pass base token name
+                quoteTokenName={quoteTokenName} // Pass quote token name
               />
             );
           })}

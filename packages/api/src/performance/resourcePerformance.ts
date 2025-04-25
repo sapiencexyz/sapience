@@ -719,7 +719,7 @@ export class ResourcePerformance {
 
         const isLastStoredItem =
           lastStoreIndex !== undefined
-            ? piStore.datapoints[lastStoreIndex].timestamp == itemStartTime
+            ? piStore.datapoints[lastStoreIndex].timestamp === itemStartTime
             : false;
 
         if (!isLastStoredItem) {
