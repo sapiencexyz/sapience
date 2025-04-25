@@ -2,8 +2,8 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
-import { RESOURCE_ORDER, type ResourceSlug } from '../types/resources';
 import { foilApi } from '../lib';
+import { RESOURCE_ORDER, type ResourceSlug } from '../types/resources';
 
 export interface Epoch {
   id: number;
@@ -96,7 +96,6 @@ export const useResources = () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
       });
-      console.log('RESOURCES', data);
       const resources = data.resources.sort((a: any, b: any) => {
         const indexA = RESOURCE_ORDER.indexOf(a.slug);
         const indexB = RESOURCE_ORDER.indexOf(b.slug);
