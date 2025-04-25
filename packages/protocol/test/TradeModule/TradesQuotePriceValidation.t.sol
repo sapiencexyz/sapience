@@ -44,7 +44,8 @@ contract TradesQuotePriceValidationTest is TestTrade {
             minTick,
             maxTick,
             startingSqrtPriceX96,
-            minTradeSize
+            minTradeSize,
+            "wstGwei/gas"
         );
         foilAddress = address(foil);
 
