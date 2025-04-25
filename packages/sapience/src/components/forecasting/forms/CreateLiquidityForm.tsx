@@ -18,7 +18,8 @@ import { formatUnits } from 'viem';
 import { useCreateLP, useCreateLiquidityQuoter } from '~/hooks/contract';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
-import { WalletData } from './ModifyLiquidityForm';
+
+import type { WalletData } from './ModifyLiquidityForm';
 
 export type LiquidityFormMarketDetails = {
   marketAddress: `0x${string}`;

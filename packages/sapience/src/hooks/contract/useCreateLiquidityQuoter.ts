@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useReadContract } from 'wagmi';
 
 import { priceToSqrtPriceX96 } from '~/lib/utils/tickUtils';
+
 import { useSqrtPriceX96 } from './useSqrtPriceX96';
 
 interface QuoteResult {

@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/cognitive-complexity */
+
 import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
 import { Button } from '@foil/ui/components/ui/button';
@@ -12,14 +14,12 @@ import {
 import { Input } from '@foil/ui/components/ui/input';
 import { Skeleton } from '@foil/ui/components/ui/skeleton';
 import Slider from '@foil/ui/components/ui/slider';
+import { useToast } from '@foil/ui/index';
 import { motion } from 'framer-motion';
 import type React from 'react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { formatUnits } from 'viem';
-
-import { useForecast } from '~/lib/context/ForecastProvider';
-import { tickToPrice } from '~/lib/utils/tickUtils';
 
 import LottieLoader from '~/components/shared/LottieLoader';
 import {
@@ -27,6 +27,9 @@ import {
   usePositionLiquidity,
 } from '~/hooks/contract';
 import { useModifyLP } from '~/hooks/contract/useModifyLP';
+import { useForecast } from '~/lib/context/ForecastProvider';
+import { tickToPrice } from '~/lib/utils/tickUtils';
+
 import type { LiquidityFormMarketDetails } from './CreateLiquidityForm';
 
 interface ModifyLiquidityFormValues {
@@ -56,6 +59,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
   positionId,
   mode,
 }) => {
+  const { toast } = useToast();
   const { isConnected, walletBalance, onConnectWallet } = walletData;
   const { getPositionById, baseTokenName, quoteTokenName } = useForecast();
   const position = getPositionById(positionId);
@@ -95,10 +99,10 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
     error: quoteError,
   } = useModifyLiquidityQuoter({
     marketAddress: marketDetails.marketAddress,
-    positionId: positionId,
+    positionId,
     currentLiquidity: positionData?.liquidity,
-    percentage: percentage,
-    mode: mode,
+    percentage,
+    mode,
     enabled: isConnected && !!positionData?.liquidity,
     chainId: marketDetails.chainId,
     marketAbi: marketDetails.marketAbi,
@@ -157,6 +161,18 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
     marketAbi: marketDetails.marketAbi,
     collateralTokenAddress: marketDetails.collateralAssetAddress,
   });
+
+  // Display error toast when modify operation fails
+  useEffect(() => {
+    if (modifyError) {
+      toast({
+        variant: 'destructive',
+        title: 'Transaction Failed',
+        description:
+          modifyError.message || 'Failed to modify liquidity position',
+      });
+    }
+  }, [modifyError, toast]);
 
   // Refetch position data when transaction is successful
   useEffect(() => {
