@@ -190,6 +190,7 @@ export const initializeFixtures = async (): Promise<void> => {
         address: marketData.address.toLowerCase(),
         chainId: marketData.chainId,
       },
+      relations: ['resource'],
     });
 
     if (!marketGroup) {
@@ -221,9 +222,19 @@ export const initializeFixtures = async (): Promise<void> => {
         await handleMarketQuestions(marketGroup, marketData.questions);
       }
     } else {
-      if (resource) {
+      // Update existing market data
+      // First, save the resource separately if needed
+      if (!marketData.resource && marketGroup.resource) {
+        await marketGroupRepository
+          .createQueryBuilder()
+          .relation(MarketGroup, 'resource')
+          .of(marketGroup.id)
+          .set(null);
+        console.log(`Removed resource from market: ${marketGroup.address}`);
+      } else if (resource) {
         marketGroup.resource = resource;
       }
+
       marketGroup.isYin = marketData.isYin || marketGroup.isYin || false;
       marketGroup.isCumulative =
         marketData.isCumulative || marketGroup.isCumulative || false;
