@@ -45,7 +45,8 @@ contract TradeViews is TestTrade {
             EPOCH_LOWER_TICK,
             EPOCH_UPPER_TICK,
             INITIAL_PRICE_SQRT,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            "wstGwei/gas"
         ); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 10_000_000 ether);

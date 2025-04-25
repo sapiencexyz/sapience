@@ -86,7 +86,8 @@ contract ConfigurationModule is
         uint160 startingSqrtPriceX96,
         int24 baseAssetMinPriceTick,
         int24 baseAssetMaxPriceTick,
-        uint256 salt
+        uint256 salt,
+        bytes calldata claimStatement
     ) external override nonReentrant onlyOwner returns (uint256 epochId) {
         // load the market to check if it's already created
         Market.Data storage market = Market.load();
@@ -100,9 +101,10 @@ contract ConfigurationModule is
             startingSqrtPriceX96,
             baseAssetMinPriceTick,
             baseAssetMaxPriceTick,
-            salt
+            salt,
+            claimStatement
         );
-        emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96);
+        emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96, claimStatement);
 
         return newEpochId;
     }

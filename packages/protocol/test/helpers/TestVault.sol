@@ -62,7 +62,6 @@ contract TestVault is TestTrade {
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
                 bondAmount: bondAmount,
-                claimStatement: "wstGwei/gas",
                 uniswapPositionManager: vm.getAddress(
                     "Uniswap.NonfungiblePositionManager"
                 ),

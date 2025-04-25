@@ -24,7 +24,8 @@ contract TestEpoch is TestUser {
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
-        uint256 minTradeSize
+        uint256 minTradeSize,
+        bytes memory epochClaimStatement
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
         return
@@ -33,7 +34,8 @@ contract TestEpoch is TestUser {
                 maxTick,
                 startingSqrtPriceX96,
                 feeCollectors,
-                minTradeSize
+                minTradeSize,
+                epochClaimStatement
             );
     }
 
@@ -42,7 +44,8 @@ contract TestEpoch is TestUser {
         int24 maxTick,
         uint160 startingSqrtPriceX96,
         address[] memory feeCollectors,
-        uint256 minTradeSize
+        uint256 minTradeSize,
+        bytes memory claimStatement
     ) public returns (IFoil, address) {
         address owner = initializeMarket(
             feeCollectors,
@@ -58,7 +61,8 @@ contract TestEpoch is TestUser {
             startingSqrtPriceX96,
             minTick,
             maxTick,
-            CREATE_EPOCH_SALT
+            CREATE_EPOCH_SALT,
+            claimStatement
         );
 
         return (foil, owner);
@@ -69,7 +73,8 @@ contract TestEpoch is TestUser {
         int24 maxTick,
         uint160 startingSqrtPriceX96,
         address callbackRecipient,
-        uint256 minTradeSize
+        uint256 minTradeSize,
+        bytes memory claimStatement
     ) public returns (IFoil, address) {
         address[] memory feeCollectors = new address[](0);
         address owner = initializeMarket(
@@ -86,7 +91,8 @@ contract TestEpoch is TestUser {
             startingSqrtPriceX96,
             minTick,
             maxTick,
-            CREATE_EPOCH_SALT
+            CREATE_EPOCH_SALT,
+            claimStatement
         );
 
         return (foil, owner);
@@ -111,7 +117,6 @@ contract TestEpoch is TestUser {
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
                 bondAmount: bondAmount,
-                claimStatement: "wstGwei/gas",
                 uniswapPositionManager: vm.getAddress(
                     "Uniswap.NonfungiblePositionManager"
                 ),
