@@ -222,8 +222,6 @@ export const initializeFixtures = async (): Promise<void> => {
         await handleMarketQuestions(marketGroup, marketData.questions);
       }
     } else {
-      // Update existing market data
-      // First, save the resource separately if needed
       if (!marketData.resource && marketGroup.resource) {
         await marketGroupRepository
           .createQueryBuilder()
