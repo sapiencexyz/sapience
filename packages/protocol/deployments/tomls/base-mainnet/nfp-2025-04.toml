@@ -11,7 +11,7 @@ include = [
 defaultValue = "<%= stringToHex('What will the change in U.S. nonfarm payrolls be in April 2025?') %>"
 
 [setting.marketStartingTime]
-defaultValue = "1745607600"
+defaultValue = "1745611200"
 
 [setting.marketEndingTime]
 defaultValue = "1746190800"
