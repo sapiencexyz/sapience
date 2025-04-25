@@ -15,17 +15,23 @@ export class PositionResolver {
     marketAddress?: string
   ): Promise<PositionType[]> {
     try {
-      const positionsQuery = await dataSource
+      let positionsQuery = await dataSource
         .getRepository(Position)
         .createQueryBuilder('position')
         .leftJoinAndSelect('position.market', 'market')
         .leftJoinAndSelect('market.marketGroup', 'marketGroup')
         .leftJoinAndSelect('marketGroup.resource', 'resource')
         .leftJoinAndSelect('position.transactions', 'transactions')
-        .leftJoinAndSelect('transactions.event', 'event')
-        .where('LOWER(position.owner) = :owner', {
-          owner: owner?.toLowerCase(),
-        });
+        .leftJoinAndSelect('transactions.event', 'event');
+
+      if (owner) {
+        positionsQuery = positionsQuery.where(
+          'LOWER(position.owner) = :owner',
+          {
+            owner: owner?.toLowerCase(),
+          }
+        );
+      }
 
       if (chainId && marketAddress) {
         positionsQuery.andWhere(
