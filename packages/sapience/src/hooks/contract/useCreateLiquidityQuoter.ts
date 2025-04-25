@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useReadContract } from 'wagmi';
 
 import { priceToSqrtPriceX96 } from '~/lib/utils/tickUtils';
+import { useSqrtPriceX96 } from './useSqrtPriceX96';
 
 interface QuoteResult {
   amount0: bigint;
@@ -10,7 +11,7 @@ interface QuoteResult {
   error: Error | null;
 }
 
-interface LiquidityQuoterProps {
+interface CreateLiquidityQuoterProps {
   marketAddress?: `0x${string}`;
   collateralAmount: string;
   lowPriceInput: string;
@@ -26,9 +27,9 @@ interface LiquidityQuoterProps {
 type QuoteLiquidityResult = readonly [bigint, bigint, bigint];
 
 /**
- * Hook to fetch liquidity position quotes from the contract
+ * Hook to fetch liquidity position quotes from the contract for creating a new position
  */
-export function useLiquidityQuoter({
+export function useCreateLiquidityQuoter({
   marketAddress,
   collateralAmount,
   lowPriceInput,
@@ -38,7 +39,7 @@ export function useLiquidityQuoter({
   chainId,
   marketAbi,
   marketId,
-}: LiquidityQuoterProps): QuoteResult {
+}: CreateLiquidityQuoterProps): QuoteResult {
   const [error, setError] = useState<Error | null>(null);
   const [quoteResult, setQuoteResult] = useState<{
     amount0: bigint;
@@ -61,20 +62,17 @@ export function useLiquidityQuoter({
   // Check if all inputs are valid
   const inputsAreValid = isValidCollateral && arePricesValid;
 
-  // Fetch the current sqrt price
+  // Use the shared hook to fetch the current sqrt price
   const {
-    data: currentSqrtPrice,
-    isError: isPriceError,
-    isLoading: isCurrentPoolPriceLoading,
-  } = useReadContract({
-    address: marketAddress,
-    abi: marketAbi,
-    functionName: 'getSqrtPriceX96',
+    sqrtPriceX96: currentSqrtPrice,
+    loading: isCurrentPoolPriceLoading,
+    error: sqrtPriceError,
+  } = useSqrtPriceX96({
+    marketAddress,
+    marketId,
+    enabled: enabled && !!marketAddress,
     chainId,
-    args: [marketId],
-    query: {
-      enabled: enabled && !!marketAddress,
-    },
+    marketAbi,
   });
 
   // Convert prices to sqrt ratios
@@ -95,6 +93,7 @@ export function useLiquidityQuoter({
     data: quoteData,
     isLoading: isQuoteLoading,
     isError: isQuoteError,
+    error: quoteErrorData,
   } = useReadContract({
     address: marketAddress,
     abi: marketAbi,
@@ -102,13 +101,17 @@ export function useLiquidityQuoter({
     args: [
       BigInt(epochId),
       depositedCollateralAmount,
-      (currentSqrtPrice as bigint) || BigInt(0),
+      currentSqrtPrice,
       sqrtPriceAX96,
       sqrtPriceBX96,
     ],
     chainId,
     query: {
-      enabled: enabled && !!currentSqrtPrice && inputsAreValid,
+      enabled:
+        enabled &&
+        !!currentSqrtPrice &&
+        currentSqrtPrice > BigInt(0) &&
+        inputsAreValid,
     },
   });
 
@@ -127,12 +130,12 @@ export function useLiquidityQuoter({
 
   // Handle errors
   useEffect(() => {
-    if (isPriceError) {
-      setError(new Error('Failed to fetch current price'));
+    if (sqrtPriceError) {
+      setError(sqrtPriceError);
     } else if (isQuoteError) {
-      setError(new Error('Failed to fetch quote'));
+      setError(new Error(quoteErrorData?.message || 'Failed to fetch quote'));
     }
-  }, [isPriceError, isQuoteError]);
+  }, [sqrtPriceError, isQuoteError, quoteErrorData]);
 
   return {
     ...quoteResult,
@@ -140,3 +143,6 @@ export function useLiquidityQuoter({
     error,
   };
 }
+
+// For backward compatibility
+export { useCreateLiquidityQuoter as useLiquidityQuoter };

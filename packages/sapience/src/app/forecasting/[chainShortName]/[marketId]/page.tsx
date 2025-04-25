@@ -67,6 +67,8 @@ const ForecastContent = () => {
     marketAddress,
     numericMarketId,
     getPositionById,
+    lpPositionsArray,
+    traderPositionsArray,
   } = useForecast();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(

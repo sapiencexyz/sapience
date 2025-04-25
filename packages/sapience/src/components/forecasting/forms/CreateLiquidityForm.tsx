@@ -15,11 +15,10 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
 
-import { useCreateLP } from '~/hooks/contract/useCreateLP';
-import { useLiquidityQuoter } from '~/hooks/contract/useLiquidityQuoter';
-import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
+import { useCreateLP, useCreateLiquidityQuoter } from '~/hooks/contract';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
+import { WalletData } from './ModifyLiquidityForm';
 
 export type LiquidityFormMarketDetails = {
   marketAddress: `0x${string}`;
@@ -27,6 +26,7 @@ export type LiquidityFormMarketDetails = {
   marketAbi: any;
   collateralAssetTicker: string;
   collateralAssetAddress: `0x${string}`;
+  uniswapPositionManager: `0x${string}`;
   virtualBaseTokensName?: string;
   virtualQuoteTokensName?: string;
   lowPriceTick?: number;
@@ -36,18 +36,18 @@ export type LiquidityFormMarketDetails = {
 
 export interface LiquidityFormProps {
   marketDetails: LiquidityFormMarketDetails;
-  isConnected?: boolean;
-  onConnectWallet?: () => void;
+  walletData: WalletData;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
 export function CreateLiquidityForm({
   marketDetails,
-  isConnected = false,
-  onConnectWallet,
+  walletData,
   onSuccess,
 }: LiquidityFormProps) {
   const { toast } = useToast();
+  const { isConnected, walletBalance, onConnectWallet } = walletData;
+  const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false);
 
   const {
     marketAddress,
@@ -61,13 +61,6 @@ export function CreateLiquidityForm({
     highPriceTick,
     marketId,
   } = marketDetails;
-
-  // Use the token balance hook
-  const { balance: walletBalance } = useTokenBalance({
-    tokenAddress: collateralAssetAddress,
-    chainId: marketDetails.chainId,
-    enabled: isConnected && !!collateralAssetAddress,
-  });
 
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
     useState(walletBalance);
@@ -88,13 +81,26 @@ export function CreateLiquidityForm({
   // Ensure slippage is a valid number
   const slippageAsNumber = slippage ? Number(slippage) : 0.5;
 
+  // Check for insufficient funds
+  useEffect(() => {
+    if (!depositAmount || !walletBalance) {
+      setHasInsufficientFunds(false);
+      return;
+    }
+
+    const depositValue = parseFloat(depositAmount);
+    const balanceValue = parseFloat(walletBalance);
+
+    setHasInsufficientFunds(depositValue > balanceValue);
+  }, [depositAmount, walletBalance]);
+
   // Use the liquidity quoter to get real-time token amounts
   const {
     amount0,
     amount1,
     loading: quoteLoading,
     error: quoteError,
-  } = useLiquidityQuoter({
+  } = useCreateLiquidityQuoter({
     marketAddress: marketAddress || ('0x0' as `0x${string}`),
     collateralAmount: depositAmount,
     lowPriceInput,
@@ -147,17 +153,6 @@ export function CreateLiquidityForm({
     setEstimatedResultingBalance(newBalance);
   }, [depositAmount, walletBalance]);
 
-  // Handle successful LP creation
-  useEffect(() => {
-    if (isLPCreated && txHash && onSuccess) {
-      toast({
-        title: 'Liquidity Position Created',
-        description: 'Your liquidity position has been successfully created!',
-      });
-      onSuccess(txHash);
-    }
-  }, [isLPCreated, txHash, onSuccess, toast]);
-
   // Handle LP creation errors
   useEffect(() => {
     if (isLPError && lpError) {
@@ -209,7 +204,11 @@ export function CreateLiquidityForm({
 
   // Determine if the submit button should be disabled
   const isSubmitDisabled =
-    !isConnected || quoteLoading || isCreatingLP || isApproving;
+    !isConnected ||
+    quoteLoading ||
+    isCreatingLP ||
+    isApproving ||
+    hasInsufficientFunds;
 
   return (
     <Form {...form}>
@@ -226,7 +225,7 @@ export function CreateLiquidityForm({
                     <Input
                       placeholder="0"
                       type="text"
-                      className="rounded-r-none"
+                      className={`rounded-r-none ${hasInsufficientFunds ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       {...field}
                     />
                     <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
@@ -234,6 +233,11 @@ export function CreateLiquidityForm({
                     </div>
                   </div>
                 </FormControl>
+                {hasInsufficientFunds && (
+                  <p className="text-sm text-red-500 mt-1">
+                    Insufficient funds in wallet
+                  </p>
+                )}
                 <FormMessage />
               </FormItem>
             )}
