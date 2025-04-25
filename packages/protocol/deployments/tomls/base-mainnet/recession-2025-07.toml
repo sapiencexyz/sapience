@@ -14,7 +14,7 @@ defaultValue = "<%= stringToHex('Will the U.S. be in a recession by July 2025, d
 defaultValue = "1745596800"
 
 [setting.marketEndingTime]
-defaultValue = "" # TBD
+defaultValue = "1754022540" 
 
 [setting.initialPrice]
 defaultValue = "<%= settings.initialPricePointFive %>"
@@ -24,6 +24,3 @@ defaultValue = "<%= stringToHex('yes-or-no') %>"
 
 [setting.yesNoBucketClaim]
 defaultValue = "<%= stringToHex('Was U.S. in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration? Zero if no:') %>"
-
-
-# TODO Check end time

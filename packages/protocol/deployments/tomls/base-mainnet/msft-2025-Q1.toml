@@ -35,7 +35,7 @@ defaultValue = "<%= stringToHex('bucket 5') %>"
 defaultValue = "<%= stringToHex('bucket 6') %>"
 
 [setting.bucket1Claim]
-defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 between 2.00 and 2.50? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 less than 2.50? Zero if no:') %>"
 
 [setting.bucket2Claim]
 defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 between 2.51 and 3.00? Zero if no:') %>"
@@ -50,4 +50,4 @@ defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for 
 defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 between 4.01 and 4.50? Zero if no:') %>"
 
 [setting.bucket6Claim]
-defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 between 4.51 and 5.00? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 greater than 4.51? Zero if no:') %>"

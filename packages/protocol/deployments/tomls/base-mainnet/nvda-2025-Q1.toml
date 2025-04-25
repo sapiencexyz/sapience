@@ -35,7 +35,7 @@ defaultValue = "<%= stringToHex('bucket 5') %>"
 defaultValue = "<%= stringToHex('bucket 6') %>"
 
 [setting.bucket1Claim]
-defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.20 and 0.50? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 less than 0.50? Zero if no:') %>"
 
 [setting.bucket2Claim]
 defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.51 and 0.80? Zero if no:') %>"
@@ -50,4 +50,4 @@ defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 
 defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.41 and 1.70? Zero if no:') %>"
 
 [setting.bucket6Claim]
-defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.71 and 2.00? Zero if no:') %>"
+defaultValue = "<%= stringToHex('Was NVIDIA’s earnings per share (EPS) for Q1 2025 greater than 1.71? Zero if no:') %>"
