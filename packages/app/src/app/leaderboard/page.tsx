@@ -163,29 +163,47 @@ const useGlobalLeaderboard = () => {
               winRate: 0,
               averageReturn: 0,
             };
+
+            // Find positions for this owner in the positions data
+            const ownerPositions = positionsData
+              .flat()
+              .filter((pos: any) => pos.owner === position.owner);
+
+            const uniquePositionIdsForOwner = new Set();
+            const uniquePositionsForOwner: any[] = [];
+
+            ownerPositions.forEach((ownerPosition) => {
+              if (!uniquePositionIdsForOwner.has(ownerPosition.id)) {
+                uniquePositionIdsForOwner.add(ownerPosition.id);
+                uniquePositionsForOwner.push(ownerPosition);
+              }
+            });
+
+            // Count all relevant transactions (trades and LP events)
+            const totalTrades = uniquePositionsForOwner.reduce(
+              (sum: number, pos: any) => {
+                return (
+                  sum +
+                  pos.transactions.filter((t: { type: string }) =>
+                    [
+                      'long',
+                      'short',
+                      'addLiquidity',
+                      'removeLiquidity',
+                    ].includes(t.type)
+                  ).length
+                );
+              },
+              0
+            );
+
+            traderStats[position.owner].totalTrades += totalTrades;
+            if (Number(position.totalPnL) > 0) {
+              traderStats[position.owner].winRate += totalTrades;
+            }
           }
 
           traderStats[position.owner].totalPnL += Number(position.totalPnL);
-
-          // Find positions for this owner in the positions data
-          const ownerPositions = positionsData
-            .flat()
-            .filter((pos: any) => pos.owner === position.owner);
-
-          // Count all relevant transactions (trades and LP events)
-          const totalTrades = ownerPositions.reduce((sum: number, pos: any) => {
-            return (
-              sum +
-              pos.transactions.filter((t: { type: string }) =>
-                ['long', 'short'].includes(t.type)
-              ).length
-            );
-          }, 0);
-
-          traderStats[position.owner].totalTrades += totalTrades;
-          if (Number(position.totalPnL) > 0) {
-            traderStats[position.owner].winRate += totalTrades;
-          }
         }
       }
 
