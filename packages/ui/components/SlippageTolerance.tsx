@@ -22,7 +22,7 @@ export const SlippageTolerance: React.FC = () => {
   };
 
   return (
-    <div className="mb-5">
+    <div>
       <Label className="flex items-center">
         Slippage Tolerance
         <TooltipProvider>

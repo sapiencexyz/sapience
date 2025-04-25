@@ -19,10 +19,10 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormState } from 'react-hook-form'; // Or import specific type if known
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { useReadContract } from 'wagmi';
@@ -34,10 +34,10 @@ import { useModifyTrade } from '~/hooks/contract/useModifyTrade';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import { useTradeForm } from '~/hooks/forms/useTradeForm';
 import {
-  TOKEN_DECIMALS,
-  HIGH_PRICE_IMPACT,
   COLLATERAL_DECIMALS,
+  HIGH_PRICE_IMPACT,
   MIN_BIG_INT_SIZE,
+  TOKEN_DECIMALS,
 } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
@@ -281,34 +281,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     }
     return BigInt(0);
   }, [positionData]);
-
-  // Add useEffect to log positionData when it changes
-  useEffect(() => {
-    // Log unconditionally to see if the effect runs
-    console.log(
-      'ModifyTradeForm - useEffect triggered. positionData:',
-      positionData
-    );
-    if (positionData) {
-      console.log('ModifyTradeForm - Position Data Loaded:', positionData);
-      // You can specifically log the collateral amount too:
-      console.log(
-        'ModifyTradeForm - Deposited Collateral Amount (BigInt):',
-        positionData.depositedCollateralAmount?.toString()
-      );
-    }
-  }, [positionData]);
-
-  // Log dependencies for useReadContract enabled condition
-  useEffect(() => {
-    console.log('ModifyTradeForm - useReadContract dependencies:', {
-      isConnected,
-      positionId,
-      marketAddress,
-      marketAbi: !!marketAbi, // Log boolean for ABI presence
-      isEnabled: isConnected && !!positionId && !!marketAddress && !!marketAbi,
-    });
-  }, [isConnected, positionId, marketAddress, marketAbi]);
 
   const originalPositionDirection = useMemo(() => {
     return originalPositionSizeInContractUnit > BigInt(0) ? 'Long' : 'Short';
