@@ -1,10 +1,10 @@
 import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import type React from 'react';
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useTokenBalance } from '~/hooks/contract';
-import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
 import { CreateLiquidityForm, ModifyLiquidityForm } from './forms';
@@ -17,7 +17,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   positionId,
 }) => {
   const { isConnected } = useAccount();
-  const { setIsOpen } = useConnectWallet();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet();
   const [modifyMode, setModifyMode] = useState<'add' | 'remove'>('add');
 
   // Get data from the forecast context
@@ -48,7 +48,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   });
 
   const handleConnectWallet = async () => {
-    setIsOpen(true);
+    await connectOrCreateWallet();
   };
 
   const handleSuccess = () => {
