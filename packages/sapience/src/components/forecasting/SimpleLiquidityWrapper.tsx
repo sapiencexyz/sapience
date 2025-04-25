@@ -3,6 +3,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
 
+import { useTokenBalance } from '~/hooks/contract';
 import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
@@ -22,6 +23,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   // Get data from the forecast context
   const {
     collateralAssetTicker,
+    collateralAssetAddress,
     baseTokenName,
     quoteTokenName,
     minTick,
@@ -30,18 +32,27 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
     chainId,
     abi,
     marketContractData,
+    marketGroupParams,
     getPositionById,
+    refetchPositions,
   } = useForecast();
 
   const position = positionId ? getPositionById(positionId) : null;
   const hasPosition = !!position;
 
+  // Move useTokenBalance hook here
+  const { balance: walletBalance } = useTokenBalance({
+    tokenAddress: collateralAssetAddress,
+    chainId: chainId as number,
+    enabled: isConnected && !!collateralAssetAddress,
+  });
+
   const handleConnectWallet = async () => {
     setIsOpen(true);
   };
 
-  const handleSuccess = (txHash: `0x${string}`) => {
-    console.log('txHash', txHash);
+  const handleSuccess = () => {
+    refetchPositions();
   };
 
   const marketDetails = {
@@ -50,11 +61,19 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
     marketId: marketContractData.epochId,
     marketAbi: abi,
     collateralAssetTicker,
-    collateralAssetAddress: marketContractData.collateralAsset,
+    collateralAssetAddress: collateralAssetAddress as `0x${string}`,
+    uniswapPositionManager: marketGroupParams.uniswapPositionManager,
     virtualBaseTokensName: baseTokenName,
     virtualQuoteTokensName: quoteTokenName,
     lowPriceTick: minTick,
     highPriceTick: maxTick,
+  };
+
+  // Create wallet data object
+  const walletData = {
+    isConnected,
+    walletBalance,
+    onConnectWallet: handleConnectWallet,
   };
 
   return (
@@ -74,8 +93,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
 
           <ModifyLiquidityForm
             marketDetails={marketDetails}
-            isConnected={isConnected}
-            onConnectWallet={handleConnectWallet}
+            walletData={walletData}
             onSuccess={handleSuccess}
             positionId={positionId as string}
             mode={modifyMode}
@@ -84,8 +102,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
       ) : (
         <CreateLiquidityForm
           marketDetails={marketDetails}
-          isConnected={isConnected}
-          onConnectWallet={handleConnectWallet}
+          walletData={walletData}
           onSuccess={handleSuccess}
         />
       )}

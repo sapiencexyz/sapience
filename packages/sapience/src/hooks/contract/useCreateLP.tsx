@@ -116,9 +116,18 @@ export function useCreateLP({
 
   // Set error if any occur during the process
   useEffect(() => {
-    if (writeError) setError(writeError);
-    if (txError) setError(txError);
-    if (approvalError) setError(approvalError);
+    if (writeError) {
+      setError(writeError);
+      setProcessingTx(false); // Reset processing state on write error
+    }
+    if (txError) {
+      setError(txError);
+      setProcessingTx(false); // Reset processing state on transaction error
+    }
+    if (approvalError) {
+      setError(approvalError);
+      setProcessingTx(false); // Reset processing state on approval error
+    }
   }, [writeError, txError, approvalError]);
 
   // When approval is successful, proceed with creating the LP
@@ -243,6 +252,13 @@ export function useCreateLP({
       setProcessingTx(false);
     }
   }, [isSuccess]);
+
+  // Reset processing state on error from transaction
+  useEffect(() => {
+    if (error) {
+      setProcessingTx(false);
+    }
+  }, [error]);
 
   return {
     createLP,
