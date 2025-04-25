@@ -11,7 +11,7 @@ include = [
 defaultValue = "<%= stringToHex('What will Microsoft’s earnings per share (EPS) be for Q1 2025?') %>"
 
 [setting.marketStartingTime]
-defaultValue = "1745604000"
+defaultValue = "1745607600"
 
 [setting.marketEndingTime]
 defaultValue = "1746045000"

@@ -11,7 +11,7 @@ include = [
 defaultValue = "<%= stringToHex('Will the U.S. be in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration?') %>"
 
 [setting.marketStartingTime]
-defaultValue = "1745604000"
+defaultValue = "1745607600"
 
 [setting.marketEndingTime]
 defaultValue = "1754022540" 
