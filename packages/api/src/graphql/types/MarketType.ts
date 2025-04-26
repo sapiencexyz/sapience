@@ -31,9 +31,18 @@ export class MarketType {
   @Field(() => String, { nullable: true })
   settlementPriceD18: string | null;
 
+  @Field(() => String, { nullable: true })
+  poolAddress: string | null;
+
   @Field(() => Boolean)
   public: boolean;
 
   @Field(() => String, { nullable: true })
   question: string | null;
+
+  @Field(() => Int, { nullable: true })
+  baseAssetMinPriceTick: number | null;
+
+  @Field(() => Int, { nullable: true })
+  baseAssetMaxPriceTick: number | null;
 }

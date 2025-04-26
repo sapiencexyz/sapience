@@ -1,49 +1,111 @@
-import type { LiquidityFormValues } from '@foil/ui';
-import { LiquidityForm } from '@foil/ui';
-import { useToast } from '@foil/ui/hooks/use-toast';
-import { useState } from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import type React from 'react';
+import { useState } from 'react';
+import { useAccount } from 'wagmi';
+
+import { useTokenBalance } from '~/hooks/contract';
+import { useForecast } from '~/lib/context/ForecastProvider';
+
+import { CreateLiquidityForm, ModifyLiquidityForm } from './forms';
 
 interface SimpleLiquidityWrapperProps {
-  collateralAssetTicker: string;
-  baseTokenName: string;
-  quoteTokenName: string;
+  positionId?: string;
 }
 
 const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
-  collateralAssetTicker,
-  baseTokenName,
-  quoteTokenName,
+  positionId,
 }) => {
-  const { toast } = useToast();
-  const [isConnected, setIsConnected] = useState(false);
+  const { isConnected } = useAccount();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet();
+  const [modifyMode, setModifyMode] = useState<'add' | 'remove'>('add');
 
-  const handleLiquiditySubmit = (data: LiquidityFormValues) => {
-    toast({
-      title: 'Liquidity Added',
-      description: `Deposit: ${data.depositAmount} ${collateralAssetTicker}, Low Price: ${data.lowPrice}, High Price: ${data.highPrice}, Slippage: ${data.slippage}%`,
-    });
+  // Get data from the forecast context
+  const {
+    collateralAssetTicker,
+    collateralAssetAddress,
+    baseTokenName,
+    quoteTokenName,
+    minTick,
+    maxTick,
+    marketAddress,
+    chainId,
+    abi,
+    marketContractData,
+    marketGroupParams,
+    getPositionById,
+    refetchPositions,
+  } = useForecast();
+
+  const position = positionId ? getPositionById(positionId) : null;
+  const hasPosition = !!position;
+
+  // Move useTokenBalance hook here
+  const { balance: walletBalance } = useTokenBalance({
+    tokenAddress: collateralAssetAddress,
+    chainId: chainId as number,
+    enabled: isConnected && !!collateralAssetAddress,
+  });
+
+  const handleConnectWallet = async () => {
+    await connectOrCreateWallet();
   };
 
-  const handleConnectWallet = () => {
-    // In a real implementation, this would connect to a wallet
-    setIsConnected(true);
-    toast({
-      title: 'Wallet Connected',
-      description: 'Your wallet has been successfully connected',
-    });
+  const handleSuccess = () => {
+    refetchPositions();
+  };
+
+  const marketDetails = {
+    marketAddress: marketAddress as `0x${string}`,
+    chainId: chainId as number,
+    marketId: marketContractData.epochId,
+    marketAbi: abi,
+    collateralAssetTicker,
+    collateralAssetAddress: collateralAssetAddress as `0x${string}`,
+    uniswapPositionManager: marketGroupParams.uniswapPositionManager,
+    virtualBaseTokensName: baseTokenName,
+    virtualQuoteTokensName: quoteTokenName,
+    lowPriceTick: minTick,
+    highPriceTick: maxTick,
+  };
+
+  // Create wallet data object
+  const walletData = {
+    isConnected,
+    walletBalance,
+    onConnectWallet: handleConnectWallet,
   };
 
   return (
     <div className="h-full">
-      <LiquidityForm
-        onLiquiditySubmit={handleLiquiditySubmit}
-        collateralAssetTicker={collateralAssetTicker}
-        virtualBaseTokensName={baseTokenName}
-        virtualQuoteTokensName={quoteTokenName}
-        isConnected={isConnected}
-        onConnectWallet={handleConnectWallet}
-      />
+      {hasPosition ? (
+        <div className="space-y-4">
+          <Tabs
+            value={modifyMode}
+            onValueChange={(value) => setModifyMode(value as 'add' | 'remove')}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="add">Add</TabsTrigger>
+              <TabsTrigger value="remove">Remove</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <ModifyLiquidityForm
+            marketDetails={marketDetails}
+            walletData={walletData}
+            onSuccess={handleSuccess}
+            positionId={positionId as string}
+            mode={modifyMode}
+          />
+        </div>
+      ) : (
+        <CreateLiquidityForm
+          marketDetails={marketDetails}
+          walletData={walletData}
+          onSuccess={handleSuccess}
+        />
+      )}
     </div>
   );
 };

@@ -6,61 +6,126 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
 import { SlippageTolerance } from './SlippageTolerance';
 import { NumberDisplay } from './NumberDisplay';
+import { useToast } from '../hooks/use-toast';
+
+const COLLATERAL_DECIMALS = 18;
 
 export interface TradeFormProps {
-  onTradeSubmit?: (data: TradeFormValues) => void;
+  onTradeSubmit: (data: TradeFormValues) => Promise<void>;
   collateralAssetTicker?: string;
+  walletBalanceDisplay?: string;
+  initialDirection?: 'Long' | 'Short';
+  initialSize?: string;
+  initialSlippage?: number;
+  getEstimatedCost?: (size: string, direction: 'Long' | 'Short') => Promise<string>;
+  isLoading?: boolean;
+  isApproving?: boolean;
+  needsApproval?: boolean;
+  submitError?: Error | null;
 }
 
-export function TradeForm({ 
+export function TradeForm({
   onTradeSubmit,
-  collateralAssetTicker = 'sUSDS'
+  collateralAssetTicker = 'sUSDS',
+  walletBalanceDisplay = '0.0',
+  initialDirection = 'Long',
+  initialSize = '',
+  initialSlippage = 0.5,
+  getEstimatedCost,
+  isLoading = false,
+  isApproving = false,
+  needsApproval = false,
+  submitError = null,
 }: TradeFormProps) {
   const form = useTradeForm();
-  const { handleSubmit, reset, control, watch, setValue } = form;
-  
-  const [walletBalance, setWalletBalance] = useState("100.0"); // Mock wallet balance
-  const [estimatedCollateralChange, setEstimatedCollateralChange] = useState("0");
-  const [estimatedResultingBalance, setEstimatedResultingBalance] = useState(walletBalance);
-  
+  const { toast } = useToast();
+  const { handleSubmit, control, watch, setValue, formState, reset } = form;
+  const { isValid, isDirty, isSubmitting } = formState;
+
+  useEffect(() => {
+    reset({
+      direction: initialDirection,
+      size: initialSize,
+      slippage: String(initialSlippage),
+    });
+  }, [reset, initialDirection, initialSize, initialSlippage]);
+
   const size = watch('size');
   const direction = watch('direction');
-  
-  // Calculate estimated preview values based on input
+  const slippage = watch('slippage');
+
+  const [estimatedCollateralCost, setEstimatedCollateralCost] = useState("0");
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  const slippageValue = parseFloat(slippage || '-1');
+
   useEffect(() => {
     const sizeNum = parseFloat(size || '0');
-    if (sizeNum === 0) {
-      setEstimatedCollateralChange("0");
-      setEstimatedResultingBalance(walletBalance);
+    if (!size || sizeNum === 0 || !getEstimatedCost) {
+      const mockCost = (sizeNum * 1.2).toFixed(COLLATERAL_DECIMALS);
+      setEstimatedCollateralCost(mockCost);
       return;
     }
-    
-    // In a real implementation, this would call an API or contract to get quotes
-    // For this example, we'll just use a simple calculation
-    const mockCollateralChange = (sizeNum * 1.2).toFixed(4);
-    setEstimatedCollateralChange(mockCollateralChange);
-    
-    const newBalance = (parseFloat(walletBalance) - parseFloat(mockCollateralChange)).toFixed(4);
-    setEstimatedResultingBalance(newBalance);
-  }, [size, direction, walletBalance]);
 
-  const handleFormSubmit = (data: TradeFormValues) => {
-    if (onTradeSubmit) {
-      onTradeSubmit(data);
-    } else {
-      form.onSubmit(data);
+    let isMounted = true;
+    const fetchCost = async () => {
+      setIsPreviewLoading(true);
+      try {
+        const cost = await getEstimatedCost(size, direction);
+        if (isMounted) {
+          setEstimatedCollateralCost(cost);
+        }
+      } catch (error) {
+        console.error("Error fetching estimated cost:", error);
+        if (isMounted) {
+          setEstimatedCollateralCost("0");
+        }
+      } finally {
+        if (isMounted) {
+          setIsPreviewLoading(false);
+        }
+      }
+    };
+
+    fetchCost();
+
+    return () => { isMounted = false; };
+  }, [size, direction, getEstimatedCost]);
+
+  const estimatedResultingBalance = (
+    parseFloat(walletBalanceDisplay) - parseFloat(estimatedCollateralCost)
+  ).toFixed(COLLATERAL_DECIMALS);
+
+  const handleFormSubmit = async (data: TradeFormValues) => {
+    console.log('TradeForm submitting data:', data);
+    try {
+      await onTradeSubmit(data);
+    } catch (error) {
+      console.error("Error during onTradeSubmit call:", error);
+      toast({
+        title: 'Submission Failed',
+        description: 'An error occurred while submitting the trade.',
+        variant: 'destructive',
+      });
     }
   };
-  
+
   const handleDirectionChange = (value: string) => {
-    setValue('direction', value as 'Long' | 'Short');
+    setValue('direction', value as 'Long' | 'Short', { shouldValidate: true });
   };
+
+  let buttonText = 'Submit Trade';
+  if (needsApproval) buttonText = 'Approve';
+  if (isApproving) buttonText = 'Approving...';
+  else if (isLoading || isSubmitting) buttonText = 'Submitting...';
+
+  const isButtonDisabled = isLoading || isApproving || isSubmitting || !isValid || !isDirty || parseFloat(size || '0') <= 0 || slippageValue < 0;
 
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
         <Tabs
-          defaultValue="Long"
+          defaultValue={initialDirection}
           value={direction}
           onValueChange={handleDirectionChange}
           className="mb-4"
@@ -79,10 +144,14 @@ export function TradeForm({
               <FormLabel>Size</FormLabel>
               <FormControl>
                 <div className="flex">
-                  <Input 
-                    placeholder="0.0" 
-                    type="text"
-                    {...field} 
+                  <Input
+                    placeholder="0.0"
+                    type="number"
+                    step="any"
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e.target.value);
+                    }}
                   />
                 </div>
               </FormControl>
@@ -94,35 +163,42 @@ export function TradeForm({
         <SlippageTolerance />
 
         <div className="flex justify-end">
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full"
+            disabled={isButtonDisabled}
           >
-            Submit Trade
+            {buttonText}
           </Button>
         </div>
-        
-        {/* Preview Section */}
+
         <div className="border-t pt-4 mt-4">
-          <div className="flex flex-col gap-2">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-0.5">Wallet Balance</p>
-              <p className="text-sm">
-                <NumberDisplay value={walletBalance} /> {collateralAssetTicker}
-                {parseFloat(size || '0') > 0 && (
-                  <>
-                    {' → '}
-                    <NumberDisplay value={estimatedResultingBalance} /> {collateralAssetTicker}
-                  </>
-                )}
-              </p>
+          <h4 className="text-sm font-medium mb-2">Preview</h4>
+          <div className="flex flex-col gap-2 text-sm">
+            {submitError && (
+              <p className="text-red-500">Error: {submitError.message}</p>
+            )}
+
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Wallet Balance</span>
+              <span>
+                <NumberDisplay value={walletBalanceDisplay} /> {collateralAssetTicker}
+              </span>
             </div>
-            
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-0.5">Estimated Cost</p>
-              <p className="text-sm">
-                <NumberDisplay value={estimatedCollateralChange} /> {collateralAssetTicker}
-              </p>
+
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Est. Cost {isPreviewLoading ? '(Loading...)' : ''}</span>
+              <span><NumberDisplay value={estimatedCollateralCost} /> {collateralAssetTicker}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Est. Resulting Balance</span>
+              <span><NumberDisplay value={estimatedResultingBalance} /> {collateralAssetTicker}</span>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Slippage Tolerance</span>
+              <span>{slippage}%</span>
             </div>
           </div>
         </div>

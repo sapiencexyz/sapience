@@ -50,12 +50,7 @@ contract UMASettlementModule is
         );
 
         bytes memory claim = abi.encodePacked(
-            string(epoch.marketParams.claimStatement),
-            " between timestamps ",
-            Strings.toString(epoch.startTime),
-            " and ",
-            Strings.toString(epoch.endTime),
-            " (inclusive) is ",
+            string(epoch.claimStatement),
             Strings.toString(decimalPrice),
             "."
         );

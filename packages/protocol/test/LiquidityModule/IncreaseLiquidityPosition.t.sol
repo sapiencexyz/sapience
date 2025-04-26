@@ -45,7 +45,8 @@ contract IncreaseLiquidityPosition is TestTrade {
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            "wstGwei/gas"
         );
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);

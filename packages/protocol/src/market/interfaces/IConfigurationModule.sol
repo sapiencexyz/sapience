@@ -19,7 +19,8 @@ interface IConfigurationModule {
         uint epochId,
         uint256 startTime,
         uint256 endTime,
-        uint160 startingSqrtPriceX96
+        uint160 startingSqrtPriceX96,
+        bytes claimStatement
     );
 
     event OwnershipTransferStarted(
@@ -60,6 +61,7 @@ interface IConfigurationModule {
         uint160 startingSqrtPriceX96,
         int24 baseAssetMinPriceTick,
         int24 baseAssetMaxPriceTick,
-        uint256 salt
+        uint256 salt,
+        bytes calldata claimStatement
     ) external returns (uint256 epochId);
 }

@@ -32,7 +32,7 @@ contract ManualSettlementTest is TestTrade {
         uint160 startingSqrtPriceX96 = SQRT_PRICE_10Eth;
         int24 minTick = 16000;
         int24 maxTick = 29800;
-        (foil, ) = createEpoch(minTick, maxTick, startingSqrtPriceX96, 10_000);
+        (foil, ) = createEpoch(minTick, maxTick, startingSqrtPriceX96, 10_000, "wstGwei/gas");
 
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
         epochId = epochData.epochId;
