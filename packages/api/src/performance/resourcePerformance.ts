@@ -209,41 +209,58 @@ export class ResourcePerformance {
       ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
     );
 
-    this.initializeOrCleanupRuntimeData(dbResourcePrices);
+    // Process resource prices in batches
+    let resourceSkip = 0;
+    let hasMoreResourcePrices = true;
+    const lastResourceTimestamp = 0;
 
-    // Process all resource prices
-    while (this.runtime.currentIdx < this.runtime.dbResourcePricesLength) {
-      const item = this.runtime.dbResourcePrices[this.runtime.currentIdx];
-
-      // Add to trailing avg storage
-      this.persistentResourceCacheTrailingAvgStorage.push({
-        t: item.timestamp,
-        u: item.used,
-        f: item.feePaid,
-      });
-
-      for (const interval of this.intervals) {
-        this.processResourcePriceData(item, this.runtime.currentIdx, interval);
-        this.processTrailingAvgPricesData(
-          item,
-          this.runtime.currentIdx,
-          interval,
-          this.trailingAvgTime[0],
-          this.persistentResourceCacheTrailingAvgStorage
+    while (hasMoreResourcePrices) {
+      const { prices: dbResourcePrices, hasMore } =
+        await this.pullResourcePrices(
+          initialResourceTimestamp,
+          ResourcePerformance.BATCH_SIZE,
+          resourceSkip
         );
-        this.processTrailingAvgPricesData(
-          item,
-          this.runtime.currentIdx,
-          interval,
-          this.trailingAvgTime[1],
-          this.persistentResourceCacheTrailingAvgStorage
-        );
-        this.processIndexPricesData(item, this.runtime.currentIdx, interval);
+
+      if (dbResourcePrices.length === 0) {
+        break;
       }
-      this.runtime.currentIdx++;
-    }
-    // Cleanup the runtime data
-    this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
+
+      this.initializeOrCleanupRuntimeData(dbResourcePrices);
+
+      // Process the current batch
+      for (let i = 0; i < dbResourcePrices.length; i++) {
+        const item = dbResourcePrices[i];
+
+        // Add to trailing avg storage
+        this.persistentResourceCacheTrailingAvgStorage.push({
+          t: item.timestamp,
+          u: item.used,
+          f: item.feePaid,
+        });
+        
+        for (const interval of this.intervals) {
+          this.processResourcePriceData(item, i, interval);
+          this.processTrailingAvgPricesData(
+            item,
+            i,
+            interval,
+            this.trailingAvgTime[0],
+            this.persistentResourceCacheTrailingAvgStorage
+          );
+          this.processTrailingAvgPricesData(
+            item,
+            i,
+            interval,
+            this.trailingAvgTime[1],
+            this.persistentResourceCacheTrailingAvgStorage
+          );
+          this.processIndexPricesData(item, i, interval);
+        }
+      }
+
+      // Cleanup the runtime data
+      this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
 
     // Process all market prices
     let marketIdx = 0;
