@@ -81,7 +81,7 @@ interface MarketInfo {
     priceIndexer: {
       client?: any;
       indexBlocks: (resource: any, blockNumbers: number[]) => Promise<any>;
-    };
+    } | null;
     [key: string]: any;
   };
   vaultAddress?: string;
