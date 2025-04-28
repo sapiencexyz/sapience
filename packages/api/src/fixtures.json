@@ -57,6 +57,10 @@
     {
       "name": "Geopolitics",
       "slug": "geopolitics"
+    },
+    {
+      "name": "Economy & Finance",
+      "slug": "economy-finance"
     }
   ],
   "MARKETS": [
@@ -184,6 +188,190 @@
       "category": "decentralized-compute",
       "baseTokenName": "GGas",
       "quoteTokenName": "wstEth"
+    },
+    {
+      "questions": [
+        "Was Apple’s earnings per share (EPS) for Q1 2025 less than 0.50?",
+        "Was Apple’s earnings per share (EPS) for Q1 2025 between 0.51 and 1.00?",
+        "Was Apple’s earnings per share (EPS) for Q1 2025 between 1.01 and 1.50?",
+        "Was Apple’s earnings per share (EPS) for Q1 2025 between 1.51 and 2.00?",
+        "Was Apple’s earnings per share (EPS) for Q1 2025 between 2.01 and 2.50?",
+        "Was Apple’s earnings per share (EPS) for Q1 2025 greater than 2.51?"
+      ],
+      "question": "What will Apple’s earnings per share (EPS) be for Q1 2025?",
+      "chainId": 8453,
+      "address": "0x98fed6946aeff36a4c49681993d24717d7732573",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was Amazon’s earnings per share (EPS) for Q1 2025 less than 0.50?",
+        "Was Amazon’s earnings per share (EPS) for Q1 2025 between 0.51 and 1.00?",
+        "Was Amazon’s earnings per share (EPS) for Q1 2025 between 1.01 and 1.50?",
+        "Was Amazon’s earnings per share (EPS) for Q1 2025 between 1.51 and 2.00?",
+        "Was Amazon’s earnings per share (EPS) for Q1 2025 between 2.01 and 2.50?",
+        "Was Amazon’s earnings per share (EPS) for Q1 2025 greater than 2.51?"
+      ],
+      "question": "What will Amazon’s earnings per share (EPS) be for Q1 2025?",
+      "chainId": 8453,
+      "address": "0x27bbafcc4ebb2b84235de10d5b79db1c1958f166",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 less than -2.50%",
+        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -2.51% and -2.00%",
+        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -2.01% and -1.50%",
+        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -1.51% and -1.00%",
+        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -1.01% and -0.50%",
+        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 greater than -0.51%"
+      ],
+      "question": "What will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025?",
+      "chainId": 8453,
+      "address": "0x561df2a28f41bdfd596006c9f8580c93b37ace3d",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was the annualized U.S. GDP growth rate for Q1 2025 less than -2.50%",
+        "Was the annualized U.S. GDP growth rate for Q1 2025 between -2.51% and -2.00%",
+        "Was the annualized U.S. GDP growth rate for Q1 2025 between -2.01% and -1.50%",
+        "Was the annualized U.S. GDP growth rate for Q1 2025 between -1.51% and -1.00%",
+        "Was the annualized U.S. GDP growth rate for Q1 2025 between -1.01% and -0.50%",
+        "Was the annualized U.S. GDP growth rate for Q1 2025 greater than -0.51%"
+      ],
+      "question": "What will the annualized U.S. GDP growth rate be for Q1 2025?",
+      "chainId": 8453,
+      "address": "0x436aa079c05b421588cfc5064563be8a2f5a40b0",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was the ISM Manufacturing PMI reading for April 2025 less than 48.50",
+        "Was the ISM Manufacturing PMI reading for April 2025 between 48.51 and 49.00",
+        "Was the ISM Manufacturing PMI reading for April 2025 between 49.01 and 49.50",
+        "Was the ISM Manufacturing PMI reading for April 2025 between 49.51 and 50.00",
+        "Was the ISM Manufacturing PMI reading for April 2025 greater than 50.01"
+      ],
+      "question": "What will the ISM Manufacturing PMI reading be for April 2025?",
+      "chainId": 8453,
+      "address": "0x18f0aa3b105e38f67a051337290d2faf72f575c7",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was Meta’s earnings per share (EPS) for Q1 2025 less than 3.00",
+        "Was Meta’s earnings per share (EPS) for Q1 2025 between 3.01 and 4.00",
+        "Was Meta’s earnings per share (EPS) for Q1 2025 between 4.01 and 5.00",
+        "Was Meta’s earnings per share (EPS) for Q1 2025 between 5.01 and 6.00",
+        "Was Meta’s earnings per share (EPS) for Q1 2025 greater than 6.01"
+      ],
+      "question": "What will Meta’s earnings per share (EPS) be for Q1 2025?",
+      "chainId": 8453,
+      "address": "0x525cafe8c95cddf651aa01e5097bc6e719f8d99f",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was Microsoft’s earnings per share (EPS) for Q1 2025 less than 2.50",
+        "Was Microsoft’s earnings per share (EPS) for Q1 2025 between 2.51 and 3.00",
+        "Was Microsoft’s earnings per share (EPS) for Q1 2025 between 3.01 and 3.50",
+        "Was Microsoft’s earnings per share (EPS) for Q1 2025 between 3.51 and 4.00",
+        "Was Microsoft’s earnings per share (EPS) for Q1 2025 between 4.01 and 4.50",
+        "Was Microsoft’s earnings per share (EPS) for Q1 2025 greater than 4.51"
+      ],
+      "question": "What will Microsoft’s earnings per share (EPS) be for Q1 2025?",
+      "chainId": 8453,
+      "address": "0xe3861cf36a2d6efe0b0da75cf8b92e6f77deb5ba",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was the change in U.S. nonfarm payrolls be in April 2025 less than 40000",
+        "Was the change in U.S. nonfarm payrolls be in April 2025 between 40001 and 80000",
+        "Was the change in U.S. nonfarm payrolls be in April 2025 between 80001 and 120000",
+        "Was the change in U.S. nonfarm payrolls be in April 2025 between 120001 and 160000",
+        "Was the change in U.S. nonfarm payrolls be in April 2025 greater than 160001"
+      ],
+      "question": "What will the change in U.S. nonfarm payrolls be in April 2025?",
+      "chainId": 8453,
+      "address": "0xcf5c159f26011d2bfe0479d9f3f12384c607b79e",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 less than 0.50",
+        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.51 and 0.80",
+        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.81 and 1.10",
+        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.11 and 1.40",
+        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.41 and 1.70",
+        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 greater than 1.71"
+      ],
+      "question": "What will NVIDIA’s earnings per share (EPS) be for Q1 2025?",
+      "chainId": 8453,
+      "address": "0xe93988e01503b9ae04aba992be97477a60ed7631",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was the year-over-year Core PCE inflation rate be in March 2025 less than -2.50%",
+        "Was the year-over-year Core PCE inflation rate be in March 2025 between -2.51% and -2.00%",
+        "Was the year-over-year Core PCE inflation rate be in March 2025 between -2.01% and -1.50%",
+        "Was the year-over-year Core PCE inflation rate be in March 2025 between -1.51% and -1.00%",
+        "Was the year-over-year Core PCE inflation rate be in March 2025 between -1.01% and -0.50%",
+        "Was the year-over-year Core PCE inflation rate be in March 2025 greater than -0.51%"
+      ],
+      "question": "What will the year-over-year Core PCE inflation rate be in March 2025?",
+      "chainId": 8453,
+      "address": "0x386a1bdbd3dd9cec4464858dfc95900721207765",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 less than -2.50%",
+        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 between -2.51% and -2.00%",
+        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 between -2.01% and -1.50%",
+        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 between -1.51% and -1.00%",
+        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 between -1.01% and -0.50%",
+        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 greater than -0.51%"
+      ],
+      "question": "What will the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025?",
+      "chainId": 8453,
+      "address": "0xdcbc0134f2b7500e97271b287c2d584d1b9ec583",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
+    },
+    {
+      "questions": [
+        "Was U.S. in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration?"
+      ],
+      "question": "Will the U.S. be in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration?",
+      "chainId": 8453,
+      "address": "0xafe0184b2c99175efe482835dccd4d9a7d4e8605",
+      "category": "economy-finance",
+      "baseTokenName": "Yes",
+      "quoteTokenName": "sUSDS"
     }
   ]
 }

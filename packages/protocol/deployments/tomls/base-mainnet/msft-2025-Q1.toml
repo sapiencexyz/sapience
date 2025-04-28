@@ -1,0 +1,53 @@
+name="foil"
+version="1.0.4"
+preset="msft-2025-q1"
+
+include = [
+  "templates/generic-marketgroup.toml",
+  "templates/buckets-for-six.toml"
+]
+
+[setting.claimStatement]
+defaultValue = "<%= stringToHex('What will Microsoft’s earnings per share (EPS) be for Q1 2025?') %>"
+
+[setting.marketStartingTime]
+defaultValue = "1745611200"
+
+[setting.marketEndingTime]
+defaultValue = "1746045000"
+
+[setting.bucket1Name]
+defaultValue = "<%= stringToHex('bucket 1') %>"
+
+[setting.bucket2Name]
+defaultValue = "<%= stringToHex('bucket 2') %>"
+
+[setting.bucket3Name]
+defaultValue = "<%= stringToHex('bucket 3') %>"
+
+[setting.bucket4Name]
+defaultValue = "<%= stringToHex('bucket 4') %>"
+
+[setting.bucket5Name]
+defaultValue = "<%= stringToHex('bucket 5') %>"
+
+[setting.bucket6Name]
+defaultValue = "<%= stringToHex('bucket 6') %>"
+
+[setting.bucket1Claim]
+defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 less than 2.50? Zero if no:') %>"
+
+[setting.bucket2Claim]
+defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 between 2.51 and 3.00? Zero if no:') %>"
+
+[setting.bucket3Claim]
+defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 between 3.01 and 3.50? Zero if no:') %>"
+
+[setting.bucket4Claim]
+defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 between 3.51 and 4.00? Zero if no:') %>"
+
+[setting.bucket5Claim]
+defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 between 4.01 and 4.50? Zero if no:') %>"
+
+[setting.bucket6Claim]
+defaultValue = "<%= stringToHex('Was Microsoft’s earnings per share (EPS) for Q1 2025 greater than 4.51? Zero if no:') %>"
