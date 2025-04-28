@@ -189,8 +189,6 @@ export function useModifyLP({
           deadline,
         };
 
-        console.log('Increase Liquidity Params:', increaseParams);
-
         // Call the contract function
         const hash = await writeContractAsync({
           address: marketAddress,
@@ -211,8 +209,6 @@ export function useModifyLP({
           minEthAmount: minAmount1,
           deadline,
         };
-
-        console.log('Decrease Liquidity Params:', decreaseParams);
 
         // Call the contract function
         const hash = await writeContractAsync({

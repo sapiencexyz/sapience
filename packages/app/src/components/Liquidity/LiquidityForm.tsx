@@ -14,21 +14,14 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { decodeEventLog, formatUnits, parseUnits } from 'viem';
 import {
-  useWriteContract,
-  useWaitForTransactionReceipt,
   useAccount,
-  useReadContract,
   useChainId,
+  useReadContract,
   useSwitchChain,
+  useWaitForTransactionReceipt,
+  useWriteContract,
 } from 'wagmi';
 
-import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
-import { useFoil } from '../../lib/context/FoilProvider';
-import erc20ABI from '../../lib/erc20abi.json';
-import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
-import NumberDisplay from '../numberDisplay';
-import PositionSelector from '../positionSelector';
-import SlippageTolerance from '../slippageTolerance';
 import {
   CREATE_LIQUIDITY_REDUCTION,
   TICK_SPACING_DEFAULT,
@@ -39,6 +32,13 @@ import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { JSBIAbs, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
+import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
+import { useFoil } from '../../lib/context/FoilProvider';
+import erc20ABI from '../../lib/erc20abi.json';
+import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
+import NumberDisplay from '../numberDisplay';
+import PositionSelector from '../positionSelector';
+import SlippageTolerance from '../slippageTolerance';
 
 import LiquidityAmountInput from './LiquidityAmountInput';
 import LiquidityPriceInput from './LiquidityPriceInput';
@@ -304,7 +304,6 @@ const LiquidityForm: React.FC = () => {
     },
   });
 
-  /// //// WRITE CONTRACT HOOKS ///////
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
@@ -386,7 +385,6 @@ const LiquidityForm: React.FC = () => {
     hash: decreaseLiquidityHash,
   });
 
-  /// ///// MEMOIZED VALUES ////////
   const liquidity: bigint = useMemo(() => {
     if (!uniswapPosition) return BigInt(0);
     const uniswapData = uniswapPosition as any[];
@@ -1061,15 +1059,6 @@ const LiquidityForm: React.FC = () => {
       contextHighPriceTick !== undefined && contextHighPriceTick !== 0
         ? contextHighPriceTick
         : baseAssetMaxPriceTick;
-
-    console.log('Ticks:', {
-      lowTick,
-      highTick,
-      contextLowPriceTick,
-      contextHighPriceTick,
-      baseAssetMinPriceTick,
-      baseAssetMaxPriceTick,
-    });
 
     if (lowTick === undefined || highTick === undefined) {
       console.log('Ticks are undefined');

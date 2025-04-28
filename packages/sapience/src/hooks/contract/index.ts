@@ -2,6 +2,7 @@ export * from './useCreateLiquidityQuoter';
 export * from './useCreateLP';
 export * from './useCreateTrade';
 export * from './useMarketRead';
+export * from './useMarketTickSpacing';
 export * from './useModifyLiquidityQuoter';
 export * from './useModifyTrade';
 export * from './usePositionLiquidity';
