@@ -25,6 +25,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
     abi,
     collateralAssetAddress,
     getPositionById,
+    refetchPositions,
   } = useForecast();
 
   const position = positionId ? getPositionById(positionId) : null;
@@ -35,7 +36,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
   };
 
   const handleSuccess = (txHash: `0x${string}`) => {
-    console.log('Trade transaction submitted, txHash:', txHash);
+    refetchPositions();
   };
 
   const marketDetails: TradeFormMarketDetails = {
