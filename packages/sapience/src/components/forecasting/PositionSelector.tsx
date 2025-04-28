@@ -30,9 +30,6 @@ const PositionSelector: React.FC<PositionSelectorProps> = () => {
     ? getPositionById(currentPositionId)
     : null;
 
-  // // DEBUG:
-  // console.log('Selected Position:', selectedPosition);
-
   const hasPositions =
     lpPositionsArray.length > 0 || traderPositionsArray.length > 0;
 
