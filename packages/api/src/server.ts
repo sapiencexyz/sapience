@@ -30,7 +30,7 @@ const startServer = async () => {
   if (process.env.NODE_ENV === 'development' && process.env.DATABASE_URL?.includes('render')) {
     console.log('Skipping fixtures initialization since we are in development mode and using production database');
   } else {
-    await initializeFixtures();
+    await initializeFixtures( );
   }
 
   const apolloServer = await initializeApolloServer();
@@ -56,11 +56,13 @@ const startServer = async () => {
   }
 
   // console.log('ResourcePerformanceManager - Starting');
-  // const resources = await resourceRepository.find();
-
-  // TESTING ONLY - SELECT A SINGLE RESOURCE SO THAT YOU WON'T HAVE TO CACHE EVERYTHING
-  const resources = (await resourceRepository.find()).filter((res) => res.id === 8);
-
+  let resources;
+  if (process.env.NODE_ENV === 'development' && process.env.DATABASE_URL?.includes('render')) {
+    // TESTING ONLY - SELECT A SINGLE RESOURCE SO THAT YOU WON'T HAVE TO CACHE EVERYTHING
+    resources = (await resourceRepository.find()).filter((res) => res.id === 8);
+  } else {
+    resources = await resourceRepository.find();
+  }
   const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
   await resourcePerformanceManager.initialize(resources);
   console.log('ResourcePerformanceManager - Initialized');
