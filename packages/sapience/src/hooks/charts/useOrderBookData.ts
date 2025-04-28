@@ -227,7 +227,8 @@ export function useOrderBookData({
     if (!rawTickData || rawTickData.length === 0) {
       return [];
     }
-    const translated = rawTickData
+    // Filter out nulls (failed reads) and type guard
+    return rawTickData
       .map((tickResult, idx) => {
         const typedResult = tickResult as TickData; // Type assertion
         if (typedResult.status === 'success' && typedResult.result) {
@@ -245,8 +246,7 @@ export function useOrderBookData({
         }
         return null; // Exclude failed reads
       })
-      .filter((tick): tick is GraphTick => tick !== null); // Filter out nulls (failed reads) and type guard
-    return translated;
+      .filter((tick): tick is GraphTick => tick !== null);
   }, [rawTickData, ticks]);
 
   // 5. Process Ticks with getFullPool
