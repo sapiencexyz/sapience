@@ -174,28 +174,30 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance =
-      resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+    try {
+      const resourcePerformance =
+        resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+          chainId,
+          address
+        );
+
+      if (!resourcePerformance) {
+        return [];
+      }
+
+      const prices = await resourcePerformance.getIndexPrices(
+        from,
+        to,
+        interval,
         chainId,
-        address
+        address,
+        marketId
       );
 
-    if (!resourcePerformance) {
-      throw new Error(
-        `Resource performance not initialized for ${chainId}-${address}`
-      );
+      return prices;
+    } catch {
+      return [];
     }
-
-    const prices = await resourcePerformance.getIndexPrices(
-      from,
-      to,
-      interval,
-      chainId,
-      address,
-      marketId
-    );
-
-    return prices;
   }
 
   // For retrieving the exact settlement price
@@ -276,27 +278,35 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance =
-      resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+    try {
+      const resourcePerformance =
+        resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+          chainId,
+          address
+        );
+
+      if (!resourcePerformance) {
+        console.log(
+          `No resource performance found for ${chainId}-${address}, returning empty array`
+        );
+        return [];
+      }
+
+      const prices = await resourcePerformance.getMarketPrices(
+        from,
+        to,
+        interval,
         chainId,
-        address
+        address,
+        marketId
       );
-
-    if (!resourcePerformance) {
-      throw new Error(
-        `Resource performance not initialized for ${chainId}-${address}`
+      return prices;
+    } catch (error) {
+      console.log(
+        `Error getting market candles for market without resource: ${chainId}-${address}: ${error instanceof Error ? error.message : String(error)}`
       );
+      return [];
     }
-
-    const prices = await resourcePerformance.getMarketPrices(
-      from,
-      to,
-      interval,
-      chainId,
-      address,
-      marketId
-    );
-    return prices;
   }
 
   @Query(() => [CandleType])

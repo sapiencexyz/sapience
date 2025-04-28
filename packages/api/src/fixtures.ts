@@ -88,69 +88,6 @@ async function handleMarketQuestions(
 export const initializeFixtures = async (): Promise<void> => {
   console.log('Initializing fixtures from fixtures.json');
 
-  // Initialize resources from fixtures.json
-  for (const resourceData of fixturesData.RESOURCES) {
-    let resource = await resourceRepository.findOne({
-      where: { name: resourceData.name },
-    });
-
-    // Find the associated category
-    const category = await categoryRepository.findOne({
-      where: { slug: resourceData.category },
-    });
-
-    if (!category) {
-      console.log(
-        `Category not found for resource ${resourceData.name}: ${resourceData.category}`
-      );
-      continue; // Skip this resource if category not found
-    }
-
-    if (!resource) {
-      // Create new resource if it doesn't exist
-      resource = new Resource();
-      resource.name = resourceData.name;
-      resource.slug = resourceData.slug;
-      resource.category = category; // Assign category
-      await resourceRepository.save(resource);
-      console.log('Created resource:', resourceData.name);
-    } else {
-      // Update resource if needed (e.g., slug or category change)
-      let updated = false;
-      if (resource.slug !== resourceData.slug) {
-        resource.slug = resourceData.slug;
-        updated = true;
-      }
-      // Check if category needs update (assuming resource.category might be loaded or null)
-      // Ensure category is loaded for comparison or assignment
-      if (!resource.category || resource.category.id !== category.id) {
-        // Eager load category relation if not already loaded
-        const currentResource = await resourceRepository.findOne({
-          where: { id: resource.id },
-          relations: ['category'],
-        });
-        if (
-          currentResource &&
-          (!currentResource.category ||
-            currentResource.category.id !== category.id)
-        ) {
-          resource.category = category; // Assign new category
-          updated = true;
-        } else if (!currentResource) {
-          // Handle case where resource might have been deleted between finds
-          console.log(`Resource ${resource.name} not found for update.`);
-          continue;
-        }
-      }
-
-      if (updated) {
-        await resourceRepository.save(resource);
-        console.log('Updated resource:', resourceData.name);
-      }
-    }
-  }
-
-  // Initialize categories from fixtures.json
   for (const categoryData of fixturesData.CATEGORIES) {
     let category = await categoryRepository.findOne({
       where: { slug: categoryData.slug },
@@ -165,18 +102,80 @@ export const initializeFixtures = async (): Promise<void> => {
     }
   }
 
-  // Initialize markets from fixtures.json
+  for (const resourceData of fixturesData.RESOURCES) {
+    try {
+      let resource = await resourceRepository.findOne({
+        where: { name: resourceData.name },
+      });
+
+      const category = await categoryRepository.findOne({
+        where: { slug: resourceData.category },
+      });
+
+      if (!category) {
+        console.error(
+          `Category not found for resource ${resourceData.name}: ${resourceData.category}`
+        );
+        continue;
+      }
+
+      if (!resource) {
+        resource = new Resource();
+        resource.name = resourceData.name;
+        resource.slug = resourceData.slug;
+        resource.category = category;
+        await resourceRepository.save(resource);
+        console.log('Created resource:', resourceData.name);
+      } else {
+        let updated = false;
+        if (resource.slug !== resourceData.slug) {
+          resource.slug = resourceData.slug;
+          updated = true;
+        }
+
+        if (!resource.category || resource.category.id !== category.id) {
+          const currentResource = await resourceRepository.findOne({
+            where: { id: resource.id },
+            relations: ['category'],
+          });
+          if (
+            currentResource &&
+            (!currentResource.category ||
+              currentResource.category.id !== category.id)
+          ) {
+            resource.category = category;
+            updated = true;
+          } else if (!currentResource) {
+            console.log(`Resource ${resource.name} not found for update.`);
+            continue;
+          }
+        }
+
+        if (updated) {
+          await resourceRepository.save(resource);
+          console.log('Updated resource:', resourceData.name);
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Error creating/updating resource ${resourceData.name}:`,
+        error
+      );
+    }
+  }
+
   for (const marketData of fixturesData.MARKETS) {
-    // Find the associated resource
-    const resource = await resourceRepository.findOne({
-      where: { slug: marketData.resource },
-    });
+    const resource = marketData.resource
+      ? await resourceRepository.findOne({
+          where: { slug: marketData.resource },
+        })
+      : null;
 
     const category = await categoryRepository.findOne({
       where: { slug: marketData.category },
     });
 
-    if (!resource) {
+    if (marketData.resource && !resource) {
       console.log(`Resource not found: ${marketData.resource}`);
       continue;
     }
@@ -186,12 +185,12 @@ export const initializeFixtures = async (): Promise<void> => {
       continue;
     }
 
-    // Check if market already exists by address and chainId
     let marketGroup = await marketGroupRepository.findOne({
       where: {
         address: marketData.address.toLowerCase(),
         chainId: marketData.chainId,
       },
+      relations: ['resource'],
     });
 
     if (!marketGroup) {
@@ -207,8 +206,9 @@ export const initializeFixtures = async (): Promise<void> => {
       marketGroup.quoteTokenName = marketData.quoteTokenName || null;
       marketGroup.optionNames = marketData.optionNames || null;
 
-      // Set the resource for the market
-      marketGroup.resource = resource;
+      if (resource) {
+        marketGroup.resource = resource;
+      }
       await marketGroupRepository.save(marketGroup);
       console.log(
         'Created market:',
@@ -222,8 +222,13 @@ export const initializeFixtures = async (): Promise<void> => {
         await handleMarketQuestions(marketGroup, marketData.questions);
       }
     } else {
-      // Update market if needed
-      marketGroup.resource = resource;
+      if (!marketData.resource && marketGroup.resource) {
+        marketGroup.resource = null;
+        console.log(`Removed resource from market: ${marketGroup.address}`);
+      } else if (resource) {
+        marketGroup.resource = resource;
+      }
+
       marketGroup.isYin = marketData.isYin || marketGroup.isYin || false;
       marketGroup.isCumulative =
         marketData.isCumulative || marketGroup.isCumulative || false;

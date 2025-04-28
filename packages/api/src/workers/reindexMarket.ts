@@ -52,8 +52,10 @@ export async function reindexMarket(
       isYin: marketEntity.isYin || false,
       isCumulative: marketEntity.isCumulative || false,
       resource: {
-        name: marketEntity.resource.name,
-        priceIndexer: INDEXERS[marketEntity.resource.slug],
+        name: marketEntity.resource?.name,
+        priceIndexer: marketEntity.resource
+          ? INDEXERS[marketEntity.resource.slug]
+          : null,
       },
     };
 

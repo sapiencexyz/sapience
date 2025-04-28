@@ -25,8 +25,10 @@ export class MarketGroup {
   @OneToMany(() => Event, (event) => event.marketGroup)
   events: Event[];
 
-  @ManyToOne(() => Resource, (resource) => resource.marketGroups)
-  resource: Resource;
+  @ManyToOne(() => Resource, (resource) => resource.marketGroups, {
+    nullable: true,
+  })
+  resource: Resource | null;
 
   @ManyToOne(() => Category, (category) => category.marketGroups)
   category: Category;
