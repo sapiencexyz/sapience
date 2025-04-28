@@ -115,7 +115,7 @@ export const FOCUS_AREAS: FocusArea[] = [
       <path d="M5 12V17C5 18.6569 8.13401 20 12 20C15.866 20 19 18.6569 19 17V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>`,
     color: '#F59E0B', // yellow-400
-  }
+  },
 ];
 
 export const DEFAULT_FOCUS_AREA = FOCUS_AREAS[0];
