@@ -1,5 +1,5 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { parseUnits, type Abi } from 'viem';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
@@ -59,22 +59,19 @@ export function useCreateTrade({
   const [error, setError] = useState<Error | null>(null);
   const [processingTx, setProcessingTx] = useState(false);
 
-  // Guard clauses for invalid inputs
-  if (enabled && size === BigInt(0)) {
-    console.warn('useCreateTrade: size cannot be zero.');
-    // Optionally set an error state or return early? For now, just log.
-    // setError(new Error('Size cannot be zero'));
-  }
+  // Parse collateral amount once
   const parsedCollateralAmount = parseUnits(
     collateralAmount || '0',
     COLLATERAL_DECIMALS
   );
-  if (enabled && parsedCollateralAmount === BigInt(0)) {
-    console.warn('useCreateTrade: collateralAmount cannot be zero.');
-    // setError(new Error('Collateral amount cannot be zero'));
-  }
-  // Note: Direction check (size sign) is handled implicitly by size being a bigint.
-  // Caller should ensure sign matches intent. We could add an explicit direction prop if needed.
+
+  // Determine if hook should be enabled based on inputs
+  const isValidInputs = useMemo(() => {
+    return size !== BigInt(0) && parsedCollateralAmount !== BigInt(0);
+  }, [size, parsedCollateralAmount]);
+
+  // Combine external enabled flag with input validation
+  const isEnabled = enabled && isValidInputs;
 
   // Use token approval hook
   const {
@@ -89,12 +86,14 @@ export function useCreateTrade({
     amount: collateralAmount, // Approve based on the user-facing max collateral amount
     chainId,
     enabled:
-      enabled && !!collateralTokenAddress && parsedCollateralAmount > BigInt(0),
+      isEnabled &&
+      !!collateralTokenAddress &&
+      parsedCollateralAmount > BigInt(0),
   });
 
   // Check if approval is needed
   const needsApproval =
-    enabled &&
+    isEnabled &&
     !hasAllowance &&
     collateralTokenAddress !== undefined &&
     parsedCollateralAmount > BigInt(0);
@@ -147,7 +146,7 @@ export function useCreateTrade({
   // When approval is successful, proceed with creating the trade
   useEffect(() => {
     const handleApprovalSuccess = async () => {
-      if (!enabled || !processingTx || !isApproveSuccess) return;
+      if (!isEnabled || !processingTx || !isApproveSuccess) return;
 
       toast({
         title: 'Token Approved',
@@ -176,12 +175,12 @@ export function useCreateTrade({
 
     handleApprovalSuccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isApproveSuccess, processingTx, enabled]); // Dependencies carefully chosen
+  }, [isApproveSuccess, processingTx, isEnabled]); // Dependencies carefully chosen
 
   // Function to actually create the trader position
   const performCreateTrade = async (): Promise<void> => {
     if (
-      !enabled ||
+      !isEnabled ||
       !marketAddress ||
       size === BigInt(0) ||
       limitCollateral === BigInt(0)
@@ -198,15 +197,6 @@ export function useCreateTrade({
     try {
       // 30 minutes from now
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
-
-      console.log('Calling createTraderPosition with:', {
-        marketAddress,
-        numericMarketId, // Log market ID
-        size: size.toString(), // Log as string for readability
-        limitCollateral: limitCollateral.toString(), // Log as string
-        deadline: deadline.toString(),
-      });
-
       // Call the contract function
       const hash = await writeContractAsync({
         address: marketAddress,
@@ -242,17 +232,8 @@ export function useCreateTrade({
 
   // Main function that checks approval and handles the flow
   const createTrade = async (): Promise<void> => {
-    if (!enabled) {
-      console.warn('useCreateTrade called while disabled.');
-      return;
-    }
-    if (size === BigInt(0) || parsedCollateralAmount === BigInt(0)) {
-      toast({
-        title: 'Invalid Input',
-        description: 'Size and collateral amount must be greater than zero.',
-        variant: 'destructive',
-      });
-      setError(new Error('Size and collateral amount must be > 0'));
+    if (!isEnabled) {
+      setError(new Error('Trade creation is disabled due to invalid inputs'));
       return;
     }
 

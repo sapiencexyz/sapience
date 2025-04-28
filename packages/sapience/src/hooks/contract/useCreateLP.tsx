@@ -193,8 +193,6 @@ export function useCreateLP({
         deadline,
       };
 
-      console.log('liquidityParams', liquidityParams);
-
       // Call the contract function
       const hash = await writeContractAsync({
         address: marketAddress,
