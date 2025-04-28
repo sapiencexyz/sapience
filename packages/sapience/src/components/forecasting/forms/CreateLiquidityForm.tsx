@@ -178,13 +178,18 @@ export function CreateLiquidityForm({
         description: 'Your position has been successfully created.',
       });
       onSuccess(txHash);
+
+      // Reset the form after success
       form.reset();
     }
-  }, [isLPCreated, txHash, onSuccess]);
+  }, [isLPCreated, txHash, onSuccess, form, toast]);
 
-  // Reset the success handler when key inputs change
+  // Only reset the success handler when the form is being filled out again
+  // This prevents the double toast when the component rerenders
   useEffect(() => {
-    successHandled.current = false;
+    if (depositAmount || lowPriceInput || highPriceInput) {
+      successHandled.current = false;
+    }
   }, [depositAmount, lowPriceInput, highPriceInput]);
 
   // Handle LP creation errors

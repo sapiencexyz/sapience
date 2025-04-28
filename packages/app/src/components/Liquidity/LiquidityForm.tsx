@@ -283,17 +283,6 @@ const LiquidityForm: React.FC = () => {
     chainId,
   });
 
-  if (parseFloat(depositAmount) > 0) {
-    console.log(
-      'args',
-      market.toString(),
-      parseUnits(depositAmount.toString(), collateralAssetDecimals),
-      pool ? pool.sqrtRatioX96.toString() : '0',
-      TickMath.getSqrtRatioAtTick(tickLower).toString(),
-      TickMath.getSqrtRatioAtTick(tickUpper).toString()
-    );
-  }
-
   const {
     data: tokenAmounts,
     error: tokenAmountsError,
@@ -314,10 +303,6 @@ const LiquidityForm: React.FC = () => {
       enabled: Boolean(pool && isValid),
     },
   });
-
-  if (tokenAmounts) {
-    console.log('tokenAmounts', tokenAmounts);
-  }
 
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
@@ -1074,15 +1059,6 @@ const LiquidityForm: React.FC = () => {
       contextHighPriceTick !== undefined && contextHighPriceTick !== 0
         ? contextHighPriceTick
         : baseAssetMaxPriceTick;
-
-    console.log('Ticks:', {
-      lowTick,
-      highTick,
-      contextLowPriceTick,
-      contextHighPriceTick,
-      baseAssetMinPriceTick,
-      baseAssetMaxPriceTick,
-    });
 
     if (lowTick === undefined || highTick === undefined) {
       console.log('Ticks are undefined');

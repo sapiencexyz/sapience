@@ -81,8 +81,8 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
   });
 
   const { control, handleSubmit, watch, setValue } = form;
-  const percentageValue = watch('percentage');
-  const percentage = parseInt(percentageValue, 10);
+  const percentageValue = parseInt(watch('percentage'), 10);
+  const percentage = Number.isNaN(percentageValue) ? 0 : percentageValue;
   const slippageValue = watch('slippage');
   const slippageAsNumber = parseFloat(slippageValue) || 0.5;
 
@@ -323,7 +323,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
             )}
           />
           <Slider
-            value={[percentage]}
+            value={[Number.isNaN(percentage) ? 0 : percentage]}
             min={1}
             max={100}
             step={1}

@@ -92,17 +92,6 @@ export function useCreateLiquidityQuoter({
     ? BigInt(Math.floor(collateralAmountNumber * 1e18))
     : BigInt(0);
 
-  if (isValidCollateral) {
-    console.log(
-      'useCreateLiquidityQuoter args:',
-      BigInt(marketId),
-      depositedCollateralAmount,
-      currentSqrtPrice,
-      sqrtPriceAX96, // Use converted sqrt price
-      sqrtPriceBX96 // Use converted sqrt price
-    );
-  }
-
   // Fetch the quote from the contract
   const {
     data: quoteData,
@@ -133,7 +122,6 @@ export function useCreateLiquidityQuoter({
   // Update the quote result when data changes
   useEffect(() => {
     if (quoteData) {
-      console.log('quoteData', quoteData);
       // Safely cast quoteData to the expected type
       const typedQuoteData = quoteData as QuoteLiquidityResult;
       setQuoteResult({

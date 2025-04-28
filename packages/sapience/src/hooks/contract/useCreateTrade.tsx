@@ -197,15 +197,6 @@ export function useCreateTrade({
     try {
       // 30 minutes from now
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
-
-      console.log('Calling createTraderPosition with:', {
-        marketAddress,
-        numericMarketId, // Log market ID
-        size: size.toString(), // Log as string for readability
-        limitCollateral: limitCollateral.toString(), // Log as string
-        deadline: deadline.toString(),
-      });
-
       // Call the contract function
       const hash = await writeContractAsync({
         address: marketAddress,

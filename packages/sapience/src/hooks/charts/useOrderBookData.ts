@@ -246,11 +246,6 @@ export function useOrderBookData({
         return null; // Exclude failed reads
       })
       .filter((tick): tick is GraphTick => tick !== null); // Filter out nulls (failed reads) and type guard
-    console.log(
-      '[useOrderBookData] Translated GraphTicks (including zero net liquidity):',
-      translated.length,
-      translated
-    );
     return translated;
   }, [rawTickData, ticks]);
 
@@ -269,13 +264,8 @@ export function useOrderBookData({
       !isErrorTicks
     ) {
       // Set loading state for processing? Maybe not needed if covered by isLoadingTicks
-      // Log the spacing being passed to getFullPool
-      console.log(
-        `[useOrderBookData] Calling getFullPool with Pool Spacing: ${currentPoolTickSpacing}`
-      );
       getFullPool(pool, graphTicks, currentPoolTickSpacing) // Pass pool's actual spacing
         .then((fullPoolData) => {
-          console.log('[useOrderBookData] getFullPool Success:', fullPoolData);
           setProcessedPoolData(fullPoolData);
           setHookError(null); // Clear error on success
         })
