@@ -39,6 +39,7 @@ interface ForecastContextType {
   lpPositionsArray: UsePositionsResult['lpPositionsArray'];
   traderPositionsArray: UsePositionsResult['traderPositionsArray'];
   getPositionById: UsePositionsResult['getPositionById'];
+  refetchPositions: UsePositionsResult['refetch'];
 }
 
 const ForecastContext = createContext<ForecastContextType | undefined>(
@@ -86,10 +87,12 @@ export function ForecastProvider({
     lpPositionsArray,
     traderPositionsArray,
     getPositionById,
+    refetch: refetchPositions,
   } = usePositions({
     marketAddress: marketAddress as `0x${string}`,
     chainId,
     foilAbi: abi,
+    marketId,
   });
 
   // Derived values for convenience
@@ -135,7 +138,11 @@ export function ForecastProvider({
     lpPositionsArray,
     traderPositionsArray,
     getPositionById,
+    refetchPositions,
   };
+
+  console.log('lpPositions', lpPositions);
+  console.log('traderPositions', traderPositions);
 
   return (
     <ForecastContext.Provider value={value}>
