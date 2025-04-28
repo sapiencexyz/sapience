@@ -1,0 +1,113 @@
+# Bucket 1
+[invoke.createBucket1Epoch]
+target="Foil"
+func="createEpoch"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.marketStartingTime %>", 
+  "<%= settings.marketEndingTime %>", 
+  "<%= settings.initialPricePointFive %>",
+  "<%= settings.baseAssetTickZero %>", 
+  "<%= settings.baseAssetTickOne %>",  
+  "<%= settings.bucket1Name %>",
+  "<%= settings.bucket1Claim %>"
+]
+depends=["invoke.initializeMarket"]
+
+# Bucket 2
+[invoke.createBucket2Epoch]
+target="Foil"
+func="createEpoch"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.marketStartingTime %>", 
+  "<%= settings.marketEndingTime %>", 
+  "<%= settings.initialPricePointFive %>",
+  "<%= settings.baseAssetTickZero %>", 
+  "<%= settings.baseAssetTickOne %>",  
+  "<%= settings.bucket2Name %>",
+  "<%= settings.bucket2Claim %>"
+]
+depends=["invoke.initializeMarket"]
+
+# Bucket 3
+[invoke.createBucket3Epoch]
+target="Foil"
+func="createEpoch"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.marketStartingTime %>", 
+  "<%= settings.marketEndingTime %>", 
+  "<%= settings.initialPricePointFive %>",
+  "<%= settings.baseAssetTickZero %>", 
+  "<%= settings.baseAssetTickOne %>",  
+  "<%= settings.bucket3Name %>",
+  "<%= settings.bucket3Claim %>"
+]
+depends=["invoke.initializeMarket"]
+
+# Bucket 4
+[invoke.createBucket4Epoch]
+target="Foil"
+func="createEpoch"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.marketStartingTime %>", 
+  "<%= settings.marketEndingTime %>", 
+  "<%= settings.initialPricePointFive %>",
+  "<%= settings.baseAssetTickZero %>", 
+  "<%= settings.baseAssetTickOne %>",  
+  "<%= settings.bucket4Name %>",
+  "<%= settings.bucket4Claim %>"
+]
+depends=["invoke.initializeMarket"]
+
+# Bucket 5
+[invoke.createBucket5Epoch]
+target="Foil"
+func="createEpoch"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.marketStartingTime %>", 
+  "<%= settings.marketEndingTime %>", 
+  "<%= settings.initialPricePointFive %>",
+  "<%= settings.baseAssetTickZero %>", 
+  "<%= settings.baseAssetTickOne %>",  
+  "<%= settings.bucket5Name %>",
+  "<%= settings.bucket5Claim %>"
+]
+depends=["invoke.initializeMarket"]
+
+# Bucket 6
+[invoke.createBucket6Epoch]
+target="Foil"
+func="createEpoch"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.marketStartingTime %>", 
+  "<%= settings.marketEndingTime %>", 
+  "<%= settings.initialPricePointFive %>",
+  "<%= settings.baseAssetTickZero %>", 
+  "<%= settings.baseAssetTickOne %>",  
+  "<%= settings.bucket6Name %>",
+  "<%= settings.bucket6Claim %>"
+]
+depends=["invoke.initializeMarket"]
+
+# Nominate safe owner after creation of epoch
+[invoke.transferOwnership]
+target="Foil"
+func="transferOwnership"
+from="<%= settings.deployer %>"
+args=[
+  "<%= settings.owner %>"
+]
+depends=[
+  "invoke.createBucket1Epoch", 
+  "invoke.createBucket2Epoch", 
+  "invoke.createBucket3Epoch", 
+  "invoke.createBucket4Epoch", 
+  "invoke.createBucket5Epoch", 
+  "invoke.createBucket6Epoch"
+]
+

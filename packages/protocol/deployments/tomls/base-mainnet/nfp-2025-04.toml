@@ -1,0 +1,47 @@
+name="foil"
+version="1.0.4"
+preset="nfp-2025-04"
+
+include = [
+  "templates/generic-marketgroup.toml",
+  "templates/buckets-for-five.toml"
+]
+
+[setting.claimStatement]
+defaultValue = "<%= stringToHex('What will the change in U.S. nonfarm payrolls be in April 2025?') %>"
+
+[setting.marketStartingTime]
+defaultValue = "1745611200"
+
+[setting.marketEndingTime]
+defaultValue = "1746190800"
+
+[setting.bucket1Name]
+defaultValue = "<%= stringToHex('bucket 1') %>"
+
+[setting.bucket2Name]
+defaultValue = "<%= stringToHex('bucket 2') %>"
+
+[setting.bucket3Name]
+defaultValue = "<%= stringToHex('bucket 3') %>"
+
+[setting.bucket4Name]
+defaultValue = "<%= stringToHex('bucket 4') %>"
+
+[setting.bucket5Name]
+defaultValue = "<%= stringToHex('bucket 5') %>"
+
+[setting.bucket1Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 less than 40000? Zero if no:') %>"
+
+[setting.bucket2Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 between 40001 and 80000? Zero if no:') %>"
+
+[setting.bucket3Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 between 80001 and 120000? Zero if no:') %>"
+
+[setting.bucket4Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 between 120001 and 160000? Zero if no:') %>"
+
+[setting.bucket5Claim]
+defaultValue = "<%= stringToHex('Was the change in U.S. nonfarm payrolls be in April 2025 greater than 160001? Zero if no:') %>"

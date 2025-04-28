@@ -105,6 +105,17 @@ export const FOCUS_AREAS: FocusArea[] = [
     </svg>`,
     color: '#FB923C', // orange-400
   },
+  {
+    id: 'economy-finance',
+    name: 'Economy & Finance',
+    resources: [],
+    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="12" cy="5" rx="7" ry="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 5V12C5 13.6569 8.13401 15 12 15C15.866 15 19 13.6569 19 12V5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 12V17C5 18.6569 8.13401 20 12 20C15.866 20 19 18.6569 19 17V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>`,
+    color: '#F59E0B', // yellow-400
+  },
 ];
 
 export const DEFAULT_FOCUS_AREA = FOCUS_AREAS[0];
