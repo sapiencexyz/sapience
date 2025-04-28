@@ -224,6 +224,14 @@ export class ResourcePerformance {
       // Process the current batch
       for (let i = 0; i < dbResourcePrices.length; i++) {
         const item = dbResourcePrices[i];
+
+        // Add to trailing avg storage
+        this.persistentResourceCacheTrailingAvgStorage.push({
+          t: item.timestamp,
+          u: item.used,
+          f: item.feePaid,
+        });
+
         for (const interval of this.intervals) {
           this.processResourcePriceData(item, i, interval);
           this.processTrailingAvgPricesData(
