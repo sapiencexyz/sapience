@@ -14,6 +14,7 @@ import { marketRepository } from './db';
 import { Category } from './models/Category';
 import { categoryRepository } from './db';
 import { IResourcePriceIndexer } from './interfaces';
+import { getCollateralAssetInformation } from './controllers/marketHelpers';
 
 export const TIME_INTERVALS = {
   intervals: {
@@ -206,6 +207,16 @@ export const initializeFixtures = async (): Promise<void> => {
       marketGroup.quoteTokenName = marketData.quoteTokenName || null;
       marketGroup.optionNames = marketData.optionNames || null;
 
+      // Update market data from contract if it exists
+      if (marketGroup.collateralAsset) {
+        const collateralAssetInformation = await getCollateralAssetInformation(
+          marketGroup.collateralAsset,
+          marketGroup.chainId
+        );
+        marketGroup.collateralDecimals = collateralAssetInformation.decimals;
+        marketGroup.collateralSymbol = collateralAssetInformation.symbol;
+      }
+
       if (resource) {
         marketGroup.resource = resource;
       }
@@ -240,6 +251,16 @@ export const initializeFixtures = async (): Promise<void> => {
         marketData.quoteTokenName || marketGroup.quoteTokenName || null;
       marketGroup.optionNames =
         marketData.optionNames || marketGroup.optionNames || null;
+
+      // Update market data from contract if it exists
+      if (marketGroup.collateralAsset) {
+        const collateralAssetInformation = await getCollateralAssetInformation(
+          marketGroup.collateralAsset,
+          marketGroup.chainId
+        );
+        marketGroup.collateralDecimals = collateralAssetInformation.decimals;
+        marketGroup.collateralSymbol = collateralAssetInformation.symbol;
+      }
 
       await marketGroupRepository.save(marketGroup);
       console.log(

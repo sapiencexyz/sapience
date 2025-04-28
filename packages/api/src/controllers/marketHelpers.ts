@@ -402,6 +402,27 @@ export const createOrUpdateMarketFromContract = async (
   return updatedMarket;
 };
 
+export const getCollateralAssetInformation = async (
+  collateralAsset: string,
+  chainId: number
+) => {
+  const client = getProviderForChain(chainId);
+  const decimals = await client.readContract({
+    address: collateralAsset as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'decimals',
+  });
+  const symbol = await client.readContract({
+    address: collateralAsset as `0x${string}`,
+    abi: erc20Abi,
+    functionName: 'symbol',
+  });
+  return {
+    decimals,
+    symbol,
+  };
+};
+
 export const createOrUpdateEpochFromContract = async (
   market: MarketGroup,
   epochId?: number

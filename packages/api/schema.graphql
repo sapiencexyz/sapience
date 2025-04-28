@@ -18,6 +18,24 @@ type CategoryType {
   slug: String!
 }
 
+type CollateralPnlType {
+  collateralAsset: String!
+  collateralDecimals: String!
+  collateralSymbol: String!
+  collateralUnifiedPrice: String!
+  openPositionsPnL: String!
+  positionCount: Int!
+  positions: [Int!]!
+  totalDeposits: String!
+  totalWithdrawals: String!
+}
+
+type GlobalPnLType {
+  collateralPnls: [CollateralPnlType!]!
+  owner: String!
+  totalUnifiedPnL: String!
+}
+
 type MarketGroupType {
   address: String!
   baseTokenName: String
@@ -89,6 +107,7 @@ type PositionType {
 
 type Query {
   categories: [CategoryType!]!
+  getLeaderboard: [GlobalPnLType!]!
   getMarketLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
   indexCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
   indexPriceAtTime(address: String!, chainId: Int!, marketId: String!, timestamp: Int!): CandleType
