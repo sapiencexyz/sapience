@@ -223,11 +223,7 @@ export const initializeFixtures = async (): Promise<void> => {
       }
     } else {
       if (!marketData.resource && marketGroup.resource) {
-        await marketGroupRepository
-          .createQueryBuilder()
-          .relation(MarketGroup, 'resource')
-          .of(marketGroup.id)
-          .set(null);
+        marketGroup.resource = null;
         console.log(`Removed resource from market: ${marketGroup.address}`);
       } else if (resource) {
         marketGroup.resource = resource;
