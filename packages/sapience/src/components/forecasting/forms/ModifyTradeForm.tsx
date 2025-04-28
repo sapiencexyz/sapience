@@ -22,7 +22,7 @@ import { useToast } from '@foil/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { FormState } from 'react-hook-form'; // Or import specific type if known
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { useReadContract } from 'wagmi';
@@ -247,7 +247,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { baseTokenName, quoteTokenName, marketContractData } = useForecast(); // Get marketContractData
-  const [processedTxHash, setProcessedTxHash] = useState<string | null>(null); // Track processed success
+  const successHandled = useRef(false);
 
   const {
     marketAddress,
@@ -435,9 +435,8 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
   // Handle successful modification
   useEffect(() => {
-    // Only process if success, txHash is present, and it's a *new* txHash
-    if (isSuccess && txHash && txHash !== processedTxHash && onSuccess) {
-      setProcessedTxHash(txHash); // Mark this txHash as processed
+    if (isSuccess && txHash && onSuccess && !successHandled.current) {
+      successHandled.current = true;
 
       const isClosing = targetSizeForHook === BigInt(0);
       toast({
@@ -460,9 +459,13 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     refetchPositionData,
     refetchQuote,
     refetchAllowance,
-    targetSizeForHook, // Include hook dependency
-    processedTxHash, // Add dependency to prevent re-running for same hash
+    targetSizeForHook,
   ]);
+
+  // Reset the success handler when key inputs change
+  useEffect(() => {
+    successHandled.current = false;
+  }, [sizeChangeBigInt, direction]);
 
   // Unified form submission handler
   const handleFormSubmit = async () => {

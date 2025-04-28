@@ -11,13 +11,15 @@ import {
 } from '@foil/ui/components/ui/form';
 import { Input } from '@foil/ui/components/ui/input';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatUnits } from 'viem';
 
+import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateLP, useCreateLiquidityQuoter } from '~/hooks/contract';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
+import { useForecast } from '~/lib/context/ForecastProvider';
+import { priceToTick } from '~/lib/utils/tickUtils';
 
 import type { WalletData } from './ModifyLiquidityForm';
 
@@ -49,6 +51,9 @@ export function CreateLiquidityForm({
   const { toast } = useToast();
   const { isConnected, walletBalance, onConnectWallet } = walletData;
   const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false);
+  const successHandled = useRef(false);
+  // Get the tickSpacing from the ForecastProvider context
+  const { tickSpacing: marketTickSpacing } = useForecast();
 
   const {
     marketAddress,
@@ -66,10 +71,14 @@ export function CreateLiquidityForm({
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
     useState(walletBalance);
 
+  // Use the tick spacing from the market contract, fallback to 200 if not available
+  const tickSpacing = marketTickSpacing || 200;
+
   // Pass tick values and callback to the form hook
   const form = useLiquidityForm({
     lowPriceTick,
     highPriceTick,
+    tickSpacing, // Pass the tick spacing to the form hook
   });
 
   const { control, watch, handleSubmit } = form;
@@ -78,6 +87,10 @@ export function CreateLiquidityForm({
   const lowPriceInput = watch('lowPriceInput');
   const highPriceInput = watch('highPriceInput');
   const slippage = watch('slippage');
+
+  // Convert price inputs to tick values using the market tick spacing
+  const lowTick = priceToTick(parseFloat(lowPriceInput || '0'), tickSpacing);
+  const highTick = priceToTick(parseFloat(highPriceInput || '0'), tickSpacing);
 
   // Ensure slippage is a valid number
   const slippageAsNumber = slippage ? Number(slippage) : 0.5;
@@ -104,12 +117,13 @@ export function CreateLiquidityForm({
   } = useCreateLiquidityQuoter({
     marketAddress: marketAddress || ('0x0' as `0x${string}`),
     collateralAmount: depositAmount,
-    lowPriceInput,
-    highPriceInput,
+    lowTick,
+    highTick,
     enabled: isConnected && !!marketAddress,
     chainId,
     marketAbi,
     marketId,
+    tickSpacing, // Pass the tick spacing to the quoter
   });
 
   // Use the enhanced LP creation hook (now handles token approval internally)
@@ -128,8 +142,8 @@ export function CreateLiquidityForm({
     chainId,
     marketId,
     collateralAmount: depositAmount,
-    lowPriceTick: lowPriceTick || 0,
-    highPriceTick: highPriceTick || 0,
+    lowPriceTick: lowTick, // Use the calculated low tick
+    highPriceTick: highTick, // Use the calculated high tick
     amount0,
     amount1,
     slippagePercent: slippageAsNumber,
@@ -156,10 +170,27 @@ export function CreateLiquidityForm({
 
   // Handle successful LP creation
   useEffect(() => {
-    if (isLPCreated && txHash && onSuccess) {
+    if (isLPCreated && txHash && onSuccess && !successHandled.current) {
+      successHandled.current = true;
+
+      toast({
+        title: 'Liquidity Position Created',
+        description: 'Your position has been successfully created.',
+      });
       onSuccess(txHash);
+
+      // Reset the form after success
+      form.reset();
     }
-  }, [isLPCreated, txHash, onSuccess, toast]);
+  }, [isLPCreated, txHash, onSuccess, form, toast]);
+
+  // Only reset the success handler when the form is being filled out again
+  // This prevents the double toast when the component rerenders
+  useEffect(() => {
+    if (depositAmount || lowPriceInput || highPriceInput) {
+      successHandled.current = false;
+    }
+  }, [depositAmount, lowPriceInput, highPriceInput]);
 
   // Handle LP creation errors
   useEffect(() => {
@@ -184,7 +215,7 @@ export function CreateLiquidityForm({
     if (isApproving) {
       return (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary-foreground" />
+          <LottieLoader className="invert" width={20} height={20} />
           Approving {collateralAssetTicker}...
         </>
       );
@@ -193,7 +224,7 @@ export function CreateLiquidityForm({
     if (isCreatingLP) {
       return (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary-foreground" />
+          <LottieLoader className="invert" width={20} height={20} />
           Creating Position...
         </>
       );
@@ -232,7 +263,8 @@ export function CreateLiquidityForm({
                   <div className="flex">
                     <Input
                       placeholder="0"
-                      type="text"
+                      type="number"
+                      step="any"
                       className={`rounded-r-none ${hasInsufficientFunds ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                       {...field}
                     />
@@ -263,7 +295,8 @@ export function CreateLiquidityForm({
                   <div className="flex">
                     <Input
                       placeholder="0"
-                      type="text"
+                      type="number"
+                      step="any"
                       className="rounded-r-none"
                       {...field}
                     />
@@ -289,7 +322,8 @@ export function CreateLiquidityForm({
                   <div className="flex">
                     <Input
                       placeholder="0"
-                      type="text"
+                      type="number"
+                      step="any"
                       className="rounded-r-none"
                       {...field}
                     />

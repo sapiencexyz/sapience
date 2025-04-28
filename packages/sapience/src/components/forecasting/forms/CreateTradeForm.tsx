@@ -19,9 +19,9 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import {
   useAccount,
@@ -35,7 +35,7 @@ import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import { useTradeForm } from '~/hooks/forms/useTradeForm';
-import { TOKEN_DECIMALS, HIGH_PRICE_IMPACT } from '~/lib/constants/numbers';
+import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
@@ -204,6 +204,8 @@ export function CreateTradeForm({
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
     useState(walletBalance);
 
+  const successHandled = useRef(false);
+
   useEffect(() => {
     const costNum = parseFloat(estimatedCollateral || '0');
     const walletNum = parseFloat(walletBalance || '0');
@@ -218,7 +220,9 @@ export function CreateTradeForm({
   }, [estimatedCollateral, walletBalance]);
 
   useEffect(() => {
-    if (isTradeCreated && txHash && onSuccess) {
+    if (isTradeCreated && txHash && onSuccess && !successHandled.current) {
+      successHandled.current = true;
+
       toast({
         title: 'Trade Position Opened',
         description: 'Your trade position has been successfully opened!',
@@ -227,6 +231,11 @@ export function CreateTradeForm({
       form.reset();
     }
   }, [isTradeCreated, txHash, onSuccess, toast, form]);
+
+  // Reset the success handler when key inputs change
+  useEffect(() => {
+    successHandled.current = false;
+  }, [sizeInput, direction]);
 
   useEffect(() => {
     if (isTradeError && tradeError) {

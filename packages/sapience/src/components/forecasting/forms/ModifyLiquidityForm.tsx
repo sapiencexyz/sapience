@@ -17,7 +17,7 @@ import Slider from '@foil/ui/components/ui/slider';
 import { useToast } from '@foil/ui/index';
 import { motion } from 'framer-motion';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { formatUnits } from 'viem';
 
@@ -64,6 +64,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
   const { getPositionById, baseTokenName, quoteTokenName } = useForecast();
   const position = getPositionById(positionId);
   const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false);
+  const successHandled = useRef(false);
 
   const { positionData, refetch: refetchPositionData } = usePositionLiquidity({
     uniswapPositionId: position?.uniswapPositionId,
@@ -80,8 +81,8 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
   });
 
   const { control, handleSubmit, watch, setValue } = form;
-  const percentageValue = watch('percentage');
-  const percentage = parseInt(percentageValue, 10);
+  const percentageValue = parseInt(watch('percentage'), 10);
+  const percentage = Number.isNaN(percentageValue) ? 0 : percentageValue;
   const slippageValue = watch('slippage');
   const slippageAsNumber = parseFloat(slippageValue) || 0.5;
 
@@ -176,16 +177,39 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
 
   // Refetch position data when transaction is successful
   useEffect(() => {
-    if (isModified && txHash) {
+    if (isModified && txHash && onSuccess && !successHandled.current) {
+      successHandled.current = true;
+
       // Refetch position data to update UI
       refetchPositionData();
 
+      // Display success toast
+      toast({
+        title: isClosePosition
+          ? 'Position Closed'
+          : `Liquidity ${mode === 'add' ? 'Added' : 'Removed'}`,
+        description: isClosePosition
+          ? 'Your position has been successfully closed!'
+          : `Your liquidity has been successfully ${mode === 'add' ? 'added' : 'removed'}.`,
+      });
+
       // Call the onSuccess callback
-      if (onSuccess) {
-        onSuccess(txHash);
-      }
+      onSuccess(txHash);
     }
-  }, [isModified, txHash, refetchPositionData, onSuccess]);
+  }, [
+    isModified,
+    txHash,
+    refetchPositionData,
+    onSuccess,
+    isClosePosition,
+    mode,
+    toast,
+  ]);
+
+  // Reset the success handler when key inputs change
+  useEffect(() => {
+    successHandled.current = false;
+  }, [percentage, mode]);
 
   if (!position) {
     return <div>Position not found</div>;
@@ -299,7 +323,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
             )}
           />
           <Slider
-            value={[percentage]}
+            value={[Number.isNaN(percentage) ? 0 : percentage]}
             min={1}
             max={100}
             step={1}
@@ -369,11 +393,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
             disabled={isSubmitButtonDisabled()}
           >
             {buttonState.loading && (
-              <LottieLoader
-                className="mr-2 text-primary-foreground"
-                width={20}
-                height={20}
-              />
+              <LottieLoader className="invert" width={20} height={20} />
             )}
             {buttonState.text}
           </Button>
