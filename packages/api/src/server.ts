@@ -73,9 +73,6 @@ const startServer = async () => {
     resources = await resourceRepository.find();
   }
 
-  // TESTING ONLY - SELECT A SINGLE RESOURCE SO THAT YOU WON'T HAVE TO CACHE EVERYTHING
-  // const resources = (await resourceRepository.find()).filter((res) => res.id === 8);
-
   const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
   await resourcePerformanceManager.initialize(resources);
   console.log('ResourcePerformanceManager - Initialized');
