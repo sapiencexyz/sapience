@@ -1,7 +1,7 @@
+import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import type React from 'react';
 import { useAccount } from 'wagmi';
 
-import { useConnectWallet } from '~/lib/context/ConnectWalletProvider';
 import { useForecast } from '~/lib/context/ForecastProvider';
 
 import { CreateTradeForm, ModifyTradeForm } from './forms';
@@ -15,7 +15,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
   positionId,
 }) => {
   const { isConnected } = useAccount();
-  const { setIsOpen } = useConnectWallet();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet();
 
   const {
     collateralAssetTicker,
@@ -30,8 +30,8 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
   const position = positionId ? getPositionById(positionId) : null;
   const hasPosition = !!position && position.kind === 2;
 
-  const handleConnectWallet = () => {
-    setIsOpen(true);
+  const handleConnectWallet = async () => {
+    await connectOrCreateWallet();
   };
 
   const handleSuccess = (txHash: `0x${string}`) => {

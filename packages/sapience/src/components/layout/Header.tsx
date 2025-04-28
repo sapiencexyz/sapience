@@ -3,19 +3,24 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import { Button } from '@foil/ui/components/ui/button';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@foil/ui/components/ui/dropdown-menu';
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarTrigger,
   useSidebar,
 } from '@foil/ui/components/ui/sidebar';
-import { ExternalLink, Menu } from 'lucide-react';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { ExternalLink, Menu, User, LogOut } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAccount } from 'wagmi';
 
-import ConnectButton from './ConnectButton';
 import ModeToggle from './ModeToggle';
 
 // Dynamically import LottieIcon
@@ -119,7 +124,9 @@ const NavLinks = ({
 
 const Header = () => {
   const pathname = usePathname();
-  const { address, isConnected } = useAccount();
+  const { login, ready, authenticated, logout } = usePrivy();
+  const { wallets } = useWallets();
+  const connectedWallet = wallets[0]; // Get the first connected wallet
 
   return (
     <>
@@ -153,15 +160,53 @@ const Header = () => {
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
 
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-4">
             <div className="block">
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
-            <ConnectButton />
-            {isConnected && address && (
-              <Link href={`/profile/${address}`} passHref>
-                <Button className="rounded-full px-8">Your Profile</Button>
-              </Link>
+            {!ready && null /* Render nothing while Privy is loading */}
+            {ready && authenticated && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="default"
+                    size="icon"
+                    className="rounded-full"
+                  >
+                    <User className="h-5 w-5" />
+                    <span className="sr-only">User Menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {connectedWallet && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={`/profile/${connectedWallet.address}`}
+                        className="flex items-center cursor-pointer"
+                      >
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profile</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    onClick={logout}
+                    className="flex items-center cursor-pointer"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {ready && !authenticated && (
+              <Button
+                onClick={login}
+                className="bg-primary hover:bg-primary/90 rounded-full px-8"
+                size="lg"
+              >
+                Log In
+              </Button>
             )}
           </div>
         </div>
@@ -173,7 +218,7 @@ const Header = () => {
           <NavLinks />
         </SidebarContent>
         <SidebarFooter>
-          <div className="flex items-start gap-2 text-xs w-full p-2 rounded-lg">
+          <div className="flex items-start gap-2 text-xs w-full p-2 rounded-lg max-w-[180px]">
             <span>🏗️</span>
             <div>
               We&apos;re{' '}
