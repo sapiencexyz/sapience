@@ -24,8 +24,17 @@ initSentry();
 const startServer = async () => {
   await initializeDataSource();
 
-  // Initialize fixtures from fixtures.json
-  await initializeFixtures();
+  if (
+    process.env.NODE_ENV === 'development' &&
+    process.env.DATABASE_URL?.includes('render')
+  ) {
+    console.log(
+      'Skipping fixtures initialization since we are in development mode and using production database'
+    );
+  } else {
+    // Initialize fixtures from fixtures.json
+    await initializeFixtures();
+  }
 
   const apolloServer = await initializeApolloServer();
 
@@ -50,7 +59,19 @@ const startServer = async () => {
   }
 
   console.log('ResourcePerformanceManager - Starting');
-  const resources = await resourceRepository.find();
+
+  let resources;
+  if (
+    process.env.NODE_ENV === 'development' &&
+    process.env.DATABASE_URL?.includes('render')
+  ) {
+    console.log(
+      "WARNING: Initializing resources selectively so that we don't have to cache everything"
+    );
+    resources = (await resourceRepository.find()).filter((res) => res.id === 8);
+  } else {
+    resources = await resourceRepository.find();
+  }
 
   // TESTING ONLY - SELECT A SINGLE RESOURCE SO THAT YOU WON'T HAVE TO CACHE EVERYTHING
   // const resources = (await resourceRepository.find()).filter((res) => res.id === 8);
