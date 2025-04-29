@@ -218,27 +218,27 @@ export const indexMarketsByChainId = async (chainId: number) => {
   console.log(`Indexing all markets for chain ID: ${chainId}`);
   await initializeDataSource();
 
-  // Find all markets for the given chain ID
-  const marketsOnChain = await marketRepository.find({
+  // Find all market groups for the given chain ID
+  const marketGroupsOnChain = await marketGroupRepository.find({
     where: { chainId },
   });
 
-  if (marketsOnChain.length === 0) {
-    console.log(`No markets found for chain ID: ${chainId}`);
+  if (marketGroupsOnChain.length === 0) {
+    console.log(`No market groups found for chain ID: ${chainId}`);
     return;
   }
 
   console.log(
-    `Found ${marketsOnChain.length} markets for chain ID: ${chainId}`
+    `Found ${marketGroupsOnChain.length} market groups for chain ID: ${chainId}`
   );
 
-  // Process each market sequentially to avoid rate limiting issues
-  for (const market of marketsOnChain) {
-    console.log(`Indexing market ${market.address} on chain ${chainId}`);
-    await indexMarketEvents(market);
+  // Process each market group sequentially to avoid rate limiting issues
+  for (const marketGroup of marketGroupsOnChain) {
+    console.log(`Indexing market ${marketGroup.address} on chain ${chainId}`);
+    await indexMarketEvents(marketGroup);
   }
 
-  console.log(`Completed indexing all markets for chain ID: ${chainId}`);
+  console.log(`Completed indexing all market groups for chain ID: ${chainId}`);
 };
 
 // Reindexes all markets for a specific chain ID
@@ -246,27 +246,27 @@ export const reindexMarketsByChainId = async (chainId: number) => {
   console.log(`Reindexing all markets for chain ID: ${chainId}`);
   await initializeDataSource();
 
-  // Find all markets for the given chain ID
-  const marketsOnChain = await marketRepository.find({
+  // Find all market groups for the given chain ID
+  const marketGroupsOnChain = await marketGroupRepository.find({
     where: { chainId },
   });
 
-  if (marketsOnChain.length === 0) {
-    console.log(`No markets found for chain ID: ${chainId}`);
+  if (marketGroupsOnChain.length === 0) {
+    console.log(`No market groups found for chain ID: ${chainId}`);
     return;
   }
 
   console.log(
-    `Found ${marketsOnChain.length} markets for chain ID: ${chainId}`
+    `Found ${marketGroupsOnChain.length} market groups for chain ID: ${chainId}`
   );
 
-  // Process each market sequentially to avoid rate limiting issues
-  for (const market of marketsOnChain) {
-    console.log(`Reindexing market ${market.address} on chain ${chainId}`);
-    await reindexMarketEvents(market);
+  // Process each market group sequentially to avoid rate limiting issues
+  for (const marketGroup of marketGroupsOnChain) {
+    console.log(`Reindexing market ${marketGroup.address} on chain ${chainId}`);
+    await reindexMarketEvents(marketGroup);
   }
 
-  console.log(`Completed reindexing all markets for chain ID: ${chainId}`);
+  console.log(`Completed reindexing all market groups for chain ID: ${chainId}`);
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
