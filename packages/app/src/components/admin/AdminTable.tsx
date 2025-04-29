@@ -44,7 +44,8 @@ import {
   Activity,
   Boxes,
 } from 'lucide-react';
-import React, { useState, useMemo, useEffect } from 'react';
+import type React from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSignMessage } from 'wagmi';
 
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
@@ -109,6 +110,10 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
   ]);
   // State for storing fetched volumes
   const [volumes, setVolumes] = useState<Record<string, number | null>>({}); // Key: marketAddress-chainId-marketId
+  // State for tracking loading status of individual missing blocks fetch
+  const [missingPricesLoading, setMissingPricesLoading] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   // Effect to fetch all volumes when markets data is available
   useEffect(() => {
@@ -293,6 +298,8 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
     marketGroup: MarketGroup,
     marketId: number
   ) => {
+    const key = `${marketGroup.address}-${marketId}`;
+    setMissingPricesLoading((prev) => ({ ...prev, [key]: true })); // Start loading for this specific market
     try {
       const data = await foilApi.get(
         `/missing-blocks?chainId=${marketGroup.chainId}&address=${marketGroup.address}&marketId=${marketId}`
@@ -300,24 +307,21 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
 
       setMissingBlocks((prev) => ({
         ...prev,
-        [`${marketGroup.address}-${marketId}`]: {
+        [key]: {
           resourcePrice: data.missingBlockNumbers,
         },
       }));
     } catch (error) {
-      console.error('Error fetching missing blocks:', error);
+      console.error(`Error fetching missing blocks for ${key}:`, error);
+      // Optionally update missingBlocks state to reflect the error for this key
+      setMissingBlocks((prev) => ({
+        ...prev,
+        [key]: { error: 'Failed to load' }, // Indicate error state
+      }));
+    } finally {
+      setMissingPricesLoading((prev) => ({ ...prev, [key]: false })); // Stop loading for this specific market
     }
   };
-
-  React.useEffect(() => {
-    if (!isLoading && marketGroups.length > 0) {
-      marketGroups.forEach((marketGroup) => {
-        marketGroup.markets.forEach((market) => {
-          fetchMissingBlocks(marketGroup, market.marketId);
-        });
-      });
-    }
-  }, [marketGroups, isLoading]);
 
   const handleReindex = async (
     reindexType: 'price' | 'events',
@@ -417,9 +421,11 @@ const AdminTable: React.FC<AdminTableProps> = ({ toolButtons }) => {
         loadingAction,
         updateMarketPrivacy,
         handleReindex,
-        missingBlocks
+        missingBlocks,
+        missingPricesLoading,
+        fetchMissingBlocks
       ),
-    [loadingAction, missingBlocks]
+    [loadingAction, missingBlocks, missingPricesLoading]
   );
 
   // Helper function to update the selected filters UI state

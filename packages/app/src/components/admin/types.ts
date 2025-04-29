@@ -3,6 +3,7 @@ import type { MarketGroup } from '~/lib/context/FoilProvider';
 export interface MissingBlocks {
   [key: string]: {
     resourcePrice?: number[];
+    error?: string;
   };
 }
 
