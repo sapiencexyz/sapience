@@ -35,7 +35,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
     await connectOrCreateWallet();
   };
 
-  const handleSuccess = (txHash: `0x${string}`) => {
+  const handleSuccess = () => {
     refetchPositions();
   };
 
