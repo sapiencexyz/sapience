@@ -299,7 +299,7 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
       let price: bigint;
 
       // Determine settlement price based on input type
-      if (market.baseTokenName === 'Yes') {
+      if (marketGroup.baseTokenName === 'Yes') {
         // Yes/No market
         if (settlementValue !== '0' && settlementValue !== '1') {
           toast({
@@ -352,8 +352,15 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
   // Determine input type and unit display
   // Assuming market.baseTokenName determines Yes/No vs Numerical
   // Assuming market.quoteTokenName provides units for numerical
-  const isYesNoMarket = market.baseTokenName === 'Yes';
-  const unitDisplay = isYesNoMarket ? '' : market.quoteTokenName || 'Units'; // Fallback unit
+  const isYesNoMarket = marketGroup.baseTokenName === 'Yes';
+  let unitDisplay: string;
+  if (isYesNoMarket) {
+    unitDisplay = '';
+  } else if (marketGroup.baseTokenName && marketGroup.quoteTokenName) {
+    unitDisplay = `${marketGroup.baseTokenName}/${marketGroup.quoteTokenName}`;
+  } else {
+    unitDisplay = 'Units'; // Fallback unit string
+  }
 
   // Determine if settlement is possible
   // Add check for market settlement status if available (e.g., market.settled)
@@ -372,7 +379,7 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
           <p>Market ID: {market.marketId}</p>
         </div>
       </div>
-      <Separator /> {/* Add a separator */}
+      <Separator />
       {/* Bond Info Section - Now uses the extracted component */}
       <BondInfoSection
         isLoading={isLoading}
@@ -387,111 +394,188 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
         bondCurrency={bondCurrency}
         bondAmount={bondAmount}
       />
-      <Separator /> {/* Add separator back */}
-      {/* Settlement Section - NEW */}
+      <Separator />
+      {/* Settlement Section - Now uses extracted components */}
       <div>
         <h4 className="text-sm font-medium mb-2">Settle Market</h4>
         <div className="space-y-4">
           {/* Settlement Input */}
-          {isYesNoMarket ? (
-            <div className="flex gap-4">
-              <Button
-                type="button"
-                variant={settlementValue === '1' ? 'default' : 'outline'}
-                className="flex-1"
-                onClick={() => setSettlementValue('1')}
-                disabled={isSettling || !connectedAddress}
-              >
-                Yes
-              </Button>
-              <Button
-                type="button"
-                variant={settlementValue === '0' ? 'default' : 'outline'}
-                className="flex-1"
-                onClick={() => setSettlementValue('0')}
-                disabled={isSettling || !connectedAddress}
-              >
-                No
-              </Button>
-            </div>
-          ) : (
-            <div className="relative">
-              <Label htmlFor="settlement-value" className="sr-only">
-                Settlement Value
-              </Label>
-              <Input
-                id="settlement-value"
-                name="settlementValue"
-                type="number"
-                placeholder={`Enter settlement value in ${unitDisplay}`}
-                value={settlementValue}
-                onChange={(e) => setSettlementValue(e.target.value)}
-                disabled={isSettling || !connectedAddress}
-                className="pr-20" // Add padding for unit display
-                min="0" // Ensure non-negative input
-                step="any" // Allow decimals
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                {unitDisplay}
-              </div>
-            </div>
-          )}
+          <SettlementInput
+            isYesNoMarket={isYesNoMarket}
+            settlementValue={settlementValue}
+            setSettlementValue={setSettlementValue}
+            isSettling={isSettling}
+            connectedAddress={connectedAddress}
+            unitDisplay={unitDisplay}
+          />
 
-          {/* Parameters Display - Simplified */}
-          <div className="text-xs space-y-1 text-muted-foreground">
-            {' '}
-            {/* Added text-muted-foreground */}
-            <p>
-              <span>epochId:</span> {market.marketId}
-            </p>
-            <p>
-              <span>asserter:</span> {connectedAddress || 'Not connected'}
-            </p>
-            {!isYesNoMarket &&
-              settlementValue &&
-              !isNaN(parseFloat(settlementValue)) && (
-                <p>
-                  <span>settlementSqrtPriceX96:</span>{' '}
-                  {convertToSqrtPriceX96(parseFloat(settlementValue))}
-                </p>
-              )}
-          </div>
+          {/* Parameters Display */}
+          <SettlementParamsDisplay
+            marketId={market.marketId.toString()}
+            connectedAddress={connectedAddress}
+            isYesNoMarket={isYesNoMarket}
+            settlementValue={settlementValue}
+          />
 
           {/* Submit Button */}
-          {(() => {
-            let buttonText = 'Settle Market';
-            if (isSettling) {
-              buttonText = 'Submitting Settlement...';
-            } else if (requiresApproval) {
-              buttonText = 'Bond Requires Approval';
-            }
-
-            return (
-              <Button
-                onClick={handleSettle}
-                disabled={
-                  isSettling ||
-                  !canSettle ||
-                  settlementValue === '' ||
-                  isApproving
-                }
-                className="w-full"
-              >
-                {isSettling && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {buttonText}
-              </Button>
-            );
-          })()}
-          {!connectedAddress && (
-            <p className="text-xs text-orange-500 text-center mt-1">
-              Connect wallet to settle.
-            </p>
-          )}
+          <SettleButton
+            isSettling={isSettling}
+            requiresApproval={requiresApproval}
+            canSettle={canSettle}
+            settlementValue={settlementValue}
+            isApproving={isApproving}
+            handleSettle={handleSettle}
+            connectedAddress={connectedAddress}
+          />
         </div>
       </div>
     </div>
+  );
+};
+
+// NEW: Component for Settlement Input (Yes/No or Numerical)
+interface SettlementInputProps {
+  isYesNoMarket: boolean;
+  settlementValue: string;
+  setSettlementValue: (value: string) => void;
+  isSettling: boolean;
+  connectedAddress: `0x${string}` | undefined;
+  unitDisplay: string;
+}
+
+const SettlementInput: React.FC<SettlementInputProps> = ({
+  isYesNoMarket,
+  settlementValue,
+  setSettlementValue,
+  isSettling,
+  connectedAddress,
+  unitDisplay,
+}) => {
+  if (isYesNoMarket) {
+    return (
+      <div className="flex gap-4">
+        <Button
+          type="button"
+          variant={settlementValue === '1' ? 'default' : 'outline'}
+          className="flex-1"
+          onClick={() => setSettlementValue('1')}
+          disabled={isSettling || !connectedAddress}
+        >
+          Yes
+        </Button>
+        <Button
+          type="button"
+          variant={settlementValue === '0' ? 'default' : 'outline'}
+          className="flex-1"
+          onClick={() => setSettlementValue('0')}
+          disabled={isSettling || !connectedAddress}
+        >
+          No
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div className="relative">
+      <Label htmlFor="settlement-value" className="sr-only">
+        Settlement Value
+      </Label>
+      <Input
+        id="settlement-value"
+        name="settlementValue"
+        type="number"
+        placeholder="Enter settlement value"
+        value={settlementValue}
+        onChange={(e) => setSettlementValue(e.target.value)}
+        disabled={isSettling || !connectedAddress}
+        className="pr-28" // Add padding for unit display
+        min="0" // Ensure non-negative input
+        step="any" // Allow decimals
+      />
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+        {unitDisplay}
+      </div>
+    </div>
+  );
+};
+
+// NEW: Component for displaying settlement parameters
+interface SettlementParamsDisplayProps {
+  marketId: string | number; // Allow string or number
+  connectedAddress: `0x${string}` | undefined;
+  isYesNoMarket: boolean;
+  settlementValue: string;
+}
+
+const SettlementParamsDisplay: React.FC<SettlementParamsDisplayProps> = ({
+  marketId,
+  connectedAddress,
+  isYesNoMarket,
+  settlementValue,
+}) => (
+  <div className="text-xs space-y-1 text-muted-foreground">
+    <p>
+      <span>epochId:</span> {marketId}
+    </p>
+    <p>
+      <span>asserter:</span> {connectedAddress || 'Not connected'}
+    </p>
+    {!isYesNoMarket &&
+      settlementValue &&
+      !isNaN(parseFloat(settlementValue)) && (
+        <p>
+          <span>settlementSqrtPriceX96:</span>{' '}
+          {convertToSqrtPriceX96(parseFloat(settlementValue))}
+        </p>
+      )}
+  </div>
+);
+
+// NEW: Component for Settle Button and related messages
+interface SettleButtonProps {
+  isSettling: boolean;
+  requiresApproval: boolean;
+  canSettle: boolean;
+  settlementValue: string;
+  isApproving: boolean;
+  handleSettle: () => void;
+  connectedAddress: `0x${string}` | undefined;
+}
+
+const SettleButton: React.FC<SettleButtonProps> = ({
+  isSettling,
+  requiresApproval,
+  canSettle,
+  settlementValue,
+  isApproving,
+  handleSettle,
+  connectedAddress,
+}) => {
+  let buttonText = 'Settle Market';
+  if (isSettling) {
+    buttonText = 'Submitting Settlement...';
+  } else if (requiresApproval) {
+    buttonText = 'Bond Requires Approval';
+  }
+
+  return (
+    <>
+      <Button
+        onClick={handleSettle}
+        disabled={
+          isSettling || !canSettle || settlementValue === '' || isApproving
+        }
+        className="w-full"
+      >
+        {isSettling && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {buttonText}
+      </Button>
+      {!connectedAddress && (
+        <p className="text-xs text-orange-500 text-center mt-1">
+          Connect wallet to settle.
+        </p>
+      )}
+    </>
   );
 };
 
