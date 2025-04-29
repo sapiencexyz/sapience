@@ -35,6 +35,7 @@ const corsOptions: cors.CorsOptions = {
     if (
       !origin || // Allow same-origin requests
       /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) || //staging sites
       /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
     ) {
