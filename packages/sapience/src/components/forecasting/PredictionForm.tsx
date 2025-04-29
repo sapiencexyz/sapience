@@ -573,6 +573,15 @@ const WagerTabContent: React.FC<{
                     >
                       Sky Protocol
                     </a>
+                    .{' '}
+                    <a
+                      href="https://swap.cow.fi/#/8453/swap/_/sUSDS"
+                      className="underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Get sUSDS
+                    </a>
                     .
                   </p>
                 </PopoverContent>
