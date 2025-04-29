@@ -106,7 +106,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     address: marketInfo.deployment.address as `0x${string}`,
     abi: Foil.abi,
     functionName: 'getMarket',
-  })) as [string, string, boolean, boolean, MarketParams];
+  })) as [string, string, string, string, MarketParams];
 
   const updatedMarket = market;
 
