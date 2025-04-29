@@ -34,7 +34,7 @@ dayjs.extend(utc);
 
 export type ChartProps = {
   contractId: string;
-  epochId: string;
+  marketId: string;
   activeWindow: TimeWindow;
   color?: string | undefined;
   height?: number | undefined;
@@ -107,7 +107,7 @@ const CustomTooltip: React.FC<
 
 const VolumeChart = ({
   contractId,
-  epochId,
+  marketId,
   color = barColor,
   activeWindow,
 }: ChartProps) => {
@@ -116,13 +116,13 @@ const VolumeChart = ({
     error: volumeError,
     isLoading,
   } = useQuery({
-    queryKey: ['volume', contractId, epochId, activeWindow],
+    queryKey: ['volume', contractId, marketId, activeWindow],
     queryFn: async () => {
       return foilApi.get(
-        `/volume?contractId=${contractId}&epochId=${epochId}&timeWindow=${activeWindow}`
+        `/volume?contractId=${contractId}&marketId=${marketId}&timeWindow=${activeWindow}`
       );
     },
-    enabled: !!contractId && !!epochId && !!activeWindow,
+    enabled: !!contractId && !!marketId && !!activeWindow,
     retry: 3,
   });
 

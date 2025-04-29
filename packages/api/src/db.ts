@@ -3,8 +3,8 @@ import { Position } from './models/Position';
 import { ResourcePrice } from './models/ResourcePrice';
 import { Transaction } from './models/Transaction';
 import { Event } from './models/Event';
+import { MarketGroup } from './models/MarketGroup';
 import { Market } from './models/Market';
-import { Epoch } from './models/Epoch';
 import { MarketPrice } from './models/MarketPrice';
 import { RenderJob } from './models/RenderJob';
 import { CollateralTransfer } from './models/CollateralTransfer';
@@ -34,8 +34,8 @@ const devDataSource: DataSource = new DataSource({
     Position,
     Transaction,
     Event,
+    MarketGroup,
     Market,
-    Epoch,
     MarketPrice,
     RenderJob,
     CollateralTransfer,
@@ -56,8 +56,8 @@ const postgresDataSource: DataSource = new DataSource({
     Position,
     Transaction,
     Event,
+    MarketGroup,
     Market,
-    Epoch,
     MarketPrice,
     RenderJob,
     CollateralTransfer,
@@ -82,8 +82,8 @@ export const initializeDataSource = async () => {
   }
 };
 
+export const marketGroupRepository = dataSource.getRepository(MarketGroup);
 export const marketRepository = dataSource.getRepository(Market);
-export const epochRepository = dataSource.getRepository(Epoch);
 export const positionRepository = dataSource.getRepository(Position);
 export const transactionRepository = dataSource.getRepository(Transaction);
 export const eventRepository = dataSource.getRepository(Event);

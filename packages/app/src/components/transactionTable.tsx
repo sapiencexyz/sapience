@@ -52,12 +52,12 @@ const TRANSACTIONS_QUERY = `
     ) {
       id
       positionId
-      epoch {
+      market {
         id
-        epochId
+        marketId
         startTimestamp
         endTimestamp
-        market {
+        marketGroup {
           id
           address
           chainId
@@ -109,10 +109,10 @@ function useTransactions(
   walletAddress: string | null,
   periodContext: PeriodContextType
 ) {
-  const { chainId, address: marketAddress, epoch } = periodContext;
+  const { chainId, address: marketAddress, market } = periodContext;
 
   return useQuery({
-    queryKey: ['transactions', walletAddress, chainId, marketAddress, epoch],
+    queryKey: ['transactions', walletAddress, chainId, marketAddress, market],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {
         query: TRANSACTIONS_QUERY,
@@ -127,9 +127,9 @@ function useTransactions(
         throw new Error(errors[0].message);
       }
 
-      // Flatten all transactions from all positions and filter by epoch
+      // Flatten all transactions from all positions and filter by market
       return data.positions
-        .filter((position: any) => Number(position.epoch?.epochId) === epoch)
+        .filter((position: any) => Number(position.market?.marketId) === market)
         .flatMap((position: any) =>
           position.transactions.map((tx: any) => ({
             ...tx,
@@ -173,7 +173,7 @@ const TransactionTable: React.FC<Props> = ({
         id: 'market',
         header: 'Market',
         accessorFn: (row) =>
-          row.position?.epoch?.market?.resource?.name || 'Unknown Market',
+          row.position?.market?.marketGroup?.resource?.name || 'Unknown Market',
       },
       {
         id: 'position',
@@ -254,10 +254,12 @@ const TransactionTable: React.FC<Props> = ({
     <div className="flex items-center gap-1">
       <PositionDisplay
         positionId={row.original.position.positionId}
-        marketType={row.original.position.epoch.market.isYin ? 'yin' : 'yang'}
+        marketType={
+          row.original.position.market.marketGroup.isYin ? 'yin' : 'yang'
+        }
       />
       <Link
-        href={`/positions/${row.original.position.epoch.market.chainId}:${row.original.position.epoch.market.address}/${row.original.position.positionId}`}
+        href={`/positions/${row.original.position.market.marketGroup.chainId}:${row.original.position.market.marketGroup.address}/${row.original.position.positionId}`}
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -326,12 +328,14 @@ const TransactionTable: React.FC<Props> = ({
         return (
           <MarketCell
             marketName={
-              row.original.position?.epoch?.market?.resource?.name ||
+              row.original.position?.market?.marketGroup?.resource?.name ||
               'Unknown Market'
             }
-            resourceSlug={row.original.position?.epoch?.market?.resource?.slug}
-            startTimestamp={row.original.position?.epoch?.startTimestamp}
-            endTimestamp={row.original.position?.epoch?.endTimestamp}
+            resourceSlug={
+              row.original.position?.market?.marketGroup?.resource?.slug
+            }
+            startTimestamp={row.original.position?.market?.startTimestamp}
+            endTimestamp={row.original.position?.market?.endTimestamp}
             resources={resources}
           />
         );

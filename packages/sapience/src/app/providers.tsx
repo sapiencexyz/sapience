@@ -1,16 +1,14 @@
 'use client';
 
-import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
+import { PrivyProvider } from '@privy-io/react-auth';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import type { Chain, HttpTransport } from 'viem';
+import type { HttpTransport } from 'viem';
 import { sepolia, base, cannon } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
-import ThemeProvider from '~/components/ThemeProvider';
-import { ConnectWalletProvider } from '~/lib/context/ConnectWalletProvider';
-import { FoilProvider } from '~/lib/context/FoilProvider';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
+import ThemeProvider from '~/lib/context/ThemeProvider';
 
 const queryClient = new QueryClient();
 
@@ -53,29 +51,28 @@ const config = createConfig({
 
 const Providers = ({ children }: { children: JSX.Element }) => {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="light"
-      enableSystem={false}
-      disableTransitionOnChange
+    <PrivyProvider
+      appId="cm9x5nf6q00gmk10ns01ppicr"
+      clientId="client-WY5ixY1AeM6aabHPcJZPirK3j3Cemt2wAotTQ3yeT7bfX"
+      config={{
+        embeddedWallets: {
+          createOnLogin: 'users-without-wallets',
+        },
+      }}
     >
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider
-            theme={lightTheme()}
-            initialChain={chains.reduce((a: Chain, b: Chain) =>
-              a.id > b.id ? a : b
-            )}
-          >
-            <ConnectWalletProvider>
-              <SapienceProvider>
-                <FoilProvider>{children}</FoilProvider>
-              </SapienceProvider>
-            </ConnectWalletProvider>
-          </RainbowKitProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </ThemeProvider>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="light"
+        enableSystem={false}
+        disableTransitionOnChange
+      >
+        <WagmiProvider config={config}>
+          <QueryClientProvider client={queryClient}>
+            <SapienceProvider>{children}</SapienceProvider>
+          </QueryClientProvider>
+        </WagmiProvider>
+      </ThemeProvider>
+    </PrivyProvider>
   );
 };
 

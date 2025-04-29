@@ -130,11 +130,11 @@ const handleReindexRequest = async (
   res: Response,
   isResourcePrice: boolean
 ) => {
-  const { chainId, address, epochId, signature, timestamp } = req.body;
+  const { chainId, address, marketId, signature, timestamp } = req.body;
 
   const startCommand = isResourcePrice
-    ? `pnpm run start:reindex-missing ${chainId} ${address} ${epochId}`
-    : `pnpm run start:reindex-market ${chainId} ${address} ${epochId}`;
+    ? `pnpm run start:reindex-missing ${chainId} ${address} ${marketId}`
+    : `pnpm run start:reindex-market ${chainId} ${address} ${marketId}`;
 
   const isProduction =
     process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';

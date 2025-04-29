@@ -1,5 +1,5 @@
 import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
-import { EpochType } from './EpochType';
+import { MarketType } from './MarketType';
 import { TransactionType } from './TransactionType';
 
 @Directive('@cacheControl(maxAge: 300)')
@@ -26,8 +26,8 @@ export class PositionType {
   @Field(() => String)
   collateral: string;
 
-  @Field(() => EpochType)
-  epoch: EpochType;
+  @Field(() => MarketType)
+  market: MarketType;
 
   @Field(() => [TransactionType])
   transactions: TransactionType[];

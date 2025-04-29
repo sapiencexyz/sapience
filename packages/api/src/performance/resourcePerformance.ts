@@ -1,13 +1,13 @@
 import { Resource } from 'src/models/Resource';
 import {
-  epochRepository,
-  marketPriceRepository,
   marketRepository,
+  marketPriceRepository,
+  marketGroupRepository,
   resourcePriceRepository,
 } from 'src/db';
 import { ResourcePrice } from 'src/models/ResourcePrice';
+import { MarketGroup } from 'src/models/MarketGroup';
 import { Market } from 'src/models/Market';
-import { Epoch } from 'src/models/Epoch';
 import {
   CandleData,
   MarketPriceData,
@@ -31,14 +31,20 @@ import {
   getTimeWindow,
 } from './helper';
 
+interface ReducedMarketPrice {
+  value: string;
+  timestamp: number;
+  epoch: number;
+}
 import { persist, restore, PersistMode } from './persistenceHelper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
+  static readonly BATCH_SIZE = 1000;
 
   private resource: Resource;
+  private marketGroups: MarketGroup[];
   private markets: Market[];
-  private epochs: Epoch[];
   private intervals: number[] = [
     TIME_INTERVALS.intervals.INTERVAL_1_MINUTE,
     TIME_INTERVALS.intervals.INTERVAL_5_MINUTES,
@@ -190,93 +196,111 @@ export class ResourcePerformance {
 
     this.runtime.processingResourceItems = true;
 
-    const dbResourcePrices = await this.pullResourcePrices(
-      initialResourceTimestamp
-    );
-    const dbMarketPrices = await this.pullMarketPrices(initialMarketTimestamp);
-
-    if (dbResourcePrices.length === 0 && dbMarketPrices.length === 0) {
-      console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialResourceTimestamp})`
-      );
-      this.runtime.processingResourceItems = false;
-      return;
-    }
-
     await this.pullMarketsAndEpochs();
 
     console.time(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
     );
 
-    this.initializeOrCleanupRuntimeData(dbResourcePrices);
+    // Process resource prices in batches
+    let resourceSkip = 0;
+    let hasMoreResourcePrices = true;
+    const lastResourceTimestamp = 0;
 
-    // Process all resource prices
-    while (this.runtime.currentIdx < this.runtime.dbResourcePricesLength) {
-      const item = this.runtime.dbResourcePrices[this.runtime.currentIdx];
-
-      // Add to trailing avg storage
-      this.persistentResourceCacheTrailingAvgStorage.push({
-        t: item.timestamp,
-        u: item.used,
-        f: item.feePaid,
-      });
-
-      for (const interval of this.intervals) {
-        this.processResourcePriceData(item, this.runtime.currentIdx, interval);
-        this.processTrailingAvgPricesData(
-          item,
-          this.runtime.currentIdx,
-          interval,
-          this.trailingAvgTime[0],
-          this.persistentResourceCacheTrailingAvgStorage
+    while (hasMoreResourcePrices) {
+      const { prices: dbResourcePrices, hasMore } =
+        await this.pullResourcePrices(
+          initialResourceTimestamp,
+          ResourcePerformance.BATCH_SIZE,
+          resourceSkip
         );
-        this.processTrailingAvgPricesData(
-          item,
-          this.runtime.currentIdx,
-          interval,
-          this.trailingAvgTime[1],
-          this.persistentResourceCacheTrailingAvgStorage
-        );
-        this.processIndexPricesData(item, this.runtime.currentIdx, interval);
+
+      if (dbResourcePrices.length === 0) {
+        break;
       }
-      this.runtime.currentIdx++;
-    }
-    // Cleanup the runtime data
-    this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
 
-    // Process all market prices
-    let marketIdx = 0;
-    const dbMarketPricesLength = dbMarketPrices.length;
-    while (marketIdx < dbMarketPricesLength) {
-      const item = dbMarketPrices[marketIdx];
-      for (const interval of this.intervals) {
-        this.processMarketPriceData(
-          {
-            v: item.value,
-            t: item.timestamp,
-            e: item.epoch,
-          },
-          marketIdx,
-          interval,
-          dbMarketPricesLength === marketIdx + 1
-        );
+      this.initializeOrCleanupRuntimeData(dbResourcePrices);
+
+      // Process the current batch
+      for (let i = 0; i < dbResourcePrices.length; i++) {
+        const item = dbResourcePrices[i];
+
+        // Add to trailing avg storage
+        this.persistentResourceCacheTrailingAvgStorage.push({
+          t: item.timestamp,
+          u: item.used,
+          f: item.feePaid,
+        });
+
+        for (const interval of this.intervals) {
+          this.processResourcePriceData(item, i, interval);
+          this.processTrailingAvgPricesData(
+            item,
+            i,
+            interval,
+            this.trailingAvgTime[0],
+            this.persistentResourceCacheTrailingAvgStorage
+          );
+          this.processTrailingAvgPricesData(
+            item,
+            i,
+            interval,
+            this.trailingAvgTime[1],
+            this.persistentResourceCacheTrailingAvgStorage
+          );
+          this.processIndexPricesData(item, i, interval);
+        }
       }
-      marketIdx++;
+
+      // Cleanup the runtime data
+      this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
+
+      // Update skip and hasMore
+      resourceSkip += dbResourcePrices.length;
+      hasMoreResourcePrices = hasMore;
     }
 
-    // Update the last timestamp processed
-    if (this.runtime.dbResourcePricesLength > 0) {
-      this.lastResourceTimestampProcessed =
-        this.runtime.dbResourcePrices[
-          this.runtime.dbResourcePricesLength - 1
-        ].timestamp;
+    // Process market prices in batches
+    let marketSkip = 0;
+    let hasMoreMarketPrices = true;
+    const lastMarketTimestamp = 0;
+
+    while (hasMoreMarketPrices) {
+      const { prices: dbMarketPrices, hasMore } = await this.pullMarketPrices(
+        initialMarketTimestamp,
+        ResourcePerformance.BATCH_SIZE,
+        marketSkip
+      );
+
+      if (dbMarketPrices.length === 0) {
+        break;
+      }
+
+      // Process the current batch
+      for (let i = 0; i < dbMarketPrices.length; i++) {
+        const item = dbMarketPrices[i];
+        for (const interval of this.intervals) {
+          this.processMarketPriceData(
+            {
+              v: item.value,
+              t: item.timestamp,
+              e: item.epoch,
+            },
+            i,
+            interval,
+            i + 1 >= dbMarketPrices.length && !hasMore
+          );
+        }
+      }
+
+      // Update skip and hasMore
+      marketSkip += dbMarketPrices.length;
+      hasMoreMarketPrices = hasMore;
     }
 
-    if (dbMarketPricesLength > 0) {
-      this.lastMarketTimestampProcessed =
-        dbMarketPrices[dbMarketPricesLength - 1].timestamp;
-    }
+    // Update the last timestamps processed
+    this.lastResourceTimestampProcessed = lastResourceTimestamp;
+    this.lastMarketTimestampProcessed = lastMarketTimestamp;
 
     console.timeEnd(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
@@ -297,8 +321,11 @@ export class ResourcePerformance {
     this.runtime.processingResourceItems = false;
   }
 
-  private async pullResourcePrices(initialTimestamp?: number) {
-    // Build the query based on whether we have an initialTimestamp
+  private async pullResourcePrices(
+    initialTimestamp?: number,
+    batchSize: number = ResourcePerformance.BATCH_SIZE,
+    skip: number = 0
+  ): Promise<{ prices: ResourcePrice[]; hasMore: boolean }> {
     let whereClause;
     if (initialTimestamp) {
       whereClause = {
@@ -314,97 +341,106 @@ export class ResourcePerformance {
     console.time(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.find.resourcePrices`
     );
-    const dbResourcePrices = await resourcePriceRepository.find({
+
+    const batch = await resourcePriceRepository.find({
       where: whereClause,
       order: {
         timestamp: 'ASC',
       },
+      take: batchSize,
+      skip: skip,
     });
+
     console.timeEnd(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.find.resourcePrices`
     );
 
-    console.log(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.resourcePrices.length`,
-      dbResourcePrices.length
-    );
-
-    return dbResourcePrices;
+    return {
+      prices: batch,
+      hasMore: batch.length === batchSize,
+    };
   }
 
-  private async pullMarketPrices(initialTimestamp?: number) {
-    // Build the query based on whether we have an initialTimestamp
+  private async pullMarketPrices(
+    initialTimestamp?: number,
+    batchSize: number = ResourcePerformance.BATCH_SIZE,
+    skip: number = 0
+  ): Promise<{ prices: ReducedMarketPrice[]; hasMore: boolean }> {
     console.time(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
     );
 
-    const dbMarketPrices = await marketPriceRepository
+    const batch = await marketPriceRepository
       .createQueryBuilder('marketPrice')
       .leftJoinAndSelect('marketPrice.transaction', 'transaction')
       .leftJoinAndSelect('transaction.event', 'event')
-      .leftJoinAndSelect('event.market', 'market')
-      .leftJoinAndSelect('market.resource', 'resource')
+      .leftJoinAndSelect('event.marketGroup', 'marketGroup')
+      .leftJoinAndSelect('marketGroup.resource', 'resource')
       .leftJoinAndSelect('transaction.position', 'position')
-      .leftJoinAndSelect('position.epoch', 'epoch')
+      .leftJoinAndSelect('position.market', 'market')
       .where('resource.id = :resourceId', { resourceId: this.resource.id })
       .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
         from: initialTimestamp?.toString() ?? '0',
       })
       .orderBy('marketPrice.timestamp', 'ASC')
+      .take(batchSize)
+      .skip(skip)
       .getMany();
 
-    const reducedDbMarketPrices = dbMarketPrices.map((item) => ({
+    const reducedBatch = batch.map((item) => ({
       value: item.value,
       timestamp: Number(item.timestamp),
-      epoch: item.transaction.position.epoch.id,
+      epoch: item.transaction.position.market.id,
     }));
 
     console.timeEnd(
       ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
     );
 
-    console.log(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices.length`,
-      dbMarketPrices.length
-    );
-
-    return reducedDbMarketPrices;
+    return {
+      prices: reducedBatch,
+      hasMore: batch.length === batchSize,
+    };
   }
 
   private async pullMarketsAndEpochs(onlyIfMissing: boolean = true) {
-    // Find markets if not already loaded
+    // Find marketGroups if not already loaded
     // Notice: doing it everytime since we don't know if a new market was added
+    if (
+      !this.marketGroups ||
+      this.marketGroups.length === 0 ||
+      !onlyIfMissing
+    ) {
+      console.time(
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketGroups`
+      );
+      this.marketGroups = await marketGroupRepository.find({
+        where: {
+          resource: { id: this.resource.id },
+        },
+      });
+      console.timeEnd(
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketGroups`
+      );
+    }
+
+    // Find epochs if not already loaded
+    // Notice: doing it everytime since we don't know if a new epoch was added
     if (!this.markets || this.markets.length === 0 || !onlyIfMissing) {
       console.time(
         ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
       );
       this.markets = await marketRepository.find({
         where: {
-          resource: { id: this.resource.id },
-        },
-      });
-      console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
-      );
-    }
-
-    // Find epochs if not already loaded
-    // Notice: doing it everytime since we don't know if a new epoch was added
-    if (!this.epochs || this.epochs.length === 0 || !onlyIfMissing) {
-      console.time(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.epochs`
-      );
-      this.epochs = await epochRepository.find({
-        where: {
-          market: { resource: { id: this.resource.id } },
+          marketGroup: { resource: { id: this.resource.id } },
         },
         order: {
           startTimestamp: 'ASC',
         },
-        relations: ['market'],
+        relations: ['marketGroup'],
       });
       console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.epochs`
+        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
       );
     }
   }
@@ -466,7 +502,7 @@ export class ResourcePerformance {
       this.runtime.indexProcessData[interval] = {};
       this.runtime.marketProcessData[interval] = {};
 
-      for (const epoch of this.epochs) {
+      for (const epoch of this.markets) {
         this.runtime.indexProcessData[interval][epoch.id] = {
           used: 0n,
           feePaid: 0n,
@@ -497,7 +533,7 @@ export class ResourcePerformance {
       this.resource,
       this.intervals,
       this.trailingAvgTime,
-      this.epochs
+      this.markets
     );
     console.timeEnd('LLL ResourcePerformance.persistStorage');
   }
@@ -516,7 +552,7 @@ export class ResourcePerformance {
       this.resource,
       this.intervals,
       this.trailingAvgTime,
-      this.epochs
+      this.markets
     );
 
     return restored
@@ -669,7 +705,7 @@ export class ResourcePerformance {
     currentIdx: number,
     interval: number
   ) {
-    for (const epoch of this.epochs) {
+    for (const epoch of this.markets) {
       const epochStartTime = epoch.startTimestamp;
       const epochEndTime = epoch.endTimestamp;
       // Skip data points that are not in the epoch
@@ -715,7 +751,7 @@ export class ResourcePerformance {
 
         const isLastStoredItem =
           lastStoreIndex !== undefined
-            ? piStore.datapoints[lastStoreIndex].timestamp == itemStartTime
+            ? piStore.datapoints[lastStoreIndex].timestamp === itemStartTime
             : false;
 
         if (!isLastStoredItem) {
@@ -1037,7 +1073,7 @@ export class ResourcePerformance {
     interval: number,
     isLastItem: boolean
   ) {
-    for (const epoch of this.epochs) {
+    for (const epoch of this.markets) {
       if (epoch.id != item.e) {
         continue;
       }
@@ -1178,20 +1214,20 @@ export class ResourcePerformance {
     }
   }
 
-  private getEpochId(chainId: number, address: string, epoch: string) {
-    const theEpoch = this.epochs.find(
+  private getMarketId(chainId: number, address: string, market: string) {
+    const theMarket = this.markets.find(
       (e) =>
-        e.market.chainId === chainId &&
-        e.market.address === address.toLowerCase() &&
-        e.epochId === Number(epoch)
+        e.marketGroup.chainId === chainId &&
+        e.marketGroup.address === address.toLowerCase() &&
+        e.marketId === Number(market)
     );
-    if (!theEpoch) {
-      throw new Error(`Epoch not found for ${chainId}-${address}-${epoch}`);
+    if (!theMarket) {
+      throw new Error(`Epoch not found for ${chainId}-${address}-${market}`);
     }
 
     return {
-      id: theEpoch.id,
-      isCumulative: theEpoch.market.isCumulative,
+      id: theMarket.id,
+      isCumulative: theMarket.marketGroup.isCumulative,
     };
   }
 
@@ -1221,7 +1257,7 @@ export class ResourcePerformance {
     epoch: string
   ) {
     this.checkInterval(interval);
-    const { id: epochId, isCumulative } = this.getEpochId(
+    const { id: epochId, isCumulative } = this.getMarketId(
       chainId,
       address,
       epoch
@@ -1273,7 +1309,7 @@ export class ResourcePerformance {
     epoch: string
   ) {
     this.checkInterval(interval);
-    const { id: epochId } = this.getEpochId(chainId, address, epoch);
+    const { id: epochId } = this.getMarketId(chainId, address, epoch);
     if (!this.persistentStorage[interval].marketStore[epochId]) {
       return [];
     }
@@ -1300,7 +1336,7 @@ export class ResourcePerformance {
   }
 
   getMarketFromChainAndAddress(chainId: number, address: string) {
-    return this.markets.find(
+    return this.marketGroups.find(
       (m) =>
         m.chainId === chainId &&
         m.address.toLowerCase() === address.toLowerCase()

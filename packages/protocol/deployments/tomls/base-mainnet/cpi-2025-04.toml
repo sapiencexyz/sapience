@@ -1,0 +1,53 @@
+name="foil"
+version="1.0.4"
+preset="cpi-2025-04"
+
+include = [
+  "templates/generic-marketgroup.toml",
+  "templates/buckets-for-six.toml"
+]
+
+[setting.claimStatement]
+defaultValue = "<%= stringToHex('What will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025?') %>"
+
+[setting.marketStartingTime]
+defaultValue = "1745607600"
+
+[setting.marketEndingTime]
+defaultValue = "1747141200"
+
+[setting.bucket1Name]
+defaultValue = "<%= stringToHex('bucket 1') %>"
+
+[setting.bucket2Name]
+defaultValue = "<%= stringToHex('bucket 2') %>"
+
+[setting.bucket3Name]
+defaultValue = "<%= stringToHex('bucket 3') %>"
+
+[setting.bucket4Name]
+defaultValue = "<%= stringToHex('bucket 4') %>"
+
+[setting.bucket5Name]
+defaultValue = "<%= stringToHex('bucket 5') %>"
+
+[setting.bucket6Name]
+defaultValue = "<%= stringToHex('bucket 6') %>"
+
+[setting.bucket1Claim]
+defaultValue = "<%= stringToHex('Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 less than -2.50%? Zero if no:') %>"
+
+[setting.bucket2Claim]
+defaultValue = "<%= stringToHex('Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -2.51% and -2.00%? Zero if no:') %>"
+
+[setting.bucket3Claim]
+defaultValue = "<%= stringToHex('Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -2.01% and -1.50%? Zero if no:') %>"
+
+[setting.bucket4Claim]
+defaultValue = "<%= stringToHex('Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -1.51% and -1.00%? Zero if no:') %>"
+
+[setting.bucket5Claim]
+defaultValue = "<%= stringToHex('Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -1.01% and -0.50%? Zero if no:') %>"
+
+[setting.bucket6Claim]
+defaultValue = "<%= stringToHex('Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 greater than -0.51%? Zero if no:') %>"

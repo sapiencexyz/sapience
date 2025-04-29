@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
 
-import Providers from '~/app/providers';
 import '@rainbow-me/rainbowkit/styles.css';
-import '../lib/styles/globals.css';
+import Providers from '~/app/providers';
 import Layout from '~/components/layout';
-import LoadingSpinner from '~/components/loadingSpinner';
+import GlobalLoader from '~/components/shared/GlobalLoader';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
+import '../styles/globals.css';
 
-import { Analytics } from '@vercel/analytics/react';
 import { Toaster } from '@foil/ui/components/ui/toaster';
+import { Analytics } from '@vercel/analytics/react';
 
 type RootLayoutProps = {
   children: React.ReactNode;
@@ -18,8 +18,8 @@ type RootLayoutProps = {
 const APP_NAME = 'Sapience';
 const APP_DESCRIPTION = 'Sapience Prediction Markets';
 const LARGE_ICON_PATH = '/icons/icon-512x512.png';
-const DEFAULT_OG_IMAGE = 'https://foil.xyz/og-image.png';
-const APP_URL = 'https://foil.xyz';
+const DEFAULT_OG_IMAGE = 'https://sapience.xyz/og-image.png';
+const APP_URL = 'https://sapience.xyz';
 
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s | ${APP_NAME}` },
@@ -105,7 +105,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       <body>
         <Providers>
           <LoadingProvider>
-            <LoadingSpinner />
+            <GlobalLoader />
             <Layout>{children}</Layout>
             <Toaster />
           </LoadingProvider>

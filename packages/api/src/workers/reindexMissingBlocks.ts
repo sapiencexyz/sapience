@@ -1,13 +1,14 @@
 import {
   initializeDataSource,
   resourcePriceRepository,
-  marketRepository,
+  marketGroupRepository,
 } from '../db';
 import { initializeMarket } from '../controllers/market';
 import { getMarketStartEndBlock } from '../controllers/marketHelpers';
 import { Between } from 'typeorm';
 import * as Sentry from '@sentry/node';
 import { INDEXERS } from '../fixtures';
+import { Resource } from 'src/models/Resource';
 
 export async function reindexMissingBlocks(
   chainId: number,
@@ -21,7 +22,7 @@ export async function reindexMissingBlocks(
 
     await initializeDataSource();
 
-    const marketEntity = await marketRepository.findOne({
+    const marketEntity = await marketGroupRepository.findOne({
       where: {
         chainId,
         address: address.toLowerCase(),
@@ -44,7 +45,9 @@ export async function reindexMissingBlocks(
       },
       resource: {
         ...marketEntity.resource,
-        priceIndexer: INDEXERS[marketEntity.resource.slug],
+        priceIndexer: marketEntity.resource
+          ? INDEXERS[marketEntity.resource.slug]
+          : null,
       },
     };
 
@@ -54,7 +57,11 @@ export async function reindexMissingBlocks(
     const missingBlockNumbers = [];
 
     // if this is a crypto market, fill the missing blocks
-    if (marketInfo.resource.priceIndexer.client) {
+    if (
+      marketInfo.resource &&
+      marketInfo.resource?.priceIndexer &&
+      marketInfo.resource.priceIndexer.client
+    ) {
       const { startBlockNumber, endBlockNumber, error } =
         await getMarketStartEndBlock(
           market,
@@ -68,7 +75,7 @@ export async function reindexMissingBlocks(
 
       const resourcePrices = await resourcePriceRepository.find({
         where: {
-          resource: { id: market.resource.id },
+          resource: { id: market.resource?.id },
           blockNumber: Between(startBlockNumber, endBlockNumber),
         },
         select: ['blockNumber'],
@@ -91,10 +98,12 @@ export async function reindexMissingBlocks(
       }
     }
 
-    await marketInfo.resource.priceIndexer.indexBlocks(
-      market.resource,
-      missingBlockNumbers
-    );
+    if (marketInfo.resource && marketInfo.resource?.priceIndexer) {
+      await marketInfo.resource.priceIndexer.indexBlocks(
+        market.resource as Resource,
+        missingBlockNumbers
+      );
+    }
 
     console.log(
       `Finished reindexing resource blocks for market ${address} on chain ${chainId}`

@@ -5,9 +5,9 @@ import { print } from 'graphql';
 import { RESOURCE_ORDER, type ResourceSlug } from '~/lib/constants/resources';
 import { foilApi } from '~/lib/utils/util';
 
-export interface Epoch {
+export interface Market {
   id: number;
-  epochId: number;
+  marketId: number;
   startTimestamp: number;
   endTimestamp: number;
   settled: boolean;
@@ -20,7 +20,7 @@ export interface Category {
   name: string;
 }
 
-export interface Market {
+export interface MarketGroup {
   id: number;
   address: string;
   chainId: number;
@@ -28,7 +28,7 @@ export interface Market {
   vaultAddress: string;
   isYin: boolean;
   isCumulative: boolean;
-  epochs: Epoch[];
+  markets: Market[];
   category: Category;
 }
 
@@ -37,7 +37,7 @@ export interface Resource {
   name: string;
   slug: ResourceSlug;
   iconPath: string;
-  markets: Market[];
+  marketGroups: MarketGroup[];
   category: Category;
 }
 
@@ -56,11 +56,11 @@ const LATEST_RESOURCE_PRICE_QUERY = gql`
 `;
 
 const LATEST_INDEX_PRICE_QUERY = gql`
-  query GetLatestIndexPrice($address: String!, $chainId: Int!, $epochId: String!) {
+  query GetLatestIndexPrice($address: String!, $chainId: Int!, $marketId: String!) {
     indexCandles(
       address: $address
       chainId: $chainId
-      epochId: $epochId
+      marketId: $marketId
       from: ${Math.floor(Date.now() / 1000) - 300}  # Last 5 minutes
       to: ${Math.floor(Date.now() / 1000)}
       interval: 60  # 1 minute intervals
@@ -82,7 +82,7 @@ const RESOURCES_QUERY = gql`
         slug
         name
       }
-      markets {
+      marketGroups {
         id
         address
         isYin
@@ -94,9 +94,9 @@ const RESOURCES_QUERY = gql`
           slug
           name
         }
-        epochs {
+        markets {
           id
-          epochId
+          marketId
           startTimestamp
           endTimestamp
           settled
@@ -126,9 +126,30 @@ export const useResources = () => {
       return filteredResources.map((resource: Resource) => ({
         ...resource,
         iconPath: `/resources/${resource.slug}.svg`,
-        markets: resource.markets.filter(
-          (market: Market) => market.category?.slug === 'decentralized-compute'
+        marketGroups: resource.marketGroups.filter(
+          (marketGroup: MarketGroup) =>
+            marketGroup.category?.slug === 'decentralized-compute'
         ),
+      }));
+    },
+  });
+};
+
+export const useResourcesAdmin = () => {
+  return useQuery<Resource[]>({
+    queryKey: ['resources'],
+    queryFn: async () => {
+      const { data } = await foilApi.post('/graphql', {
+        query: print(RESOURCES_QUERY),
+      });
+      const resources = data.resources.sort((a: Resource, b: Resource) => {
+        const indexA = RESOURCE_ORDER.indexOf(a.slug);
+        const indexB = RESOURCE_ORDER.indexOf(b.slug);
+        return indexA - indexB;
+      });
+      return resources.map((resource: Resource) => ({
+        ...resource,
+        iconPath: `/resources/${resource.slug}.svg`,
       }));
     },
   });
@@ -177,16 +198,16 @@ export const useLatestResourcePrice = (slug: string) => {
 export const useLatestIndexPrice = (market: {
   address: string;
   chainId: number;
-  epochId: number;
+  marketId: number;
 }) => {
   return useQuery({
     queryKey: [
       'indexPrice',
       `${market.chainId}:${market.address}`,
-      market.epochId,
+      market.marketId,
     ],
     queryFn: async () => {
-      if (!market.address || !market.chainId || market.epochId === 0) {
+      if (!market.address || !market.chainId || market.marketId === 0) {
         return null;
       }
 
@@ -195,7 +216,7 @@ export const useLatestIndexPrice = (market: {
         variables: {
           address: market.address,
           chainId: market.chainId,
-          epochId: market.epochId.toString(),
+          marketId: market.marketId.toString(),
         },
       });
 
@@ -222,6 +243,6 @@ export const useLatestIndexPrice = (market: {
       };
     },
     refetchInterval: 12000, // Refetch every 12 seconds (approx ETH block time)
-    enabled: !!market.address && !!market.chainId && market.epochId !== 0,
+    enabled: !!market.address && !!market.chainId && market.marketId !== 0,
   });
 };

@@ -1,10 +1,9 @@
 import {
-  getMarket,
-  listMarkets,
+  getMarketGroup,
+  listMarketGroups,
   getPositions,
   getResource,
   listResources,
-  getEpochs,
   getTransactions,
   getMarketCandles,
   getResourceCandles,
@@ -14,8 +13,8 @@ import {
 
 import {
   getMarketInfo,
-  getEpochInfo,
-  getLatestEpochInfo,
+  getMarketPeriodInfo,
+  getLatestMarketPeriodInfo,
   getTokenOwner,
   getTokenByIndex,
   getReferencePrice
@@ -35,16 +34,16 @@ import {
 
 import {
   approveToken,
-  balanceOfToken
+  balanceOfToken,
+  getSizeForCreateTraderPosition,
 } from './misc';
 
 export const graphql = {
-  get_sapience_market: getMarket,
-  list_sapience_markets: listMarkets,
+  get_sapience_market_group: getMarketGroup,
+  list_sapience_market_groups: listMarketGroups,
   get_sapience_positions: getPositions,
   get_sapience_resource: getResource,
   list_sapience_resources: listResources,
-  get_sapience_periods: getEpochs,
   get_sapience_transactions: getTransactions,
   get_sapience_market_candles: getMarketCandles,
   get_sapience_resource_candles: getResourceCandles,
@@ -54,8 +53,8 @@ export const graphql = {
 
 export const readFoilContracts = {
   get_sapience_market_info: getMarketInfo,
-  get_sapience_epoch_info: getEpochInfo,
-  get_sapience_latest_epoch_info: getLatestEpochInfo,
+  get_sapience_market_period_info: getMarketPeriodInfo,
+  get_sapience_latest_market_period_info: getLatestMarketPeriodInfo,
   get_sapience_token_owner: getTokenOwner,
   get_sapience_token_by_index: getTokenByIndex,
   get_sapience_reference_price: getReferencePrice
@@ -75,5 +74,6 @@ export const writeFoilContracts = {
 
 export const misc = {
   approve_token: approveToken,
-  balance_of_token: balanceOfToken
+  balance_of_token: balanceOfToken,
+  get_size_for_create_trader_position: getSizeForCreateTraderPosition
 };

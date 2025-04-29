@@ -1,4 +1,7 @@
-const FOIL_GRAPHQL_ENDPOINT = 'https://api.foil.xyz/graphql';
+'use strict';
+
+const SAPIENCE_API_BASE_URL = process.env.SAPIENCE_API_URL || 'https://api.sapience.xyz';
+const SAPIENCE_GRAPHQL_ENDPOINT = `${SAPIENCE_API_BASE_URL}/graphql`;
 
 interface GraphQLResponse {
   data?: any;
@@ -13,7 +16,7 @@ interface GraphQLResponse {
 }
 
 async function executeGraphQLQuery(query: string, variables?: Record<string, any>): Promise<GraphQLResponse> {
-  const response = await fetch(FOIL_GRAPHQL_ENDPOINT, {
+  const response = await fetch(SAPIENCE_GRAPHQL_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -38,27 +41,27 @@ async function executeGraphQLQuery(query: string, variables?: Record<string, any
   return response.json();
 }
 
-// Market Tools
-const getMarket = {
-  name: "get_sapience_market",
-  description: "Gets detailed information about a specific market by its address and chain ID",
+// Market Group Tools
+const getMarketGroup = {
+  name: "get_sapience_market_group",
+  description: "Gets detailed information about a specific market group by its address and chain ID",
   parameters: {
     properties: {
       address: {
         type: 'string',
-        description: 'The address of the market',
+        description: 'The address of the market group',
       },
       chainId: {
         type: 'string',
-        description: 'The chain ID where the market exists',
+        description: 'The chain ID where the market group exists',
       },
     },
     required: ['address', 'chainId'],
   },
   function: async ({ address, chainId }: { address: string; chainId: string }) => {
     const query = `
-      query GetMarket($address: String!, $chainId: Int!) {
-        market(address: $address, chainId: $chainId) {
+      query GetMarketGroup($address: String!, $chainId: Int!) {
+        marketGroup(address: $address, chainId: $chainId) {
           address
           chainId
           collateralAsset
@@ -70,8 +73,8 @@ const getMarket = {
           owner
           vaultAddress
           collateralDecimals
-          epochs {
-            epochId
+          markets {
+            marketId
             startTimestamp
             endTimestamp
             settled
@@ -90,72 +93,84 @@ const getMarket = {
     return {
       content: [{
         type: "text" as const,
-        text: JSON.stringify(result.data?.market, null, 2)
+        text: JSON.stringify(result.data?.marketGroup, null, 2)
       }]
     };
   },
 };
 
-const listMarkets = {
-  name: "list_sapience_markets",
-  description: "Lists all markets available in the Foil system, optionally filtering for the active periods (end time in the future).",
+const listMarketGroups = {
+  name: "list_sapience_market_groups",
+  description: "Lists all market groups available in the Foil system, optionally filtering for groups with currently active markets (end time in the future).",
   parameters: {
     properties: {
       activeOnly: {
         type: 'boolean',
-        description: 'Optional boolean to filter for markets with active markets (end time in the future). Defaults to false if not provided.',
+        description: 'Optional boolean to filter for market groups with active markets (end time in the future). Defaults to false if not provided.',
       },
     },
     required: [], // activeOnly is optional
   },
   function: async ({ activeOnly }: { activeOnly?: boolean }) => {
+    // Query for market groups and their associated markets
     const query = `
-      query ListPeriods {
-        epochs {
-          epochId
-          startTimestamp
-          endTimestamp
-          settled
-          settlementPriceD18
-          public
-          question
-          market {
-            address
-            chainId
-            resource {
-              name
-            }
+      query ListMarketGroups {
+        marketGroups {
+          address
+          chainId
+          collateralAsset
+          deployTimestamp
+          deployTxnBlockNumber
+          id
+          isCumulative
+          isYin
+          owner
+          vaultAddress
+          collateralDecimals
+          resource {
+            id
+            name
+            slug
+          }
+          markets {
+            marketId
+            startTimestamp
+            endTimestamp
+            settled
+            public
+            question
           }
         }
       }
     `;
 
     const result = await executeGraphQLQuery(query);
-    let periods = result.data?.epochs || [];
-
-    // Filter for public epochs first
-    periods = periods.filter((period: any) => period.public);
+    let groups = result.data?.marketGroups || [];
 
     if (activeOnly) {
       const nowInSeconds = Date.now() / 1000;
-      periods = periods.filter((period: any) => period.endTimestamp > nowInSeconds);
+      groups = groups.filter((group: any) =>
+        group.markets.some((market: any) => market.endTimestamp > nowInSeconds && market.public)
+      );
+    } else {
+        // If not filtering by active, still filter out groups that have no public markets at all
+        groups = groups.filter((group: any) => group.markets.some((market: any) => market.public));
     }
 
-    // Map periods to include the market address and claim statement (as question)
-    const formattedPeriods = periods.map((period: any) => {
-      const { market, ...restOfPeriod } = period;
-      return {
-        ...restOfPeriod,
-        marketAddress: market?.address || null,
-        chainId: market?.chainId || null,
-      };
+    // Optionally simplify the output, maybe remove the markets array from the top level group object if it's too verbose
+    const formattedGroups = groups.map((group: any) => {
+      // Example: return only essential group info, or keep it as is
+      // const { markets, ...restOfGroup } = group; // Remove markets if desired
+      // return restOfGroup;
+      return group; // Keep full group info including markets for now
     });
 
-    // Return the JSON string directly, as expected by DynamicTool
+
     return {
       content: [{
         type: "text" as const,
-        text: JSON.stringify(formattedPeriods, null, 2)
+        // text: JSON.stringify(formattedMarkets, null, 2) // Old return
+        text: JSON.stringify(formattedGroups, null, 2) // Return filtered groups
       }]
     };
   },
@@ -164,16 +179,16 @@ const listMarkets = {
 // Position Tools
 const getPositions = {
   name: "get_sapience_positions",
-  description: "Gets information about positions, optionally filtered by chain ID, market address, or owner",
+  description: "Gets information about positions, optionally filtered by chain ID, market group address, or owner",
   parameters: {
     properties: {
       chainId: {
         type: 'string',
         description: 'Optional chain ID to filter positions by',
       },
-      marketAddress: {
+      marketGroupAddress: {
         type: 'string',
-        description: 'Optional market address to filter positions by',
+        description: 'Optional market group address to filter positions by',
       },
       owner: {
         type: 'string',
@@ -182,10 +197,10 @@ const getPositions = {
     },
     required: [],
   },
-  function: async ({ chainId, marketAddress, owner }: { chainId?: string; marketAddress?: string; owner?: string }) => {
+  function: async ({ chainId, marketGroupAddress, owner }: { chainId?: string; marketGroupAddress?: string; owner?: string }) => {
     const query = `
-      query GetPositions($chainId: Int, $marketAddress: String, $owner: String) {
-        positions(chainId: $chainId, marketAddress: $marketAddress, owner: $owner) {
+      query GetPositions($chainId: Int, $marketGroupAddress: String, $owner: String) {
+        positions(chainId: $chainId, marketGroupAddress: $marketGroupAddress, owner: $owner) {
           id
           positionId
           owner
@@ -200,8 +215,8 @@ const getPositions = {
           lowPriceTick
           lpBaseToken
           lpQuoteToken
-          epoch {
-            epochId
+          marketGroup: market {
+            marketGroupId: marketId
             startTimestamp
             endTimestamp
             settled
@@ -219,7 +234,7 @@ const getPositions = {
 
     const variables: Record<string, any> = {};
     if (chainId) variables.chainId = parseInt(chainId);
-    if (marketAddress) variables.marketAddress = marketAddress;
+    if (marketGroupAddress) variables.marketGroupAddress = marketGroupAddress;
     if (owner) variables.owner = owner;
 
     const result = await executeGraphQLQuery(query, variables);
@@ -252,7 +267,7 @@ const getResource = {
           id
           name
           slug
-          markets {
+          marketGroups: markets {
             address
             chainId
             id
@@ -285,7 +300,7 @@ const listResources = {
           id
           name
           slug
-          markets {
+          marketGroups: markets {
             address
             chainId
             id
@@ -304,54 +319,63 @@ const listResources = {
   },
 };
 
-// Period Tools (previously Epoch Tools)
-const getEpochs = {
-  name: "get_sapience_periods",
-  description: "Gets information about epochs (periods) in the system, optionally filtered by market ID",
+// Market Tools (previously Epoch Tools)
+const listMarketsForGroup = {
+  name: "list_sapience_markets_for_group",
+  description: "Gets information about markets (periods) associated with a specific market group",
   parameters: {
     properties: {
-      marketId: {
+      address: {
         type: 'string',
-        description: 'Optional market ID to filter epochs by',
+        description: 'The address of the market group',
       },
+      chainId: {
+        type: 'string',
+        description: 'The chain ID where the market group exists',
+      }
     },
-    required: [],
+    required: ['address', 'chainId'],
   },
-  function: async ({ marketId }: { marketId?: string }) => {
+  function: async ({ address, chainId }: { address: string, chainId: string }) => {
+    // Fetch the specific market group and its markets
     const query = `
-      query GetEpochs($marketId: Int) {
-        epochs(marketId: $marketId) {
-          id
-          epochId
-          startTimestamp
-          endTimestamp
-          settled
-          settlementPriceD18
-          public
-          question
-          market {
-            address
-            chainId
+      query GetMarketGroupWithMarkets($address: String!, $chainId: Int!) {
+        marketGroup(address: $address, chainId: $chainId) {
+          address
+          chainId
+          markets {
             id
-          }
-          positions {
-            id
-            positionId
-            owner
+            marketId
+            startTimestamp
+            endTimestamp
+            settled
+            settlementPriceD18
+            public
+            question
+            poolAddress
+            positions { # Include positions if needed, or remove for brevity
+              id
+              positionId
+              owner
+            }
           }
         }
       }
     `;
 
-    const variables: Record<string, any> = {};
-    if (marketId) variables.marketId = parseInt(marketId);
+    const variables: Record<string, any> = { address, chainId: parseInt(chainId) };
 
     const result = await executeGraphQLQuery(query, variables);
+    const markets = result.data?.marketGroup?.markets || [];
+
+    // Filter for public markets only
+    const publicMarkets = markets.filter((market: any) => market.public);
+
 
     return {
       content: [{
         type: "text" as const,
-        text: JSON.stringify(result.data?.epochs, null, 2)
+        text: JSON.stringify(publicMarkets, null, 2) // Return the markets array
       }]
     };
   },
@@ -435,21 +459,21 @@ function intervalToSeconds(interval: string): number {
 }
 
 const getMarketCandles = {
-  name: "get_sapience_market_candles",
-  description: "Gets price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.",
+  name: "get_sapience_market_group_candles",
+  description: "Gets price candle data (OHLC) for a specific market within a market group over a time period. To, from, and interval should be specified in seconds.",
   parameters: {
     properties: {
       address: {
         type: 'string',
-        description: 'The address of the market',
+        description: 'The address of the market group',
       },
       chainId: {
         type: 'string',
-        description: 'The chain ID where the market exists',
+        description: 'The chain ID where the market group exists',
       },
-      epochId: {
+      marketId: {
         type: 'string',
-        description: 'The epoch ID to get candles for',
+        description: 'The market ID to get candles for',
       },
       from: {
         type: 'string',
@@ -464,12 +488,12 @@ const getMarketCandles = {
         description: 'Interval between candles in seconds',
       },
     },
-    required: ['address', 'chainId', 'epochId', 'from', 'to', 'interval'],
+    required: ['address', 'chainId', 'marketId', 'from', 'to', 'interval'],
   },
-  function: async ({ address, chainId, epochId, from, to, interval }: { 
+  function: async ({ address, chainId, marketId, from, to, interval }: { 
     address: string; 
     chainId: string; 
-    epochId: string;
+    marketId: string;
     from: string;
     to: string;
     interval: string;
@@ -477,8 +501,8 @@ const getMarketCandles = {
     const intervalSeconds = intervalToSeconds(interval);
     
     const query = `
-      query GetMarketCandles($address: String!, $chainId: Int!, $epochId: String!, $from: Int!, $to: Int!, $interval: Int!) {
-        marketCandles(address: $address, chainId: $chainId, epochId: $epochId, from: $from, to: $to, interval: $interval) {
+      query GetMarketCandles($address: String!, $chainId: Int!, $marketId: String!, $from: Int!, $to: Int!, $interval: Int!) {
+        marketCandles(address: $address, chainId: $chainId, marketId: $marketId, from: $from, to: $to, interval: $interval) {
           timestamp
           open
           high
@@ -491,7 +515,7 @@ const getMarketCandles = {
     const result = await executeGraphQLQuery(query, {
       address,
       chainId: parseInt(chainId),
-      epochId,
+      marketId,
       from: parseInt(from),
       to: parseInt(to),
       interval: intervalSeconds,
@@ -632,20 +656,20 @@ const getResourceTrailingAverageCandles = {
 
 const getIndexCandles = {
   name: "get_sapience_index_candles",
-  description: "Gets index price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.",
+  description: "Gets index price candle data (OHLC) for a specific market group over a time period. To, from, and interval should be specified in seconds.",
   parameters: {
     properties: {
       address: {
         type: 'string',
-        description: 'The address of the market',
+        description: 'The address of the market group',
       },
       chainId: {
         type: 'string',
-        description: 'The chain ID where the market exists',
+        description: 'The chain ID where the market group exists',
       },
-      epochId: {
+      marketId: {
         type: 'string',
-        description: 'The epoch ID to get candles for',
+        description: 'The market ID to get candles for',
       },
       from: {
         type: 'string',
@@ -660,12 +684,12 @@ const getIndexCandles = {
         description: 'Interval between candles in seconds',
       },
     },
-    required: ['address', 'chainId', 'epochId', 'from', 'to', 'interval'],
+    required: ['address', 'chainId', 'marketId', 'from', 'to', 'interval'],
   },
-  function: async ({ address, chainId, epochId, from, to, interval }: { 
+  function: async ({ address, chainId, marketId, from, to, interval }: { 
     address: string; 
     chainId: string; 
-    epochId: string;
+    marketId: string;
     from: string;
     to: string;
     interval: string;
@@ -673,8 +697,8 @@ const getIndexCandles = {
     const intervalSeconds = intervalToSeconds(interval);
 
     const query = `
-      query GetIndexCandles($address: String!, $chainId: Int!, $epochId: String!, $from: Int!, $to: Int!, $interval: Int!) {
-        indexCandles(address: $address, chainId: $chainId, epochId: $epochId, from: $from, to: $to, interval: $interval) {
+      query GetIndexCandles($address: String!, $chainId: Int!, $marketId: String!, $from: Int!, $to: Int!, $interval: Int!) {
+        indexCandles(address: $address, chainId: $chainId, marketId: $marketId, from: $from, to: $to, interval: $interval) {
           timestamp
           open
           high
@@ -687,7 +711,7 @@ const getIndexCandles = {
     const result = await executeGraphQLQuery(query, {
       address,
       chainId: parseInt(chainId),
-      epochId,
+      marketId,
       from: parseInt(from),
       to: parseInt(to),
       interval: intervalSeconds,
@@ -702,12 +726,12 @@ const getIndexCandles = {
 };
 
 export {
-  getMarket,
-  listMarkets,
+  getMarketGroup,
+  listMarketGroups,
   getPositions,
   getResource,
   listResources,
-  getEpochs,
+  listMarketsForGroup,
   getTransactions,
   getMarketCandles,
   getResourceCandles,

@@ -1,0 +1,47 @@
+name="foil"
+version="1.0.4"
+preset="ism-2025-04"
+
+include = [
+  "templates/generic-marketgroup.toml",
+  "templates/buckets-for-five.toml"
+]
+
+[setting.claimStatement]
+defaultValue = "<%= stringToHex('What will the ISM Manufacturing PMI reading be for April 2025?') %>"
+
+[setting.marketStartingTime]
+defaultValue = "1745611200"
+
+[setting.marketEndingTime]
+defaultValue = "1746109800"
+
+[setting.bucket1Name]
+defaultValue = "<%= stringToHex('bucket 1') %>"
+
+[setting.bucket2Name]
+defaultValue = "<%= stringToHex('bucket 2') %>"
+
+[setting.bucket3Name]
+defaultValue = "<%= stringToHex('bucket 3') %>"
+
+[setting.bucket4Name]
+defaultValue = "<%= stringToHex('bucket 4') %>"
+
+[setting.bucket5Name]
+defaultValue = "<%= stringToHex('bucket 5') %>"
+
+[setting.bucket1Claim]
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 less than 48.50? Zero if no:') %>"
+
+[setting.bucket2Claim]
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 between 48.51 and 49.00? Zero if no:') %>"
+
+[setting.bucket3Claim]
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 between 49.01 and 49.50? Zero if no:') %>"
+
+[setting.bucket4Claim]
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 between 49.51 and 50.00? Zero if no:') %>"
+
+[setting.bucket5Claim]
+defaultValue = "<%= stringToHex('Was the ISM Manufacturing PMI reading for April 2025 greater than 50.01? Zero if no:') %>"

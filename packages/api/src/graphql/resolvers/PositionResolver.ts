@@ -4,6 +4,7 @@ import { Position } from '../../models/Position';
 import { PositionType } from '../types';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
 import { mapPositionToType } from './mappers';
+
 @Resolver(() => PositionType)
 export class PositionResolver {
   @Query(() => [PositionType])
@@ -14,34 +15,37 @@ export class PositionResolver {
     marketAddress?: string
   ): Promise<PositionType[]> {
     try {
-      const where: {
-        owner?: string;
-        epoch?: { market: { chainId: number; address: string } };
-      } = {};
+      let positionsQuery = await dataSource
+        .getRepository(Position)
+        .createQueryBuilder('position')
+        .leftJoinAndSelect('position.market', 'market')
+        .leftJoinAndSelect('market.marketGroup', 'marketGroup')
+        .leftJoinAndSelect('marketGroup.resource', 'resource')
+        .leftJoinAndSelect('position.transactions', 'transactions')
+        .leftJoinAndSelect('transactions.event', 'event');
+
       if (owner) {
-        where.owner = owner.toLowerCase();
+        positionsQuery = positionsQuery.where(
+          'LOWER(position.owner) = :owner',
+          {
+            owner: owner?.toLowerCase(),
+          }
+        );
       }
+
       if (chainId && marketAddress) {
-        where.epoch = {
-          market: {
+        positionsQuery.andWhere(
+          'marketGroup.chainId = :chainId AND LOWER(marketGroup.address) = :marketAddress',
+          {
             chainId,
-            address: marketAddress.toLowerCase(),
-          },
-        };
+            marketAddress: marketAddress.toLowerCase(),
+          }
+        );
       }
 
-      const positions = await dataSource.getRepository(Position).find({
-        where,
-        relations: [
-          'epoch',
-          'epoch.market',
-          'epoch.market.resource',
-          'transactions',
-          'transactions.event',
-        ],
-      });
+      const positionsResult = await positionsQuery.getMany();
 
-      const hydratedPositions = positions.map((position) => {
+      const hydratedPositions = positionsResult.map((position) => {
         const hydratedTransactions = hydrateTransactions(
           position.transactions,
           false

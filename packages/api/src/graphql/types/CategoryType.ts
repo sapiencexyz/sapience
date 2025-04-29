@@ -1,5 +1,5 @@
 import { Field, ObjectType, ID, Directive } from 'type-graphql';
-import { MarketType } from './MarketType';
+import { MarketGroupType } from './MarketGroupType';
 
 @Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
@@ -13,6 +13,6 @@ export class CategoryType {
   @Field(() => String)
   slug: string;
 
-  @Field(() => [MarketType])
-  markets: MarketType[];
+  @Field(() => [MarketGroupType])
+  marketGroups: MarketGroupType[];
 }

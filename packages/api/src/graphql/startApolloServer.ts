@@ -3,8 +3,7 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import { buildSchema } from 'type-graphql';
 import {
-  EpochResolver,
-  MarketResolver,
+  MarketGroupResolver,
   PositionResolver,
   ResourceResolver,
   TransactionResolver,
@@ -12,17 +11,18 @@ import {
   PnLResolver,
   VolumeResolver,
   CategoryResolver,
+  MarketResolver,
 } from './resolvers';
 
 export const initializeApolloServer = async () => {
   // Create GraphQL schema
   const schema = await buildSchema({
     resolvers: [
+      MarketGroupResolver,
       MarketResolver,
       ResourceResolver,
       PositionResolver,
       TransactionResolver,
-      EpochResolver,
       CandleResolver,
       PnLResolver,
       VolumeResolver,

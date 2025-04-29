@@ -47,7 +47,8 @@ contract DepositCollateralTest is TestTrade {
             UPPER_TICK,
             startingSqrtPriceX96,
             feeCollectors,
-            MIN_TRADE_SIZE
+            MIN_TRADE_SIZE,
+            "wstGwei/gas"
         );
 
         (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();

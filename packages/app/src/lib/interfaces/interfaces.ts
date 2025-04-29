@@ -6,7 +6,7 @@ export enum PositionKind {
 export interface FoilPosition {
   id: bigint; // nft id
   kind: PositionKind;
-  epochId: bigint;
+  marketId: bigint;
   // Accounting data (debt and deposited collateral)
   depositedCollateralAmount: bigint; // configured collateral
   borrowedVEth: bigint;
@@ -38,8 +38,8 @@ export interface MarketParams {
   uniswapQuoter: `0x${string}`;
   uniswapSwapRouter: `0x${string}`;
 }
-export interface EpochData {
-  epochId: string;
+export interface MarketData {
+  marketId: string;
   startTime: bigint;
   endTime: bigint;
   pool: `0x${string}`;

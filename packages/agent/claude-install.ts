@@ -68,7 +68,7 @@ async function updateClaudeConfig() {
     // Add or update the sapience server entry
     config.mcpServers['sapience'] = {
         command: 'npx', // Use npx to run the globally/locally installed package command
-        args: ['@foil/agent', 'run-server'], // The new command defined in package.json
+        args: ['@sapience/agent', 'run-server'], // The new command defined in package.json
     };
 
     try {

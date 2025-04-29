@@ -1,0 +1,859 @@
+{
+  "address": "0xc0822bBd3007A3C8dB530cE0b9C65973174D9946",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_finder",
+          "type": "address",
+          "internalType": "contract FinderInterface"
+        },
+        {
+          "name": "_defaultCurrency",
+          "type": "address",
+          "internalType": "contract IERC20"
+        },
+        {
+          "name": "_defaultLiveness",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "assertTruth",
+      "inputs": [
+        {
+          "name": "claim",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "asserter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "escalationManager",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "liveness",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "currency",
+          "type": "address",
+          "internalType": "contract IERC20"
+        },
+        {
+          "name": "bond",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "domainId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "assertTruthWithDefaults",
+      "inputs": [
+        {
+          "name": "claim",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "asserter",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "assertions",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "escalationManagerSettings",
+          "type": "tuple",
+          "internalType": "struct OptimisticOracleV3Interface.EscalationManagerSettings",
+          "components": [
+            {
+              "name": "arbitrateViaEscalationManager",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "discardOracle",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "validateDisputers",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "assertingCaller",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "escalationManager",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "asserter",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "assertionTime",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "settled",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "currency",
+          "type": "address",
+          "internalType": "contract IERC20"
+        },
+        {
+          "name": "expirationTime",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "settlementResolution",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "domainId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "bond",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "disputer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "burnedBondPercentage",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "cachedCurrencies",
+      "inputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "isWhitelisted",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "finalFee",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "cachedIdentifiers",
+      "inputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "cachedOracle",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "defaultCurrency",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract IERC20"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "defaultIdentifier",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "defaultLiveness",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint64",
+          "internalType": "uint64"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "disputeAssertion",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "disputer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "finder",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "contract FinderInterface"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getAssertion",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct OptimisticOracleV3Interface.Assertion",
+          "components": [
+            {
+              "name": "escalationManagerSettings",
+              "type": "tuple",
+              "internalType": "struct OptimisticOracleV3Interface.EscalationManagerSettings",
+              "components": [
+                {
+                  "name": "arbitrateViaEscalationManager",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "discardOracle",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "validateDisputers",
+                  "type": "bool",
+                  "internalType": "bool"
+                },
+                {
+                  "name": "assertingCaller",
+                  "type": "address",
+                  "internalType": "address"
+                },
+                {
+                  "name": "escalationManager",
+                  "type": "address",
+                  "internalType": "address"
+                }
+              ]
+            },
+            {
+              "name": "asserter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "assertionTime",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "settled",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "currency",
+              "type": "address",
+              "internalType": "contract IERC20"
+            },
+            {
+              "name": "expirationTime",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "settlementResolution",
+              "type": "bool",
+              "internalType": "bool"
+            },
+            {
+              "name": "domainId",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "identifier",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            },
+            {
+              "name": "bond",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "callbackRecipient",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "disputer",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getAssertionResult",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getCurrentTime",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getMinimumBond",
+      "inputs": [
+        {
+          "name": "currency",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "multicall",
+      "inputs": [
+        {
+          "name": "data",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "results",
+          "type": "bytes[]",
+          "internalType": "bytes[]"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "numericalTrue",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "renounceOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "setAdminProperties",
+      "inputs": [
+        {
+          "name": "_defaultCurrency",
+          "type": "address",
+          "internalType": "contract IERC20"
+        },
+        {
+          "name": "_defaultLiveness",
+          "type": "uint64",
+          "internalType": "uint64"
+        },
+        {
+          "name": "_burnedBondPercentage",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "settleAndGetAssertionResult",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "settleAssertion",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "stampAssertion",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "syncUmaParams",
+      "inputs": [
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        },
+        {
+          "name": "currency",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "AdminPropertiesSet",
+      "inputs": [
+        {
+          "name": "defaultCurrency",
+          "type": "address",
+          "indexed": false,
+          "internalType": "contract IERC20"
+        },
+        {
+          "name": "defaultLiveness",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        },
+        {
+          "name": "burnedBondPercentage",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "AssertionDisputed",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "caller",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "disputer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "AssertionMade",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "domainId",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "claim",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "asserter",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "escalationManager",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "caller",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "expirationTime",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        },
+        {
+          "name": "currency",
+          "type": "address",
+          "indexed": false,
+          "internalType": "contract IERC20"
+        },
+        {
+          "name": "bond",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "identifier",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "AssertionSettled",
+      "inputs": [
+        {
+          "name": "assertionId",
+          "type": "bytes32",
+          "indexed": true,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "bondRecipient",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "disputed",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        },
+        {
+          "name": "settlementResolution",
+          "type": "bool",
+          "indexed": false,
+          "internalType": "bool"
+        },
+        {
+          "name": "settleCaller",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferred",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    }
+  ],
+  "constructorArgs": [
+    "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "0xBDF33AE1C1e5f8E3B3ce166F64f2337E2e07a398",
+    "7200"
+  ],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x61a1dbf24aadb1957d569152836accb3f0ae34878b61bebbd33e1be6b82b886f",
+  "deployTxnBlockNumber": "6",
+  "deployTimestamp": "1742423999",
+  "sourceName": "src/UMA/src/OptimisticOracleV3Override.sol",
+  "contractName": "OptimisticOracleV3Override",
+  "deployedOn": "deploy.OptimisticOracleV3",
+  "highlight": true,
+  "gasUsed": 3154877,
+  "gasCost": "1006775020"
+}

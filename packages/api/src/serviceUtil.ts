@@ -26,7 +26,7 @@ export async function getTransactionsInTimeRange(
   return await transactionRepository
     .createQueryBuilder('transaction')
     .innerJoinAndSelect('transaction.event', 'event')
-    .innerJoinAndSelect('event.market', 'market')
+    .innerJoinAndSelect('event.marketGroup', 'marketGroup')
     .leftJoinAndSelect('transaction.marketPrice', 'marketPrice')
     .leftJoinAndSelect('transaction.position', 'position')
     .where(
@@ -36,8 +36,8 @@ export async function getTransactionsInTimeRange(
         endTimestamp,
       }
     )
-    .andWhere('market.chainId = :chainId', { chainId })
-    .andWhere('market.address = :marketAddress', {
+    .andWhere('marketGroup.chainId = :chainId', { chainId })
+    .andWhere('marketGroup.address = :marketAddress', {
       marketAddress: marketAddress.toLowerCase(),
     })
     .orderBy('CAST(event.timestamp AS BIGINT)', 'ASC')
@@ -49,18 +49,22 @@ export async function getMarketPricesInTimeRange(
   endTimestamp: number,
   chainId: string,
   address: string,
-  epochId: string
+  marketId: string
 ) {
   const marketPriceRepository = dataSource.getRepository(MarketPrice);
   return await marketPriceRepository
     .createQueryBuilder('marketPrice')
     .innerJoinAndSelect('marketPrice.transaction', 'transaction')
     .innerJoinAndSelect('transaction.event', 'event')
-    .innerJoinAndSelect('event.market', 'market')
-    .innerJoinAndSelect('market.epochs', 'epoch', 'epoch.epochId = :epochId')
+    .innerJoinAndSelect('event.marketGroup', 'marketGroup')
+    .innerJoinAndSelect(
+      'marketGroup.markets',
+      'market',
+      'market.marketId = :marketId'
+    )
     .where('market.chainId = :chainId', { chainId })
     .andWhere('market.address = :address', { address: address.toLowerCase() })
-    .andWhere('epoch.epochId = :epochId', { epochId })
+    .andWhere('market.marketId = :marketId', { marketId })
     .andWhere('CAST(marketPrice.timestamp AS bigint) >= :startTimestamp', {
       startTimestamp,
     })

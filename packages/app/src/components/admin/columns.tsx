@@ -14,10 +14,10 @@ import { base, sepolia } from 'viem/chains';
 import { useReadContract } from 'wagmi';
 
 import NumberDisplay from '~/components/numberDisplay';
-import type { Market } from '~/lib/context/FoilProvider';
+import type { MarketGroup } from '~/lib/context/FoilProvider';
 import erc20ABI from '~/lib/erc20abi.json';
 import { useMarketPriceData } from '~/lib/hooks/useMarketPriceData';
-import { useResources } from '~/lib/hooks/useResources';
+import { useResourcesAdmin } from '~/lib/hooks/useResources';
 
 import AddressCell from './AddressCell';
 import PublicCell from './PublicCell';
@@ -26,7 +26,7 @@ import type { MissingBlocks } from './types';
 
 // Extend the Market type with missing properties
 declare module '~/lib/context/FoilProvider' {
-  interface Market {
+  interface MarketGroup {
     marketParams?: {
       bondCurrency: `0x${string}`;
       bondAmount: bigint;
@@ -68,7 +68,7 @@ const ResourceCell = ({
   marketAddress: string;
   chainId: number;
 }) => {
-  const { data: resources } = useResources();
+  const { data: resources } = useResourcesAdmin();
 
   if (!resources) {
     return <span>Loading...</span>;
@@ -76,8 +76,9 @@ const ResourceCell = ({
 
   // Find the resource that contains this market
   const foundResource = resources.find((resource) =>
-    resource.markets.some(
-      (market) => market.address === marketAddress && market.chainId === chainId
+    resource.marketGroups.some(
+      (marketGroup) =>
+        marketGroup.address === marketAddress && marketGroup.chainId === chainId
     )
   );
 
@@ -257,16 +258,16 @@ const getTooltipContent = (type: string, isCumulative?: boolean): string => {
 
 // Simplified MarketPriceCell component
 const MarketPriceCell = ({
-  marketAddress,
+  marketGroupAddress,
   chainId,
-  epochId,
+  marketId,
   endTimestamp,
   type,
   isCumulative,
 }: {
-  marketAddress: string;
+  marketGroupAddress: string;
   chainId: number;
-  epochId: number;
+  marketId: number;
   endTimestamp: number;
   type: 'indexPrice' | 'stEthPerToken' | 'adjustedPrice' | 'sqrtPriceX96';
   isCumulative?: boolean;
@@ -280,7 +281,7 @@ const MarketPriceCell = ({
     error,
     isActive,
     isEthereumResource,
-  } = useMarketPriceData(marketAddress, chainId, epochId, endTimestamp);
+  } = useMarketPriceData(marketGroupAddress, chainId, marketId, endTimestamp);
 
   if (isLoading) {
     return <span>Loading...</span>;
@@ -330,11 +331,19 @@ const MarketPriceCell = ({
 };
 
 // BondCell component with fixed comparison
-const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
-  const bondCurrency = market.marketParams?.bondCurrency;
-  const bondAmount = market.marketParams?.bondAmount;
+const BondCell = ({
+  marketGroup,
+  chainId,
+}: {
+  marketGroup: MarketGroup;
+  chainId: number;
+}) => {
+  const bondCurrency = marketGroup.marketParams?.bondCurrency;
+  const bondAmount = marketGroup.marketParams?.bondAmount;
   const spenderAddress =
-    market.vaultAddress !== zeroAddress ? market.vaultAddress : market.address;
+    marketGroup.vaultAddress !== zeroAddress
+      ? marketGroup.vaultAddress
+      : marketGroup.address;
 
   // Get the viem chain object based on chainId
   const getViemChain = (id: number) => {
@@ -414,16 +423,16 @@ const BondCell = ({ market, chainId }: { market: Market; chainId: number }) => {
 };
 
 export interface TableRow {
-  marketAddress: string;
+  marketGroupAddress: string;
   chainId: number;
-  epochId: number;
+  marketId: number;
   startTimestamp: number;
   endTimestamp: number;
   settled: boolean;
   assertionId?: string;
   vaultAddress: string;
   public: boolean;
-  market: Market;
+  marketGroup: MarketGroup;
   question?: string;
   id?: number;
   volume?: number | null; // Add volume property
@@ -431,14 +440,19 @@ export interface TableRow {
 
 const getColumns = (
   loadingAction: { [key: string]: boolean },
-  updateMarketPrivacy: (market: Market, epochId: number) => void,
+  updateMarketPrivacy: (marketGroup: MarketGroup, marketId: number) => void,
   handleReindex: (
     reindexType: 'price' | 'events',
-    marketAddress: string,
-    epochId: number,
+    marketGroupAddress: string,
+    marketId: number,
     chainId: number
   ) => void,
-  missingBlocks: MissingBlocks
+  missingBlocks: MissingBlocks,
+  missingPricesLoading: { [key: string]: boolean },
+  fetchMissingBlocks: (
+    marketGroup: MarketGroup,
+    marketId: number
+  ) => Promise<void>
 ): ColumnDef<TableRow>[] => [
   {
     id: 'isPublic',
@@ -448,10 +462,12 @@ const getColumns = (
       <PublicCell
         isPublic={row.original.public}
         loading={
-          loadingAction[`${row.original.marketAddress}-${row.original.epochId}`]
+          loadingAction[
+            `${row.original.marketGroupAddress}-${row.original.marketId}`
+          ]
         }
-        market={row.original.market}
-        epochId={row.original.epochId}
+        marketGroup={row.original.marketGroup}
+        marketId={row.original.marketId}
         onUpdate={updateMarketPrivacy}
       />
     ),
@@ -480,7 +496,7 @@ const getColumns = (
       <VolumeCell
         volume={row.original.volume}
         chainId={row.original.chainId}
-        collateralAssetAddress={row.original.market.collateralAsset}
+        collateralAssetAddress={row.original.marketGroup.collateralAsset}
       />
     ),
   },
@@ -568,11 +584,11 @@ const getColumns = (
     header: 'Resource',
     accessorFn: (row) => {
       // Use marketAddress for sorting but display resource cell
-      return `${row.marketAddress}-${row.chainId}`;
+      return `${row.marketGroupAddress}-${row.chainId}`;
     },
     cell: ({ row }) => (
       <ResourceCell
-        marketAddress={row.original.marketAddress}
+        marketAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
       />
     ),
@@ -609,7 +625,7 @@ const getColumns = (
     accessorKey: 'vaultAddress',
     cell: ({ row }) => {
       // Get the actual vaultAddress from the market to compare
-      const actualVaultAddress = row.original.market.vaultAddress;
+      const actualVaultAddress = row.original.marketGroup.vaultAddress;
       const isVault = actualVaultAddress && actualVaultAddress !== zeroAddress;
 
       return (
@@ -640,107 +656,121 @@ const getColumns = (
     accessorKey: 'marketAddress',
     cell: ({ row }) => (
       <AddressCell
-        address={row.original.marketAddress}
+        address={row.original.marketGroupAddress}
         chainId={row.original.chainId}
       />
     ),
   },
   {
-    id: 'epochId',
+    id: 'marketId',
     header: 'Period',
-    accessorKey: 'epochId',
-    cell: ({ row }) => <span>{row.original.epochId}</span>,
+    accessorKey: 'marketId',
+    cell: ({ row }) => <span>{row.original.marketId}</span>,
   },
   {
     id: 'isCumulative',
     header: 'Cumulative',
-    accessorFn: (row) => row.market?.isCumulative,
+    accessorFn: (row) => row.marketGroup?.isCumulative,
     cell: ({ row }) => (
       <span
-        className={`text-lg ${row.original.market.isCumulative ? 'text-gray-900' : 'text-gray-500'}`}
+        className={`text-lg ${row.original.marketGroup.isCumulative ? 'text-gray-900' : 'text-gray-500'}`}
       >
-        {row.original.market.isCumulative ? '●' : '○'}
+        {row.original.marketGroup.isCumulative ? '●' : '○'}
       </span>
     ),
   },
   {
     id: 'isYin',
     header: 'Yin',
-    accessorFn: (row) => row.market?.isYin,
+    accessorFn: (row) => row.marketGroup?.isYin,
     cell: ({ row }) => (
       <span
-        className={`text-lg ${row.original.market.isYin ? 'text-gray-900' : 'text-gray-500'}`}
+        className={`text-lg ${row.original.marketGroup.isYin ? 'text-gray-900' : 'text-gray-500'}`}
       >
-        {row.original.market.isYin ? '●' : '○'}
+        {row.original.marketGroup.isYin ? '●' : '○'}
       </span>
     ),
   },
   {
-    id: 'missingPriceBlocks',
+    id: 'missingPrices',
     header: 'Missing Prices',
-    accessorFn: (row) => {
-      const key = `${row.marketAddress}-${row.epochId}`;
-      return missingBlocks[key]?.resourcePrice?.length || 0;
-    },
     cell: ({ row }) => {
-      const key = `${row.original.marketAddress}-${row.original.epochId}`;
-      const missingBlocksEntry = missingBlocks[key];
-      const blocks = missingBlocksEntry?.resourcePrice;
+      const key = `${row.original.marketGroupAddress}-${row.original.marketId}`;
+      const reindexKey = `reindex-${row.original.marketGroupAddress}-${row.original.marketId}-price`;
+      const isLoadingData = missingPricesLoading[key];
+      const isReindexing = loadingAction[reindexKey]; // Loading state for the reindex action
+      const data = missingBlocks[key];
+      const missingCount = data?.resourcePrice?.length;
+      const error = data?.error;
+      const hasLoaded = data !== undefined; // Check if data has been loaded at least once
 
-      // Create reindex button component to reuse
-      const reloadButton = (
+      const ReindexButton = (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 size="icon"
-                onClick={() =>
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
                   handleReindex(
                     'price',
-                    row.original.marketAddress,
-                    row.original.epochId,
+                    row.original.marketGroupAddress,
+                    row.original.marketId,
                     row.original.chainId
-                  )
-                }
-                className="h-5 w-5 p-0"
+                  );
+                }}
+                className="h-5 w-5 p-0 ml-2"
+                disabled={isReindexing} // Disable while reindexing
               >
-                <Download className="h-3 w-3" />
+                {isReindexing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3" />
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Load Missing Prices</p>
+              <p>Trigger Re-index for Missing Prices</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
 
-      // If entry doesn't exist yet, show loading spinner without button
-      if (missingBlocksEntry === undefined) {
+      if (isLoadingData) {
+        return <Loader2 className="h-4 w-4 animate-spin opacity-50" />;
+      }
+
+      // If data has been loaded (even if error or count is 0), show count/error and reindex button
+      if (hasLoaded) {
         return (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-            </div>
+          <div className="flex items-center">
+            {error ? (
+              <span className="text-xs text-red-500">Error</span>
+            ) : (
+              <span className="text-xs">
+                {typeof missingCount === 'number' ? missingCount : 'N/A'}
+              </span>
+            )}
+            {ReindexButton}
           </div>
         );
       }
 
-      // If blocks is undefined, that's an error state - show button to retry
-      if (blocks === undefined) {
-        return (
-          <div className="flex items-center gap-2">
-            <span className="text-amber-500">Error</span>
-            {reloadButton}
-          </div>
-        );
-      }
-
-      // Only show reindex button if there are missing blocks
+      // Default: show button to load initial data
       return (
-        <div className="flex items-center gap-2">
-          <span>{blocks.length.toLocaleString()}</span>
-          {blocks.length > 0 && reloadButton}
-        </div>
+        <Button
+          variant="outline"
+          size="xs" // Assuming size xs is available or use sm
+          className="h-6 px-2 text-xs"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent row click or other handlers
+            fetchMissingBlocks(row.original.marketGroup, row.original.marketId);
+          }}
+          disabled={isLoadingData}
+        >
+          {isLoadingData ? 'Loading...' : 'Load'}
+        </Button>
       );
     },
   },
@@ -750,18 +780,18 @@ const getColumns = (
     header: 'Settlement Price',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, epochId, endTimestamp } = row;
+      const { marketGroupAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
+      return `${marketGroupAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
-        marketAddress={row.original.marketAddress}
+        marketGroupAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
+        marketId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="indexPrice"
-        isCumulative={row.original.market.isCumulative}
+        isCumulative={row.original.marketGroup.isCumulative}
       />
     ),
   },
@@ -771,15 +801,15 @@ const getColumns = (
     header: 'wstETH Ratio',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, epochId, endTimestamp } = row;
+      const { marketGroupAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
+      return `${marketGroupAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
-        marketAddress={row.original.marketAddress}
+        marketGroupAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
+        marketId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="stEthPerToken"
       />
@@ -791,18 +821,18 @@ const getColumns = (
     header: 'Adjusted Price',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, epochId, endTimestamp } = row;
+      const { marketGroupAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
+      return `${marketGroupAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
-        marketAddress={row.original.marketAddress}
+        marketGroupAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
+        marketId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="adjustedPrice"
-        isCumulative={row.original.market.isCumulative}
+        isCumulative={row.original.marketGroup.isCumulative}
       />
     ),
   },
@@ -812,15 +842,15 @@ const getColumns = (
     header: 'SqrtPriceX96',
     accessorFn: (row) => {
       // Use market data for sorting
-      const { marketAddress, chainId, epochId, endTimestamp } = row;
+      const { marketGroupAddress, chainId, marketId, endTimestamp } = row;
       // This is a placeholder for sorting - actual data will be fetched in the cell component
-      return `${marketAddress}-${chainId}-${epochId}-${endTimestamp}`;
+      return `${marketGroupAddress}-${chainId}-${marketId}-${endTimestamp}`;
     },
     cell: ({ row }) => (
       <MarketPriceCell
-        marketAddress={row.original.marketAddress}
+        marketGroupAddress={row.original.marketGroupAddress}
         chainId={row.original.chainId}
-        epochId={row.original.epochId}
+        marketId={row.original.marketId}
         endTimestamp={row.original.endTimestamp}
         type="sqrtPriceX96"
       />
@@ -829,9 +859,9 @@ const getColumns = (
   {
     id: 'bondCurrency',
     header: 'Bond Currency',
-    accessorFn: (row) => row.market?.marketParams?.bondCurrency || '',
+    accessorFn: (row) => row.marketGroup?.marketParams?.bondCurrency || '',
     cell: ({ row }) => {
-      const bondCurrency = row.original.market.marketParams?.bondCurrency;
+      const bondCurrency = row.original.marketGroup.marketParams?.bondCurrency;
       if (!bondCurrency) return <span>Loading...</span>;
 
       return (
@@ -843,11 +873,14 @@ const getColumns = (
     id: 'bondAmount',
     header: 'Bond Required',
     accessorFn: (row) => {
-      const bondAmount = row.market?.marketParams?.bondAmount;
+      const bondAmount = row.marketGroup?.marketParams?.bondAmount;
       return bondAmount ? bondAmount.toString() : '';
     },
     cell: ({ row }) => (
-      <BondCell market={row.original.market} chainId={row.original.chainId} />
+      <BondCell
+        marketGroup={row.original.marketGroup}
+        chainId={row.original.chainId}
+      />
     ),
   },
   {
@@ -856,10 +889,10 @@ const getColumns = (
     enableSorting: false,
     cell: ({ row }) => (
       <SettleCell
-        market={row.original.market}
-        epoch={{
-          id: row.original.id ?? row.original.epochId, // Use id if available, fall back to epochId
-          epochId: row.original.epochId,
+        marketGroup={row.original.marketGroup}
+        market={{
+          id: row.original.id ?? row.original.marketId, // Use id if available, fall back to epochId
+          marketId: row.original.marketId,
           startTimestamp: row.original.startTimestamp,
           endTimestamp: row.original.endTimestamp,
           public: row.original.public,
@@ -878,8 +911,8 @@ const getColumns = (
         onClick={() =>
           handleReindex(
             'events',
-            row.original.marketAddress,
-            row.original.epochId,
+            row.original.marketGroupAddress,
+            row.original.marketId,
             row.original.chainId
           )
         }

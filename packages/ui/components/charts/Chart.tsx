@@ -14,7 +14,7 @@ import {
 interface ChartProps {
   resourceSlug?: string;
   market: {
-    epochId: number;
+    marketId: number;
     chainId: number;
     address: string;
   };
@@ -53,7 +53,7 @@ export const Chart = ({
       'chart',
       market.chainId,
       market.address,
-      market.epochId,
+      market.marketId,
       selectedWindow,
       selectedInterval,
     ],
@@ -61,7 +61,7 @@ export const Chart = ({
       const params = new URLSearchParams({
         chainId: market.chainId.toString(),
         address: market.address,
-        epochId: market.epochId.toString(),
+        marketId: market.marketId.toString(),
         window: selectedWindow || '',
         interval: selectedInterval,
       });

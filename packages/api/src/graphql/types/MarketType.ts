@@ -1,7 +1,6 @@
 import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
-import { EpochType } from './EpochType';
-import { ResourceType } from './ResourceType';
-import { CategoryType } from './CategoryType';
+import { MarketGroupType } from './MarketGroupType';
+import { PositionType } from './PositionType';
 
 @Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
@@ -9,54 +8,41 @@ export class MarketType {
   @Field(() => ID)
   id: number;
 
-  @Field(() => String)
-  address: string;
-
-  @Field(() => String, { nullable: true })
-  vaultAddress: string;
-
   @Field(() => Int)
-  chainId: number;
-
-  @Field(() => Boolean)
-  isYin: boolean;
-
-  @Field(() => Boolean)
-  isCumulative: boolean;
-
-  @Field(() => [EpochType])
-  epochs: EpochType[];
-
-  @Field(() => ResourceType, { nullable: true })
-  resource: ResourceType | null;
-
-  @Field(() => CategoryType, { nullable: true })
-  category: CategoryType | null;
+  marketId: number;
 
   @Field(() => Int, { nullable: true })
-  deployTimestamp: number | null;
+  startTimestamp: number | null;
 
   @Field(() => Int, { nullable: true })
-  deployTxnBlockNumber: number | null;
+  endTimestamp: number | null;
+
+  @Field(() => MarketGroupType, { nullable: true })
+  marketGroup: MarketGroupType | null;
+
+  @Field(() => [PositionType])
+  positions: PositionType[];
+
+  @Directive('@cacheControl(maxAge: 60)')
+  @Field(() => Boolean, { nullable: true })
+  settled: boolean | null;
+
+  @Directive('@cacheControl(maxAge: 60)')
+  @Field(() => String, { nullable: true })
+  settlementPriceD18: string | null;
 
   @Field(() => String, { nullable: true })
-  owner: string | null;
+  poolAddress: string | null;
 
-  @Field(() => String, { nullable: true })
-  collateralAsset: string | null;
+  @Field(() => Boolean)
+  public: boolean;
 
   @Field(() => String, { nullable: true })
   question: string | null;
 
-  @Field(() => String, { nullable: true })
-  claimStatement: string | null;
+  @Field(() => Int, { nullable: true })
+  baseAssetMinPriceTick: number | null;
 
-  @Field(() => String, { nullable: true })
-  baseTokenName: string | null;
-
-  @Field(() => String, { nullable: true })
-  quoteTokenName: string | null;
-
-  @Field(() => [String], { nullable: true })
-  optionNames: string[] | null;
+  @Field(() => Int, { nullable: true })
+  baseAssetMaxPriceTick: number | null;
 }

@@ -14,21 +14,14 @@ import { useContext, useEffect, useMemo, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { decodeEventLog, formatUnits, parseUnits } from 'viem';
 import {
-  useWriteContract,
-  useWaitForTransactionReceipt,
   useAccount,
-  useReadContract,
   useChainId,
+  useReadContract,
   useSwitchChain,
+  useWaitForTransactionReceipt,
+  useWriteContract,
 } from 'wagmi';
 
-import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
-import { useFoil } from '../../lib/context/FoilProvider';
-import erc20ABI from '../../lib/erc20abi.json';
-import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
-import NumberDisplay from '../numberDisplay';
-import PositionSelector from '../positionSelector';
-import SlippageTolerance from '../slippageTolerance';
 import {
   CREATE_LIQUIDITY_REDUCTION,
   TICK_SPACING_DEFAULT,
@@ -39,6 +32,13 @@ import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { JSBIAbs, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
+import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
+import { useFoil } from '../../lib/context/FoilProvider';
+import erc20ABI from '../../lib/erc20abi.json';
+import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
+import NumberDisplay from '../numberDisplay';
+import PositionSelector from '../positionSelector';
+import SlippageTolerance from '../slippageTolerance';
 
 import LiquidityAmountInput from './LiquidityAmountInput';
 import LiquidityPriceInput from './LiquidityPriceInput';
@@ -54,7 +54,7 @@ const priceToTick = (price: number, tickSpacing: number): number => {
 const LiquidityForm: React.FC = () => {
   const { nftId, refreshPositions, setNftId } = useAddEditPosition();
   const {
-    epoch,
+    market,
     pool,
     collateralAsset,
     collateralAssetTicker,
@@ -69,13 +69,13 @@ const LiquidityForm: React.FC = () => {
     useMarketUnits,
     valueDisplay,
     unitDisplay,
-    market,
+    marketGroup,
   } = useContext(PeriodContext);
 
   const { stEthPerToken } = useFoil();
 
-  if (!epoch) {
-    throw new Error('Epoch is not defined');
+  if (!market) {
+    throw new Error('Market is not defined');
   }
 
   const { toast } = useToast();
@@ -292,7 +292,7 @@ const LiquidityForm: React.FC = () => {
     abi: foilData.abi,
     functionName: 'quoteLiquidityPositionTokens',
     args: [
-      epoch.toString(),
+      market.toString(),
       parseUnits(depositAmount.toString(), collateralAssetDecimals),
       pool ? pool.sqrtRatioX96.toString() : '0',
       TickMath.getSqrtRatioAtTick(tickLower).toString(),
@@ -304,7 +304,6 @@ const LiquidityForm: React.FC = () => {
     },
   });
 
-  /// //// WRITE CONTRACT HOOKS ///////
   const { data: approveHash, writeContract: approveWrite } = useWriteContract({
     mutation: {
       onError: (error) => {
@@ -386,7 +385,6 @@ const LiquidityForm: React.FC = () => {
     hash: decreaseLiquidityHash,
   });
 
-  /// ///// MEMOIZED VALUES ////////
   const liquidity: bigint = useMemo(() => {
     if (!uniswapPosition) return BigInt(0);
     const uniswapData = uniswapPosition as any[];
@@ -710,7 +708,7 @@ const LiquidityForm: React.FC = () => {
         duration: 5000,
       });
       router.push(
-        `/markets/${chainId}%3A${marketAddress}/periods/${epoch}/pool?positionId=${nftId}`
+        `/markets/${chainId}%3A${marketAddress}/periods/${market}/pool?positionId=${nftId}`
       );
     }
   }, [positionData, toast]);
@@ -852,7 +850,7 @@ const LiquidityForm: React.FC = () => {
         functionName: 'createLiquidityPosition',
         args: [
           {
-            epochId: epoch,
+            epochId: market,
             amountTokenA: parseUnits(
               adjustedBaseToken.toString(),
               TOKEN_DECIMALS
@@ -1034,7 +1032,7 @@ const LiquidityForm: React.FC = () => {
 
   // Convert price from display units to market units
   const convertDisplayToMarketPrice = (displayPrice: number): number => {
-    if (useMarketUnits || market?.isCumulative) {
+    if (useMarketUnits || marketGroup?.isCumulative) {
       return displayPrice;
     }
     // Convert from gwei to Ggas/wstETH
@@ -1043,7 +1041,7 @@ const LiquidityForm: React.FC = () => {
 
   // Convert price from market units to display units
   const convertMarketToDisplayPrice = (marketPrice: number): number => {
-    if (useMarketUnits || market?.isCumulative) {
+    if (useMarketUnits || marketGroup?.isCumulative) {
       return marketPrice;
     }
     // Convert from Ggas/wstETH to gwei
@@ -1061,15 +1059,6 @@ const LiquidityForm: React.FC = () => {
       contextHighPriceTick !== undefined && contextHighPriceTick !== 0
         ? contextHighPriceTick
         : baseAssetMaxPriceTick;
-
-    console.log('Ticks:', {
-      lowTick,
-      highTick,
-      contextLowPriceTick,
-      contextHighPriceTick,
-      baseAssetMinPriceTick,
-      baseAssetMaxPriceTick,
-    });
 
     if (lowTick === undefined || highTick === undefined) {
       console.log('Ticks are undefined');

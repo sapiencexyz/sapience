@@ -6,7 +6,7 @@ import {
   OneToMany,
   Index,
 } from 'typeorm';
-import { Market } from './Market';
+import { MarketGroup } from './MarketGroup';
 import { Resource } from './Resource';
 
 @Entity()
@@ -24,8 +24,8 @@ export class Category {
   @Index()
   slug: string;
 
-  @OneToMany(() => Market, (market) => market.category)
-  markets: Market[];
+  @OneToMany(() => MarketGroup, (marketGroup) => marketGroup.category)
+  marketGroups: MarketGroup[];
 
   @OneToMany(() => Resource, (resource) => resource.category)
   resources: Resource[];

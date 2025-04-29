@@ -4,8 +4,8 @@ import dataSource from '../../db';
 import { Resource } from '../../models/Resource';
 import { ResourcePrice } from '../../models/ResourcePrice';
 import { MarketPrice } from '../../models/MarketPrice';
+import { MarketGroup } from '../../models/MarketGroup';
 import { Market } from '../../models/Market';
-import { Epoch } from '../../models/Epoch';
 import { CandleType } from '../types';
 import { ResourcePerformanceManager } from 'src/performance';
 
@@ -168,34 +168,36 @@ export class CandleResolver {
   async indexCandles(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
-    @Arg('epochId', () => String) epochId: string,
+    @Arg('marketId', () => String) marketId: string,
     @Arg('from', () => Int) from: number,
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance =
-      resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+    try {
+      const resourcePerformance =
+        resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+          chainId,
+          address
+        );
+
+      if (!resourcePerformance) {
+        return [];
+      }
+
+      const prices = await resourcePerformance.getIndexPrices(
+        from,
+        to,
+        interval,
         chainId,
-        address
+        address,
+        marketId
       );
 
-    if (!resourcePerformance) {
-      throw new Error(
-        `Resource performance not initialized for ${chainId}-${address}`
-      );
+      return prices;
+    } catch {
+      return [];
     }
-
-    const prices = await resourcePerformance.getIndexPrices(
-      from,
-      to,
-      interval,
-      chainId,
-      address,
-      epochId
-    );
-
-    return prices;
   }
 
   // For retrieving the exact settlement price
@@ -203,42 +205,42 @@ export class CandleResolver {
   async indexPriceAtTime(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
-    @Arg('epochId', () => String) epochId: string,
+    @Arg('marketId', () => String) marketId: string,
     @Arg('timestamp', () => Int) timestamp: number
   ): Promise<CandleType | null> {
     try {
-      const market = await dataSource.getRepository(Market).findOne({
-        where: { chainId, address },
+      const marketGroup = await dataSource.getRepository(MarketGroup).findOne({
+        where: { chainId, address: address.toLowerCase() },
       });
 
-      if (!market) {
+      if (!marketGroup) {
         throw new Error(
           `Market not found with chainId: ${chainId} and address: ${address}`
         );
       }
 
-      const epoch = await dataSource.getRepository(Epoch).findOne({
+      const market = await dataSource.getRepository(Market).findOne({
         where: {
-          market: { id: market.id },
-          epochId: Number(epochId),
+          marketGroup: { id: marketGroup.id },
+          marketId: Number(marketId),
         },
       });
 
-      if (!epoch) {
-        throw new Error(`Epoch not found with id: ${epochId}`);
+      if (!market) {
+        throw new Error(`Market not found with id: ${marketId}`);
       }
 
       const resource = await dataSource.getRepository(Resource).findOne({
         where: {
-          markets: { id: market.id },
+          marketGroups: { id: marketGroup.id },
         },
       });
 
       if (!resource) {
-        throw new Error(`Resource not found for market: ${market.id}`);
+        throw new Error(`Resource not found for market: ${marketGroup.id}`);
       }
 
-      const epochStartTimestamp = Number(epoch.startTimestamp);
+      const epochStartTimestamp = Number(market.startTimestamp);
       if (timestamp < epochStartTimestamp) {
         throw new Error(`Timestamp is before epoch start time`);
       }
@@ -270,64 +272,72 @@ export class CandleResolver {
   async marketCandles(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
-    @Arg('epochId', () => String) epochId: string,
+    @Arg('marketId', () => String) marketId: string,
     @Arg('from', () => Int) from: number,
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance =
-      resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+    try {
+      const resourcePerformance =
+        resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
+          chainId,
+          address
+        );
+
+      if (!resourcePerformance) {
+        console.log(
+          `No resource performance found for ${chainId}-${address}, returning empty array`
+        );
+        return [];
+      }
+
+      const prices = await resourcePerformance.getMarketPrices(
+        from,
+        to,
+        interval,
         chainId,
-        address
+        address,
+        marketId
       );
-
-    if (!resourcePerformance) {
-      throw new Error(
-        `Resource performance not initialized for ${chainId}-${address}`
+      return prices;
+    } catch (error) {
+      console.log(
+        `Error getting market candles for market without resource: ${chainId}-${address}: ${error instanceof Error ? error.message : String(error)}`
       );
+      return [];
     }
-
-    const prices = await resourcePerformance.getMarketPrices(
-      from,
-      to,
-      interval,
-      chainId,
-      address,
-      epochId
-    );
-    return prices;
   }
 
   @Query(() => [CandleType])
   async legacyMarketCandles(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
-    @Arg('epochId', () => String) epochId: string,
+    @Arg('marketId', () => String) marketId: string,
     @Arg('from', () => Int) from: number,
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     try {
-      const market = await dataSource.getRepository(Market).findOne({
-        where: { chainId, address },
+      const marketGroup = await dataSource.getRepository(MarketGroup).findOne({
+        where: { chainId, address: address.toLowerCase() },
       });
 
-      if (!market) {
+      if (!marketGroup) {
         throw new Error(
           `Market not found with chainId: ${chainId} and address: ${address}`
         );
       }
 
-      const epoch = await dataSource.getRepository(Epoch).findOne({
+      const market = await dataSource.getRepository(Market).findOne({
         where: {
-          market: { id: market.id },
-          epochId: Number(epochId),
+          marketGroup: { id: marketGroup.id },
+          marketId: Number(marketId),
         },
       });
 
-      if (!epoch) {
-        throw new Error(`Epoch not found with id: ${epochId}`);
+      if (!market) {
+        throw new Error(`Market not found with id: ${marketId}`);
       }
 
       // First get the most recent price before the from timestamp
@@ -336,14 +346,14 @@ export class CandleResolver {
         .createQueryBuilder('marketPrice')
         .leftJoinAndSelect('marketPrice.transaction', 'transaction')
         .leftJoinAndSelect('transaction.event', 'event')
-        .leftJoinAndSelect('event.market', 'market')
+        .leftJoinAndSelect('event.marketGroup', 'marketGroup')
         .leftJoinAndSelect('transaction.position', 'position')
         .leftJoinAndSelect('position.epoch', 'epoch')
-        .where('market.chainId = :chainId', { chainId })
-        .andWhere('market.address = :address', {
+        .where('marketGroup.chainId = :chainId', { chainId })
+        .andWhere('marketGroup.address = :address', {
           address: address.toLowerCase(),
         })
-        .andWhere('epoch.epochId = :epochId', { epochId: Number(epochId) })
+        .andWhere('market.marketId = :marketId', { marketId: Number(marketId) })
         .andWhere('CAST(marketPrice.timestamp AS bigint) < :from', {
           from: from.toString(),
         })
@@ -357,14 +367,14 @@ export class CandleResolver {
         .createQueryBuilder('marketPrice')
         .leftJoinAndSelect('marketPrice.transaction', 'transaction')
         .leftJoinAndSelect('transaction.event', 'event')
-        .leftJoinAndSelect('event.market', 'market')
+        .leftJoinAndSelect('event.marketGroup', 'marketGroup')
         .leftJoinAndSelect('transaction.position', 'position')
-        .leftJoinAndSelect('position.epoch', 'epoch')
-        .where('market.chainId = :chainId', { chainId })
-        .andWhere('market.address = :address', {
+        .leftJoinAndSelect('position.market', 'market')
+        .where('marketGroup.chainId = :chainId', { chainId })
+        .andWhere('marketGroup.address = :address', {
           address: address.toLowerCase(),
         })
-        .andWhere('epoch.epochId = :epochId', { epochId: Number(epochId) })
+        .andWhere('market.marketId = :marketId', { marketId: Number(marketId) })
         .andWhere(
           'CAST(marketPrice.timestamp AS bigint) BETWEEN :from AND :to',
           { from: from.toString(), to: to.toString() }

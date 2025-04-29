@@ -121,15 +121,15 @@ if (process.argv[2] === 'reindexMarket') {
   const callReindex = async () => {
     const chainId = parseInt(process.argv[3], 10);
     const address = process.argv[4];
-    const epochId = process.argv[5];
+    const marketId = process.argv[5];
 
     if (isNaN(chainId) || !address) {
       console.error(
-        'Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address> <epochId>'
+        'Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address> <marketId>'
       );
       process.exit(1);
     }
-    await reindexMarket(chainId, address, epochId);
+    await reindexMarket(chainId, address, marketId);
     console.log('Done reindexing');
     process.exit(0);
   };
@@ -153,15 +153,15 @@ if (process.argv[2] === 'reindexMarket') {
   const callReindexMissing = async () => {
     const chainId = parseInt(process.argv[3], 10);
     const address = process.argv[4];
-    const epochId = process.argv[5];
+    const marketId = process.argv[5];
 
-    if (isNaN(chainId) || !address || !epochId) {
+    if (isNaN(chainId) || !address || !marketId) {
       console.error(
-        'Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <epochId>'
+        'Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <marketId>'
       );
       process.exit(1);
     }
-    await reindexMissingBlocks(chainId, address, epochId);
+    await reindexMissingBlocks(chainId, address, marketId);
     console.log('Done reindexing');
     process.exit(0);
   };

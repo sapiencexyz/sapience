@@ -22,13 +22,13 @@ export const quoteCreateTraderPosition = {
   description: "Gets a quote for creating a new trader position",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market to create the position in"
+        description: "The address of the market group to create the position in"
       },
-      epochId: {
+      marketId: {
         type: "string",
-        description: "The period ID to create the position in"
+        description: "The market ID to create the position in"
       },
       collateralAmount: {
         type: "string",
@@ -39,15 +39,15 @@ export const quoteCreateTraderPosition = {
         description: "The size of the position"
       }
     },
-    required: ["marketAddress", "epochId", "collateralAmount", "size"],
+    required: ["marketGroupAddress", "marketId", "collateralAmount", "size"],
   },
-  function: async (args: { marketAddress: string; epochId: string; collateralAmount: string; size: string }) => {
+  function: async (args: { marketGroupAddress: string; marketId: string; collateralAmount: string; size: string }) => {
     try {
       const result = await client.simulateContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'quoteCreateTraderPosition',
-        args: [BigInt(args.epochId), Number(args.size)]
+        args: [BigInt(args.marketId), Number(args.size)]
       });
 
       const [requiredCollateral, fillPrice] = result.result as [bigint, bigint];
@@ -78,13 +78,13 @@ export const createTraderPosition = {
   description: "Creates a new trader position with specified parameters",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market to create the position in"
+        description: "The address of the market group to create the position in"
       },
-      epochId: {
+      marketId: {
         type: "string",
-        description: "The period ID to create the position in"
+        description: "The market ID to create the position in"
       },
       collateralAmount: {
         type: "string",
@@ -99,12 +99,12 @@ export const createTraderPosition = {
         description: "The deadline for the transaction (timestamp in seconds)"
       }
     },
-    required: ["marketAddress", "epochId", "collateralAmount", "size", "deadline"],
+    required: ["marketGroupAddress", "marketId", "collateralAmount", "size", "deadline"],
   },
-  function: async (args: { marketAddress: string; epochId: string; collateralAmount: string; size: string; deadline: string }) => {
+  function: async (args: { marketGroupAddress: string; marketId: string; collateralAmount: string; size: string; deadline: string }) => {
     try {
       const calldata = encodeFunction('createTraderPosition', [
-        BigInt(args.epochId),
+        BigInt(args.marketId),
         BigInt(args.size),
         BigInt(args.collateralAmount),
         BigInt(args.deadline)
@@ -114,7 +114,7 @@ export const createTraderPosition = {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
+            to: args.marketGroupAddress,
             data: calldata
           }, null, 2)
         }]
@@ -136,9 +136,9 @@ export const quoteModifyTraderPosition = {
   description: "Gets a quote for modifying an existing trader position",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
@@ -153,12 +153,12 @@ export const quoteModifyTraderPosition = {
         description: "The new size of the position"
       }
     },
-    required: ["marketAddress", "positionId", "newCollateralAmount", "newSize"],
+    required: ["marketGroupAddress", "positionId", "newCollateralAmount", "newSize"],
   },
-  function: async (args: { marketAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
     try {
       const result = await client.simulateContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'quoteModifyTraderPosition',
         args: [BigInt(args.positionId), Number(args.newSize)]
@@ -193,9 +193,9 @@ export const modifyTraderPosition = {
   description: "Modifies an existing trader position with new parameters",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
@@ -214,9 +214,9 @@ export const modifyTraderPosition = {
         description: "The deadline for the transaction (timestamp in seconds)"
       }
     },
-    required: ["marketAddress", "positionId", "newSize", "deltaCollateralLimit", "deadline"],
+    required: ["marketGroupAddress", "positionId", "newSize", "deltaCollateralLimit", "deadline"],
   },
-  function: async (args: { marketAddress: string; positionId: string; newSize: string; deltaCollateralLimit: string; deadline: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string; newSize: string; deltaCollateralLimit: string; deadline: string }) => {
     try {
       const calldata = encodeFunction('modifyTraderPosition', [
         BigInt(args.positionId),
@@ -229,7 +229,7 @@ export const modifyTraderPosition = {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
+            to: args.marketGroupAddress,
             data: calldata
           }, null, 2)
         }]
@@ -251,13 +251,13 @@ export const quoteLiquidityPosition = {
   description: "Gets a quote for creating a new liquidity position",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market to create the position in"
+        description: "The address of the market group to create the position in"
       },
-      epochId: {
+      marketId: {
         type: "string",
-        description: "The period ID to create the position in"
+        description: "The market ID to create the position in"
       },
       collateralAmount: {
         type: "string",
@@ -268,15 +268,15 @@ export const quoteLiquidityPosition = {
         description: "The size of the position"
       }
     },
-    required: ["marketAddress", "epochId", "collateralAmount", "size"],
+    required: ["marketGroupAddress", "marketId", "collateralAmount", "size"],
   },
-  function: async (args: { marketAddress: string; epochId: string; collateralAmount: string; size: string }) => {
+  function: async (args: { marketGroupAddress: string; marketId: string; collateralAmount: string; size: string }) => {
     try {
       const result = await client.simulateContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'quoteLiquidityPositionTokens',
-        args: [BigInt(args.epochId), BigInt(args.collateralAmount), Number(args.size)]
+        args: [BigInt(args.marketId), BigInt(args.collateralAmount), Number(args.size)]
       });
 
       const [amount0, amount1, liquidity] = result.result as [bigint, bigint, bigint];
@@ -308,9 +308,13 @@ export const createLiquidityPosition = {
   description: "Creates a new liquidity position with specified parameters",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market to create the position in"
+        description: "The address of the market group to create the position in"
+      },
+      marketId: {
+        type: "string",
+        description: "The market ID to create the position in"
       },
       collateralAmount: {
         type: "string",
@@ -321,9 +325,9 @@ export const createLiquidityPosition = {
         description: "The size of the position"
       }
     },
-    required: ["marketAddress", "collateralAmount", "size"],
+    required: ["marketGroupAddress", "marketId", "collateralAmount", "size"],
   },
-  function: async (args: { marketAddress: string; collateralAmount: string; size: string }) => {
+  function: async (args: { marketGroupAddress: string; marketId: string; collateralAmount: string; size: string }) => {
     try {
       const calldata = encodeFunction('createLiquidityPosition', [
         BigInt(args.collateralAmount),
@@ -334,7 +338,7 @@ export const createLiquidityPosition = {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
+            to: args.marketGroupAddress,
             data: calldata
           }, null, 2)
         }]
@@ -356,9 +360,9 @@ export const quoteModifyLiquidityPosition = {
   description: "Gets a quote for modifying an existing liquidity position",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
@@ -373,12 +377,12 @@ export const quoteModifyLiquidityPosition = {
         description: "The new size of the position"
       }
     },
-    required: ["marketAddress", "positionId", "newCollateralAmount", "newSize"],
+    required: ["marketGroupAddress", "positionId", "newCollateralAmount", "newSize"],
   },
-  function: async (args: { marketAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
     try {
       const result = await client.simulateContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'quoteRequiredCollateral',
         args: [BigInt(args.positionId), Number(args.newSize)]
@@ -411,9 +415,9 @@ export const modifyLiquidityPosition = {
   description: "Modifies an existing liquidity position with new parameters",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
@@ -428,9 +432,9 @@ export const modifyLiquidityPosition = {
         description: "The new size of the position"
       }
     },
-    required: ["marketAddress", "positionId", "newCollateralAmount", "newSize"],
+    required: ["marketGroupAddress", "positionId", "newCollateralAmount", "newSize"],
   },
-  function: async (args: { marketAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string; newCollateralAmount: string; newSize: string }) => {
     try {
       const calldata = encodeFunction('modifyLiquidityPosition', [
         BigInt(args.positionId),
@@ -441,7 +445,7 @@ export const modifyLiquidityPosition = {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
+            to: args.marketGroupAddress,
             data: calldata
           }, null, 2)
         }]
@@ -460,21 +464,21 @@ export const modifyLiquidityPosition = {
 
 export const settlePosition = {
   name: "settle_sapience_position",
-  description: "Settles a position, closing it and returning any remaining collateral, after the market/period has ended and settled",
+  description: "Settles a position, closing it and returning any remaining collateral, after the market has ended and settled",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
         description: "The ID of the position to settle"
       }
     },
-    required: ["marketAddress", "positionId"],
+    required: ["marketGroupAddress", "positionId"],
   },
-  function: async (args: { marketAddress: string; positionId: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string }) => {
     try {
       const calldata = encodeFunction('settlePosition', [
         BigInt(args.positionId)
@@ -484,7 +488,7 @@ export const settlePosition = {
         content: [{
           type: "text" as const,
           text: JSON.stringify({
-            to: args.marketAddress,
+            to: args.marketGroupAddress,
             data: calldata
           }, null, 2)
         }]
