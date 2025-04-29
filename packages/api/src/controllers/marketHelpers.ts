@@ -276,9 +276,43 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   const transfer = new CollateralTransfer();
   transfer.transactionHash = transaction.event.transactionHash;
   transfer.timestamp = Number(transaction.event.timestamp);
-  transfer.owner = (
-    transaction.event.logData.args.sender as string
-  ).toLowerCase();
+  
+  // Try to get sender from event args
+  let sender = eventArgs.sender as string;
+  
+  // If sender is not available in the event args, fetch it from the blockchain
+  if (!sender) {
+    try {
+      console.log('Sender not found in event args, fetching from blockchain...');
+      // Get the chain ID from the event's market group
+      const chainId = transaction.event.marketGroup?.chainId;
+      
+      if (chainId) {
+        // Get the provider for this chain
+        const provider = getProviderForChain(chainId);
+        
+        // Fetch the transaction from the blockchain
+        const txHash = transaction.event.transactionHash;
+        const txData = await provider.getTransaction({
+          hash: txHash as `0x${string}`,
+        });
+        
+        if (txData?.from) {
+          sender = txData.from as string;
+          console.log(`Found sender ${sender} from blockchain for transaction ${txHash}`);
+        } else {
+          console.warn(`Could not find sender from blockchain for transaction ${txHash}`);
+        }
+      } else {
+        console.warn('No chain ID available, cannot fetch transaction from blockchain');
+      }
+    } catch (error) {
+      console.error('Error fetching transaction from blockchain:', error);
+    }
+  }
+  
+  // Set the owner with the sender or fallback to a placeholder address
+  transfer.owner = sender ? sender.toLowerCase() : '0x0000000000000000000000000000000000000000';
   transfer.collateral = eventArgs.deltaCollateral as string;
 
   // Save and assign to transaction
