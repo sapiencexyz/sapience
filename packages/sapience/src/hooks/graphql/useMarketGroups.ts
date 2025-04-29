@@ -94,6 +94,8 @@ export interface Market {
   maxTick: number;
   currentMarketPrice: number;
   marketCandles: any[];
+  baseTokenName?: string;
+  quoteTokenName?: string;
 }
 
 export interface MarketGroup {
@@ -101,6 +103,7 @@ export interface MarketGroup {
   address: string;
   chainId: number;
   vaultAddress: string;
+  owner?: `0x${string}`;
   isYin: boolean;
   collateralAsset: string;
   question?: string | null;
