@@ -2,7 +2,7 @@ import { http, encodeFunctionData, createPublicClient } from 'viem';
 import { erc20Abi } from 'viem'
 import { base } from 'viem/chains';
 
-const FOIL_API_BASE_URL = process.env.FOIL_API_URL || 'https://api.foil.xyz';
+const SAPIENCE_API_BASE_URL = process.env.FOIL_API_URL || 'https://api.sapience.xyz';
 
 export const approveToken = {
   name: "approve_token",
@@ -111,11 +111,11 @@ export const getSizeForCreateTraderPosition = {
         type: "string",
         description: "The ID of the chain"
       },
-      marketAddress: {
-        type: "string", 
-        description: "The address of the market"
+      marketGroupAddress: {
+        type: "string",
+        description: "The address of the market group"
       },
-      epochId: {
+      marketId: {
         type: "string",
         description: "The ID of the period"
       },
@@ -125,12 +125,12 @@ export const getSizeForCreateTraderPosition = {
       },
       prediction: {
         type: "string",
-        description: "The expected outcome of the market"
+        description: "The expected outcome of the market group"
       },
     },
-    required: ["chainId", "marketAddress", "epochId", "collateralAvailable", "prediction"],
+    required: ["chainId", "marketGroupAddress", "marketId", "collateralAvailable", "prediction"],
   },
-  function: async (args: { chainId: string; marketAddress: string; epochId: string; collateralAvailable: string; prediction: string }) => { 
+  function: async (args: { chainId: string; marketGroupAddress: string; marketId: string; collateralAvailable: string; prediction: string }) => {
     if (!args) {
       return {
         content: [{
@@ -164,20 +164,20 @@ export const getSizeForCreateTraderPosition = {
         isError: true
       };
     }
-    if (!args.marketAddress) {
+    if (!args.marketGroupAddress) {
       return {
         content: [{
           type: "text" as const,
-          text: "Error: marketAddress is required"
+          text: "Error: marketGroupAddress is required"
         }],
         isError: true
       };
     }
-    if (!args.epochId) {
+    if (!args.marketId) {
       return {
         content: [{
           type: "text" as const,
-          text: "Error: epochId is required"
+          text: "Error: marketId is required"
         }],
         isError: true
       };
@@ -202,7 +202,7 @@ export const getSizeForCreateTraderPosition = {
     }
 
     try {
-      const response = await fetch(`${FOIL_API_BASE_URL}/quoter/${args.chainId}/${args.marketAddress}/${args.epochId}?collateralAvailable=${args.collateralAvailable}&prediction=${args.prediction}`, {
+      const response = await fetch(`${SAPIENCE_API_BASE_URL}/quoter/${args.chainId}/${args.marketGroupAddress}/${args.marketId}?collateralAvailable=${args.collateralAvailable}&prediction=${args.prediction}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
