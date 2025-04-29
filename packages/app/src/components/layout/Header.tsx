@@ -137,8 +137,16 @@ function MobileMarketLinks({
 
                 if (!resource.marketGroups?.length || allMarkets.length === 0) {
                   return (
-                    <div className="text-center text-sm text-muted-foreground flex-1 flex items-center justify-center m-8">
+                    <div className="text-center text-sm text-muted-foreground flex-1 flex flex-col items-center justify-center m-8">
                       No upcoming or active periods
+                      <Link
+                        href={`/markets?resource=${resource.slug}`}
+                        onClick={() => onClose?.()}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
+                      >
+                        All periods
+                        <ChevronDown className="h-3 w-3 ml-1 rotate-[-90deg]" />
+                      </Link>
                     </div>
                   );
                 }
@@ -150,8 +158,16 @@ function MobileMarketLinks({
 
                 if (activeMarkets.length === 0) {
                   return (
-                    <div className="text-center text-sm text-muted-foreground flex-1 flex items-center justify-center m-8">
+                    <div className="text-center text-sm text-muted-foreground flex-1 flex flex-col items-center justify-center m-8">
                       No upcoming or active periods
+                      <Link
+                        href={`/markets?resource=${resource.slug}`}
+                        onClick={() => onClose?.()}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
+                      >
+                        All periods
+                        <ChevronDown className="h-3 w-3 ml-1 rotate-[-90deg]" />
+                      </Link>
                     </div>
                   );
                 }
@@ -286,8 +302,16 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
                     allMarkets.length === 0
                   ) {
                     return (
-                      <div className="text-center text-sm text-muted-foreground flex items-center justify-center h-full px-8">
+                      <div className="text-center text-sm text-muted-foreground flex flex-col items-center justify-center h-full px-8">
                         No upcoming or active periods
+                        <Link
+                          href={`/markets?resource=${hoveredResourceData?.slug}`}
+                          onClick={handleLinkClick(setOpen)}
+                          className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
+                        >
+                          All periods
+                          <ChevronDown className="h-3 w-3 ml-1 rotate-[-90deg]" />
+                        </Link>
                       </div>
                     );
                   }
@@ -299,8 +323,16 @@ const ResourcePopover = ({ label, path }: { label: string; path: string }) => {
 
                   if (activeMarkets.length === 0) {
                     return (
-                      <div className="text-center text-sm text-muted-foreground flex items-center justify-center h-full px-8">
+                      <div className="text-center text-sm text-muted-foreground flex flex-col items-center justify-center h-full px-8">
                         No upcoming or active periods
+                        <Link
+                          href={`/markets?resource=${hoveredResourceData?.slug}`}
+                          onClick={handleLinkClick(setOpen)}
+                          className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-end mt-2 px-3 py-1"
+                        >
+                          All periods
+                          <ChevronDown className="h-3 w-3 ml-1 rotate-[-90deg]" />
+                        </Link>
                       </div>
                     );
                   }
