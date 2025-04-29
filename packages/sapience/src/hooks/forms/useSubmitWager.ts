@@ -1,6 +1,6 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useCallback } from 'react';
 import type React from 'react';
+import { useCallback } from 'react';
 
 interface UseSubmitWagerProps {
   // The submit handler passed from the parent, potentially async

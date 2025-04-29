@@ -83,25 +83,26 @@ const ForecastContext = createContext<ForecastContextType | undefined>(
 
 interface ForecastProviderProps {
   children: ReactNode;
-  chainShortName: string;
-  marketId: string;
+  pageDetails: {
+    marketAddress: string;
+    chainId: number;
+    marketId: string;
+  };
 }
 
 export function ForecastProvider({
   children,
-  chainShortName,
-  marketId,
+  pageDetails,
 }: ForecastProviderProps) {
+  const { marketId, chainId, marketAddress } = pageDetails;
   // Call the custom hook to get market data from GraphQL
   const {
     marketData,
     isLoadingMarket,
     displayQuestion,
     marketQuestionDisplay,
-    chainId,
-    marketAddress,
     numericMarketId,
-  } = useMarket({ chainShortName, marketId });
+  } = useMarket({ chainId, marketAddress, marketId });
   // Get ABI for contracts
   const { abi } = useFoilAbi();
 

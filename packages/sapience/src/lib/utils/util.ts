@@ -1,13 +1,13 @@
 import type {
-  TransactionType,
-  MarketType,
   MarketGroupType,
+  MarketType,
+  TransactionType,
 } from '@foil/ui/types';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { formatEther, createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
+import { createPublicClient, formatEther, http } from 'viem';
 import * as chains from 'viem/chains';
+import { mainnet } from 'viem/chains';
 
 export const foilApi = {
   baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
@@ -285,6 +285,39 @@ export const getChainShortName = (id: number): string => {
     ? chainObj.name.toLowerCase().replace(/\s+/g, '')
     : id.toString();
 };
+
+// Parse URL parameter to extract chain and market address
+export const parseUrlParameter = (
+  paramString: string
+): { chainShortName: string; marketAddress: string; chainId: number } => {
+  // URL decode the parameter first, then parse
+  const decodedParam = decodeURIComponent(paramString);
+
+  // More robust parsing to handle various URL format possibilities
+  let chainShortName = '';
+  let marketAddress = '';
+
+  if (decodedParam) {
+    // Check if the parameter contains a colon (chain:address format)
+    if (decodedParam.includes(':')) {
+      const [parsedChain, parsedAddress] = decodedParam.split(':');
+      chainShortName = parsedChain;
+      marketAddress = parsedAddress;
+    } else {
+      // If no colon, assume it's just the address
+      marketAddress = decodedParam;
+      // Use a default chain if needed
+      chainShortName = 'base';
+    }
+  }
+
+  const chainId = getChainIdFromShortName(chainShortName);
+
+  return { chainShortName, marketAddress, chainId };
+};
+
+// --- Constants ---
+const WEI_PER_ETHER_UTIL = 1e18; // Renamed to avoid potential global scope issues if used elsewhere
 
 // --- Function: Calculate Effective Entry Price ---
 

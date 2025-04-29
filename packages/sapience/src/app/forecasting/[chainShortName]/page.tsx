@@ -14,18 +14,19 @@ import {
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
 import type { MarketType } from '@foil/ui/types/graphql';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import MarketGroupChart from '../../../components/forecasting/MarketGroupChart';
 import MarketGroupSummary from '../../../components/forecasting/MarketGroupSummary';
 import PredictionForm from '../../../components/forecasting/PredictionForm';
+import PredictionsList from '../../../components/forecasting/PredictionsList';
+import { useMarketGroup } from '../../../hooks/graphql/useMarketGroup';
 import { useSapience } from '../../../lib/context/SapienceProvider';
-import PredictionsList from '~/components/forecasting/PredictionsList';
-import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
+import { parseUrlParameter } from '../../../lib/utils/util';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(
@@ -36,34 +37,6 @@ const LottieLoader = dynamic(
     loading: () => <div className="w-8 h-8" />,
   }
 );
-
-// Parse URL parameter to extract chain and market address
-const parseUrlParameter = (
-  paramString: string
-): { chainShortName: string; marketAddress: string } => {
-  // URL decode the parameter first, then parse
-  const decodedParam = decodeURIComponent(paramString);
-
-  // More robust parsing to handle various URL format possibilities
-  let chainShortName = '';
-  let marketAddress = '';
-
-  if (decodedParam) {
-    // Check if the parameter contains a colon (chain:address format)
-    if (decodedParam.includes(':')) {
-      const [parsedChain, parsedAddress] = decodedParam.split(':');
-      chainShortName = parsedChain;
-      marketAddress = parsedAddress;
-    } else {
-      // If no colon, assume it's just the address
-      marketAddress = decodedParam;
-      // Use a default chain if needed
-      chainShortName = 'base';
-    }
-  }
-
-  return { chainShortName, marketAddress };
-};
 
 // Helper function to format the question string (moved outside component)
 const formatQuestion = (rawQuestion: string): string => {
@@ -131,29 +104,6 @@ const ForecastingDetailPage = () => {
       : undefined;
   }, [activeMarkets]);
 
-  // Define the type for handleSubmit explicitly
-  type HandleSubmitType = (event: React.FormEvent<HTMLFormElement>) => void;
-
-  // Reinstate handleSubmit for the external wager action
-  const handleSubmit: HandleSubmitType = (event) => {
-    event.preventDefault();
-    // This function is now primarily for handling the external submission (wager)
-    // triggered from within PredictionForm.
-    // The actual form data is managed inside PredictionForm.
-    console.log('External submit triggered (likely for wager)');
-    // TODO: Implement wager submission logic if needed at this level,
-    // or ensure it's fully handled via the hook used by PredictionForm.
-    console.warn('Wager submission initiated. (Placeholder)'); // Replaced alert with console.warn
-  };
-
-  if (isLoadingMarket || isPermitLoadingPermit) {
-    return (
-      <div className="flex justify-center items-center min-h-[100dvh] w-full">
-        <LottieLoader width={32} height={32} />
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-5xl flex flex-col">
@@ -212,7 +162,7 @@ const ForecastingDetailPage = () => {
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
                 <PredictionForm
                   marketData={marketData}
-                  externalHandleSubmit={handleSubmit}
+                  externalHandleSubmit={() => {}}
                   isPermitLoadingPermit={isPermitLoadingPermit}
                   permitData={permitData}
                   currentMarketId={currentMarketId}
