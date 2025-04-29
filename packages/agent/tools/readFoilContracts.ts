@@ -21,40 +21,40 @@ interface PositionData {
 }
 
 export const getMarketInfo = {
-  name: "get_sapience_market_info",
-  description: "Gets detailed information about a market's configuration",
+  name: "get_sapience_market_group_info",
+  description: "Gets detailed information about a market group's configuration",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market to get information about"
+        description: "The address of the market group to get information about"
       }
     },
-    required: ["marketAddress"],
+    required: ["marketGroupAddress"],
   },
-  function: async (args: { marketAddress: string }) => {
+  function: async (args: { marketGroupAddress: string }) => {
     try {
-      const marketInfo = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+      const marketGroupInfo = await client.readContract({
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getMarket'
       });
 
       const formattedInfo = {
-        owner: marketInfo[0],
-        collateralAsset: marketInfo[1],
-        feeCollectorNFT: marketInfo[2],
-        callbackRecipient: marketInfo[3],
+        owner: marketGroupInfo[0],
+        collateralAsset: marketGroupInfo[1],
+        feeCollectorNFT: marketGroupInfo[2],
+        callbackRecipient: marketGroupInfo[3],
         marketParams: {
-          feeRate: Number(marketInfo[4].feeRate),
-          assertionLiveness: Number(marketInfo[4].assertionLiveness),
-          bondAmount: marketInfo[4].bondAmount.toString(),
-          bondCurrency: marketInfo[4].bondCurrency,
-          uniswapPositionManager: marketInfo[4].uniswapPositionManager,
-          uniswapSwapRouter: marketInfo[4].uniswapSwapRouter,
-          uniswapQuoter: marketInfo[4].uniswapQuoter,
-          optimisticOracleV3: marketInfo[4].optimisticOracleV3,
-          claimStatement: marketInfo[4].claimStatement
+          feeRate: Number(marketGroupInfo[4].feeRate),
+          assertionLiveness: Number(marketGroupInfo[4].assertionLiveness),
+          bondAmount: marketGroupInfo[4].bondAmount.toString(),
+          bondCurrency: marketGroupInfo[4].bondCurrency,
+          uniswapPositionManager: marketGroupInfo[4].uniswapPositionManager,
+          uniswapSwapRouter: marketGroupInfo[4].uniswapSwapRouter,
+          uniswapQuoter: marketGroupInfo[4].uniswapQuoter,
+          optimisticOracleV3: marketGroupInfo[4].optimisticOracleV3,
+          claimStatement: marketGroupInfo[4].claimStatement
         }
       };
 
@@ -68,7 +68,7 @@ export const getMarketInfo = {
       return {
         content: [{
           type: "text" as const,
-          text: `Error fetching market info: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error fetching market group info: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
@@ -76,55 +76,55 @@ export const getMarketInfo = {
   },
 };
 
-export const getEpochInfo = {
-  name: "get_sapience_period_info",
-  description: "Gets detailed information about a specific period",
+export const getMarketPeriodInfo = {
+  name: "get_sapience_market_period_info",
+  description: "Gets detailed information about a specific market period",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
-      epochId: {
+      marketPeriodId: {
         type: "string",
-        description: "The ID of the period to get information about"
+        description: "The ID of the market period to get information about"
       }
     },
-    required: ["marketAddress", "epochId"],
+    required: ["marketGroupAddress", "marketPeriodId"],
   },
-  function: async (args: { marketAddress: string; epochId: string }) => {
+  function: async (args: { marketGroupAddress: string; marketPeriodId: string }) => {
     try {
-      const epochInfo = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+      const marketPeriodInfo = await client.readContract({
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getEpoch',
-        args: [BigInt(args.epochId)]
+        args: [BigInt(args.marketPeriodId)]
       });
 
-      // Handle the case where epochInfo might be undefined or null
-      if (!epochInfo) {
-        throw new Error('No epoch info returned');
+      // Handle the case where marketPeriodInfo might be undefined or null
+      if (!marketPeriodInfo) {
+        throw new Error('No market period info returned');
       }
 
       // Safely extract values with type checking
       const formattedInfo = {
-        epochData: epochInfo[0] ? {
-          startTime: epochInfo[0].startTime?.toString() || '0',
-          endTime: epochInfo[0].endTime?.toString() || '0',
-          startingSqrtPriceX96: epochInfo[0].startingSqrtPriceX96?.toString() || '0',
-          settled: Boolean(epochInfo[0].settled),
-          settlementPriceX96: epochInfo[0].settlementPriceX96?.toString() || '0'
+        marketPeriodData: marketPeriodInfo[0] ? {
+          startTime: marketPeriodInfo[0].startTime?.toString() || '0',
+          endTime: marketPeriodInfo[0].endTime?.toString() || '0',
+          startingSqrtPriceX96: marketPeriodInfo[0].startingSqrtPriceX96?.toString() || '0',
+          settled: Boolean(marketPeriodInfo[0].settled),
+          settlementPriceX96: marketPeriodInfo[0].settlementPriceX96?.toString() || '0'
         } : null,
-        marketParams: epochInfo[1] ? {
-          feeRate: Number(epochInfo[1].feeRate || 0),
-          assertionLiveness: Number(epochInfo[1].assertionLiveness || 0),
-          bondAmount: (epochInfo[1].bondAmount || 0).toString(),
-          bondCurrency: epochInfo[1].bondCurrency || '',
-          uniswapPositionManager: epochInfo[1].uniswapPositionManager || '',
-          uniswapSwapRouter: epochInfo[1].uniswapSwapRouter || '',
-          uniswapQuoter: epochInfo[1].uniswapQuoter || '',
-          optimisticOracleV3: epochInfo[1].optimisticOracleV3 || '',
-          claimStatement: epochInfo[1].claimStatement || ''
+        marketParams: marketPeriodInfo[1] ? {
+          feeRate: Number(marketPeriodInfo[1].feeRate || 0),
+          assertionLiveness: Number(marketPeriodInfo[1].assertionLiveness || 0),
+          bondAmount: (marketPeriodInfo[1].bondAmount || 0).toString(),
+          bondCurrency: marketPeriodInfo[1].bondCurrency || '',
+          uniswapPositionManager: marketPeriodInfo[1].uniswapPositionManager || '',
+          uniswapSwapRouter: marketPeriodInfo[1].uniswapSwapRouter || '',
+          uniswapQuoter: marketPeriodInfo[1].uniswapQuoter || '',
+          optimisticOracleV3: marketPeriodInfo[1].optimisticOracleV3 || '',
+          claimStatement: marketPeriodInfo[1].claimStatement || ''
         } : null
       };
 
@@ -138,7 +138,7 @@ export const getEpochInfo = {
       return {
         content: [{
           type: "text" as const,
-          text: `Error fetching epoch info: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error fetching market period info: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
@@ -146,50 +146,50 @@ export const getEpochInfo = {
   },
 };
 
-export const getLatestEpochInfo = {
-  name: "get_sapience_latest_period_info",
-  description: "Gets information about the most recent period",
+export const getLatestMarketPeriodInfo = {
+  name: "get_sapience_latest_market_period_info",
+  description: "Gets information about the most recent market period",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       }
     },
-    required: ["marketAddress"],
+    required: ["marketGroupAddress"],
   },
-  function: async (args: { marketAddress: string }) => {
+  function: async (args: { marketGroupAddress: string }) => {
     try {
-      const epochInfo = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+      const marketPeriodInfo = await client.readContract({
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getLatestEpoch'
       });
 
-      // Handle the case where epochInfo might be undefined or null
-      if (!epochInfo) {
-        throw new Error('No epoch info returned');
+      // Handle the case where marketPeriodInfo might be undefined or null
+      if (!marketPeriodInfo) {
+        throw new Error('No market period info returned');
       }
 
       // Safely extract values with type checking
       const formattedInfo = {
-        epochData: epochInfo[0] ? {
-          startTime: epochInfo[0].startTime?.toString() || '0',
-          endTime: epochInfo[0].endTime?.toString() || '0',
-          startingSqrtPriceX96: epochInfo[0].startingSqrtPriceX96?.toString() || '0',
-          settled: Boolean(epochInfo[0].settled),
-          settlementPriceX96: epochInfo[0].settlementPriceX96?.toString() || '0'
+        marketPeriodData: marketPeriodInfo[0] ? {
+          startTime: marketPeriodInfo[0].startTime?.toString() || '0',
+          endTime: marketPeriodInfo[0].endTime?.toString() || '0',
+          startingSqrtPriceX96: marketPeriodInfo[0].startingSqrtPriceX96?.toString() || '0',
+          settled: Boolean(marketPeriodInfo[0].settled),
+          settlementPriceX96: marketPeriodInfo[0].settlementPriceX96?.toString() || '0'
         } : null,
-        marketParams: epochInfo[1] ? {
-          feeRate: Number(epochInfo[1].feeRate || 0),
-          assertionLiveness: Number(epochInfo[1].assertionLiveness || 0),
-          bondAmount: (epochInfo[1].bondAmount || 0).toString(),
-          bondCurrency: epochInfo[1].bondCurrency || '',
-          uniswapPositionManager: epochInfo[1].uniswapPositionManager || '',
-          uniswapSwapRouter: epochInfo[1].uniswapSwapRouter || '',
-          uniswapQuoter: epochInfo[1].uniswapQuoter || '',
-          optimisticOracleV3: epochInfo[1].optimisticOracleV3 || '',
-          claimStatement: epochInfo[1].claimStatement || ''
+        marketParams: marketPeriodInfo[1] ? {
+          feeRate: Number(marketPeriodInfo[1].feeRate || 0),
+          assertionLiveness: Number(marketPeriodInfo[1].assertionLiveness || 0),
+          bondAmount: (marketPeriodInfo[1].bondAmount || 0).toString(),
+          bondCurrency: marketPeriodInfo[1].bondCurrency || '',
+          uniswapPositionManager: marketPeriodInfo[1].uniswapPositionManager || '',
+          uniswapSwapRouter: marketPeriodInfo[1].uniswapSwapRouter || '',
+          uniswapQuoter: marketPeriodInfo[1].uniswapQuoter || '',
+          optimisticOracleV3: marketPeriodInfo[1].optimisticOracleV3 || '',
+          claimStatement: marketPeriodInfo[1].claimStatement || ''
         } : null
       };
 
@@ -203,7 +203,7 @@ export const getLatestEpochInfo = {
       return {
         content: [{
           type: "text" as const,
-          text: `Error fetching latest epoch info: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error fetching latest market period info: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
@@ -290,41 +290,87 @@ export const getTokenByIndex = {
 };
 
 export const getReferencePrice = {
-  name: "get_sapience_reference_price",
-  description: "Gets the reference price for a market",
+  name: "get_sapience_market_group_market_period_reference_price",
+  description: "Gets the reference price for a market group's market period",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market to get the reference price for"
+        description: "The address of the market group to get reference price for"
       },
-      epochId: {
+      marketPeriodId: {
         type: "string",
-        description: "The ID of the period to get the reference price for"
+        description: "The ID of the market period to get reference price for"
       }
     },
-    required: ["marketAddress", "epochId"],
+    required: ["marketGroupAddress", "marketPeriodId"],
   },
-  function: async (args: { marketAddress: string; epochId: string }) => {
+  function: async (args: { marketGroupAddress: string; marketPeriodId: string }) => {
+    // Validate required parameters (and handle stringified args)
+    if (!args) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: args required"
+        }], 
+        isError: true
+      };
+    }
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch (error) {
+        return {
+          content: [{
+            type: "text" as const,
+            text: "Error: args must be an object"
+          }],
+          isError: true
+        };
+      }
+    }
+
+    // Validate required parameters
+    if (!args.marketGroupAddress) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: marketGroupAddress is required"
+        }],
+        isError: true
+      };
+    }
+    if (!args.marketPeriodId) {
+      return {
+        content: [{
+          type: "text" as const,
+          text: "Error: marketPeriodId is required"
+        }],
+        isError: true
+      };
+    }
+
     try {
       const referencePrice = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getReferencePrice',
-        args: [BigInt(args.epochId)]
+        args: [BigInt(args.marketPeriodId)]
       });
+
+      const formattedReferencePrice = referencePrice.toString();
 
       return {
         content: [{
           type: "text" as const,
-          text: JSON.stringify({ referencePrice: referencePrice.toString() }, null, 2)
+          text: JSON.stringify(formattedReferencePrice, null, 2)
         }]
       };
     } catch (error) {
       return {
         content: [{
           type: "text" as const,
-          text: `Error fetching reference price: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error fetching market group reference price: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
@@ -337,21 +383,21 @@ export const getPosition = {
   description: "Gets detailed information about a specific position",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
         description: "The ID of the position to get information about"
       }
     },
-    required: ["marketAddress", "positionId"],
+    required: ["marketGroupAddress", "positionId"],
   },
-  function: async (args: { marketAddress: string; positionId: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string }) => {
     try {
       const position = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getPosition',
         args: [BigInt(args.positionId)]
@@ -387,25 +433,25 @@ export const getPosition = {
 };
 
 export const getPositionCollateralValue = {
-  name: "get_sapience_position_collateral_value",
+  name: "get_sapience_market_group_position_collateral_value",
   description: "Gets the collateral value of a specific position",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
         description: "The ID of the position to get collateral value for"
       }
     },
-    required: ["marketAddress", "positionId"],
+    required: ["marketGroupAddress", "positionId"],
   },
-  function: async (args: { marketAddress: string; positionId: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string }) => {
     try {
       const collateralValue = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getPositionCollateralValue',
         args: [BigInt(args.positionId)]
@@ -430,25 +476,25 @@ export const getPositionCollateralValue = {
 };
 
 export const getPositionPnl = {
-  name: "get_sapience_position_pnl",
+  name: "get_sapience_market_group_position_pnl",
   description: "Gets the profit and loss (PnL) of a specific position",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
         description: "The ID of the position to get PnL for"
       }
     },
-    required: ["marketAddress", "positionId"],
+    required: ["marketGroupAddress", "positionId"],
   },
-  function: async (args: { marketAddress: string; positionId: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string }) => {
     try {
       const pnl = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getPositionPnl',
         args: [BigInt(args.positionId)]
@@ -473,25 +519,25 @@ export const getPositionPnl = {
 };
 
 export const getPositionSize = {
-  name: "get_sapience_position_size",
+  name: "get_sapience_market_group_position_size",
   description: "Gets the size of a specific position",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       positionId: {
         type: "string",
         description: "The ID of the position to get size for"
       }
     },
-    required: ["marketAddress", "positionId"],
+    required: ["marketGroupAddress", "positionId"],
   },
-  function: async (args: { marketAddress: string; positionId: string }) => {
+  function: async (args: { marketGroupAddress: string; positionId: string }) => {
     try {
       const size = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getPositionSize',
         args: [BigInt(args.positionId)]
@@ -516,28 +562,28 @@ export const getPositionSize = {
 };
 
 export const getSqrtPriceX96 = {
-  name: "get_sapience_sqrt_price",
-  description: "Gets the sqrt price for a specific period",
+  name: "get_sapience_market_group_market_period_sqrt_price",
+  description: "Gets the sqrt price for a specific market period",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
-      epochId: {
+      marketPeriodId: {
         type: "string",
-        description: "The ID of the period to get sqrt price for"
+        description: "The ID of the market period to get sqrt price for"
       }
     },
-    required: ["marketAddress", "epochId"],
+    required: ["marketGroupAddress", "marketPeriodId"],
   },
-  function: async (args: { marketAddress: string; epochId: string }) => {
+  function: async (args: { marketGroupAddress: string; marketPeriodId: string }) => {
     try {
       const sqrtPriceX96 = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getSqrtPriceX96',
-        args: [BigInt(args.epochId)]
+        args: [BigInt(args.marketPeriodId)]
       });
 
       return {
@@ -559,25 +605,25 @@ export const getSqrtPriceX96 = {
 };
 
 export const getDecimalPriceFromSqrtPriceX96 = {
-  name: "get_sapience_decimal_price_from_sqrt_price",
+  name: "get_sapience_market_group_decimal_price_from_sqrt_price",
   description: "Converts a sqrt price to a decimal price",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       sqrtPriceX96: {
         type: "string",
         description: "The sqrt price to convert"
       }
     },
-    required: ["marketAddress", "sqrtPriceX96"],
+    required: ["marketGroupAddress", "sqrtPriceX96"],
   },
-  function: async (args: { marketAddress: string; sqrtPriceX96: string }) => {
+  function: async (args: { marketGroupAddress: string; sqrtPriceX96: string }) => {
     try {
       const decimalPrice = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getDecimalPriceFromSqrtPriceX96',
         args: [BigInt(args.sqrtPriceX96)]
@@ -602,21 +648,21 @@ export const getDecimalPriceFromSqrtPriceX96 = {
 };
 
 export const getMarketTickSpacing = {
-  name: "get_sapience_market_tick_spacing",
-  description: "Gets the tick spacing for a market",
+  name: "get_sapience_market_group_tick_spacing",
+  description: "Gets the tick spacing for a market group",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       }
     },
-    required: ["marketAddress"],
+    required: ["marketGroupAddress"],
   },
-  function: async (args: { marketAddress: string }) => {
+  function: async (args: { marketGroupAddress: string }) => {
     try {
       const tickSpacing = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'getMarketTickSpacing'
       });
@@ -631,7 +677,7 @@ export const getMarketTickSpacing = {
       return {
         content: [{
           type: "text" as const,
-          text: `Error fetching market tick spacing: ${error instanceof Error ? error.message : 'Unknown error'}`
+          text: `Error fetching market group tick spacing: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };
@@ -644,17 +690,17 @@ export const getTotalSupply = {
   description: "Gets the total supply of Foil tokens",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       }
     },
-    required: ["marketAddress"],
+    required: ["marketGroupAddress"],
   },
-  function: async (args: { marketAddress: string }) => {
+  function: async (args: { marketGroupAddress: string }) => {
     try {
       const totalSupply = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'totalSupply'
       });
@@ -682,21 +728,21 @@ export const getBalanceOf = {
   description: "Gets the balance of Foil tokens for a specific holder",
   parameters: {
     properties: {
-      marketAddress: {
+      marketGroupAddress: {
         type: "string",
-        description: "The address of the market"
+        description: "The address of the market group"
       },
       holder: {
         type: "string",
         description: "The address to query balance for"
       }
     },
-    required: ["marketAddress", "holder"],
+    required: ["marketGroupAddress", "holder"],
   },
-  function: async (args: { marketAddress: string; holder: string }) => {
+  function: async (args: { marketGroupAddress: string; holder: string }) => {
     try {
       const balance = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
+        address: args.marketGroupAddress as `0x${string}`,
         abi: FoilABI.abi,
         functionName: 'balanceOf',
         args: [args.holder as `0x${string}`]
@@ -713,95 +759,6 @@ export const getBalanceOf = {
         content: [{
           type: "text" as const,
           text: `Error fetching balance: ${error instanceof Error ? error.message : 'Unknown error'}`
-        }],
-        isError: true
-      };
-    }
-  },
-};
-
-export const getMarketReferencePrice = {
-  name: "get_sapience_market_reference_price",
-  description: "Gets the reference price for a market",
-  parameters: {
-    properties: {
-      marketAddress: {
-        type: "string",
-        description: "The address of the market to get reference price for"
-      },
-      epochId: {
-        type: "string",
-        description: "The ID of the epoch to get reference price for"
-      }
-    },
-    required: ["marketAddress", "epochId"],
-  },
-  function: async (args: { marketAddress: string; epochId: string }) => {
-    // Validate required parameters (and handle stringified args)
-    if (!args) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: "Error: args required"
-        }], 
-        isError: true
-      };
-    }
-    if (typeof args === 'string') {
-      try {
-        args = JSON.parse(args);
-      } catch (error) {
-        return {
-          content: [{
-            type: "text" as const,
-            text: "Error: args must be an object"
-          }],
-          isError: true
-        };
-      }
-    }
-
-    // Validate required parameters
-    if (!args.marketAddress) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: "Error: marketAddress is required"
-        }],
-        isError: true
-      };
-    }
-    if (!args.epochId) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: "Error: epochId is required"
-        }],
-        isError: true
-      };
-    }
-
-    try {
-      const marketInfo = await client.readContract({
-        address: args.marketAddress as `0x${string}`,
-        abi: FoilABI.abi,
-        functionName: 'getReferencePrice',
-        args: [BigInt(args.epochId)]
-      });
-
-      const formattedInfo = marketInfo.toString();
-
-      return {
-        content: [{
-          type: "text" as const,
-          text: JSON.stringify(formattedInfo, null, 2)
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: "text" as const,
-          text: `Error fetching market info: ${error instanceof Error ? error.message : 'Unknown error'}`
         }],
         isError: true
       };

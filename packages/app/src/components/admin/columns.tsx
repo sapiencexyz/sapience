@@ -447,7 +447,12 @@ const getColumns = (
     marketId: number,
     chainId: number
   ) => void,
-  missingBlocks: MissingBlocks
+  missingBlocks: MissingBlocks,
+  missingPricesLoading: { [key: string]: boolean },
+  fetchMissingBlocks: (
+    marketGroup: MarketGroup,
+    marketId: number
+  ) => Promise<void>
 ): ColumnDef<TableRow>[] => [
   {
     id: 'isPublic',
@@ -687,71 +692,85 @@ const getColumns = (
     ),
   },
   {
-    id: 'missingPriceBlocks',
+    id: 'missingPrices',
     header: 'Missing Prices',
-    accessorFn: (row) => {
-      const key = `${row.marketGroupAddress}-${row.marketId}`;
-      return missingBlocks[key]?.resourcePrice?.length || 0;
-    },
     cell: ({ row }) => {
       const key = `${row.original.marketGroupAddress}-${row.original.marketId}`;
-      const missingBlocksEntry = missingBlocks[key];
-      const blocks = missingBlocksEntry?.resourcePrice;
+      const reindexKey = `reindex-${row.original.marketGroupAddress}-${row.original.marketId}-price`;
+      const isLoadingData = missingPricesLoading[key];
+      const isReindexing = loadingAction[reindexKey]; // Loading state for the reindex action
+      const data = missingBlocks[key];
+      const missingCount = data?.resourcePrice?.length;
+      const error = data?.error;
+      const hasLoaded = data !== undefined; // Check if data has been loaded at least once
 
-      // Create reindex button component to reuse
-      const reloadButton = (
+      const ReindexButton = (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 size="icon"
-                onClick={() =>
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
                   handleReindex(
                     'price',
                     row.original.marketGroupAddress,
                     row.original.marketId,
                     row.original.chainId
-                  )
-                }
-                className="h-5 w-5 p-0"
+                  );
+                }}
+                className="h-5 w-5 p-0 ml-2"
+                disabled={isReindexing} // Disable while reindexing
               >
-                <Download className="h-3 w-3" />
+                {isReindexing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Download className="h-3 w-3" />
+                )}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Load Missing Prices</p>
+              <p>Trigger Re-index for Missing Prices</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
 
-      // If entry doesn't exist yet, show loading spinner without button
-      if (missingBlocksEntry === undefined) {
+      if (isLoadingData) {
+        return <Loader2 className="h-4 w-4 animate-spin opacity-50" />;
+      }
+
+      // If data has been loaded (even if error or count is 0), show count/error and reindex button
+      if (hasLoaded) {
         return (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-            </div>
+          <div className="flex items-center">
+            {error ? (
+              <span className="text-xs text-red-500">Error</span>
+            ) : (
+              <span className="text-xs">
+                {typeof missingCount === 'number' ? missingCount : 'N/A'}
+              </span>
+            )}
+            {ReindexButton}
           </div>
         );
       }
 
-      // If blocks is undefined, that's an error state - show button to retry
-      if (blocks === undefined) {
-        return (
-          <div className="flex items-center gap-2">
-            <span className="text-amber-500">Error</span>
-            {reloadButton}
-          </div>
-        );
-      }
-
-      // Only show reindex button if there are missing blocks
+      // Default: show button to load initial data
       return (
-        <div className="flex items-center gap-2">
-          <span>{blocks.length.toLocaleString()}</span>
-          {blocks.length > 0 && reloadButton}
-        </div>
+        <Button
+          variant="outline"
+          size="xs" // Assuming size xs is available or use sm
+          className="h-6 px-2 text-xs"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent row click or other handlers
+            fetchMissingBlocks(row.original.marketGroup, row.original.marketId);
+          }}
+          disabled={isLoadingData}
+        >
+          {isLoadingData ? 'Loading...' : 'Load'}
+        </Button>
       );
     },
   },
