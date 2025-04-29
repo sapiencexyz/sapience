@@ -94,6 +94,8 @@ export interface Market {
   maxTick: number;
   currentMarketPrice: number;
   marketCandles: any[];
+  baseTokenName?: string;
+  quoteTokenName?: string;
 }
 
 export interface MarketGroup {
@@ -101,9 +103,12 @@ export interface MarketGroup {
   address: string;
   chainId: number;
   vaultAddress: string;
+  owner?: `0x${string}`;
   isYin: boolean;
   collateralAsset: string;
   question?: string | null;
+  baseTokenName?: string | null;
+  quoteTokenName?: string | null;
   markets: Market[];
 }
 
@@ -146,6 +151,8 @@ const MARKETS_QUERY = gql`
       vaultAddress
       collateralAsset
       question
+      baseTokenName
+      quoteTokenName
       category {
         id
         name
@@ -213,6 +220,8 @@ interface MarketGroupApiResponse {
   vaultAddress: string;
   collateralAsset: string;
   question?: string | null;
+  baseTokenName?: string | null;
+  quoteTokenName?: string | null;
   category: Category | null; // Allow null based on schema possibility
   markets: Market[];
 }
