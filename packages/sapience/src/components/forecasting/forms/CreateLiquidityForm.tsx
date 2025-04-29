@@ -19,7 +19,7 @@ import { useCreateLP, useCreateLiquidityQuoter } from '~/hooks/contract';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
-import { priceToTick } from '~/lib/utils/tickUtils';
+import { priceToTick, tickToPrice } from '~/lib/utils/tickUtils';
 
 import type { WalletData } from './ModifyLiquidityForm';
 
@@ -89,8 +89,18 @@ export function CreateLiquidityForm({
   const slippage = watch('slippage');
 
   // Convert price inputs to tick values using the market tick spacing
-  const lowTick = priceToTick(parseFloat(lowPriceInput || '0'), tickSpacing);
-  const highTick = priceToTick(parseFloat(highPriceInput || '0'), tickSpacing);
+  const lowTick =
+    parseFloat(lowPriceInput || '0') === 0
+      ? null
+      : priceToTick(parseFloat(lowPriceInput || '0'), tickSpacing);
+  const highTick =
+    parseFloat(highPriceInput || '0') === 0
+      ? null
+      : priceToTick(parseFloat(highPriceInput || '0'), tickSpacing);
+
+  // Validate tick values for button disabling
+  const isTickValid =
+    lowTick !== null && highTick !== null && lowTick < highTick;
 
   // Ensure slippage is a valid number
   const slippageAsNumber = slippage ? Number(slippage) : 0.5;
@@ -119,7 +129,7 @@ export function CreateLiquidityForm({
     collateralAmount: depositAmount,
     lowTick,
     highTick,
-    enabled: isConnected && !!marketAddress,
+    enabled: isConnected && !!marketAddress && isTickValid,
     chainId,
     marketAbi,
     marketId,
@@ -285,7 +295,12 @@ export function CreateLiquidityForm({
         </div>
 
         <div className="mb-6">
-          <FormLabel className="block mb-2">Low Price</FormLabel>
+          <div className="flex items-center justify-between mb-2">
+            <FormLabel className="block">Low Price</FormLabel>
+            <div className="text-sm text-muted-foreground">
+              Min: {tickToPrice(lowPriceTick || 0, tickSpacing).toFixed(6)}
+            </div>
+          </div>
           <FormField
             control={control}
             name="lowPriceInput"
@@ -312,7 +327,12 @@ export function CreateLiquidityForm({
         </div>
 
         <div className="mb-6">
-          <FormLabel className="block mb-2">High Price</FormLabel>
+          <div className="flex items-center justify-between mb-2">
+            <FormLabel className="block">High Price</FormLabel>
+            <div className="text-sm text-muted-foreground">
+              Max: {tickToPrice(highPriceTick || 0, tickSpacing).toFixed(6)}
+            </div>
+          </div>
           <FormField
             control={control}
             name="highPriceInput"
