@@ -334,6 +334,38 @@ export const insertMarketPrice = async (transaction: Transaction) => {
   }
 };
 
+/**
+ * Updates the collateral decimals and symbol for a market.
+ * @param client The provider client for the chain
+ * @param market The market to update
+ */
+export const updateCollateralData = async (
+  client: PublicClient,
+  market: MarketGroup
+) => {
+  if (market.collateralAsset) {
+    try {
+      const decimals = await client.readContract({
+        address: market.collateralAsset as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'decimals',
+      });
+      market.collateralDecimals = Number(decimals);
+      const symbol = await client.readContract({
+        address: market.collateralAsset as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'symbol',
+      });
+      market.collateralSymbol = symbol as string;
+    } catch (error) {
+      console.error(
+        `Failed to fetch decimals or symbol for token ${market.collateralAsset}:`,
+        error
+      );
+    }
+  }
+};
+
 export const createOrUpdateMarketFromContract = async (
   client: PublicClient,
   contractDeployment: Deployment,
@@ -370,27 +402,10 @@ export const createOrUpdateMarketFromContract = async (
     (marketReadResult as MarketReadResult)[0] as string
   ).toLowerCase();
   updatedMarket.collateralAsset = (marketReadResult as MarketReadResult)[1];
-  if (updatedMarket.collateralAsset) {
-    try {
-      const decimals = await client.readContract({
-        address: updatedMarket.collateralAsset as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'decimals',
-      });
-      updatedMarket.collateralDecimals = Number(decimals);
-      const symbol = await client.readContract({
-        address: updatedMarket.collateralAsset as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'symbol',
-      });
-      updatedMarket.collateralSymbol = symbol as string;
-    } catch (error) {
-      console.error(
-        `Failed to fetch decimals or symbol for token ${updatedMarket.collateralAsset}:`,
-        error
-      );
-    }
-  }
+  
+  // Update collateral data
+  await updateCollateralData(client, updatedMarket);
+  
   const marketParamsRaw = (marketReadResult as MarketReadResult)[4];
   const marketParams: MarketParams = {
     ...marketParamsRaw,
