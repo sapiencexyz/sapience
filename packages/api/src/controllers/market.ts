@@ -38,6 +38,7 @@ import {
   updateTransactionFromPositionSettledEvent,
   insertCollateralTransfer,
   createOrUpdateEpochFromContract,
+  updateCollateralData,
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
@@ -218,6 +219,10 @@ export const reindexMarketEvents = async (market: MarketGroup) => {
   await initializeDataSource();
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
+
+  // Update collateral data
+  await updateCollateralData(client, market);
+  await marketGroupRepository.save(market);
 
   // Get the contract deployment time and us it as initial lookback start time
   let deploymentBlock;
