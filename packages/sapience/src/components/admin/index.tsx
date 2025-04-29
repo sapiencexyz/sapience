@@ -20,6 +20,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 
+import CreateMarketDialog from './CreateMarketDialog';
 import SettleMarketDialog from './SettleMarketDialog';
 
 const Admin = () => {
@@ -35,7 +36,14 @@ const Admin = () => {
     <div className="container pt-16 lg:pt-24 max-w-3xl mx-auto">
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Control Center</h1>
-        <Button className="ml-4">Launch New Market</Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="ml-4">Launch New Market</Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <CreateMarketDialog />
+          </DialogContent>
+        </Dialog>
       </header>
       <div>
         {isLoading && <p>Loading markets...</p>}
