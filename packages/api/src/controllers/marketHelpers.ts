@@ -721,24 +721,36 @@ export const updateTransactionFromTradeModifiedEvent = async (
 
 export const updateTransactionFromPositionSettledEvent = async (
   newTransaction: Transaction,
-  event: Event
+  event: Event,
+  marketGroupAddress: string,
+  marketId: number,
+  chainId: number
 ) => {
-  const epochId = event.logData.args.epochId;
   newTransaction.type = TransactionType.SETTLE_POSITION;
 
-  const epoch = await marketRepository.findOne({
-    where: {
-      marketId: Number(epochId),
-      marketGroup: { address: event.marketGroup.address.toLowerCase() },
-    } satisfies FindOptionsWhere<Market>,
-  });
+  const positionId = event.logData.args.positionId;
 
-  if (!epoch) {
-    throw new Error(`Epoch not found: ${epochId}`);
+  const markets = await marketRepository.find({
+    where: {
+      marketGroup: { address: marketGroupAddress.toLowerCase(), chainId: chainId },
+    },
+    relations: ['positions'],
+  });
+  
+  let found = false;
+  for (const market of markets) {
+    const position = market.positions.find(p => p.positionId === Number(positionId));
+    if (position) {
+      updateTransactionStateFromEvent(newTransaction, event);
+      newTransaction.tradeRatioD18 = market.settlementPriceD18 || '0';
+      found = true;
+      break;
+    }
   }
 
-  updateTransactionStateFromEvent(newTransaction, event);
-  newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || '0';
+  if (!found) {
+    throw new Error(`Market not found for position id ${positionId}`);
+  }  
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken || newTransaction.baseToken === '') {

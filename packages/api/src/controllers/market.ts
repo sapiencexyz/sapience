@@ -594,8 +594,8 @@ const alertEvent = async (
 // Upserts an event into the database using the proper helper function.
 const upsertEvent = async (
   chainId: number,
-  address: string,
-  epochId: number,
+  marketGroupAddress: string,
+  marketId: number,
   blockNumber: bigint,
   timeStamp: bigint,
   logIndex: number,
@@ -603,8 +603,8 @@ const upsertEvent = async (
 ) => {
   console.log('handling event upsert:', {
     chainId,
-    address,
-    epochId,
+    address: marketGroupAddress,
+    epochId: marketId,
     blockNumber,
     timeStamp,
     logIndex,
@@ -613,13 +613,13 @@ const upsertEvent = async (
 
   // Find marke group with relations
   const marketGroup = await marketGroupRepository.findOne({
-    where: { chainId, address: address.toLowerCase() },
+    where: { chainId, address: marketGroupAddress.toLowerCase() },
     relations: ['marketParams'],
   });
 
   if (!marketGroup) {
     throw new Error(
-      `Market group not found for chainId ${chainId} and address ${address}. Cannot upsert event into db.`
+      `Market group not found for chainId ${chainId} and address ${marketGroupAddress}. Cannot upsert event into db.`
     );
   }
 
@@ -641,7 +641,12 @@ const upsertEvent = async (
       existingEvent.timestamp = timeStamp.toString();
       existingEvent.logData = logData;
       await eventRepository.save(existingEvent);
-      await upsertEntitiesFromEvent(existingEvent);
+      await upsertEntitiesFromEvent(
+        existingEvent,
+        marketGroupAddress,
+        marketId,
+        chainId
+      );
       return existingEvent;
     }
 
@@ -666,7 +671,12 @@ const upsertEvent = async (
       throw new Error(`Failed to load saved event with ID ${savedEvent.id}`);
     }
 
-    await upsertEntitiesFromEvent(loadedEvent);
+    await upsertEntitiesFromEvent(
+      loadedEvent,
+      marketGroupAddress,
+      marketId,
+      chainId
+    );
     return loadedEvent;
   } catch (error) {
     console.error('Error upserting event:', error);
@@ -674,7 +684,12 @@ const upsertEvent = async (
   }
 };
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
-export const upsertEntitiesFromEvent = async (event: Event) => {
+export const upsertEntitiesFromEvent = async (
+  event: Event,
+  marketGroupAddress: string,
+  marketId: number,
+  chainId: number
+) => {
   // First check if this event has already been processed by looking for an existing transaction
   const existingTransaction = await transactionRepository.findOne({
     where: { event: { id: event.id } },
@@ -786,7 +801,13 @@ export const upsertEntitiesFromEvent = async (event: Event) => {
       console.log('Handling Position Settled from event: ', event);
       await Promise.all([
         handlePositionSettledEvent(event),
-        updateTransactionFromPositionSettledEvent(newTransaction, event),
+        updateTransactionFromPositionSettledEvent(
+          newTransaction,
+          event,
+          marketGroupAddress,
+          marketId,
+          chainId
+        ),
       ]);
       break;
 
