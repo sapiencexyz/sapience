@@ -125,7 +125,7 @@ export const getSizeForCreateTraderPosition = {
       },
       prediction: {
         type: "string",
-        description: "The expected outcome of the market group"
+        description: "The expected outcome of the market group. 'No' should be indicated with 0. 'Yes' should be indicated with 1."
       },
     },
     required: ["chainId", "marketGroupAddress", "marketId", "collateralAvailable", "prediction"],
