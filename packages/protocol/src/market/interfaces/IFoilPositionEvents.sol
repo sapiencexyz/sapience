@@ -253,6 +253,13 @@ interface IFoilPositionEvents {
      * @notice Event emitted when a position is settled
      * @param positionId The ID of the settled position
      * @param withdrawnCollateral The amount of collateral withdrawn after settlement
+     * @param positionCollateralAmount The amount of collateral in the position after settlement
+     * @param positionVethAmount The amount of vETH in the position after settlement
+     * @param positionVgasAmount The amount of vGAS in the position after settlement
+     * @param positionBorrowedVeth The amount of borrowed vETH in the position after settlement
+     * @param positionBorrowedVgas The amount of borrowed vGAS in the position after settlement
+     * @param deltaCollateral The change in collateral after settlement
+     * @param epochId The ID of the epoch in which the position was settled
      */
     event PositionSettled(
         uint256 positionId,
@@ -264,6 +271,8 @@ interface IFoilPositionEvents {
         uint256 positionBorrowedVeth,
         uint256 positionBorrowedVgas,
         // Delta Collateral
-        int256 deltaCollateral
+        int256 deltaCollateral,
+        // Epoch ID
+        uint256 epochId
     );
 }
