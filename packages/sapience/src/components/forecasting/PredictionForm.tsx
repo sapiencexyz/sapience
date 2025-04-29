@@ -73,15 +73,16 @@ const determineDefaultPrediction = (
     return '';
   }
 
-  if (activeOptionNames && activeOptionNames.length > 0) {
+  // Group market case
+  if (
+    activeOptionNames &&
+    activeOptionNames.length > 0 &&
+    baseTokenName?.toLowerCase() !== 'yes'
+  ) {
     return handleGroupMarket(currentPredictionValue, activeOptionNames);
-  }
-
-  if (baseTokenName?.toLowerCase() === 'yes') {
+  } else if (baseTokenName?.toLowerCase() === 'yes') {
     return handleYesNoMarket(currentPredictionValue);
-  }
-
-  if (unitDisplay) {
+  } else if (unitDisplay) {
     return handleNumericalMarket(currentPredictionValue);
   }
 

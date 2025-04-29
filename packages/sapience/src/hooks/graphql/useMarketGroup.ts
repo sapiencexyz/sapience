@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react';
 
 import {
   findActiveMarkets,
-  getDisplayQuestion,
-  getChainIdFromShortName,
   foilApi,
+  getChainIdFromShortName,
+  getDisplayQuestion,
 } from '../../lib/utils/util';
 
 // GraphQL query to fetch market data

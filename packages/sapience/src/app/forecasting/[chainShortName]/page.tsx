@@ -104,6 +104,8 @@ const ForecastingDetailPage = () => {
       : undefined;
   }, [activeMarkets]);
 
+  console.log('MARKETDATA', marketData);
+
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-5xl flex flex-col">
