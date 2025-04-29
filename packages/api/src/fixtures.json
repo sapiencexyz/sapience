@@ -191,12 +191,12 @@
     },
     {
       "questions": [
-        "Was Apple’s earnings per share (EPS) for Q1 2025 less than 0.50?",
-        "Was Apple’s earnings per share (EPS) for Q1 2025 between 0.51 and 1.00?",
-        "Was Apple’s earnings per share (EPS) for Q1 2025 between 1.01 and 1.50?",
-        "Was Apple’s earnings per share (EPS) for Q1 2025 between 1.51 and 2.00?",
-        "Was Apple’s earnings per share (EPS) for Q1 2025 between 2.01 and 2.50?",
-        "Was Apple’s earnings per share (EPS) for Q1 2025 greater than 2.51?"
+        "Will Apple’s earnings per share (EPS) for Q1 2025 be less than 0.50?",
+        "Will Apple’s earnings per share (EPS) for Q1 2025 be between 0.51 and 1.00?",
+        "Will Apple’s earnings per share (EPS) for Q1 2025 be between 1.01 and 1.50?",
+        "Will Apple’s earnings per share (EPS) for Q1 2025 be between 1.51 and 2.00?",
+        "Will Apple’s earnings per share (EPS) for Q1 2025 be between 2.01 and 2.50?",
+        "Will Apple’s earnings per share (EPS) for Q1 2025 be greater than 2.51?"
       ],
       "question": "What will Apple’s earnings per share (EPS) be for Q1 2025?",
       "chainId": 8453,
@@ -207,12 +207,12 @@
     },
     {
       "questions": [
-        "Was Amazon’s earnings per share (EPS) for Q1 2025 less than 0.50?",
-        "Was Amazon’s earnings per share (EPS) for Q1 2025 between 0.51 and 1.00?",
-        "Was Amazon’s earnings per share (EPS) for Q1 2025 between 1.01 and 1.50?",
-        "Was Amazon’s earnings per share (EPS) for Q1 2025 between 1.51 and 2.00?",
-        "Was Amazon’s earnings per share (EPS) for Q1 2025 between 2.01 and 2.50?",
-        "Was Amazon’s earnings per share (EPS) for Q1 2025 greater than 2.51?"
+        "Will Amazon’s earnings per share (EPS) for Q1 2025 be less than 0.50?",
+        "Will Amazon’s earnings per share (EPS) for Q1 2025 be between 0.51 and 1.00?",
+        "Will Amazon’s earnings per share (EPS) for Q1 2025 be between 1.01 and 1.50?",
+        "Will Amazon’s earnings per share (EPS) for Q1 2025 be between 1.51 and 2.00?",
+        "Will Amazon’s earnings per share (EPS) for Q1 2025 be between 2.01 and 2.50?",
+        "Will Amazon’s earnings per share (EPS) for Q1 2025 be greater than 2.51?"
       ],
       "question": "What will Amazon’s earnings per share (EPS) be for Q1 2025?",
       "chainId": 8453,
@@ -223,12 +223,12 @@
     },
     {
       "questions": [
-        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 less than -2.50%",
-        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -2.51% and -2.00%",
-        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -2.01% and -1.50%",
-        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -1.51% and -1.00%",
-        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 between -1.01% and -0.50%",
-        "Was the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 greater than -0.51%"
+        "Will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 be less than -2.50%",
+        "Will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 be between -2.51% and -2.00%",
+        "Will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 be between -2.01% and -1.50%",
+        "Will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 be between -1.51% and -1.00%",
+        "Will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 be between -1.01% and -0.50%",
+        "Will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025 be greater than -0.51%"
       ],
       "question": "What will the U.S. Consumer Price Index (CPI) year-over-year inflation rate be in April 2025?",
       "chainId": 8453,
@@ -239,12 +239,12 @@
     },
     {
       "questions": [
-        "Was the annualized U.S. GDP growth rate for Q1 2025 less than -2.50%",
-        "Was the annualized U.S. GDP growth rate for Q1 2025 between -2.51% and -2.00%",
-        "Was the annualized U.S. GDP growth rate for Q1 2025 between -2.01% and -1.50%",
-        "Was the annualized U.S. GDP growth rate for Q1 2025 between -1.51% and -1.00%",
-        "Was the annualized U.S. GDP growth rate for Q1 2025 between -1.01% and -0.50%",
-        "Was the annualized U.S. GDP growth rate for Q1 2025 greater than -0.51%"
+        "Will the annualized U.S. GDP growth rate for Q1 2025 be less than -2.50%",
+        "Will the annualized U.S. GDP growth rate for Q1 2025 be between -2.51% and -2.00%",
+        "Will the annualized U.S. GDP growth rate for Q1 2025 be between -2.01% and -1.50%",
+        "Will the annualized U.S. GDP growth rate for Q1 2025 be between -1.51% and -1.00%",
+        "Will the annualized U.S. GDP growth rate for Q1 2025 be between -1.01% and -0.50%",
+        "Will the annualized U.S. GDP growth rate for Q1 2025 be greater than -0.51%"
       ],
       "question": "What will the annualized U.S. GDP growth rate be for Q1 2025?",
       "chainId": 8453,
@@ -255,11 +255,11 @@
     },
     {
       "questions": [
-        "Was the ISM Manufacturing PMI reading for April 2025 less than 48.50",
-        "Was the ISM Manufacturing PMI reading for April 2025 between 48.51 and 49.00",
-        "Was the ISM Manufacturing PMI reading for April 2025 between 49.01 and 49.50",
-        "Was the ISM Manufacturing PMI reading for April 2025 between 49.51 and 50.00",
-        "Was the ISM Manufacturing PMI reading for April 2025 greater than 50.01"
+        "Will the ISM Manufacturing PMI reading for April 2025 be less than 48.50",
+        "Will the ISM Manufacturing PMI reading for April 2025 be between 48.51 and 49.00",
+        "Will the ISM Manufacturing PMI reading for April 2025 be between 49.01 and 49.50",
+        "Will the ISM Manufacturing PMI reading for April 2025 be between 49.51 and 50.00",
+        "Will the ISM Manufacturing PMI reading for April 2025 be greater than 50.01"
       ],
       "question": "What will the ISM Manufacturing PMI reading be for April 2025?",
       "chainId": 8453,
@@ -270,11 +270,11 @@
     },
     {
       "questions": [
-        "Was Meta’s earnings per share (EPS) for Q1 2025 less than 3.00",
-        "Was Meta’s earnings per share (EPS) for Q1 2025 between 3.01 and 4.00",
-        "Was Meta’s earnings per share (EPS) for Q1 2025 between 4.01 and 5.00",
-        "Was Meta’s earnings per share (EPS) for Q1 2025 between 5.01 and 6.00",
-        "Was Meta’s earnings per share (EPS) for Q1 2025 greater than 6.01"
+        "Will Meta’s earnings per share (EPS) for Q1 2025 be less than 3.00",
+        "Will Meta’s earnings per share (EPS) for Q1 2025 be between 3.01 and 4.00",
+        "Will Meta’s earnings per share (EPS) for Q1 2025 be between 4.01 and 5.00",
+        "Will Meta’s earnings per share (EPS) for Q1 2025 be between 5.01 and 6.00",
+        "Will Meta’s earnings per share (EPS) for Q1 2025 be greater than 6.01"
       ],
       "question": "What will Meta’s earnings per share (EPS) be for Q1 2025?",
       "chainId": 8453,
@@ -285,12 +285,12 @@
     },
     {
       "questions": [
-        "Was Microsoft’s earnings per share (EPS) for Q1 2025 less than 2.50",
-        "Was Microsoft’s earnings per share (EPS) for Q1 2025 between 2.51 and 3.00",
-        "Was Microsoft’s earnings per share (EPS) for Q1 2025 between 3.01 and 3.50",
-        "Was Microsoft’s earnings per share (EPS) for Q1 2025 between 3.51 and 4.00",
-        "Was Microsoft’s earnings per share (EPS) for Q1 2025 between 4.01 and 4.50",
-        "Was Microsoft’s earnings per share (EPS) for Q1 2025 greater than 4.51"
+        "Will Microsoft’s earnings per share (EPS) for Q1 2025 be less than 2.50",
+        "Will Microsoft’s earnings per share (EPS) for Q1 2025 be between 2.51 and 3.00",
+        "Will Microsoft’s earnings per share (EPS) for Q1 2025 be between 3.01 and 3.50",
+        "Will Microsoft’s earnings per share (EPS) for Q1 2025 be between 3.51 and 4.00",
+        "Will Microsoft’s earnings per share (EPS) for Q1 2025 be between 4.01 and 4.50",
+        "Will Microsoft’s earnings per share (EPS) for Q1 2025 be greater than 4.51"
       ],
       "question": "What will Microsoft’s earnings per share (EPS) be for Q1 2025?",
       "chainId": 8453,
@@ -301,11 +301,11 @@
     },
     {
       "questions": [
-        "Was the change in U.S. nonfarm payrolls be in April 2025 less than 40000",
-        "Was the change in U.S. nonfarm payrolls be in April 2025 between 40001 and 80000",
-        "Was the change in U.S. nonfarm payrolls be in April 2025 between 80001 and 120000",
-        "Was the change in U.S. nonfarm payrolls be in April 2025 between 120001 and 160000",
-        "Was the change in U.S. nonfarm payrolls be in April 2025 greater than 160001"
+        "Will the change in U.S. nonfarm payrolls be in April 2025 be less than 40000",
+        "Will the change in U.S. nonfarm payrolls be in April 2025 be between 40001 and 80000",
+        "Will the change in U.S. nonfarm payrolls be in April 2025 be between 80001 and 120000",
+        "Will the change in U.S. nonfarm payrolls be in April 2025 be between 120001 and 160000",
+        "Will the change in U.S. nonfarm payrolls be in April 2025 be greater than 160001"
       ],
       "question": "What will the change in U.S. nonfarm payrolls be in April 2025?",
       "chainId": 8453,
@@ -316,12 +316,12 @@
     },
     {
       "questions": [
-        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 less than 0.50",
-        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.51 and 0.80",
-        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 0.81 and 1.10",
-        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.11 and 1.40",
-        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 between 1.41 and 1.70",
-        "Was NVIDIA’s earnings per share (EPS) for Q1 2025 greater than 1.71"
+        "Will NVIDIA’s earnings per share (EPS) for Q1 2025 be less than 0.50",
+        "Will NVIDIA’s earnings per share (EPS) for Q1 2025 be between 0.51 and 0.80",
+        "Will NVIDIA’s earnings per share (EPS) for Q1 2025 be between 0.81 and 1.10",
+        "Will NVIDIA’s earnings per share (EPS) for Q1 2025 be between 1.11 and 1.40",
+        "Will NVIDIA’s earnings per share (EPS) for Q1 2025 be between 1.41 and 1.70",
+        "Will NVIDIA’s earnings per share (EPS) for Q1 2025 be greater than 1.71"
       ],
       "question": "What will NVIDIA’s earnings per share (EPS) be for Q1 2025?",
       "chainId": 8453,
@@ -332,12 +332,12 @@
     },
     {
       "questions": [
-        "Was the year-over-year Core PCE inflation rate be in March 2025 less than -2.50%",
-        "Was the year-over-year Core PCE inflation rate be in March 2025 between -2.51% and -2.00%",
-        "Was the year-over-year Core PCE inflation rate be in March 2025 between -2.01% and -1.50%",
-        "Was the year-over-year Core PCE inflation rate be in March 2025 between -1.51% and -1.00%",
-        "Was the year-over-year Core PCE inflation rate be in March 2025 between -1.01% and -0.50%",
-        "Was the year-over-year Core PCE inflation rate be in March 2025 greater than -0.51%"
+        "Will the year-over-year Core PCE inflation rate be in March 2025 be less than -2.50%",
+        "Will the year-over-year Core PCE inflation rate be in March 2025 be between -2.51% and -2.00%",
+        "Will the year-over-year Core PCE inflation rate be in March 2025 be between -2.01% and -1.50%",
+        "Will the year-over-year Core PCE inflation rate be in March 2025 be between -1.51% and -1.00%",
+        "Will the year-over-year Core PCE inflation rate be in March 2025 be between -1.01% and -0.50%",
+        "Will the year-over-year Core PCE inflation rate be in March 2025 be greater than -0.51%"
       ],
       "question": "What will the year-over-year Core PCE inflation rate be in March 2025?",
       "chainId": 8453,
@@ -348,12 +348,12 @@
     },
     {
       "questions": [
-        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 less than -2.50%",
-        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 between -2.51% and -2.00%",
-        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 between -2.01% and -1.50%",
-        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 between -1.51% and -1.00%",
-        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 between -1.01% and -0.50%",
-        "Was the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 greater than -0.51%"
+        "Will the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 be less than -2.50%",
+        "Will the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 be between -2.51% and -2.00%",
+        "Will the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 be between -2.01% and -1.50%",
+        "Will the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 be between -1.51% and -1.00%",
+        "Will the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 be between -1.01% and -0.50%",
+        "Will the month-over-month change in the U.S. Producer Price Index (PPI) for April 2025 be greater than -0.51%"
       ],
       "question": "What will the month-over-month change in the U.S. Producer Price Index (PPI) be for April 2025?",
       "chainId": 8453,
@@ -364,7 +364,7 @@
     },
     {
       "questions": [
-        "Was U.S. in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration?"
+        "Will the U.S. be in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration?"
       ],
       "question": "Will the U.S. be in a recession by July 2025, defined as either two consecutive quarters of negative GDP or formal NBER declaration?",
       "chainId": 8453,
