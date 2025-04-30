@@ -19,11 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@foil/ui/components/ui/select';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
-  Terminal,
   CheckCircle,
-  Info,
   Loader2,
 } from 'lucide-react';
 import type React from 'react';
@@ -47,6 +46,8 @@ import {
   FOCUS_AREAS,
   DEFAULT_FOCUS_AREA,
 } from '../../lib/constants/focusAreas';
+
+// --- Import useMutation ---
 
 // Use root export for Button, Input, Label
 // Use direct paths for Card, Alert, Separator as they aren't in root index.ts
@@ -89,6 +90,7 @@ const marketGroupFactoryAbi = [
           },
         ],
       },
+      { name: 'nonce', type: 'uint256', internalType: 'uint256' },
     ],
     outputs: [
       { name: '', type: 'address', internalType: 'address' },
@@ -132,6 +134,25 @@ interface MarketParamsInput {
   uniswapQuoter: string;
   optimisticOracleV3: string;
 }
+
+// Use environment variable for API base URL, fallback to /api
+const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
+
+// Define the expected payload type for the mutation
+interface CreateMarketGroupPayload {
+  chainId: string;
+  owner: string;
+  collateralAsset: string;
+  minTradeSize: string;
+  marketParams: MarketParamsInput;
+  nonce: string;
+  question: string;
+  category: string;
+  baseTokenName: string;
+  quoteTokenName: string;
+  factoryAddress: string;
+}
+// Assume QueryClientProvider is set up higher in the component tree
 
 const CreateMarketGroupDialog = () => {
   const { address: connectedAddress } = useAccount();
@@ -202,6 +223,46 @@ const CreateMarketGroupDialog = () => {
   ); // Add state for selected category
   const [baseTokenName, setBaseTokenName] = useState<string>(''); // Add state for base token name
   const [quoteTokenName, setQuoteTokenName] = useState<string>(''); // Add state for quote token name
+
+  // --- Tanstack Query Mutation Setup ---
+  const queryClient = useQueryClient(); // Optional: Used for invalidation/optimistic updates
+
+  const createMarketGroupMutation = useMutation({
+    mutationFn: async (payload: CreateMarketGroupPayload) => {
+      const { nonce, ...bodyPayload } = payload;
+      const response = await fetch(
+        `${API_BASE_URL}/create-market-group/${nonce}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bodyPayload), // Send the rest of the payload in the body
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          result.message || `HTTP error! status: ${response.status}`
+        );
+      }
+      return result; // Return data on success
+    },
+    onSuccess: (data: unknown) => {
+      console.log('API Submission Success:', data);
+      setFormError(null); // Clear previous errors
+      // Optionally invalidate queries or update cache using queryClient
+      // queryClient.invalidateQueries({ queryKey: ['marketGroups'] });
+      // TODO: Add success feedback to the user (e.g., toast notification)
+    },
+    onError: (error: Error) => {
+      console.error('API Submission Error:', error);
+      setFormError(`API Submission Failed: ${error.message}`);
+      // TODO: Show error message more visibly in the UI
+    },
+  });
+  // --- End Tanstack Query Mutation Setup ---
 
   // Update chainId and potentially owner if network changes
   useEffect(() => {
@@ -298,15 +359,13 @@ const CreateMarketGroupDialog = () => {
   };
 
   // Form Submission
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCreatedMarketGroup(null);
     setFormError(null);
 
     // Basic Validation
     if (!chainId) return setFormError('Chain ID is required');
-    if (!isAddress(factoryAddress))
-      return setFormError('Invalid Factory Address');
     if (!isAddress(owner)) return setFormError('Invalid Owner Address');
     if (!isAddress(collateralAsset))
       return setFormError('Invalid Collateral Asset Address');
@@ -341,56 +400,45 @@ const CreateMarketGroupDialog = () => {
     if (!isAddress(marketParams.optimisticOracleV3))
       return setFormError('Invalid Optimistic Oracle V3 Address');
 
-    try {
-      const params = {
-        owner: owner as Address,
-        collateralAsset: collateralAsset as Address,
-        feeCollectors: [] as Address[],
-        callbackRecipient:
-          '0x0000000000000000000000000000000000000000' as Address,
-        minTradeSize: BigInt(minTradeSize),
-        marketParams: {
-          feeRate: Number(marketParams.feeRate),
-          assertionLiveness: BigInt(marketParams.assertionLiveness),
-          bondAmount: BigInt(marketParams.bondAmount),
-          bondCurrency: marketParams.bondCurrency as Address,
-          uniswapPositionManager:
-            marketParams.uniswapPositionManager as Address,
-          uniswapSwapRouter: marketParams.uniswapSwapRouter as Address,
-          uniswapQuoter: marketParams.uniswapQuoter as Address,
-          optimisticOracleV3: marketParams.optimisticOracleV3 as Address,
-        },
-      };
-
-      writeContract({
-        address: factoryAddress as Address,
-        abi: marketGroupFactoryAbi,
-        functionName: 'cloneAndInitializeMarketGroup',
-        args: [
-          params.owner,
-          params.collateralAsset,
-          params.feeCollectors,
-          params.callbackRecipient,
-          params.minTradeSize,
-          params.marketParams,
-        ],
-        chainId: parseInt(chainId, 10),
-      });
-    } catch (err: any) {
-      console.error('Error constructing transaction:', err);
-      setFormError(
-        `Error preparing transaction: ${err.message || 'Invalid input format'}`
-      );
+    // --- Add Nonce Validation ---
+    if (!nonce || isNaN(Number(nonce))) {
+      return setFormError('Invalid Nonce (must be a number)');
     }
+    // --- End Nonce Validation ---
+
+    // --- Added validation for new fields ---
+    if (!question.trim())
+      return setFormError('Market Group Question is required');
+    if (!selectedCategory) return setFormError('Category is required');
+    if (!baseTokenName.trim())
+      return setFormError('Base Token Name is required');
+    if (!quoteTokenName.trim())
+      return setFormError('Quote Token Name is required');
+    // --- End validation for new fields ---
+
+    // Construct payload for mutation
+    const payload: CreateMarketGroupPayload = {
+      chainId,
+      owner,
+      collateralAsset,
+      minTradeSize,
+      marketParams,
+      nonce,
+      question,
+      category: selectedCategory,
+      baseTokenName,
+      quoteTokenName,
+      factoryAddress, // Pass factory address if needed
+    };
+
+    // Trigger the mutation
+    createMarketGroupMutation.mutate(payload);
   };
 
-  // Helper function for button text
+  // Helper function for button text - use mutation state
   const getButtonText = () => {
-    if (isWritePending) {
-      return 'Check Wallet...';
-    }
-    if (isConfirming) {
-      return 'Creating Market Group...';
+    if (createMarketGroupMutation.isPending) {
+      return 'Submitting...';
     }
     return 'Create Market Group';
   };
@@ -612,10 +660,10 @@ const CreateMarketGroupDialog = () => {
 
         <Button
           type="submit"
-          disabled={isWritePending || isConfirming}
+          disabled={createMarketGroupMutation.isPending} // Use mutation pending state
           className="w-full mb-4"
         >
-          {(isWritePending || isConfirming) && (
+          {createMarketGroupMutation.isPending && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
           {getButtonText()}
@@ -624,70 +672,42 @@ const CreateMarketGroupDialog = () => {
 
       {/* Results and Errors */}
       <div className="space-y-4">
-        {hash && (
-          <Alert variant="default">
-            <Terminal className="h-4 w-4" />
-            <AlertTitle>Transaction Submitted</AlertTitle>
-            <AlertDescription className="break-all">
-              Hash: {hash}
-              {isConfirming && (
-                <span className="ml-2 inline-flex items-center">
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  Waiting for confirmation...
-                </span>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Keep wagmi hash/receipt display logic if still needed for contract interaction (currently removed) */}
+        {/* hash && (... ) */}
+        {/* isSuccess && createdMarketGroup && (...) */}
+        {/* isSuccess && !createdMarketGroup && formError && (...) */}
 
-        {isSuccess && createdMarketGroup && (
+        {/* Display mutation success message (optional) */}
+        {createMarketGroupMutation.isSuccess && (
           <Alert variant="default">
             <CheckCircle className="h-4 w-4" />
-            <AlertTitle>Success!</AlertTitle>
-            <AlertDescription className="break-all">
-              Market Group Created: {createdMarketGroup}
-              {/* Optionally show receipt details, maybe in a collapsed section */}
-              {/* <details className="mt-2">
-                           <summary className="cursor-pointer">View Receipt</summary>
-                           <pre className="mt-1 text-xs bg-muted p-2 rounded overflow-auto">
-                             {JSON.stringify(receipt, (key, value) => typeof value === 'bigint' ? value.toString() : value, 2)}
-                           </pre>
-                         </details> */}
+            <AlertTitle>Submission Successful!</AlertTitle>
+            <AlertDescription>
+              Market group creation request sent.
+              {/* You could display data returned from the API here: */}
+              {/* <pre className="mt-1 text-xs bg-muted p-2 rounded overflow-auto">
+                {JSON.stringify(createMarketGroupMutation.data, null, 2)}
+              </pre> */}
             </AlertDescription>
           </Alert>
         )}
 
-        {isSuccess && !createdMarketGroup && formError && (
-          <Alert variant="default">
-            <Info className="h-4 w-4" />
-            <AlertTitle>Warning</AlertTitle>
-            <AlertDescription>{formError}</AlertDescription>
+        {/* Display form validation errors or mutation errors */}
+        {(formError || createMarketGroupMutation.isError) && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              {formError ||
+                (createMarketGroupMutation.error as Error)?.message ||
+                'An unknown error occurred'}
+            </AlertDescription>
           </Alert>
         )}
 
-        {formError && !isSuccess && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Form Error</AlertTitle>
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        )}
-
-        {writeError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Transaction Submission Error</AlertTitle>
-            <AlertDescription>{writeError.message}</AlertDescription>
-          </Alert>
-        )}
-
-        {receiptError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Transaction Confirmation Error</AlertTitle>
-            <AlertDescription>{receiptError.message}</AlertDescription>
-          </Alert>
-        )}
+        {/* Keep wagmi write/receipt error display if needed (currently removed) */}
+        {/* writeError && (...) */}
+        {/* receiptError && (...) */}
       </div>
     </>
   );

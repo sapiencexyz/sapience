@@ -1,11 +1,28 @@
 'use client';
 
 import { Button, Input, Label } from '@foil/ui';
+import { useMutation } from '@tanstack/react-query';
 import type React from 'react';
 import { useState } from 'react';
 
+// Use environment variable for API base URL, fallback to /api
+const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
+
 interface CreateMarketDialogProps {
   marketGroupAddress: string;
+}
+
+// --- Define Payload Type ---
+interface CreateMarketPayload {
+  marketQuestion: string;
+  optionName: string;
+  startTime: string;
+  endTime: string;
+  startingSqrtPriceX96: string;
+  baseAssetMinPriceTick: string;
+  baseAssetMaxPriceTick: string;
+  salt: string;
+  claimStatement: string;
 }
 
 const CreateMarketDialog: React.FC<CreateMarketDialogProps> = ({
@@ -26,13 +43,76 @@ const CreateMarketDialog: React.FC<CreateMarketDialogProps> = ({
   ); // Default random salt
   const [claimStatement, setClaimStatement] = useState<string>('');
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // --- Tanstack Query Mutation Setup ---
+  const createMarketMutation = useMutation({
+    mutationFn: async (payload: CreateMarketPayload) => {
+      // The marketGroupAddress comes from props, not payload
+      const response = await fetch(
+        `${API_BASE_URL}/create-market/${marketGroupAddress}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          result.message || `HTTP error! status: ${response.status}`
+        );
+      }
+      return result; // Return data on success
+    },
+    onSuccess: (data: unknown) => {
+      console.log('API Submission Success:', data);
+      // TODO: Add success feedback, maybe clear form
+    },
+    onError: (error: Error) => {
+      console.error('API Submission Error:', error);
+      // Error state is handled by mutation.error below
+    },
+  });
+  // --- End Tanstack Query Mutation Setup ---
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // TODO: Implement form submission logic
-    console.log({
-      // Log values for now
-      marketQuestion, // Log the new question
-      optionName, // Log option name
+
+    // Basic validation (can be enhanced) - Use mutation.reset() to clear errors if needed before validate
+    createMarketMutation.reset(); // Clear previous mutation error before new submission
+    let validationError = null;
+    if (!marketQuestion.trim()) validationError = 'Market Question is required';
+    else if (!optionName.trim()) validationError = 'Option Name is required';
+    else if (!claimStatement.trim())
+      validationError = 'Claim Statement is required';
+    else if (!startTime || isNaN(Number(startTime)))
+      validationError = 'Valid Start Time is required';
+    else if (!endTime || isNaN(Number(endTime)))
+      validationError = 'Valid End Time is required';
+    else if (!startingSqrtPriceX96.trim())
+      validationError = 'Starting Sqrt Price X96 is required';
+    else if (!baseAssetMinPriceTick || isNaN(Number(baseAssetMinPriceTick)))
+      validationError = 'Valid Min Price Tick is required';
+    else if (!baseAssetMaxPriceTick || isNaN(Number(baseAssetMaxPriceTick)))
+      validationError = 'Valid Max Price Tick is required';
+    else if (!salt || isNaN(Number(salt)))
+      validationError = 'Valid Salt (Nonce) is required';
+
+    if (validationError) {
+      // Optionally set a state for validation errors if you want to display them differently from submission errors
+      // setValidationError(validationError);
+      console.error('Validation Error:', validationError);
+      // We don't trigger the mutation if validation fails.
+      // The user sees the error via the standard react-query error handling if needed,
+      // or you can add a dedicated validation error display.
+      return; // Stop submission if validation fails
+    }
+
+    const payload: CreateMarketPayload = {
+      marketQuestion,
+      optionName,
       startTime,
       endTime,
       startingSqrtPriceX96,
@@ -40,7 +120,10 @@ const CreateMarketDialog: React.FC<CreateMarketDialogProps> = ({
       baseAssetMaxPriceTick,
       salt,
       claimStatement,
-    });
+    };
+
+    // Trigger the mutation
+    createMarketMutation.mutate(payload);
   };
 
   return (
@@ -163,11 +246,17 @@ const CreateMarketDialog: React.FC<CreateMarketDialogProps> = ({
         />
       </div>
 
-      {/* TODO: Add form validation and error handling */}
-      <Button type="submit">
-        {' '}
-        {/* TODO: Add disable logic based on validation/pending state */}
-        Create Market
+      {/* Display Mutation Error */}
+      {createMarketMutation.isError && (
+        <p className="text-sm text-red-600">
+          Error:{' '}
+          {(createMarketMutation.error as Error)?.message ||
+            'An unknown error occurred'}
+        </p>
+      )}
+
+      <Button type="submit" disabled={createMarketMutation.isPending}>
+        {createMarketMutation.isPending ? 'Creating...' : 'Create Market'}
       </Button>
     </form>
   );
