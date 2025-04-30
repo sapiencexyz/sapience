@@ -6,7 +6,20 @@ import {
   AlertDescription,
   AlertTitle,
 } from '@foil/ui/components/ui/alert';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@foil/ui/components/ui/accordion';
 import { Separator } from '@foil/ui/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@foil/ui/components/ui/select';
 import {
   AlertCircle,
   Terminal,
@@ -22,6 +35,12 @@ import type {
   AbiEvent,
   Address,
 } from 'viem';
+
+// Import FOCUS_AREAS
+import {
+  FOCUS_AREAS,
+  DEFAULT_FOCUS_AREA,
+} from '../../lib/constants/focusAreas';
 
 // Use root export for Button, Input, Label
 // Use direct paths for Card, Alert, Separator as they aren't in root index.ts
@@ -174,6 +193,12 @@ const CreateMarketGroupDialog = () => {
     null
   );
   const [formError, setFormError] = useState<string | null>(null);
+  const [question, setQuestion] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>(
+    DEFAULT_FOCUS_AREA.id
+  ); // Add state for selected category
+  const [baseTokenName, setBaseTokenName] = useState<string>(''); // Add state for base token name
+  const [quoteTokenName, setQuoteTokenName] = useState<string>(''); // Add state for quote token name
 
   // Update chainId and potentially owner if network changes
   useEffect(() => {
@@ -364,131 +389,197 @@ const CreateMarketGroupDialog = () => {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Chain ID and Factory Address */}
+        {/* Top Grid: Question, Category, Base/Quote Tokens */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Question Input */}
           <div className="space-y-2">
-            <Label htmlFor="chainId">Chain ID</Label>
+            <Label htmlFor="question">Question</Label>
             <Input
-              id="chainId"
-              type="number"
-              value={chainId}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setChainId(e.target.value)
-              }
-              placeholder="e.g., 1"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="factoryAddress">Factory Address</Label>
-            <Input
-              id="factoryAddress"
+              id="question"
               type="text"
-              value={factoryAddress}
+              value={question}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setFactoryAddress(e.target.value)
+                setQuestion(e.target.value)
               }
-              placeholder="0x..."
+              placeholder="Enter the market group question"
+              required
+            />
+          </div>
+
+          {/* Category Select */}
+          <div className="space-y-2">
+            <Label htmlFor="category">Category</Label>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger id="category">
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {FOCUS_AREAS.map((area) => (
+                  <SelectItem key={area.id} value={area.id}>
+                    {area.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Base Token Name Input */}
+          <div className="space-y-2">
+            <Label htmlFor="baseTokenName">Base Token Name</Label>
+            <Input
+              id="baseTokenName"
+              type="text"
+              value={baseTokenName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setBaseTokenName(e.target.value)
+              }
+              placeholder="Yes"
+              required
+            />
+          </div>
+
+          {/* Quote Token Name Input */}
+          <div className="space-y-2">
+            <Label htmlFor="quoteTokenName">Quote Token Name</Label>
+            <Input
+              id="quoteTokenName"
+              type="text"
+              value={quoteTokenName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setQuoteTokenName(e.target.value)
+              }
+              placeholder="sUSDS"
               required
             />
           </div>
         </div>
 
-        <Separator />
-
-        {/* Market Group Details */}
-        <div className="space-y-4">
-          <Label className="text-lg font-semibold">
-            Market Group Parameters
-          </Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="owner">Owner</Label>
-              <Input
-                id="owner"
-                type="text"
-                value={owner}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setOwner(e.target.value)
-                }
-                placeholder="0x..."
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="collateralAsset">Collateral Asset</Label>
-              <Input
-                id="collateralAsset"
-                type="text"
-                value={collateralAsset}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setCollateralAsset(e.target.value)
-                }
-                placeholder="0x..."
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="minTradeSize">Min Trade Size (Units)</Label>
-              <Input
-                id="minTradeSize"
-                type="text"
-                value={minTradeSize}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setMinTradeSize(e.target.value)
-                }
-                placeholder="e.g., 1000000000000000000"
-                required
-                inputMode="numeric"
-              />
-            </div>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Market Parameters */}
-        <div className="space-y-4">
-          <Label className="text-lg font-semibold">Market Parameters</Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
-            {Object.entries(marketParams).map(([key, value]) => {
-              const isNumericInput =
-                key === 'feeRate' ||
-                key === 'assertionLiveness' ||
-                key === 'bondAmount';
-              const inputType = isNumericInput ? 'number' : 'text';
-              const inputModeType = isNumericInput ? 'numeric' : 'text';
-
-              let placeholderText: string;
-              if (key.includes('Amount') || key.includes('Liveness')) {
-                placeholderText = 'e.g., 100...';
-              } else if (key.includes('Rate')) {
-                placeholderText = 'e.g., 3000';
-              } else {
-                placeholderText = '0x...';
-              }
-
-              return (
-                <div key={key} className="space-y-2">
-                  <Label htmlFor={key} className="capitalize">
-                    {/* Simple regex to add space before capitals */}
-                    {key.replace(/([A-Z])/g, ' $1')}
-                  </Label>
+        {/* Accordion for Details */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="item-1">
+            <AccordionTrigger>Details</AccordionTrigger>
+            <AccordionContent className="space-y-6 pt-4">
+              {/* Chain ID and Factory Address */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="chainId">Chain ID</Label>
                   <Input
-                    id={key}
-                    type={inputType}
-                    name={key}
-                    value={value}
-                    onChange={handleMarketParamsChange}
-                    placeholder={placeholderText}
+                    id="chainId"
+                    type="number"
+                    value={chainId}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setChainId(e.target.value)
+                    }
+                    placeholder="e.g., 1"
                     required
-                    inputMode={inputModeType}
                   />
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                <div className="space-y-2">
+                  <Label htmlFor="factoryAddress">Factory Address</Label>
+                  <Input
+                    id="factoryAddress"
+                    type="text"
+                    value={factoryAddress}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setFactoryAddress(e.target.value)
+                    }
+                    placeholder="0x..."
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Market Group Details */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="owner">Owner</Label>
+                    <Input
+                      id="owner"
+                      type="text"
+                      value={owner}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setOwner(e.target.value)
+                      }
+                      placeholder="0x..."
+                      required
+                      inputMode="numeric"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="collateralAsset">Collateral Asset</Label>
+                    <Input
+                      id="collateralAsset"
+                      type="text"
+                      value={collateralAsset}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setCollateralAsset(e.target.value)
+                      }
+                      placeholder="0x..."
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="minTradeSize">Min Trade Size (Units)</Label>
+                    <Input
+                      id="minTradeSize"
+                      type="text"
+                      value={minTradeSize}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setMinTradeSize(e.target.value)
+                      }
+                      placeholder="e.g., 1000000000000000000"
+                      required
+                      inputMode="numeric"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Market Parameters */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                  {Object.entries(marketParams).map(([key, value]) => {
+                    const isNumericInput =
+                      key === 'feeRate' ||
+                      key === 'assertionLiveness' ||
+                      key === 'bondAmount';
+                    const inputType = isNumericInput ? 'number' : 'text';
+                    const inputModeType = isNumericInput ? 'numeric' : 'text';
+
+                    let placeholderText: string;
+                    if (key.includes('Amount') || key.includes('Liveness')) {
+                      placeholderText = 'e.g., 100...';
+                    } else if (key.includes('Rate')) {
+                      placeholderText = 'e.g., 3000';
+                    } else {
+                      placeholderText = '0x...';
+                    }
+
+                    return (
+                      <div key={key} className="space-y-2">
+                        <Label htmlFor={key} className="capitalize">
+                          {/* Simple regex to add space before capitals */}
+                          {key.replace(/([A-Z])/g, ' $1')}
+                        </Label>
+                        <Input
+                          id={key}
+                          type={inputType}
+                          name={key}
+                          value={value}
+                          onChange={handleMarketParamsChange}
+                          placeholder={placeholderText}
+                          required
+                          inputMode={inputModeType}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <Button
           type="submit"
