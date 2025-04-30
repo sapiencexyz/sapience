@@ -140,90 +140,79 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
 
   if (isLoading) {
     return (
-      <>
-        <h3 className="font-medium mb-4">Recent Predictions</h3>
-        <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
-          <div className="py-16 text-muted-foreground flex justify-center items-center">
-            <LottieLoader className="h-8 w-8" />
-          </div>
+      <div className="h-full border border-muted rounded-md bg-background/50 overflow-hidden text-muted-foreground flex justify-center items-center">
+        <div className="py-16">
+          <LottieLoader className="h-8 w-8" />
         </div>
-      </>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <>
-        <h3 className="font-medium mb-4">Recent Predictions</h3>
-        <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
-          <div className="py-16 text-muted-foreground flex justify-center items-center">
-            Error loading predictions: {String(error)}
-          </div>
-        </div>
-      </>
+      <div className="h-full border border-muted rounded-md bg-background/50 overflow-hidden text-muted-foreground flex justify-center items-center">
+        <div className="py-16">Error loading predictions: {String(error)}</div>
+      </div>
     );
   }
 
   return (
-    <>
-      <h3 className="font-medium mb-4">Recent Predictions</h3>
-      <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
-        {data.length === 0 ? (
-          <div className="py-16 text-muted-foreground flex justify-center items-center">
-            <p className="text-center text-base">
-              No predictions yet... what&apos;s yours?
-            </p>
+    <div className="h-full border border-muted rounded-md bg-background/50 overflow-hidden text-muted-foreground flex justify-center items-center">
+      {data.length === 0 ? (
+        <div className="py-16">
+          <div className="text-center text-base my-auto">
+            No predictions yet... what&apos;s yours?
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  className="hover:bg-secondary/10 transition-colors"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
                   ))}
                 </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="hover:bg-secondary/10 transition-colors"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-    </>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 };
 
