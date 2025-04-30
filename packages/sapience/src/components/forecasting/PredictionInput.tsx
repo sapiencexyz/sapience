@@ -58,7 +58,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
 }: PredictionInputProps) => {
   // Helper to render group market buttons
   const renderGroupMarketOptions = () => (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap gap-2">
       {/* Add non-null assertions as market and optionNames are checked before calling */}
       {market!.optionNames!.map((option: string, index: number) => {
         const optionValue = index + 1;
@@ -67,7 +67,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
           <Button
             key={option}
             type="button"
-            className={`flex-1 px-5 py-2 rounded text-lg font-normal ${
+            className={`flex-1 px-5 py-2 rounded text-sm font-normal ${
               isActive ? activeButtonStyle : inactiveButtonStyle
             }`}
             // Clicking sets the value to the 1-based index

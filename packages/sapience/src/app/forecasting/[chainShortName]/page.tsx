@@ -1,12 +1,19 @@
 'use client';
 
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@foil/ui/components/ui/dialog';
-import { ChevronRight } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@foil/ui/components/ui/dropdown-menu';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -80,6 +87,7 @@ const ForecastingDetailPage = () => {
   const router = useRouter();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
+  const [selectedView, setSelectedView] = useState<string>('Market');
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
@@ -168,7 +176,7 @@ const ForecastingDetailPage = () => {
       <div className="container mx-auto max-w-5xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3">
           {displayQuestion && (
-            <h1 className="text-4xl font-normal mb-8 leading-tight">
+            <h1 className="text-2xl md:text-4xl font-normal mb-8 leading-tight">
               {displayQuestion}
             </h1>
           )}
@@ -176,21 +184,59 @@ const ForecastingDetailPage = () => {
 
         {/* Main content layout: 2x2 grid on md+, single column stack on mobile */}
         <div className="flex flex-col gap-8 px-4 md:px-3">
-          {/* Row 1: Chart + Form */}
+          {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col md:flex-row gap-12">
-            {/* Chart (Left Column) */}
-            <MarketGroupChart
-              chainShortName={chainShortName}
-              marketAddress={marketAddress}
-              marketIds={activeMarkets.map((market) => Number(market.marketId))}
-              market={marketData}
-              minTimestamp={minTimestamp}
-              optionNames={marketData?.optionNames}
-            />
+            {/* Left Column: Chart or List */}
+            <div className="w-full md:flex-1">
+              {/* Conditionally render Chart or List based on selectedView */}
+              {selectedView === 'Market' && (
+                <MarketGroupChart
+                  chainShortName={chainShortName}
+                  marketAddress={marketAddress}
+                  marketIds={activeMarkets.map((market) =>
+                    Number(market.marketId)
+                  )}
+                  market={marketData}
+                  minTimestamp={minTimestamp}
+                  optionNames={marketData?.optionNames}
+                />
+              )}
+              {selectedView === 'Predictions' && (
+                <PredictionsList
+                  marketAddress={marketAddress}
+                  optionNames={marketData?.optionNames}
+                />
+              )}
+              <div className="py-6">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-1"
+                    >
+                      {selectedView}
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      onSelect={() => setSelectedView('Market')}
+                    >
+                      Market
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => setSelectedView('Predictions')}
+                    >
+                      Predictions
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
 
             {/* Form (Right Column) */}
-            <div className="w-full md:w-[340px] md:pb-8">
-              <div className="bg-card p-6 rounded-lg shadow-sm border h-full">
+            <div className="w-full md:w-[340px] mt-8 md:mt-0">
+              <div className="bg-card p-6 rounded-lg shadow-sm border">
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
                 <PredictionForm
                   marketData={marketData}
@@ -203,52 +249,43 @@ const ForecastingDetailPage = () => {
             </div>
           </div>
 
-          {/* Row 2: Predictions List + Advanced View */}
-          <div className="flex flex-col md:flex-row gap-12">
-            {/* Predictions List (Left Column) */}
-            <div className="w-full md:flex-1">
-              <PredictionsList
-                marketAddress={marketAddress}
-                optionNames={marketData?.optionNames}
-              />
-            </div>
+          {/* Moved ADVANCED VIEW button here, now outside the flex rows */}
+          <div className="w-full flex justify-end items-start px-4 md:px-3 mt-4 md:mt-0 md:w-[340px] md:ml-auto">
+            {' '}
+            {/* Adjust positioning relative to the form column */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                if (!activeMarkets || activeMarkets.length === 0) return; // Guard clause using activeMarkets
 
-            {/* Advanced View (Right Column) */}
-            <div className="w-full md:w-[340px] flex justify-end items-start md:pb-0">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (!activeMarkets || activeMarkets.length === 0) return; // Guard clause using activeMarkets
+                const numberOfActiveMarkets = activeMarkets.length; // Use activeMarkets length
+                const currentPath = window.location.pathname;
 
-                  const numberOfActiveMarkets = activeMarkets.length; // Use activeMarkets length
-                  const currentPath = window.location.pathname;
-
-                  if (numberOfActiveMarkets === 1) {
-                    // Navigate to the single active epoch page if not already there
-                    const { marketId } = activeMarkets[0]; // Use the first active market
-                    if (!currentPath.endsWith(`/${marketId}`)) {
-                      router.push(`${currentPath}/${marketId}`);
-                    }
-                  } else if (numberOfActiveMarkets > 1) {
-                    // Open selector if there are multiple active epochs
-                    setShowMarketSelector(true);
+                if (numberOfActiveMarkets === 1) {
+                  // Navigate to the single active epoch page if not already there
+                  const { marketId } = activeMarkets[0]; // Use the first active market
+                  if (!currentPath.endsWith(`/${marketId}`)) {
+                    router.push(`${currentPath}/${marketId}`);
                   }
-                  // If 0 active epochs, the button is disabled, so onClick won't trigger.
-                }}
-                disabled={
-                  isLoadingMarket ||
-                  !marketData ||
-                  marketData.placeholder ||
-                  !activeMarkets || // Check activeMarkets existence
-                  activeMarkets.length === 0 // Disable if no active markets
+                } else if (numberOfActiveMarkets > 1) {
+                  // Open selector if there are multiple active epochs
+                  setShowMarketSelector(true);
                 }
-                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ADVANCED VIEW
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
+                // If 0 active epochs, the button is disabled, so onClick won't trigger.
+              }}
+              disabled={
+                isLoadingMarket ||
+                !marketData ||
+                marketData.placeholder ||
+                !activeMarkets || // Check activeMarkets existence
+                activeMarkets.length === 0 // Disable if no active markets
+              }
+              className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ADVANCED VIEW
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </div>

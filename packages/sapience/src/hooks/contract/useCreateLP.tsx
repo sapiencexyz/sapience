@@ -155,7 +155,8 @@ export function useCreateLP({
 
   // Function to actually create the liquidity position
   const performCreateLP = async (): Promise<void> => {
-    if (!enabled || !marketAddress || !amount0 || !amount1) {
+    if (!enabled || !marketAddress || (!amount0 && !amount1)) {
+      setProcessingTx(false);
       throw new Error(
         'Missing required parameters for creating liquidity position'
       );

@@ -1,5 +1,10 @@
 import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@foil/ui/components/ui/alert';
 import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
@@ -55,6 +60,8 @@ export interface TradeFormProps {
   isConnected?: boolean;
   onConnectWallet?: () => void;
   onSuccess?: (txHash: `0x${string}`) => void;
+  permitData?: { permitted?: boolean } | null | undefined;
+  isPermitLoadingPermit?: boolean;
 }
 
 export function CreateTradeForm({
@@ -62,6 +69,8 @@ export function CreateTradeForm({
   isConnected = false,
   onConnectWallet,
   onSuccess,
+  permitData,
+  isPermitLoadingPermit = false,
 }: TradeFormProps) {
   const { toast } = useToast();
   const { baseTokenName, marketContractData, quoteTokenName } = useForecast();
@@ -266,18 +275,30 @@ export function CreateTradeForm({
       return;
     }
 
-    await createTrade();
+    if (createTrade && typeof createTrade === 'function') {
+      await createTrade();
+    } else {
+      console.error('createTrade function is not available');
+      toast({
+        title: 'Error',
+        description: 'Unable to initiate trade creation.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const getButtonState = () => {
     if (!isConnected) {
       return { text: 'Connect Wallet', loading: false };
     }
-    if (isSwitchingChain) {
-      return { text: 'Switching Network...', loading: true };
+    if (isPermitLoadingPermit) {
+      return { text: 'Checking permissions...', loading: true };
     }
-    if (quoteLoading && sizeBigInt > BigInt(0)) {
-      return { text: 'Generating Quote...', loading: true };
+    if (permitData?.permitted === false) {
+      return { text: 'Action Unavailable', loading: false };
+    }
+    if (isChainMismatch) {
+      return { text: 'Switch Network', loading: isSwitchingChain };
     }
     if (isApproving) {
       return { text: `Approving ${collateralAssetTicker}...`, loading: true };
@@ -285,27 +306,34 @@ export function CreateTradeForm({
     if (isCreatingTrade) {
       return { text: 'Opening Position...', loading: true };
     }
-    if (needsApproval && estimatedCollateralBI > BigInt(0)) {
-      return { text: `Approve & Open ${direction}`, loading: false };
+    if (needsApproval) {
+      return {
+        text: `Approve & Open ${baseTokenName} Position`,
+        loading: false,
+      };
     }
-    return { text: `Open ${direction}`, loading: false };
+    return { text: `Open ${baseTokenName} Position`, loading: false };
   };
 
   const calculateIsSubmitDisabled = () => {
-    return (
+    return !!(
       !isConnected ||
+      isPermitLoadingPermit ||
+      permitData?.permitted === false ||
       isSwitchingChain ||
-      (quoteLoading && sizeBigInt > BigInt(0)) ||
-      isCreatingTrade ||
       isApproving ||
-      sizeBigInt === BigInt(0) ||
+      isCreatingTrade ||
+      quoteLoading ||
+      !sizeBigInt ||
+      sizeBigInt <= BigInt(0) ||
       !formState.isValid ||
-      (!isChainMismatch && sizeBigInt > BigInt(0) && !!quoteError)
+      isTradeError ||
+      quoteError
     );
   };
 
+  const isSubmitDisabled = calculateIsSubmitDisabled();
   const buttonState = getButtonState();
-  const isSubmitButtonDisabled = calculateIsSubmitDisabled();
 
   const handleDirectionChange = (value: string) => {
     setValue('direction', value as 'Long' | 'Short', { shouldValidate: true });
@@ -453,39 +481,53 @@ export function CreateTradeForm({
             )}
           </AnimatePresence>
 
-          <div className="mt-0">
-            {isConnected ? (
-              <Button
-                type="submit"
-                className="w-full"
-                size="lg"
-                disabled={isSubmitButtonDisabled}
+          <div className="mt-6 space-y-2">
+            {!isPermitLoadingPermit && permitData?.permitted === false && (
+              <Alert
+                variant="destructive"
+                className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
               >
-                {buttonState.loading && (
-                  <LottieLoader className="invert" width={20} height={20} />
-                )}
-                {buttonState.text}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                className="w-full"
-                size="lg"
-                onClick={onConnectWallet}
-              >
-                Connect Wallet
-              </Button>
+                <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
+                <AlertDescription>
+                  You cannot trade using this app.
+                </AlertDescription>
+              </Alert>
             )}
-            {isConnected &&
-              !isChainMismatch &&
-              quoteError &&
-              sizeBigInt > BigInt(0) && (
-                <p className="text-red-500 text-sm text-center mt-2 font-medium">
-                  <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
-                  Insufficient liquidity or error fetching quote. Try a smaller
-                  size.
-                </p>
+
+            <div className="mt-0">
+              {isConnected ? (
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={isSubmitDisabled}
+                >
+                  {buttonState.loading && (
+                    <LottieLoader className="invert" width={20} height={20} />
+                  )}
+                  {buttonState.text}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="w-full"
+                  size="lg"
+                  onClick={onConnectWallet}
+                >
+                  Connect Wallet
+                </Button>
               )}
+              {isConnected &&
+                !isChainMismatch &&
+                quoteError &&
+                sizeBigInt > BigInt(0) && (
+                  <p className="text-red-500 text-sm text-center mt-2 font-medium">
+                    <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
+                    Insufficient liquidity or error fetching quote. Try a
+                    smaller size.
+                  </p>
+                )}
+            </div>
           </div>
         </form>
       </Form>

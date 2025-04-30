@@ -138,7 +138,7 @@ const ForecastContent = () => {
             )}
           {/* Display Main (Epoch/Market) Question */}
           {displayQuestion && (
-            <h1 className="text-4xl font-normal mb-8 leading-tight">
+            <h1 className="text-2xl md:text-4xl font-normal mb-8 leading-tight">
               {displayQuestion}
             </h1>
           )}
