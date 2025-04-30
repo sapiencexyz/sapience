@@ -7,6 +7,7 @@ interface UseSubmitWagerProps {
   externalHandleSubmit: (
     event: React.FormEvent<HTMLFormElement>
   ) => Promise<void> | void;
+  quoteData: any;
 }
 
 export function useSubmitWager({ externalHandleSubmit }: UseSubmitWagerProps) {
@@ -19,14 +20,16 @@ export function useSubmitWager({ externalHandleSubmit }: UseSubmitWagerProps) {
 
       try {
         // Await the external handler
-        await externalHandleSubmit(event); // Pass the event
+        // await externalHandleSubmit(event); // Pass the event
 
-        // Show toast on success
-        toast({
-          title: 'Wager Submitted',
-          description: 'Your position will appear on your profile shortly.',
-          duration: 5000,
-        });
+        console.log('quoteData', quoteData);
+
+        // // Show toast on success
+        // toast({
+        //   title: 'Wager Submitted',
+        //   description: 'Your position will appear on your profile shortly.',
+        //   duration: 5000,
+        // });
 
         // NOTE: No explicit cleanup needed for timeout here as it runs once
         // If the component could unmount before timeout, cleanup would be needed.

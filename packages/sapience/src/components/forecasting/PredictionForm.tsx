@@ -629,7 +629,8 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     resetAttestationStatus,
   } = useSubmitPrediction({ marketData, submissionValue, selectedMarketId });
 
-  const { submitWager } = useSubmitWager({ externalHandleSubmit });
+  // 5. Wager Submission Hook
+  const { submitWager } = useSubmitWager({ externalHandleSubmit, quoteData });
 
   useEffect(() => {
     if (!displayMarketId || !marketData) return;
