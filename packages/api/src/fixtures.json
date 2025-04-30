@@ -369,6 +369,7 @@
         "120001 to 160000",
         "> 160001"
       ],
+      "chainId": 8453,
       "address": "0xcf5c159f26011d2bfe0479d9f3f12384c607b79e",
       "category": "economy-finance",
       "baseTokenName": "Yes",
