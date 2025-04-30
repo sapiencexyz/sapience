@@ -1,0 +1,49 @@
+name="foil"
+version="1.0.5"
+preset="factory"
+
+[var.settings]
+owner="0x66aB20e98fcACfadB298C0741dFddA92568B5826"
+depends = []
+
+[deploy.ConfigurationModule]
+artifact="ConfigurationModule"
+args=["<%= settings.owner %>"]
+
+[deploy.LiquidityModule]
+artifact="LiquidityModule"
+
+[deploy.UMASettlementModule]
+artifact="UMASettlementModule"
+
+[deploy.TradeModule]
+artifact="TradeModule"
+
+[deploy.NftModule]
+artifact="NftModule"
+
+[deploy.ViewsModule]
+artifact="ViewsModule"
+
+[deploy.ERC165Module]
+artifact="ERC165Module"
+
+[deploy.SettlementModule]
+artifact="SettlementModule"
+
+[router.Foil]
+contracts=[
+  "ConfigurationModule",
+  "LiquidityModule",
+  "UMASettlementModule",
+  "TradeModule",
+  "NftModule",
+  "ViewsModule",
+  "ERC165Module",
+  "SettlementModule"
+]
+highlight=true
+
+[deploy.MarketGroupFactory]
+artifact="MarketGroupFactory"
+highlight=true
