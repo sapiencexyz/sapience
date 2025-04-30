@@ -260,7 +260,7 @@ interface IFoilPositionEvents {
      * @param positionBorrowedVgas The amount of borrowed vGAS in the position after settlement
      * @param deltaCollateral The change in collateral after settlement
      * @param epochId The ID of the epoch in which the position was settled
-     * @param sender The address of the sender who settled the position
+     * @param positionOwner The address of the owner of the position
      */
     event PositionSettled(
         uint256 positionId,
@@ -275,6 +275,6 @@ interface IFoilPositionEvents {
         int256 deltaCollateral,
         // Epoch ID and sender
         uint256 epochId,
-        address sender
+        address positionOwner
     );
 }
