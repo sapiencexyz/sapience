@@ -52,7 +52,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
 
   if (isLoading) {
     return (
-      <div className="w-full md:flex-1 h-[400px] flex items-center justify-center">
+      <div className="w-full md:flex-1 h-full flex items-center justify-center">
         <LottieLoader width={32} height={32} />
       </div>
     );
@@ -60,7 +60,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
 
   if (isError) {
     return (
-      <div className="w-full md:flex-1 h-[400px] flex items-center justify-center text-destructive">
+      <div className="w-full md:flex-1 h-full flex items-center justify-center text-destructive">
         Error loading chart data: {error?.message || 'Unknown error'}
       </div>
     );
@@ -75,8 +75,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   );
   if (!hasMarketData) {
     return (
-      <div className="w-full md:flex-1 h-[400px] flex items-center justify-center text-muted-foreground">
-        No data available
+      <div className="w-full md:flex-1 h-full flex items-center justify-center text-muted-foreground border border-muted rounded-md bg-background/50">
+        No market data available
       </div>
     );
   }
