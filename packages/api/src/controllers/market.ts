@@ -202,7 +202,6 @@ export const indexMarketEvents = async (market: MarketGroup) => {
         logData
       );
     }
-    console.log('settledPositions wowzer', settledPositions);
   };
 
   console.log(
