@@ -6,6 +6,7 @@ import { useAccount } from 'wagmi';
 
 import { useTokenBalance } from '~/hooks/contract';
 import { useForecast } from '~/lib/context/ForecastProvider';
+import { useSapience } from '~/lib/context/SapienceProvider';
 
 import { CreateLiquidityForm, ModifyLiquidityForm } from './forms';
 
@@ -19,6 +20,9 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   const { isConnected } = useAccount();
   const { connectOrCreateWallet } = useConnectOrCreateWallet();
   const [modifyMode, setModifyMode] = useState<'add' | 'remove'>('add');
+
+  // Fetch permit data using useSapience hook
+  const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
 
   // Get data from the forecast context
   const {
@@ -97,6 +101,8 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
             onSuccess={handleSuccess}
             positionId={positionId as string}
             mode={modifyMode}
+            permitData={permitData}
+            isPermitLoadingPermit={isPermitLoadingPermit}
           />
         </div>
       ) : (
@@ -104,6 +110,8 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
           marketDetails={marketDetails}
           walletData={walletData}
           onSuccess={handleSuccess}
+          permitData={permitData}
+          isPermitLoadingPermit={isPermitLoadingPermit}
         />
       )}
     </div>

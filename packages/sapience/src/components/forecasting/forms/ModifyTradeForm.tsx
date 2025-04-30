@@ -1,5 +1,10 @@
 import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@foil/ui/components/ui/alert';
 import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
@@ -53,6 +58,12 @@ interface ModifyTradeFormProps {
   onConnectWallet: () => void;
   onSuccess: (txHash: `0x${string}`) => void;
   positionId: string; // Keep positionId
+  permitData: PermitDataType | null | undefined; // Add permitData prop
+  isPermitLoadingPermit: boolean; // Add isPermitLoadingPermit prop
+}
+
+interface PermitDataType {
+  permitted?: boolean;
 }
 
 // --- Helper Functions ---
@@ -80,6 +91,8 @@ interface UpdateButtonStateParams extends ButtonStateBaseParams {
   targetSizeForHook: bigint;
   originalPositionSizeInContractUnit: bigint;
   formState: FormState<any>; // Use appropriate form state type
+  permitData: PermitDataType | null | undefined; // Add permitData
+  isPermitLoadingPermit: boolean; // Add isPermitLoadingPermit
 }
 
 function determineUpdateButtonState({
@@ -96,6 +109,8 @@ function determineUpdateButtonState({
   originalPositionSizeInContractUnit,
   formState,
   isError,
+  permitData, // Destructure
+  isPermitLoadingPermit, // Destructure
 }: UpdateButtonStateParams): ButtonState {
   // Determine action based on target size
   const isClosing = targetSizeForHook === BigInt(0);
@@ -103,11 +118,16 @@ function determineUpdateButtonState({
 
   if (!isConnected)
     return { text: 'Connect Wallet', loading: false, disabled: true };
+  if (isPermitLoadingPermit)
+    // Add check for permit loading
+    return { text: 'Checking permissions...', loading: true, disabled: true };
+  if (permitData?.permitted === false)
+    // Add check for permit denied
+    return { text: 'Action Unavailable', loading: false, disabled: true };
   if (!positionData)
     return { text: 'Loading Position...', loading: true, disabled: true };
   // Use combined isLoading, includes quoting (but not specific states)
-  if (isLoading && !isApproving && !isModifying && !isConfirming)
-    return { text: 'Generating Quote...', loading: true, disabled: true };
+  // Reorder loading checks to reduce complexity
   if (isApproving)
     return {
       text: `Approving ${collateralAssetTicker ?? ''}...`,
@@ -120,6 +140,10 @@ function determineUpdateButtonState({
       loading: true,
       disabled: true,
     };
+  // If not approving/modifying/confirming, check the generic isLoading for quote generation
+  if (isLoading)
+    return { text: 'Generating Quote...', loading: true, disabled: true };
+
   if (needsApproval)
     return {
       text: `Approve & ${actionText} ${NOUN_POSITION}`,
@@ -133,7 +157,9 @@ function determineUpdateButtonState({
       targetSizeForHook === originalPositionSizeInContractUnit) ||
     !formState.isValid || // Check form validity
     isError ||
-    !modifyTrade;
+    !modifyTrade ||
+    isPermitLoadingPermit || // Add permit loading check
+    !permitData?.permitted; // Add permit denied check
 
   return { text: buttonText, loading: false, disabled: isDisabled };
 }
@@ -244,6 +270,8 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   onConnectWallet,
   onSuccess,
   positionId,
+  permitData, // Destructure props
+  isPermitLoadingPermit, // Destructure props
 }) => {
   const { toast } = useToast();
   const { baseTokenName, quoteTokenName, marketContractData } = useForecast(); // Get marketContractData
@@ -491,6 +519,8 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         originalPositionSizeInContractUnit,
         formState,
         isError,
+        permitData, // Pass permitData
+        isPermitLoadingPermit, // Pass isPermitLoadingPermit
       }),
     [
       isConnected,
@@ -506,6 +536,8 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
       originalPositionSizeInContractUnit,
       formState,
       isError,
+      permitData, // Add dependency
+      isPermitLoadingPermit, // Add dependency
     ]
   );
 
@@ -662,6 +694,19 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
         {/* Slippage Tolerance */}
         <SlippageTolerance />
+
+        {/* Permit Alert */}
+        {!isPermitLoadingPermit && permitData?.permitted === false && (
+          <Alert
+            variant="destructive"
+            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
+          >
+            <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
+            <AlertDescription>
+              You cannot trade using this app.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Action Buttons */}
         <div className="mt-6 space-y-2">
