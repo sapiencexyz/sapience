@@ -402,10 +402,10 @@ export const createOrUpdateMarketFromContract = async (
     (marketReadResult as MarketReadResult)[0] as string
   ).toLowerCase();
   updatedMarket.collateralAsset = (marketReadResult as MarketReadResult)[1];
-  
+
   // Update collateral data
   await updateCollateralData(client, updatedMarket);
-  
+
   const marketParamsRaw = (marketReadResult as MarketReadResult)[4];
   const marketParams: MarketParams = {
     ...marketParamsRaw,
