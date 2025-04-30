@@ -14,8 +14,8 @@ interface QuoteResult {
 interface CreateLiquidityQuoterProps {
   marketAddress?: `0x${string}`;
   collateralAmount: string;
-  lowTick: number;
-  highTick: number;
+  lowTick: number | null;
+  highTick: number | null;
   enabled?: boolean;
   chainId?: number;
   marketAbi: any;
@@ -57,11 +57,14 @@ export function useCreateLiquidityQuoter({
   // Convert price inputs to ticks and then to sqrt ratios
   const { sqrtPriceAX96, sqrtPriceBX96 } = useMemo(() => {
     // Use TickMath to get the exact sqrtRatio values that Uniswap uses
+    const safetyLowTick = lowTick === null ? 0 : lowTick;
+    const safetyHighTick = highTick === null ? 0 : highTick;
+
     const lowSqrtRatio = BigInt(
-      TickMath.getSqrtRatioAtTick(lowTick).toString()
+      TickMath.getSqrtRatioAtTick(safetyLowTick).toString()
     );
     const highSqrtRatio = BigInt(
-      TickMath.getSqrtRatioAtTick(highTick).toString()
+      TickMath.getSqrtRatioAtTick(safetyHighTick).toString()
     );
 
     return {

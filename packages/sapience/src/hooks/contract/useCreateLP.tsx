@@ -16,8 +16,8 @@ export interface CreateLPParams {
   chainId?: number;
   marketId: bigint;
   collateralAmount: string;
-  lowPriceTick: number;
-  highPriceTick: number;
+  lowPriceTick: number | null;
+  highPriceTick: number | null;
   amount0: bigint;
   amount1: bigint;
   slippagePercent: number;
@@ -179,6 +179,10 @@ export function useCreateLP({
         adjustedQuoteToken,
         slippagePercent
       );
+
+      if (lowPriceTick === null || highPriceTick === null) {
+        throw new Error('Invalid tick values');
+      }
 
       // Prepare the parameters for the createLiquidityPosition function
       const liquidityParams = {

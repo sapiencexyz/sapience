@@ -42,7 +42,7 @@ export function useLiquidityForm({
       highPriceInput: initialHighPrice,
       slippage: '0.5',
     },
-    mode: 'onSubmit', // Only validate on submit
+    mode: 'onSubmit', // Validate on submit
   });
 
   // Register fields with validation
@@ -97,7 +97,12 @@ export function useLiquidityForm({
           return;
         }
 
-        if (lowPriceValue >= highPriceValue) {
+        // Convert to ticks
+        const lowTick = priceToTick(lowPriceValue, tickSpacing);
+        const highTick = priceToTick(highPriceValue, tickSpacing);
+
+        // Validate tick values
+        if (lowTick >= highTick) {
           form.setError('lowPriceInput', {
             type: 'validate',
             message: 'Low price must be less than high price',
@@ -105,9 +110,23 @@ export function useLiquidityForm({
           return;
         }
 
-        // Convert to ticks
-        const lowTick = priceToTick(lowPriceValue, tickSpacing);
-        const highTick = priceToTick(highPriceValue, tickSpacing);
+        if (lowTick < lowPriceTick) {
+          form.setError('lowPriceInput', {
+            type: 'validate',
+            message:
+              'Low price tick must be greater than or equal to market minimum',
+          });
+          return;
+        }
+
+        if (highTick > highPriceTick) {
+          form.setError('highPriceInput', {
+            type: 'validate',
+            message:
+              'High price tick must be less than or equal to market maximum',
+          });
+          return;
+        }
 
         // Add calculated ticks to form data
         const submissionData = {
