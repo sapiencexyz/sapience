@@ -25,7 +25,7 @@ import {
 import { MarketPrice } from '../models/MarketPrice';
 import { getBlockByTimestamp, getProviderForChain } from '../utils';
 import { FindOptionsWhere } from 'typeorm';
-import Foil from '@foil/protocol/deployments/Foil.json';
+import Foil from '@foil/protocol/deployments/FoilLegacy.json';
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.

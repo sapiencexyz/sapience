@@ -42,7 +42,7 @@ import {
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
-import Foil from '@foil/protocol/deployments/Foil.json';
+import Foil from '@foil/protocol/deployments/FoilLegacy.json';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;

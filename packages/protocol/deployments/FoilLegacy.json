@@ -78,6 +78,17 @@
       ]
     },
     {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_marketInitializer",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
       "type": "function",
       "name": "acceptOwnership",
       "inputs": [],
@@ -117,11 +128,6 @@
           "name": "salt",
           "type": "uint256",
           "internalType": "uint256"
-        },
-        {
-          "name": "claimStatement",
-          "type": "bytes",
-          "internalType": "bytes"
         }
       ],
       "outputs": [
@@ -206,6 +212,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -300,6 +311,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -334,12 +350,6 @@
           "type": "uint160",
           "indexed": false,
           "internalType": "uint160"
-        },
-        {
-          "name": "claimStatement",
-          "type": "bytes",
-          "indexed": false,
-          "internalType": "bytes"
         }
       ],
       "anonymous": false
@@ -436,6 +446,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -491,6 +506,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -2019,11 +2039,6 @@
           "name": "fillPrice",
           "type": "uint256",
           "internalType": "uint256"
-        },
-        {
-          "name": "price18DigitsAfter",
-          "type": "uint256",
-          "internalType": "uint256"
         }
       ],
       "stateMutability": "nonpayable"
@@ -2056,11 +2071,6 @@
         },
         {
           "name": "fillPrice",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "price18DigitsAfter",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -2358,6 +2368,11 @@
           "internalType": "uint256"
         }
       ]
+    },
+    {
+      "type": "constructor",
+      "inputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -2918,6 +2933,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -3045,6 +3065,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -3120,6 +3145,11 @@
               "name": "optimisticOracleV3",
               "type": "address",
               "internalType": "address"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         }
@@ -3457,5 +3487,14 @@
         }
       ]
     }
-  ]
+  ],
+  "deployedOn": "router.Foil",
+  "deployTxnHash": "0x28fe60f735db1ec8f5c307e20acbddf0f17991819c36e43991dcede5d5a87fb5",
+  "deployTxnBlockNumber": "28063226",
+  "deployTimestamp": "1742915799",
+  "contractName": "Foil",
+  "sourceName": "Foil.sol",
+  "highlight": true,
+  "gasUsed": 3009392,
+  "gasCost": "2459385"
 }
