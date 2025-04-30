@@ -265,8 +265,7 @@ export function CreateLiquidityForm({
     permitData?.permitted === false ||
     quoteLoading ||
     isApproving ||
-    isCreatingLP ||
-    needsApproval;
+    isCreatingLP;
 
   return (
     <Form {...form}>
