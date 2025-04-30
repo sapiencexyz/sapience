@@ -19,14 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@foil/ui/components/ui/select';
-import { Separator } from '@foil/ui/components/ui/separator';
 import {
   AlertCircle,
   Terminal,
   CheckCircle,
   Info,
   Loader2,
-  X,
 } from 'lucide-react';
 import type React from 'react';
 import { useState, useEffect } from 'react';
