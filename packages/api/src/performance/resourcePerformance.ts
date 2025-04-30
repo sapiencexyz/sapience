@@ -190,17 +190,9 @@ export class ResourcePerformance {
       throw new Error('Resource prices are already being processed');
     }
 
-    console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialResourceTimestamp})`
-    );
-
     this.runtime.processingResourceItems = true;
 
     await this.pullMarketsAndEpochs();
-
-    console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
-    );
 
     // Process resource prices in batches
     let resourceSkip = 0;
@@ -302,22 +294,10 @@ export class ResourcePerformance {
     this.lastResourceTimestampProcessed = lastResourceTimestamp;
     this.lastMarketTimestampProcessed = lastMarketTimestamp;
 
-    console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.process`
-    );
-
     // Save the updated storage to file
-    console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.persistStorage`
-    );
-    await this.persistStorage();
-    console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.persistStorage`
-    );
 
-    console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.total (${initialResourceTimestamp})`
-    );
+    await this.persistStorage();
+
     this.runtime.processingResourceItems = false;
   }
 
@@ -338,10 +318,6 @@ export class ResourcePerformance {
       };
     }
 
-    console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.resourcePrices`
-    );
-
     const batch = await resourcePriceRepository.find({
       where: whereClause,
       order: {
@@ -350,10 +326,6 @@ export class ResourcePerformance {
       take: batchSize,
       skip: skip,
     });
-
-    console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.resourcePrices`
-    );
 
     return {
       prices: batch,
@@ -366,10 +338,6 @@ export class ResourcePerformance {
     batchSize: number = ResourcePerformance.BATCH_SIZE,
     skip: number = 0
   ): Promise<{ prices: ReducedMarketPrice[]; hasMore: boolean }> {
-    console.time(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
-    );
-
     const batch = await marketPriceRepository
       .createQueryBuilder('marketPrice')
       .leftJoinAndSelect('marketPrice.transaction', 'transaction')
@@ -393,10 +361,6 @@ export class ResourcePerformance {
       epoch: item.transaction.position.market.id,
     }));
 
-    console.timeEnd(
-      ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketPrices`
-    );
-
     return {
       prices: reducedBatch,
       hasMore: batch.length === batchSize,
@@ -411,25 +375,16 @@ export class ResourcePerformance {
       this.marketGroups.length === 0 ||
       !onlyIfMissing
     ) {
-      console.time(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketGroups`
-      );
       this.marketGroups = await marketGroupRepository.find({
         where: {
           resource: { id: this.resource.id },
         },
       });
-      console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.marketGroups`
-      );
     }
 
     // Find epochs if not already loaded
     // Notice: doing it everytime since we don't know if a new epoch was added
     if (!this.markets || this.markets.length === 0 || !onlyIfMissing) {
-      console.time(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
-      );
       this.markets = await marketRepository.find({
         where: {
           marketGroup: { resource: { id: this.resource.id } },
@@ -439,9 +394,6 @@ export class ResourcePerformance {
         },
         relations: ['marketGroup'],
       });
-      console.timeEnd(
-        ` ResourcePerformance.processResourceData.${this.resource.slug}.find.markets`
-      );
     }
   }
 
@@ -521,7 +473,6 @@ export class ResourcePerformance {
 
   private async persistStorage() {
     console.log('LLL ResourcePerformance.persistStorage');
-    console.time('LLL ResourcePerformance.persistStorage');
 
     // Persist
     await persist(
@@ -535,7 +486,6 @@ export class ResourcePerformance {
       this.trailingAvgTime,
       this.markets
     );
-    console.timeEnd('LLL ResourcePerformance.persistStorage');
   }
 
   private async restorePersistedStorage(): Promise<
