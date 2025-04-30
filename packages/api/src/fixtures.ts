@@ -1,19 +1,21 @@
-import { mainnet, base, arbitrum } from 'viem/chains';
-import evmIndexer from './resourcePriceFunctions/evmIndexer';
-import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
-import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
-import btcIndexer from './resourcePriceFunctions/btcIndexer';
-import { WeatherIndexer } from './resourcePriceFunctions/weatherIndexer';
+import { arbitrum, base, mainnet } from 'viem/chains';
+import {
+  categoryRepository,
+  marketGroupRepository,
+  marketRepository,
+  resourceRepository,
+} from './db';
 import fixturesData from './fixtures.json';
-import { Resource } from './models/Resource';
-import { resourceRepository } from './db';
-import { MarketGroup } from './models/MarketGroup';
-import { marketGroupRepository } from './db';
-import { Market } from './models/Market';
-import { marketRepository } from './db';
-import { Category } from './models/Category';
-import { categoryRepository } from './db';
 import { IResourcePriceIndexer } from './interfaces';
+import { Category } from './models/Category';
+import { Market } from './models/Market';
+import { MarketGroup } from './models/MarketGroup';
+import { Resource } from './models/Resource';
+import btcIndexer from './resourcePriceFunctions/btcIndexer';
+import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
+import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
+import evmIndexer from './resourcePriceFunctions/evmIndexer';
+import { WeatherIndexer } from './resourcePriceFunctions/weatherIndexer';
 
 export const TIME_INTERVALS = {
   intervals: {
@@ -197,7 +199,7 @@ export const initializeFixtures = async (): Promise<void> => {
       // Create new market
       marketGroup = new MarketGroup();
       marketGroup.address = marketData.address.toLowerCase();
-      marketGroup.chainId = marketData.chainId;
+      marketGroup.chainId = marketData.chainId || 0;
       marketGroup.isYin = marketData.isYin || false;
       marketGroup.isCumulative = marketData.isCumulative || false;
       marketGroup.category = category;
