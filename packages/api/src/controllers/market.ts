@@ -90,6 +90,7 @@ interface MarketInfo {
   isCumulative?: boolean;
 }
 
+const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
   const existingMarket = await marketGroupRepository.findOne({
@@ -201,6 +202,7 @@ export const indexMarketEvents = async (market: MarketGroup) => {
         logData
       );
     }
+    console.log('settledPositions wowzer', settledPositions);
   };
 
   console.log(
@@ -694,10 +696,15 @@ export const upsertEntitiesFromEvent = async (
   const existingTransaction = await transactionRepository.findOne({
     where: { event: { id: event.id } },
   });
-
   if (existingTransaction) {
-    console.log(`Event ${event.id} has already been processed, skipping`);
-    return;
+    if (
+      event.logData.eventName != EventType.PositionSettled &&
+      event.logData.eventName != EventType.LiquidityPositionDecreased &&
+      event.logData.eventName != EventType.LiquidityPositionClosed &&
+      event.logData.eventName != EventType.LiquidityPositionIncreased
+    ) {
+      return;
+    }
   }
 
   let skipTransaction = false;
@@ -799,6 +806,7 @@ export const upsertEntitiesFromEvent = async (
       break;
     case EventType.PositionSettled:
       console.log('Handling Position Settled from event: ', event);
+      settledPositions.push(event.logData.args.positionId);
       await Promise.all([
         handlePositionSettledEvent(event),
         updateTransactionFromPositionSettledEvent(
@@ -851,6 +859,7 @@ export const upsertEntitiesFromEvent = async (
   if (!skipTransaction) {
     try {
       // Fill transaction with collateral transfer and market price
+
       await insertCollateralTransfer(newTransaction);
       await insertMarketPrice(newTransaction);
 
