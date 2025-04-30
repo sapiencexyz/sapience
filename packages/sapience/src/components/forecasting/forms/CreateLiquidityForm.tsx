@@ -2,6 +2,11 @@
 
 import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@foil/ui/components/ui/alert';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Form,
@@ -43,12 +48,16 @@ export interface LiquidityFormProps {
   marketDetails: LiquidityFormMarketDetails;
   walletData: WalletData;
   onSuccess?: (txHash: `0x${string}`) => void;
+  permitData?: { permitted?: boolean } | null | undefined;
+  isPermitLoadingPermit?: boolean;
 }
 
 export function CreateLiquidityForm({
   marketDetails,
   walletData,
   onSuccess,
+  permitData,
+  isPermitLoadingPermit = false,
 }: LiquidityFormProps) {
   const { toast } = useToast();
   const { isConnected, walletBalance, onConnectWallet } = walletData;
@@ -222,44 +231,42 @@ export function CreateLiquidityForm({
     await createLP();
   };
 
-  // Determine button state and text
-  const getButtonContent = () => {
-    if (isApproving) {
-      return (
-        <>
-          <LottieLoader className="invert" width={20} height={20} />
-          Approving {collateralAssetTicker}...
-        </>
-      );
+  // Determine button state and disabled status
+  const getButtonState = () => {
+    if (!isConnected) {
+      return { text: 'Connect Wallet', loading: false };
     }
-
-    if (isCreatingLP) {
-      return (
-        <>
-          <LottieLoader className="invert" width={20} height={20} />
-          Creating Position...
-        </>
-      );
+    if (isPermitLoadingPermit) {
+      return { text: 'Checking permissions...', loading: true };
     }
-
+    if (permitData?.permitted === false) {
+      return { text: 'Action Unavailable', loading: false };
+    }
     if (quoteLoading) {
-      return 'Calculating...';
+      return { text: 'Calculating...', loading: true };
     }
-
+    if (isApproving) {
+      return { text: `Approving ${collateralAssetTicker}...`, loading: true };
+    }
+    if (isCreatingLP) {
+      return { text: 'Creating Position...', loading: true };
+    }
     if (needsApproval) {
-      return `Approve & Add Liquidity`;
+      return { text: `Approve & Add Liquidity`, loading: false };
     }
-
-    return 'Add Liquidity';
+    return { text: 'Add Liquidity', loading: false };
   };
 
-  // Determine if the submit button should be disabled
+  const buttonState = getButtonState();
+
   const isSubmitDisabled =
     !isConnected ||
+    isPermitLoadingPermit ||
+    permitData?.permitted === false ||
     quoteLoading ||
-    isCreatingLP ||
     isApproving ||
-    hasInsufficientFunds;
+    isCreatingLP ||
+    needsApproval;
 
   return (
     <Form {...form}>
@@ -362,14 +369,32 @@ export function CreateLiquidityForm({
 
         <SlippageTolerance />
 
-        <div className="mt-6">
+        {/* Permit Alert */}
+        {!isPermitLoadingPermit && permitData?.permitted === false && (
+          <Alert
+            variant="destructive"
+            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
+          >
+            <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
+            <AlertDescription>
+              You cannot provide liquidity using this app.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Action Button */}
+        <div className="mt-8">
           {isConnected ? (
             <Button
               type="submit"
               className="w-full"
+              size="lg"
               disabled={isSubmitDisabled}
             >
-              {getButtonContent()}
+              {buttonState.loading && (
+                <LottieLoader className="invert" width={20} height={20} />
+              )}
+              {buttonState.text}
             </Button>
           ) : (
             <Button type="button" className="w-full" onClick={onConnectWallet}>
