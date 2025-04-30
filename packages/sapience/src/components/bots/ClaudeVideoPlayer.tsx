@@ -6,6 +6,7 @@ export default function ClaudeVideoPlayer() {
       <video
         className="w-full h-full object-cover"
         src="/claude.mp4"
+        poster="/claude-fallback.jpg"
         autoPlay
         loop
         muted
