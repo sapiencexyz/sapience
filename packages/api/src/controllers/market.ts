@@ -697,12 +697,7 @@ export const upsertEntitiesFromEvent = async (
     where: { event: { id: event.id } },
   });
   if (existingTransaction) {
-    if (
-      event.logData.eventName != EventType.PositionSettled &&
-      event.logData.eventName != EventType.LiquidityPositionDecreased &&
-      event.logData.eventName != EventType.LiquidityPositionClosed &&
-      event.logData.eventName != EventType.LiquidityPositionIncreased
-    ) {
+    if (event.logData.eventName != EventType.PositionSettled) {
       return;
     }
   }
