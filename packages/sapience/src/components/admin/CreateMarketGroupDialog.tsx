@@ -2,17 +2,16 @@
 
 import { Button, Input, Label } from '@foil/ui';
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@foil/ui/components/ui/accordion';
-import { Separator } from '@foil/ui/components/ui/separator';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@foil/ui/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -20,12 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@foil/ui/components/ui/select';
+import { Separator } from '@foil/ui/components/ui/separator';
 import {
   AlertCircle,
   Terminal,
   CheckCircle,
   Info,
   Loader2,
+  X,
 } from 'lucide-react';
 import type React from 'react';
 import { useState, useEffect } from 'react';
@@ -38,18 +39,19 @@ import type {
 
 // Import FOCUS_AREAS
 import {
+  useAccount,
+  useChainId,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from 'wagmi';
+
+import {
   FOCUS_AREAS,
   DEFAULT_FOCUS_AREA,
 } from '../../lib/constants/focusAreas';
 
 // Use root export for Button, Input, Label
 // Use direct paths for Card, Alert, Separator as they aren't in root index.ts
-import {
-  useAccount,
-  useChainId,
-  useWriteContract,
-  useWaitForTransactionReceipt,
-} from 'wagmi';
 
 // ABI for the MarketGroupFactory contract
 const marketGroupFactoryAbi = [
@@ -178,6 +180,9 @@ const CreateMarketGroupDialog = () => {
   const [minTradeSize, setMinTradeSize] = useState<string>(
     DEFAULT_MIN_TRADE_SIZE
   );
+  // --- Add Nonce State ---
+  const [nonce, setNonce] = useState<string>('');
+  // --- End Nonce State ---
   const [marketParams, setMarketParams] = useState<MarketParamsInput>({
     feeRate: DEFAULT_FEE_RATE,
     assertionLiveness: DEFAULT_ASSERTION_LIVENESS,
@@ -227,6 +232,13 @@ const CreateMarketGroupDialog = () => {
       );
     }
   }, [currentChainId, connectedAddress]); // Need connectedAddress here too
+
+  // --- Generate Initial Nonce ---
+  useEffect(() => {
+    // Generate a large random integer string for the nonce
+    setNonce(Math.floor(Math.random() * 1e18).toString());
+  }, []); // Empty dependency array ensures this runs only once on mount
+  // --- End Nonce Generation ---
 
   // Transaction Receipt Handling
   const {
@@ -389,19 +401,19 @@ const CreateMarketGroupDialog = () => {
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Top Grid: Question, Category, Base/Quote Tokens */}
+        {/* Top Grid: Category, Base/Quote Tokens */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Question Input */}
+          {/* Market Group Question Input */}
           <div className="space-y-2">
-            <Label htmlFor="question">Question</Label>
+            <Label htmlFor="marketGroupQuestion">Market Group Question</Label>
             <Input
-              id="question"
+              id="marketGroupQuestion"
               type="text"
               value={question}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 setQuestion(e.target.value)
               }
-              placeholder="Enter the market group question"
+              placeholder="Enter the main question for the market group"
               required
             />
           </div>
@@ -409,7 +421,10 @@ const CreateMarketGroupDialog = () => {
           {/* Category Select */}
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+            >
               <SelectTrigger id="category">
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
@@ -492,7 +507,7 @@ const CreateMarketGroupDialog = () => {
               {/* Market Group Details */}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2">
                     <Label htmlFor="owner">Owner</Label>
                     <Input
                       id="owner"
@@ -506,6 +521,22 @@ const CreateMarketGroupDialog = () => {
                       inputMode="numeric"
                     />
                   </div>
+                  {/* --- Add Nonce Field --- */}
+                  <div className="space-y-2">
+                    <Label htmlFor="nonce">Nonce</Label>
+                    <Input
+                      id="nonce"
+                      type="text"
+                      value={nonce}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setNonce(e.target.value)
+                      }
+                      placeholder="Random nonce value"
+                      required
+                      inputMode="numeric"
+                    />
+                  </div>
+                  {/* --- End Nonce Field --- */}
                   <div className="space-y-2">
                     <Label htmlFor="collateralAsset">Collateral Asset</Label>
                     <Input
