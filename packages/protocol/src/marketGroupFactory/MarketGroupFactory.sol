@@ -8,16 +8,26 @@ import {IFoilStructs} from "../market/interfaces/IFoilStructs.sol";
 contract MarketGroupFactory {
     using Clones for address;
 
-    event MarketGroupInitialized(address indexed marketGroup, bytes returnData);
+    address public immutable implementation;
+
+    event MarketGroupInitialized(
+        address indexed marketGroup,
+        bytes returnData,
+        uint256 nonce
+    );
+
+    constructor(address _implementation) {
+        implementation = _implementation;
+    }
 
     function cloneAndInitializeMarketGroup(
-        address implementation,
         address owner,
         address collateralAsset,
         address[] calldata feeCollectors,
         address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.MarketParams memory marketParams
+        IFoilStructs.MarketParams memory marketParams,
+        uint256 nonce
     ) external returns (address, bytes memory) {
         IConfigurationModule marketGroup = IConfigurationModule(
             implementation.clone()
@@ -43,7 +53,7 @@ contract MarketGroupFactory {
             }
         }
 
-        emit MarketGroupInitialized(address(marketGroup), returnData);
+        emit MarketGroupInitialized(address(marketGroup), returnData, nonce);
         return (address(marketGroup), returnData);
     }
 }
