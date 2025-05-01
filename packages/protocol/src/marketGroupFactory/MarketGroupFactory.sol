@@ -36,9 +36,12 @@ contract MarketGroupFactory {
             "Only authorized owner can call this function"
         );
 
-        IConfigurationModule marketGroup = IConfigurationModule(
-            implementation.clone()
+        require(
+            owner != address(0),
+            "Owner cannot be the zero address"
         );
+
+        address marketGroup = implementation.clone();
 
         bytes memory callData = abi.encodeWithSelector(
             IConfigurationModule.initializeMarket.selector,
@@ -49,7 +52,7 @@ contract MarketGroupFactory {
             minTradeSize,
             marketParams
         );
-        (bool success, bytes memory returnData) = address(marketGroup)
+        (bool success, bytes memory returnData) = marketGroup
             .delegatecall(callData);
 
         if (!success) {
@@ -66,7 +69,7 @@ contract MarketGroupFactory {
             }
         }
 
-        emit MarketGroupInitialized(address(marketGroup), returnData, nonce);
-        return (address(marketGroup), returnData);
+        emit MarketGroupInitialized(marketGroup, returnData, nonce);
+        return (marketGroup, returnData);
     }
 }

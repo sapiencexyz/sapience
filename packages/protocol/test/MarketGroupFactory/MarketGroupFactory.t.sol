@@ -37,17 +37,6 @@ contract MarketGroupFactoryTest is Test {
     IMintableToken collateralAsset;
     IMintableToken bondCurrency;
 
-    uint160 initialSqrtPriceX96 = 250541448375047946302209916928; // 10
-    int24 minTick = 6800; // 2.0
-    int24 maxTick = 27000; // 15.0
-
-    // uint160 updatedSqrtPriceX96 = 306849353968360536420395253760; // 15
-    // uint256 initialStartTime;
-
-    // uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
-    // uint256 INITIAL_LP_BALANCE = 100_000 ether;
-    // IFoilStructs.EpochData epochData;
-
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 constant BOND_AMOUNT = 100 ether;
     address[] feeCollectors = new address[](0);
@@ -56,7 +45,6 @@ contract MarketGroupFactoryTest is Test {
     address uniswapSwapRouter;
     address uniswapQuoter;
     address optimisticOracleV3;
-
 
     function setUp() public {
         marketGroupFactory = MarketGroupFactory(
@@ -73,31 +61,31 @@ contract MarketGroupFactoryTest is Test {
         uniswapSwapRouter = vm.getAddress("Uniswap.SwapRouter");
         uniswapQuoter = vm.getAddress("Uniswap.QuoterV2");
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
-        
     }
 
-    function test_canCloneMarketGroup() public {
+    function test_canCloneMarketGroup_Only() public {
         vm.startPrank(deployer);
-        (address marketGroup, ) = marketGroupFactory.cloneAndInitializeMarketGroup(
-            safeOwner,
-            address(collateralAsset),
-            feeCollectors,
-            callbackRecipient,
-            MIN_TRADE_SIZE,
-            IFoilStructs.MarketParams({
-                feeRate: 10000,
-                assertionLiveness: 21600,
-                bondCurrency: address(bondCurrency),
-                bondAmount: BOND_AMOUNT,
-                uniswapPositionManager: uniswapPositionManager,
-                uniswapSwapRouter: uniswapSwapRouter,
-                uniswapQuoter: uniswapQuoter,
-                optimisticOracleV3: optimisticOracleV3
-            }),
-            0
-        );
+        (address marketGroup, ) = marketGroupFactory
+            .cloneAndInitializeMarketGroup(
+                safeOwner,
+                address(collateralAsset),
+                feeCollectors,
+                callbackRecipient,
+                MIN_TRADE_SIZE,
+                IFoilStructs.MarketParams({
+                    feeRate: 10000,
+                    assertionLiveness: 21600,
+                    bondCurrency: address(bondCurrency),
+                    bondAmount: BOND_AMOUNT,
+                    uniswapPositionManager: uniswapPositionManager,
+                    uniswapSwapRouter: uniswapSwapRouter,
+                    uniswapQuoter: uniswapQuoter,
+                    optimisticOracleV3: optimisticOracleV3
+                }),
+                0
+            );
         vm.stopPrank();
-        assertNotEq(marketGroup, address(0));   
+        assertNotEq(marketGroup, address(0));
         checkMarketGroupCanOperate(IFoil(marketGroup));
     }
 
@@ -152,9 +140,34 @@ contract MarketGroupFactoryTest is Test {
 
     function checkMarketGroupCanOperate(IFoil marketGroup) private {
         uint160 SQRT_PRICE_11Eth = 262770087889115504578498920448;
+        uint256 settlementPriceD18 = 10999999999999999740;
+        uint160 initialSqrtPriceX96 = 250541448375047946302209916928; // 10
+        int24 minTick = 6800; // 2.0
+        int24 maxTick = 27000; // 15.0
+
+        // Initialize the market (again)
+        vm.startPrank(deployer);
+        marketGroup.initializeMarket(
+            safeOwner,
+            address(collateralAsset),
+            feeCollectors,
+            callbackRecipient,
+            MIN_TRADE_SIZE,
+            IFoilStructs.MarketParams({
+                feeRate: 10000,
+                assertionLiveness: 21600,
+                bondCurrency: address(bondCurrency),
+                bondAmount: BOND_AMOUNT,
+                uniswapPositionManager: uniswapPositionManager,
+                uniswapSwapRouter: uniswapSwapRouter,
+                uniswapQuoter: uniswapQuoter,
+                optimisticOracleV3: optimisticOracleV3
+            })
+        );
+        vm.stopPrank();
 
         // Create a new epoch
-        vm.prank(safeOwner);
+        vm.startPrank(safeOwner);
         marketGroup.createEpoch(
             block.timestamp - 1 days,
             block.timestamp + 30 days,
@@ -164,6 +177,7 @@ contract MarketGroupFactoryTest is Test {
             1,
             "claimStatement"
         );
+        vm.stopPrank();
 
         // Get the epoch data
         (
@@ -172,8 +186,6 @@ contract MarketGroupFactoryTest is Test {
         ) = marketGroup.getLatestEpoch();
         uint256 epochId = _initialEpochData.epochId;
         uint256 endTime = _initialEpochData.endTime;
-        // uint256 minPriceD18 = _initialEpochData.minPriceD18;
-        // uint256 maxPriceD18 = _initialEpochData.maxPriceD18;
         IFoilStructs.MarketParams memory marketParams = _epochParams;
         IFoilStructs.EpochData memory epochData;
 
@@ -183,7 +195,11 @@ contract MarketGroupFactoryTest is Test {
         vm.warp(endTime + 1);
         vm.startPrank(deployer);
         vm.expectRevert("Only owner can call this function");
-        marketGroup.submitSettlementPrice(epochId, address(0), SQRT_PRICE_11Eth);
+        marketGroup.submitSettlementPrice(
+            epochId,
+            address(0),
+            SQRT_PRICE_11Eth
+        );
         vm.stopPrank();
 
         vm.startPrank(safeOwner);
@@ -202,18 +218,15 @@ contract MarketGroupFactoryTest is Test {
         assertTrue(!epochData.settled, "The epoch isn't settled");
 
         vm.startPrank(optimisticOracleV3);
-        foil.assertionResolvedCallback(assertionId, true);
+        marketGroup.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
 
         (epochData, ) = marketGroup.getLatestEpoch();
         assertTrue(epochData.settled, "The epoch is settled");
-        assertTrue(
-            epochData.settlementPriceD18 == SQRT_PRICE_11Eth,
+        assertEq(
+            epochData.settlementPriceD18,
+            settlementPriceD18,
             "The settlement price is as submitted"
         );
-
-
-        assertEq(uint256(1), uint256(1));
-
     }
 }
