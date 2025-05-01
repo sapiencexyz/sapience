@@ -29,6 +29,7 @@ async function startIndexingForMarketGroup(
 
 async function handleMarketGroupInitialized(
   eventArgs: {
+    sender: `0x${string}`;
     marketGroup: `0x${string}`;
     nonce: bigint;
   },
@@ -39,52 +40,50 @@ async function handleMarketGroupInitialized(
   console.log('MarketGroupInitialized event caught:', eventArgs);
 
   const nonce = eventArgs.nonce.toString();
+  const sender = eventArgs.sender.toLowerCase();
   const newMarketGroupAddress = eventArgs.marketGroup.toLowerCase();
 
   try {
     let marketGroupRecord = await marketGroupRepository.findOne({
-      where: { initializationNonce: nonce, chainId },
-      relations: ['marketParams'], // Fetch relations needed by startIndexingForMarketGroup
+      where: { initializationNonce: nonce, chainId, owner: sender },
+      relations: ['marketParams'],
     });
 
     if (marketGroupRecord) {
       console.log(
-        `Found market group with nonce ${nonce} and chainId ${chainId}, updating address to ${newMarketGroupAddress}`
+        `Found market group with nonce ${nonce}, owner ${sender}, and chainId ${chainId}, updating address to ${newMarketGroupAddress}`
       );
       marketGroupRecord.address = newMarketGroupAddress;
       if (!marketGroupRecord.factoryAddress) {
         marketGroupRecord.factoryAddress = factoryAddress.toLowerCase();
       }
+      marketGroupRecord.owner = sender;
       await marketGroupRepository.save(marketGroupRecord);
       console.log(`Market group ${marketGroupRecord.id} updated successfully.`);
     } else {
       console.log(
-        `Market group with nonce ${nonce} and chainId ${chainId} not found. Creating new market group.`
+        `Market group with nonce ${nonce}, owner ${sender}, and chainId ${chainId} not found. Creating new market group.`
       );
-      // Client is now passed in, no need to fetch it here unless specifically needed for new group creation logic beyond indexing
       const newMarketGroup = new MarketGroup();
       newMarketGroup.address = newMarketGroupAddress;
       newMarketGroup.initializationNonce = nonce;
       newMarketGroup.chainId = chainId;
       newMarketGroup.factoryAddress = factoryAddress.toLowerCase();
-
-      // TODO: Consider fetching initial market params from the contract if needed using the passed 'client'
+      newMarketGroup.owner = sender;
 
       marketGroupRecord = await marketGroupRepository.save(newMarketGroup);
       console.log(
         `New market group created successfully with ID ${marketGroupRecord.id}.`
       );
 
-      // Re-fetch with relations after creation to ensure consistency
       marketGroupRecord = await marketGroupRepository.findOne({
         where: { id: marketGroupRecord.id },
         relations: ['marketParams'],
       });
     }
 
-    // Start indexing for the newly added/updated market group
     if (marketGroupRecord) {
-      await startIndexingForMarketGroup(marketGroupRecord, client); // Pass client argument
+      await startIndexingForMarketGroup(marketGroupRecord, client);
     }
   } catch (error) {
     console.error(
@@ -94,13 +93,11 @@ async function handleMarketGroupInitialized(
   }
 }
 
-// Renamed function
 export async function startIndexingAndWatchingMarketGroups(chainId: number) {
   const client = getProviderForChain(chainId);
 
   const marketGroups = await marketGroupRepository.find({
     where: { chainId },
-    // Select fields and relations needed by startIndexingForMarketGroup/indexMarketEvents
     select: [
       'id',
       'address',
@@ -108,25 +105,21 @@ export async function startIndexingAndWatchingMarketGroups(chainId: number) {
       'initializationNonce',
       'chainId',
     ],
-    relations: ['marketParams'], // Add marketParams relation
+    relations: ['marketParams'],
   });
 
   console.log(
     `Found ${marketGroups.length} existing market groups for chainId ${chainId}. Starting indexing...`
   );
-  // Index existing market groups
   for (const marketGroup of marketGroups) {
-    // Only start indexing if address is not null/empty (might be set later by factory event)
     if (
       marketGroup.address &&
       marketGroup.address !== '0x0000000000000000000000000000000000000000'
     ) {
-      // Pass the fetched marketGroup with relations and the client
-      await startIndexingForMarketGroup(marketGroup, client); // Pass client argument
+      await startIndexingForMarketGroup(marketGroup, client);
     }
   }
 
-  // Get unique factory addresses, filtering out null values
   const factoryAddresses = [
     ...new Set(
       marketGroups
@@ -138,7 +131,6 @@ export async function startIndexingAndWatchingMarketGroups(chainId: number) {
     `Found ${factoryAddresses.length} unique factory addresses for chainId ${chainId}. Setting up watchers...`
   );
 
-  // Watch for MarketGroupInitialized events on each factory
   factoryAddresses.forEach((factoryAddress) => {
     console.log(
       `Watching MarketGroupInitialized events on factory ${factoryAddress}`
@@ -156,16 +148,16 @@ export async function startIndexingAndWatchingMarketGroups(chainId: number) {
               topics: log.topics,
             });
             const eventArgs = decodedLog.args as unknown as {
+              sender: `0x${string}`;
               marketGroup: `0x${string}`;
               nonce: bigint;
             };
-            // Pass client instance to handler call
             handleMarketGroupInitialized(
               eventArgs,
               chainId,
               factoryAddress,
               client
-            ); // Pass client argument
+            );
           } catch (error) {
             console.error(
               `Error decoding MarketGroupInitialized event from factory ${factoryAddress}:`,

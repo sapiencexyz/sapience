@@ -32,8 +32,6 @@ import type {
 import {
   useAccount,
   useChainId,
-  useWriteContract,
-  useWaitForTransactionReceipt,
 } from 'wagmi';
 import { z } from 'zod'; // Import zod
 
@@ -227,12 +225,6 @@ const deploymentSchema = baseSchema.extend({
 const CreateMarketGroupDialog = () => {
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
-  const {
-    data: hash,
-    error: writeError,
-    isPending: isWritePending,
-    writeContract,
-  } = useWriteContract();
 
   // --- Default Addresses based on Chain ID ---
   const BASE_CHAIN_ID = 8453;
@@ -253,10 +245,10 @@ const CreateMarketGroupDialog = () => {
   // --- End Defaults ---
 
   // Form State
-  const [chainId, setChainId] = useState<string>(
-    currentChainId?.toString() || ''
+  const [chainId, setChainId] = useState<string>('8453');
+  const [factoryAddress, setFactoryAddress] = useState<string>(
+    '0xe2C8572AE43E7Def359259e513d9c329aAEFf7cC'
   );
-  const [factoryAddress, setFactoryAddress] = useState<string>('');
   // Default owner based on chain ID
   const [owner, setOwner] = useState<string>(
     currentChainId === BASE_CHAIN_ID
@@ -283,9 +275,6 @@ const CreateMarketGroupDialog = () => {
     optimisticOracleV3: DEFAULT_OPTIMISTIC_ORACLE,
   });
 
-  const [createdMarketGroup, setCreatedMarketGroup] = useState<Address | null>(
-    null
-  );
   const [formError, setFormError] = useState<string | null>(null);
   const [question, setQuestion] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>(
@@ -332,10 +321,11 @@ const CreateMarketGroupDialog = () => {
   });
   // --- End Tanstack Query Mutation Setup ---
 
-  // Update chainId and potentially owner if network changes
+  // Update owner if network changes, but keep chainId fixed
   useEffect(() => {
-    const newChainIdStr = currentChainId?.toString() || '';
-    setChainId(newChainIdStr);
+    const newChainIdStr = currentChainId?.toString() || ''; // Get current chain ID as string
+    // setChainId(newChainIdStr); // Remove this line to keep default 8453
+
     // Set default owner only if owner hasn't been manually changed from the default for that chain
     const isOwnerDefaultForCurrentChain =
       owner ===
@@ -358,7 +348,7 @@ const CreateMarketGroupDialog = () => {
           : connectedAddress || ''
       );
     }
-  }, [currentChainId, connectedAddress]); // Need connectedAddress here too
+  }, [currentChainId, connectedAddress, owner]); // Add owner to dependency array
 
   // --- Generate Initial Nonce ---
   useEffect(() => {
@@ -367,59 +357,6 @@ const CreateMarketGroupDialog = () => {
   }, []); // Empty dependency array ensures this runs only once on mount
   // --- End Nonce Generation ---
 
-  // Transaction Receipt Handling
-  const {
-    data: receipt,
-    isLoading: isConfirming,
-    isSuccess,
-    error: receiptError,
-  } = useWaitForTransactionReceipt({ hash });
-
-  // Parse event log on successful transaction
-  useEffect(() => {
-    if (isSuccess && receipt) {
-      try {
-        const logs = receipt.logs
-          .map((log) => {
-            try {
-              // Ensure topics are correctly passed as an array
-              const topics = Array.isArray(log.topics) ? log.topics : [];
-              // Explicitly type topics for decodeEventLog
-              const typedTopics: [`0x${string}`, ...`0x${string}`[]] | [] =
-                topics as any;
-              return decodeEventLog({
-                abi: [marketGroupInitializedEvent],
-                data: log.data,
-                topics: typedTopics,
-              });
-            } catch (e) {
-              // console.debug('Log decoding failed for one log:', e); // Optional debug log
-              return null; // Ignore logs that don't match the event
-            }
-          })
-          .filter(
-            (decodedLog) =>
-              decodedLog !== null &&
-              decodedLog.eventName === 'MarketGroupInitialized'
-          );
-
-        if (logs.length > 0 && logs[0]?.args && 'marketGroup' in logs[0].args) {
-          setCreatedMarketGroup(logs[0].args.marketGroup as Address);
-        } else {
-          console.warn(
-            'MarketGroupInitialized event not found in transaction logs.'
-          );
-          setFormError(
-            'Transaction succeeded, but event emission was not detected.'
-          );
-        }
-      } catch (e) {
-        console.error('Error processing logs:', e);
-        setFormError('Error processing transaction logs.');
-      }
-    }
-  }, [isSuccess, receipt, marketGroupInitializedEvent]); // Add marketGroupInitializedEvent to dependency array
-
   // Input Handlers
   const handleMarketParamsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -427,8 +364,8 @@ const CreateMarketGroupDialog = () => {
   };
 
   // --- Zod Validation Function ---
-  const validateFormData = (isDeploy: boolean): string | null => {
-    const schema = isDeploy ? deploymentSchema : apiSchema;
+  const validateFormData = (): string | null => {
+    const schema = apiSchema; // Always use API schema now
     const formData = {
       // API + Deployment Fields
       owner,
@@ -463,11 +400,10 @@ const CreateMarketGroupDialog = () => {
   // Form Submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setCreatedMarketGroup(null);
     setFormError(null);
 
     // Basic Validation using the helper function
-    const validationError = validateFormData(false); // Use Zod for API validation
+    const validationError = validateFormData(); // Use Zod for API validation
     if (validationError) {
       setFormError(validationError);
       return;
@@ -491,65 +427,6 @@ const CreateMarketGroupDialog = () => {
     // Trigger the mutation
     createMarketGroupMutation.mutate(payload);
   };
-
-  // --- Add Deploy Handler ---
-  const handleDeploy = () => {
-    setCreatedMarketGroup(null);
-    setFormError(null);
-
-    // Basic Validation (similar to handleSubmit, but only for contract args)
-    const validationError = validateFormData(true); // Use Zod for deployment validation
-    if (validationError) {
-      setFormError(validationError);
-      return;
-    }
-
-    try {
-      const feeRateNum = Number(marketParams.feeRate);
-      if (isNaN(feeRateNum)) throw new Error();
-      const assertionLivenessBigInt = BigInt(marketParams.assertionLiveness);
-      const bondAmountBigInt = BigInt(marketParams.bondAmount);
-      const minTradeSizeBigInt = BigInt(minTradeSize);
-      const nonceBigInt = BigInt(nonce);
-
-      // Prepare args for writeContract
-      const args = [
-        owner as Address, // owner
-        collateralAsset as Address, // collateralAsset
-        [] as Address[], // feeCollectors (empty for now)
-        zeroAddress, // callbackRecipient 
-        minTradeSizeBigInt, // minTradeSize
-        {
-          // marketParams tuple
-          feeRate: feeRateNum,
-          assertionLiveness: assertionLivenessBigInt,
-          bondAmount: bondAmountBigInt,
-          bondCurrency: marketParams.bondCurrency as Address,
-          uniswapPositionManager:
-            marketParams.uniswapPositionManager as Address,
-          uniswapSwapRouter: marketParams.uniswapSwapRouter as Address,
-          uniswapQuoter: marketParams.uniswapQuoter as Address,
-          optimisticOracleV3: marketParams.optimisticOracleV3 as Address,
-        },
-        nonceBigInt, // nonce
-      ] as const; // Use 'as const' for type safety
-
-      console.log('Calling writeContract with args:', args);
-
-      writeContract({
-        address: factoryAddress as Address,
-        abi: marketGroupFactoryAbi,
-        functionName: 'cloneAndInitializeMarketGroup',
-        args,
-      });
-    } catch (err) {
-      console.error('Validation or BigInt conversion error:', err);
-      setFormError(
-        'Invalid numeric input found. Please check trade size, market params, or nonce.'
-      );
-    }
-  };
-  // --- End Deploy Handler ---
 
   // Helper function for button text - use mutation state
   const getButtonText = () => {
@@ -774,20 +651,20 @@ const CreateMarketGroupDialog = () => {
           </AccordionItem>
         </Accordion>
 
-        {/* --- Wrap Buttons in Flex Container --- */}
-        <div className="flex gap-4 w-full">
+        {/* --- Remove Flex Container for Buttons, only one button remains --- */}
+        {/* <div className="flex gap-4 w-full"> */}
           <Button
             type="submit"
             disabled={createMarketGroupMutation.isPending} // Use mutation pending state
-            className="flex-1 mb-4" // Use flex-1 to share space
+            className="w-full mb-4" // Make button full width
           >
             {createMarketGroupMutation.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
             {getButtonText()}
           </Button>
-          {/* --- New Deploy Button --- */}
-          <Button
+          {/* --- Remove Deploy Button --- */}
+          {/* <Button
             type="button" // Important: prevent form submission
             onClick={handleDeploy}
             disabled={isWritePending || isConfirming} // Disable during write or confirmation
@@ -797,20 +674,20 @@ const CreateMarketGroupDialog = () => {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
             Deploy Market Group
-          </Button>
+          </Button> */}
           {/* --- End New Deploy Button --- */}
-        </div>
+        {/* </div> */}
       </form>
 
-      {/* Results and Errors */}
-      <div className="space-y-4">
+      {/* Results and Errors */} 
+      <div className="space-y-4 mt-4"> {/* Added margin-top */} 
         {/* Display mutation success message (optional) */}
         {createMarketGroupMutation.isSuccess && (
           <Alert variant="default">
             <CheckCircle className="h-4 w-4" />
             <AlertTitle>Submission Successful!</AlertTitle>
             <AlertDescription>
-              Market group creation request sent.
+              Market group details saved.
               {/* You could display data returned from the API here: */}
               {/* <pre className="mt-1 text-xs bg-muted p-2 rounded overflow-auto">
                 {JSON.stringify(createMarketGroupMutation.data, null, 2)}
@@ -828,52 +705,21 @@ const CreateMarketGroupDialog = () => {
               {
                 formError ||
                   (createMarketGroupMutation.error as Error)?.message ||
-                  writeError?.message ||
-                  null || // Show wagmi write error
-                  receiptError?.message ||
-                  null || // Show wagmi receipt error
+                  // Remove wagmi/receipt errors
+                  // writeError?.message || null ||
+                  // receiptError?.message || null ||
                   'An unknown error occurred' // Fallback
               }
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Display wagmi results */}
-        {hash && (
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertTitle>Transaction Sent</AlertTitle>
-            <AlertDescription>
-              Hash: <code className="text-xs break-all">{hash}</code>
-              {isConfirming && (
-                <span className="ml-2 inline-flex items-center">
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Waiting for
-                  confirmation...
-                </span>
-              )}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Remove wagmi results */}
+        {/* {hash && (...)} */}
 
-        {isSuccess && createdMarketGroup && (
-          <Alert variant="default">
-            <CheckCircle className="h-4 w-4" />
-            <AlertTitle>Deployment Successful!</AlertTitle>
-            <AlertDescription>
-              Market Group Deployed at:{' '}
-              <code className="text-xs break-all">{createdMarketGroup}</code>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Show error if transaction succeeded but event wasn't found */}
-        {isSuccess && !createdMarketGroup && formError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Deployment Issue</AlertTitle>
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        )}
+        {/* Remove deployment success/issue alerts */}
+        {/* {isSuccess && createdMarketGroup && (...)} */}
+        {/* {isSuccess && !createdMarketGroup && formError && (...)} */}
       </div>
     </>
   );

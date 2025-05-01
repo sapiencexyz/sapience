@@ -7,6 +7,8 @@ import { Router } from 'express';
 import { Request, Response } from 'express';
 import { MarketGroup } from '../models/MarketGroup';
 import { Market } from '../models/Market';
+import crypto from 'crypto'; // Import crypto for salt generation
+import { MarketParams } from '../models/MarketParams';
 
 const router = Router();
 
@@ -98,6 +100,7 @@ router.post(
       startingSqrtPriceX96,
       baseAssetMinPriceTick,
       baseAssetMaxPriceTick,
+      claimStatement, // Add claimStatement to destructuring
     } = req.body;
 
     try {
@@ -112,10 +115,12 @@ router.post(
           .json({ message: `Market Group with address ${address} not found` });
       }
 
+      // Update validation to include claimStatement and check others properly
       if (
         !marketQuestion ||
         !optionName ||
-        startTime === undefined ||
+        !claimStatement || // Validate claimStatement
+        startTime === undefined || // Keep using undefined checks for potentially 0 values
         endTime === undefined ||
         !startingSqrtPriceX96 ||
         baseAssetMinPriceTick === undefined ||
@@ -126,11 +131,12 @@ router.post(
           .json({ message: 'Missing required market fields' });
       }
 
+      // Logic to determine nextMarketId remains the same
       let nextMarketId = 1;
       if (marketGroup.markets && marketGroup.markets.length > 0) {
         const validMarketIds = marketGroup.markets
           .map((m) => m.marketId)
-          .filter((id) => typeof id === 'number' && !isNaN(id));
+          .filter((id): id is number => typeof id === 'number' && !isNaN(id)); // Ensure type is number
 
         if (validMarketIds.length > 0) {
           const maxMarketId = Math.max(...validMarketIds);
@@ -138,11 +144,32 @@ router.post(
         }
       }
 
+      // Remove salt generation
+      // const salt = `0x${crypto.randomBytes(18).toString('hex')}`;
+
       const newMarket = new Market();
       newMarket.marketGroup = marketGroup;
       newMarket.marketId = nextMarketId;
       newMarket.question = marketQuestion;
       newMarket.optionName = optionName;
+      // --- Add the other fields --- 
+      // Initialize marketParams if it doesn't exist (TypeORM should handle this, but safety first)
+      if (!newMarket.marketParams) {
+        newMarket.marketParams = new MarketParams(); // Assuming MarketParams is the class name
+      }
+      newMarket.marketParams.claimStatement = claimStatement; // Save to embedded params
+      // newMarket.salt = salt; // Remove saving salt
+      newMarket.startTimestamp = parseInt(startTime, 10);
+      newMarket.endTimestamp = parseInt(endTime, 10);
+      newMarket.startingSqrtPriceX96 = startingSqrtPriceX96;
+      newMarket.baseAssetMinPriceTick = parseInt(baseAssetMinPriceTick, 10);
+      newMarket.baseAssetMaxPriceTick = parseInt(baseAssetMaxPriceTick, 10);
+      // Initialize other fields as needed, or rely on defaults/null
+      newMarket.poolAddress = null;
+      newMarket.settlementPriceD18 = null;
+      newMarket.settled = null;
+      newMarket.minPriceD18 = null;
+      newMarket.maxPriceD18 = null;
 
       const savedMarket = await marketRepository.save(newMarket);
 

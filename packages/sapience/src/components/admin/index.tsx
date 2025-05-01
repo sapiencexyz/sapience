@@ -15,6 +15,8 @@ import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import CreateMarketDialog from './CreateMarketDialog';
 import CreateMarketGroupDialog from './CreateMarketGroupDialog';
 import SettleMarketDialog from './SettleMarketDialog';
+import MarketGroupDeployButton from './MarketGroupDeployButton';
+import MarketDeployButton from './MarketDeployButton';
 
 const Admin = () => {
   const { data: marketGroups, isLoading, error } = useEnrichedMarketGroups();
@@ -56,19 +58,27 @@ const Admin = () => {
                   <h2 className="text-lg font-semibold">
                     {group.question || `Group: ${group.address}`}
                   </h2>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm" variant="outline">
-                        Add Market
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-xl">
-                      <DialogHeader>
-                        <DialogTitle>Add New Market to Group</DialogTitle>
-                      </DialogHeader>
-                      <CreateMarketDialog chainId={group.chainId} marketGroupAddress={group.address} />
-                    </DialogContent>
-                  </Dialog>
+                  <div className="text-right text-sm text-gray-500">
+                    <div>Chain ID: {group.chainId}</div>
+                    <div>Address: {group.address}</div>
+                  </div>
+                  {group.address ? (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          Add Market
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-xl">
+                        <DialogHeader>
+                          <DialogTitle>Add New Market to Group</DialogTitle>
+                        </DialogHeader>
+                        <CreateMarketDialog chainId={group.chainId} marketGroupAddress={group.address} />
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <MarketGroupDeployButton group={group} />
+                  )}
                 </header>
                 <div className="p-4 space-y-3">
                   {group.markets.length > 0 ? (
@@ -94,7 +104,7 @@ const Admin = () => {
                             className="flex items-center justify-between py-2"
                           >
                             <span className="font-medium">
-                              {market.question || 'No question available'}
+                              ID: {market.marketId} - {market.question || 'No question available'}
                             </span>
                             <div className="flex items-center space-x-4">
                               <span className="text-sm text-gray-500">
@@ -116,6 +126,7 @@ const Admin = () => {
                                   />
                                 </DialogContent>
                               </Dialog>
+                              <MarketDeployButton market={market as any} />
                             </div>
                           </div>
                         );

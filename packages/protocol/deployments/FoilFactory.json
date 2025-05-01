@@ -5,6 +5,12 @@
       "name": "MarketGroupInitialized",
       "inputs": [
         {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
           "name": "marketGroup",
           "type": "address",
           "indexed": true,

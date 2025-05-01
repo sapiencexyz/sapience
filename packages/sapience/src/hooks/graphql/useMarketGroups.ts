@@ -98,23 +98,43 @@ export interface Market {
   quoteTokenName?: string;
 }
 
+// Define MarketParams type based on GraphQL schema
+// Ensure field names match the GQL schema
+export interface MarketParams {
+  feeRate?: number | null;
+  assertionLiveness?: string | null; // Keep as string if it can be large number
+  bondCurrency?: string | null;
+  bondAmount?: string | null; // Keep as string if it can be large number
+  claimStatement?: string | null;
+  uniswapPositionManager?: string | null;
+  uniswapSwapRouter?: string | null;
+  uniswapQuoter?: string | null;
+  optimisticOracleV3?: string | null;
+}
+
 export interface MarketGroup {
   id: number;
   address: string;
   chainId: number;
   vaultAddress: string;
-  owner?: `0x${string}`;
+  owner?: `0x${string}`; // Kept as wagmi Address type
   isYin: boolean;
   collateralAsset: string;
   question?: string | null;
   baseTokenName?: string | null;
   quoteTokenName?: string | null;
   markets: Market[];
+  // Add fields needed for deployment
+  factoryAddress?: string | null;
+  initializationNonce?: string | null; // Renamed from nonce for clarity? Or keep as nonce if GQL uses that? Assuming GQL uses initializationNonce
+  minTradeSize?: string | null; // Keep as string if it can be large number
+  marketParams?: MarketParams | null;
 }
 
 // Define the new EnrichedMarket type
 export interface EnrichedMarketGroup extends MarketGroup {
   category: Category;
+  // No need to repeat fields already in MarketGroup
 }
 
 export interface Candle {
@@ -149,10 +169,25 @@ const MARKETS_QUERY = gql`
       chainId
       isYin
       vaultAddress
+      owner # Added owner
       collateralAsset
       question
       baseTokenName
       quoteTokenName
+      factoryAddress # Added factoryAddress
+      initializationNonce # Added initializationNonce
+      minTradeSize # Added minTradeSize
+      marketParams { # Added marketParams structure
+        feeRate
+        assertionLiveness
+        bondCurrency
+        bondAmount
+        claimStatement
+        uniswapPositionManager
+        uniswapSwapRouter
+        uniswapQuoter
+        optimisticOracleV3
+      }
       category {
         id
         name
@@ -224,6 +259,11 @@ interface MarketGroupApiResponse {
   quoteTokenName?: string | null;
   category: Category | null; // Allow null based on schema possibility
   markets: Market[];
+  factoryAddress?: string | null;
+  initializationNonce?: string | null;
+  owner?: `0x${string}`;
+  minTradeSize?: string | null;
+  marketParams?: MarketParams | null;
 }
 
 // Rename the hook to reflect its output
