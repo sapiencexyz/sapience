@@ -16,7 +16,7 @@ async function main() {
   await initializeFixtures();
 
   const marketJobs = await startMarketIndexers();
-  const resourceJobs = [];//await startResourceIndexers();
+  const resourceJobs = await startResourceIndexers();
 
   jobs = [...marketJobs, ...resourceJobs];
 

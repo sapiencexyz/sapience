@@ -29,15 +29,31 @@ type MarketGroupType {
   collateralSymbol: String
   deployTimestamp: Int
   deployTxnBlockNumber: Int
+  factoryAddress: String
   id: ID!
+  initializationNonce: String
   isCumulative: Boolean!
   isYin: Boolean!
+  marketParams: MarketParamsType
   markets: [MarketType!]!
+  minTradeSize: String
   owner: String
   question: String
   quoteTokenName: String
   resource: ResourceType
   vaultAddress: String
+}
+
+type MarketParamsType {
+  assertionLiveness: String
+  bondAmount: String
+  bondCurrency: String
+  claimStatement: String
+  feeRate: Int
+  optimisticOracleV3: String
+  uniswapPositionManager: String
+  uniswapQuoter: String
+  uniswapSwapRouter: String
 }
 
 type MarketType {

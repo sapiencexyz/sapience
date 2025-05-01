@@ -1,17 +1,17 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Migration1746122924911 implements MigrationInterface {
-  name = 'Migration1746122924911';
+export class Migration1746133950445 implements MigrationInterface {
+  name = 'Migration1746133950445';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "market_group" ALTER COLUMN "address" DROP NOT NULL`
+      `ALTER TABLE "market_group" ADD "minTradeSize" numeric(78,0)`
     );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "market_group" ALTER COLUMN "address" SET NOT NULL`
+      `ALTER TABLE "market_group" DROP COLUMN "minTradeSize"`
     );
   }
 }

@@ -28,4 +28,4 @@ export class CombinedMigrations1746058665506 implements MigrationInterface {
       `ALTER TABLE "market_group" DROP COLUMN "initializationNonce"`
     );
   }
-} 
+}

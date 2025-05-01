@@ -2,6 +2,7 @@ import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
 import { MarketType } from './MarketType';
 import { ResourceType } from './ResourceType';
 import { CategoryType } from './CategoryType';
+import { MarketParamsType } from './MarketParamsType';
 
 @Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
@@ -50,6 +51,18 @@ export class MarketGroupType {
 
   @Field(() => Int, { nullable: true })
   collateralDecimals: number | null;
+
+  @Field(() => String, { nullable: true })
+  minTradeSize: string | null;
+
+  @Field(() => String, { nullable: true })
+  factoryAddress: string | null;
+
+  @Field(() => String, { nullable: true })
+  initializationNonce: string | null;
+
+  @Field(() => MarketParamsType, { nullable: true })
+  marketParams: MarketParamsType | null;
 
   @Field(() => String, { nullable: true })
   question: string | null;

@@ -13,6 +13,7 @@ import { MarketParams } from './MarketParams';
 import { Event } from './Event';
 import { Resource } from './Resource';
 import { Category } from './Category';
+import { NUMERIC_PRECISION } from '../constants';
 
 @Entity()
 @Unique(['address', 'chainId'])
@@ -73,6 +74,14 @@ export class MarketGroup {
 
   @Column({ type: 'integer', nullable: true })
   collateralDecimals: number | null;
+
+  @Column({
+    type: 'numeric',
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  minTradeSize: string | null;
 
   @Column({ type: 'text', nullable: true })
   question: string | null;
