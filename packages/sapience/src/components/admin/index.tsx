@@ -66,7 +66,7 @@ const Admin = () => {
                       <DialogHeader>
                         <DialogTitle>Add New Market to Group</DialogTitle>
                       </DialogHeader>
-                      <CreateMarketDialog marketGroupAddress={group.address} />
+                      <CreateMarketDialog chainId={group.chainId} marketGroupAddress={group.address} />
                     </DialogContent>
                   </Dialog>
                 </header>

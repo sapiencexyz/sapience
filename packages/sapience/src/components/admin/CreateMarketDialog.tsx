@@ -66,10 +66,12 @@ const epochCreatedEvent = parseAbiItem(
 ) as AbiEvent;
 
 interface CreateMarketDialogProps {
+  chainId: number;
   marketGroupAddress: string;
 }
 
 const CreateMarketDialog: React.FC<CreateMarketDialogProps> = ({
+  chainId,
   marketGroupAddress,
 }) => {
   // Form State
@@ -194,7 +196,7 @@ const CreateMarketDialog: React.FC<CreateMarketDialogProps> = ({
   const createMarketMutation = useMutation({
     mutationFn: async (payload: CreateMarketPayload) => {
       const response = await fetch(
-        `${API_BASE_URL}/create-market/${marketGroupAddress}`,
+        `${API_BASE_URL}/create-market/${chainId}/${marketGroupAddress}`,
         {
           method: 'POST',
           headers: {
