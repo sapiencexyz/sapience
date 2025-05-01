@@ -297,6 +297,7 @@ const CreateMarketGroupDialog = () => {
   const createMarketGroupMutation = useMutation({
     mutationFn: async (payload: CreateMarketGroupPayload) => {
       const { nonce, ...bodyPayload } = payload;
+      console.log('Creating market group with nonce:', nonce, payload);
       const response = await fetch(
         `${API_BASE_URL}/create-market-group/${nonce}`,
         {
