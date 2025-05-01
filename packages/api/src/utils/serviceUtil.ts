@@ -1,10 +1,7 @@
-import { MarketPrice } from './models/MarketPrice';
-import { ONE_DAY_MS, ONE_HOUR_MS, TOKEN_PRECISION } from './constants';
-import dataSource from './db';
-import { Transaction } from './models/Transaction';
-import { TimeWindow } from './interfaces';
-import { formatUnits } from 'viem';
-import { ResourcePrice } from './models/ResourcePrice';
+import { ONE_DAY_MS, ONE_HOUR_MS } from '../constants';
+import dataSource from '../db';
+import { Transaction } from '../models/Transaction';
+import { TimeWindow } from '../interfaces';
 
 class EntityGroup<T> {
   startTimestamp: number;
@@ -44,37 +41,6 @@ export async function getTransactionsInTimeRange(
     .getMany();
 }
 
-export async function getMarketPricesInTimeRange(
-  startTimestamp: number,
-  endTimestamp: number,
-  chainId: string,
-  address: string,
-  marketId: string
-) {
-  const marketPriceRepository = dataSource.getRepository(MarketPrice);
-  return await marketPriceRepository
-    .createQueryBuilder('marketPrice')
-    .innerJoinAndSelect('marketPrice.transaction', 'transaction')
-    .innerJoinAndSelect('transaction.event', 'event')
-    .innerJoinAndSelect('event.marketGroup', 'marketGroup')
-    .innerJoinAndSelect(
-      'marketGroup.markets',
-      'market',
-      'market.marketId = :marketId'
-    )
-    .where('market.chainId = :chainId', { chainId })
-    .andWhere('market.address = :address', { address: address.toLowerCase() })
-    .andWhere('market.marketId = :marketId', { marketId })
-    .andWhere('CAST(marketPrice.timestamp AS bigint) >= :startTimestamp', {
-      startTimestamp,
-    })
-    .andWhere('CAST(marketPrice.timestamp AS bigint) <= :endTimestamp', {
-      endTimestamp,
-    })
-    .orderBy('marketPrice.timestamp', 'ASC')
-    .getMany();
-}
-
 export function groupTransactionsByTimeWindow(
   transactions: Transaction[],
   window: TimeWindow
@@ -83,21 +49,6 @@ export function groupTransactionsByTimeWindow(
     transactions,
     window,
     (transaction) => Number(transaction.event.timestamp) * 1000
-  );
-}
-
-export function groupMarketPricesByTimeWindow(
-  marketPrices: MarketPrice[],
-  window: TimeWindow
-): EntityGroup<MarketPrice>[] {
-  const dataFormater = (marketPrice: MarketPrice) => {
-    marketPrice.value = formatUnits(BigInt(marketPrice.value), TOKEN_PRECISION);
-  };
-  return groupEntitiesByTimeWindow(
-    marketPrices,
-    window,
-    (marketPrice) => Number(marketPrice.timestamp) * 1000,
-    dataFormater
   );
 }
 
@@ -184,15 +135,4 @@ function groupEntitiesByTimeWindow<T>(
     }
   });
   return result;
-}
-
-export function groupResourcePricesByTimeWindow(
-  resourcePrices: ResourcePrice[],
-  window: TimeWindow
-): EntityGroup<ResourcePrice>[] {
-  return groupEntitiesByTimeWindow(
-    resourcePrices,
-    window,
-    (resourcePrice) => Number(resourcePrice.timestamp) * 1000
-  );
 }

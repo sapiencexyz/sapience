@@ -1,7 +1,7 @@
 import { MarketGroup } from '../../models/MarketGroup';
 import { marketGroupRepository } from '../../db';
-import { getProviderForChain } from '../../utils';
-import { Log, decodeEventLog, PublicClient } from 'viem';
+import { getProviderForChain } from '../../utils/utils';
+import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
 import { indexMarketEvents } from '../../controllers/market';
 import marketGroupFactoryAbi from '@foil/protocol/deployments/FoilFactory.json';
 
@@ -144,17 +144,17 @@ export async function startIndexingAndWatchingMarketGroups(chainId: number) {
     );
     client.watchContractEvent({
       address: factoryAddress as `0x${string}`,
-      abi: marketGroupFactoryAbi,
+      abi: marketGroupFactoryAbi as Abi,
       eventName: 'MarketGroupInitialized',
       onLogs: (logs: Log[]) => {
         logs.forEach((log) => {
           try {
             const decodedLog = decodeEventLog({
-              abi: marketGroupFactoryAbi,
+              abi: marketGroupFactoryAbi as Abi,
               data: log.data,
               topics: log.topics,
             });
-            const eventArgs = decodedLog.args as {
+            const eventArgs = decodedLog.args as unknown as {
               marketGroup: `0x${string}`;
               returnData: `0x${string}`;
               nonce: bigint;

@@ -1,5 +1,5 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
-import { getTransactionsInTimeRange } from '../../serviceUtil'; // Assuming serviceUtil path
+import { getTransactionsInTimeRange } from '../../utils/serviceUtil'; // Assuming serviceUtil path
 import { formatUnits } from 'viem';
 import { TOKEN_PRECISION } from '../../constants'; // Assuming constants path
 import dataSource from '../../db'; // Import dataSource

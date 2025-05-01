@@ -1,6 +1,6 @@
 import { IResourcePriceIndexer } from '../interfaces';
 import { resourcePriceRepository } from '../db';
-import { CELENIUM_API_KEY, sleep } from '../utils';
+import { CELENIUM_API_KEY, sleep } from '../utils/utils';
 import { Resource } from 'src/models/Resource';
 // import Sentry from "../sentry";
 

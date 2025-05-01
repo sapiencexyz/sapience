@@ -3,7 +3,11 @@ import Sentry from '../sentry';
 import { IResourcePriceIndexer } from '../interfaces';
 import { Resource } from 'src/models/Resource';
 import axios from 'axios';
-import { getBlockByTimestamp, getProviderForChain, sleep } from 'src/utils';
+import {
+  getBlockByTimestamp,
+  getProviderForChain,
+  sleep,
+} from 'src/utils/utils';
 import { PublicClient } from 'viem';
 
 interface BlobData {

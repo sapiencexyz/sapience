@@ -8,9 +8,9 @@ import {
   type Transport,
 } from 'viem';
 import { mainnet, sepolia, cannon, base, arbitrum } from 'viem/chains';
-import { TOKEN_PRECISION } from './constants';
-import { marketRepository } from './db';
-import { Deployment } from './interfaces';
+import { TOKEN_PRECISION } from '../constants';
+import { marketRepository } from '../db';
+import { Deployment } from '../interfaces';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';

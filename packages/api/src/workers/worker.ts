@@ -7,7 +7,7 @@ import {
 import { initializeFixtures, INDEXERS } from '../fixtures';
 import { handleJobCommand } from './jobs';
 import { startIndexingAndWatchingMarketGroups as indexMarketsJob } from './jobs/indexMarkets';
-import { createResilientProcess } from '../utils';
+import { createResilientProcess } from '../utils/utils';
 
 async function main() {
   await initializeDataSource();

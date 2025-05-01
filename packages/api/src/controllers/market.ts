@@ -23,7 +23,7 @@ import {
   sqrtPriceX96ToSettlementPriceD18,
   getBlockByTimestamp,
   getContractCreationBlock,
-} from '../utils';
+} from '../utils/utils';
 import {
   createEpochFromEvent,
   createOrUpdateMarketFromEvent,
