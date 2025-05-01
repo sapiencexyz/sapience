@@ -2,6 +2,11 @@
 
 import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@foil/ui/components/ui/alert';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Form,
@@ -49,6 +54,8 @@ type ModifyLiquidityFormProps = {
   onSuccess: (txHash: `0x${string}`) => void;
   positionId: string;
   mode: 'add' | 'remove';
+  permitData?: { permitted?: boolean } | null | undefined;
+  isPermitLoadingPermit?: boolean;
 };
 
 // eslint-disable-next-line import/prefer-default-export
@@ -58,6 +65,8 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
   onSuccess,
   positionId,
   mode,
+  permitData,
+  isPermitLoadingPermit = false,
 }) => {
   const { toast } = useToast();
   const { isConnected, walletBalance, onConnectWallet } = walletData;
@@ -228,6 +237,12 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
     if (!isConnected) {
       return { text: 'Connect Wallet', loading: false };
     }
+    if (isPermitLoadingPermit) {
+      return { text: 'Checking permissions...', loading: true };
+    }
+    if (permitData?.permitted === false) {
+      return { text: 'Action Unavailable', loading: false };
+    }
     if (quoteLoading) {
       return { text: 'Generating Quote...', loading: true };
     }
@@ -274,12 +289,13 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
   const isSubmitButtonDisabled = () => {
     return (
       !isConnected ||
+      isPermitLoadingPermit ||
+      permitData?.permitted === false ||
       quoteLoading ||
       isModifying ||
       isApproving ||
-      percentage === 0 ||
-      !!quoteError ||
-      (mode === 'add' && hasInsufficientFunds)
+      (mode === 'add' && hasInsufficientFunds) ||
+      percentage === 0
     );
   };
 
@@ -386,25 +402,45 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
 
         <SlippageTolerance />
 
-        <div className="pt-2">
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitButtonDisabled()}
+        {/* Permit Alert */}
+        {!isPermitLoadingPermit && permitData?.permitted === false && (
+          <Alert
+            variant="destructive"
+            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
           >
-            {buttonState.loading && (
-              <LottieLoader className="invert" width={20} height={20} />
-            )}
-            {buttonState.text}
-          </Button>
+            <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
+            <AlertDescription>
+              You cannot provide liquidity using this app.
+            </AlertDescription>
+          </Alert>
+        )}
 
-          {isClosePosition && (
-            <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-amber-700 text-xs">
-              <span className="font-medium">Note:</span> LP position could
-              convert to trader.
-            </div>
+        <Button
+          type="submit"
+          className="w-full"
+          size="lg"
+          disabled={isSubmitButtonDisabled()}
+          onClick={handleSubmit(submitForm)}
+        >
+          {buttonState.loading && (
+            <LottieLoader className="invert" width={20} height={20} />
           )}
-        </div>
+          {buttonState.text}
+        </Button>
+
+        {/* Display insufficient funds error */}
+        {mode === 'add' && hasInsufficientFunds && (
+          <p className="text-destructive text-sm text-center mt-2">
+            Insufficient {marketDetails.collateralAssetTicker} balance.
+          </p>
+        )}
+
+        {/* Display quote error */}
+        {quoteError && (
+          <p className="text-destructive text-sm text-center mt-2">
+            Error fetching quote. Please try again.
+          </p>
+        )}
 
         {percentage > 0 && (
           <motion.div

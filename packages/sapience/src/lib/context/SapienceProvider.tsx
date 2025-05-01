@@ -12,6 +12,17 @@ import type React from 'react';
 import { createContext, useContext, useEffect, useState } from 'react';
 
 import { foilApi, gweiToEther, mainnetClient } from '../utils/util';
+
+// Helper function to get a cookie by name
+const getCookie = (name: string): string | undefined => {
+  if (typeof document === 'undefined') {
+    return undefined; // Return undefined on the server side
+  }
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift();
+  return undefined;
+};
 // import InstallDialog from '~/components/InstallDialog';
 
 // Define the type based on the API response
@@ -115,6 +126,9 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
   const { toast } = useToast();
   // const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
 
+  // Check for the permitted cookie
+  const hasPermittedCookie = getCookie('permitted') === 'true';
+
   // Fetch permit data
   const {
     data: permitData,
@@ -123,10 +137,31 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
     refetch: refetchPermitData,
   } = useQuery<PermitResponse, Error>({
     queryKey: ['permit'],
-    queryFn: async () => {
-      // Assuming the permit endpoint is at the root of the API
-      return foilApi.get('/permit');
+    queryFn: async (): Promise<PermitResponse> => {
+      // Explicitly type the response from fetch
+      const response = await fetch(`${foilApi.baseUrl}/permit`, {
+        headers: foilApi.getHeaders(),
+      });
+
+      if (!response.ok) {
+        // You might want to handle the error more gracefully
+        const errorBody = await response.text();
+        console.error('Permit API request failed:', response.status, errorBody);
+        throw new Error(`Permit request failed: ${response.status}`);
+      }
+
+      const data: PermitResponse = await response.json();
+
+      // Set cookie if permitted
+      if (data.permitted && typeof document !== 'undefined') {
+        document.cookie = 'permitted=true; path=/; max-age=31536000'; // Expires in 1 year
+      }
+      return data; // Return the typed data
     },
+    // Only fetch if the cookie is not set or not true
+    enabled: !hasPermittedCookie,
+    // Set initial data if the cookie is true
+    initialData: hasPermittedCookie ? { permitted: true } : undefined,
   });
 
   // Fetch market groups

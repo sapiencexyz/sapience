@@ -13,7 +13,6 @@ import { MarketGroup } from './models/MarketGroup';
 import { Resource } from './models/Resource';
 import btcIndexer from './resourcePriceFunctions/btcIndexer';
 import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
-import ethBlobsIndexer from './resourcePriceFunctions/ethBlobsIndexer';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import { WeatherIndexer } from './resourcePriceFunctions/weatherIndexer';
 
@@ -34,7 +33,6 @@ export const INDEXERS: {
   [key: string]: IResourcePriceIndexer;
 } = {
   'ethereum-gas': new evmIndexer(mainnet.id),
-  'ethereum-blobspace': new ethBlobsIndexer(mainnet.id),
   'celestia-blobspace': new celestiaIndexer('https://api-mainnet.celenium.io'),
   'bitcoin-fees': new btcIndexer(),
   'base-gas': new evmIndexer(base.id),
