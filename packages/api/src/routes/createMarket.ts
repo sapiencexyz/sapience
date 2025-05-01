@@ -40,7 +40,9 @@ router.post(
         where: { id: categoryId },
       });
       if (!category) {
-        return res.status(404).json({ message: `Category with id ${categoryId} not found` });
+        return res
+          .status(404)
+          .json({ message: `Category with id ${categoryId} not found` });
       }
 
       const newMarketGroup = new MarketGroup();
@@ -105,18 +107,20 @@ router.post('/create-market/:address', async (req: Request, res: Response) => {
       baseAssetMinPriceTick === undefined ||
       baseAssetMaxPriceTick === undefined
     ) {
-      return res.status(400).json({ message: 'Missing required market fields' });
+      return res
+        .status(400)
+        .json({ message: 'Missing required market fields' });
     }
 
     let nextMarketId = 1;
     if (marketGroup.markets && marketGroup.markets.length > 0) {
       const validMarketIds = marketGroup.markets
-          .map(m => m.marketId)
-          .filter(id => typeof id === 'number' && !isNaN(id));
+        .map((m) => m.marketId)
+        .filter((id) => typeof id === 'number' && !isNaN(id));
 
       if (validMarketIds.length > 0) {
-          const maxMarketId = Math.max(...validMarketIds);
-          nextMarketId = maxMarketId + 1;
+        const maxMarketId = Math.max(...validMarketIds);
+        nextMarketId = maxMarketId + 1;
       }
     }
 

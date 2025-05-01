@@ -497,7 +497,8 @@ export async function getContractCreationBlock(
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
 
-export const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const delay = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 export async function withRetry<T>(
   operation: () => Promise<T>,

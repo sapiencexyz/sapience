@@ -1,8 +1,5 @@
-import { arbitrum, base, mainnet } from 'viem/chains';
-import {
-  categoryRepository,
-  resourceRepository,
-} from './db';
+import { mainnet } from 'viem/chains';
+import { categoryRepository, resourceRepository } from './db';
 import fixturesData from './fixtures.json';
 import { IResourcePriceIndexer } from './interfaces';
 import { Category } from './models/Category';

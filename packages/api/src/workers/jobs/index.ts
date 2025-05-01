@@ -41,9 +41,7 @@ const callReindexResource = async (argv: string[]) => {
   const startTimestamp = parseInt(argv[4], 10);
 
   const endTimestamp =
-    argv[5] !== 'undefined'
-      ? parseInt(argv[5], 10)
-      : undefined;
+    argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
 
   if (isNaN(startTimestamp) || !slug) {
     console.error(

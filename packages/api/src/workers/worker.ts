@@ -1,6 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
-import { initializeDataSource, resourceRepository, marketGroupRepository } from '../db';
+import {
+  initializeDataSource,
+  resourceRepository,
+  marketGroupRepository,
+} from '../db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
 import { handleJobCommand } from './jobs';
 import { startIndexingAndWatchingMarketGroups as indexMarketsJob } from './jobs/indexMarkets';
@@ -30,7 +33,7 @@ async function startMarketIndexers(): Promise<Promise<void>[]> {
     (result) => result.chainId
   );
 
-  const allMarketJobs: Promise<void>[] = chainIds.map(chainId =>
+  const allMarketJobs: Promise<void>[] = chainIds.map((chainId) =>
     createResilientProcess(
       () => indexMarketsJob(chainId),
       `indexMarketsJob-${chainId}`

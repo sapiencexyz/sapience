@@ -57,7 +57,7 @@ export const mapMarketGroupToType = (
   question: marketGroup.question,
   claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
   baseTokenName: marketGroup.baseTokenName,
-  quoteTokenName: marketGroup.quoteTokenName
+  quoteTokenName: marketGroup.quoteTokenName,
 });
 
 export const mapResourceToType = (resource: Resource): ResourceType => ({

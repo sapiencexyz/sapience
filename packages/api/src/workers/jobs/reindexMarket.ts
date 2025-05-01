@@ -1,5 +1,8 @@
 import { initializeDataSource } from '../../db';
-import { initializeMarket, reindexMarketEvents } from '../../controllers/market';
+import {
+  initializeMarket,
+  reindexMarketEvents,
+} from '../../controllers/market';
 import * as Sentry from '@sentry/node';
 import { marketGroupRepository } from '../../db';
 import { INDEXERS } from '../../fixtures';
