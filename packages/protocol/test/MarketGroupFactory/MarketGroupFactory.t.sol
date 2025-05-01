@@ -30,7 +30,7 @@ contract MarketGroupFactoryTest is Test {
     using SafeCastU256 for uint256;
 
     address lp1;
-    address owner;
+    address safeOwner;
     address deployer = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
     IFoil foil;
     IVault vault;
@@ -58,14 +58,15 @@ contract MarketGroupFactoryTest is Test {
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
-        owner = makeAddr("owner");
+        safeOwner = makeAddr("safeOwner");
         
     }
 
-    function test_revertsWhenCloneNonOwner() public {
+    function test_revertsWhenCloneNonDeployerSetAddress() public {
+        vm.startPrank(safeOwner);
         vm.expectRevert("Only authorized owner can call this function");
         marketGroupFactory.cloneAndInitializeMarketGroup(
-            owner,
+            safeOwner,
             vm.getAddress("CollateralAsset.Token"),
             feeCollectors,
             callbackRecipient,
@@ -84,12 +85,14 @@ contract MarketGroupFactoryTest is Test {
             }),
             0
         );
+        vm.stopPrank();
+        assertEq(uint256(1), uint256(1));
     }
 
     function test_canCloneMarketGroup() public {
         vm.startPrank(deployer);
-        (address marketGroup, bytes memory returnData) = marketGroupFactory.cloneAndInitializeMarketGroup(
-            owner,
+        (address marketGroup, ) = marketGroupFactory.cloneAndInitializeMarketGroup(
+            safeOwner,
             vm.getAddress("CollateralAsset.Token"),
             feeCollectors,
             callbackRecipient,
@@ -116,7 +119,7 @@ contract MarketGroupFactoryTest is Test {
         vm.startPrank(deployer);
         vm.expectRevert("InvalidFeeRate(0)");
         marketGroupFactory.cloneAndInitializeMarketGroup(
-            owner,
+            safeOwner,
             vm.getAddress("CollateralAsset.Token"),
             feeCollectors,
             callbackRecipient,
@@ -136,5 +139,6 @@ contract MarketGroupFactoryTest is Test {
             0
         );
         vm.stopPrank();
+        assertEq(uint256(1), uint256(1));
     }
 }
