@@ -1,18 +1,12 @@
 import { arbitrum, base, mainnet } from 'viem/chains';
 import {
   categoryRepository,
-  marketGroupRepository,
-  marketRepository,
   resourceRepository,
 } from './db';
 import fixturesData from './fixtures.json';
 import { IResourcePriceIndexer } from './interfaces';
 import { Category } from './models/Category';
-import { Market } from './models/Market';
-import { MarketGroup } from './models/MarketGroup';
 import { Resource } from './models/Resource';
-import btcIndexer from './resourcePriceFunctions/btcIndexer';
-import celestiaIndexer from './resourcePriceFunctions/celestiaIndexer';
 import evmIndexer from './resourcePriceFunctions/evmIndexer';
 import { WeatherIndexer } from './resourcePriceFunctions/weatherIndexer';
 
@@ -33,56 +27,9 @@ export const INDEXERS: {
   [key: string]: IResourcePriceIndexer;
 } = {
   'ethereum-gas': new evmIndexer(mainnet.id),
-  'celestia-blobspace': new celestiaIndexer('https://api-mainnet.celenium.io'),
-  'bitcoin-fees': new btcIndexer(),
-  'base-gas': new evmIndexer(base.id),
-  'arbitrum-gas': new evmIndexer(arbitrum.id),
   'nyc-air-temperature': new WeatherIndexer('temperature'),
   'sf-precipitation': new WeatherIndexer('precipitation'),
 };
-
-// Helper function to create or update epochs with questions
-async function handleMarketQuestions(
-  marketGroup: MarketGroup,
-  questions: string[]
-): Promise<void> {
-  if (!questions || questions.length === 0) {
-    return;
-  }
-
-  // Create or update epochs for each question
-  for (let i = 0; i < questions.length; i++) {
-    const epochId = i + 1; // Convert 0-index to 1-index for epochId
-
-    // Check if epoch already exists
-    let epoch = await marketRepository.findOne({
-      where: {
-        marketGroup: { id: marketGroup.id },
-        marketId: epochId,
-      },
-    });
-
-    if (!epoch) {
-      // Create new epoch
-      epoch = new Market();
-      epoch.marketId = epochId;
-      epoch.marketGroup = marketGroup;
-      epoch.question = questions[i];
-      await marketRepository.save(epoch);
-      console.log(`Created epoch ${epochId} with question: ${questions[i]}`);
-    } else if (epoch.question !== questions[i]) {
-      // Update epoch question if different
-      epoch.question = questions[i];
-      await marketRepository.save(epoch);
-      console.log(
-        `Updated epoch ${epochId} with new question: ${questions[i]}`
-      );
-    }
-  }
-}
-
-// TODO, bring this in below?
-// import { createOrUpdateEpochFromContract } from '../controllers/marketHelpers';
 
 // Function to initialize fixtures - upsert resources and markets from fixtures.json
 export const initializeFixtures = async (): Promise<void> => {
@@ -161,95 +108,6 @@ export const initializeFixtures = async (): Promise<void> => {
         `Error creating/updating resource ${resourceData.name}:`,
         error
       );
-    }
-  }
-
-  for (const marketData of fixturesData.MARKETS) {
-    const resource = marketData.resource
-      ? await resourceRepository.findOne({
-          where: { slug: marketData.resource },
-        })
-      : null;
-
-    const category = await categoryRepository.findOne({
-      where: { slug: marketData.category },
-    });
-
-    if (marketData.resource && !resource) {
-      console.log(`Resource not found: ${marketData.resource}`);
-      continue;
-    }
-
-    if (!category) {
-      console.log(`Category not found: ${marketData.category}`);
-      continue;
-    }
-
-    let marketGroup = await marketGroupRepository.findOne({
-      where: {
-        address: marketData.address.toLowerCase(),
-        chainId: marketData.chainId,
-      },
-      relations: ['resource'],
-    });
-
-    if (!marketGroup) {
-      // Create new market
-      marketGroup = new MarketGroup();
-      marketGroup.address = marketData.address.toLowerCase();
-      marketGroup.chainId = marketData.chainId || 0;
-      marketGroup.isYin = marketData.isYin || false;
-      marketGroup.isCumulative = marketData.isCumulative || false;
-      marketGroup.category = category;
-      marketGroup.question = marketData.question || null;
-      marketGroup.baseTokenName = marketData.baseTokenName || null;
-      marketGroup.quoteTokenName = marketData.quoteTokenName || null;
-
-      if (resource) {
-        marketGroup.resource = resource;
-      }
-      await marketGroupRepository.save(marketGroup);
-      console.log(
-        'Created market:',
-        marketGroup.address,
-        'on chain',
-        marketGroup.chainId
-      );
-
-      // Handle questions for epochs after market is saved
-      if (marketData.questions && marketGroup.id) {
-        await handleMarketQuestions(marketGroup, marketData.questions);
-      }
-    } else {
-      if (!marketData.resource && marketGroup.resource) {
-        marketGroup.resource = null;
-        console.log(`Removed resource from market: ${marketGroup.address}`);
-      } else if (resource) {
-        marketGroup.resource = resource;
-      }
-
-      marketGroup.isYin = marketData.isYin || marketGroup.isYin || false;
-      marketGroup.isCumulative =
-        marketData.isCumulative || marketGroup.isCumulative || false;
-      marketGroup.category = category;
-      marketGroup.question = marketData.question || marketGroup.question;
-      marketGroup.baseTokenName =
-        marketData.baseTokenName || marketGroup.baseTokenName || null;
-      marketGroup.quoteTokenName =
-        marketData.quoteTokenName || marketGroup.quoteTokenName || null;
-
-      await marketGroupRepository.save(marketGroup);
-      console.log(
-        'Updated market:',
-        marketGroup.address,
-        'on chain',
-        marketGroup.chainId
-      );
-
-      // Handle questions for epochs after market is updated
-      if (marketData.questions && marketGroup.id) {
-        await handleMarketQuestions(marketGroup, marketData.questions);
-      }
     }
   }
 };
