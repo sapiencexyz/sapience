@@ -14,12 +14,6 @@ contract ConfigurationModule is
 {
     using Market for Market.Data;
 
-    address immutable marketInitializer;
-
-    constructor(address _marketInitializer) {
-        marketInitializer = _marketInitializer;
-    }
-
     modifier onlyOwner() {
         Market.Data storage market = Market.load();
         if (market.owner == address(0)) {

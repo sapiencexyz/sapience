@@ -3,12 +3,11 @@ version="1.0.5"
 preset="factory"
 
 [var.settings]
-owner="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+owner="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" # TEMPORARILY ANVIL SIGNER
 depends = []
 
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
-args=["<%= settings.owner %>"]
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"

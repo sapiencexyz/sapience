@@ -41,23 +41,9 @@ contract MarketGroupFactory {
             "Owner cannot be the zero address"
         );
 
-<<<<<<< HEAD
         address marketGroup = implementation.clone();
 
-        bytes memory callData = abi.encodeWithSelector(
-            IConfigurationModule.initializeMarket.selector,
-            owner,
-            collateralAsset,
-            feeCollectors,
-            callbackRecipient,
-            minTradeSize,
-            marketParams
-        );
-        (bool success, bytes memory returnData) = marketGroup
-            .delegatecall(callData);
-=======
-        marketGroup.initializeMarket(owner, collateralAsset, feeCollectors, callbackRecipient, minTradeSize, marketParams);
->>>>>>> b73a9ba1 (checkpoint)
+        IConfigurationModule(marketGroup).initializeMarket(owner, collateralAsset, feeCollectors, callbackRecipient, minTradeSize, marketParams);
 
         bytes memory returnData = abi.encode(address(marketGroup));
 
