@@ -1,8 +1,7 @@
+import { marketGroupRepository, categoryRepository } from '../db';
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { getRepository } from 'typeorm';
 import { MarketGroup } from '../models/MarketGroup';
-import { Category } from '../models/Category';
 import { Market } from '../models/Market';
 
 const router = Router();
@@ -15,20 +14,17 @@ router.post(
     const {
       chainId,
       question,
-      category: categoryId,
+      category: categorySlug,
       baseTokenName,
       quoteTokenName,
       factoryAddress,
     } = req.body;
 
     try {
-      const marketGroupRepository = getRepository(MarketGroup);
-      const categoryRepository = getRepository(Category);
-
       if (
         !chainId ||
         !question ||
-        !categoryId ||
+        !categorySlug ||
         !baseTokenName ||
         !quoteTokenName ||
         !factoryAddress
@@ -37,12 +33,12 @@ router.post(
       }
 
       const category = await categoryRepository.findOne({
-        where: { id: categoryId },
+        where: { slug: categorySlug },
       });
       if (!category) {
         return res
           .status(404)
-          .json({ message: `Category with id ${categoryId} not found` });
+          .json({ message: `Category with slug ${categorySlug} not found` });
       }
 
       const newMarketGroup = new MarketGroup();
@@ -53,7 +49,7 @@ router.post(
       newMarketGroup.initializationNonce = nonce;
       newMarketGroup.category = category;
       newMarketGroup.factoryAddress = factoryAddress;
-
+      console.log('newMarketGroup', newMarketGroup);
       const savedMarketGroup = await marketGroupRepository.save(newMarketGroup);
 
       res.status(201).json(savedMarketGroup);
@@ -84,9 +80,6 @@ router.post('/create-market/:address', async (req: Request, res: Response) => {
   } = req.body;
 
   try {
-    const marketGroupRepository = getRepository(MarketGroup);
-    const marketRepository = getRepository(Market);
-
     const marketGroup = await marketGroupRepository.findOne({
       where: { address },
       relations: ['markets'],

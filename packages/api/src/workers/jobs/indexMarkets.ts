@@ -3,7 +3,9 @@ import { marketGroupRepository } from '../../db';
 import { getProviderForChain } from '../../utils/utils';
 import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
 import { indexMarketEvents } from '../../controllers/market';
-import marketGroupFactoryAbi from '@foil/protocol/deployments/FoilFactory.json';
+import marketGroupFactoryData from '@foil/protocol/deployments/FoilFactory.json';
+
+const marketGroupFactoryAbi = marketGroupFactoryData.abi;
 
 /**
  * Sets up event watching for a single market group using the logic from market.ts.
