@@ -19,7 +19,7 @@ type CategoryType {
 }
 
 type MarketGroupType {
-  address: String!
+  address: String
   baseTokenName: String
   category: CategoryType
   chainId: Int!

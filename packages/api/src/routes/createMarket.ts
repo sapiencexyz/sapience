@@ -1,4 +1,4 @@
-import { marketGroupRepository, categoryRepository } from '../db';
+import { marketGroupRepository, categoryRepository, marketRepository } from '../db';
 import { Router } from 'express';
 import { Request, Response } from 'express';
 import { MarketGroup } from '../models/MarketGroup';
@@ -65,9 +65,9 @@ router.post(
   }
 );
 
-// Handler for POST /create-market/:address
-router.post('/create-market/:address', async (req: Request, res: Response) => {
-  const { address } = req.params;
+// Handler for POST /create-market/:chainId/:address
+router.post('/create-market/:chainId/:address', async (req: Request, res: Response) => {
+  const { address, chainId } = req.params;
   const {
     marketQuestion,
     optionName,
@@ -80,7 +80,7 @@ router.post('/create-market/:address', async (req: Request, res: Response) => {
 
   try {
     const marketGroup = await marketGroupRepository.findOne({
-      where: { address },
+      where: { address, chainId: parseInt(chainId, 10) },
       relations: ['markets'],
     });
 
