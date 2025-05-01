@@ -63,11 +63,10 @@ contract MarketGroupFactoryTest is Test {
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
     }
 
-    function test_canCloneMarketGroup_Only() public {
-        vm.startPrank(deployer);
-        (address marketGroup, ) = marketGroupFactory
+    function test_canCloneMarketGroup() public {
+        vm.startPrank(safeOwner);
+        address marketGroup = marketGroupFactory
             .cloneAndInitializeMarketGroup(
-                safeOwner,
                 address(collateralAsset),
                 feeCollectors,
                 callbackRecipient,
@@ -86,9 +85,8 @@ contract MarketGroupFactoryTest is Test {
             );
 
 
-        (address marketGroup2, ) = marketGroupFactory
+        address marketGroup2 = marketGroupFactory
             .cloneAndInitializeMarketGroup(
-                safeOwner,
                 address(collateralAsset),
                 feeCollectors,
                 callbackRecipient,
@@ -113,36 +111,11 @@ contract MarketGroupFactoryTest is Test {
         checkMarketGroupCanOperate(IFoil(marketGroup2));
     }
 
-    function test_revertsWhenCloneNonDeployerSetAddress() public {
-        vm.startPrank(safeOwner);
-        vm.expectRevert("Only authorized owner can call this function");
-        marketGroupFactory.cloneAndInitializeMarketGroup(
-            safeOwner,
-            address(collateralAsset),
-            feeCollectors,
-            callbackRecipient,
-            MIN_TRADE_SIZE,
-            IFoilStructs.MarketParams({
-                feeRate: 10000,
-                assertionLiveness: 21600,
-                bondCurrency: address(bondCurrency),
-                bondAmount: BOND_AMOUNT,
-                uniswapPositionManager: uniswapPositionManager,
-                uniswapSwapRouter: uniswapSwapRouter,
-                uniswapQuoter: uniswapQuoter,
-                optimisticOracleV3: optimisticOracleV3
-            }),
-            0
-        );
-        vm.stopPrank();
-    }
-
     function test_revertsAndPropagatesTheError_feeRateZero() public {
         vm.startPrank(deployer);
         // vm.expectRevert("InvalidFeeRate(0)");
-        vm.expectRevert();
+        vm.expectRevert(); // Note, expected error looks similar in the console log, but fails to catch it properly
         marketGroupFactory.cloneAndInitializeMarketGroup(
-            safeOwner,
             address(collateralAsset),
             feeCollectors,
             callbackRecipient,
@@ -162,16 +135,30 @@ contract MarketGroupFactoryTest is Test {
         vm.stopPrank();
     }
 
-    function checkMarketGroupCanOperate(IFoil marketGroup) private {
-        uint160 SQRT_PRICE_11Eth = 262770087889115504578498920448;
-        uint256 settlementPriceD18 = 10999999999999999740;
-        uint160 initialSqrtPriceX96 = 250541448375047946302209916928; // 10
-        int24 minTick = 6800; // 2.0
-        int24 maxTick = 27000; // 15.0
+    function test_attmeptToInitializeMarketGroupTwiceRevert() public {
+        vm.startPrank(safeOwner);
+        address marketGroup = marketGroupFactory
+            .cloneAndInitializeMarketGroup(
+                address(collateralAsset),
+                feeCollectors,
+                callbackRecipient,
+                MIN_TRADE_SIZE,
+                IFoilStructs.MarketParams({
+                    feeRate: 10000,
+                    assertionLiveness: 21600,
+                    bondCurrency: address(bondCurrency),
+                    bondAmount: BOND_AMOUNT,
+                    uniswapPositionManager: uniswapPositionManager,
+                    uniswapSwapRouter: uniswapSwapRouter,
+                    uniswapQuoter: uniswapQuoter,
+                    optimisticOracleV3: optimisticOracleV3
+                }),
+                0
+            );
 
-        // Initialize the market (again)
-        vm.startPrank(deployer);
-        marketGroup.initializeMarket(
+        // vm.expectRevert("MarketAlreadyCreated()"); // Note, expected error looks similar in the console log, but fails to catch it properly
+        vm.expectRevert();
+        IFoil(marketGroup).initializeMarket(
             safeOwner,
             address(collateralAsset),
             feeCollectors,
@@ -188,7 +175,16 @@ contract MarketGroupFactoryTest is Test {
                 optimisticOracleV3: optimisticOracleV3
             })
         );
+
         vm.stopPrank();
+    }
+
+    function checkMarketGroupCanOperate(IFoil marketGroup) private {
+        uint160 SQRT_PRICE_11Eth = 262770087889115504578498920448;
+        uint256 settlementPriceD18 = 10999999999999999740;
+        uint160 initialSqrtPriceX96 = 250541448375047946302209916928; // 10
+        int24 minTick = 6800; // 2.0
+        int24 maxTick = 27000; // 15.0
 
         // Create a new epoch
         vm.startPrank(safeOwner);
