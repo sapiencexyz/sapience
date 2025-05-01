@@ -31,6 +31,7 @@ contract MarketGroupFactoryTest is Test {
 
     address lp1;
     address owner;
+    address deployer = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
     IFoil foil;
     IVault vault;
     MarketGroupFactory marketGroupFactory;
@@ -46,6 +47,9 @@ contract MarketGroupFactoryTest is Test {
 
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 constant BOND_AMOUNT = 100 ether;
+    address[] feeCollectors = new address[](0);
+    address callbackRecipient = address(0);
+
 
     function setUp() public {
         marketGroupFactory = MarketGroupFactory(
@@ -55,37 +59,82 @@ contract MarketGroupFactoryTest is Test {
             vm.getAddress("CollateralAsset.Token")
         );
         owner = makeAddr("owner");
+        
     }
 
     function test_revertsWhenCloneNonOwner() public {
         vm.expectRevert("Only authorized owner can call this function");
         marketGroupFactory.cloneAndInitializeMarketGroup(
             owner,
-            address(collateralAsset),
-            new address[](0),
-            address(0),
-            0,
+            vm.getAddress("CollateralAsset.Token"),
+            feeCollectors,
+            callbackRecipient,
+            MIN_TRADE_SIZE,
             IFoilStructs.MarketParams({
-                feeRate: 0,
-                assertionLiveness: 0,
-                bondAmount: 0,
-                bondCurrency: address(0),
-                uniswapPositionManager: address(0),
-                uniswapSwapRouter: address(0),
-                uniswapQuoter: address(0),
-                optimisticOracleV3: address(0)
+                feeRate: 10000,
+                assertionLiveness: 21600,
+                bondCurrency: vm.getAddress("BondCurrency.Token"),
+                bondAmount: BOND_AMOUNT,
+                uniswapPositionManager: vm.getAddress(
+                    "Uniswap.NonfungiblePositionManager"
+                ),
+                uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
+                uniswapQuoter: vm.getAddress("Uniswap.QuoterV2"),
+                optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
             }),
             0
         );
     }
 
-    //                 uint24 feeRate;
-    // uint64 assertionLiveness;
-    // uint256 bondAmount;
-    // address bondCurrency;
-    // address uniswapPositionManager;
-    // address uniswapSwapRouter;
-    // address uniswapQuoter;
-    // address optimisticOracleV3;
-    function test_revertsWhenInitializeFirstEpochAgain() public {}
+    function test_canCloneMarketGroup() public {
+        vm.startPrank(deployer);
+        (address marketGroup, bytes memory returnData) = marketGroupFactory.cloneAndInitializeMarketGroup(
+            owner,
+            vm.getAddress("CollateralAsset.Token"),
+            feeCollectors,
+            callbackRecipient,
+            MIN_TRADE_SIZE,
+            IFoilStructs.MarketParams({
+                feeRate: 10000,
+                assertionLiveness: 21600,
+                bondCurrency: vm.getAddress("BondCurrency.Token"),
+                bondAmount: BOND_AMOUNT,
+                uniswapPositionManager: vm.getAddress(
+                    "Uniswap.NonfungiblePositionManager"
+                ),
+                uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
+                uniswapQuoter: vm.getAddress("Uniswap.QuoterV2"),
+                optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
+            }),
+            0
+        );
+        vm.stopPrank();
+        assertNotEq(marketGroup, address(0));        
+    }
+
+    function test_revertsAndPropagatesTheError_feeRateZero() public {
+        vm.startPrank(deployer);
+        vm.expectRevert("InvalidFeeRate(0)");
+        marketGroupFactory.cloneAndInitializeMarketGroup(
+            owner,
+            vm.getAddress("CollateralAsset.Token"),
+            feeCollectors,
+            callbackRecipient,
+            MIN_TRADE_SIZE,
+            IFoilStructs.MarketParams({
+                feeRate: 0,
+                assertionLiveness: 21600,
+                bondCurrency: vm.getAddress("BondCurrency.Token"),
+                bondAmount: BOND_AMOUNT,
+                uniswapPositionManager: vm.getAddress(
+                    "Uniswap.NonfungiblePositionManager"
+                ),
+                uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
+                uniswapQuoter: vm.getAddress("Uniswap.QuoterV2"),
+                optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
+            }),
+            0
+        );
+        vm.stopPrank();
+    }
 }
