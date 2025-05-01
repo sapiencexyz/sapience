@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node';
 
-export default function initSentry() {
+export function initSentry() {
   if (process.env.NODE_ENV === 'production') {
     Sentry.init({
       dsn: 'https://51f9dc1f58790bea0860415ebfeab2f8@o4508343136026624.ingest.us.sentry.io/4508343455711232',
@@ -10,3 +10,5 @@ export default function initSentry() {
     console.log('Sentry disabled in development mode');
   }
 }
+
+export default Sentry;
