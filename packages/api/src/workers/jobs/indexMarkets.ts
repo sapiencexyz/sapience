@@ -30,7 +30,6 @@ async function startIndexingForMarketGroup(
 async function handleMarketGroupInitialized(
   eventArgs: {
     marketGroup: `0x${string}`;
-    returnData: `0x${string}`;
     nonce: bigint;
   },
   chainId: number,
@@ -158,7 +157,6 @@ export async function startIndexingAndWatchingMarketGroups(chainId: number) {
             });
             const eventArgs = decodedLog.args as unknown as {
               marketGroup: `0x${string}`;
-              returnData: `0x${string}`;
               nonce: bigint;
             };
             // Pass client instance to handler call

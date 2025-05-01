@@ -13,7 +13,6 @@ contract MarketGroupFactory {
 
     event MarketGroupInitialized(
         address indexed marketGroup,
-        bytes returnData,
         uint256 nonce
     );
 
@@ -30,7 +29,7 @@ contract MarketGroupFactory {
         uint256 minTradeSize,
         IFoilStructs.MarketParams memory marketParams,
         uint256 nonce
-    ) external returns (address, bytes memory) {
+    ) external returns (address) {
         require(
             msg.sender == authorizedOwner,
             "Only authorized owner can call this function"
@@ -45,9 +44,7 @@ contract MarketGroupFactory {
 
         IConfigurationModule(marketGroup).initializeMarket(owner, collateralAsset, feeCollectors, callbackRecipient, minTradeSize, marketParams);
 
-        bytes memory returnData = abi.encode(address(marketGroup));
-
-        emit MarketGroupInitialized(marketGroup, returnData, nonce);
-        return (marketGroup, returnData);
+        emit MarketGroupInitialized(marketGroup, nonce);
+        return marketGroup;
     }
 }
