@@ -39,7 +39,7 @@ export class MarketGroup {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', nullable: true })
   @Index()
   address: string;
 
