@@ -49,7 +49,6 @@ router.post(
       newMarketGroup.initializationNonce = nonce;
       newMarketGroup.category = category;
       newMarketGroup.factoryAddress = factoryAddress;
-      console.log('newMarketGroup', newMarketGroup);
       const savedMarketGroup = await marketGroupRepository.save(newMarketGroup);
 
       res.status(201).json(savedMarketGroup);
