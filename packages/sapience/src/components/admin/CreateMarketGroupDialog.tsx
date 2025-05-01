@@ -118,7 +118,7 @@ const marketGroupFactoryAbi = [
 
 // Event ABI item for parsing logs
 const marketGroupInitializedEvent = parseAbiItem(
-  'event MarketGroupInitialized(address indexed marketGroup, bytes returnData)'
+  'event MarketGroupInitialized(address indexed sender,address indexed marketGroup,uint256 nonce)'
 ) as AbiEvent; // Assert type for decodeEventLog
 
 interface MarketParamsInput {

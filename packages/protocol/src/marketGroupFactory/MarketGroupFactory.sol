@@ -9,20 +9,18 @@ contract MarketGroupFactory {
     using Clones for address;
 
     address public immutable implementation;
-    address public immutable authorizedOwner;
 
     event MarketGroupInitialized(
+        address indexed sender,
         address indexed marketGroup,
         uint256 nonce
     );
 
-    constructor(address _implementation, address _authorizedOwner) {
+    constructor(address _implementation) {
         implementation = _implementation;
-        authorizedOwner = _authorizedOwner;
     }
 
     function cloneAndInitializeMarketGroup(
-        address owner,
         address collateralAsset,
         address[] calldata feeCollectors,
         address callbackRecipient,
@@ -30,21 +28,12 @@ contract MarketGroupFactory {
         IFoilStructs.MarketParams memory marketParams,
         uint256 nonce
     ) external returns (address) {
-        require(
-            msg.sender == authorizedOwner,
-            "Only authorized owner can call this function"
-        );
-
-        require(
-            owner != address(0),
-            "Owner cannot be the zero address"
-        );
-
         address marketGroup = implementation.clone();
 
-        IConfigurationModule(marketGroup).initializeMarket(owner, collateralAsset, feeCollectors, callbackRecipient, minTradeSize, marketParams);
+        IConfigurationModule(marketGroup).initializeMarket(msg.sender, collateralAsset, feeCollectors, callbackRecipient, minTradeSize, marketParams);
 
-        emit MarketGroupInitialized(marketGroup, nonce);
+        emit MarketGroupInitialized(msg.sender, marketGroup, nonce);
+
         return marketGroup;
     }
 }
