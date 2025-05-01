@@ -8,15 +8,16 @@ import {
   type Transport,
 } from 'viem';
 import { mainnet, sepolia, cannon, base, arbitrum } from 'viem/chains';
-import { TOKEN_PRECISION } from './constants';
-import { marketRepository } from './db';
-import { Deployment } from './interfaces';
+import { TOKEN_PRECISION } from '../constants';
+import { marketRepository } from '../db';
+import { Deployment } from '../interfaces';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import * as viem from 'viem';
 import * as viemChains from 'viem/chains';
+import * as Sentry from '@sentry/node';
 
 export const chains: viem.Chain[] = [...Object.values(viemChains)];
 
@@ -490,5 +491,70 @@ export async function getContractCreationBlock(
   return {
     block: latestBlock,
     timestamp: Number(latestBlock.timestamp),
+  };
+}
+
+const MAX_RETRIES = Infinity;
+const RETRY_DELAY = 5000; // 5 seconds
+
+export const delay = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  name: string,
+  maxRetries: number = MAX_RETRIES
+): Promise<T> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error as Error;
+      console.error(
+        `Attempt ${attempt}/${maxRetries} failed for ${name}:`,
+        error
+      );
+
+      // Report error to Sentry with context
+      Sentry.withScope((scope) => {
+        scope.setExtra('attempt', attempt);
+        scope.setExtra('maxRetries', maxRetries);
+        scope.setExtra('operationName', name);
+        Sentry.captureException(error);
+      });
+
+      if (attempt < maxRetries) {
+        console.log(`Retrying ${name} in ${RETRY_DELAY / 1000} seconds...`);
+        await delay(RETRY_DELAY);
+      }
+    }
+  }
+  const finalError = new Error(
+    `All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`
+  );
+  Sentry.captureException(finalError);
+  throw finalError;
+}
+
+export function createResilientProcess<T>(
+  process: () => Promise<T>,
+  name: string
+): () => Promise<T | void> {
+  return async () => {
+    while (true) {
+      try {
+        // Use the `withRetry` from this module
+        return await withRetry(process, name);
+      } catch (error) {
+        console.error(
+          `Process ${name} failed after all retries. Restarting...`,
+          error
+        );
+        // Use the `delay` from this module and the RETRY_DELAY constant
+        await delay(RETRY_DELAY);
+      }
+    }
   };
 }

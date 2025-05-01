@@ -2,7 +2,7 @@ import { TIME_INTERVALS } from 'src/fixtures';
 import { startOfCurrentInterval } from './helper';
 import { marketRepository, positionRepository } from 'src/db';
 import { Position } from 'src/models/Position';
-import { getProviderForChain } from 'src/utils';
+import { getProviderForChain } from 'src/utils/utils';
 import { PublicClient } from 'viem';
 import { calculateOpenPositionValue } from 'src/helpers/positionPnL';
 
@@ -86,7 +86,11 @@ export class PnLPerformance {
         where: {
           market: { id: epochData.id },
         },
-        relations: ['transactions', 'transactions.collateralTransfer'],
+        relations: [
+          'transactions',
+          'transactions.collateralTransfer',
+          'market',
+        ],
       });
 
       // 2 & 3. Group positions by owner and create PnL entries
@@ -114,7 +118,6 @@ export class PnLPerformance {
           ownerPnl.positionCount++;
           ownerPnl.positionIds.add(position.positionId);
         }
-
         // 4. Account for collateral changes
         if (position.transactions.length > 0) {
           for (const transaction of position.transactions) {
@@ -172,15 +175,8 @@ export class PnLPerformance {
     return calculateOpenPositionValue(positionId, epochData.address, client);
   }
 
-  // TODO: Implement this
   private isOpenPosition(position: Position): boolean {
-    // TODO REMOVE THIS, only for lint to be happy
-    if (position.id === 999) {
-      console.log(` position: ${position.id}`);
-    }
-    // TODO Check how to identify a position as open
-    // TODO: Check if position is settled
-    return true;
+    return !position.isSettled;
   }
 
   private async getMarketData(

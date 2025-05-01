@@ -94,4 +94,7 @@ export class Market {
 
   @Column({ type: 'text', nullable: true })
   question: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  optionName: string | null;
 }

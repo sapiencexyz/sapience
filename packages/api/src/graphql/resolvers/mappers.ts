@@ -58,7 +58,6 @@ export const mapMarketGroupToType = (
   claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
   baseTokenName: marketGroup.baseTokenName,
   quoteTokenName: marketGroup.quoteTokenName,
-  optionNames: marketGroup.optionNames,
 });
 
 export const mapResourceToType = (resource: Resource): ResourceType => ({
@@ -93,6 +92,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   baseAssetMinPriceTick: market.baseAssetMinPriceTick,
   baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
   poolAddress: market.poolAddress,
+  optionName: market.optionName,
 });
 
 export const mapPositionToType = (position: Position): PositionType => ({

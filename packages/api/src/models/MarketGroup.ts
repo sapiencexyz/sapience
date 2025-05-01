@@ -83,8 +83,11 @@ export class MarketGroup {
   @Column({ type: 'varchar', nullable: true })
   quoteTokenName: string | null;
 
-  @Column({ type: 'simple-array', nullable: true })
-  optionNames: string[] | null;
+  @Column({ type: 'varchar', nullable: true })
+  initializationNonce: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  factoryAddress: string | null;
 
   @Column(() => MarketParams)
   marketParams: MarketParams;

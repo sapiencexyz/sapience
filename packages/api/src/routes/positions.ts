@@ -5,7 +5,7 @@ import { validateRequestParams } from '../helpers/validateRequestParams';
 import dataSource from '../db';
 import { MarketGroup } from '../models/MarketGroup';
 import { Position } from '../models/Position';
-import { formatDbBigInt } from '../utils';
+import { formatDbBigInt } from '../utils/utils';
 const marketGroupRepository = dataSource.getRepository(MarketGroup);
 const positionRepository = dataSource.getRepository(Position);
 const router = Router();

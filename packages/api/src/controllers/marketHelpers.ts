@@ -23,9 +23,9 @@ import {
   EventType,
 } from '../interfaces';
 import { MarketPrice } from '../models/MarketPrice';
-import { getBlockByTimestamp, getProviderForChain } from '../utils';
+import { getBlockByTimestamp, getProviderForChain } from '../utils/utils';
 import { FindOptionsWhere } from 'typeorm';
-import Foil from '@foil/protocol/deployments/Foil.json';
+import Foil from '@foil/protocol/deployments/FoilLegacy.json';
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
@@ -64,6 +64,7 @@ export const handleTransferEvent = async (event: Event) => {
 export const handlePositionSettledEvent = async (event: Event) => {
   const { positionId } = event.logData.args;
 
+  // TODO: FIx this
   const existingPosition = await positionRepository.findOne({
     where: {
       positionId: Number(positionId),
@@ -91,31 +92,57 @@ export const createOrModifyPositionFromTransaction = async (
 ) => {
   try {
     const eventArgs = transaction.event.logData.args;
-    const epochId = eventArgs.epochId;
+    let epochId = eventArgs.epochId;
+    let epoch;
 
     if (!epochId) {
-      console.error('No epochId found in event args:', eventArgs);
-      return;
-    }
+      const positionId = transaction.event.logData.args.positionId;
 
-    const epoch = await marketRepository.findOne({
-      where: {
-        marketId: Number(epochId),
-        marketGroup: {
-          address: transaction.event.marketGroup.address.toLowerCase(),
+      const markets = await marketRepository.find({
+        where: {
+          marketGroup: {
+            address: transaction.event.marketGroup.address.toLowerCase(),
+            chainId: transaction.event.marketGroup.chainId,
+          },
         },
-      },
-    });
-    if (!epoch) {
-      console.error(
-        'Epoch not found: ',
-        epochId,
-        'market:',
-        transaction.event.marketGroup.address
-      );
-      return;
-    }
+        relations: ['positions'],
+      });
 
+      let found = false;
+      for (const market of markets) {
+        const position = market.positions.find(
+          (p) => p.positionId === Number(positionId)
+        );
+        if (position) {
+          epoch = market;
+          epochId = market.marketId;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        throw new Error(`Market not found for position id ${positionId}`);
+      }
+    } else {
+      epoch = await marketRepository.findOne({
+        where: {
+          marketId: Number(epochId),
+          marketGroup: {
+            address: transaction.event.marketGroup.address.toLowerCase(),
+          },
+        },
+      });
+      if (!epoch) {
+        console.error(
+          'Epoch not found: ',
+          epochId,
+          'market:',
+          transaction.event.marketGroup.address
+        );
+        throw new Error(`Epoch not found: ${epochId}`);
+      }
+    }
     const positionId = Number(transaction.event.logData.args.positionId);
     if (isNaN(positionId)) {
       console.error(
@@ -156,7 +183,7 @@ export const createOrModifyPositionFromTransaction = async (
 
     // Set all required fields explicitly
     position.positionId = positionId;
-    position.market = epoch;
+    position.market = epoch as Market;
     position.owner = (
       (eventArgs.sender as string) ||
       position.owner ||
@@ -276,9 +303,53 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   const transfer = new CollateralTransfer();
   transfer.transactionHash = transaction.event.transactionHash;
   transfer.timestamp = Number(transaction.event.timestamp);
-  transfer.owner = (
-    transaction.event.logData.args.sender as string
-  ).toLowerCase();
+
+  // Try to get sender from event args
+  let sender = eventArgs.sender as string;
+
+  // If sender is not available in the event args, fetch it from the blockchain
+  if (!sender) {
+    try {
+      console.log(
+        'Sender not found in event args, fetching from blockchain...'
+      );
+      // Get the chain ID from the event's market group
+      const chainId = transaction.event.marketGroup?.chainId;
+
+      if (chainId) {
+        // Get the provider for this chain
+        const provider = getProviderForChain(chainId);
+
+        // Fetch the transaction from the blockchain
+        const txHash = transaction.event.transactionHash;
+        const txData = await provider.getTransaction({
+          hash: txHash as `0x${string}`,
+        });
+
+        if (txData?.from) {
+          sender = txData.from as string;
+          console.log(
+            `Found sender ${sender} from blockchain for transaction ${txHash}`
+          );
+        } else {
+          console.warn(
+            `Could not find sender from blockchain for transaction ${txHash}`
+          );
+        }
+      } else {
+        console.warn(
+          'No chain ID available, cannot fetch transaction from blockchain'
+        );
+      }
+    } catch (error) {
+      console.error('Error fetching transaction from blockchain:', error);
+    }
+  }
+
+  // Set the owner with the sender or fallback to a placeholder address
+  transfer.owner = sender
+    ? sender.toLowerCase()
+    : '0x0000000000000000000000000000000000000000';
   transfer.collateral = eventArgs.deltaCollateral as string;
 
   // Save and assign to transaction
@@ -288,6 +359,7 @@ export const insertCollateralTransfer = async (transaction: Transaction) => {
   } catch (error) {
     // If we get a duplicate key error, try to find the existing transfer again
     // This handles race conditions
+
     if (
       error &&
       typeof error === 'object' &&
@@ -402,10 +474,10 @@ export const createOrUpdateMarketFromContract = async (
     (marketReadResult as MarketReadResult)[0] as string
   ).toLowerCase();
   updatedMarket.collateralAsset = (marketReadResult as MarketReadResult)[1];
-  
+
   // Update collateral data
   await updateCollateralData(client, updatedMarket);
-  
+
   const marketParamsRaw = (marketReadResult as MarketReadResult)[4];
   const marketParams: MarketParams = {
     ...marketParamsRaw,
@@ -721,24 +793,41 @@ export const updateTransactionFromTradeModifiedEvent = async (
 
 export const updateTransactionFromPositionSettledEvent = async (
   newTransaction: Transaction,
-  event: Event
+  event: Event,
+  marketGroupAddress: string,
+  marketId: number,
+  chainId: number
 ) => {
-  const epochId = event.logData.args.epochId;
   newTransaction.type = TransactionType.SETTLE_POSITION;
 
-  const epoch = await marketRepository.findOne({
+  const positionId = event.logData.args.positionId;
+
+  const markets = await marketRepository.find({
     where: {
-      marketId: Number(epochId),
-      marketGroup: { address: event.marketGroup.address.toLowerCase() },
-    } satisfies FindOptionsWhere<Market>,
+      marketGroup: {
+        address: marketGroupAddress.toLowerCase(),
+        chainId: chainId,
+      },
+    },
+    relations: ['positions'],
   });
 
-  if (!epoch) {
-    throw new Error(`Epoch not found: ${epochId}`);
+  let found = false;
+  for (const market of markets) {
+    const position = market.positions.find(
+      (p) => p.positionId === Number(positionId)
+    );
+    if (position) {
+      updateTransactionStateFromEvent(newTransaction, event);
+      newTransaction.tradeRatioD18 = market.settlementPriceD18 || '0';
+      found = true;
+      break;
+    }
   }
 
-  updateTransactionStateFromEvent(newTransaction, event);
-  newTransaction.tradeRatioD18 = epoch?.settlementPriceD18 || '0';
+  if (!found) {
+    throw new Error(`Market not found for position id ${positionId}`);
+  }
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken || newTransaction.baseToken === '') {

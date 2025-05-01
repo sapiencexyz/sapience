@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { marketRepository } from 'src/db';
 import { Market } from 'src/models/Market';
 import { z } from 'zod';
-import { getProviderForChain } from '../utils';
+import { getProviderForChain } from '../utils/utils';
 import { formatUnits, parseUnits } from 'viem';
 import Foil from '@foil/protocol/deployments/Foil.json';
 

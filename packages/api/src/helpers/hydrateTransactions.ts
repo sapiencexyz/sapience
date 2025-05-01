@@ -1,4 +1,4 @@
-import { formatDbBigInt } from 'src/utils';
+import { formatDbBigInt } from 'src/utils/utils';
 import { Transaction } from '../models/Transaction';
 import { Position } from 'src/models/Position';
 

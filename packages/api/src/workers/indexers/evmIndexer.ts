@@ -1,9 +1,9 @@
-import { resourcePriceRepository } from '../db';
-import { getBlockByTimestamp, getProviderForChain } from '../utils';
+import { resourcePriceRepository } from '../../db';
+import { getBlockByTimestamp, getProviderForChain } from '../../utils/utils';
 import { Block, type PublicClient } from 'viem';
-import Sentry from '../sentry';
-import { IResourcePriceIndexer } from '../interfaces';
-import { Resource } from 'src/models/Resource';
+import Sentry from '../../sentry';
+import { IResourcePriceIndexer } from '../../interfaces';
+import { Resource } from '../../models/Resource';
 
 class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;

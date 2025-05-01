@@ -2,12 +2,12 @@ import {
   initializeDataSource,
   resourcePriceRepository,
   marketGroupRepository,
-} from '../db';
-import { initializeMarket } from '../controllers/market';
-import { getMarketStartEndBlock } from '../controllers/marketHelpers';
+} from '../../db';
+import { initializeMarket } from '../../controllers/market';
+import { getMarketStartEndBlock } from '../../controllers/marketHelpers';
 import { Between } from 'typeorm';
 import * as Sentry from '@sentry/node';
-import { INDEXERS } from '../fixtures';
+import { INDEXERS } from '../../fixtures';
 import { Resource } from 'src/models/Resource';
 
 export async function reindexMissingBlocks(

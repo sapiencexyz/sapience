@@ -62,7 +62,4 @@ export class MarketGroupType {
 
   @Field(() => String, { nullable: true })
   quoteTokenName: string | null;
-
-  @Field(() => [String], { nullable: true })
-  optionNames: string[] | null;
 }

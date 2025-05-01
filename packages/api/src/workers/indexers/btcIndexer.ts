@@ -1,8 +1,8 @@
-import { IResourcePriceIndexer } from '../interfaces';
-import { resourcePriceRepository } from '../db';
-import { Resource } from 'src/models/Resource';
+import { IResourcePriceIndexer } from '../../interfaces';
+import { resourcePriceRepository } from '../../db';
+import { Resource } from '../../models/Resource';
 import axios from 'axios';
-import Sentry from '../sentry';
+import Sentry from '../../sentry';
 
 interface BlockData {
   height: number;
