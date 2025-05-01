@@ -47,7 +47,8 @@ highlight=true
 [deploy.MarketGroupFactory]
 artifact="MarketGroupFactory"
 args=[
-  "<%= Foil.address %>"
+  "<%= Foil.address %>",
+  "<%= settings.owner %>"
 ]
 highlight=true
 depends=["router.Foil"]

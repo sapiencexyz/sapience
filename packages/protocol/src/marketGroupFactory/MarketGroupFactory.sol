@@ -9,6 +9,7 @@ contract MarketGroupFactory {
     using Clones for address;
 
     address public immutable implementation;
+    address public immutable authorizedOwner;
 
     event MarketGroupInitialized(
         address indexed marketGroup,
@@ -16,8 +17,9 @@ contract MarketGroupFactory {
         uint256 nonce
     );
 
-    constructor(address _implementation) {
+    constructor(address _implementation, address _authorizedOwner) {
         implementation = _implementation;
+        authorizedOwner = _authorizedOwner;
     }
 
     function cloneAndInitializeMarketGroup(
@@ -29,6 +31,11 @@ contract MarketGroupFactory {
         IFoilStructs.MarketParams memory marketParams,
         uint256 nonce
     ) external returns (address, bytes memory) {
+        require(
+            msg.sender == authorizedOwner,
+            "Only authorized owner can call this function"
+        );
+
         IConfigurationModule marketGroup = IConfigurationModule(
             implementation.clone()
         );
