@@ -1,29 +1,29 @@
-
-// ABI for the MarketGroupFactory contract
-// const marketGroupFactoryAbi = [
-//   {
-//     type: 'event',
-//     name: 'MarketGroupInitialized',
-//     inputs: [
-//       {
-//         name: 'marketGroup',
-//         type: 'address',
-//         indexed: true,
-//         internalType: 'address',
-//       },
-//       {
-//         name: 'returnData',
-//         type: 'bytes',
-//         indexed: false,
-//         internalType: 'bytes',
-//       },
-//       {
-//         name: 'nonce',
-//         type: 'uint256',
-//         indexed: false,
-//         internalType: 'uint256',
-//       },
-//     ],
-//     anonymous: false,
-//   },
-// ] as const;
+{
+  "abi": [
+    {
+      "type": "event",
+      "name": "MarketGroupInitialized",
+      "inputs": [
+        {
+          "name": "marketGroup",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "returnData",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    }
+  ]
+}

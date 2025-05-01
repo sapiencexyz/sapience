@@ -33,7 +33,6 @@ type MarketGroupType {
   isCumulative: Boolean!
   isYin: Boolean!
   markets: [MarketType!]!
-  optionNames: [String!]
   owner: String
   question: String
   quoteTokenName: String
@@ -48,6 +47,7 @@ type MarketType {
   id: ID!
   marketGroup: MarketGroupType
   marketId: Int!
+  optionName: String
   poolAddress: String
   positions: [PositionType!]!
   public: Boolean!
