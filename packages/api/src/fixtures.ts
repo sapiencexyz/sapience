@@ -4,8 +4,8 @@ import fixturesData from './fixtures.json';
 import { IResourcePriceIndexer } from './interfaces';
 import { Category } from './models/Category';
 import { Resource } from './models/Resource';
-import evmIndexer from './indexers/evmIndexer';
-import { WeatherIndexer } from './indexers/weatherIndexer';
+import evmIndexer from './workers/indexers/evmIndexer';
+import { WeatherIndexer } from './workers/indexers/weatherIndexer';
 
 export const TIME_INTERVALS = {
   intervals: {

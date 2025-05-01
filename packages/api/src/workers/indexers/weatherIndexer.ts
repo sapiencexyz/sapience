@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
-import { IResourcePriceIndexer } from '../interfaces';
-import { resourcePriceRepository } from '../db';
-import { Resource } from '../models/Resource';
+import { IResourcePriceIndexer } from '../../interfaces';
+import { resourcePriceRepository } from '../../db';
+import { Resource } from '../../models/Resource';
 import WeatherService from './weatherService';
-import Sentry from '../sentry';
+import Sentry from '../../sentry';
 import axios, { AxiosError } from 'axios';
 
 dotenv.config();
