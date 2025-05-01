@@ -84,9 +84,33 @@ contract MarketGroupFactoryTest is Test {
                 }),
                 0
             );
+
+
+        (address marketGroup2, ) = marketGroupFactory
+            .cloneAndInitializeMarketGroup(
+                safeOwner,
+                address(collateralAsset),
+                feeCollectors,
+                callbackRecipient,
+                MIN_TRADE_SIZE,
+                IFoilStructs.MarketParams({
+                    feeRate: 10000,
+                    assertionLiveness: 21600,
+                    bondCurrency: address(bondCurrency),
+                    bondAmount: BOND_AMOUNT,
+                    uniswapPositionManager: uniswapPositionManager,
+                    uniswapSwapRouter: uniswapSwapRouter,
+                    uniswapQuoter: uniswapQuoter,
+                    optimisticOracleV3: optimisticOracleV3
+                }),
+                0
+            );
         vm.stopPrank();
         assertNotEq(marketGroup, address(0));
+        assertNotEq(marketGroup2, address(0));
+        assertNotEq(marketGroup, marketGroup2);
         checkMarketGroupCanOperate(IFoil(marketGroup));
+        checkMarketGroupCanOperate(IFoil(marketGroup2));
     }
 
     function test_revertsWhenCloneNonDeployerSetAddress() public {
