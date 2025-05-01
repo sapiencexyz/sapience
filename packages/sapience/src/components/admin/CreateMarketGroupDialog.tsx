@@ -23,7 +23,7 @@ import { useMutation } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import type React from 'react';
 import { useState, useEffect } from 'react';
-import { parseAbiItem, decodeEventLog, isAddress } from 'viem'; // Import values separately
+import { parseAbiItem, decodeEventLog, isAddress, zeroAddress } from 'viem'; // Import values separately
 import type {
   // Keep type imports separate
   AbiEvent,
@@ -517,7 +517,7 @@ const CreateMarketGroupDialog = () => {
         owner as Address, // owner
         collateralAsset as Address, // collateralAsset
         [] as Address[], // feeCollectors (empty for now)
-        owner as Address, // callbackRecipient (owner for now)
+        zeroAddress, // callbackRecipient 
         minTradeSizeBigInt, // minTradeSize
         {
           // marketParams tuple

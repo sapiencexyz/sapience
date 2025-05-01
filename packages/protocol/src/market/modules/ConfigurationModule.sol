@@ -39,10 +39,6 @@ contract ConfigurationModule is
         uint256 minTradeSize,
         IFoilStructs.MarketParams memory marketParams
     ) external override nonReentrant {
-        if (msg.sender != marketInitializer) {
-            revert Errors.OnlyInitializer(msg.sender, marketInitializer);
-        }
-
         address feeCollectorNFT;
         if (feeCollectors.length > 0) {
             feeCollectorNFT = address(

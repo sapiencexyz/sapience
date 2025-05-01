@@ -3,7 +3,7 @@ version="1.0.5"
 preset="factory"
 
 [var.settings]
-owner="0x66aB20e98fcACfadB298C0741dFddA92568B5826"
+owner="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
 depends = []
 
 [deploy.ConfigurationModule]
