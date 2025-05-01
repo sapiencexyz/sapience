@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
-import { initializeDataSource, resourceRepository } from '../db';
-import { indexMarketEvents } from '../controllers/market';
+import { initializeDataSource, resourceRepository, marketGroupRepository } from '../db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
 import { handleJobCommand } from './jobs';
-import fixturesData from '../fixtures.json';
+import { startIndexingAndWatchingMarketGroups as indexMarketsJob } from './jobs/indexMarkets';
 import { createResilientProcess } from '../utils';
 
 async function main() {
@@ -22,29 +21,29 @@ async function main() {
 }
 
 async function startMarketIndexers(): Promise<Promise<void>[]> {
-  const marketJobs: Promise<void>[] = [];
-  for (const marketInfo of (fixturesData as any).MARKETS) {
-    marketJobs.push(
-      createResilientProcess(
-        () =>
-          indexMarketEvents({
-            address: marketInfo.address,
-            chainId: marketInfo.chainId,
-            isYin: marketInfo.isYin || true,
-            isCumulative: marketInfo.isCumulative || false,
-          } as any),
-        `indexMarketEvents-${marketInfo.address}`
-      )()
-    );
-  }
-  return marketJobs;
+  const distinctChainIdsResult = await marketGroupRepository
+    .createQueryBuilder('marketGroup')
+    .select('DISTINCT "chainId"')
+    .getRawMany();
+
+  const chainIds: number[] = distinctChainIdsResult.map(
+    (result) => result.chainId
+  );
+
+  const allMarketJobs: Promise<void>[] = chainIds.map(chainId =>
+    createResilientProcess(
+      () => indexMarketsJob(chainId),
+      `indexMarketsJob-${chainId}`
+    )()
+  );
+
+  return allMarketJobs;
 }
 
 async function startResourceIndexers(): Promise<Promise<void>[]> {
   const resourceJobs: Promise<void>[] = [];
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
-    console.log('slug indexer', resourceSlug);
     // Find the resource in the database
     const resource = await resourceRepository.findOne({
       where: { slug: resourceSlug },
