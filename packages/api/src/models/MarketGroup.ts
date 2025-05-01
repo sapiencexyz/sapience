@@ -86,6 +86,9 @@ export class MarketGroup {
   @Column({ type: 'varchar', nullable: true })
   initializationNonce: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  factoryAddress: string | null;
+
   @Column(() => MarketParams)
   marketParams: MarketParams;
 }

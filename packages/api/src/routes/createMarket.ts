@@ -18,6 +18,7 @@ router.post(
       category: categoryId,
       baseTokenName,
       quoteTokenName,
+      factoryAddress,
     } = req.body;
 
     try {
@@ -29,7 +30,8 @@ router.post(
         !question ||
         !categoryId ||
         !baseTokenName ||
-        !quoteTokenName
+        !quoteTokenName ||
+        !factoryAddress
       ) {
         return res.status(400).json({ message: 'Missing required fields' });
       }
@@ -48,6 +50,7 @@ router.post(
       newMarketGroup.quoteTokenName = quoteTokenName;
       newMarketGroup.initializationNonce = nonce;
       newMarketGroup.category = category;
+      newMarketGroup.factoryAddress = factoryAddress;
 
       const savedMarketGroup = await marketGroupRepository.save(newMarketGroup);
 
