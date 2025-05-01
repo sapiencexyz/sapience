@@ -19,12 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@foil/ui/components/ui/select';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-} from 'lucide-react';
+import { useMutation } from '@tanstack/react-query';
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import type React from 'react';
 import { useState, useEffect } from 'react';
 import { parseAbiItem, decodeEventLog, isAddress } from 'viem'; // Import values separately
@@ -33,14 +29,15 @@ import type {
   AbiEvent,
   Address,
 } from 'viem';
-
-// Import FOCUS_AREAS
 import {
   useAccount,
   useChainId,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from 'wagmi';
+import { z } from 'zod'; // Import zod
+
+// Import FOCUS_AREAS
 
 import {
   FOCUS_AREAS,
@@ -154,6 +151,79 @@ interface CreateMarketGroupPayload {
 }
 // Assume QueryClientProvider is set up higher in the component tree
 
+// --- Zod Schemas ---
+const marketParamsSchema = z.object({
+  feeRate: z.coerce.number().int('Invalid Fee Rate (must be an integer)'),
+  assertionLiveness: z.string().refine((val) => {
+    try {
+      BigInt(val);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Invalid Assertion Liveness (must be a large integer)'),
+  bondAmount: z.string().refine((val) => {
+    try {
+      BigInt(val);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Invalid Bond Amount (must be a large integer)'),
+  bondCurrency: z.string().refine(isAddress, 'Invalid Bond Currency Address'),
+  uniswapPositionManager: z
+    .string()
+    .refine(isAddress, 'Invalid Uniswap Position Manager Address'),
+  uniswapSwapRouter: z
+    .string()
+    .refine(isAddress, 'Invalid Uniswap Swap Router Address'),
+  uniswapQuoter: z.string().refine(isAddress, 'Invalid Uniswap Quoter Address'),
+  optimisticOracleV3: z
+    .string()
+    .refine(isAddress, 'Invalid Optimistic Oracle V3 Address'),
+});
+
+const baseSchema = z.object({
+  owner: z.string().refine(isAddress, 'Invalid Owner Address'),
+  collateralAsset: z
+    .string()
+    .refine(isAddress, 'Invalid Collateral Asset Address'),
+  minTradeSize: z.string().refine((val) => {
+    try {
+      BigInt(val);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Invalid Min Trade Size (must be a large integer)'),
+  nonce: z.string().refine((val) => {
+    try {
+      BigInt(val);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Invalid Nonce (must be a large integer)'),
+  marketParams: marketParamsSchema,
+});
+
+const apiSchema = baseSchema.extend({
+  chainId: z.coerce
+    .number()
+    .int()
+    .positive('Chain ID must be a positive integer'),
+  question: z.string().trim().min(1, 'Market Group Question is required'),
+  category: z.string().min(1, 'Category is required'), // Assuming category ID is a string
+  baseTokenName: z.string().trim().min(1, 'Base Token Name is required'),
+  quoteTokenName: z.string().trim().min(1, 'Quote Token Name is required'),
+  factoryAddress: z.string().refine(isAddress, 'Invalid Factory Address'), // Assuming needed for API too, adjust if not
+});
+
+const deploymentSchema = baseSchema.extend({
+  factoryAddress: z.string().refine(isAddress, 'Invalid Factory Address'),
+});
+// --- End Zod Schemas ---
+
 const CreateMarketGroupDialog = () => {
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
@@ -223,9 +293,6 @@ const CreateMarketGroupDialog = () => {
   ); // Add state for selected category
   const [baseTokenName, setBaseTokenName] = useState<string>(''); // Add state for base token name
   const [quoteTokenName, setQuoteTokenName] = useState<string>(''); // Add state for quote token name
-
-  // --- Tanstack Query Mutation Setup ---
-  const queryClient = useQueryClient(); // Optional: Used for invalidation/optimistic updates
 
   const createMarketGroupMutation = useMutation({
     mutationFn: async (payload: CreateMarketGroupPayload) => {
@@ -358,63 +425,52 @@ const CreateMarketGroupDialog = () => {
     setMarketParams((prev) => ({ ...prev, [name]: value }));
   };
 
+  // --- Zod Validation Function ---
+  const validateFormData = (isDeploy: boolean): string | null => {
+    const schema = isDeploy ? deploymentSchema : apiSchema;
+    const formData = {
+      // API + Deployment Fields
+      owner,
+      collateralAsset,
+      minTradeSize,
+      marketParams,
+      nonce,
+      factoryAddress, // Common to both deployment and potentially API
+
+      // API Only Fields (will be ignored by deploymentSchema)
+      chainId, // Pass string, zod coerces
+      question,
+      category: selectedCategory,
+      baseTokenName,
+      quoteTokenName,
+    };
+
+    try {
+      schema.parse(formData);
+      return null; // Validation successful
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        // Return the first validation error message
+        return error.errors[0]?.message || 'Validation failed';
+      }
+      console.error('Unexpected validation error:', error);
+      return 'An unexpected validation error occurred.';
+    }
+  };
+  // --- End Zod Validation ---
+
   // Form Submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCreatedMarketGroup(null);
     setFormError(null);
 
-    // Basic Validation
-    if (!chainId) return setFormError('Chain ID is required');
-    if (!isAddress(owner)) return setFormError('Invalid Owner Address');
-    if (!isAddress(collateralAsset))
-      return setFormError('Invalid Collateral Asset Address');
-    try {
-      BigInt(minTradeSize);
-    } catch {
-      return setFormError('Invalid Min Trade Size (must be a number)');
+    // Basic Validation using the helper function
+    const validationError = validateFormData(false); // Use Zod for API validation
+    if (validationError) {
+      setFormError(validationError);
+      return;
     }
-    try {
-      Number(marketParams.feeRate);
-    } catch {
-      return setFormError('Invalid Fee Rate (must be a number)');
-    }
-    try {
-      BigInt(marketParams.assertionLiveness);
-    } catch {
-      return setFormError('Invalid Assertion Liveness (must be a number)');
-    }
-    try {
-      BigInt(marketParams.bondAmount);
-    } catch {
-      return setFormError('Invalid Bond Amount (must be a number)');
-    }
-    if (!isAddress(marketParams.bondCurrency))
-      return setFormError('Invalid Bond Currency Address');
-    if (!isAddress(marketParams.uniswapPositionManager))
-      return setFormError('Invalid Uniswap Position Manager Address');
-    if (!isAddress(marketParams.uniswapSwapRouter))
-      return setFormError('Invalid Uniswap Swap Router Address');
-    if (!isAddress(marketParams.uniswapQuoter))
-      return setFormError('Invalid Uniswap Quoter Address');
-    if (!isAddress(marketParams.optimisticOracleV3))
-      return setFormError('Invalid Optimistic Oracle V3 Address');
-
-    // --- Add Nonce Validation ---
-    if (!nonce || isNaN(Number(nonce))) {
-      return setFormError('Invalid Nonce (must be a number)');
-    }
-    // --- End Nonce Validation ---
-
-    // --- Added validation for new fields ---
-    if (!question.trim())
-      return setFormError('Market Group Question is required');
-    if (!selectedCategory) return setFormError('Category is required');
-    if (!baseTokenName.trim())
-      return setFormError('Base Token Name is required');
-    if (!quoteTokenName.trim())
-      return setFormError('Quote Token Name is required');
-    // --- End validation for new fields ---
 
     // Construct payload for mutation
     const payload: CreateMarketGroupPayload = {
@@ -435,12 +491,71 @@ const CreateMarketGroupDialog = () => {
     createMarketGroupMutation.mutate(payload);
   };
 
+  // --- Add Deploy Handler ---
+  const handleDeploy = () => {
+    setCreatedMarketGroup(null);
+    setFormError(null);
+
+    // Basic Validation (similar to handleSubmit, but only for contract args)
+    const validationError = validateFormData(true); // Use Zod for deployment validation
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    try {
+      const feeRateNum = Number(marketParams.feeRate);
+      if (isNaN(feeRateNum)) throw new Error();
+      const assertionLivenessBigInt = BigInt(marketParams.assertionLiveness);
+      const bondAmountBigInt = BigInt(marketParams.bondAmount);
+      const minTradeSizeBigInt = BigInt(minTradeSize);
+      const nonceBigInt = BigInt(nonce);
+
+      // Prepare args for writeContract
+      const args = [
+        owner as Address, // owner
+        collateralAsset as Address, // collateralAsset
+        [] as Address[], // feeCollectors (empty for now)
+        owner as Address, // callbackRecipient (owner for now)
+        minTradeSizeBigInt, // minTradeSize
+        {
+          // marketParams tuple
+          feeRate: feeRateNum,
+          assertionLiveness: assertionLivenessBigInt,
+          bondAmount: bondAmountBigInt,
+          bondCurrency: marketParams.bondCurrency as Address,
+          uniswapPositionManager:
+            marketParams.uniswapPositionManager as Address,
+          uniswapSwapRouter: marketParams.uniswapSwapRouter as Address,
+          uniswapQuoter: marketParams.uniswapQuoter as Address,
+          optimisticOracleV3: marketParams.optimisticOracleV3 as Address,
+        },
+        nonceBigInt, // nonce
+      ] as const; // Use 'as const' for type safety
+
+      console.log('Calling writeContract with args:', args);
+
+      writeContract({
+        address: factoryAddress as Address,
+        abi: marketGroupFactoryAbi,
+        functionName: 'cloneAndInitializeMarketGroup',
+        args,
+      });
+    } catch (err) {
+      console.error('Validation or BigInt conversion error:', err);
+      setFormError(
+        'Invalid numeric input found. Please check trade size, market params, or nonce.'
+      );
+    }
+  };
+  // --- End Deploy Handler ---
+
   // Helper function for button text - use mutation state
   const getButtonText = () => {
     if (createMarketGroupMutation.isPending) {
-      return 'Submitting...';
+      return 'Saving...';
     }
-    return 'Create Market Group';
+    return 'Save Market Group';
   };
 
   // Render Logic using Shadcn and Tailwind
@@ -658,25 +773,36 @@ const CreateMarketGroupDialog = () => {
           </AccordionItem>
         </Accordion>
 
-        <Button
-          type="submit"
-          disabled={createMarketGroupMutation.isPending} // Use mutation pending state
-          className="w-full mb-4"
-        >
-          {createMarketGroupMutation.isPending && (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          )}
-          {getButtonText()}
-        </Button>
+        {/* --- Wrap Buttons in Flex Container --- */}
+        <div className="flex gap-4 w-full">
+          <Button
+            type="submit"
+            disabled={createMarketGroupMutation.isPending} // Use mutation pending state
+            className="flex-1 mb-4" // Use flex-1 to share space
+          >
+            {createMarketGroupMutation.isPending && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            {getButtonText()}
+          </Button>
+          {/* --- New Deploy Button --- */}
+          <Button
+            type="button" // Important: prevent form submission
+            onClick={handleDeploy}
+            disabled={isWritePending || isConfirming} // Disable during write or confirmation
+            className="flex-1 mb-4" // Use flex-1 to share space
+          >
+            {(isWritePending || isConfirming) && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Deploy Market Group
+          </Button>
+          {/* --- End New Deploy Button --- */}
+        </div>
       </form>
 
       {/* Results and Errors */}
       <div className="space-y-4">
-        {/* Keep wagmi hash/receipt display logic if still needed for contract interaction (currently removed) */}
-        {/* hash && (... ) */}
-        {/* isSuccess && createdMarketGroup && (...) */}
-        {/* isSuccess && !createdMarketGroup && formError && (...) */}
-
         {/* Display mutation success message (optional) */}
         {createMarketGroupMutation.isSuccess && (
           <Alert variant="default">
@@ -698,16 +824,55 @@ const CreateMarketGroupDialog = () => {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>
-              {formError ||
-                (createMarketGroupMutation.error as Error)?.message ||
-                'An unknown error occurred'}
+              {
+                formError ||
+                  (createMarketGroupMutation.error as Error)?.message ||
+                  writeError?.message ||
+                  null || // Show wagmi write error
+                  receiptError?.message ||
+                  null || // Show wagmi receipt error
+                  'An unknown error occurred' // Fallback
+              }
             </AlertDescription>
           </Alert>
         )}
 
-        {/* Keep wagmi write/receipt error display if needed (currently removed) */}
-        {/* writeError && (...) */}
-        {/* receiptError && (...) */}
+        {/* Display wagmi results */}
+        {hash && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertTitle>Transaction Sent</AlertTitle>
+            <AlertDescription>
+              Hash: <code className="text-xs break-all">{hash}</code>
+              {isConfirming && (
+                <span className="ml-2 inline-flex items-center">
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" /> Waiting for
+                  confirmation...
+                </span>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isSuccess && createdMarketGroup && (
+          <Alert variant="default">
+            <CheckCircle className="h-4 w-4" />
+            <AlertTitle>Deployment Successful!</AlertTitle>
+            <AlertDescription>
+              Market Group Deployed at:{' '}
+              <code className="text-xs break-all">{createdMarketGroup}</code>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Show error if transaction succeeded but event wasn't found */}
+        {isSuccess && !createdMarketGroup && formError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Deployment Issue</AlertTitle>
+            <AlertDescription>{formError}</AlertDescription>
+          </Alert>
+        )}
       </div>
     </>
   );

@@ -45,4 +45,7 @@ export class MarketType {
 
   @Field(() => Int, { nullable: true })
   baseAssetMaxPriceTick: number | null;
+
+  @Field(() => String, { nullable: true })
+  optionName: string | null;
 }

@@ -204,7 +204,6 @@ export const initializeFixtures = async (): Promise<void> => {
       marketGroup.question = marketData.question || null;
       marketGroup.baseTokenName = marketData.baseTokenName || null;
       marketGroup.quoteTokenName = marketData.quoteTokenName || null;
-      marketGroup.optionNames = marketData.optionNames || null;
 
       if (resource) {
         marketGroup.resource = resource;
@@ -238,8 +237,6 @@ export const initializeFixtures = async (): Promise<void> => {
         marketData.baseTokenName || marketGroup.baseTokenName || null;
       marketGroup.quoteTokenName =
         marketData.quoteTokenName || marketGroup.quoteTokenName || null;
-      marketGroup.optionNames =
-        marketData.optionNames || marketGroup.optionNames || null;
 
       await marketGroupRepository.save(marketGroup);
       console.log(
