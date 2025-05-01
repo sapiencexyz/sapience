@@ -40,7 +40,7 @@ contract MarketGroupFactory {
             implementation.clone()
         );
 
-        bytes memory data = abi.encodeWithSelector(
+        bytes memory callData = abi.encodeWithSelector(
             IConfigurationModule.initializeMarket.selector,
             owner,
             collateralAsset,
@@ -50,13 +50,19 @@ contract MarketGroupFactory {
             marketParams
         );
         (bool success, bytes memory returnData) = address(marketGroup)
-            .delegatecall(data);
+            .delegatecall(callData);
 
-        // If the delegatecall reverted, use assembly to revert with the same error message
         if (!success) {
-            assembly {
-                let returnDataSize := mload(returnData)
-                revert(add(0x20, returnData), returnDataSize)
+            if (returnData.length > 0) {
+                // Use assembly to revert with the same error message
+                assembly {
+                    let data := add(returnData, 0x20) // Skip the length prefix of returnData
+                    let dataSize := mload(returnData) // Get the size of returnData
+                    revert(data, dataSize)
+                }
+            } else {
+                // If no return data is provided, revert without a message
+                revert();
             }
         }
 

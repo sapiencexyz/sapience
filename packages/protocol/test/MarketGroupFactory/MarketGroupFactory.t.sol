@@ -29,27 +29,29 @@ contract MarketGroupFactoryTest is Test {
     using SafeCastI256 for int256;
     using SafeCastU256 for uint256;
 
-    address lp1;
     address safeOwner;
     address deployer = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
     IFoil foil;
     IVault vault;
     MarketGroupFactory marketGroupFactory;
     IMintableToken collateralAsset;
+    IMintableToken bondCurrency;
 
     uint160 initialSqrtPriceX96 = 250541448375047946302209916928; // 10
-    uint160 updatedSqrtPriceX96 = 306849353968360536420395253760; // 15
-    uint256 initialStartTime;
+    int24 minTick = 6800; // 2.0
+    int24 maxTick = 27000; // 15.0
 
-    uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
-    uint256 INITIAL_LP_BALANCE = 100_000 ether;
-    IFoilStructs.EpochData epochData;
+    // uint160 updatedSqrtPriceX96 = 306849353968360536420395253760; // 15
+    // uint256 initialStartTime;
+
+    // uint256 DEFAULT_DURATION = 2419200; // 28 days in seconds
+    // uint256 INITIAL_LP_BALANCE = 100_000 ether;
+    // IFoilStructs.EpochData epochData;
 
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
     uint256 constant BOND_AMOUNT = 100 ether;
     address[] feeCollectors = new address[](0);
     address callbackRecipient = address(0);
-    address bondCurrency;
     address uniswapPositionManager;
     address uniswapSwapRouter;
     address uniswapQuoter;
@@ -64,7 +66,7 @@ contract MarketGroupFactoryTest is Test {
             vm.getAddress("CollateralAsset.Token")
         );
         safeOwner = makeAddr("safeOwner");
-        bondCurrency = vm.getAddress("BondCurrency.Token");
+        bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         uniswapPositionManager = vm.getAddress(
             "Uniswap.NonfungiblePositionManager"
         );
@@ -72,6 +74,31 @@ contract MarketGroupFactoryTest is Test {
         uniswapQuoter = vm.getAddress("Uniswap.QuoterV2");
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
         
+    }
+
+    function test_canCloneMarketGroup() public {
+        vm.startPrank(deployer);
+        (address marketGroup, ) = marketGroupFactory.cloneAndInitializeMarketGroup(
+            safeOwner,
+            address(collateralAsset),
+            feeCollectors,
+            callbackRecipient,
+            MIN_TRADE_SIZE,
+            IFoilStructs.MarketParams({
+                feeRate: 10000,
+                assertionLiveness: 21600,
+                bondCurrency: address(bondCurrency),
+                bondAmount: BOND_AMOUNT,
+                uniswapPositionManager: uniswapPositionManager,
+                uniswapSwapRouter: uniswapSwapRouter,
+                uniswapQuoter: uniswapQuoter,
+                optimisticOracleV3: optimisticOracleV3
+            }),
+            0
+        );
+        vm.stopPrank();
+        assertNotEq(marketGroup, address(0));   
+        checkMarketGroupCanOperate(IFoil(marketGroup));
     }
 
     function test_revertsWhenCloneNonDeployerSetAddress() public {
@@ -86,7 +113,7 @@ contract MarketGroupFactoryTest is Test {
             IFoilStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,
-                bondCurrency: bondCurrency,
+                bondCurrency: address(bondCurrency),
                 bondAmount: BOND_AMOUNT,
                 uniswapPositionManager: uniswapPositionManager,
                 uniswapSwapRouter: uniswapSwapRouter,
@@ -96,30 +123,6 @@ contract MarketGroupFactoryTest is Test {
             0
         );
         vm.stopPrank();
-    }
-
-    function test_canCloneMarketGroup() public {
-        vm.startPrank(deployer);
-        (address marketGroup, ) = marketGroupFactory.cloneAndInitializeMarketGroup(
-            safeOwner,
-            address(collateralAsset),
-            feeCollectors,
-            callbackRecipient,
-            MIN_TRADE_SIZE,
-            IFoilStructs.MarketParams({
-                feeRate: 10000,
-                assertionLiveness: 21600,
-                bondCurrency: bondCurrency,
-                bondAmount: BOND_AMOUNT,
-                uniswapPositionManager: uniswapPositionManager,
-                uniswapSwapRouter: uniswapSwapRouter,
-                uniswapQuoter: uniswapQuoter,
-                optimisticOracleV3: optimisticOracleV3
-            }),
-            0
-        );
-        vm.stopPrank();
-        assertNotEq(marketGroup, address(0));        
     }
 
     function test_revertsAndPropagatesTheError_feeRateZero() public {
@@ -135,7 +138,7 @@ contract MarketGroupFactoryTest is Test {
             IFoilStructs.MarketParams({
                 feeRate: 0,
                 assertionLiveness: 21600,
-                bondCurrency: bondCurrency,
+                bondCurrency: address(bondCurrency),
                 bondAmount: BOND_AMOUNT,
                 uniswapPositionManager: uniswapPositionManager,
                 uniswapSwapRouter: uniswapSwapRouter,
@@ -145,5 +148,72 @@ contract MarketGroupFactoryTest is Test {
             0
         );
         vm.stopPrank();
+    }
+
+    function checkMarketGroupCanOperate(IFoil marketGroup) private {
+        uint160 SQRT_PRICE_11Eth = 262770087889115504578498920448;
+
+        // Create a new epoch
+        vm.prank(safeOwner);
+        marketGroup.createEpoch(
+            block.timestamp - 1 days,
+            block.timestamp + 30 days,
+            initialSqrtPriceX96,
+            minTick,
+            maxTick,
+            1,
+            "claimStatement"
+        );
+
+        // Get the epoch data
+        (
+            IFoilStructs.EpochData memory _initialEpochData,
+            IFoilStructs.MarketParams memory _epochParams
+        ) = marketGroup.getLatestEpoch();
+        uint256 epochId = _initialEpochData.epochId;
+        uint256 endTime = _initialEpochData.endTime;
+        // uint256 minPriceD18 = _initialEpochData.minPriceD18;
+        // uint256 maxPriceD18 = _initialEpochData.maxPriceD18;
+        IFoilStructs.MarketParams memory marketParams = _epochParams;
+        IFoilStructs.EpochData memory epochData;
+
+        bondCurrency.mint(marketParams.bondAmount * 2, safeOwner);
+
+        // Settle
+        vm.warp(endTime + 1);
+        vm.startPrank(deployer);
+        vm.expectRevert("Only owner can call this function");
+        marketGroup.submitSettlementPrice(epochId, address(0), SQRT_PRICE_11Eth);
+        vm.stopPrank();
+
+        vm.startPrank(safeOwner);
+        IMintableToken(marketParams.bondCurrency).approve(
+            address(marketGroup),
+            marketParams.bondAmount
+        );
+        bytes32 assertionId = marketGroup.submitSettlementPrice(
+            epochId,
+            safeOwner,
+            SQRT_PRICE_11Eth
+        );
+        vm.stopPrank();
+
+        (epochData, ) = marketGroup.getLatestEpoch();
+        assertTrue(!epochData.settled, "The epoch isn't settled");
+
+        vm.startPrank(optimisticOracleV3);
+        foil.assertionResolvedCallback(assertionId, true);
+        vm.stopPrank();
+
+        (epochData, ) = marketGroup.getLatestEpoch();
+        assertTrue(epochData.settled, "The epoch is settled");
+        assertTrue(
+            epochData.settlementPriceD18 == SQRT_PRICE_11Eth,
+            "The settlement price is as submitted"
+        );
+
+
+        assertEq(uint256(1), uint256(1));
+
     }
 }
