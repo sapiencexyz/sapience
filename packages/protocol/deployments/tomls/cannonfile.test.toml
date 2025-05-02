@@ -12,6 +12,14 @@ upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
 duration = "2419200" # 28 days in seconds
 totalVaults = "1"
 claimStatement = "<%= stringToHex('wstGwei/gas') %>"
+
+# Initialization of clonable
+nonowner="0x0000000000000000000013370000000000000000"
+minTradeSize = "10000"
+feeRate = "10000" # 1%
+assertionLiveness = "21600"
+bondAmount = "500000000"
+
 depends = []
 
 [clone.Uniswap]
@@ -110,6 +118,21 @@ contracts=[
 ]
 highlight=true
 
+[router.FoilClonable]
+from="<%= settings.owner2 %>"
+contracts=[
+  "ConfigurationModule",
+  "LiquidityModule",
+  "UMASettlementModule",
+  "TradeModule",
+  "NftModule",
+  "ViewsModule",
+  "ERC165Module",
+  "ExposedInternalFunctions",
+  "SettlementModule"
+]
+highlight=true
+
 [deploy.Vault]
 artifact="Vault"
 from="<%= settings.owner2 %>"
@@ -120,7 +143,20 @@ depends = ['router.Foil', 'clone.CollateralAsset', 'var.settings']
 artifact="MarketGroupFactory"
 from="<%= settings.owner2 %>"
 args=[
-  "<%= Foil.address %>",
+  "<%= FoilClonable.address %>",
 ]
 highlight=true
-depends=["router.Foil"]
+depends=["router.FoilClonable"]
+
+[invoke.initializeMarketAsUnusable]
+target="FoilClonable"
+func="initializeMarket"
+args=[
+  "<%= settings.nonowner %>",
+  "<%= CollateralAsset.Token.address %>",
+  [],
+  "<%= zeroAddress %>",
+  "<%= settings.minTradeSize %>",
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= BondCurrency.Token.address %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "<%= Uniswap.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= Uniswap.SwapRouter.address %>", uniswapQuoter = "<%= Uniswap.QuoterV2.address %>", optimisticOracleV3 = "<%= UMA.OptimisticOracleV3.address %>" }
+]
+depends=["router.FoilClonable"]
