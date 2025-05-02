@@ -1,6 +1,9 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
+import { createPublicClient, http, type PublicClient } from 'viem';
+import { mainnet, sepolia } from 'viem/chains'; // Add chains you support
+import FoilAbi from '../../../../protocol/deployments/Foil.json'; // Corrected relative path for ABI
 
 import { FOCUS_AREAS, DEFAULT_FOCUS_AREA } from '~/lib/constants/focusAreas';
 import { foilApi } from '~/lib/utils/util';
@@ -132,6 +135,7 @@ export interface MarketGroup {
 // Define the new EnrichedMarket type
 export interface EnrichedMarketGroup extends MarketGroup {
   category: Category;
+  latestEpochId?: bigint; // Add the latest epoch ID field
   // No need to repeat fields already in MarketGroup
 }
 
@@ -276,8 +280,8 @@ interface MarketGroupApiResponse {
 // Rename the hook to reflect its output
 export const useEnrichedMarketGroups = () => {
   // Update the return type to use EnrichedMarketGroup[]
-  return useQuery<EnrichedMarketGroup[]>({
-    queryKey: ['enrichedMarketGroups'], // Changed queryKey
+  return useQuery<EnrichedMarketGroup[]>({ // Ensure this matches the actual return
+    queryKey: ['enrichedMarketGroups'], // Reverted queryKey
     queryFn: async () => {
       // Create a lookup map for focus areas using their ID (which matches category slug)
       const focusAreaMap = new Map<
@@ -292,39 +296,33 @@ export const useEnrichedMarketGroups = () => {
         });
       });
 
+      // --- Fetch initial market group data --- 
       const { data } = await foilApi.post('/graphql', {
-        query: print(MARKETS_QUERY), // Use the new MARKETS_QUERY
+        query: print(MARKETS_QUERY), 
       });
 
-      // Check if data and data.marketGroups exist
       if (!data || !data.marketGroups) {
         console.error(
           '[useEnrichedMarketGroups] No market groups data received from API or data structure invalid.'
         );
-        return []; // Return empty array or handle error as appropriate
+        return []; 
       }
-
-      // Process the flat list of market groups directly
-      const mappedMarketGroups = data.marketGroups.map(
-        (marketGroup: MarketGroupApiResponse) => {
-          // Apply the type here
-
-          let categoryInfo: Category; // Use the updated Category type
-
-          // Ensure category exists and enrich it with focus area data
+      
+      // --- Process market groups (enrichment only) --- 
+      const enrichedMarketGroups = data.marketGroups.map(
+        (marketGroup: MarketGroupApiResponse): EnrichedMarketGroup => { // Return EnrichedMarketGroup
+          let categoryInfo: Category;
+          // ... (category enrichment logic - keep as is) ...
           if (marketGroup.category) {
-            const focusAreaData = focusAreaMap.get(marketGroup.category.slug); // Match category slug with focus area id
+            const focusAreaData = focusAreaMap.get(marketGroup.category.slug); 
             categoryInfo = {
               id: marketGroup.category.id,
-              // Use focus area name if available, otherwise use the category name from the database
               name: focusAreaData?.name || marketGroup.category.name,
               slug: marketGroup.category.slug,
-              // Use focus area data if found, otherwise fallback to default
               iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
               color: focusAreaData?.color || DEFAULT_FOCUS_AREA.color,
             };
           } else {
-            // Provide default category including default focus area data
             categoryInfo = {
               id: 'unknown',
               name: 'Unknown',
@@ -334,25 +332,24 @@ export const useEnrichedMarketGroups = () => {
             };
           }
 
-          // Map markets, extracting claimStatement
-          const mappedMarkets = marketGroup.markets.map((market: any) => ({
+          const mappedMarkets = marketGroup.markets.map((market: any) => ({ // Type needs checking
             ...market,
             claimStatement: market.marketParams?.claimStatement,
           }));
 
+          // Return the enriched group WITHOUT fetching epochId here
           return {
-            ...marketGroup, // Spread original market group fields (id, address, chainId, etc.)
-            category: categoryInfo, // Use fetched or default category
-            markets: mappedMarkets, // Use markets with claimStatement extracted
+            ...marketGroup,
+            category: categoryInfo,
+            markets: mappedMarkets,
+            // latestEpochId is NOT fetched here anymore
           };
         }
       );
 
-      // Rename mappedMarketGroups to enrichedMarketGroups as the filtering step is removed
-      const enrichedMarketGroups: EnrichedMarketGroup[] = mappedMarketGroups;
-
       return enrichedMarketGroups;
     },
+    // Consider adding staleTime or gcTime if needed
   });
 };
 

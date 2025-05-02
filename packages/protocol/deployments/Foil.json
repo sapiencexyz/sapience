@@ -2998,6 +2998,11 @@
               "name": "assertionId",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         },

@@ -10,7 +10,7 @@ export const useFoilAbi = (chainId?: number) => {
     const loadFoilData = async () => {
       try {
         const foil: { abi: any[] } = await import(
-          `@/protocol/deployments/Foil.json`
+          '../../protocol/deployments/Foil.json'
         );
         setAbi(foil.abi);
       } catch (err) {
