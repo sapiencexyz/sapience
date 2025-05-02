@@ -27,15 +27,6 @@ async function startIndexingForMarketGroup(
   }
 }
 
-// Get the approved addresses from environment variable
-const getApprovedAddresses = (): string[] => {
-  const approvedAddresses = process.env.ALLOWED_ADDRESSES || '';
-  return approvedAddresses
-    .split(',')
-    .map((address) => address.trim().toLowerCase())
-    .filter((address) => address !== '');
-};
-
 async function handleMarketGroupInitialized(
   eventArgs: {
     sender: `0x${string}`;
@@ -53,10 +44,18 @@ async function handleMarketGroupInitialized(
   const newMarketGroupAddress = eventArgs.marketGroup.toLowerCase();
 
   // Check if sender is in the approved list
-  const approvedAddresses = getApprovedAddresses();
-  if (approvedAddresses.length > 0 && !approvedAddresses.includes(sender)) {
+  const approvedAddresses = ['8453:0x66aB20e98fcACfadB298C0741dFddA92568B5826'];
+  const senderWithChain = `${chainId}:${sender}`;
+  const normalizedApprovedAddresses = approvedAddresses.map((addr) =>
+    addr.toLowerCase()
+  );
+
+  if (
+    approvedAddresses.length > 0 &&
+    !normalizedApprovedAddresses.includes(senderWithChain)
+  ) {
     console.log(
-      `Skipping MarketGroupInitialized event: sender ${sender} is not in the approved list.`
+      `Skipping MarketGroupInitialized event: sender ${senderWithChain} is not in the approved list.`
     );
     return;
   }
