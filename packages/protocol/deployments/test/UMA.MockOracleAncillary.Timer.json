@@ -1,0 +1,41 @@
+{
+  "address": "0xB9b4901c4Ad81Ba2db9C4a3D5857025a75D167A0",
+  "abi": [
+    {
+      "type": "function",
+      "name": "getCurrentTime",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "setCurrentTime",
+      "inputs": [
+        {
+          "name": "time",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x5c671d664af8b5c76473236d3687dbfaa9ab9628e4212bdc5a74209d2f15f824",
+  "deployTxnBlockNumber": "1",
+  "deployTimestamp": "1730757140",
+  "sourceName": "src/UMA/src/TimerOverride.sol",
+  "contractName": "src/UMA/src/TimerOverride.sol:TimerOverride",
+  "deployedOn": "deploy.Timer",
+  "gasUsed": 112726,
+  "gasCost": "1877375775"
+}
