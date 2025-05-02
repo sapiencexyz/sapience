@@ -57,7 +57,7 @@ export const processCandleData = (
         // Attempt to parse the close value
         try {
           const closeValue = parseFloat(String(candle.close));
-          if (!isNaN(closeValue)) {
+          if (!Number.isNaN(closeValue)) {
             // Assign value to the specific market ID for this timestamp
             combinedData[ts].markets[marketId] = closeValue;
           } else {
@@ -94,7 +94,7 @@ export const processCandleData = (
 
       try {
         const closeValue = parseFloat(String(candle.close));
-        if (!isNaN(closeValue)) {
+        if (!Number.isNaN(closeValue)) {
           combinedData[ts]!.indexClose = closeValue * indexMultiplier;
         } else {
           console.warn(

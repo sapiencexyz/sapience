@@ -25,7 +25,7 @@ export const foilApi = {
     return headers;
   },
 
-  async post(path: string, body: any) {
+  async post(path: string, body: unknown) {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -183,9 +183,9 @@ export const findActiveMarkets = (
       // Ensure start and end are numbers (GraphQL types might be nullable)
       return (
         typeof start === 'number' &&
-        !isNaN(start) &&
+        !Number.isNaN(start) &&
         typeof end === 'number' &&
-        !isNaN(end) &&
+        !Number.isNaN(end) &&
         nowInSeconds >= start &&
         nowInSeconds < end
       );
@@ -195,7 +195,7 @@ export const findActiveMarkets = (
 
 // Helper to format value as percentage (0-1 -> 0%-100%)
 export const formatPercentage = (value: number): string => {
-  if (value == null || isNaN(value)) return ''; // Handle null/NaN
+  if (value == null || Number.isNaN(value)) return ''; // Use Number.isNaN
   return `${(value * 100).toFixed(0)}%`; // Multiply by 100, format, add %
 };
 
@@ -210,7 +210,8 @@ export const formatTokenValue = (
   }
 
   const numericValue = typeof value === 'string' ? parseFloat(value) : value;
-  if (isNaN(numericValue)) {
+  if (Number.isNaN(numericValue)) {
+    // Use Number.isNaN
     return ''; // Handle NaN or non-numeric strings
   }
 
@@ -362,7 +363,8 @@ export function tickToPrice(tick: number | string | undefined | null): number {
     return 0; // Or handle as appropriate, e.g., throw an error or return NaN
   }
   const numericTick = typeof tick === 'string' ? Number(tick) : tick;
-  if (isNaN(numericTick)) {
+  if (Number.isNaN(numericTick)) {
+    // Use Number.isNaN
     return 0; // Handle invalid string input
   }
   return 1.0001 ** numericTick;

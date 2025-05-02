@@ -180,9 +180,19 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
 };
 
 // --- Custom Tooltip Component ---
+
+// Define a more specific type for the tooltip payload item
+interface TooltipPayloadItem {
+  name?: string; // The key of the data (e.g., 'markets.0', 'indexClose')
+  value?: number | string; // The value corresponding to the key
+  color?: string; // The color of the corresponding line/bar
+  // Add other potential properties if needed, like payload for the raw data point
+  payload?: Record<string, unknown>; // Use unknown instead of any
+}
+
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: TooltipPayloadItem[]; // Use the specific type
   label?: number | string;
   yAxisConfig: ReturnType<typeof getYAxisConfig>;
   optionNames?: string[] | null;
@@ -217,9 +227,15 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
               displayName = pld.name as string;
             }
 
-            const formattedValue = yAxisConfig.tooltipValueFormatter(
-              pld.value as number
-            );
+            // Safely handle the value type (Refactored from nested ternary)
+            let formattedValue: string;
+            if (typeof pld.value === 'number') {
+              formattedValue = yAxisConfig.tooltipValueFormatter(pld.value);
+            } else if (typeof pld.value === 'string') {
+              formattedValue = pld.value; // Or handle string values appropriately if needed
+            } else {
+              formattedValue = 'N/A'; // Default case for unexpected types
+            }
 
             return (
               <div key={`${pld.name}-${index}`} className="flex flex-col">

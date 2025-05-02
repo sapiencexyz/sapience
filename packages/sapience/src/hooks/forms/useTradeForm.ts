@@ -32,7 +32,7 @@ export function useTradeForm() {
       positive: (value) =>
         parseFloat(value) >= 0 || 'Size must be zero or greater',
       isNumber: (value) =>
-        !isNaN(parseFloat(value)) || 'Size must be a valid number',
+        !Number.isNaN(parseFloat(value)) || 'Size must be a valid number',
     },
   });
 
@@ -40,7 +40,7 @@ export function useTradeForm() {
     required: 'Slippage is required',
     validate: {
       isNumber: (value) =>
-        !isNaN(parseFloat(value)) || 'Slippage must be a valid number',
+        !Number.isNaN(parseFloat(value)) || 'Slippage must be a valid number',
       range: (value) =>
         (parseFloat(value) >= 0 && parseFloat(value) <= 100) ||
         'Slippage must be between 0% and 100%',

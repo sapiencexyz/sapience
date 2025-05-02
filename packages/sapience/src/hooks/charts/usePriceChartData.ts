@@ -145,7 +145,7 @@ interface UsePriceChartDataReturn {
 const safeParseFloat = (value: string | null | undefined): number | null => {
   if (value === null || value === undefined || value === '') return null;
   const num = parseFloat(value);
-  return isNaN(num) ? null : num;
+  return Number.isNaN(num) ? null : num;
 };
 
 // Helper function to merge price data into the map
@@ -173,22 +173,32 @@ const parseCandleResponse = <
   TResponse extends object, // Generic response type
   TKey extends keyof TResponse, // Key within the response (e.g., 'marketCandles')
 >(
-  response: any, // Raw response from API call
+  response: unknown, // Raw response from API call - Use unknown instead of any
   dataKey: TKey,
   entityName: string
 ): TResponse[TKey] | null => {
-  // Return type is the value associated with the key
-  if (!response || typeof response !== 'object' || !response.data) {
-    console.warn(`Invalid or missing response data for ${entityName} candles.`);
+  // Ensure response is an object before proceeding with checks
+  if (!response || typeof response !== 'object') {
+    console.warn(`Invalid response type for ${entityName} candles.`);
     return null;
   }
-  const data = response.data as TResponse | { errors?: any[] };
+
+  // Check if 'data' property exists
+  if (!('data' in response)) {
+    console.warn(
+      `Missing 'data' property in response for ${entityName} candles.`
+    );
+    return null;
+  }
+
+  const data = response.data as TResponse | { errors?: { message: string }[] }; // Type errors more specifically
 
   // Type guard for error checking
   if (data && typeof data === 'object' && 'errors' in data && data.errors) {
     console.error(`GraphQL error fetching ${entityName} candles:`, data.errors);
+    // Use the more specific error type
     throw new Error(
-      (data.errors[0] as any)?.message || `Error fetching ${entityName} candles`
+      data.errors[0]?.message || `Error fetching ${entityName} candles`
     );
   }
 
@@ -217,10 +227,10 @@ type TrailingAvgCandlesQueryResponse = {
 
 // Helper function to parse multiple candle responses
 const parseCandleResponses = (
-  marketResponse: any,
-  indexResponse: any,
-  resourceResponse: any,
-  trailingAvgResponse: any,
+  marketResponse: unknown,
+  indexResponse: unknown,
+  resourceResponse: unknown,
+  trailingAvgResponse: unknown,
   resourceSlug: string | undefined
 ) => {
   let marketCandles: CandleType[]; // Use imported CandleType

@@ -142,7 +142,7 @@ const ForecastingDetailPage = () => {
     console.log('External submit triggered (likely for wager)');
     // TODO: Implement wager submission logic if needed at this level,
     // or ensure it's fully handled via the hook used by PredictionForm.
-    alert('Wager submission initiated.'); // Placeholder alert
+    console.warn('Wager submission initiated. (Placeholder)'); // Replaced alert with console.warn
   };
 
   if (isLoadingMarket || isPermitLoadingPermit) {

@@ -1,5 +1,6 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import type { Abi } from 'viem';
 import { parseUnits } from 'viem';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
@@ -10,7 +11,7 @@ import { useTokenApproval } from './useTokenApproval';
  */
 export interface ModifyLPParams {
   marketAddress: `0x${string}`;
-  marketAbi: any;
+  marketAbi: Abi;
   chainId?: number;
   positionId: string;
   mode: 'add' | 'remove'; // Whether to add or remove liquidity
@@ -33,7 +34,7 @@ export interface ModifyLPResult {
   isError: boolean;
   error: Error | null;
   txHash: `0x${string}` | undefined;
-  data?: any;
+  data?: `0x${string}` | undefined;
   isApproving: boolean;
   hasAllowance: boolean;
   needsApproval: boolean;
@@ -90,12 +91,9 @@ export function useModifyLP({
   const parsedCollateralDelta = parseUnits(collateralDelta || '0', 18);
 
   // Calculate min amounts based on slippage percentage
-  const calculateMinAmount = (
-    amount: bigint,
-    slippagePercent: number
-  ): bigint => {
+  const calculateMinAmount = (amount: bigint, slippage: number): bigint => {
     if (amount === BigInt(0)) return BigInt(0);
-    const slippageBasisPoints = BigInt(Math.floor(slippagePercent * 100));
+    const slippageBasisPoints = BigInt(Math.floor(slippage * 100));
     return amount - (amount * slippageBasisPoints) / BigInt(10000);
   };
 
@@ -110,6 +108,70 @@ export function useModifyLP({
     data,
     error: writeError,
   } = useWriteContract();
+
+  // Helper function to call increaseLiquidityPosition (defined *after* writeContractAsync)
+  const callIncreaseLiquidity = useCallback(
+    async (deadline: bigint) => {
+      const increaseParams = {
+        positionId: BigInt(positionId!),
+        collateralAmount: parsedCollateralDelta,
+        gasTokenAmount: amount0,
+        ethTokenAmount: amount1,
+        minGasAmount: minAmount0,
+        minEthAmount: minAmount1,
+        deadline,
+      };
+      return writeContractAsync({
+        address: marketAddress!,
+        abi: marketAbi,
+        functionName: 'increaseLiquidityPosition',
+        chainId,
+        args: [increaseParams],
+      });
+    },
+    [
+      positionId,
+      parsedCollateralDelta,
+      amount0,
+      amount1,
+      minAmount0,
+      minAmount1,
+      writeContractAsync,
+      marketAddress,
+      marketAbi,
+      chainId,
+    ]
+  );
+
+  // Helper function to call decreaseLiquidityPosition (defined *after* writeContractAsync)
+  const callDecreaseLiquidity = useCallback(
+    async (deadline: bigint) => {
+      const decreaseParams = {
+        positionId: BigInt(positionId!),
+        liquidity: liquidityDelta,
+        minGasAmount: minAmount0,
+        minEthAmount: minAmount1,
+        deadline,
+      };
+      return writeContractAsync({
+        address: marketAddress!,
+        abi: marketAbi,
+        functionName: 'decreaseLiquidityPosition',
+        chainId,
+        args: [decreaseParams],
+      });
+    },
+    [
+      positionId,
+      liquidityDelta,
+      minAmount0,
+      minAmount1,
+      writeContractAsync,
+      marketAddress,
+      marketAbi,
+      chainId,
+    ]
+  );
 
   // Watch for transaction completion
   const {
@@ -136,143 +198,124 @@ export function useModifyLP({
     }
   }, [writeError, txError, approvalError]);
 
+  // Function to actually modify the liquidity position
+  const performModifyLP = useCallback(async (): Promise<void> => {
+    // Guard clause for required parameters
+    if (!enabled || !marketAddress || !positionId) {
+      const errorMsg =
+        'Missing required parameters for modifying liquidity position';
+      console.error('performModifyLP check failed:', errorMsg);
+      setError(new Error(errorMsg));
+      setProcessingTx(false); // Ensure processing state is reset
+      return;
+    }
+
+    setError(null);
+    setProcessingTx(true);
+
+    try {
+      // Inlined executeContractCall logic:
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      let hash: `0x${string}` | undefined;
+
+      if (isAddMode) {
+        hash = await callIncreaseLiquidity(deadline);
+      } else {
+        hash = await callDecreaseLiquidity(deadline);
+      }
+
+      setTxHash(hash);
+      toast({
+        title: 'Transaction Submitted',
+        description: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submitted.`,
+      });
+    } catch (err) {
+      console.error(
+        `Error performing ${isAddMode ? 'increase' : 'decrease'} LP:`,
+        err
+      );
+      setError(
+        err instanceof Error ? err : new Error('Failed to send transaction')
+      );
+      setProcessingTx(false); // Ensure processing state is reset on error
+    }
+    // Note: processingTx contributes to the overall isLoading state and is managed there.
+    // It is reset here only on early return or error.
+  }, [
+    enabled,
+    marketAddress,
+    positionId,
+    isAddMode,
+    setTxHash,
+    setError,
+    setProcessingTx,
+    toast,
+    callIncreaseLiquidity,
+    callDecreaseLiquidity,
+    // Dependencies updated based on direct usage and helper callbacks
+  ]);
+
   // When approval is successful, proceed with modifying the LP
   useEffect(() => {
     const handleApprovalSuccess = async () => {
-      // Only proceed if we have a successful approval and we're in the middle of processing
-      if (isApproveSuccess && processingTx) {
-        toast({
-          title: 'Token Approved',
-          description: `${isAddMode ? 'Adding to' : 'Removing from'} liquidity position...`,
-        });
+      // Return early if the conditions aren't met
+      if (!isApproveSuccess || !processingTx) {
+        return;
+      }
 
-        // Now proceed with LP modification
-        try {
-          await performModifyLP();
-        } catch (err) {
-          setProcessingTx(false);
-          console.error(
-            `Error ${isAddMode ? 'adding to' : 'removing from'} LP after approval:`,
-            err
-          );
-        }
+      // Conditions are met, proceed with the logic
+      const actionDescription = isAddMode ? 'Adding to' : 'Removing from';
+      toast({
+        title: 'Token Approved',
+        description: `${actionDescription} liquidity position...`,
+      });
+
+      try {
+        await performModifyLP();
+      } catch (err) {
+        // Handle potential errors during the LP modification after approval
+        setProcessingTx(false);
+        console.error(`Error ${actionDescription} LP after approval:`, err);
+        setError(
+          err instanceof Error
+            ? err
+            : new Error(`LP ${actionDescription} failed after approval`)
+        );
       }
     };
 
     handleApprovalSuccess();
-  }, [isApproveSuccess, processingTx, isAddMode]);
+    // Dependencies remain the same as the logic using them hasn't fundamentally changed paths
+  }, [isApproveSuccess, processingTx, isAddMode, performModifyLP, toast]);
 
-  // Function to actually modify the liquidity position
-  const performModifyLP = async (): Promise<void> => {
-    if (!enabled || !marketAddress || !positionId) {
-      throw new Error(
-        'Missing required parameters for modifying liquidity position'
-      );
-    }
-
-    try {
-      setError(null);
-
-      // 30 minutes from now
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
-
-      // Call the appropriate contract function based on mode
-      if (isAddMode) {
-        // Prepare the parameters for increaseLiquidityPosition
-        const increaseParams = {
-          positionId: BigInt(positionId),
-          collateralAmount: parsedCollateralDelta, // Use the delta value
-          gasTokenAmount: amount0,
-          ethTokenAmount: amount1,
-          minGasAmount: minAmount0,
-          minEthAmount: minAmount1,
-          deadline,
-        };
-
-        // Call the contract function
-        const hash = await writeContractAsync({
-          address: marketAddress,
-          abi: marketAbi,
-          functionName: 'increaseLiquidityPosition',
-          chainId,
-          args: [increaseParams],
-        });
-
-        setTxHash(hash);
-      } else {
-        // Remove mode
-        // Prepare the parameters for decreaseLiquidityPosition
-        const decreaseParams = {
-          positionId: BigInt(positionId),
-          liquidity: liquidityDelta,
-          minGasAmount: minAmount0,
-          minEthAmount: minAmount1,
-          deadline,
-        };
-
-        // Call the contract function
-        const hash = await writeContractAsync({
-          address: marketAddress,
-          abi: marketAbi,
-          functionName: 'decreaseLiquidityPosition',
-          chainId,
-          args: [decreaseParams],
-        });
-
-        setTxHash(hash);
-      }
-
-      toast({
-        title: 'Transaction Submitted',
-        description: 'Your transaction has been submitted to the network.',
-      });
-    } catch (err) {
-      console.error(
-        `Error ${isAddMode ? 'adding to' : 'removing from'} liquidity position:`,
-        err
-      );
-      setError(
-        err instanceof Error
-          ? err
-          : new Error(
-              `Failed to ${isAddMode ? 'add to' : 'remove from'} liquidity position`
-            )
-      );
-      throw err;
-    }
-  };
-
-  // Main function that checks approval and handles the flow
+  // Main function exposed by the hook
   const modifyLP = async (): Promise<void> => {
+    if (!enabled) {
+      setError(new Error('Modification is disabled due to invalid inputs'));
+      return;
+    }
+
     setProcessingTx(true);
+    setError(null);
 
     try {
-      // First check if we need approval (only for add mode)
-      if (needsApproval) {
+      if (isAddMode && needsApproval) {
         toast({
           title: 'Approval Required',
-          description: 'Approving tokens before modifying position...',
+          description: `Approving ${collateralDelta} tokens...`,
         });
         await approve();
-        // The modifyLP call will be triggered by the useEffect when approval succeeds
       } else {
-        // If we don't need approval or already have allowance, modify LP directly
         await performModifyLP();
-        setProcessingTx(false);
       }
     } catch (err) {
       setProcessingTx(false);
-      console.error('Error in LP modification flow:', err);
-      throw err;
+      console.error('Error in modifyLP flow:', err);
+      setError(
+        err instanceof Error ? err : new Error('An unexpected error occurred')
+      );
     }
   };
-
-  // Reset processing state on success
-  useEffect(() => {
-    if (isSuccess) {
-      setProcessingTx(false);
-    }
-  }, [isSuccess]);
 
   return {
     modifyLP,

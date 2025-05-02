@@ -42,7 +42,7 @@ const extractPriceFromData = (
     }
     if (typeof price === 'string') {
       const parsedPrice = parseFloat(price);
-      if (!isNaN(parsedPrice)) {
+      if (!Number.isNaN(parsedPrice)) {
         return parsedPrice;
       }
     }
@@ -117,7 +117,7 @@ export const useLightweightChart = ({
       localization: {
         priceFormatter: (price: number) => {
           // Use viem's formatEther
-          if (typeof price !== 'number' || isNaN(price) || price < 0) {
+          if (typeof price !== 'number' || Number.isNaN(price) || price < 0) {
             return ''; // Return empty for invalid inputs
           }
           try {
@@ -189,9 +189,7 @@ export const useLightweightChart = ({
         param.point.y < 0
       ) {
         // If crosshair is out of chart bounds or has no time, clear hover data
-        if (hoverData !== null) {
-          setHoverData(null);
-        }
+        setHoverData(null);
         return;
       }
 
@@ -259,7 +257,7 @@ export const useLightweightChart = ({
     };
     // Rerun effect if theme changes or container ref changes
     // Data changes are handled in a separate effect
-  }, [theme, containerRef]);
+  }, [theme, containerRef, selectedPrices]);
 
   // Effect to update series data when priceData changes
   useEffect(() => {
@@ -328,7 +326,13 @@ export const useLightweightChart = ({
       });
       hasSetTimeScale.current = true;
     }
-  }, [priceData]); // Rerun only when priceData changes
+
+    // Fit content only once after initial data load
+    if (!hasSetTimeScale.current && priceData.length > 0) {
+      chartRef.current.timeScale().fitContent();
+      hasSetTimeScale.current = true;
+    }
+  }, [priceData, theme]); // Remove selectedPrices as it's not used in THIS effect
 
   // Effect to toggle logarithmic scale
   useEffect(() => {

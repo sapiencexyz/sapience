@@ -13,6 +13,12 @@ import {
 import { foilApi, getChainIdFromShortName } from '../../lib/utils/util'; // Import getChainIdFromShortName
 import { useSapience } from '~/lib/context/SapienceProvider'; // Import useSapience
 
+// Define minimal GraphQL error type
+interface GraphQLError {
+  message: string;
+  // Add other common fields like locations, path if needed
+}
+
 // Adjust marketId type if needed (String! vs Int!) based on schema
 const GET_MARKET_CANDLES = gql`
   query MarketCandles(
@@ -162,7 +168,7 @@ export const useMarketGroupChartData = ({
             // Correct the type assertion based on observed structure
             const responseData = response.data as
               | MarketCandlesResponse
-              | { errors?: any[] };
+              | { errors?: GraphQLError[] };
 
             // Check for GraphQL errors (using type guard might be safer)
             if (
@@ -223,18 +229,19 @@ export const useMarketGroupChartData = ({
             // Correct the type assertion
             const responseData = response.data as
               | IndexCandlesResponse
-              | { errors?: any[] };
+              | { errors?: GraphQLError[] };
             if (
               responseData &&
               'errors' in responseData &&
-              responseData.errors
+              responseData.errors &&
+              responseData.errors.length > 0
             ) {
               console.error(
                 `GraphQL errors fetching index candles:`,
                 responseData.errors
               );
               throw new Error(
-                responseData.errors[0]?.message ||
+                responseData.errors[0].message ||
                   'GraphQL error fetching index candles'
               );
             }

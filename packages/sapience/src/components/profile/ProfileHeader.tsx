@@ -1,6 +1,7 @@
 'use client';
 
 import { blo } from 'blo';
+import Image from 'next/image';
 
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 
@@ -11,10 +12,12 @@ interface ProfileHeaderProps {
 export default function ProfileHeader({ address }: ProfileHeaderProps) {
   return (
     <div className="mb-8 flex flex-row items-center gap-4">
-      <img
+      <Image
         alt={address}
         src={blo(address as `0x${string}`)}
         className="w-16 h-16 rounded-md"
+        width={64}
+        height={64}
       />
       <div>
         <p className="text-muted-foreground block mb-1">

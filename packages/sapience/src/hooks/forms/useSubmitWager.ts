@@ -1,8 +1,6 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 import type React from 'react';
-import { useAccount } from 'wagmi';
 
 interface UseSubmitWagerProps {
   // The submit handler passed from the parent, potentially async
@@ -12,8 +10,6 @@ interface UseSubmitWagerProps {
 }
 
 export function useSubmitWager({ externalHandleSubmit }: UseSubmitWagerProps) {
-  const { address } = useAccount();
-  const router = useRouter();
   const { toast } = useToast();
 
   const submitWager = useCallback(
@@ -51,7 +47,7 @@ export function useSubmitWager({ externalHandleSubmit }: UseSubmitWagerProps) {
         // throw error;
       }
     },
-    [externalHandleSubmit, toast, address, router] // Dependencies
+    [externalHandleSubmit, toast] // Removed address, router
   );
 
   return { submitWager };

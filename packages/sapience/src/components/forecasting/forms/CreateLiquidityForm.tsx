@@ -19,6 +19,7 @@ import {
 import { Input } from '@foil/ui/components/ui/input';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { useEffect, useRef, useState } from 'react';
+import type { Abi } from 'viem';
 import { formatUnits } from 'viem';
 
 import LottieLoader from '~/components/shared/LottieLoader';
@@ -33,7 +34,7 @@ import type { WalletData } from './ModifyLiquidityForm';
 export type LiquidityFormMarketDetails = {
   marketAddress: `0x${string}`;
   chainId: number;
-  marketAbi: any;
+  marketAbi: Abi;
   collateralAssetTicker: string;
   collateralAssetAddress: `0x${string}`;
   uniswapPositionManager: `0x${string}`;

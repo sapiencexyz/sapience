@@ -108,7 +108,7 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
               const shouldShowDeployButton =
                 marketId > currentEpochId &&
                 !!market.startingSqrtPriceX96 &&
-                !!market.claimStatement;
+                !!market.marketParams?.claimStatement;
 
               return (
                 <div
@@ -138,7 +138,8 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
                             baseAssetMaxPriceTick:
                               market.baseAssetMaxPriceTick || 0,
                             poolAddress: market.poolAddress ?? null,
-                            claimStatement: market.claimStatement || '',
+                            claimStatement:
+                              market.marketParams?.claimStatement || '',
                           }}
                           marketGroupAddress={group.address}
                           chainId={group.chainId}

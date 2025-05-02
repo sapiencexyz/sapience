@@ -65,7 +65,7 @@ const TWO_POW_96 = bigIntPow(TWO, NINETY_SIX); // 2^96
 
 // Function to convert number to sqrtPriceX96 using BigInt
 const convertToSqrtPriceX96 = (price: number): string => {
-  if (typeof price !== 'number' || isNaN(price) || price < 0) {
+  if (typeof price !== 'number' || Number.isNaN(price) || price < 0) {
     return 'N/A'; // Return N/A for invalid input
   }
 
@@ -226,7 +226,7 @@ export function useMarketCalculations({
     if (unitDisplay && typeof formData.predictionValue === 'string') {
       const numValue = parseFloat(formData.predictionValue);
       if (
-        !isNaN(numValue) &&
+        !Number.isNaN(numValue) &&
         numValue >= 0 &&
         formData.predictionValue.trim() !== '' &&
         formData.predictionValue.trim() !== '.'
@@ -287,7 +287,7 @@ export function useMarketCalculations({
       // Potentially numerical string input
       const numValue = parseFloat(formData.predictionValue);
       if (
-        !isNaN(numValue) &&
+        !Number.isNaN(numValue) &&
         numValue >= 0 &&
         formData.predictionValue.trim() !== '' &&
         formData.predictionValue.trim() !== '.'

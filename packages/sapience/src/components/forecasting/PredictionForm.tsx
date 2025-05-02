@@ -228,6 +228,14 @@ const PredictTabContent: React.FC<{
   );
 };
 
+// Define interface for the quote data structure
+interface FoilQuoteData {
+  maxSize: string; // String representation of a BigInt, can be negative
+  currentPrice: string; // String representation of a number/BigInt
+  expectedPrice: string; // String representation of a number/BigInt
+  // Add other fields if returned by useFoilQuote
+}
+
 const WagerTabContent: React.FC<{
   formData: PredictionFormData;
   setFormData: React.Dispatch<React.SetStateAction<PredictionFormData>>;
@@ -238,7 +246,7 @@ const WagerTabContent: React.FC<{
   handlePredictionChange: (value: string | number) => void;
   activeButtonStyle: string;
   inactiveButtonStyle: string;
-  quoteData: any;
+  quoteData: FoilQuoteData | null | undefined; // Use the specific type
   isQuoteLoading: boolean;
   quoteError: string | null | undefined;
 }> = ({
@@ -639,13 +647,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
       }
       return prevFormData;
     });
-  }, [
-    displayMarketId,
-    marketData?.baseTokenName,
-    unitDisplay,
-    setFormData,
-    activeOptionName,
-  ]);
+  }, [displayMarketId, unitDisplay, setFormData, activeOptionName, marketData]);
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
