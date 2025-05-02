@@ -28,7 +28,7 @@ const MARKET_GROUP_QUERY = gql`
         startTimestamp
         endTimestamp
         settled
-        optionNames
+        optionName
       }
     }
   }
