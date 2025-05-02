@@ -1,5 +1,6 @@
 'use client';
 
+import type { MarketGroupType } from '@foil/ui/types/graphql';
 import {
   ResponsiveContainer,
   LineChart,
@@ -12,7 +13,6 @@ import {
 
 import LottieLoader from '../shared/LottieLoader';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
-import type { PredictionMarketType } from '~/lib/interfaces/interfaces'; // Updated import
 import { formatTimestamp, getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
 
 import ChartLegend from './ChartLegend';
@@ -25,7 +25,7 @@ interface MarketGroupChartProps {
   chainShortName: string;
   marketAddress: string;
   marketIds: number[];
-  market: PredictionMarketType | null | undefined;
+  market: MarketGroupType | null | undefined; // Use GraphQL type
   minTimestamp?: number;
   optionNames?: string[] | null;
 }
@@ -42,7 +42,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     chainShortName,
     marketAddress,
     activeMarketIds: marketIds,
-    quoteTokenName: market?.quoteTokenName,
+    quoteTokenName: market?.quoteTokenName ?? undefined,
   });
 
   // Filter chartData based on minTimestamp if provided

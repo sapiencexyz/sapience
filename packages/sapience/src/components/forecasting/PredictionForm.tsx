@@ -17,9 +17,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@foil/ui/components/ui/popover';
+import type { MarketGroupType } from '@foil/ui/types/graphql';
 import { HelpCircle, Info } from 'lucide-react';
 import type React from 'react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { formatUnits } from 'viem';
 
 // Import the new hooks
@@ -35,42 +36,21 @@ import { useSubmitWager } from '~/hooks/forms/useSubmitWager';
 
 import PredictionInput from './PredictionInput';
 
-// Define a local type matching the component's usage until correct import path is found
-// Consider moving this to a shared types file if used elsewhere
-export interface PredictionMarketType {
-  optionNames?: string[] | null;
-  baseTokenName?: string | null;
-  quoteTokenName?: string | null;
-  collateralSymbol?: string | null;
-  markets?: {
-    id?: string;
-    marketId: string | number;
-    question?: string | null | undefined;
-    startTimestamp?: number | string | null;
-    endTimestamp?: number | string | null;
-    settled?: boolean | null;
-  }[];
-  address?: string;
-  chainId?: number;
-  lowerBound?: string | null; // Add lowerBound
-  upperBound?: string | null; // Add upperBound
-}
-
 interface PermitDataType {
   permitted?: boolean;
 }
 
 interface PredictionFormProps {
-  marketData: PredictionMarketType | null | undefined;
+  marketData: MarketGroupType | null | undefined;
   externalHandleSubmit: (
     event: React.FormEvent<HTMLFormElement>
-  ) => Promise<void> | void; // Renamed and kept type
+  ) => Promise<void> | void;
   isPermitLoadingPermit: boolean;
   permitData: PermitDataType | null | undefined;
   activeButtonStyle?: string;
   inactiveButtonStyle?: string;
   currentMarketId?: string | null;
-  initialFormData?: PredictionFormData; // Optional initial form data
+  initialFormData?: PredictionFormData;
 }
 
 const defaultActiveStyle =
@@ -78,44 +58,36 @@ const defaultActiveStyle =
 const defaultInactiveStyle =
   'bg-secondary text-secondary-foreground hover:bg-secondary/80';
 
-// Default initial form data if not provided
 const defaultInitialFormData: PredictionFormData = {
-  predictionValue: '', // Start empty, effect will set default
+  predictionValue: '',
   wagerAmount: '',
 };
 
-// Helper function to determine the default prediction value
 const determineDefaultPrediction = (
   currentPredictionValue: string | number | null | undefined,
   activeOptionNames: string[] | null | undefined,
   baseTokenName: string | null | undefined,
   unitDisplay: string | null | undefined
 ): string | number => {
-  // Default to current value or empty string if null/undefined
   if (currentPredictionValue === null || currentPredictionValue === undefined) {
     return '';
   }
 
-  // Group market case
   if (activeOptionNames && activeOptionNames.length > 0) {
     return handleGroupMarket(currentPredictionValue, activeOptionNames);
   }
 
-  // Yes/No market case
   if (baseTokenName?.toLowerCase() === 'yes') {
     return handleYesNoMarket(currentPredictionValue);
   }
 
-  // Numerical market case
   if (unitDisplay) {
     return handleNumericalMarket(currentPredictionValue);
   }
 
-  // Return the original value if no special handling needed
   return currentPredictionValue;
 };
 
-// Helper for group market prediction
 const handleGroupMarket = (
   value: string | number,
   options: string[]
@@ -126,12 +98,10 @@ const handleGroupMarket = (
   return isValidOption ? value : 1;
 };
 
-// Helper for yes/no market prediction
 const handleYesNoMarket = (value: string | number): string => {
-  return value === '0' || value === '1' ? value : '1';
+  return value === '0' ? '0' : '1';
 };
 
-// Helper for numerical market prediction
 const handleNumericalMarket = (value: string | number): string => {
   if (typeof value !== 'string' || value === '0' || value === '1') {
     return '';
@@ -139,7 +109,6 @@ const handleNumericalMarket = (value: string | number): string => {
   return value;
 };
 
-// Helper function for wager button text
 const getWagerButtonText = (
   isQuoteLoading: boolean,
   wagerAmount: string | undefined,
@@ -151,7 +120,6 @@ const getWagerButtonText = (
   return 'Submit Wager';
 };
 
-// Helper function for predict button text
 const getPredictButtonText = (
   submissionValue: string | number | null | undefined
 ): string => {
@@ -161,7 +129,6 @@ const getPredictButtonText = (
   return 'Submit Prediction';
 };
 
-// Helper function to determine submit button text (simplified)
 const determineSubmitButtonText = (
   isAttesting: boolean,
   isQuoteLoading: boolean,
@@ -170,22 +137,19 @@ const determineSubmitButtonText = (
   wagerAmount: string | undefined,
   quoteError: string | null | undefined
 ): string => {
-  // Handle high-priority states first
   if (isAttesting) return 'Submitting Prediction...';
 
   if (activeTab === 'wager') {
     return getWagerButtonText(isQuoteLoading, wagerAmount, quoteError);
   }
 
-  // Must be 'predict' tab
   return getPredictButtonText(submissionValue);
 };
 
-// Predict Tab Content Component
 const PredictTabContent: React.FC<{
   formData: PredictionFormData;
-  activeOptionNames: string[] | null | undefined;
-  marketData: PredictionMarketType | null | undefined;
+  activeOptionName: string | null | undefined;
+  marketData: MarketGroupType | null | undefined;
   unitDisplay: string | null | undefined;
   isGroupMarket: boolean;
   handlePredictionChange: (value: string | number) => void;
@@ -193,7 +157,7 @@ const PredictTabContent: React.FC<{
   inactiveButtonStyle: string;
 }> = ({
   formData,
-  activeOptionNames,
+  activeOptionName,
   marketData,
   unitDisplay,
   isGroupMarket,
@@ -201,6 +165,8 @@ const PredictTabContent: React.FC<{
   activeButtonStyle,
   inactiveButtonStyle,
 }) => {
+  const optionNames = activeOptionName ? [activeOptionName] : undefined;
+
   return (
     <div className="space-y-6">
       <div>
@@ -212,7 +178,7 @@ const PredictTabContent: React.FC<{
         </Label>
         <PredictionInput
           market={{
-            optionNames: activeOptionNames,
+            optionNames,
             baseTokenName: marketData?.baseTokenName ?? undefined,
             quoteTokenName: marketData?.quoteTokenName ?? undefined,
             isGroupMarket,
@@ -262,12 +228,11 @@ const PredictTabContent: React.FC<{
   );
 };
 
-// Wager Tab Content Component
 const WagerTabContent: React.FC<{
   formData: PredictionFormData;
   setFormData: React.Dispatch<React.SetStateAction<PredictionFormData>>;
-  activeOptionNames: string[] | null | undefined;
-  marketData: PredictionMarketType | null | undefined;
+  activeOptionName: string | null | undefined;
+  marketData: MarketGroupType | null | undefined;
   unitDisplay: string | null | undefined;
   isGroupMarket: boolean;
   handlePredictionChange: (value: string | number) => void;
@@ -279,7 +244,7 @@ const WagerTabContent: React.FC<{
 }> = ({
   formData,
   setFormData,
-  activeOptionNames,
+  activeOptionName,
   marketData,
   unitDisplay,
   isGroupMarket,
@@ -290,7 +255,8 @@ const WagerTabContent: React.FC<{
   isQuoteLoading,
   quoteError,
 }) => {
-  // Helper function to render quote data
+  const optionNames = activeOptionName ? [activeOptionName] : undefined;
+
   const renderQuoteData = () => {
     if (!quoteData || isQuoteLoading || quoteError) return null;
 
@@ -300,18 +266,15 @@ const WagerTabContent: React.FC<{
           If this market {unitDisplay ? 'resolves near' : 'resolves to'}{' '}
           <span className="italic">
             {(() => {
-              // Check for group market first
               if (
-                isGroupMarket && // Use isGroupMarket prop directly
-                activeOptionNames &&
+                isGroupMarket &&
+                activeOptionName &&
                 typeof formData.predictionValue === 'number' &&
-                formData.predictionValue > 0 &&
-                formData.predictionValue <= activeOptionNames.length
+                formData.predictionValue === 1
               ) {
-                return activeOptionNames[formData.predictionValue - 1];
+                return activeOptionName;
               }
 
-              // Check for Yes/No market type *before* checking the value
               const isYesNoMarket =
                 marketData?.baseTokenName?.toLowerCase() === 'yes';
 
@@ -324,7 +287,6 @@ const WagerTabContent: React.FC<{
                 }
               }
 
-              // Fallback for numerical or other cases (or Yes/No with unexpected value)
               return formData.predictionValue;
             })()}
           </span>
@@ -339,7 +301,7 @@ const WagerTabContent: React.FC<{
                       ? quoteData.maxSize.substring(1)
                       : quoteData.maxSize
                   ),
-                  18 // Assuming 18 decimals, might need adjustment based on token
+                  18
                 )
               )}
               className=""
@@ -510,7 +472,7 @@ const WagerTabContent: React.FC<{
         </Label>
         <PredictionInput
           market={{
-            optionNames: activeOptionNames,
+            optionNames,
             baseTokenName: marketData?.baseTokenName ?? undefined,
             quoteTokenName: marketData?.quoteTokenName ?? undefined,
             isGroupMarket,
@@ -608,7 +570,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
   currentMarketId,
   initialFormData = defaultInitialFormData,
 }) => {
-  // 1. Form State Hook
   const {
     formData,
     setFormData,
@@ -617,18 +578,32 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     handlePredictionChange,
   } = usePredictionFormState({ initialFormData, initialActiveTab: 'predict' });
 
-  // 2. Market Calculations Hook
+  const activeMarket = useMemo(() => {
+    if (!marketData || !marketData.markets || !currentMarketId) {
+      return null;
+    }
+    return (
+      marketData.markets.find(
+        (market) => market.marketId.toString() === currentMarketId
+      ) || null
+    );
+  }, [marketData, currentMarketId]);
+
   const {
-    activeOptionNames,
     unitDisplay,
     displayMarketId,
     isGroupMarket,
     submissionValue,
     selectedMarketId,
     expectedPriceForQuoter,
-  } = useMarketCalculations({ marketData, formData, currentMarketId });
+  } = useMarketCalculations({
+    marketData,
+    formData,
+    currentMarketId,
+  });
 
-  // 3. Quoter Hook
+  const activeOptionName = activeMarket?.optionName;
+
   const { quoteData, isQuoteLoading, quoteError } = useQuoter({
     marketData,
     displayMarketId,
@@ -637,7 +612,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     activeTab,
   });
 
-  // 4. Prediction Submission Hook
   const {
     submitPrediction,
     isAttesting,
@@ -646,18 +620,16 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     resetAttestationStatus,
   } = useSubmitPrediction({ marketData, submissionValue, selectedMarketId });
 
-  // 5. Wager Submission Hook
   const { submitWager } = useSubmitWager({ externalHandleSubmit });
 
-  // Effect to set default prediction value
   useEffect(() => {
-    if (!displayMarketId) return;
+    if (!displayMarketId || !marketData) return;
 
     setFormData((prevFormData) => {
       const { predictionValue: currentPredictionValue } = prevFormData;
       const newPredictionValue = determineDefaultPrediction(
         currentPredictionValue,
-        activeOptionNames,
+        activeOptionName ? [activeOptionName] : null,
         marketData?.baseTokenName,
         unitDisplay
       );
@@ -669,13 +641,12 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     });
   }, [
     displayMarketId,
-    activeOptionNames,
     marketData?.baseTokenName,
     unitDisplay,
     setFormData,
+    activeOptionName,
   ]);
 
-  // Form submit handler
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (activeTab === 'predict') {
@@ -686,7 +657,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
     }
   };
 
-  // Determine button text and disabled state
   const buttonText = determineSubmitButtonText(
     isAttesting,
     isQuoteLoading,
@@ -707,10 +677,8 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         isQuoteLoading ||
         !!quoteError));
 
-  // Render the form
   return (
     <form className="space-y-8" onSubmit={handleFormSubmit}>
-      {/* Tabs Section */}
       <div className="space-y-2 mt-4">
         <div className="flex w-full border-b">
           <button
@@ -737,12 +705,11 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           </button>
         </div>
 
-        {/* Tab Content */}
         <div className="pt-4">
           {activeTab === 'predict' && (
             <PredictTabContent
               formData={formData}
-              activeOptionNames={activeOptionNames}
+              activeOptionName={activeOptionName}
               marketData={marketData}
               unitDisplay={unitDisplay}
               isGroupMarket={isGroupMarket}
@@ -756,7 +723,7 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
             <WagerTabContent
               formData={formData}
               setFormData={setFormData}
-              activeOptionNames={activeOptionNames}
+              activeOptionName={activeOptionName}
               marketData={marketData}
               unitDisplay={unitDisplay}
               isGroupMarket={isGroupMarket}
@@ -771,7 +738,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         </div>
       </div>
 
-      {/* Attestation Status */}
       {activeTab === 'predict' && attestationError && (
         <Alert variant="destructive" className="mb-4">
           <AlertTitle>Error</AlertTitle>
@@ -785,7 +751,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         </Alert>
       )}
 
-      {/* Permit Alert */}
       {!isPermitLoadingPermit &&
         permitData?.permitted === false &&
         activeTab === 'wager' && (
@@ -800,7 +765,6 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
           </Alert>
         )}
 
-      {/* Submit Button */}
       <Button
         type="submit"
         disabled={isButtonDisabled}

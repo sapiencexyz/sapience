@@ -1,5 +1,5 @@
 // Assuming CandleType is defined elsewhere, e.g., in interfaces or generated types
-import type { CandleType } from '../interfaces/interfaces'; // Adjust path if needed
+import type { CandleType } from '@foil/ui/types/graphql'; // Adjust path if needed
 
 // Define the type for index candle data (partial CandleType)
 // Used because the index query only fetches timestamp and close
