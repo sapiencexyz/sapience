@@ -37,9 +37,8 @@ export default function PortfolioPage() {
     content = <ErrorState error={error} />;
   } else {
     const traderPositions =
-      positions?.filter((position: any) => !position.isLP) || [];
-    const lpPositions =
-      positions?.filter((position: any) => position.isLP) || [];
+      positions?.filter((position) => !position.isLP) || [];
+    const lpPositions = positions?.filter((position) => position.isLP) || [];
     const safeAttestations = attestations || [];
 
     const hasTraderPositions = traderPositions.length > 0;

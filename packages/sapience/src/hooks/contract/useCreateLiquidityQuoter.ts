@@ -1,4 +1,5 @@
 import { TickMath } from '@uniswap/v3-sdk';
+import type { Abi } from 'abitype';
 import { useEffect, useMemo, useState } from 'react';
 import { useReadContract } from 'wagmi';
 
@@ -18,7 +19,7 @@ interface CreateLiquidityQuoterProps {
   highTick: number | null;
   enabled?: boolean;
   chainId?: number;
-  marketAbi: any;
+  marketAbi: Abi;
   marketId: bigint;
   tickSpacing?: number;
 }
@@ -38,7 +39,6 @@ export function useCreateLiquidityQuoter({
   chainId,
   marketAbi,
   marketId,
-  tickSpacing = 200, // Default tick spacing
 }: CreateLiquidityQuoterProps): QuoteResult {
   const [error, setError] = useState<Error | null>(null);
   const [quoteResult, setQuoteResult] = useState<{
@@ -52,7 +52,7 @@ export function useCreateLiquidityQuoter({
   // Parse and validate inputs
   const collateralAmountNumber = parseFloat(collateralAmount);
   const isValidCollateral =
-    !isNaN(collateralAmountNumber) && collateralAmountNumber > 0;
+    !Number.isNaN(collateralAmountNumber) && collateralAmountNumber > 0;
 
   // Convert price inputs to ticks and then to sqrt ratios
   const { sqrtPriceAX96, sqrtPriceBX96 } = useMemo(() => {
@@ -71,7 +71,7 @@ export function useCreateLiquidityQuoter({
       sqrtPriceAX96: lowSqrtRatio,
       sqrtPriceBX96: highSqrtRatio,
     };
-  }, [lowTick, highTick, tickSpacing]);
+  }, [lowTick, highTick]);
 
   // Check if all inputs are valid
   const inputsAreValid =

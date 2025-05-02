@@ -1,4 +1,5 @@
 import { gql } from '@apollo/client';
+import type { PositionType } from '@foil/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
@@ -56,7 +57,7 @@ export const POSITIONS_QUERY = gql`
 `;
 
 export function usePositions(address: string) {
-  return useQuery({
+  return useQuery<PositionType[]>({
     queryKey: ['positions', address],
     queryFn: async () => {
       const { data, errors } = await foilApi.post('/graphql', {

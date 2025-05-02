@@ -147,7 +147,7 @@ const useAllTimeLeaderboard = () => {
 
               // Convert BigInt to Number for aggregation
               const pnlNumber = Number(pnlValue);
-              if (isNaN(pnlNumber)) {
+              if (Number.isNaN(pnlNumber)) {
                 console.error(
                   `Converted PnL number is NaN for owner ${owner}. BigInt value was: ${pnlValue}. Raw string was: '${rawPnlString}'`
                 );
@@ -206,21 +206,21 @@ const useCryptoPrices = () => {
           prices.solana.usd !== null ? Number(prices.solana.usd) : null;
 
         // Check for NaN explicitly after conversion
-        if (isNaN(prices.ethereum.usd as number)) {
+        if (Number.isNaN(prices.ethereum.usd as number)) {
           console.warn(
             'Ethereum price is NaN after conversion. API response:',
             response?.eth
           );
           prices.ethereum.usd = null; // Fallback to null if NaN
         }
-        if (isNaN(prices.bitcoin.usd as number)) {
+        if (Number.isNaN(prices.bitcoin.usd as number)) {
           console.warn(
             'Bitcoin price is NaN after conversion. API response:',
             response?.btc
           );
           prices.bitcoin.usd = null;
         }
-        if (isNaN(prices.solana.usd as number)) {
+        if (Number.isNaN(prices.solana.usd as number)) {
           console.warn(
             'Solana price is NaN after conversion. API response:',
             response?.sol

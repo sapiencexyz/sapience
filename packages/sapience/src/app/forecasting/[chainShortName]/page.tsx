@@ -13,18 +13,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
+import type { MarketType } from '@foil/ui/types/graphql';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 
 import MarketGroupChart from '../../../components/forecasting/MarketGroupChart';
 import PredictionForm from '../../../components/forecasting/PredictionForm';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import PredictionsList from '~/components/forecasting/PredictionsList';
 import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
-import type { Market } from '~/lib/interfaces/interfaces';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(
@@ -97,70 +97,52 @@ const ForecastingDetailPage = () => {
   const {
     marketData,
     isLoadingMarket,
-    isSuccess,
     displayQuestion,
     currentMarketId,
     activeMarkets,
   } = useMarketGroup({ chainShortName, marketAddress });
 
+  // Find the active market object from the activeMarkets array using currentMarketId
+  const activeMarket = useMemo(() => {
+    if (!activeMarkets || !currentMarketId) {
+      return null;
+    }
+    // Find the market whose marketId matches the currentMarketId string
+    return (
+      activeMarkets.find(
+        (market) => market.marketId.toString() === currentMarketId
+      ) || null
+    );
+  }, [activeMarkets, currentMarketId]);
+
+  // Extract optionNames from the active market for passing down
+  // PredictionForm now expects marketData (MarketGroupType) and currentMarketId
+  // MarketGroupChart and PredictionsList need optionNames (or similar) specifically
+  // Handle the case where activeMarket or optionName might be null/undefined
+  const activeOptionName = activeMarket?.optionName; // Get the single option name
+
   // Calculate the minimum start timestamp from active markets
-  const minTimestamp =
-    activeMarkets.length > 0
+  const minTimestamp = useMemo(() => {
+    return activeMarkets.length > 0
       ? Math.min(
           ...activeMarkets.map((market) => Number(market.startTimestamp))
         )
       : undefined;
+  }, [activeMarkets]);
 
-  // Keep useEffect for checking market count (if needed for UI logic)
-  useEffect(() => {
-    // Wait until loading is finished, the query was successful, and we have valid, non-placeholder data
-    if (isLoadingMarket || !isSuccess || !marketData) {
-      return; // Exit early if still loading, query failed, data is invalid/placeholder
-    }
+  // Define the type for handleSubmit explicitly
+  type HandleSubmitType = (event: React.FormEvent<HTMLFormElement>) => void;
 
-    // Ensure epochs is an array before proceeding
-    if (!Array.isArray(marketData.markets)) {
-      // Exit if epochs structure is incorrect
-    }
-  }, [marketData, isLoadingMarket, isSuccess]); // Dependencies remain the same for now
-
-  // Form data with tab selection
-  const [formData, setFormData] = useState<{
-    predictionValue: string | number;
-    wagerAmount: string; // Keep wager amount as string for input control
-  }>({
-    predictionValue: '', // Initialize empty, will set based on market later
-    wagerAmount: '10',
-  });
-
-  // Update state initialization based on market data
-  useEffect(() => {
-    if (marketData) {
-      let initialPredictionValue: string | number = '';
-      // Use optional chaining for safer access
-      if (marketData.optionNames && marketData.optionNames.length > 0) {
-        const [firstOption] = marketData.optionNames;
-        initialPredictionValue = firstOption; // Default to first option
-      } else if (marketData.baseTokenName?.toLowerCase() === 'yes') {
-        initialPredictionValue = 'yes'; // Default to 'yes'
-      } else {
-        // Check if it should be numerical based on lack of options/yes
-        // Assuming numerical if not options or yes/no
-        initialPredictionValue = 0; // Default to 0 for numerical input
-      }
-      setFormData((prev) => ({
-        ...prev,
-        predictionValue: initialPredictionValue,
-      }));
-    }
-  }, [marketData]);
-
-  // Form submission handler (basic example)
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  // Reinstate handleSubmit for the external wager action
+  const handleSubmit: HandleSubmitType = (event) => {
     event.preventDefault();
-    console.log('Form submitted:', { formData });
-    // Add actual submission logic here (e.g., API call)
-    alert(`Submitting: ${JSON.stringify(formData)}`);
+    // This function is now primarily for handling the external submission (wager)
+    // triggered from within PredictionForm.
+    // The actual form data is managed inside PredictionForm.
+    console.log('External submit triggered (likely for wager)');
+    // TODO: Implement wager submission logic if needed at this level,
+    // or ensure it's fully handled via the hook used by PredictionForm.
+    console.warn('Wager submission initiated. (Placeholder)'); // Replaced alert with console.warn
   };
 
   if (isLoadingMarket || isPermitLoadingPermit) {
@@ -198,13 +180,17 @@ const ForecastingDetailPage = () => {
                   )}
                   market={marketData}
                   minTimestamp={minTimestamp}
-                  optionNames={marketData?.optionNames}
+                  optionNames={
+                    activeOptionName ? [activeOptionName] : undefined
+                  }
                 />
               )}
               {selectedView === 'Predictions' && (
                 <PredictionsList
                   marketAddress={marketAddress}
-                  optionNames={marketData?.optionNames}
+                  optionNames={
+                    activeOptionName ? [activeOptionName] : undefined
+                  }
                 />
               )}
               <div className="py-6">
@@ -277,7 +263,6 @@ const ForecastingDetailPage = () => {
               disabled={
                 isLoadingMarket ||
                 !marketData ||
-                marketData.placeholder ||
                 !activeMarkets || // Check activeMarkets existence
                 activeMarkets.length === 0 // Disable if no active markets
               }
@@ -301,7 +286,7 @@ const ForecastingDetailPage = () => {
           <div className="grid gap-5 pb-2">
             {activeMarkets?.map(
               (
-                market: Market // Map over activeMarkets
+                market: MarketType // Use MarketType here
               ) => (
                 <Link
                   key={market.id}

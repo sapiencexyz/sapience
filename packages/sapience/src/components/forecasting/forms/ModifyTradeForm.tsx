@@ -37,7 +37,7 @@ import LottieLoader from '~/components/shared/LottieLoader';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { useModifyTrade } from '~/hooks/contract/useModifyTrade';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
-import { useTradeForm } from '~/hooks/forms/useTradeForm';
+import { type TradeFormValues, useTradeForm } from '~/hooks/forms/useTradeForm'; // Assuming TradeFormValues is the correct type
 import {
   COLLATERAL_DECIMALS,
   HIGH_PRICE_IMPACT,
@@ -66,6 +66,14 @@ interface PermitDataType {
   permitted?: boolean;
 }
 
+// Define interface for the expected structure of position data
+interface PositionData {
+  vGasAmount: bigint;
+  borrowedVGas: bigint;
+  depositedCollateralAmount: bigint;
+  // Add other fields returned by getPosition if known/used
+}
+
 // --- Helper Functions ---
 
 interface ButtonState {
@@ -76,7 +84,7 @@ interface ButtonState {
 
 interface ButtonStateBaseParams {
   isConnected: boolean;
-  positionData: any; // Use a more specific type if available
+  positionData: unknown; // Using unknown instead of any
   isLoading: boolean;
   needsApproval: boolean;
   modifyTrade: (() => Promise<void>) | undefined; // Type of modifyTrade
@@ -90,7 +98,7 @@ interface UpdateButtonStateParams extends ButtonStateBaseParams {
   collateralAssetTicker: string | undefined;
   targetSizeForHook: bigint;
   originalPositionSizeInContractUnit: bigint;
-  formState: FormState<any>; // Use appropriate form state type
+  formState: FormState<TradeFormValues>; // Using assumed TradeFormValues type
   permitData: PermitDataType | null | undefined; // Add permitData
   isPermitLoadingPermit: boolean; // Add isPermitLoadingPermit
 }
@@ -186,9 +194,9 @@ function calculateResultingBalances(
   const currentPositionCollateralNum = parseFloat(currentPositionCollateralStr);
 
   if (
-    isNaN(walletNum) ||
-    isNaN(deltaNum) ||
-    isNaN(currentPositionCollateralNum)
+    Number.isNaN(walletNum) ||
+    Number.isNaN(deltaNum) ||
+    Number.isNaN(currentPositionCollateralNum)
   ) {
     return defaultResult;
   }
@@ -242,9 +250,13 @@ function calculatePriceImpact(
     // If referencePriceStr is invalid (e.g., empty), referencePrice will be NaN
 
     // Combine NaN checks and zero check
-    if (isNaN(fillPrice) || isNaN(referencePrice) || referencePrice === 0) {
+    if (
+      Number.isNaN(fillPrice) ||
+      Number.isNaN(referencePrice) ||
+      referencePrice === 0
+    ) {
       // Log potential issue if referencePrice is NaN/0 from a seemingly valid pool price object
-      if (isNaN(referencePrice) || referencePrice === 0) {
+      if (Number.isNaN(referencePrice) || referencePrice === 0) {
         console.warn(
           'Reference price calculation resulted in NaN or zero:',
           referencePriceStr
@@ -295,7 +307,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     query: {
       enabled: isConnected && !!positionId && !!marketAddress && !!marketAbi,
     },
-  }) as { data: any; refetch: () => void }; // Type assertion
+  }) as { data: PositionData | undefined; refetch: () => void }; // Use specific type
 
   const originalPositionSizeInContractUnit: bigint = useMemo(() => {
     if (positionData) {
@@ -517,7 +529,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         collateralAssetTicker,
         targetSizeForHook,
         originalPositionSizeInContractUnit,
-        formState,
+        formState: formState as FormState<TradeFormValues>, // Pass the retrieved formState, assuming type
         isError,
         permitData, // Pass permitData
         isPermitLoadingPermit, // Pass isPermitLoadingPermit

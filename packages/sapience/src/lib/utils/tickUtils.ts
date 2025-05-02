@@ -91,7 +91,7 @@ export const formatPrice = (price: number | string, decimals = 6): string => {
   const numPrice = typeof price === 'string' ? parseFloat(price) : price;
 
   // Handle edge cases
-  if (isNaN(numPrice)) return '0';
+  if (Number.isNaN(numPrice)) return '0';
 
   // For numbers that are very small, use scientific notation
   if (numPrice > 0 && numPrice < 0.000001) {

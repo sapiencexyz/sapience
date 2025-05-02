@@ -8,29 +8,29 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
+import type { PositionType } from '@foil/ui/types';
 import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
-import type { Position } from '~/lib/interfaces/interfaces';
 import {
   calculateEffectiveEntryPrice,
   getChainShortName,
 } from '~/lib/utils/util';
 
 interface TraderPositionsTableProps {
-  positions: Position[];
+  positions: PositionType[];
 }
 
-function PositionCell({ position }: { position: Position }) {
+function PositionCell({ position }: { position: PositionType }) {
   const baseTokenBI = BigInt(position.baseToken || '0');
   const borrowedBaseTokenBI = BigInt(position.borrowedBaseToken || '0');
   const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
   const value = Number(formatEther(netPositionBI));
   const absValue = Math.abs(value);
-  const { baseTokenName } = position.market.marketGroup;
+  const baseTokenName = position.market.marketGroup?.baseTokenName;
 
   // Determine direction and styling based on net position value
   if (value >= 0) {
@@ -63,8 +63,9 @@ function PositionCell({ position }: { position: Position }) {
   );
 }
 
-function MaxPayoutCell({ position }: { position: Position }) {
-  const { baseTokenName, collateralSymbol } = position.market.marketGroup;
+function MaxPayoutCell({ position }: { position: PositionType }) {
+  const baseTokenName = position.market.marketGroup?.baseTokenName;
+  const collateralSymbol = position.market.marketGroup?.collateralSymbol;
 
   if (baseTokenName === 'Yes') {
     const baseTokenBI = BigInt(position.baseToken || '0');
@@ -90,10 +91,14 @@ function MaxPayoutCell({ position }: { position: Position }) {
   return <span className="text-muted-foreground">N/A</span>;
 }
 
-function PositionValueCell({ position }: { position: Position }) {
+function PositionValueCell({ position }: { position: PositionType }) {
   const { transactions } = position;
-  const { marketGroup, marketId } = position.market;
-  const { address, chainId, baseTokenName, collateralSymbol } = marketGroup;
+  const { marketId } = position.market;
+  const { marketGroup } = position.market;
+  const address = marketGroup?.address || '';
+  const chainId = marketGroup?.chainId || 0;
+  const baseTokenName = marketGroup?.baseTokenName;
+  const collateralSymbol = marketGroup?.collateralSymbol;
 
   // --- Fetch Current Market Price ---
   const { data: currentMarketPriceRaw, isLoading: priceLoading } =
@@ -111,7 +116,6 @@ function PositionValueCell({ position }: { position: Position }) {
 
   const netPosition = baseTokenAmount - borrowedBaseTokenAmount;
   const isLong = netPosition >= 0;
-  // const { baseTokenName, collateralSymbol } = position.market.marketGroup; // Moved up
 
   // --- Calculate Effective Entry Price ---
   const entryPrice = calculateEffectiveEntryPrice(transactions, isLong);
@@ -227,7 +231,7 @@ export default function TraderPositionsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {validPositions.map((position: Position) => {
+            {validPositions.map((position: PositionType) => {
               const isOwner =
                 connectedAddress &&
                 position.owner &&
@@ -243,9 +247,9 @@ export default function TraderPositionsTable({
 
               const isClosed = Number(position.collateral) === 0;
               const chainShortName = getChainShortName(
-                position.market.marketGroup.chainId
+                position.market.marketGroup.chainId || 0
               );
-              const marketAddress = position.market.marketGroup.address;
+              const marketAddress = position.market.marketGroup.address || '';
 
               return (
                 <TableRow key={position.id}>

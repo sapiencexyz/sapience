@@ -93,7 +93,11 @@ export interface Market {
   baseAssetMinPriceTick?: number | null;
   baseAssetMaxPriceTick?: number | null;
   startingSqrtPriceX96?: string | null;
-  claimStatement?: string | null;
+  // Add nested marketParams based on query
+  marketParams?: {
+    claimStatement?: string | null;
+  } | null;
+  // Keep claimStatement at top level for mapped data compatibility? No, access nested.
 }
 
 // Define MarketParams type based on GraphQL schema
@@ -297,11 +301,11 @@ export const useEnrichedMarketGroups = () => {
       });
 
       // --- Fetch initial market group data ---
-      const { data } = await foilApi.post('/graphql', {
+      const { data: apiResponseData } = await foilApi.post('/graphql', {
         query: print(MARKETS_QUERY),
       });
 
-      if (!data || !data.marketGroups) {
+      if (!apiResponseData || !apiResponseData.marketGroups) {
         console.error(
           '[useEnrichedMarketGroups] No market groups data received from API or data structure invalid.'
         );
@@ -309,7 +313,7 @@ export const useEnrichedMarketGroups = () => {
       }
 
       // --- Process market groups (enrichment only) ---
-      return data.marketGroups.map(
+      return apiResponseData.marketGroups.map(
         (marketGroup: MarketGroupApiResponse): EnrichedMarketGroup => {
           // Return EnrichedMarketGroup
           let categoryInfo: Category;
@@ -333,9 +337,9 @@ export const useEnrichedMarketGroups = () => {
             };
           }
 
-          const mappedMarkets = marketGroup.markets.map((market: any) => ({
-            // Type needs checking
+          const mappedMarkets = marketGroup.markets.map((market: Market) => ({
             ...market,
+            // Access nested claimStatement safely
             claimStatement: market.marketParams?.claimStatement,
           }));
 
@@ -370,7 +374,7 @@ export const useLatestIndexPrice = (market: {
       }
 
       try {
-        const { data } = await foilApi.post('/graphql', {
+        const { data: indexPriceApiResponse } = await foilApi.post('/graphql', {
           query: print(LATEST_INDEX_PRICE_QUERY),
           variables: {
             address: market.address,
@@ -382,16 +386,19 @@ export const useLatestIndexPrice = (market: {
           },
         });
 
-        const candles = data.indexCandles;
-        if (!candles || candles.length === 0) {
+        const indexCandlesData = indexPriceApiResponse.indexCandles;
+        if (!indexCandlesData || indexCandlesData.length === 0) {
           return { timestamp: null, value: null };
         }
 
-        const latestCandle = candles.reduce((latest: any, current: any) => {
-          return !latest || current.timestamp > latest.timestamp
-            ? current
-            : latest;
-        }, null);
+        const latestCandle = indexCandlesData.reduce(
+          (latest: Candle | null, current: Candle) => {
+            return !latest || current.timestamp > latest.timestamp
+              ? current
+              : latest;
+          },
+          null
+        );
 
         if (!latestCandle) {
           return { timestamp: null, value: null };
@@ -502,5 +509,5 @@ export const getLatestPriceFromCandles = (
     return !latest || current.timestamp > latest.timestamp ? current : latest;
   });
   const price = parseFloat(latestCandle.close);
-  return isNaN(price) ? null : price;
+  return Number.isNaN(price) ? null : price;
 };

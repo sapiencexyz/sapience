@@ -1,4 +1,5 @@
 import { gql } from '@apollo/client';
+import type { MarketType } from '@foil/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
@@ -6,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { foilApi, getChainIdFromShortName } from '~/lib/utils/util';
 
 // Define the market data structure based on the GraphQL query response
+// This will be deprecated once we fully transition to UI package types
 export interface MarketData {
   id: string;
   marketId: number;
@@ -109,68 +111,69 @@ export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
 
   const numericMarketId = Number(marketId);
 
-  const { data: marketData, isLoading: isLoadingMarket } = useQuery({
-    queryKey: ['market', chainId, marketAddress, numericMarketId],
-    queryFn: async () => {
-      if (!chainId || !numericMarketId || !marketAddress) {
-        // Returning null or a specific error state might be better than placeholder
-        return null; // Changed from { placeholder: true }
-      }
-
-      try {
-        const response = await foilApi.post('/graphql', {
-          query: print(MARKET_QUERY),
-          variables: {
-            chainId,
-            address: marketAddress,
-            marketId: numericMarketId,
-          },
-        });
-
-        // The response structure might return an array or a single object depending on the query
-        // Adapting based on the provided query which filters by marketId server-side
-        const marketsData = response.data?.markets; // Corrected access path
-
-        if (!marketsData) {
-          console.error('No market data in response:', response.data);
-          return null;
+  const { data: marketData, isLoading: isLoadingMarket } =
+    useQuery<MarketType | null>({
+      queryKey: ['market', chainId, marketAddress, numericMarketId],
+      queryFn: async () => {
+        if (!chainId || !numericMarketId || !marketAddress) {
+          // Returning null or a specific error state might be better than placeholder
+          return null; // Changed from { placeholder: true }
         }
 
-        // Assuming the query correctly returns only the specific market when marketId is provided
-        // If it still returns an array, you might need to find the market like before:
-        // const targetMarket = Array.isArray(marketsData) ? marketsData.find(...) : marketsData;
-        // For now, assuming the API returns the single expected market object or null/empty array
-        if (Array.isArray(marketsData) && marketsData.length === 0) {
-          console.error(
-            `Market with ID ${numericMarketId} not found in response:`,
-            marketsData
-          );
-          return null;
+        try {
+          const response = await foilApi.post('/graphql', {
+            query: print(MARKET_QUERY),
+            variables: {
+              chainId,
+              address: marketAddress,
+              marketId: numericMarketId,
+            },
+          });
+
+          // The response structure might return an array or a single object depending on the query
+          // Adapting based on the provided query which filters by marketId server-side
+          const marketsData = response.data?.markets; // Corrected access path
+
+          if (!marketsData) {
+            console.error('No market data in response:', response.data);
+            return null;
+          }
+
+          // Assuming the query correctly returns only the specific market when marketId is provided
+          // If it still returns an array, you might need to find the market like before:
+          // const targetMarket = Array.isArray(marketsData) ? marketsData.find(...) : marketsData;
+          // For now, assuming the API returns the single expected market object or null/empty array
+          if (Array.isArray(marketsData) && marketsData.length === 0) {
+            console.error(
+              `Market with ID ${numericMarketId} not found in response:`,
+              marketsData
+            );
+            return null;
+          }
+
+          const targetMarket = Array.isArray(marketsData)
+            ? marketsData[0]
+            : marketsData;
+
+          if (!targetMarket) {
+            console.error(
+              `Market data structure unexpected or empty for ID ${numericMarketId}:`,
+              marketsData
+            );
+            return null;
+          }
+
+          return targetMarket as MarketType;
+        } catch (error) {
+          console.error('Error fetching market:', error);
+          // Propagate error state or return null
+          return null; // Consider returning an error object
         }
-
-        const targetMarket = Array.isArray(marketsData)
-          ? marketsData[0]
-          : marketsData;
-
-        if (!targetMarket) {
-          console.error(
-            `Market data structure unexpected or empty for ID ${numericMarketId}:`,
-            marketsData
-          );
-          return null;
-        }
-
-        return targetMarket as MarketData;
-      } catch (error) {
-        console.error('Error fetching market:', error);
-        // Propagate error state or return null
-        return null; // Consider returning an error object
-      }
-    },
-    enabled: !!chainId && !!numericMarketId && !!marketAddress,
-    retry: 3,
-    retryDelay: 1000,
-  });
+      },
+      enabled: !!chainId && !!numericMarketId && !!marketAddress,
+      retry: 3,
+      retryDelay: 1000,
+    });
 
   // Process and format the question
   useEffect(() => {

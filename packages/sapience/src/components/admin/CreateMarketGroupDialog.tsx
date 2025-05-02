@@ -196,10 +196,10 @@ const CreateMarketGroupDialog = () => {
 
   const createMarketGroupMutation = useMutation({
     mutationFn: async (payload: CreateMarketGroupPayload) => {
-      const { nonce, ...bodyPayload } = payload;
-      console.log('Creating market group with nonce:', nonce, payload);
+      const { nonce: payloadNonce, ...bodyPayload } = payload;
+      console.log('Creating market group with nonce:', payloadNonce, payload);
       const response = await fetch(
-        `${API_BASE_URL}/create-market-group/${nonce}`,
+        `${API_BASE_URL}/create-market-group/${payloadNonce}`,
         {
           method: 'POST',
           headers: {

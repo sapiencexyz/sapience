@@ -3,7 +3,7 @@
 import { PrivyProvider } from '@privy-io/react-auth';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
-import { sepolia, base, cannon } from 'viem/chains';
+import { sepolia, base, cannon, type Chain } from 'viem/chains';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
@@ -33,7 +33,8 @@ const transports: Record<number, HttpTransport> = {
   ),
 };
 
-const chains: any = [base];
+// Use mutable array type Chain[] initially
+const chains: Chain[] = [base];
 
 if (process.env.NODE_ENV !== 'production') {
   transports[cannonAtLocalhost.id] = http('http://localhost:8545');
@@ -44,7 +45,7 @@ if (process.env.NODE_ENV !== 'production') {
 // Create the configuration
 const config = createConfig({
   ssr: true,
-  chains,
+  chains: chains as unknown as readonly [Chain, ...Chain[]],
   connectors: [injected()],
   transports,
 });

@@ -348,6 +348,34 @@ export function useModifyTrade({
 
   // Internal function to perform the actual contract write
   const executeModification = useCallback(async () => {
+    // --- Helper for Error Handling ---
+    const handleModificationError = (err: unknown) => {
+      console.error('Modify Trade Error:', err);
+      // Refactored nested ternary
+      let message: string;
+      if (err instanceof Object && 'shortMessage' in err) {
+        message = (err as { shortMessage: string }).shortMessage;
+      } else if (err instanceof Error) {
+        message = err.message;
+      } else {
+        message = 'An unknown error occurred during modification.';
+      }
+
+      // Set error state only if it wasn't already set by other hooks
+      if (!writeError && !confirmationError && !approvalError && !quoteError) {
+        setInternalError(new Error(message));
+      }
+
+      toast({
+        title: 'Modification Failed',
+        description: message,
+        variant: 'destructive',
+      });
+      resetWriteContract();
+      setIsProcessing(false); // Stop processing on error
+    };
+    // --- End Helper ---
+
     // Double-check validation before executing
     const validationError = validateModificationParams();
     if (validationError) {
@@ -393,25 +421,8 @@ export function useModifyTrade({
       });
       // txHash will be set via useWriteContract's data
       // Don't reset isProcessing here; wait for tx confirmation or error
-    } catch (err: any) {
-      console.error('Modify Trade Error:', err);
-      const message =
-        err.shortMessage ||
-        err.message ||
-        'An unknown error occurred during modification.';
-
-      // Set error state only if it wasn't already set by other hooks
-      if (!writeError && !confirmationError && !approvalError && !quoteError) {
-        setInternalError(new Error(message));
-      }
-
-      toast({
-        title: 'Modification Failed',
-        description: message,
-        variant: 'destructive',
-      });
-      resetWriteContract();
-      setIsProcessing(false); // Stop processing on error
+    } catch (err) {
+      handleModificationError(err);
     }
   }, [
     validateModificationParams,

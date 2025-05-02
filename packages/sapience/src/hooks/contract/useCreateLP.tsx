@@ -1,5 +1,6 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import type { Abi } from 'viem';
 import { parseUnits } from 'viem';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
@@ -12,7 +13,7 @@ import { useTokenApproval } from './useTokenApproval';
  */
 export interface CreateLPParams {
   marketAddress: `0x${string}`;
-  marketAbi: any;
+  marketAbi: Abi;
   chainId?: number;
   marketId: bigint;
   collateralAmount: string;
@@ -35,7 +36,7 @@ export interface CreateLPResult {
   isError: boolean;
   error: Error | null;
   txHash: `0x${string}` | undefined;
-  data?: any;
+  data?: `0x${string}` | undefined;
   isApproving: boolean;
   hasAllowance: boolean;
   needsApproval: boolean;
@@ -87,16 +88,6 @@ export function useCreateLP({
   // Parse collateral amount
   const parsedCollateralAmount = parseUnits(collateralAmount || '0', 18);
 
-  // Calculate min amounts based on slippage percentage
-  const calculateMinAmount = (
-    amount: bigint,
-    slippagePercent: number
-  ): bigint => {
-    if (amount === BigInt(0)) return BigInt(0);
-    const slippageBasisPoints = BigInt(Math.floor(slippagePercent * 100));
-    return amount - (amount * slippageBasisPoints) / BigInt(10000);
-  };
-
   // Write contract hook for creating the liquidity position
   const {
     writeContractAsync,
@@ -130,6 +121,96 @@ export function useCreateLP({
     }
   }, [writeError, txError, approvalError]);
 
+  // Function to actually create the liquidity position
+  const performCreateLP = useCallback(async (): Promise<void> => {
+    // Define calculateMinAmount inside the useCallback scope
+    const calculateMinAmount = (amount: bigint, slippage: number): bigint => {
+      if (amount === BigInt(0)) return BigInt(0);
+      const slippageBasisPoints = BigInt(Math.floor(slippage * 100));
+      return amount - (amount * slippageBasisPoints) / BigInt(10000);
+    };
+
+    if (
+      !enabled ||
+      !marketAddress ||
+      (!amount0 && !amount1) ||
+      lowPriceTick === null ||
+      highPriceTick === null
+    ) {
+      setProcessingTx(false);
+      console.error(
+        'Missing required parameters for creating liquidity position or invalid ticks'
+      );
+      setError(new Error('Invalid parameters for LP creation'));
+      return;
+    }
+
+    try {
+      setError(null);
+
+      // 30 minutes from now
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      const adjustedBaseToken = BigInt(
+        Math.floor(Number(amount0) * (1 - CREATE_LIQUIDITY_REDUCTION_PERCENT))
+      );
+      const adjustedQuoteToken = BigInt(
+        Math.floor(Number(amount1) * (1 - CREATE_LIQUIDITY_REDUCTION_PERCENT))
+      );
+
+      // Calculate minimum amounts based on slippage tolerance
+      const minAmount0 = calculateMinAmount(adjustedBaseToken, slippagePercent);
+      const minAmount1 = calculateMinAmount(
+        adjustedQuoteToken,
+        slippagePercent
+      );
+
+      // Prepare the parameters for the createLiquidityPosition function
+      const liquidityParams = {
+        epochId: marketId,
+        lowerTick: BigInt(lowPriceTick),
+        upperTick: BigInt(highPriceTick),
+        amountTokenA: adjustedBaseToken,
+        amountTokenB: adjustedQuoteToken,
+        collateralAmount: parsedCollateralAmount,
+        minAmountTokenA: minAmount0,
+        minAmountTokenB: minAmount1,
+        deadline,
+      };
+
+      setProcessingTx(true);
+      const hash = await writeContractAsync({
+        address: marketAddress,
+        abi: marketAbi,
+        functionName: 'createLiquidityPosition',
+        args: [liquidityParams],
+        chainId,
+      });
+      setTxHash(hash);
+    } catch (err) {
+      console.error('Error in performCreateLP:', err);
+      setError(
+        err instanceof Error ? err : new Error('Failed to send transaction')
+      );
+      setProcessingTx(false);
+    }
+  }, [
+    enabled,
+    marketAddress,
+    amount0,
+    amount1,
+    lowPriceTick,
+    highPriceTick,
+    slippagePercent,
+    marketId,
+    parsedCollateralAmount,
+    writeContractAsync,
+    marketAbi,
+    chainId,
+    setProcessingTx,
+    setError,
+    setTxHash,
+  ]);
+
   // When approval is successful, proceed with creating the LP
   useEffect(() => {
     const handleApprovalSuccess = async () => {
@@ -146,87 +227,22 @@ export function useCreateLP({
         } catch (err) {
           setProcessingTx(false);
           console.error('Error creating LP after approval:', err);
+          setError(
+            err instanceof Error
+              ? err
+              : new Error('LP creation failed after approval')
+          );
         }
       }
     };
 
     handleApprovalSuccess();
-  }, [isApproveSuccess, processingTx]);
-
-  // Function to actually create the liquidity position
-  const performCreateLP = async (): Promise<void> => {
-    if (!enabled || !marketAddress || (!amount0 && !amount1)) {
-      setProcessingTx(false);
-      throw new Error(
-        'Missing required parameters for creating liquidity position'
-      );
-    }
-
-    try {
-      setError(null);
-
-      // 30 minutes from now
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
-      const adjustedBaseToken = BigInt(
-        Number(amount0) * (1 - CREATE_LIQUIDITY_REDUCTION_PERCENT)
-      );
-      const adjustedQuoteToken = BigInt(
-        Number(amount1) * (1 - CREATE_LIQUIDITY_REDUCTION_PERCENT)
-      );
-
-      // Calculate minimum amounts based on slippage tolerance
-      const minAmount0 = calculateMinAmount(adjustedBaseToken, slippagePercent);
-      const minAmount1 = calculateMinAmount(
-        adjustedQuoteToken,
-        slippagePercent
-      );
-
-      if (lowPriceTick === null || highPriceTick === null) {
-        throw new Error('Invalid tick values');
-      }
-
-      // Prepare the parameters for the createLiquidityPosition function
-      const liquidityParams = {
-        epochId: marketId,
-        lowerTick: BigInt(lowPriceTick),
-        upperTick: BigInt(highPriceTick),
-        amountTokenA: adjustedBaseToken,
-        amountTokenB: adjustedQuoteToken,
-        collateralAmount: parsedCollateralAmount,
-        minAmountTokenA: minAmount0,
-        minAmountTokenB: minAmount1,
-        deadline,
-      };
-
-      // Call the contract function
-      const hash = await writeContractAsync({
-        address: marketAddress,
-        abi: marketAbi,
-        functionName: 'createLiquidityPosition',
-        chainId,
-        args: [liquidityParams],
-      });
-
-      setTxHash(hash);
-
-      toast({
-        title: 'Transaction Submitted',
-        description: 'Your transaction has been submitted to the network.',
-      });
-    } catch (err) {
-      console.error('Error creating liquidity position:', err);
-      setError(
-        err instanceof Error
-          ? err
-          : new Error('Failed to create liquidity position')
-      );
-      throw err;
-    }
-  };
+  }, [isApproveSuccess, processingTx, performCreateLP, toast]);
 
   // Main function that checks approval and handles the flow
   const createLP = async (): Promise<void> => {
     setProcessingTx(true);
+    setError(null);
 
     try {
       // First check if we need approval
