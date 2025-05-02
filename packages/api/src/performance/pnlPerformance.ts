@@ -2,7 +2,7 @@ import { TIME_INTERVALS } from 'src/fixtures';
 import { startOfCurrentInterval } from './helper';
 import { marketRepository, positionRepository } from 'src/db';
 import { Position } from 'src/models/Position';
-import { getProviderForChain } from 'src/utils';
+import { getProviderForChain } from 'src/utils/utils';
 import { PublicClient } from 'viem';
 import { calculateOpenPositionValue } from 'src/helpers/positionPnL';
 

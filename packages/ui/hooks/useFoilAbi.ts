@@ -1,29 +1,8 @@
-import { useEffect, useState } from 'react';
+import type { Abi } from 'abitype';
+import foil from '../../protocol/deployments/Foil.json';
 
-export const useFoilAbi = (chainId?: number) => {
-  const [abi, setAbi] = useState<any[]>([]);
+export const useFoilAbi = () => {
+  const abi: Abi = foil.abi as Abi;
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown | null>(null);
-
-  useEffect(() => {
-    const loadFoilData = async () => {
-      try {
-        const foil: { abi: any[] } = await import(
-          `@/protocol/deployments/Foil.json`
-        );
-        setAbi(foil.abi);
-      } catch (err) {
-        setError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (chainId) {
-      loadFoilData();
-    }
-  }, [chainId]);
-
-  return { abi, loading, error };
+  return { abi };
 };

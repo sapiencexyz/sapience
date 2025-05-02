@@ -1,9 +1,13 @@
-import { resourcePriceRepository } from '../db';
-import Sentry from '../sentry';
-import { IResourcePriceIndexer } from '../interfaces';
-import { Resource } from 'src/models/Resource';
+import { resourcePriceRepository } from '../../db';
+import Sentry from '../../instrument';
+import { IResourcePriceIndexer } from '../../interfaces';
+import { Resource } from '../../models/Resource';
 import axios from 'axios';
-import { getBlockByTimestamp, getProviderForChain, sleep } from 'src/utils';
+import {
+  getBlockByTimestamp,
+  getProviderForChain,
+  sleep,
+} from 'src/utils/utils';
 import { PublicClient } from 'viem';
 
 interface BlobData {
@@ -63,7 +67,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
           );
         } else {
           // Log specific error details
-          Sentry.withScope((scope) => {
+          Sentry.withScope((scope: Sentry.Scope) => {
             scope.setExtra('blockNumber', blockNumber);
             if (error instanceof Error) {
               scope.setExtra('errorMessage', error.message);
@@ -82,7 +86,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         );
 
         // Log specific error details
-        Sentry.withScope((scope) => {
+        Sentry.withScope((scope: Sentry.Scope) => {
           scope.setExtra('blockNumber', blockNumber);
           if (error instanceof Error) {
             scope.setExtra('errorMessage', error.message);
@@ -128,7 +132,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       );
     } catch (error) {
       console.error('Error storing block price:', error);
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: Sentry.Scope) => {
         scope.setExtra('blockNumber', blockNumber);
         scope.setExtra('resource', resource.slug);
         if (error instanceof Error) {
@@ -196,7 +200,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
           await this.storeBlockPrice(blockNumber, resource);
         } catch (error) {
           console.error(`Error processing block ${blockNumber}:`, error);
-          Sentry.withScope((scope) => {
+          Sentry.withScope((scope: Sentry.Scope) => {
             scope.setExtra('blockNumber', blockNumber);
             scope.setExtra('resource', resource.slug);
             scope.setExtra('timestamp', startTimestamp);
@@ -210,7 +214,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       return true;
     } catch (error) {
       console.error('Failed to index blocks from timestamp:', error);
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: Sentry.Scope) => {
         scope.setExtra('resource', resource.slug);
         scope.setExtra('startTimestamp', startTimestamp);
         scope.setExtra('endTimestamp', endTimestamp);
@@ -245,7 +249,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       } catch (error) {
         response = null;
 
-        Sentry.withScope((scope) => {
+        Sentry.withScope((scope: Sentry.Scope) => {
           if (error instanceof Error) {
             scope.setExtra('errorMessage', error.message);
           }
@@ -275,7 +279,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         await this.storeBlockPrice(blockNumber, resource);
       } catch (error) {
         console.error(`Error processing block ${blockNumber}:`, error);
-        Sentry.withScope((scope) => {
+        Sentry.withScope((scope: Sentry.Scope) => {
           scope.setExtra('blockNumber', blockNumber);
           scope.setExtra('resource', resource.slug);
           if (error instanceof Error) {

@@ -87,15 +87,31 @@ export interface Market {
   settled: boolean;
   public: boolean;
   question: string | null;
-  totalLiquidity: number;
-  totalVolume: number;
-  collateralTicker: string;
-  minTick: number;
-  maxTick: number;
-  currentMarketPrice: number;
-  marketCandles: any[];
-  baseTokenName?: string;
-  quoteTokenName?: string;
+  poolAddress?: string | null;
+  settlementPriceD18?: string | null;
+  optionName?: string | null;
+  baseAssetMinPriceTick?: number | null;
+  baseAssetMaxPriceTick?: number | null;
+  startingSqrtPriceX96?: string | null;
+  // Add nested marketParams based on query
+  marketParams?: {
+    claimStatement?: string | null;
+  } | null;
+  // Keep claimStatement at top level for mapped data compatibility? No, access nested.
+}
+
+// Define MarketParams type based on GraphQL schema
+// Ensure field names match the GQL schema
+export interface MarketParams {
+  feeRate?: number | null;
+  assertionLiveness?: string | null; // Keep as string if it can be large number
+  bondCurrency?: string | null;
+  bondAmount?: string | null; // Keep as string if it can be large number
+  claimStatement?: string | null;
+  uniswapPositionManager?: string | null;
+  uniswapSwapRouter?: string | null;
+  uniswapQuoter?: string | null;
+  optimisticOracleV3?: string | null;
 }
 
 export interface MarketGroup {
@@ -103,18 +119,25 @@ export interface MarketGroup {
   address: string;
   chainId: number;
   vaultAddress: string;
-  owner?: `0x${string}`;
+  owner?: `0x${string}`; // Kept as wagmi Address type
   isYin: boolean;
   collateralAsset: string;
   question?: string | null;
   baseTokenName?: string | null;
   quoteTokenName?: string | null;
   markets: Market[];
+  // Add fields needed for deployment
+  factoryAddress?: string | null;
+  initializationNonce?: string | null; // Renamed from nonce for clarity? Or keep as nonce if GQL uses that? Assuming GQL uses initializationNonce
+  minTradeSize?: string | null; // Keep as string if it can be large number
+  marketParams?: MarketParams | null;
 }
 
 // Define the new EnrichedMarket type
 export interface EnrichedMarketGroup extends MarketGroup {
   category: Category;
+  latestEpochId?: bigint; // Add the latest epoch ID field
+  // No need to repeat fields already in MarketGroup
 }
 
 export interface Candle {
@@ -149,10 +172,26 @@ const MARKETS_QUERY = gql`
       chainId
       isYin
       vaultAddress
+      owner # Added owner
       collateralAsset
       question
       baseTokenName
       quoteTokenName
+      factoryAddress # Added factoryAddress
+      initializationNonce # Added initializationNonce
+      minTradeSize # Added minTradeSize
+      marketParams {
+        # Added marketParams structure
+        feeRate
+        assertionLiveness
+        bondCurrency
+        bondAmount
+        claimStatement
+        uniswapPositionManager
+        uniswapSwapRouter
+        uniswapQuoter
+        optimisticOracleV3
+      }
       category {
         id
         name
@@ -166,6 +205,16 @@ const MARKETS_QUERY = gql`
         settled
         public
         question
+        poolAddress # Valid field from schema
+        settlementPriceD18 # Valid field from schema
+        optionName # Valid field from schema
+        baseAssetMinPriceTick # Valid field from schema
+        baseAssetMaxPriceTick # Valid field from schema
+        startingSqrtPriceX96 # Added field
+        marketParams {
+          # Added nested field
+          claimStatement # Added nested field
+        } # Added nested field
       }
     }
   }
@@ -224,13 +273,19 @@ interface MarketGroupApiResponse {
   quoteTokenName?: string | null;
   category: Category | null; // Allow null based on schema possibility
   markets: Market[];
+  factoryAddress?: string | null;
+  initializationNonce?: string | null;
+  owner?: `0x${string}`;
+  minTradeSize?: string | null;
+  marketParams?: MarketParams | null;
 }
 
 // Rename the hook to reflect its output
 export const useEnrichedMarketGroups = () => {
   // Update the return type to use EnrichedMarketGroup[]
   return useQuery<EnrichedMarketGroup[]>({
-    queryKey: ['enrichedMarketGroups'], // Changed queryKey
+    // Ensure this matches the actual return
+    queryKey: ['enrichedMarketGroups'], // Reverted queryKey
     queryFn: async () => {
       // Create a lookup map for focus areas using their ID (which matches category slug)
       const focusAreaMap = new Map<
@@ -245,39 +300,34 @@ export const useEnrichedMarketGroups = () => {
         });
       });
 
-      const { data } = await foilApi.post('/graphql', {
-        query: print(MARKETS_QUERY), // Use the new MARKETS_QUERY
+      // --- Fetch initial market group data ---
+      const { data: apiResponseData } = await foilApi.post('/graphql', {
+        query: print(MARKETS_QUERY),
       });
 
-      // Check if data and data.marketGroups exist
-      if (!data || !data.marketGroups) {
+      if (!apiResponseData || !apiResponseData.marketGroups) {
         console.error(
           '[useEnrichedMarketGroups] No market groups data received from API or data structure invalid.'
         );
-        return []; // Return empty array or handle error as appropriate
+        return [];
       }
 
-      // Process the flat list of market groups directly
-      const mappedMarketGroups = data.marketGroups.map(
-        (marketGroup: MarketGroupApiResponse) => {
-          // Apply the type here
-
-          let categoryInfo: Category; // Use the updated Category type
-
-          // Ensure category exists and enrich it with focus area data
+      // --- Process market groups (enrichment only) ---
+      return apiResponseData.marketGroups.map(
+        (marketGroup: MarketGroupApiResponse): EnrichedMarketGroup => {
+          // Return EnrichedMarketGroup
+          let categoryInfo: Category;
+          // ... (category enrichment logic - keep as is) ...
           if (marketGroup.category) {
-            const focusAreaData = focusAreaMap.get(marketGroup.category.slug); // Match category slug with focus area id
+            const focusAreaData = focusAreaMap.get(marketGroup.category.slug);
             categoryInfo = {
               id: marketGroup.category.id,
-              // Use focus area name if available, otherwise use the category name from the database
               name: focusAreaData?.name || marketGroup.category.name,
               slug: marketGroup.category.slug,
-              // Use focus area data if found, otherwise fallback to default
               iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
               color: focusAreaData?.color || DEFAULT_FOCUS_AREA.color,
             };
           } else {
-            // Provide default category including default focus area data
             categoryInfo = {
               id: 'unknown',
               name: 'Unknown',
@@ -287,18 +337,23 @@ export const useEnrichedMarketGroups = () => {
             };
           }
 
+          const mappedMarkets = marketGroup.markets.map((market: Market) => ({
+            ...market,
+            // Access nested claimStatement safely
+            claimStatement: market.marketParams?.claimStatement,
+          }));
+
+          // Return the enriched group WITHOUT fetching epochId here
           return {
-            ...marketGroup, // Spread original market group fields (id, address, chainId, etc.)
-            category: categoryInfo, // Use fetched or default category
+            ...marketGroup,
+            category: categoryInfo,
+            markets: mappedMarkets,
+            // latestEpochId is NOT fetched here anymore
           };
         }
       );
-
-      // Rename mappedMarketGroups to enrichedMarketGroups as the filtering step is removed
-      const enrichedMarketGroups: EnrichedMarketGroup[] = mappedMarketGroups;
-
-      return enrichedMarketGroups;
     },
+    // Consider adding staleTime or gcTime if needed
   });
 };
 
@@ -319,7 +374,7 @@ export const useLatestIndexPrice = (market: {
       }
 
       try {
-        const { data } = await foilApi.post('/graphql', {
+        const { data: indexPriceApiResponse } = await foilApi.post('/graphql', {
           query: print(LATEST_INDEX_PRICE_QUERY),
           variables: {
             address: market.address,
@@ -331,16 +386,19 @@ export const useLatestIndexPrice = (market: {
           },
         });
 
-        const candles = data.indexCandles;
-        if (!candles || candles.length === 0) {
+        const indexCandlesData = indexPriceApiResponse.indexCandles;
+        if (!indexCandlesData || indexCandlesData.length === 0) {
           return { timestamp: null, value: null };
         }
 
-        const latestCandle = candles.reduce((latest: any, current: any) => {
-          return !latest || current.timestamp > latest.timestamp
-            ? current
-            : latest;
-        }, null);
+        const latestCandle = indexCandlesData.reduce(
+          (latest: Candle | null, current: Candle) => {
+            return !latest || current.timestamp > latest.timestamp
+              ? current
+              : latest;
+          },
+          null
+        );
 
         if (!latestCandle) {
           return { timestamp: null, value: null };
@@ -451,5 +509,5 @@ export const getLatestPriceFromCandles = (
     return !latest || current.timestamp > latest.timestamp ? current : latest;
   });
   const price = parseFloat(latestCandle.close);
-  return isNaN(price) ? null : price;
+  return Number.isNaN(price) ? null : price;
 };

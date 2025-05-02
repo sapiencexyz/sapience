@@ -6,6 +6,7 @@ import { Transaction } from '../../models/Transaction';
 import { Market } from '../../models/Market';
 import { ResourcePrice } from '../../models/ResourcePrice';
 import { Category } from '../../models/Category';
+import { MarketParams } from '../../models/MarketParams';
 import { HydratedTransaction } from '../../helpers/hydrateTransactions';
 import {
   MarketGroupType,
@@ -15,6 +16,7 @@ import {
   MarketType,
   ResourcePriceType,
   CategoryType,
+  MarketParamsType,
 } from '../types';
 
 // Helper to decode hex string (0x...) to UTF-8
@@ -30,6 +32,24 @@ const hexToString = (hex: string | null | undefined): string | null => {
     console.error(`Failed to decode hex string: ${hex}`, e);
     return hex; // Return original hex on decoding error
   }
+};
+
+// Helper function to map MarketParams entity to MarketParamsType
+const mapMarketParamsToType = (
+  params: MarketParams | null
+): MarketParamsType | null => {
+  if (!params) return null;
+  return {
+    feeRate: params.feeRate,
+    assertionLiveness: params.assertionLiveness,
+    bondCurrency: params.bondCurrency,
+    bondAmount: params.bondAmount,
+    claimStatement: hexToString(params.claimStatement),
+    uniswapPositionManager: params.uniswapPositionManager,
+    uniswapSwapRouter: params.uniswapSwapRouter,
+    uniswapQuoter: params.uniswapQuoter,
+    optimisticOracleV3: params.optimisticOracleV3,
+  };
 };
 
 export const mapMarketGroupToType = (
@@ -54,11 +74,14 @@ export const mapMarketGroupToType = (
   collateralAsset: marketGroup.collateralAsset,
   collateralSymbol: marketGroup.collateralSymbol,
   collateralDecimals: marketGroup.collateralDecimals,
+  minTradeSize: marketGroup.minTradeSize,
+  factoryAddress: marketGroup.factoryAddress,
+  initializationNonce: marketGroup.initializationNonce,
+  marketParams: mapMarketParamsToType(marketGroup.marketParams),
   question: marketGroup.question,
   claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
   baseTokenName: marketGroup.baseTokenName,
   quoteTokenName: marketGroup.quoteTokenName,
-  optionNames: marketGroup.optionNames,
 });
 
 export const mapResourceToType = (resource: Resource): ResourceType => ({
@@ -93,6 +116,9 @@ export const mapMarketToType = (market: Market): MarketType => ({
   baseAssetMinPriceTick: market.baseAssetMinPriceTick,
   baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
   poolAddress: market.poolAddress,
+  optionName: market.optionName,
+  startingSqrtPriceX96: market.startingSqrtPriceX96,
+  marketParams: mapMarketParamsToType(market.marketParams),
 });
 
 export const mapPositionToType = (position: Position): PositionType => ({

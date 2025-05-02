@@ -3,7 +3,7 @@ import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
 import { RenderJob } from '../models/RenderJob';
 import { renderJobRepository } from '../db';
-import { createRenderJob, fetchRenderServices } from 'src/utils';
+import { createRenderJob, fetchRenderServices } from 'src/utils/utils';
 import { Request, Response } from 'express';
 
 const router = Router();

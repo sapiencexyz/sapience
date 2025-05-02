@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { mainnetPublicClient } from '../utils';
+import { mainnetPublicClient } from '../utils/utils';
 import { formatUnits } from 'viem';
 
 export const router = Router();

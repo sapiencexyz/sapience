@@ -7,6 +7,7 @@ import {
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, ExternalLink, Wallet } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
@@ -123,7 +124,7 @@ const AddressDisplay = ({
               rel="noopener noreferrer"
               className="flex items-center gap-2 p-1 rounded-md hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
             >
-              <img src="/zerion.svg" alt="Zerion" className="h-3 w-3" />
+              <Image src="/zerion.svg" alt="Zerion" width={12} height={12} />
               <span className="font-medium">Zerion</span>
             </a>
             <a
@@ -132,10 +133,12 @@ const AddressDisplay = ({
               rel="noopener noreferrer"
               className="flex items-center gap-2 p-1 rounded-md hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
             >
-              <img
+              <Image
                 src="/debank.svg"
                 alt="DeBank"
-                className="h-3 w-3 grayscale brightness-50"
+                width={12}
+                height={12}
+                className="grayscale brightness-50"
               />
               <span className="font-medium">DeBank</span>
             </a>
@@ -145,7 +148,12 @@ const AddressDisplay = ({
               rel="noopener noreferrer"
               className="flex items-center gap-2 p-1 rounded-md hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
             >
-              <img src="/arkm.svg" alt="Arkm Explorer" className="h-3 w-3" />
+              <Image
+                src="/arkm.svg"
+                alt="Arkm Explorer"
+                width={12}
+                height={12}
+              />
               <span className="font-medium">Arkham Intel</span>
             </a>
             <a
@@ -154,7 +162,12 @@ const AddressDisplay = ({
               rel="noopener noreferrer"
               className="flex items-center gap-2 p-1 rounded-md hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
             >
-              <img src="/blockscan.svg" alt="Blockscan" className="h-3 w-3" />
+              <Image
+                src="/blockscan.svg"
+                alt="Blockscan"
+                width={12}
+                height={12}
+              />
               <span className="font-medium">Blockscan</span>
             </a>
           </PopoverContent>

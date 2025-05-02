@@ -11,12 +11,12 @@ export class MarketGroupResolver {
   async marketGroups(): Promise<MarketGroupType[]> {
     try {
       const marketGroups = await dataSource.getRepository(MarketGroup).find({
-        relations: ['markets', 'category'],
+        relations: ['markets', 'category', 'resource'],
       });
       return marketGroups.map(mapMarketGroupToType);
     } catch (error) {
-      console.error('Error fetching markets:', error);
-      throw new Error('Failed to fetch markets');
+      console.error('Error fetching market groups:', error);
+      throw new Error('Failed to fetch market groups');
     }
   }
 
@@ -28,7 +28,7 @@ export class MarketGroupResolver {
     try {
       const marketGroup = await dataSource.getRepository(MarketGroup).findOne({
         where: { chainId, address: address.toLowerCase() },
-        relations: ['markets', 'category'],
+        relations: ['markets', 'category', 'resource'],
       });
 
       if (!marketGroup) return null;
@@ -43,19 +43,17 @@ export class MarketGroupResolver {
   @FieldResolver(() => [MarketType])
   async markets(@Root() marketGroup: MarketGroup): Promise<MarketType[]> {
     try {
-      // If epochs are already loaded, return them
       if (marketGroup.markets) {
         return marketGroup.markets.map(mapMarketToType);
       }
 
-      // Otherwise fetch them
       const markets = await dataSource.getRepository(Market).find({
         where: { marketGroup: { id: marketGroup.id } },
       });
 
       return markets.map(mapMarketToType);
     } catch (error) {
-      console.error('Error fetching markets:', error);
+      console.error('Error fetching markets for market group:', error);
       throw new Error('Failed to fetch markets');
     }
   }

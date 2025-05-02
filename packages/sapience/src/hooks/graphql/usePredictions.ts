@@ -238,7 +238,7 @@ export const usePredictions = ({
       }
 
       // Prepare variables, omitting undefined ones
-      const variables: Record<string, any> = {
+      const variables: Record<string, string | number> = {
         schemaId,
         take: 10, // Consider making 'take' a parameter if needed
       };

@@ -14,12 +14,6 @@ contract ConfigurationModule is
 {
     using Market for Market.Data;
 
-    address immutable marketInitializer;
-
-    constructor(address _marketInitializer) {
-        marketInitializer = _marketInitializer;
-    }
-
     modifier onlyOwner() {
         Market.Data storage market = Market.load();
         if (market.owner == address(0)) {
@@ -39,10 +33,6 @@ contract ConfigurationModule is
         uint256 minTradeSize,
         IFoilStructs.MarketParams memory marketParams
     ) external override nonReentrant {
-        if (msg.sender != marketInitializer) {
-            revert Errors.OnlyInitializer(msg.sender, marketInitializer);
-        }
-
         address feeCollectorNFT;
         if (feeCollectors.length > 0) {
             feeCollectorNFT = address(

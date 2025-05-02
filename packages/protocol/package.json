@@ -8,9 +8,9 @@
     "docgen": "forge doc",
     "test": "forge build --ast && cannon test deployments/tomls/cannonfile.test.toml --forge.vv",
     "deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/outputs/11155111",
-    "simulate-deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --dry-run",
+    "simulate-deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --dry-run --impersonate-all",
     "deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --write-deployments ./deployments/outputs/8453-blobs",
-    "simulate-deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --dry-run"
+    "simulate-deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --dry-run --impersonate-all"
   },
   "devDependencies": {
     "@types/chai": "^4.3.19",
@@ -32,6 +32,6 @@
     "@uma/core": "^2.59.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "2.21.5"
+    "@usecannon/cli": "2.22.0"
   }
 }

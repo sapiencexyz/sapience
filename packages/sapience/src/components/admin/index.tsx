@@ -8,23 +8,46 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@foil/ui/components/ui/table';
 import { formatDistanceToNow } from 'date-fns';
+import type { Address } from 'viem';
 
-import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
+import { useMarketGroupLatestEpoch } from '~/hooks/contract/useMarketGroupLatestEpoch';
+import {
+  useEnrichedMarketGroups,
+  type EnrichedMarketGroup,
+} from '~/hooks/graphql/useMarketGroups';
 
 import CreateMarketDialog from './CreateMarketDialog';
+import CreateMarketGroupDialog from './CreateMarketGroupDialog';
+import MarketDeployButton from './MarketDeployButton';
+import MarketGroupDeployButton from './MarketGroupDeployButton';
 import SettleMarketDialog from './SettleMarketDialog';
 
-const Admin = () => {
-  const { data: marketGroups, isLoading, error } = useEnrichedMarketGroups();
+const MarketGroupHeaderDetails: React.FC<{
+  group: EnrichedMarketGroup;
+  latestEpochId?: bigint;
+}> = ({ group, latestEpochId }) => {
+  return (
+    <div className="text-right text-sm text-gray-500">
+      <div>Chain ID: {group.chainId}</div>
+      <div>Address: {group.address}</div>
+      {group.address && (
+        <div>
+          Latest Epoch:{' '}
+          {latestEpochId !== undefined ? latestEpochId.toString() : 'N/A'}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
+  group,
+}) => {
+  const { latestEpochId } = useMarketGroupLatestEpoch(
+    group.address as Address,
+    group.chainId
+  );
 
   const formatTimestamp = (timestamp: number) => {
     if (!timestamp) return 'N/A';
@@ -33,61 +56,95 @@ const Admin = () => {
   };
 
   return (
-    <div className="container pt-16 lg:pt-24 max-w-3xl mx-auto">
-      <header className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl">Control Center</h1>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="ml-4">Launch New Market</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <CreateMarketDialog />
-          </DialogContent>
-        </Dialog>
-      </header>
-      <div>
-        {isLoading && <p>Loading markets...</p>}
-        {error && (
-          <p className="text-red-500">Error loading markets: {error.message}</p>
+    <div className="border rounded-lg shadow-sm">
+      <header className="flex items-center justify-between p-4 border-b bg-gray-50 rounded-t-lg">
+        <h2 className="text-lg font-semibold">
+          {group.question ||
+            (group.address
+              ? `Group: ${group.address}`
+              : `Group: Draft ID ${group.id}`)}
+        </h2>
+        <MarketGroupHeaderDetails group={group} latestEpochId={latestEpochId} />
+        {group.address ? (
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline">
+                Add Market
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Add New Market to Group</DialogTitle>
+              </DialogHeader>
+              <CreateMarketDialog
+                chainId={group.chainId}
+                marketGroupAddress={group.address}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <MarketGroupDeployButton group={group} />
         )}
-        {marketGroups && marketGroups.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Question</TableHead>
-                <TableHead className="text-right">Ends</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {marketGroups
-                .flatMap((group) =>
-                  group.markets.map((market) => ({ market, group }))
-                )
-                .sort((a, b) => b.market.endTimestamp - a.market.endTimestamp)
-                .map(({ market, group }) => {
-                  const isFuture = market.endTimestamp * 1000 > Date.now();
+      </header>
+      <div className="p-4 space-y-3">
+        {group.markets.length > 0 ? (
+          group.markets
+            .sort((a, b) => b.endTimestamp - a.endTimestamp)
+            .map((market) => {
+              const isFuture = market.endTimestamp * 1000 > Date.now();
+              let buttonText = 'Settle';
+              let buttonDisabled = false;
 
-                  let buttonText = 'Settle';
-                  let buttonDisabled = false;
+              if (market.settled) {
+                buttonText = 'Settled';
+                buttonDisabled = true;
+              } else if (isFuture) {
+                buttonText = 'In Progress';
+                buttonDisabled = true;
+              }
 
-                  if (market.settled) {
-                    buttonText = 'Settled';
-                    buttonDisabled = true;
-                  } else if (isFuture) {
-                    buttonText = 'In Progress';
-                    buttonDisabled = true;
-                  }
+              const marketId = market.marketId ? Number(market.marketId) : 0;
+              const currentEpochId = latestEpochId ? Number(latestEpochId) : 0;
+              const shouldShowDeployButton =
+                marketId > currentEpochId &&
+                !!market.startingSqrtPriceX96 &&
+                !!market.marketParams?.claimStatement;
 
-                  return (
-                    <TableRow key={`${group.address}-${market.marketId}`}>
-                      <TableCell className="font-medium">
-                        {market.question || 'No question available'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatTimestamp(market.endTimestamp)}
-                      </TableCell>
-                      <TableCell className="text-right">
+              return (
+                <div
+                  key={`${group.address || group.id}-${market.marketId || market.id}`}
+                  className="flex items-center justify-between py-2"
+                >
+                  <span className="font-medium">
+                    ID: {market.marketId || market.id} -{' '}
+                    {market.question || 'No question available'}
+                  </span>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-sm text-gray-500">
+                      ends {formatTimestamp(market.endTimestamp)}
+                    </span>
+                    {group.address &&
+                      (shouldShowDeployButton ? (
+                        <MarketDeployButton
+                          market={{
+                            id: market.id,
+                            marketId: market.marketId || 0,
+                            startTimestamp: market.startTimestamp,
+                            endTimestamp: market.endTimestamp,
+                            startingSqrtPriceX96:
+                              market.startingSqrtPriceX96 || '',
+                            baseAssetMinPriceTick:
+                              market.baseAssetMinPriceTick || 0,
+                            baseAssetMaxPriceTick:
+                              market.baseAssetMaxPriceTick || 0,
+                            poolAddress: market.poolAddress ?? null,
+                            claimStatement:
+                              market.marketParams?.claimStatement || '',
+                          }}
+                          marketGroupAddress={group.address}
+                          chainId={group.chainId}
+                        />
+                      ) : (
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button size="sm" disabled={buttonDisabled}>
@@ -104,14 +161,58 @@ const Admin = () => {
                             />
                           </DialogContent>
                         </Dialog>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
-          </Table>
+                      ))}
+                  </div>
+                </div>
+              );
+            })
         ) : (
-          !isLoading && <p>No active markets found.</p>
+          <p className="text-sm text-gray-500 px-4 py-2">
+            No markets in this group.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Admin = () => {
+  const { data: marketGroups, isLoading, error } = useEnrichedMarketGroups();
+
+  return (
+    <div className="container pt-16 lg:pt-24 max-w-3xl mx-auto">
+      <header className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl">Control Center</h1>
+        <div className="flex items-center space-x-4">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>Launch New Market Group</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Launch New Market Group</DialogTitle>
+              </DialogHeader>
+              <CreateMarketGroupDialog />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </header>
+      <div>
+        {isLoading && <p>Loading markets...</p>}
+        {error && (
+          <p className="text-red-500">Error loading markets: {error.message}</p>
+        )}
+        {marketGroups && marketGroups.length > 0 ? (
+          <div className="space-y-8">
+            {marketGroups.map((group) => (
+              <MarketGroupContainer
+                key={group.address || group.id}
+                group={group}
+              />
+            ))}
+          </div>
+        ) : (
+          !isLoading && <p>No active market groups found.</p>
         )}
       </div>
     </div>

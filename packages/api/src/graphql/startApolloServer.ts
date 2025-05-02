@@ -14,6 +14,9 @@ import {
   MarketResolver,
 } from './resolvers';
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ApolloContext {}
+
 export const initializeApolloServer = async () => {
   // Create GraphQL schema
   const schema = await buildSchema({

@@ -1,8 +1,8 @@
+import type { MarketGroupType } from '@foil/ui/types/graphql';
 import debounce from 'lodash/debounce';
 import { useState, useEffect, useCallback } from 'react';
 import { parseUnits } from 'viem';
 
-import type { PredictionMarketType } from '~/components/forecasting/PredictionForm';
 import type { ActiveTab } from '~/hooks/forms/usePredictionFormState';
 
 // Define type for quoter response data (matching component usage)
@@ -15,7 +15,7 @@ export interface QuoteData {
 }
 
 interface UseQuoterProps {
-  marketData: PredictionMarketType | null | undefined;
+  marketData: MarketGroupType | null | undefined;
   displayMarketId: string | number | null;
   wagerAmount: string;
   expectedPriceForQuoter: number | null;

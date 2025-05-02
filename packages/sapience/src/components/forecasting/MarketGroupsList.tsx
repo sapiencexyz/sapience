@@ -32,6 +32,14 @@ import { formatQuestion } from '~/lib/utils/util';
 
 import MarketGroupsRow from './MarketGroupsRow';
 
+// Define Category type based on assumed hook return
+interface Category {
+  id: string;
+  slug: string;
+  name: string;
+  // Add other fields if known
+}
+
 // Custom hook for debouncing values
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
@@ -62,7 +70,7 @@ const hoverStatusClass = 'hover:bg-secondary/50';
 const DEFAULT_CATEGORY_COLOR = '#71717a';
 
 // Define local interfaces based on expected data shape
-interface MarketWithContext extends Market {
+export interface MarketWithContext extends Market {
   marketAddress: string;
   chainId: number;
   collateralAsset: string;
@@ -102,7 +110,7 @@ const FocusAreaFilter = ({
   statusFilter: 'all' | 'active';
   handleStatusFilterClick: (filter: 'all' | 'active') => void;
   isLoadingCategories: boolean;
-  categories: any[] | null | undefined;
+  categories: Category[] | null | undefined; // Use defined Category type
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
 }) => (
   <div className="p-5 w-[280px] mt-0">
@@ -125,49 +133,50 @@ const FocusAreaFilter = ({
           ))}
         {!isLoadingCategories &&
           categories &&
-          categories
-            // Display only categories that are also in FOCUS_AREAS
-            .filter((category) =>
-              FOCUS_AREAS.some((fa) => fa.id === category.slug)
-            )
-            .map((category) => {
-              const styleInfo = getCategoryStyle(category.slug);
-              const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
+          // Use FOCUS_AREAS array to maintain consistent order
+          FOCUS_AREAS.map((focusArea) => {
+            // Only show focus areas that exist in the database categories
+            const category = categories.find((c) => c.slug === focusArea.id);
+            if (!category) return null;
 
-              // Use the name from FOCUS_AREAS if available, otherwise fall back to category.name
-              const displayName = styleInfo?.name || category.name;
+            const styleInfo = getCategoryStyle(category.slug);
+            const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
 
-              return (
-                <button
-                  type="button"
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.slug)}
-                  className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
+            // Use the name from FOCUS_AREAS if available, otherwise fall back to category.name
+            const displayName = styleInfo?.name || category.name;
+
+            return (
+              <button
+                type="button"
+                key={category.id}
+                onClick={() => handleCategoryClick(category.slug)}
+                className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
+              >
+                <div
+                  className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
+                  style={{ backgroundColor: `${categoryColor}1A` }}
                 >
-                  <div
-                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
-                    style={{ backgroundColor: `${categoryColor}1A` }}
-                  >
-                    {styleInfo?.iconSvg ? (
-                      <div style={{ transform: 'scale(0.65)' }}>
-                        <div
-                          style={{ color: categoryColor }}
-                          dangerouslySetInnerHTML={{
-                            __html: styleInfo.iconSvg,
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <TagIcon
-                        className="w-3 h-3"
+                  {styleInfo?.iconSvg ? (
+                    <div style={{ transform: 'scale(0.65)' }}>
+                      <div
                         style={{ color: categoryColor }}
+                        // eslint-disable-next-line react/no-danger
+                        dangerouslySetInnerHTML={{
+                          __html: styleInfo.iconSvg,
+                        }}
                       />
-                    )}
-                  </div>
-                  <span className="font-medium">{displayName}</span>
-                </button>
-              );
-            })}
+                    </div>
+                  ) : (
+                    <TagIcon
+                      className="w-3 h-3"
+                      style={{ color: categoryColor }}
+                    />
+                  )}
+                </div>
+                <span className="font-medium">{displayName}</span>
+              </button>
+            );
+          })}
       </div>
 
       <div className="mt-6 mb-6">
@@ -341,8 +350,7 @@ const ForecastingTable = () => {
         // Get the market-level question
         const marketQuestion = sourceMarketGroup?.question || null;
 
-        // Find active markets for this market group
-        const now = Math.floor(Date.now() / 1000);
+        // Find active markets for this market group using the existing 'now'
         const activeMarkets = groupedMarketGroup.markets.filter(
           (market) => now >= market.startTimestamp && now < market.endTimestamp
         );
@@ -414,9 +422,11 @@ const ForecastingTable = () => {
     return groupedMarketGroups.reduce<Record<string, GroupedMarketGroup[]>>(
       (acc, marketGroup) => {
         // Find the earliest active market
-        const now = Math.floor(Date.now() / 1000);
+        const nowForDayGrouping = Math.floor(Date.now() / 1000);
         const activeMarkets = marketGroup.markets.filter(
-          (market) => now >= market.startTimestamp && now < market.endTimestamp
+          (market) =>
+            nowForDayGrouping >= market.startTimestamp &&
+            nowForDayGrouping < market.endTimestamp
         );
 
         // Determine the timestamp to use for day grouping

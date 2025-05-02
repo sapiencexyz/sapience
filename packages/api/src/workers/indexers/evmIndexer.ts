@@ -1,9 +1,9 @@
-import { resourcePriceRepository } from '../db';
-import { getBlockByTimestamp, getProviderForChain } from '../utils';
+import { resourcePriceRepository } from '../../db';
+import { getBlockByTimestamp, getProviderForChain } from '../../utils/utils';
 import { Block, type PublicClient } from 'viem';
-import Sentry from '../sentry';
-import { IResourcePriceIndexer } from '../interfaces';
-import { Resource } from 'src/models/Resource';
+import Sentry from '../../instrument';
+import { IResourcePriceIndexer } from '../../interfaces';
+import { Resource } from '../../models/Resource';
 
 class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
@@ -100,7 +100,7 @@ class EvmIndexer implements IResourcePriceIndexer {
         });
         await this.storeBlockPrice(block, resource);
       } catch (error) {
-        Sentry.withScope((scope) => {
+        Sentry.withScope((scope: Sentry.Scope) => {
           scope.setExtra('blockNumber', blockNumber);
           scope.setExtra('resource', resource.slug);
           scope.setExtra('timestamp', timestamp);
@@ -127,7 +127,7 @@ class EvmIndexer implements IResourcePriceIndexer {
         });
         await this.storeBlockPrice(block, resource);
       } catch (error) {
-        Sentry.withScope((scope) => {
+        Sentry.withScope((scope: Sentry.Scope) => {
           scope.setExtra('blockNumber', blockNumber);
           scope.setExtra('resource', resource.slug);
           Sentry.captureException(error);
@@ -172,7 +172,7 @@ class EvmIndexer implements IResourcePriceIndexer {
           }
         },
         onError: (error) => {
-          Sentry.withScope((scope) => {
+          Sentry.withScope((scope: Sentry.Scope) => {
             scope.setExtra('resource', resource.slug);
             scope.setExtra('chainId', this.client.chain?.id);
             Sentry.captureException(error);

@@ -1,10 +1,9 @@
 import dotenv from 'dotenv';
-import { IResourcePriceIndexer } from '../interfaces';
-import { resourcePriceRepository } from '../db';
-import { Resource } from '../models/Resource';
+import { IResourcePriceIndexer } from '../../interfaces';
+import { resourcePriceRepository } from '../../db';
+import { Resource } from '../../models/Resource';
 import WeatherService from './weatherService';
-import Sentry from '../sentry';
-import axios, { AxiosError } from 'axios';
+import Sentry from '../../instrument';
 
 dotenv.config();
 
@@ -179,7 +178,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
           type: this.resourceType,
         }
       );
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: Sentry.Scope) => {
         scope.setExtra('resource', resource.slug);
         scope.setExtra('type', this.resourceType);
         scope.setExtra('weatherData', JSON.stringify(weatherData));
@@ -229,7 +228,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
         `[WeatherIndexer.${this.resourceType}] Error indexing historical data:`,
         error
       );
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: Sentry.Scope) => {
         scope.setExtra('resource', resource.slug);
         scope.setExtra('type', this.resourceType);
         scope.setExtra('startTimestamp', startTimestamp);
@@ -287,7 +286,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
         `[WeatherIndexer.${this.resourceType}] Error indexing blocks:`,
         error
       );
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: Sentry.Scope) => {
         scope.setExtra('resource', resource.slug);
         scope.setExtra('type', this.resourceType);
         scope.setExtra('blocks', blocks);
@@ -372,7 +371,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
             }
           );
         }
-        Sentry.withScope((scope) => {
+        Sentry.withScope((scope: Sentry.Scope) => {
           scope.setExtra('resource', resource.slug);
           scope.setExtra('type', this.resourceType);
           Sentry.captureException(error);
@@ -422,7 +421,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
               }
             );
           }
-          Sentry.withScope((scope) => {
+          Sentry.withScope((scope: Sentry.Scope) => {
             scope.setExtra('resource', resource.slug);
             scope.setExtra('type', this.resourceType);
             Sentry.captureException(error);
@@ -441,21 +440,13 @@ export class WeatherIndexer implements IResourcePriceIndexer {
   }
 
   private handleApiError(error: unknown, context: string): void {
-    if (axios.isAxiosError(error)) {
-      const axiosError = error as AxiosError;
-      if (axiosError.response?.status === 503) {
-        console.error(`Error 503 for ${context}, retrying...`);
-      } else {
-        console.error(
-          `[WeatherIndexer.${this.resourceType}] Failed to start watching blocks (Axios error):`,
-          error
-        );
-      }
-    } else {
-      console.error(
-        `[WeatherIndexer.${this.resourceType}] Failed to start watching blocks:`,
-        error
-      );
-    }
+    const resourceSlug = 'weather-' + this.resourceType;
+    console.error(`[WeatherIndexer.${this.resourceType}] ${context}:`, error);
+
+    Sentry.withScope((scope: Sentry.Scope) => {
+      scope.setExtra('context', context);
+      scope.setExtra('resource', resourceSlug);
+      Sentry.captureException(error);
+    });
   }
 }

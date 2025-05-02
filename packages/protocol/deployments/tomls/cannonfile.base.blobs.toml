@@ -33,7 +33,6 @@ depends = []
 
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
-args=["<%= settings.deployer %>"]
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"

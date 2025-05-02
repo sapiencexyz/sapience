@@ -13,6 +13,7 @@ import { MarketParams } from './MarketParams';
 import { Event } from './Event';
 import { Resource } from './Resource';
 import { Category } from './Category';
+import { NUMERIC_PRECISION } from '../constants';
 
 @Entity()
 @Unique(['address', 'chainId'])
@@ -39,7 +40,7 @@ export class MarketGroup {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', nullable: true })
   @Index()
   address: string;
 
@@ -74,6 +75,14 @@ export class MarketGroup {
   @Column({ type: 'integer', nullable: true })
   collateralDecimals: number | null;
 
+  @Column({
+    type: 'numeric',
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
+  minTradeSize: string | null;
+
   @Column({ type: 'text', nullable: true })
   question: string | null;
 
@@ -83,8 +92,11 @@ export class MarketGroup {
   @Column({ type: 'varchar', nullable: true })
   quoteTokenName: string | null;
 
-  @Column({ type: 'simple-array', nullable: true })
-  optionNames: string[] | null;
+  @Column({ type: 'varchar', nullable: true })
+  initializationNonce: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  factoryAddress: string | null;
 
   @Column(() => MarketParams)
   marketParams: MarketParams;

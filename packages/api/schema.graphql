@@ -19,7 +19,7 @@ type CategoryType {
 }
 
 type MarketGroupType {
-  address: String!
+  address: String
   baseTokenName: String
   category: CategoryType
   chainId: Int!
@@ -29,16 +29,31 @@ type MarketGroupType {
   collateralSymbol: String
   deployTimestamp: Int
   deployTxnBlockNumber: Int
+  factoryAddress: String
   id: ID!
+  initializationNonce: String
   isCumulative: Boolean!
   isYin: Boolean!
+  marketParams: MarketParamsType
   markets: [MarketType!]!
-  optionNames: [String!]
+  minTradeSize: String
   owner: String
   question: String
   quoteTokenName: String
   resource: ResourceType
   vaultAddress: String
+}
+
+type MarketParamsType {
+  assertionLiveness: String
+  bondAmount: String
+  bondCurrency: String
+  claimStatement: String
+  feeRate: Int
+  optimisticOracleV3: String
+  uniswapPositionManager: String
+  uniswapQuoter: String
+  uniswapSwapRouter: String
 }
 
 type MarketType {
@@ -48,6 +63,8 @@ type MarketType {
   id: ID!
   marketGroup: MarketGroupType
   marketId: Int!
+  marketParams: MarketParamsType
+  optionName: String
   poolAddress: String
   positions: [PositionType!]!
   public: Boolean!
@@ -55,6 +72,7 @@ type MarketType {
   settled: Boolean
   settlementPriceD18: String
   startTimestamp: Int
+  startingSqrtPriceX96: String
 }
 
 type PnLType {

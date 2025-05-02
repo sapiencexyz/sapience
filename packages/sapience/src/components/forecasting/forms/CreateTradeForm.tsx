@@ -27,6 +27,7 @@ import { useToast } from '@foil/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
+import type { Abi } from 'viem';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import {
   useAccount,
@@ -49,7 +50,7 @@ export type TradeFormMarketDetails = {
   marketAddress: `0x${string}`;
   chainId: number;
   numericMarketId: number;
-  marketAbi: any; // Consider using specific ABI type if available
+  marketAbi: Abi;
   collateralAssetTicker: string;
   collateralAssetAddress?: `0x${string}`;
   // Add any other market-specific details needed for trading
@@ -142,14 +143,16 @@ export function CreateTradeForm({
   });
 
   const [estimatedCollateralBI, quotedFillPriceBI] = React.useMemo(() => {
-    const result = quoteSimulationResult?.result;
-    if (!result || !Array.isArray(result)) {
+    const result = quoteSimulationResult?.result as
+      | readonly [bigint, bigint]
+      | undefined;
+
+    if (!result || result.length < 2) {
       return [BigInt(0), BigInt(0)];
     }
-    const requiredCollateral = result[0]
-      ? BigInt(result[0].toString())
-      : BigInt(0);
-    const fillPrice = result[1] ? BigInt(result[1].toString()) : BigInt(0);
+
+    const requiredCollateral = result[0] ? BigInt(result[0]) : BigInt(0);
+    const fillPrice = result[1] ? BigInt(result[1]) : BigInt(0);
     return [requiredCollateral, fillPrice];
   }, [quoteSimulationResult]);
 
@@ -219,7 +222,7 @@ export function CreateTradeForm({
     const costNum = parseFloat(estimatedCollateral || '0');
     const walletNum = parseFloat(walletBalance || '0');
 
-    if (isNaN(costNum) || isNaN(walletNum)) {
+    if (Number.isNaN(costNum) || Number.isNaN(walletNum)) {
       setEstimatedResultingBalance(walletBalance);
       return;
     }

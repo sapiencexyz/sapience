@@ -23,7 +23,7 @@ import {
   sqrtPriceX96ToSettlementPriceD18,
   getBlockByTimestamp,
   getContractCreationBlock,
-} from '../utils';
+} from '../utils/utils';
 import {
   createEpochFromEvent,
   createOrUpdateMarketFromEvent,
@@ -43,6 +43,7 @@ import {
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
 import Foil from '@foil/protocol/deployments/FoilLegacy.json';
+import { PublicClient } from 'viem';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
@@ -160,9 +161,11 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 };
 
 // Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
-export const indexMarketEvents = async (market: MarketGroup) => {
+export const indexMarketEvents = async (
+  market: MarketGroup,
+  client: PublicClient
+) => {
   await initializeDataSource();
-  const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
 
   const processLogs = async (logs: Log[]) => {

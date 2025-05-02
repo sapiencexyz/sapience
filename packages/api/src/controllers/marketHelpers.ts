@@ -23,7 +23,7 @@ import {
   EventType,
 } from '../interfaces';
 import { MarketPrice } from '../models/MarketPrice';
-import { getBlockByTimestamp, getProviderForChain } from '../utils';
+import { getBlockByTimestamp, getProviderForChain } from '../utils/utils';
 import { FindOptionsWhere } from 'typeorm';
 import Foil from '@foil/protocol/deployments/FoilLegacy.json';
 

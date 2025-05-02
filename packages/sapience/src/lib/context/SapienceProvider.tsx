@@ -30,6 +30,23 @@ interface PermitResponse {
   permitted: boolean;
 }
 
+// Define the interface for a single Market based on GraphQL response
+export interface ApiMarket {
+  id: number;
+  marketId: number;
+  startTimestamp: number;
+  endTimestamp: number;
+  public: boolean;
+  question?: string;
+  startingSqrtPriceX96: string; // Added
+  baseAssetMinPriceTick: number; // Added
+  baseAssetMaxPriceTick: number; // Added
+  poolAddress?: string | null; // Added
+  claimStatement?: string | null; // Added
+  settled?: boolean | null;
+  optionName?: string | null;
+}
+
 export interface MarketGroup {
   id: number;
   name: string;
@@ -45,30 +62,10 @@ export interface MarketGroup {
     name: string;
     slug: string;
   };
-  markets: Array<{
-    id: number;
-    marketId: number;
-    startTimestamp: number;
-    endTimestamp: number;
-    public: boolean;
-    question?: string;
-  }>;
-  currentMarket: {
-    id: number;
-    marketId: number;
-    startTimestamp: number;
-    endTimestamp: number;
-    public: boolean;
-    question?: string;
-  } | null;
-  nextMarket: {
-    id: number;
-    marketId: number;
-    startTimestamp: number;
-    endTimestamp: number;
-    public: boolean;
-    question?: string;
-  } | null;
+  markets: ApiMarket[]; // Use the new Market interface
+  currentMarket: ApiMarket | null; // Use the new Market interface
+  nextMarket: ApiMarket | null; // Use the new Market interface
+  question?: string; // Added group-level question
 }
 
 interface SapienceContextType {
@@ -104,7 +101,6 @@ const MARKET_GROUPS_QUERY = gql`
       question
       baseTokenName
       quoteTokenName
-      optionNames
       markets {
         id
         marketId
@@ -112,12 +108,48 @@ const MARKET_GROUPS_QUERY = gql`
         startTimestamp
         endTimestamp
         settled
+        optionName
+        startingSqrtPriceX96
+        baseAssetMinPriceTick
+        baseAssetMaxPriceTick
+        poolAddress
+        marketParams {
+          claimStatement
+        }
       }
     }
   }
 `;
 
 // const LOCAL_STORAGE_KEY = 'foil_install_dialog_shown';
+
+// Define response types based on MARKET_GROUPS_QUERY
+interface ApiMarketResponse {
+  id: number;
+  marketId: number;
+  question?: string;
+  startTimestamp: number;
+  endTimestamp: number;
+  settled?: boolean | null;
+  optionName?: string | null;
+  startingSqrtPriceX96: string;
+  baseAssetMinPriceTick: number;
+  baseAssetMaxPriceTick: number;
+  poolAddress?: string | null;
+  marketParams?: {
+    claimStatement?: string | null;
+  } | null;
+}
+
+interface ApiMarketGroupResponse {
+  id: number;
+  chainId: number;
+  address: string;
+  question?: string;
+  baseTokenName?: string;
+  quoteTokenName?: string;
+  markets: ApiMarketResponse[];
+}
 
 export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -178,19 +210,37 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
           query: print(MARKET_GROUPS_QUERY),
         });
 
-        const { marketGroups } = response.data;
+        // Use renamed variable and check response.data existence
+        if (!response.data || !response.data.marketGroups) {
+          console.error('No marketGroups data in response:', response.data);
+          return []; // Return empty array if data is missing
+        }
+        const apiMarketGroups = response.data.marketGroups; // Rename destructured variable
         const currentTimestamp = Math.floor(Date.now() / 1000);
 
-        return marketGroups.map((marketGroup: any) => {
+        return apiMarketGroups.map((marketGroup: ApiMarketGroupResponse) => {
+          // Use ApiMarketGroupResponse type
           // Transform the structure to match the expected Market interface
-          const markets = marketGroup.markets.map((market: any) => ({
-            id: market.id,
-            marketId: market.marketId,
-            startTimestamp: market.startTimestamp,
-            endTimestamp: market.endTimestamp,
-            public: market.settled !== undefined ? !market.settled : true,
-            question: market.question,
-          }));
+          const markets: ApiMarket[] = marketGroup.markets.map(
+            (market: ApiMarketResponse): ApiMarket => ({
+              // Use ApiMarketResponse type
+              id: market.id,
+              marketId: market.marketId,
+              startTimestamp: market.startTimestamp,
+              endTimestamp: market.endTimestamp,
+              // Adjust public logic based on settled field if it exists in response
+              public: market.settled !== undefined ? !market.settled : true,
+              question: market.question,
+              startingSqrtPriceX96: market.startingSqrtPriceX96,
+              baseAssetMinPriceTick: market.baseAssetMinPriceTick,
+              baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
+              poolAddress: market.poolAddress,
+              claimStatement: market.marketParams?.claimStatement,
+              // Add other fields required by ApiMarket if they exist in ApiMarketResponse
+              settled: market.settled,
+              optionName: market.optionName,
+            })
+          );
 
           const sortedMarkets = [...markets].sort(
             (a, b) => a.startTimestamp - b.startTimestamp
@@ -222,6 +272,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
             baseTokenName: marketGroup.baseTokenName,
             owner: marketGroup.address, // Fallback
             isCumulative: false, // Default
+            question: marketGroup.question, // Keep the group-level question if needed
             resource: {
               id: 0,
               name: 'Unknown',
@@ -276,7 +327,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
     };
 
     fetchStEthPerToken();
-  }, []);
+  }, [toast]);
 
   /*
   // Handle InstallDialog visibility

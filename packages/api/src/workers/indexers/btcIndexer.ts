@@ -1,8 +1,8 @@
-import { IResourcePriceIndexer } from '../interfaces';
-import { resourcePriceRepository } from '../db';
-import { Resource } from 'src/models/Resource';
+import { IResourcePriceIndexer } from '../../interfaces';
+import { resourcePriceRepository } from '../../db';
+import { Resource } from '../../models/Resource';
 import axios from 'axios';
-import Sentry from '../sentry';
+import Sentry from '../../instrument';
 
 interface BlockData {
   height: number;
@@ -72,7 +72,7 @@ class BtcIndexer implements IResourcePriceIndexer {
         }
 
         // Log specific error details
-        Sentry.withScope((scope) => {
+        Sentry.withScope((scope: Sentry.Scope) => {
           scope.setExtra('blockNumber', blockNumber);
           scope.setExtra('status', error.response?.status);
           scope.setExtra('errorMessage', error.message);
@@ -193,7 +193,7 @@ class BtcIndexer implements IResourcePriceIndexer {
       return true;
     } catch (error) {
       console.error('[BtcIndexer] Error storing block price:', error);
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: Sentry.Scope) => {
         scope.setExtra('blockNumber', blockNumber);
         scope.setExtra('resource', resource.slug);
         if (error instanceof Error) {
@@ -282,7 +282,7 @@ class BtcIndexer implements IResourcePriceIndexer {
             `[BtcIndexer] Error processing block ${blockNumber}:`,
             error
           );
-          Sentry.withScope((scope) => {
+          Sentry.withScope((scope: Sentry.Scope) => {
             scope.setExtra('blockNumber', blockNumber);
             scope.setExtra('resource', resource.slug);
             scope.setExtra('timestamp', startTimestamp);
@@ -310,7 +310,7 @@ class BtcIndexer implements IResourcePriceIndexer {
           `[BtcIndexer] Error processing block ${blockNumber}:`,
           error
         );
-        Sentry.withScope((scope) => {
+        Sentry.withScope((scope: Sentry.Scope) => {
           scope.setExtra('blockNumber', blockNumber);
           scope.setExtra('resource', resource.slug);
           Sentry.captureException(error);

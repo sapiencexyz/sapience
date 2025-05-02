@@ -7,3 +7,4 @@ export { ResourcePriceType } from './ResourcePriceType';
 export { CandleType } from './CandleType';
 export { PnLType } from './PnLType';
 export { CategoryType } from './CategoryType';
+export { MarketParamsType } from './MarketParamsType';

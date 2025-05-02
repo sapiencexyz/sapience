@@ -46,7 +46,6 @@ var.decimals = "6"
 
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
-args=["<%= settings.owner %>"]
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"
