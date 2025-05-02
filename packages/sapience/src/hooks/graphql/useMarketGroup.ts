@@ -21,7 +21,6 @@ const MARKET_GROUP_QUERY = gql`
       question
       baseTokenName
       quoteTokenName
-      optionNames
       markets {
         id
         marketId
@@ -29,6 +28,7 @@ const MARKET_GROUP_QUERY = gql`
         startTimestamp
         endTimestamp
         settled
+        optionNames
       }
     }
   }
