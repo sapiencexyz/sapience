@@ -21,6 +21,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState, useMemo } from 'react';
 
 import MarketGroupChart from '../../../components/forecasting/MarketGroupChart';
+import MarketGroupSummary from '../../../components/forecasting/MarketGroupSummary';
 import PredictionForm from '../../../components/forecasting/PredictionForm';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import PredictionsList from '~/components/forecasting/PredictionsList';
@@ -235,10 +236,8 @@ const ForecastingDetailPage = () => {
             </div>
           </div>
 
-          {/* Moved ADVANCED VIEW button here, now outside the flex rows */}
-          <div className="w-full flex justify-end items-start px-4 md:px-3 mt-4 md:mt-0 md:w-[340px] md:ml-auto">
-            {' '}
-            {/* Adjust positioning relative to the form column */}
+          {/* Advanced View button positioned above MarketGroupSummary, aligned right */}
+          <div className="flex justify-end mb-4">
             <button
               type="button"
               onClick={(e) => {
@@ -271,6 +270,14 @@ const ForecastingDetailPage = () => {
               ADVANCED VIEW
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
+          </div>
+
+          {/* MarketGroupSummary - now full width */}
+          <div className="w-full">
+            <MarketGroupSummary
+              chainShortName={chainShortName}
+              marketAddress={marketAddress}
+            />
           </div>
         </div>
       </div>
