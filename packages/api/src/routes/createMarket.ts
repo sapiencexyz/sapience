@@ -30,7 +30,20 @@ router.post(
       marketParams,
     } = req.body;
 
-    // TODO: find or create based on nonce chainId and Factory address
+    // if the market group already exists (nonce + chainId + factoryAddress triplet), return HTTP 400 with a message
+    const marketGroup = await marketGroupRepository.findOne({
+      where: {
+        chainId: parseInt(chainId, 10),
+        factoryAddress: factoryAddress.toLowerCase(),
+        initializationNonce: nonce,
+      },
+    });
+
+    if (marketGroup) {
+      return res.status(400).json({
+        message: 'Market group with the same nonce, chainId and factory address already exists',
+      });
+    }
 
     try {
       if (
@@ -77,7 +90,7 @@ router.post(
       const existingFactoryAddresses = await marketGroupRepository
         .createQueryBuilder('marketGroup')
         .select('DISTINCT "factoryAddress"')
-        .where('chainId = :chainId AND "factoryAddress" = :factoryAddress', {
+        .where('"marketGroup"."chainId" = :chainId AND "marketGroup"."factoryAddress" = :factoryAddress', {
           chainId: parseInt(chainId, 10),
           factoryAddress: factoryAddress.toLowerCase(),
         })
