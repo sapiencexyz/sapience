@@ -34,7 +34,6 @@ source="usdc-token"
 
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
-args=["<%= settings.owner %>"]
 
 [deploy.LiquidityModule]
 artifact="LiquidityModule"
