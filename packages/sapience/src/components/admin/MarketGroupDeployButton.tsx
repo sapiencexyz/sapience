@@ -222,8 +222,8 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       // Prepare parameters for the contract call
       const args = [
         group.collateralAsset as Address,
-        [zeroAddress], // feeCollectors - using placeholder for now
-        zeroAddress, // callbackRecipient - using placeholder
+        [],
+        zeroAddress,
         BigInt(group.minTradeSize),
         {
           feeRate: feeRateNumber,
