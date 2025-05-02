@@ -21,8 +21,8 @@ const MARKET_GROUP_QUERY = gql`
       question
       baseTokenName
       quoteTokenName
-      optionNames
       markets {
+        optionName
         id
         marketId
         question
