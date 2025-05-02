@@ -19,7 +19,6 @@ import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { parseAbiItem, decodeEventLog, toBytes, bytesToHex } from 'viem';
 import type { Address, AbiEvent } from 'viem';
-import { useMutation } from '@tanstack/react-query'; // For potential PATCH call
 
 // Assuming Market type is defined elsewhere, e.g., fetched from API
 // We need properties like: id, marketId, marketGroup.address, marketGroup.chainId,
@@ -36,13 +35,7 @@ interface ApiMarket {
   baseAssetMinPriceTick: number | null;
   baseAssetMaxPriceTick: number | null;
   poolAddress: string | null; // Indicates if already deployed
-  marketGroup: {
-    address: string;
-    chainId: number;
-  };
-  marketParams: {
-    claimStatement: string | null;
-  } | null;
+  claimStatement: string | null; // Moved from nested marketParams
 }
 
 // ABI for the createEpoch function (from CreateMarketDialog originally)
@@ -51,15 +44,15 @@ const createEpochAbiFragment = [
     type: 'function',
     name: 'createEpoch',
     inputs: [
-      { name: 'startTime', type: 'uint64', internalType: 'uint64' },
-      { name: 'endTime', type: 'uint64', internalType: 'uint64' },
+      { name: 'startTime', type: 'uint256', internalType: 'uint256' },
+      { name: 'endTime', type: 'uint256', internalType: 'uint256' },
       { name: 'startingSqrtPriceX96', type: 'uint160', internalType: 'uint160' },
       { name: 'baseAssetMinPriceTick', type: 'int24', internalType: 'int24' },
       { name: 'baseAssetMaxPriceTick', type: 'int24', internalType: 'int24' },
       { name: 'salt', type: 'uint256', internalType: 'uint256' },
       { name: 'claimStatement', type: 'bytes', internalType: 'bytes' },
     ],
-    outputs: [{ name: 'marketId', type: 'uint256', internalType: 'uint256' }],
+    outputs: [{ name: 'epochId', type: 'uint256', internalType: 'uint256' }],
     stateMutability: 'nonpayable',
   },
 ] as const;
@@ -70,13 +63,19 @@ const createEpochAbiFragment = [
 // ) as AbiEvent;
 
 interface MarketDeployButtonProps {
-  market: ApiMarket; // Use the defined market type
+  market: ApiMarket; // Use the adjusted market type
+  marketGroupAddress: string; // Added prop
+  chainId: number; // Added prop
 }
 
 // Use environment variable for API base URL, fallback to /api
 const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 
-const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({ market }) => {
+const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({ 
+  market,
+  marketGroupAddress, // Destructure new props
+  chainId, // Destructure new props
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [deployError, setDeployError] = useState<string | null>(null);
   const [deployedTxHash, setDeployedTxHash] = useState<string | null>(null);
@@ -96,79 +95,76 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({ market }) => {
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
 
-  // Optional: Mutation to PATCH the market status on successful deployment
-  const updateMarketMutation = useMutation({
-    mutationFn: async (payload: { deploymentTxHash: string; poolAddress?: string }) => {
-        // TODO: Implement API PATCH call
-        // const response = await fetch(`${API_BASE_URL}/markets/${market.id}`, {
-        //   method: 'PATCH',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify(payload),
-        // });
-        // if (!response.ok) {
-        //   const errorData = await response.json();
-        //   throw new Error(errorData.message || 'Failed to update market status');
-        // }
-        // return response.json();
-        console.log('Simulating PATCH call with payload:', payload);
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-        return { success: true, marketId: market.marketId, txHash: payload.deploymentTxHash }; // Simulate successful response
-    },
-    onSuccess: (data) => {
-      console.log('Market status updated successfully:', data);
-      // Optionally invalidate query cache for markets here
-    },
-    onError: (error: Error) => {
-      console.error('Failed to update market status:', error);
-      // Display this error? Maybe add a separate alert state for API update errors
-      setDeployError(`Deployment succeeded, but failed to update status: ${error.message}`);
-    },
-  });
-
   // Effect to reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
       resetWriteContract();
       setDeployError(null);
       setDeployedTxHash(null);
-      updateMarketMutation.reset();
     }
-  }, [isOpen, resetWriteContract, updateMarketMutation]);
+  }, [isOpen, resetWriteContract]);
 
-  // Effect to trigger PATCH call on confirmation
+  // Simplified Effect for confirmation
   useEffect(() => {
+    // Only run if confirmed and receipt exists
     if (isConfirmed && receipt && receipt.transactionHash) {
         setDeployedTxHash(receipt.transactionHash);
-        setDeployError(null); // Clear previous errors on confirmation
-        // TODO: Potentially derive poolAddress from logs if needed/possible
-        // or fetch it separately after confirmation
-        updateMarketMutation.mutate({ deploymentTxHash: receipt.transactionHash });
+        setDeployError(null);
     }
-  }, [isConfirmed, receipt, market.id, updateMarketMutation]); // Add dependencies
+  }, [isConfirmed, receipt]);
 
   const handleDeployClick = () => {
     setDeployError(null);
     setDeployedTxHash(null);
     resetWriteContract();
-    updateMarketMutation.reset();
 
     // --- Validation ---
-    if (
-        !market.marketGroup?.address ||
-        market.startTimestamp === null || market.startTimestamp === undefined ||
-        market.endTimestamp === null || market.endTimestamp === undefined ||
-        !market.startingSqrtPriceX96 ||
-        market.baseAssetMinPriceTick === null || market.baseAssetMinPriceTick === undefined ||
-        market.baseAssetMaxPriceTick === null || market.baseAssetMaxPriceTick === undefined ||
-        !market.marketParams?.claimStatement
-    ) {
-        setDeployError('Missing required market data for deployment.');
-        console.error('Missing data:', market);
+    // Check each required field individually for clarity
+    if (!marketGroupAddress) { // Use prop
+        setDeployError('Missing market group address.');
+        console.error('Missing data: marketGroupAddress', marketGroupAddress);
+        return;
+    }
+    if (market.startTimestamp === null || market.startTimestamp === undefined) {
+        setDeployError('Missing start timestamp.');
+        console.error('Missing data: startTimestamp', market);
+        return;
+    }
+    if (market.endTimestamp === null || market.endTimestamp === undefined) {
+        setDeployError('Missing end timestamp.');
+        console.error('Missing data: endTimestamp', market);
+        return;
+    }
+    // Check for null, undefined, AND empty string for string fields
+    if (!market.startingSqrtPriceX96) { // Handles null, undefined, ''
+        setDeployError('Missing or invalid startingSqrtPriceX96.');
+        console.error('Missing data: startingSqrtPriceX96', market);
+        return;
+    }
+    if (market.baseAssetMinPriceTick === null || market.baseAssetMinPriceTick === undefined) {
+        setDeployError('Missing base asset minimum price tick.');
+        console.error('Missing data: baseAssetMinPriceTick', market);
+        return;
+    }
+    if (market.baseAssetMaxPriceTick === null || market.baseAssetMaxPriceTick === undefined) {
+        setDeployError('Missing base asset maximum price tick.');
+        console.error('Missing data: baseAssetMaxPriceTick', market);
+        return;
+    }
+    // Check for null, undefined, AND empty string for claim statement (using direct access)
+    if (!market.claimStatement) { // Use direct access, removed marketParams
+        setDeployError('Missing or invalid claim statement.');
+        console.error('Missing data: claimStatement', market);
         return;
     }
 
     try {
-        const claimStatementBytes = toBytes(market.marketParams.claimStatement!);
+        // Ensure claimStatement is not null/undefined before using toBytes
+        const claimStatement = market.claimStatement; // Use direct access
+        if (!claimStatement) {
+             throw new Error('Claim statement is unexpectedly empty after validation.');
+        }
+        const claimStatementBytes = toBytes(claimStatement);
         const claimStatementHex = bytesToHex(claimStatementBytes);
 
         // Ensure numeric values are correctly typed for BigInt/Number conversion
@@ -195,10 +191,10 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({ market }) => {
         ] as const;
 
         console.log('Calling writeContract (createEpoch) with args:', args);
-        console.log('Target contract:', market.marketGroup.address);
+        console.log('Target contract:', marketGroupAddress); // Use prop
 
         writeContract({
-            address: market.marketGroup.address as Address,
+            address: marketGroupAddress as Address, // Use prop
             abi: createEpochAbiFragment,
             functionName: 'createEpoch',
             args,
@@ -212,7 +208,7 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({ market }) => {
 
   // Determine button state and error display
   const isAlreadyDeployed = !!market.poolAddress;
-  const isDeployDisabled = isAlreadyDeployed || isWritePending || isConfirming || updateMarketMutation.isPending;
+  const isDeployDisabled = isAlreadyDeployed || isWritePending || isConfirming;
   const effectiveError = deployError || writeError?.message || receiptError?.message;
 
   const getButtonState = () => {
@@ -240,20 +236,28 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({ market }) => {
         <DialogHeader>
           <DialogTitle>Deploy Market (Epoch)</DialogTitle>
           <DialogDescription>
-            Deploy market ID {market.marketId} for group {market.marketGroup?.address}
+            Deploy market ID {market.marketId} for group {marketGroupAddress} on chain {chainId}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Display key parameters */} 
-          <div className="text-sm text-muted-foreground space-y-1 break-all">
-            <p><strong>Market ID:</strong> {market.marketId}</p>
-            <p><strong>Start Time:</strong> {market.startTimestamp}</p>
-            <p><strong>End Time:</strong> {market.endTimestamp}</p>
-            <p><strong>Claim:</strong> {market.marketParams?.claimStatement || 'N/A'}</p>
+
+          {/* Display Parameters Section - Moved Here */}
+          <div className="my-4 p-4 border rounded bg-muted/40">
+            <h4 className="font-medium mb-2">Parameters for Contract Call:</h4>
+            <div className="text-xs space-y-1 break-all font-mono">
+              <p><strong>startTime (uint64):</strong> {market.startTimestamp?.toString() ?? 'N/A'}</p>
+              <p><strong>endTime (uint64):</strong> {market.endTimestamp?.toString() ?? 'N/A'}</p>
+              <p><strong>startingSqrtPriceX96 (uint160):</strong> {market.startingSqrtPriceX96 ?? 'N/A'}</p>
+              <p><strong>baseAssetMinPriceTick (int24):</strong> {market.baseAssetMinPriceTick?.toString() ?? 'N/A'}</p>
+              <p><strong>baseAssetMaxPriceTick (int24):</strong> {market.baseAssetMaxPriceTick?.toString() ?? 'N/A'}</p>
+              <p><strong>claimStatement (bytes):</strong> {market.claimStatement ?? 'N/A'}</p>
+              <p><strong>salt (uint256):</strong> {'<generated on deploy>'}</p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">Note: claimStatement will be converted to bytes. Salt is generated randomly before sending the transaction.</p>
           </div>
 
-          {/* Deploy Button inside Dialog */} 
+          {/* Deploy Button inside Dialog */}
           <Button
             onClick={handleDeployClick}
             disabled={isDeployDisabled || buttonSuccess} // Disable if pending, confirmed, or already deployed
@@ -288,17 +292,7 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({ market }) => {
               <AlertDescription>
                 Market {market.marketId} deployed. Tx Hash:{' '}
                 <code className="text-xs break-all">{deployedTxHash}</code>
-                {updateMarketMutation.isPending && ' (Updating status...)'}
-                {updateMarketMutation.isSuccess && ' (Status updated)'}
               </AlertDescription>
-            </Alert>
-          )}
-           {/* Optional: Show API update error separately if needed */}
-           {updateMarketMutation.isError && (
-             <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Status Update Issue</AlertTitle>
-                <AlertDescription>{(updateMarketMutation.error as Error)?.message || 'Failed to update market status in DB.'}</AlertDescription>
             </Alert>
           )}
         </div>

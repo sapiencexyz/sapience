@@ -65,7 +65,7 @@ router.post(
       newMarketGroup.quoteTokenName = quoteTokenName;
       newMarketGroup.initializationNonce = nonce;
       newMarketGroup.category = category;
-      newMarketGroup.factoryAddress = factoryAddress;
+      newMarketGroup.factoryAddress = factoryAddress.toLowerCase();
       newMarketGroup.owner = owner;
       newMarketGroup.collateralAsset = collateralAsset;
       newMarketGroup.minTradeSize = minTradeSize;

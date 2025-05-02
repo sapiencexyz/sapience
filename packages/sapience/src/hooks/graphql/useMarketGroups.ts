@@ -87,15 +87,13 @@ export interface Market {
   settled: boolean;
   public: boolean;
   question: string | null;
-  totalLiquidity: number;
-  totalVolume: number;
-  collateralTicker: string;
-  minTick: number;
-  maxTick: number;
-  currentMarketPrice: number;
-  marketCandles: any[];
-  baseTokenName?: string;
-  quoteTokenName?: string;
+  poolAddress?: string | null;
+  settlementPriceD18?: string | null;
+  optionName?: string | null;
+  baseAssetMinPriceTick?: number | null;
+  baseAssetMaxPriceTick?: number | null;
+  startingSqrtPriceX96?: string | null;
+  claimStatement?: string | null;
 }
 
 // Define MarketParams type based on GraphQL schema
@@ -201,6 +199,15 @@ const MARKETS_QUERY = gql`
         settled
         public
         question
+        poolAddress # Valid field from schema
+        settlementPriceD18 # Valid field from schema
+        optionName # Valid field from schema
+        baseAssetMinPriceTick # Valid field from schema
+        baseAssetMaxPriceTick # Valid field from schema
+        startingSqrtPriceX96 # Added field
+        marketParams { # Added nested field
+           claimStatement # Added nested field
+        } # Added nested field
       }
     }
   }
@@ -327,9 +334,16 @@ export const useEnrichedMarketGroups = () => {
             };
           }
 
+          // Map markets, extracting claimStatement
+          const mappedMarkets = marketGroup.markets.map((market: any) => ({
+            ...market,
+            claimStatement: market.marketParams?.claimStatement,
+          }));
+
           return {
             ...marketGroup, // Spread original market group fields (id, address, chainId, etc.)
             category: categoryInfo, // Use fetched or default category
+            markets: mappedMarkets, // Use markets with claimStatement extracted
           };
         }
       );

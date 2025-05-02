@@ -30,6 +30,23 @@ interface PermitResponse {
   permitted: boolean;
 }
 
+// Define the interface for a single Market based on GraphQL response
+export interface ApiMarket {
+  id: number;
+  marketId: number;
+  startTimestamp: number;
+  endTimestamp: number;
+  public: boolean;
+  question?: string;
+  startingSqrtPriceX96: string;      // Added
+  baseAssetMinPriceTick: number;     // Added
+  baseAssetMaxPriceTick: number;     // Added
+  poolAddress?: string | null;        // Added
+  claimStatement?: string | null;    // Added
+  settled?: boolean | null;
+  optionName?: string | null;
+}
+
 export interface MarketGroup {
   id: number;
   name: string;
@@ -45,30 +62,10 @@ export interface MarketGroup {
     name: string;
     slug: string;
   };
-  markets: Array<{
-    id: number;
-    marketId: number;
-    startTimestamp: number;
-    endTimestamp: number;
-    public: boolean;
-    question?: string;
-  }>;
-  currentMarket: {
-    id: number;
-    marketId: number;
-    startTimestamp: number;
-    endTimestamp: number;
-    public: boolean;
-    question?: string;
-  } | null;
-  nextMarket: {
-    id: number;
-    marketId: number;
-    startTimestamp: number;
-    endTimestamp: number;
-    public: boolean;
-    question?: string;
-  } | null;
+  markets: ApiMarket[]; // Use the new Market interface
+  currentMarket: ApiMarket | null; // Use the new Market interface
+  nextMarket: ApiMarket | null; // Use the new Market interface
+  question?: string; // Added group-level question
 }
 
 interface SapienceContextType {
@@ -112,6 +109,13 @@ const MARKET_GROUPS_QUERY = gql`
         endTimestamp
         settled
         optionName
+        startingSqrtPriceX96
+        baseAssetMinPriceTick
+        baseAssetMaxPriceTick
+        poolAddress
+        marketParams {
+          claimStatement
+        }
       }
     }
   }
@@ -183,13 +187,18 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
 
         return marketGroups.map((marketGroup: any) => {
           // Transform the structure to match the expected Market interface
-          const markets = marketGroup.markets.map((market: any) => ({
+          const markets: ApiMarket[] = marketGroup.markets.map((market: any): ApiMarket => ({
             id: market.id,
             marketId: market.marketId,
             startTimestamp: market.startTimestamp,
             endTimestamp: market.endTimestamp,
             public: market.settled !== undefined ? !market.settled : true,
             question: market.question,
+            startingSqrtPriceX96: market.startingSqrtPriceX96,
+            baseAssetMinPriceTick: market.baseAssetMinPriceTick,
+            baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
+            poolAddress: market.poolAddress,
+            claimStatement: market.marketParams?.claimStatement,
           }));
 
           const sortedMarkets = [...markets].sort(
@@ -222,6 +231,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
             baseTokenName: marketGroup.baseTokenName,
             owner: marketGroup.address, // Fallback
             isCumulative: false, // Default
+            question: marketGroup.question, // Keep the group-level question if needed
             resource: {
               id: 0,
               name: 'Unknown',

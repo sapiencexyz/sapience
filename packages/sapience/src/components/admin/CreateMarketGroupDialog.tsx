@@ -280,8 +280,8 @@ const CreateMarketGroupDialog = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>(
     DEFAULT_FOCUS_AREA.id
   ); // Add state for selected category
-  const [baseTokenName, setBaseTokenName] = useState<string>(''); // Add state for base token name
-  const [quoteTokenName, setQuoteTokenName] = useState<string>(''); // Add state for quote token name
+  const [baseTokenName, setBaseTokenName] = useState<string>('Yes'); // Add state for base token name
+  const [quoteTokenName, setQuoteTokenName] = useState<string>('sUSDS'); // Add state for quote token name
 
   const createMarketGroupMutation = useMutation({
     mutationFn: async (payload: CreateMarketGroupPayload) => {

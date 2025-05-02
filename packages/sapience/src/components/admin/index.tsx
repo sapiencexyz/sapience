@@ -126,7 +126,11 @@ const Admin = () => {
                                   />
                                 </DialogContent>
                               </Dialog>
-                              <MarketDeployButton market={market as any} />
+                              <MarketDeployButton
+                                market={market}
+                                marketGroupAddress={group.address}
+                                chainId={group.chainId}
+                              />
                             </div>
                           </div>
                         );

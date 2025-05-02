@@ -1,6 +1,7 @@
 import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
 import { MarketGroupType } from './MarketGroupType';
 import { PositionType } from './PositionType';
+import { MarketParamsType } from './MarketParamsType';
 
 @Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
@@ -33,6 +34,12 @@ export class MarketType {
 
   @Field(() => String, { nullable: true })
   poolAddress: string | null;
+
+  @Field(() => String, { nullable: true })
+  startingSqrtPriceX96: string | null;
+
+  @Field(() => MarketParamsType, { nullable: true })
+  marketParams: MarketParamsType | null;
 
   @Field(() => Boolean)
   public: boolean;

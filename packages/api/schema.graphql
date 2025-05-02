@@ -63,6 +63,7 @@ type MarketType {
   id: ID!
   marketGroup: MarketGroupType
   marketId: Int!
+  marketParams: MarketParamsType
   optionName: String
   poolAddress: String
   positions: [PositionType!]!
@@ -71,6 +72,7 @@ type MarketType {
   settled: Boolean
   settlementPriceD18: String
   startTimestamp: Int
+  startingSqrtPriceX96: String
 }
 
 type PnLType {

@@ -44,46 +44,52 @@ async function handleMarketGroupInitialized(
   const newMarketGroupAddress = eventArgs.marketGroup.toLowerCase();
 
   try {
-    let marketGroupRecord = await marketGroupRepository.findOne({
-      where: { initializationNonce: nonce, chainId, owner: sender },
-      relations: ['marketParams'],
+    // Find the existing market group record based on initialization nonce, factory address, and chain ID.
+    const existingMarketGroup = await marketGroupRepository.findOneBy({
+      initializationNonce: nonce,
+      factoryAddress: factoryAddress.toLowerCase(),
+      chainId: chainId,
     });
 
-    if (marketGroupRecord) {
-      console.log(
-        `Found market group with nonce ${nonce}, owner ${sender}, and chainId ${chainId}, updating address to ${newMarketGroupAddress}`
-      );
-      marketGroupRecord.address = newMarketGroupAddress;
-      if (!marketGroupRecord.factoryAddress) {
-        marketGroupRecord.factoryAddress = factoryAddress.toLowerCase();
-      }
-      marketGroupRecord.owner = sender;
-      await marketGroupRepository.save(marketGroupRecord);
-      console.log(`Market group ${marketGroupRecord.id} updated successfully.`);
-    } else {
-      console.log(
-        `Market group with nonce ${nonce}, owner ${sender}, and chainId ${chainId} not found. Creating new market group.`
-      );
-      const newMarketGroup = new MarketGroup();
-      newMarketGroup.address = newMarketGroupAddress;
-      newMarketGroup.initializationNonce = nonce;
-      newMarketGroup.chainId = chainId;
-      newMarketGroup.factoryAddress = factoryAddress.toLowerCase();
-      newMarketGroup.owner = sender;
+    if (existingMarketGroup) {
+      // Update the address and owner of the existing record
+      existingMarketGroup.address = newMarketGroupAddress;
+      existingMarketGroup.owner = sender; // Also update owner if it can change or wasn't set initially
 
-      marketGroupRecord = await marketGroupRepository.save(newMarketGroup);
+      await marketGroupRepository.save(existingMarketGroup);
+
       console.log(
-        `New market group created successfully with ID ${marketGroupRecord.id}.`
+        `Updated market group address to ${newMarketGroupAddress} for nonce ${nonce} on chain ${chainId}.`
       );
 
-      marketGroupRecord = await marketGroupRepository.findOne({
-        where: { id: marketGroupRecord.id },
-        relations: ['marketParams'],
+      // Fetch the updated record including necessary relations for indexing.
+      // Note: We refetch here to ensure relations are loaded correctly if they weren't loaded initially
+      // or if the save operation returns an object without relations.
+      const marketGroupRecord = await marketGroupRepository.findOne({
+        where: { id: existingMarketGroup.id }, // Use the ID for certainty
+        relations: ['marketParams'], // Load relations needed for indexing
       });
-    }
 
-    if (marketGroupRecord) {
-      await startIndexingForMarketGroup(marketGroupRecord, client);
+      if (marketGroupRecord) {
+        console.log(
+          `Market group record (ID: ${marketGroupRecord.id}) updated. Starting indexing.`
+        );
+        await startIndexingForMarketGroup(marketGroupRecord, client);
+      } else {
+        // This case should be less likely now, but good to keep the check.
+        console.error(
+          `Could not re-find market group record (ID: ${existingMarketGroup.id}) after update.`
+        );
+      }
+    } else {
+      // This indicates a problem: the MarketGroupInitialized event was received,
+      // but no corresponding initial record was found.
+      console.error(
+        `Error processing MarketGroupInitialized event: No initial market group record found for nonce ${nonce}, factory ${factoryAddress}, chainId ${chainId}.`
+      );
+      // Depending on requirements, you might want to insert a new record here,
+      // but it suggests an issue elsewhere if the initial record is expected.
+      // For now, we just log the error.
     }
   } catch (error) {
     console.error(
