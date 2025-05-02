@@ -158,7 +158,7 @@ const CreateMarketGroupDialog = () => {
   // Form State
   const [chainId, setChainId] = useState<string>('8453');
   const [factoryAddress, setFactoryAddress] = useState<string>(
-    '0xe2C8572AE43E7Def359259e513d9c329aAEFf7cC'
+    '0xA61BF5F56a6a035408d5d76EbE58F8204891FB40'
   );
   // Default owner based on chain ID
   const [owner, setOwner] = useState<string>(

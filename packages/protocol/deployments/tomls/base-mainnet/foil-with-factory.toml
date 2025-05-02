@@ -2,10 +2,8 @@ name="foil"
 version="1.0.5"
 preset="factory"
 
+# Fake initialization to make it unusable, intended to be cloned via factory
 [var.settings]
-owner="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" # TEMPORARILY ANVIL SIGNER
-
-# fake initialization to make it unusable
 nonowner="0x0000000000000000000013370000000000000000"
 sUSDS = "0x5875eee11cf8398102fdad704c9e96607675467a"
 optimisticOracleV3 = "0x2aBf1Bd76655de80eDB3086114315Eec75AF500c" # UMA Optimistic Oracle V3 
@@ -16,8 +14,6 @@ minTradeSize = "10000"
 feeRate = "10000" # 1%
 assertionLiveness = "21600"
 bondAmount = "500000000"
-
-depends = []
 
 [deploy.ConfigurationModule]
 artifact="ConfigurationModule"
