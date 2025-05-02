@@ -552,6 +552,7 @@ const CreateMarketGroupDialog = () => {
                           placeholder={placeholderText}
                           required
                           inputMode={inputModeType}
+                          disabled={key === 'feeRate'}
                         />
                       </div>
                     );

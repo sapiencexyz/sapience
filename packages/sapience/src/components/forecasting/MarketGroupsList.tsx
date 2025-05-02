@@ -133,50 +133,50 @@ const FocusAreaFilter = ({
           ))}
         {!isLoadingCategories &&
           categories &&
-          categories
-            // Display only categories that are also in FOCUS_AREAS
-            .filter((category) =>
-              FOCUS_AREAS.some((fa) => fa.id === category.slug)
-            )
-            .map((category) => {
-              const styleInfo = getCategoryStyle(category.slug);
-              const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
+          // Use FOCUS_AREAS array to maintain consistent order
+          FOCUS_AREAS.map((focusArea) => {
+            // Only show focus areas that exist in the database categories
+            const category = categories.find((c) => c.slug === focusArea.id);
+            if (!category) return null;
 
-              // Use the name from FOCUS_AREAS if available, otherwise fall back to category.name
-              const displayName = styleInfo?.name || category.name;
+            const styleInfo = getCategoryStyle(category.slug);
+            const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
 
-              return (
-                <button
-                  type="button"
-                  key={category.id}
-                  onClick={() => handleCategoryClick(category.slug)}
-                  className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
+            // Use the name from FOCUS_AREAS if available, otherwise fall back to category.name
+            const displayName = styleInfo?.name || category.name;
+
+            return (
+              <button
+                type="button"
+                key={category.id}
+                onClick={() => handleCategoryClick(category.slug)}
+                className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
+              >
+                <div
+                  className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
+                  style={{ backgroundColor: `${categoryColor}1A` }}
                 >
-                  <div
-                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
-                    style={{ backgroundColor: `${categoryColor}1A` }}
-                  >
-                    {styleInfo?.iconSvg ? (
-                      <div style={{ transform: 'scale(0.65)' }}>
-                        <div
-                          style={{ color: categoryColor }}
-                          // eslint-disable-next-line react/no-danger
-                          dangerouslySetInnerHTML={{
-                            __html: styleInfo.iconSvg,
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <TagIcon
-                        className="w-3 h-3"
+                  {styleInfo?.iconSvg ? (
+                    <div style={{ transform: 'scale(0.65)' }}>
+                      <div
                         style={{ color: categoryColor }}
+                        // eslint-disable-next-line react/no-danger
+                        dangerouslySetInnerHTML={{
+                          __html: styleInfo.iconSvg,
+                        }}
                       />
-                    )}
-                  </div>
-                  <span className="font-medium">{displayName}</span>
-                </button>
-              );
-            })}
+                    </div>
+                  ) : (
+                    <TagIcon
+                      className="w-3 h-3"
+                      style={{ color: categoryColor }}
+                    />
+                  )}
+                </div>
+                <span className="font-medium">{displayName}</span>
+              </button>
+            );
+          })}
       </div>
 
       <div className="mt-6 mb-6">

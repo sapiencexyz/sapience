@@ -226,9 +226,12 @@ const CreateMarketDialog: React.FC<CreateMarketDialogProps> = ({
           type="text"
           value={claimStatement}
           onChange={(e) => setClaimStatement(e.target.value)}
-          placeholder="Enter the claim statement text"
+          placeholder="e.g. The average cost of gas in June 2025 (represented in gwei with 18 decimals) is "
           required
         />
+        <p className="text-sm text-muted-foreground mt-1">
+          This will be followed by the settlement value in UMA.
+        </p>
       </div>
 
       {/* Start Time & End Time */}
