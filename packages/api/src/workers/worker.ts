@@ -16,7 +16,7 @@ async function main() {
   await initializeFixtures();
 
   const marketJobs = await startMarketIndexers();
-  const resourceJobs = [];//await startResourceIndexers();
+  const resourceJobs = await startResourceIndexers();
 
   jobs = [...marketJobs, ...resourceJobs];
 
@@ -70,12 +70,53 @@ async function startResourceIndexers(): Promise<Promise<void>[]> {
   return resourceJobs;
 }
 
+async function runMarketsOnly() {
+  await initializeDataSource();
+  await initializeFixtures();
+  
+  const marketJobs = await startMarketIndexers();
+  await Promise.all(marketJobs);
+}
+
+async function runResourcesOnly() {
+  await initializeDataSource();
+  await initializeFixtures();
+  
+  const resourceJobs = await startResourceIndexers();
+  await Promise.all(resourceJobs);
+}
+
+// Handle command line arguments
+async function handleWorkerCommands(args: string[]): Promise<boolean> {
+  if (args.length <= 2) return false;
+  
+  const command = args[2];
+  
+  if (command === 'markets-only') {
+    await runMarketsOnly();
+    return true;
+  }
+  
+  if (command === 'resources-only') {
+    await runResourcesOnly();
+    return true;
+  }
+  
+  return false;
+}
+
 // Immediately try to handle a job command
 (async () => {
   const handled = await handleJobCommand(process.argv);
   // If a job command was handled, the process will exit within the handler.
-  // If not handled, proceed with the default main logic.
+  
+  // Check for worker-specific commands
   if (!handled) {
-    main();
+    const workerHandled = await handleWorkerCommands(process.argv);
+    
+    // If no worker command was handled, proceed with the default main logic
+    if (!workerHandled) {
+      main();
+    }
   }
 })();
