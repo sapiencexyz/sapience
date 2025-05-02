@@ -79,7 +79,7 @@ const createChainClient = (
   });
 
 export const mainnetPublicClient = createChainClient(mainnet, 'mainnet');
-export const basePublicClient = createChainClient(base, 'base-mainnet', true);
+export const basePublicClient = createChainClient(base, 'base-mainnet');
 export const sepoliaPublicClient = createChainClient(sepolia, 'sepolia');
 export const cannonPublicClient = createChainClient(cannon, 'cannon', true);
 export const arbitrumPublicClient = createChainClient(
