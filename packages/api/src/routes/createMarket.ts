@@ -41,7 +41,8 @@ router.post(
 
     if (marketGroup) {
       return res.status(400).json({
-        message: 'Market group with the same nonce, chainId and factory address already exists',
+        message:
+          'Market group with the same nonce, chainId and factory address already exists',
       });
     }
 
@@ -90,10 +91,13 @@ router.post(
       const existingFactoryAddresses = await marketGroupRepository
         .createQueryBuilder('marketGroup')
         .select('DISTINCT "factoryAddress"')
-        .where('"marketGroup"."chainId" = :chainId AND "marketGroup"."factoryAddress" = :factoryAddress', {
-          chainId: parseInt(chainId, 10),
-          factoryAddress: factoryAddress.toLowerCase(),
-        })
+        .where(
+          '"marketGroup"."chainId" = :chainId AND "marketGroup"."factoryAddress" = :factoryAddress',
+          {
+            chainId: parseInt(chainId, 10),
+            factoryAddress: factoryAddress.toLowerCase(),
+          }
+        )
         .getRawMany();
 
       // If this is a new factory address (count is exactly 1, meaning only our newly saved entry),
