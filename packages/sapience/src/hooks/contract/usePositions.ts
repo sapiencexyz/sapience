@@ -1,5 +1,6 @@
 import { times } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Abi } from 'viem';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 
 // Define the enum based on the protocol definition where Liquidity = 1, Trade = 2
@@ -27,7 +28,7 @@ interface UsePositionsProps {
   marketAddress?: `0x${string}`;
   marketId?: string | number;
   chainId?: number;
-  foilAbi: any[];
+  foilAbi: Abi;
   enabled?: boolean;
 }
 

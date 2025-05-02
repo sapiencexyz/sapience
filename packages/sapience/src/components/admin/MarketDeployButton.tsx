@@ -168,10 +168,10 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
       const maxPriceTickNum = Number(market.baseAssetMaxPriceTick);
 
       if (
-        isNaN(startTimeNum) ||
-        isNaN(endTimeNum) ||
-        isNaN(minPriceTickNum) ||
-        isNaN(maxPriceTickNum)
+        Number.isNaN(startTimeNum) ||
+        Number.isNaN(endTimeNum) ||
+        Number.isNaN(minPriceTickNum) ||
+        Number.isNaN(maxPriceTickNum)
       ) {
         throw new Error('Invalid numeric value found in market data.');
       }
@@ -198,11 +198,11 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
         functionName: 'createEpoch',
         args,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Deployment preparation error:', err);
-      setDeployError(
-        `Failed to prepare deployment: ${err.message || 'Invalid data provided.'}`
-      );
+      const message =
+        err instanceof Error ? err.message : 'Invalid data provided.';
+      setDeployError(`Failed to prepare deployment: ${message}`);
     }
   };
 

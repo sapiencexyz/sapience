@@ -1,9 +1,9 @@
 import { gql } from '@apollo/client';
+import type { MarketGroupType, MarketType } from '@foil/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
-import type { Market, MarketGroup } from '../../lib/interfaces/interfaces';
 import {
   findActiveMarkets,
   getDisplayQuestion,
@@ -40,12 +40,12 @@ interface UseMarketGroupProps {
 }
 
 interface UseMarketGroupReturn {
-  marketData: MarketGroup | null | undefined;
+  marketData: MarketGroupType | null | undefined;
   isLoadingMarket: boolean;
   isSuccess: boolean;
   displayQuestion: string;
   currentMarketId: string | null;
-  activeMarkets: Market[];
+  activeMarkets: MarketType[];
   chainId: number;
 }
 
@@ -56,13 +56,13 @@ export const useMarketGroup = ({
   const chainId = getChainIdFromShortName(chainShortName);
   const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
   const [currentMarketId, setCurrentMarketId] = useState<string | null>(null);
-  const [activeMarkets, setActiveMarkets] = useState<Market[]>([]);
+  const [activeMarkets, setActiveMarkets] = useState<MarketType[]>([]);
 
   const {
     data: marketData,
     isLoading: isLoadingMarket,
     isSuccess,
-  } = useQuery<MarketGroup | { placeholder: true }>({
+  } = useQuery<MarketGroupType | { placeholder: true }>({
     // Type assertion needed for placeholder
     queryKey: ['marketGroup', chainId, marketAddress],
     queryFn: async () => {
@@ -81,7 +81,7 @@ export const useMarketGroup = ({
           console.error('No market group data in response:', response.data);
           return { placeholder: true };
         }
-        return marketResponse as MarketGroup; // Use imported MarketGroup type
+        return marketResponse as MarketGroupType;
       } catch (error) {
         console.error('Error fetching market group:', error);
         return { placeholder: true };
@@ -96,13 +96,13 @@ export const useMarketGroup = ({
   useEffect(() => {
     // Only process if marketData is valid and not a placeholder
     const currentlyActiveMarkets =
-      marketData && !marketData.placeholder
+      marketData && !('placeholder' in marketData)
         ? findActiveMarkets(marketData)
         : [];
-    setActiveMarkets(currentlyActiveMarkets);
+    setActiveMarkets(currentlyActiveMarkets as MarketType[]);
 
     if (currentlyActiveMarkets.length > 0) {
-      setCurrentMarketId(currentlyActiveMarkets[0].marketId);
+      setCurrentMarketId(currentlyActiveMarkets[0].marketId.toString());
     } else {
       setCurrentMarketId(null);
     }
@@ -113,7 +113,7 @@ export const useMarketGroup = ({
   useEffect(() => {
     // Pass valid marketData or null to the utility function
     const dataForQuestion =
-      marketData && !marketData.placeholder ? marketData : null;
+      marketData && !('placeholder' in marketData) ? marketData : null;
     const question = getDisplayQuestion(
       dataForQuestion,
       activeMarkets,
@@ -127,7 +127,7 @@ export const useMarketGroup = ({
 
   // Ensure marketData returned is not the placeholder
   const finalMarketData =
-    marketData && !marketData.placeholder ? marketData : null;
+    marketData && !('placeholder' in marketData) ? marketData : null;
 
   return {
     marketData: finalMarketData,

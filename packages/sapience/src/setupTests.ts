@@ -39,5 +39,6 @@ class MockTextDecoder {
   }
 }
 
-global.TextEncoder = MockTextEncoder as any as typeof global.TextEncoder;
-global.TextDecoder = MockTextDecoder as any as typeof global.TextDecoder;
+// Cast to unknown first, then to the target type to satisfy stricter TS rules
+global.TextEncoder = MockTextEncoder as unknown as typeof global.TextEncoder;
+global.TextDecoder = MockTextDecoder as unknown as typeof global.TextDecoder;

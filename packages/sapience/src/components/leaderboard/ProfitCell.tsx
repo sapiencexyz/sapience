@@ -16,7 +16,7 @@ const PnLDisplay = ({
   const usdValue = displayValue * effectivePrice;
 
   // Handle potential NaN values gracefully
-  if (isNaN(usdValue)) {
+  if (Number.isNaN(usdValue)) {
     console.error('Calculated PnL resulted in NaN', { value, wstEthPriceUsd });
     return <span>-</span>; // Display a dash or placeholder for NaN
   }

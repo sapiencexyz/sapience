@@ -31,7 +31,7 @@ export interface CreateTradeResult {
   isError: boolean;
   error: Error | null;
   txHash: `0x${string}` | undefined;
-  data?: any; // Result from useWriteContract
+  data?: `0x${string}` | undefined; // Use specific type
   isApproving: boolean;
   hasAllowance: boolean;
   needsApproval: boolean;
@@ -39,6 +39,9 @@ export interface CreateTradeResult {
 
 // Assuming collateral uses 18 decimals
 const COLLATERAL_DECIMALS = 18;
+
+// Add a type for potential RPC errors with shortMessage
+type PotentialRpcError = Error & { shortMessage?: string };
 
 /**
  * Hook for creating a trader position with automatic token approval and slippage handling
@@ -214,12 +217,18 @@ export function useCreateTrade({
         title: 'Transaction Submitted',
         description: 'Your trade transaction has been submitted.',
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating trade position:', err);
-      const errorMessage =
-        err?.shortMessage ||
-        err?.message ||
-        'Failed to submit trade transaction.';
+      // Refactored nested ternary
+      let errorMessage: string;
+      if (err instanceof Error && 'shortMessage' in err) {
+        errorMessage = (err as PotentialRpcError).shortMessage!;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      } else {
+        errorMessage = 'Failed to submit trade transaction.';
+      }
+
       setError(err instanceof Error ? err : new Error(errorMessage));
       toast({
         title: 'Transaction Failed',

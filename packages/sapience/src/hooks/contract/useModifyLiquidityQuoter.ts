@@ -1,4 +1,5 @@
 import { TickMath } from '@uniswap/v3-sdk';
+import type { Abi } from 'abitype';
 import { useEffect, useState } from 'react';
 import { useReadContract } from 'wagmi';
 
@@ -22,7 +23,7 @@ interface ModifyLiquidityQuoterProps {
   mode: 'add' | 'remove'; // Whether we're adding or removing liquidity
   enabled?: boolean;
   chainId?: number;
-  marketAbi: any;
+  marketAbi: Abi;
   marketId: bigint;
   tickLower?: number;
   tickUpper?: number;
@@ -153,19 +154,22 @@ export function useModifyLiquidityQuoter({
   // Update the quote result when data changes
   useEffect(() => {
     if (tokenAmounts && requiredCollateral) {
+      // Explicitly type the expected return tuple for tokenAmounts
+      const typedTokenAmounts = tokenAmounts as readonly [bigint, bigint];
+
       // When removing 100%, handle special case
       if (mode === 'remove' && percentage === 100) {
         setQuoteResult({
-          amount0: (tokenAmounts as any[])[0] || BigInt(0),
-          amount1: (tokenAmounts as any[])[1] || BigInt(0),
+          amount0: typedTokenAmounts[0] || BigInt(0), // Use typed result
+          amount1: typedTokenAmounts[1] || BigInt(0), // Use typed result
           collateralAmount: BigInt(0), // Collateral becomes 0 on complete removal
           newLiquidity: BigInt(0), // New liquidity becomes 0
           liquidityDelta,
         });
       } else {
         setQuoteResult({
-          amount0: (tokenAmounts as any[])[0] || BigInt(0),
-          amount1: (tokenAmounts as any[])[1] || BigInt(0),
+          amount0: typedTokenAmounts[0] || BigInt(0), // Use typed result
+          amount1: typedTokenAmounts[1] || BigInt(0), // Use typed result
           collateralAmount: requiredCollateral as bigint,
           newLiquidity,
           liquidityDelta,

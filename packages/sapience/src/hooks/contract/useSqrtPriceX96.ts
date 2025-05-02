@@ -1,3 +1,4 @@
+import type { Abi } from 'abitype';
 import { useReadContract } from 'wagmi';
 
 interface UseSqrtPriceX96Props {
@@ -5,7 +6,7 @@ interface UseSqrtPriceX96Props {
   marketId: bigint;
   enabled?: boolean;
   chainId?: number;
-  marketAbi: any;
+  marketAbi: Abi;
 }
 
 interface SqrtPriceResult {

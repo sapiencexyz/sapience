@@ -1,39 +1,23 @@
+import type { MarketGroupType, MarketType } from '@foil/ui/types/graphql';
 import { useMemo } from 'react';
 
-import type { PredictionMarketType } from '~/components/forecasting/PredictionForm';
-
 import type { PredictionFormData } from './usePredictionFormState';
-
-// Define a more specific type for the market object used within the hook
-type MarketInfo = {
-  id?: string;
-  marketId: string | number;
-  question?: string | null | undefined;
-  startTimestamp?: number | string | null;
-  endTimestamp?: number | string | null;
-  settled?: boolean | null;
-};
 
 // --- Helper Functions --- START
 
 // Helper function to check if a market is active
 const isMarketActive = (
-  market: MarketInfo, // Use specific type
+  market: MarketType, // Use MarketType
   now: number
 ): boolean => {
-  const start = market.startTimestamp
-    ? parseInt(String(market.startTimestamp), 10)
-    : null;
-  const end = market.endTimestamp
-    ? parseInt(String(market.endTimestamp), 10)
-    : null;
+  // startTimestamp and endTimestamp are Maybe<Int> in MarketType
+  const start = market.startTimestamp ?? null; // Use nullish coalescing
+  const end = market.endTimestamp ?? null;
 
-  if (
-    start === null ||
-    Number.isNaN(start) ||
-    end === null ||
-    Number.isNaN(end)
-  ) {
+  // No need for parseInt or String conversion if they are already numbers or null/undefined
+  // The NaN check is implicitly handled by the null check
+
+  if (start === null || end === null) {
     // console.warn(`Market ${market.marketId} has invalid or missing timestamps`);
     return false;
   }
@@ -81,7 +65,7 @@ const TWO_POW_96 = bigIntPow(TWO, NINETY_SIX); // 2^96
 
 // Function to convert number to sqrtPriceX96 using BigInt
 const convertToSqrtPriceX96 = (price: number): string => {
-  if (typeof price !== 'number' || isNaN(price) || price < 0) {
+  if (typeof price !== 'number' || Number.isNaN(price) || price < 0) {
     return 'N/A'; // Return N/A for invalid input
   }
 
@@ -112,7 +96,7 @@ const convertToSqrtPriceX96 = (price: number): string => {
 // --- Helper Functions --- END
 
 interface UseMarketCalculationsProps {
-  marketData: PredictionMarketType | null | undefined;
+  marketData: MarketGroupType | null | undefined;
   formData: PredictionFormData;
   currentMarketId?: string | null; // Added prop for current market ID
 }
@@ -123,7 +107,7 @@ export function useMarketCalculations({
   currentMarketId,
 }: UseMarketCalculationsProps) {
   const { activeOptionNames, unitDisplay, displayMarketId } = useMemo<{
-    activeOptionNames: string[] | null | undefined;
+    activeOptionNames: (string | null | undefined)[] | null;
     unitDisplay: string | null;
     displayMarketId: string | number | null;
   }>(() => {
@@ -137,7 +121,7 @@ export function useMarketCalculations({
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const activeMarkets = marketData.markets.filter((market: MarketInfo) =>
+    const activeMarkets = marketData.markets.filter((market: MarketType) =>
       isMarketActive(market, now)
     );
 
@@ -151,7 +135,7 @@ export function useMarketCalculations({
     }
 
     // Determine the primary market ID to display
-    const activeMarketIds = activeMarkets.map((m: MarketInfo) =>
+    const activeMarketIds = activeMarkets.map((m: MarketType) =>
       String(m.marketId)
     );
     let currentDisplayMarketId: string | number | null = null;
@@ -164,22 +148,27 @@ export function useMarketCalculations({
 
     // Handle Group Market (multiple active markets)
     if (activeMarkets.length > 1) {
+      const derivedOptionNames = activeMarkets.map((m) => m.optionName);
       return {
-        activeOptionNames: marketData.optionNames,
-        unitDisplay: null, // No specific unit for group markets
+        activeOptionNames: derivedOptionNames,
+        unitDisplay: null,
         displayMarketId: currentDisplayMarketId,
       };
     }
 
     // Handle Single Active Market
+    const singleActiveMarket = activeMarkets[0];
+
+    // Check Yes/No range using fields from the single active market
     const isYesNoRange =
-      marketData.lowerBound === '-92200' && marketData.upperBound === '0';
+      singleActiveMarket.baseAssetMinPriceTick === -92200 &&
+      singleActiveMarket.baseAssetMaxPriceTick === 0;
 
     if (isYesNoRange) {
       // Yes/No Market
       return {
-        activeOptionNames: null, // Options not displayed for Yes/No
-        unitDisplay: null, // No specific unit for Yes/No
+        activeOptionNames: null,
+        unitDisplay: null,
         displayMarketId: currentDisplayMarketId,
       };
     }
@@ -201,7 +190,7 @@ export function useMarketCalculations({
     // If neither base nor quote exists, it remains 'units'
 
     return {
-      activeOptionNames: null, // No options displayed for numerical
+      activeOptionNames: null,
       unitDisplay: displayString,
       displayMarketId: currentDisplayMarketId,
     };
@@ -215,7 +204,7 @@ export function useMarketCalculations({
     if (
       typeof formData.predictionValue === 'string' &&
       formData.predictionValue === '0' && // Assuming '0' represents 'No'
-      marketData.baseTokenName?.toLowerCase() === 'yes' // Check context
+      marketData.baseTokenName?.toLowerCase() === 'yes' // Check context from MarketGroupType
     ) {
       return '0'; // sqrtPriceX96 for price 0 is 0
     }
@@ -227,7 +216,7 @@ export function useMarketCalculations({
         typeof formData.predictionValue === 'number' && // Options use numbers 1, 2, ...
         formData.predictionValue >= 1 &&
         formData.predictionValue <= activeOptionNames.length) ||
-      (marketData.baseTokenName?.toLowerCase() === 'yes' && // Check if it's Yes/No
+      (marketData.baseTokenName?.toLowerCase() === 'yes' && // Check context from MarketGroupType
         formData.predictionValue === '1') // Assuming '1' represents 'Yes'
     ) {
       return TWO_POW_96.toString(); // sqrtPriceX96 for price 1
@@ -237,7 +226,7 @@ export function useMarketCalculations({
     if (unitDisplay && typeof formData.predictionValue === 'string') {
       const numValue = parseFloat(formData.predictionValue);
       if (
-        !isNaN(numValue) &&
+        !Number.isNaN(numValue) &&
         numValue >= 0 &&
         formData.predictionValue.trim() !== '' &&
         formData.predictionValue.trim() !== '.'
@@ -265,7 +254,7 @@ export function useMarketCalculations({
     const now = Math.floor(Date.now() / 1000);
     const activeMarkets = marketData.markets.filter(
       (
-        market: MarketInfo // Add type
+        market: MarketType // Use MarketType
       ) => isMarketActive(market, now)
     );
 
@@ -298,7 +287,7 @@ export function useMarketCalculations({
       // Potentially numerical string input
       const numValue = parseFloat(formData.predictionValue);
       if (
-        !isNaN(numValue) &&
+        !Number.isNaN(numValue) &&
         numValue >= 0 &&
         formData.predictionValue.trim() !== '' &&
         formData.predictionValue.trim() !== '.'
@@ -328,7 +317,7 @@ export function useMarketCalculations({
     const now = Math.floor(Date.now() / 1000);
     const activeMarkets = marketData.markets.filter(
       (
-        market: MarketInfo // Add type
+        market: MarketType // Use MarketType
       ) => isMarketActive(market, now)
     );
     return activeMarkets.length > 1;

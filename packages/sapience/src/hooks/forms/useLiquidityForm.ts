@@ -81,7 +81,7 @@ export function useLiquidityForm({
         const highPriceValue = parseFloat(data.highPriceInput);
 
         // Validation checks
-        if (isNaN(lowPriceValue)) {
+        if (Number.isNaN(lowPriceValue)) {
           form.setError('lowPriceInput', {
             type: 'validate',
             message: 'Low price must be a valid number',
@@ -89,7 +89,7 @@ export function useLiquidityForm({
           return;
         }
 
-        if (isNaN(highPriceValue)) {
+        if (Number.isNaN(highPriceValue)) {
           form.setError('highPriceInput', {
             type: 'validate',
             message: 'High price must be a valid number',

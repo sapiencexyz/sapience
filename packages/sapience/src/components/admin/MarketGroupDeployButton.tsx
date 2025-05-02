@@ -143,9 +143,14 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
         const logs = receipt.logs
           .map((log) => {
             try {
-              const topics = Array.isArray(log.topics) ? log.topics : [];
-              const typedTopics: [`0x${string}`, ...`0x${string}`[]] | [] =
-                topics as any;
+              // Ensure topics is an array and create a mutable copy
+              const safeTopics = Array.isArray(log.topics)
+                ? [...log.topics] // Create a mutable copy
+                : [];
+              // Cast to the specific mutable tuple type expected by decodeEventLog
+              const typedTopics = safeTopics as
+                | []
+                | [`0x${string}`, ...`0x${string}`[]];
               return decodeEventLog({
                 abi: [marketGroupInitializedEvent],
                 data: log.data,
@@ -198,39 +203,32 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       setDeployError('Missing required market group data for deployment.');
       return;
     }
-    const { marketParams } = group;
-    if (
-      marketParams.feeRate === undefined ||
-      marketParams.feeRate === null ||
-      !marketParams.assertionLiveness ||
-      !marketParams.bondAmount ||
-      !marketParams.bondCurrency ||
-      !marketParams.uniswapPositionManager ||
-      !marketParams.uniswapSwapRouter ||
-      !marketParams.uniswapQuoter ||
-      !marketParams.optimisticOracleV3
-    ) {
-      setDeployError('Missing required market parameters for deployment.');
-      return;
-    }
 
     try {
-      const feeRateNum = Number(marketParams.feeRate);
-      if (isNaN(feeRateNum)) throw new Error('Invalid Fee Rate');
-      const assertionLivenessBigInt = BigInt(marketParams.assertionLiveness);
-      const bondAmountBigInt = BigInt(marketParams.bondAmount);
-      const minTradeSizeBigInt = BigInt(group.minTradeSize);
-      const nonceBigInt = BigInt(group.initializationNonce); // Use initializationNonce
+      const { marketParams } = group;
+      // Validate numeric marketParams fields
+      const feeRateNumber = Number(marketParams.feeRate);
+      const assertionLivenessNumber = Number(marketParams.assertionLiveness);
+      const bondAmountNumber = Number(marketParams.bondAmount);
 
+      if (
+        Number.isNaN(feeRateNumber) ||
+        Number.isNaN(assertionLivenessNumber) ||
+        Number.isNaN(bondAmountNumber)
+      ) {
+        throw new Error('Invalid numeric value in marketParams.');
+      }
+
+      // Prepare parameters for the contract call
       const args = [
         group.collateralAsset as Address,
-        [] as Address[], // feeCollectors (empty for now)
-        zeroAddress, // callbackRecipient
-        minTradeSizeBigInt,
+        [zeroAddress], // feeCollectors - using placeholder for now
+        zeroAddress, // callbackRecipient - using placeholder
+        BigInt(group.minTradeSize),
         {
-          feeRate: feeRateNum,
-          assertionLiveness: assertionLivenessBigInt,
-          bondAmount: bondAmountBigInt,
+          feeRate: feeRateNumber,
+          assertionLiveness: BigInt(assertionLivenessNumber),
+          bondAmount: BigInt(bondAmountNumber),
           bondCurrency: marketParams.bondCurrency as Address,
           uniswapPositionManager:
             marketParams.uniswapPositionManager as Address,
@@ -238,7 +236,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
           uniswapQuoter: marketParams.uniswapQuoter as Address,
           optimisticOracleV3: marketParams.optimisticOracleV3 as Address,
         },
-        nonceBigInt, // nonce
+        BigInt(group.initializationNonce),
       ] as const;
 
       console.log('Calling writeContract with args:', args);
@@ -249,11 +247,11 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
         functionName: 'cloneAndInitializeMarketGroup',
         args,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Deployment preparation error:', err);
-      setDeployError(
-        `Failed to prepare deployment: ${err.message || 'Invalid data provided.'}`
-      );
+      const message =
+        err instanceof Error ? err.message : 'Invalid data provided.';
+      setDeployError(`Failed to prepare deployment: ${message}`);
     }
   };
 

@@ -1,14 +1,14 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
+import type { MarketGroupType } from '@foil/ui/types/graphql';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { encodeAbiParameters, parseAbiParameters } from 'viem';
 import { useAccount, useWriteContract, useTransaction } from 'wagmi';
 
-import type { PredictionMarketType } from '~/components/forecasting/PredictionForm';
 import { EAS_CONTRACT_ADDRESS, SCHEMA_UID } from '~/lib/constants/eas';
 
 interface UseSubmitPredictionProps {
-  marketData: PredictionMarketType | null | undefined;
+  marketData: MarketGroupType | null | undefined;
   submissionValue: string | number; // N/A indicates invalid
   selectedMarketId: string | number | null;
 }

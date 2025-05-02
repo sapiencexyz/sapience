@@ -1,4 +1,5 @@
 import { gql } from '@apollo/client';
+import type { CandleType } from '@foil/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
@@ -33,18 +34,31 @@ const MARKET_CANDLES_QUERY = gql`
 
 // --- Hook to fetch latest market price ---
 export function useMarketPrice(
-  marketGroupAddress: string | undefined,
-  chainId: number | undefined,
-  marketId: number | undefined
+  marketGroupAddress: string | undefined | null,
+  chainId: number | string | undefined | null,
+  marketId: number | string | undefined | null
 ) {
+  // Convert chainId and marketId to numbers if they're strings
+  const chainIdNumber =
+    typeof chainId === 'string' ? parseInt(chainId, 10) || 0 : chainId || 0;
+  const marketIdNumber =
+    typeof marketId === 'string' ? parseInt(marketId, 10) || 0 : marketId || 0;
+
   const enabled =
-    Boolean(marketGroupAddress) && Boolean(chainId) && Boolean(marketId);
+    Boolean(marketGroupAddress) &&
+    Boolean(chainIdNumber) &&
+    Boolean(marketIdNumber);
 
   return useQuery<number>({
     // Specify the return type for clarity
-    queryKey: ['marketPrice', marketGroupAddress, chainId, marketId],
+    queryKey: [
+      'marketPrice',
+      marketGroupAddress,
+      chainIdNumber,
+      marketIdNumber,
+    ],
     queryFn: async () => {
-      if (!marketGroupAddress || !chainId || !marketId) {
+      if (!marketGroupAddress || !chainIdNumber || !marketIdNumber) {
         return 0; // Return 0 if required parameters are missing
       }
 
@@ -58,8 +72,8 @@ export function useMarketPrice(
           query: print(MARKET_CANDLES_QUERY),
           variables: {
             address: marketGroupAddress,
-            chainId,
-            marketId: String(marketId),
+            chainId: chainIdNumber,
+            marketId: String(marketIdNumber),
             interval,
             from,
             to,
@@ -72,12 +86,11 @@ export function useMarketPrice(
           throw new Error(errors[0].message);
         }
 
-        const candles = data?.marketCandles;
+        const candles = data?.marketCandles as CandleType[];
         if (candles && candles.length > 0) {
           // Sort by timestamp descending to ensure we get the latest candle
           candles.sort(
-            (a: { timestamp: number }, b: { timestamp: number }) =>
-              b.timestamp - a.timestamp
+            (a: CandleType, b: CandleType) => b.timestamp - a.timestamp
           );
           const latestCandle = candles[0];
           return Number(latestCandle.close) / WEI_PER_ETHER;
@@ -85,8 +98,8 @@ export function useMarketPrice(
 
         console.warn('No recent market candle found for price.', {
           marketGroupAddress,
-          chainId,
-          marketId,
+          chainId: chainIdNumber,
+          marketId: marketIdNumber,
         });
 
         return 0;
