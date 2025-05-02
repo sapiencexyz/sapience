@@ -7,8 +7,8 @@ import { Router } from 'express';
 import { Request, Response } from 'express';
 import { MarketGroup } from '../models/MarketGroup';
 import { Market } from '../models/Market';
-import crypto from 'crypto'; // Import crypto for salt generation
 import { MarketParams } from '../models/MarketParams';
+import { watchFactoryAddress } from '../workers/jobs/indexMarkets';
 
 const router = Router();
 
@@ -72,6 +72,37 @@ router.post(
       newMarketGroup.marketParams = marketParams;
 
       const savedMarketGroup = await marketGroupRepository.save(newMarketGroup);
+
+      // Check if this is a new factory address for this chain
+      const existingFactoryAddresses = await marketGroupRepository
+        .createQueryBuilder('marketGroup')
+        .select('DISTINCT "factoryAddress"')
+        .where('chainId = :chainId AND "factoryAddress" = :factoryAddress', {
+          chainId: parseInt(chainId, 10),
+          factoryAddress: factoryAddress.toLowerCase(),
+        })
+        .getRawMany();
+
+      // If this is a new factory address (count is exactly 1, meaning only our newly saved entry),
+      // set up a watcher for it
+      if (existingFactoryAddresses.length === 1) {
+        console.log(
+          `Setting up watcher for new factory address: ${factoryAddress.toLowerCase()}`
+        );
+        try {
+          // Set up a watcher for this new factory address
+          await watchFactoryAddress(
+            parseInt(chainId, 10),
+            factoryAddress.toLowerCase()
+          );
+        } catch (error) {
+          console.error(
+            `Error setting up watcher for new factory address: ${factoryAddress.toLowerCase()}`,
+            error
+          );
+          // Don't fail the creation of the market group if setting up the watcher fails
+        }
+      }
 
       res.status(201).json(savedMarketGroup);
     } catch (error) {
@@ -152,7 +183,7 @@ router.post(
       newMarket.marketId = nextMarketId;
       newMarket.question = marketQuestion;
       newMarket.optionName = optionName;
-      // --- Add the other fields --- 
+      // --- Add the other fields ---
       // Initialize marketParams if it doesn't exist (TypeORM should handle this, but safety first)
       if (!newMarket.marketParams) {
         newMarket.marketParams = new MarketParams(); // Assuming MarketParams is the class name

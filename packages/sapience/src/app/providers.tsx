@@ -26,7 +26,8 @@ const transports: Record<number, HttpTransport> = {
       ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
       : 'https://ethereum-sepolia-rpc.publicnode.com'
   ),
-  [base.id]: http(process.env.NEXT_PUBLIC_INFURA_API_KEY
+  [base.id]: http(
+    process.env.NEXT_PUBLIC_INFURA_API_KEY
       ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
       : 'https://base-rpc.publicnode.com'
   ),

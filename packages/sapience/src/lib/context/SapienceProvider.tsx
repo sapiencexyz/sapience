@@ -38,11 +38,11 @@ export interface ApiMarket {
   endTimestamp: number;
   public: boolean;
   question?: string;
-  startingSqrtPriceX96: string;      // Added
-  baseAssetMinPriceTick: number;     // Added
-  baseAssetMaxPriceTick: number;     // Added
-  poolAddress?: string | null;        // Added
-  claimStatement?: string | null;    // Added
+  startingSqrtPriceX96: string; // Added
+  baseAssetMinPriceTick: number; // Added
+  baseAssetMaxPriceTick: number; // Added
+  poolAddress?: string | null; // Added
+  claimStatement?: string | null; // Added
   settled?: boolean | null;
   optionName?: string | null;
 }
@@ -187,19 +187,21 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
 
         return marketGroups.map((marketGroup: any) => {
           // Transform the structure to match the expected Market interface
-          const markets: ApiMarket[] = marketGroup.markets.map((market: any): ApiMarket => ({
-            id: market.id,
-            marketId: market.marketId,
-            startTimestamp: market.startTimestamp,
-            endTimestamp: market.endTimestamp,
-            public: market.settled !== undefined ? !market.settled : true,
-            question: market.question,
-            startingSqrtPriceX96: market.startingSqrtPriceX96,
-            baseAssetMinPriceTick: market.baseAssetMinPriceTick,
-            baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
-            poolAddress: market.poolAddress,
-            claimStatement: market.marketParams?.claimStatement,
-          }));
+          const markets: ApiMarket[] = marketGroup.markets.map(
+            (market: any): ApiMarket => ({
+              id: market.id,
+              marketId: market.marketId,
+              startTimestamp: market.startTimestamp,
+              endTimestamp: market.endTimestamp,
+              public: market.settled !== undefined ? !market.settled : true,
+              question: market.question,
+              startingSqrtPriceX96: market.startingSqrtPriceX96,
+              baseAssetMinPriceTick: market.baseAssetMinPriceTick,
+              baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
+              poolAddress: market.poolAddress,
+              claimStatement: market.marketParams?.claimStatement,
+            })
+          );
 
           const sortedMarkets = [...markets].sort(
             (a, b) => a.startTimestamp - b.startTimestamp

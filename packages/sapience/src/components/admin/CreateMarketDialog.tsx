@@ -10,10 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import type React from 'react';
 import { useState } from 'react';
-import {
-  toBytes,
-  isAddress,
-} from 'viem';
+import { isAddress } from 'viem';
 import { z } from 'zod';
 
 // Use environment variable for API base URL, fallback to /api

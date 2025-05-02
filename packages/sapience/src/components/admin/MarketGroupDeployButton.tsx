@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@foil/ui/components/ui/alert';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
@@ -9,16 +14,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { useState, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { parseAbiItem, decodeEventLog, zeroAddress } from 'viem';
 import type { Address, AbiEvent } from 'viem';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 
@@ -41,10 +41,22 @@ const marketGroupFactoryAbi = [
           { name: 'assertionLiveness', type: 'uint64', internalType: 'uint64' },
           { name: 'bondAmount', type: 'uint256', internalType: 'uint256' },
           { name: 'bondCurrency', type: 'address', internalType: 'address' },
-          { name: 'uniswapPositionManager', type: 'address', internalType: 'address' },
-          { name: 'uniswapSwapRouter', type: 'address', internalType: 'address' },
+          {
+            name: 'uniswapPositionManager',
+            type: 'address',
+            internalType: 'address',
+          },
+          {
+            name: 'uniswapSwapRouter',
+            type: 'address',
+            internalType: 'address',
+          },
           { name: 'uniswapQuoter', type: 'address', internalType: 'address' },
-          { name: 'optimisticOracleV3', type: 'address', internalType: 'address' },
+          {
+            name: 'optimisticOracleV3',
+            type: 'address',
+            internalType: 'address',
+          },
         ],
       },
       { name: 'nonce', type: 'uint256', internalType: 'uint256' },
@@ -59,9 +71,24 @@ const marketGroupFactoryAbi = [
     type: 'event',
     name: 'MarketGroupInitialized',
     inputs: [
-      { name: 'sender', type: 'address', indexed: true, internalType: 'address' },
-      { name: 'marketGroup', type: 'address', indexed: true, internalType: 'address' },
-      { name: 'nonce', type: 'uint256', indexed: false, internalType: 'uint256' },
+      {
+        name: 'sender',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'marketGroup',
+        type: 'address',
+        indexed: true,
+        internalType: 'address',
+      },
+      {
+        name: 'nonce',
+        type: 'uint256',
+        indexed: false,
+        internalType: 'uint256',
+      },
     ],
     anonymous: false,
   },
@@ -76,10 +103,14 @@ interface MarketGroupDeployButtonProps {
   group: EnrichedMarketGroup; // Use the full enriched type
 }
 
-const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group }) => {
+const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
+  group,
+}) => {
   const [isOpen, setIsOpen] = useState(false); // Control dialog open state
   const [deployError, setDeployError] = useState<string | null>(null);
   const [deployedAddress, setDeployedAddress] = useState<Address | null>(null);
+  const ICON_SIZE = 'h-4 w-4'; // Define constant for icon size classes
+  const NOT_AVAILABLE = 'Not available'; // Constant for unavailable data
 
   const {
     data: hash,
@@ -113,15 +144,19 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
           .map((log) => {
             try {
               const topics = Array.isArray(log.topics) ? log.topics : [];
-              const typedTopics: [`0x${string}`, ...`0x${string}`[]] | [] = topics as any;
+              const typedTopics: [`0x${string}`, ...`0x${string}`[]] | [] =
+                topics as any;
               return decodeEventLog({
                 abi: [marketGroupInitializedEvent],
                 data: log.data,
                 topics: typedTopics,
               });
-            } catch { return null; }
+            } catch {
+              return null;
+            }
           })
-          .filter((decodedLog) =>
+          .filter(
+            (decodedLog) =>
               decodedLog !== null &&
               decodedLog.eventName === 'MarketGroupInitialized'
           );
@@ -132,8 +167,13 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
           // TODO: Optionally call PATCH endpoint here
           // invalidate query cache
         } else {
-          console.warn('MarketGroupInitialized event not found in transaction logs.', receipt);
-          setDeployError('Deployment transaction confirmed, but event emission was not detected.');
+          console.warn(
+            'MarketGroupInitialized event not found in transaction logs.',
+            receipt
+          );
+          setDeployError(
+            'Deployment transaction confirmed, but event emission was not detected.'
+          );
         }
       } catch (e) {
         console.error('Error processing deployment logs:', e);
@@ -148,23 +188,30 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
     resetWriteContract(); // Reset previous states
 
     // --- Validation ---
-    if (!group.factoryAddress || !group.initializationNonce || !group.collateralAsset || !group.minTradeSize || !group.marketParams) {
+    if (
+      !group.factoryAddress ||
+      !group.initializationNonce ||
+      !group.collateralAsset ||
+      !group.minTradeSize ||
+      !group.marketParams
+    ) {
       setDeployError('Missing required market group data for deployment.');
       return;
     }
     const { marketParams } = group;
     if (
-        marketParams.feeRate === undefined || marketParams.feeRate === null ||
-        !marketParams.assertionLiveness ||
-        !marketParams.bondAmount ||
-        !marketParams.bondCurrency ||
-        !marketParams.uniswapPositionManager ||
-        !marketParams.uniswapSwapRouter ||
-        !marketParams.uniswapQuoter ||
-        !marketParams.optimisticOracleV3
+      marketParams.feeRate === undefined ||
+      marketParams.feeRate === null ||
+      !marketParams.assertionLiveness ||
+      !marketParams.bondAmount ||
+      !marketParams.bondCurrency ||
+      !marketParams.uniswapPositionManager ||
+      !marketParams.uniswapSwapRouter ||
+      !marketParams.uniswapQuoter ||
+      !marketParams.optimisticOracleV3
     ) {
-        setDeployError('Missing required market parameters for deployment.');
-        return;
+      setDeployError('Missing required market parameters for deployment.');
+      return;
     }
 
     try {
@@ -185,7 +232,8 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
           assertionLiveness: assertionLivenessBigInt,
           bondAmount: bondAmountBigInt,
           bondCurrency: marketParams.bondCurrency as Address,
-          uniswapPositionManager: marketParams.uniswapPositionManager as Address,
+          uniswapPositionManager:
+            marketParams.uniswapPositionManager as Address,
           uniswapSwapRouter: marketParams.uniswapSwapRouter as Address,
           uniswapQuoter: marketParams.uniswapQuoter as Address,
           optimisticOracleV3: marketParams.optimisticOracleV3 as Address,
@@ -201,25 +249,37 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
         functionName: 'cloneAndInitializeMarketGroup',
         args,
       });
-
     } catch (err: any) {
       console.error('Deployment preparation error:', err);
-      setDeployError(`Failed to prepare deployment: ${err.message || 'Invalid data provided.'}`);
+      setDeployError(
+        `Failed to prepare deployment: ${err.message || 'Invalid data provided.'}`
+      );
     }
   };
 
   // Determine if button should be disabled
-  const isDeployDisabled = !!group.address || !group.initializationNonce || !group.factoryAddress || isWritePending || isConfirming;
-  const effectiveError = deployError || writeError?.message || receiptError?.message;
+  const isDeployDisabled =
+    !!group.address ||
+    !group.initializationNonce ||
+    !group.factoryAddress ||
+    isWritePending ||
+    isConfirming;
+  const effectiveError =
+    deployError || writeError?.message || receiptError?.message;
 
   const getButtonState = () => {
     if (isConfirming) return { text: 'Confirming...', loading: true };
     if (isWritePending) return { text: 'Sending...', loading: true };
-    if (isConfirmed && deployedAddress) return { text: 'Deployed', loading: false, success: true };
+    if (isConfirmed && deployedAddress)
+      return { text: 'Deployed', loading: false, success: true };
     return { text: 'Deploy', loading: false };
   };
 
-  const { text: buttonText, loading: buttonLoading, success: buttonSuccess } = getButtonState();
+  const {
+    text: buttonText,
+    loading: buttonLoading,
+    success: buttonSuccess,
+  } = getButtonState();
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -228,7 +288,11 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
           size="sm"
           variant="secondary"
           // Disable if already deployed (has address) or missing nonce/factory
-          disabled={!!group.address || !group.initializationNonce || !group.factoryAddress}
+          disabled={
+            !!group.address ||
+            !group.initializationNonce ||
+            !group.factoryAddress
+          }
         >
           {group.address ? 'Deployed' : 'Deploy'}
         </Button>
@@ -237,51 +301,61 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
         <DialogHeader>
           <DialogTitle>Deploy Market Group</DialogTitle>
           <DialogDescription>
-             {group.question || `Deploy group for chain ${group.chainId}`}
+            {group.question || `Deploy group for chain ${group.chainId}`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Display parameters */} 
+          {/* Display parameters */}
           <p className="text-sm text-muted-foreground">
-            Nonce: {group.initializationNonce || 'Not available'} <br />
-            Factory: {group.factoryAddress || 'Not available'} <br />
-            Collateral: {group.collateralAsset || 'Not available'} <br/>
-            Min Trade Size: {group.minTradeSize || 'Not available'}
+            Nonce: {group.initializationNonce || NOT_AVAILABLE} <br />
+            Factory: {group.factoryAddress || NOT_AVAILABLE} <br />
+            Collateral: {group.collateralAsset || NOT_AVAILABLE} <br />
+            Min Trade Size: {group.minTradeSize || NOT_AVAILABLE}
             {/* Add more params if needed */}
           </p>
 
-          {/* Deploy Button */} 
+          {/* Deploy Button */}
           <Button
             onClick={handleDeployClick}
             disabled={isDeployDisabled || buttonSuccess}
             className="w-full"
           >
-            {buttonLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {buttonLoading && (
+              <Loader2 className={`mr-2 ${ICON_SIZE} animate-spin`} />
+            )}
             {buttonText}
           </Button>
 
-          {/* Status/Error Display */} 
+          {/* Status/Error Display */}
           {effectiveError && (
             <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
+              <AlertCircle className={ICON_SIZE} />
               <AlertTitle>Deployment Error</AlertTitle>
               <AlertDescription>{effectiveError}</AlertDescription>
             </Alert>
           )}
           {hash && !isConfirmed && (
-             <Alert variant="default">
-              {isConfirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-              <AlertTitle>{isConfirming ? 'Confirming Transaction' : 'Transaction Sent'}</AlertTitle>
+            <Alert variant="default">
+              {isConfirming ? (
+                <Loader2 className={`${ICON_SIZE} animate-spin`} />
+              ) : (
+                <CheckCircle className={ICON_SIZE} />
+              )}
+              <AlertTitle>
+                {isConfirming ? 'Confirming Transaction' : 'Transaction Sent'}
+              </AlertTitle>
               <AlertDescription>
-                 Hash: <code className="text-xs break-all">{hash}</code>
-                 {isConfirming ? ' Waiting for blockchain confirmation...' : ' Sent to network.'}
+                Hash: <code className="text-xs break-all">{hash}</code>
+                {isConfirming
+                  ? ' Waiting for blockchain confirmation...'
+                  : ' Sent to network.'}
               </AlertDescription>
             </Alert>
           )}
           {isConfirmed && deployedAddress && (
             <Alert variant="default">
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className={ICON_SIZE} />
               <AlertTitle>Deployment Successful!</AlertTitle>
               <AlertDescription>
                 Market Group Deployed at:{' '}
@@ -289,11 +363,14 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
               </AlertDescription>
             </Alert>
           )}
-           {isConfirmed && !deployedAddress && !receiptError && (
-             <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Deployment Issue</AlertTitle>
-                <AlertDescription>{deployError || 'Transaction confirmed, but failed to find the deployment event.'}</AlertDescription>
+          {isConfirmed && !deployedAddress && !receiptError && (
+            <Alert variant="destructive">
+              <AlertCircle className={ICON_SIZE} />
+              <AlertTitle>Deployment Issue</AlertTitle>
+              <AlertDescription>
+                {deployError ||
+                  'Transaction confirmed, but failed to find the deployment event.'}
+              </AlertDescription>
             </Alert>
           )}
         </div>
@@ -302,4 +379,4 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({ group
   );
 };
 
-export default MarketGroupDeployButton; 
+export default MarketGroupDeployButton;

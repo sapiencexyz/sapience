@@ -1,9 +1,6 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
-import { createPublicClient, http, type PublicClient } from 'viem';
-import { mainnet, sepolia } from 'viem/chains'; // Add chains you support
-import FoilAbi from '../../../../protocol/deployments/Foil.json'; // Corrected relative path for ABI
 
 import { FOCUS_AREAS, DEFAULT_FOCUS_AREA } from '~/lib/constants/focusAreas';
 import { foilApi } from '~/lib/utils/util';
@@ -179,7 +176,8 @@ const MARKETS_QUERY = gql`
       factoryAddress # Added factoryAddress
       initializationNonce # Added initializationNonce
       minTradeSize # Added minTradeSize
-      marketParams { # Added marketParams structure
+      marketParams {
+        # Added marketParams structure
         feeRate
         assertionLiveness
         bondCurrency
@@ -209,8 +207,9 @@ const MARKETS_QUERY = gql`
         baseAssetMinPriceTick # Valid field from schema
         baseAssetMaxPriceTick # Valid field from schema
         startingSqrtPriceX96 # Added field
-        marketParams { # Added nested field
-           claimStatement # Added nested field
+        marketParams {
+          # Added nested field
+          claimStatement # Added nested field
         } # Added nested field
       }
     }
@@ -280,7 +279,8 @@ interface MarketGroupApiResponse {
 // Rename the hook to reflect its output
 export const useEnrichedMarketGroups = () => {
   // Update the return type to use EnrichedMarketGroup[]
-  return useQuery<EnrichedMarketGroup[]>({ // Ensure this matches the actual return
+  return useQuery<EnrichedMarketGroup[]>({
+    // Ensure this matches the actual return
     queryKey: ['enrichedMarketGroups'], // Reverted queryKey
     queryFn: async () => {
       // Create a lookup map for focus areas using their ID (which matches category slug)
@@ -296,25 +296,26 @@ export const useEnrichedMarketGroups = () => {
         });
       });
 
-      // --- Fetch initial market group data --- 
+      // --- Fetch initial market group data ---
       const { data } = await foilApi.post('/graphql', {
-        query: print(MARKETS_QUERY), 
+        query: print(MARKETS_QUERY),
       });
 
       if (!data || !data.marketGroups) {
         console.error(
           '[useEnrichedMarketGroups] No market groups data received from API or data structure invalid.'
         );
-        return []; 
+        return [];
       }
-      
-      // --- Process market groups (enrichment only) --- 
-      const enrichedMarketGroups = data.marketGroups.map(
-        (marketGroup: MarketGroupApiResponse): EnrichedMarketGroup => { // Return EnrichedMarketGroup
+
+      // --- Process market groups (enrichment only) ---
+      return data.marketGroups.map(
+        (marketGroup: MarketGroupApiResponse): EnrichedMarketGroup => {
+          // Return EnrichedMarketGroup
           let categoryInfo: Category;
           // ... (category enrichment logic - keep as is) ...
           if (marketGroup.category) {
-            const focusAreaData = focusAreaMap.get(marketGroup.category.slug); 
+            const focusAreaData = focusAreaMap.get(marketGroup.category.slug);
             categoryInfo = {
               id: marketGroup.category.id,
               name: focusAreaData?.name || marketGroup.category.name,
@@ -332,7 +333,8 @@ export const useEnrichedMarketGroups = () => {
             };
           }
 
-          const mappedMarkets = marketGroup.markets.map((market: any) => ({ // Type needs checking
+          const mappedMarkets = marketGroup.markets.map((market: any) => ({
+            // Type needs checking
             ...market,
             claimStatement: market.marketParams?.claimStatement,
           }));
@@ -346,8 +348,6 @@ export const useEnrichedMarketGroups = () => {
           };
         }
       );
-
-      return enrichedMarketGroups;
     },
     // Consider adding staleTime or gcTime if needed
   });

@@ -23,16 +23,8 @@ import { useMutation } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import type React from 'react';
 import { useState, useEffect } from 'react';
-import { parseAbiItem, decodeEventLog, isAddress, zeroAddress } from 'viem'; // Import values separately
-import type {
-  // Keep type imports separate
-  AbiEvent,
-  Address,
-} from 'viem';
-import {
-  useAccount,
-  useChainId,
-} from 'wagmi';
+import { isAddress } from 'viem';
+import { useAccount, useChainId } from 'wagmi';
 import { z } from 'zod'; // Import zod
 
 // Import FOCUS_AREAS
@@ -41,83 +33,6 @@ import {
   FOCUS_AREAS,
   DEFAULT_FOCUS_AREA,
 } from '../../lib/constants/focusAreas';
-
-// --- Import useMutation ---
-
-// Use root export for Button, Input, Label
-// Use direct paths for Card, Alert, Separator as they aren't in root index.ts
-
-// ABI for the MarketGroupFactory contract
-const marketGroupFactoryAbi = [
-  {
-    type: 'function',
-    name: 'cloneAndInitializeMarketGroup',
-    inputs: [
-      { name: 'owner', type: 'address', internalType: 'address' },
-      { name: 'collateralAsset', type: 'address', internalType: 'address' },
-      { name: 'feeCollectors', type: 'address[]', internalType: 'address[]' },
-      { name: 'callbackRecipient', type: 'address', internalType: 'address' },
-      { name: 'minTradeSize', type: 'uint256', internalType: 'uint256' },
-      {
-        name: 'marketParams',
-        type: 'tuple',
-        internalType: 'struct IFoilStructs.MarketParams',
-        components: [
-          { name: 'feeRate', type: 'uint24', internalType: 'uint24' },
-          { name: 'assertionLiveness', type: 'uint64', internalType: 'uint64' },
-          { name: 'bondAmount', type: 'uint256', internalType: 'uint256' },
-          { name: 'bondCurrency', type: 'address', internalType: 'address' },
-          {
-            name: 'uniswapPositionManager',
-            type: 'address',
-            internalType: 'address',
-          },
-          {
-            name: 'uniswapSwapRouter',
-            type: 'address',
-            internalType: 'address',
-          },
-          { name: 'uniswapQuoter', type: 'address', internalType: 'address' },
-          {
-            name: 'optimisticOracleV3',
-            type: 'address',
-            internalType: 'address',
-          },
-        ],
-      },
-      { name: 'nonce', type: 'uint256', internalType: 'uint256' },
-    ],
-    outputs: [
-      { name: '', type: 'address', internalType: 'address' },
-      { name: '', type: 'bytes', internalType: 'bytes' },
-    ],
-    stateMutability: 'nonpayable',
-  },
-  {
-    type: 'event',
-    name: 'MarketGroupInitialized',
-    inputs: [
-      {
-        name: 'marketGroup',
-        type: 'address',
-        indexed: true,
-        internalType: 'address',
-      },
-      {
-        name: 'returnData',
-        type: 'bytes',
-        indexed: false,
-        internalType: 'bytes',
-      },
-    ],
-    anonymous: false,
-  },
-] as const; // Use 'as const' for stricter typing with wagmi/viem
-
-// Event ABI item for parsing logs
-const marketGroupInitializedEvent = parseAbiItem(
-  'event MarketGroupInitialized(address indexed sender,address indexed marketGroup,uint256 nonce)'
-) as AbiEvent; // Assert type for decodeEventLog
 
 interface MarketParamsInput {
   feeRate: string;
@@ -215,10 +130,6 @@ const apiSchema = baseSchema.extend({
   baseTokenName: z.string().trim().min(1, 'Base Token Name is required'),
   quoteTokenName: z.string().trim().min(1, 'Quote Token Name is required'),
   factoryAddress: z.string().refine(isAddress, 'Invalid Factory Address'), // Assuming needed for API too, adjust if not
-});
-
-const deploymentSchema = baseSchema.extend({
-  factoryAddress: z.string().refine(isAddress, 'Invalid Factory Address'),
 });
 // --- End Zod Schemas ---
 
@@ -653,18 +564,18 @@ const CreateMarketGroupDialog = () => {
 
         {/* --- Remove Flex Container for Buttons, only one button remains --- */}
         {/* <div className="flex gap-4 w-full"> */}
-          <Button
-            type="submit"
-            disabled={createMarketGroupMutation.isPending} // Use mutation pending state
-            className="w-full mb-4" // Make button full width
-          >
-            {createMarketGroupMutation.isPending && (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            {getButtonText()}
-          </Button>
-          {/* --- Remove Deploy Button --- */}
-          {/* <Button
+        <Button
+          type="submit"
+          disabled={createMarketGroupMutation.isPending} // Use mutation pending state
+          className="w-full mb-4" // Make button full width
+        >
+          {createMarketGroupMutation.isPending && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
+          {getButtonText()}
+        </Button>
+        {/* --- Remove Deploy Button --- */}
+        {/* <Button
             type="button" // Important: prevent form submission
             onClick={handleDeploy}
             disabled={isWritePending || isConfirming} // Disable during write or confirmation
@@ -675,12 +586,14 @@ const CreateMarketGroupDialog = () => {
             )}
             Deploy Market Group
           </Button> */}
-          {/* --- End New Deploy Button --- */}
+        {/* --- End New Deploy Button --- */}
         {/* </div> */}
       </form>
 
-      {/* Results and Errors */} 
-      <div className="space-y-4 mt-4"> {/* Added margin-top */} 
+      {/* Results and Errors */}
+      <div className="space-y-4 mt-4">
+        {' '}
+        {/* Added margin-top */}
         {/* Display mutation success message (optional) */}
         {createMarketGroupMutation.isSuccess && (
           <Alert variant="default">
@@ -695,7 +608,6 @@ const CreateMarketGroupDialog = () => {
             </AlertDescription>
           </Alert>
         )}
-
         {/* Display form validation errors or mutation errors */}
         {(formError || createMarketGroupMutation.isError) && (
           <Alert variant="destructive">
@@ -713,10 +625,8 @@ const CreateMarketGroupDialog = () => {
             </AlertDescription>
           </Alert>
         )}
-
         {/* Remove wagmi results */}
         {/* {hash && (...)} */}
-
         {/* Remove deployment success/issue alerts */}
         {/* {isSuccess && createdMarketGroup && (...)} */}
         {/* {isSuccess && !createdMarketGroup && formError && (...)} */}

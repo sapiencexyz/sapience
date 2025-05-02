@@ -9,38 +9,42 @@ import {
   DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
-import { Loader2 } from 'lucide-react';
 import type { Address } from 'viem';
 
-import { useEnrichedMarketGroups, type EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
+import {
+  useEnrichedMarketGroups,
+  type EnrichedMarketGroup,
+} from '~/hooks/graphql/useMarketGroups';
 import { useMarketGroupLatestEpoch } from '~/hooks/wagmi/useMarketGroupLatestEpoch';
 
 import CreateMarketDialog from './CreateMarketDialog';
 import CreateMarketGroupDialog from './CreateMarketGroupDialog';
-import SettleMarketDialog from './SettleMarketDialog';
-import MarketGroupDeployButton from './MarketGroupDeployButton';
 import MarketDeployButton from './MarketDeployButton';
+import MarketGroupDeployButton from './MarketGroupDeployButton';
+import SettleMarketDialog from './SettleMarketDialog';
 
-const MarketGroupHeaderDetails: React.FC<{ group: EnrichedMarketGroup; latestEpochId?: bigint }> = ({ group, latestEpochId }) => {
+const MarketGroupHeaderDetails: React.FC<{
+  group: EnrichedMarketGroup;
+  latestEpochId?: bigint;
+}> = ({ group, latestEpochId }) => {
   return (
     <div className="text-right text-sm text-gray-500">
       <div>Chain ID: {group.chainId}</div>
       <div>Address: {group.address}</div>
       {group.address && (
-         <div>
-           Latest Epoch: {latestEpochId !== undefined ? latestEpochId.toString() : 'N/A'}
-         </div>
+        <div>
+          Latest Epoch:{' '}
+          {latestEpochId !== undefined ? latestEpochId.toString() : 'N/A'}
+        </div>
       )}
     </div>
   );
 };
 
-const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({ group }) => {
-  const { 
-    latestEpochId, 
-    isLoading: isLoadingEpoch, 
-    error: epochError 
-  } = useMarketGroupLatestEpoch(
+const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
+  group,
+}) => {
+  const { latestEpochId } = useMarketGroupLatestEpoch(
     group.address as Address,
     group.chainId
   );
@@ -52,10 +56,13 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({ group 
   };
 
   return (
-    <div key={group.address || group.id} className="border rounded-lg shadow-sm">
+    <div className="border rounded-lg shadow-sm">
       <header className="flex items-center justify-between p-4 border-b bg-gray-50 rounded-t-lg">
         <h2 className="text-lg font-semibold">
-          {group.question || `Group: ${group.address || `Draft ID ${group.id}`}`}
+          {group.question ||
+            (group.address
+              ? `Group: ${group.address}`
+              : `Group: Draft ID ${group.id}`)}
         </h2>
         <MarketGroupHeaderDetails group={group} latestEpochId={latestEpochId} />
         {group.address ? (
@@ -69,7 +76,10 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({ group 
               <DialogHeader>
                 <DialogTitle>Add New Market to Group</DialogTitle>
               </DialogHeader>
-              <CreateMarketDialog chainId={group.chainId} marketGroupAddress={group.address} />
+              <CreateMarketDialog
+                chainId={group.chainId}
+                marketGroupAddress={group.address}
+              />
             </DialogContent>
           </Dialog>
         ) : (
@@ -81,8 +91,7 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({ group 
           group.markets
             .sort((a, b) => b.endTimestamp - a.endTimestamp)
             .map((market) => {
-              const isFuture =
-                market.endTimestamp * 1000 > Date.now();
+              const isFuture = market.endTimestamp * 1000 > Date.now();
               let buttonText = 'Settle';
               let buttonDisabled = false;
 
@@ -96,8 +105,9 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({ group 
 
               const marketId = market.marketId ? Number(market.marketId) : 0;
               const currentEpochId = latestEpochId ? Number(latestEpochId) : 0;
-              const shouldShowDeployButton = marketId > currentEpochId && 
-                !!market.startingSqrtPriceX96 && 
+              const shouldShowDeployButton =
+                marketId > currentEpochId &&
+                !!market.startingSqrtPriceX96 &&
                 !!market.claimStatement;
 
               return (
@@ -106,24 +116,28 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({ group 
                   className="flex items-center justify-between py-2"
                 >
                   <span className="font-medium">
-                    ID: {market.marketId || market.id} - {market.question || 'No question available'}
+                    ID: {market.marketId || market.id} -{' '}
+                    {market.question || 'No question available'}
                   </span>
                   <div className="flex items-center space-x-4">
                     <span className="text-sm text-gray-500">
                       ends {formatTimestamp(market.endTimestamp)}
                     </span>
-                    {group.address && (
-                      shouldShowDeployButton ? (
+                    {group.address &&
+                      (shouldShowDeployButton ? (
                         <MarketDeployButton
                           market={{
                             id: market.id,
                             marketId: market.marketId || 0,
                             startTimestamp: market.startTimestamp,
                             endTimestamp: market.endTimestamp,
-                            startingSqrtPriceX96: market.startingSqrtPriceX96 || '',
-                            baseAssetMinPriceTick: market.baseAssetMinPriceTick || 0,
-                            baseAssetMaxPriceTick: market.baseAssetMaxPriceTick || 0,
-                            poolAddress: market.poolAddress,
+                            startingSqrtPriceX96:
+                              market.startingSqrtPriceX96 || '',
+                            baseAssetMinPriceTick:
+                              market.baseAssetMinPriceTick || 0,
+                            baseAssetMaxPriceTick:
+                              market.baseAssetMaxPriceTick || 0,
+                            poolAddress: market.poolAddress ?? null,
                             claimStatement: market.claimStatement || '',
                           }}
                           marketGroupAddress={group.address}
@@ -146,8 +160,7 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({ group 
                             />
                           </DialogContent>
                         </Dialog>
-                      )
-                    )}
+                      ))}
                   </div>
                 </div>
               );
@@ -191,7 +204,10 @@ const Admin = () => {
         {marketGroups && marketGroups.length > 0 ? (
           <div className="space-y-8">
             {marketGroups.map((group) => (
-              <MarketGroupContainer key={group.address || group.id} group={group} />
+              <MarketGroupContainer
+                key={group.address || group.id}
+                group={group}
+              />
             ))}
           </div>
         ) : (

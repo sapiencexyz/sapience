@@ -99,48 +99,34 @@ async function handleMarketGroupInitialized(
   }
 }
 
-export async function startIndexingAndWatchingMarketGroups(chainId: number) {
+/**
+ * Sets up a watcher for a specific factory address to monitor MarketGroupInitialized events.
+ * Can be called when a new factory address is detected in the system.
+ */
+export async function watchFactoryAddress(
+  chainId: number,
+  factoryAddress: string
+) {
+  console.log(
+    `Setting up watcher for factory address ${factoryAddress} on chain ${chainId}`
+  );
+
   const client = getProviderForChain(chainId);
 
-  const marketGroups = await marketGroupRepository.find({
-    where: { chainId },
-    select: [
-      'id',
-      'address',
-      'factoryAddress',
-      'initializationNonce',
-      'chainId',
-    ],
-    relations: ['marketParams'],
-  });
-
-  console.log(
-    `Found ${marketGroups.length} existing market groups for chainId ${chainId}. Starting indexing...`
-  );
-  for (const marketGroup of marketGroups) {
-    if (
-      marketGroup.address &&
-      marketGroup.address !== '0x0000000000000000000000000000000000000000'
-    ) {
-      await startIndexingForMarketGroup(marketGroup, client);
-    }
+  // Check if the factory address is valid
+  if (
+    !factoryAddress ||
+    factoryAddress === '0x0000000000000000000000000000000000000000'
+  ) {
+    console.error(`Invalid factory address ${factoryAddress}`);
+    return;
   }
 
-  const factoryAddresses = [
-    ...new Set(
-      marketGroups
-        .map((mg) => mg.factoryAddress)
-        .filter((addr): addr is string => !!addr)
-    ),
-  ];
-  console.log(
-    `Found ${factoryAddresses.length} unique factory addresses for chainId ${chainId}. Setting up watchers...`
-  );
-
-  factoryAddresses.forEach((factoryAddress) => {
+  try {
     console.log(
       `Watching MarketGroupInitialized events on factory ${factoryAddress}`
     );
+
     client.watchContractEvent({
       address: factoryAddress as `0x${string}`,
       abi: marketGroupFactoryAbi as Abi,
@@ -180,7 +166,61 @@ export async function startIndexingAndWatchingMarketGroups(chainId: number) {
         );
       },
     });
+
+    console.log(
+      `Watcher setup complete for factory ${factoryAddress} on chain ${chainId}`
+    );
+  } catch (error) {
+    console.error(
+      `Error setting up watcher for factory ${factoryAddress} on chain ${chainId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
+export async function startIndexingAndWatchingMarketGroups(chainId: number) {
+  const client = getProviderForChain(chainId);
+
+  const marketGroups = await marketGroupRepository.find({
+    where: { chainId },
+    select: [
+      'id',
+      'address',
+      'factoryAddress',
+      'initializationNonce',
+      'chainId',
+    ],
+    relations: ['marketParams'],
   });
+
+  console.log(
+    `Found ${marketGroups.length} existing market groups for chainId ${chainId}. Starting indexing...`
+  );
+  for (const marketGroup of marketGroups) {
+    if (
+      marketGroup.address &&
+      marketGroup.address !== '0x0000000000000000000000000000000000000000'
+    ) {
+      await startIndexingForMarketGroup(marketGroup, client);
+    }
+  }
+
+  const factoryAddresses = [
+    ...new Set(
+      marketGroups
+        .map((mg) => mg.factoryAddress)
+        .filter((addr): addr is string => !!addr)
+    ),
+  ];
+  console.log(
+    `Found ${factoryAddresses.length} unique factory addresses for chainId ${chainId}. Setting up watchers...`
+  );
+
+  // Use the new watchFactoryAddress function for each factory
+  for (const factoryAddress of factoryAddresses) {
+    await watchFactoryAddress(chainId, factoryAddress);
+  }
 
   console.log(
     `Initialization and watching setup complete for chainId ${chainId}.`
