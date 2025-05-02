@@ -1,5 +1,5 @@
 {
-  "abi": [
+"abi": [
     {
       "name": "facets",
       "type": "function",
@@ -695,22 +695,6 @@
     },
     {
       "type": "error",
-      "name": "OnlyInitializer",
-      "inputs": [
-        {
-          "name": "sender",
-          "type": "address",
-          "internalType": "address"
-        },
-        {
-          "name": "initializer",
-          "type": "address",
-          "internalType": "address"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "OnlyOwner",
       "inputs": []
     },
@@ -732,19 +716,8 @@
     },
     {
       "type": "error",
-      "name": "StartTimeTooEarly",
-      "inputs": [
-        {
-          "name": "startTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "blockTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
+      "name": "StartTimeCannotBeZero",
+      "inputs": []
     },
     {
       "type": "error",
@@ -2360,6 +2333,11 @@
       ]
     },
     {
+      "type": "constructor",
+      "inputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
       "type": "function",
       "name": "approve",
       "inputs": [
@@ -2871,6 +2849,11 @@
               "name": "assertionId",
               "type": "bytes32",
               "internalType": "bytes32"
+            },
+            {
+              "name": "claimStatement",
+              "type": "bytes",
+              "internalType": "bytes"
             }
           ]
         },
@@ -3436,6 +3419,18 @@
           "type": "int256",
           "indexed": false,
           "internalType": "int256"
+        },
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionOwner",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
         }
       ],
       "anonymous": false
