@@ -11,11 +11,11 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import type { Address } from 'viem';
 
+import { useMarketGroupLatestEpoch } from '~/hooks/contract/useMarketGroupLatestEpoch';
 import {
   useEnrichedMarketGroups,
   type EnrichedMarketGroup,
 } from '~/hooks/graphql/useMarketGroups';
-import { useMarketGroupLatestEpoch } from '~/hooks/wagmi/useMarketGroupLatestEpoch';
 
 import CreateMarketDialog from './CreateMarketDialog';
 import CreateMarketGroupDialog from './CreateMarketGroupDialog';

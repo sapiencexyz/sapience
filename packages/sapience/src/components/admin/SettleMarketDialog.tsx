@@ -19,8 +19,8 @@ interface MarketParams {
   bondAmount: bigint;
   bondCurrency: `0x${string}`;
   feeRate: number;
-  optimisticOracleV3: string;
-  claimStatement: string;
+  optimisticOracleV3: `0x${string}`;
+  claimStatement: string; // Note: claimStatement is part of createEpoch, not MarketParams
   uniswapPositionManager: `0x${string}`;
   uniswapQuoter: `0x${string}`;
   uniswapSwapRouter: `0x${string}`;
@@ -152,11 +152,7 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
   const [isApproving, setIsApproving] = useState(false);
 
   // 1. Get the ABI using the hook
-  const {
-    abi: foilAbi,
-    loading: isLoadingAbi,
-    error: abiError,
-  } = useFoilAbi(marketGroup.chainId);
+  const { abi: foilAbi } = useFoilAbi();
 
   // 2. Fetch market data using the ABI
   const {
@@ -178,8 +174,11 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
     },
   });
 
-  // Extract data (handle potential undefined result)
-  const marketParams = marketViewResult?.[4] as MarketParams | undefined; // Cast to the defined type
+  // Assert the expected structure of the result before accessing the index
+  const typedMarketViewResult = marketViewResult as
+    | [unknown, unknown, unknown, unknown, MarketParams]
+    | undefined;
+  const marketParams = typedMarketViewResult?.[4];
   const bondCurrency = marketParams?.bondCurrency;
   const bondAmount = marketParams?.bondAmount;
 
@@ -244,10 +243,8 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
 
   // Combined loading and error states
   const isLoading =
-    isLoadingAbi ||
-    isLoadingMarketData ||
-    (!!connectedAddress && isLoadingAllowance); // Check connectedAddress existence
-  const error = abiError || marketDataError || allowanceError;
+    isLoadingMarketData || (!!connectedAddress && isLoadingAllowance); // Check connectedAddress existence
+  const error = marketDataError || allowanceError;
 
   const requiresApproval =
     bondAmount !== undefined &&

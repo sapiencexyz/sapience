@@ -13,7 +13,7 @@ export const useMarketGroupLatestEpoch = (
   marketGroupAddress?: Address,
   chainId?: number
 ) => {
-  const { abi, loading: abiLoading, error: abiError } = useFoilAbi(chainId);
+  const { abi } = useFoilAbi();
 
   const {
     data: latestEpochData,
@@ -40,8 +40,8 @@ export const useMarketGroupLatestEpoch = (
 
   return {
     latestEpochId, // bigint | undefined
-    isLoading: isReadingEpoch || abiLoading,
-    error: readError || abiError,
+    isLoading: isReadingEpoch,
+    error: readError,
     refetch: refetchLatestEpoch, // Optionally return refetch function
   };
 };

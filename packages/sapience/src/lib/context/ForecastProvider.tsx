@@ -1,7 +1,7 @@
 import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
 import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
-import type { Address } from 'viem';
+import type { Address, Abi } from 'viem';
 
 import type { UsePositionsResult } from '~/hooks/contract';
 import {
@@ -29,7 +29,7 @@ interface ForecastContextType {
   isLoadingMarketContract: boolean;
 
   // ABI data
-  abi: any;
+  abi: Abi;
 
   // Market token details
   collateralAssetTicker: string;
@@ -74,7 +74,7 @@ export function ForecastProvider({
     numericMarketId,
   } = useMarket({ chainShortName, marketId });
   // Get ABI for contracts
-  const { abi } = useFoilAbi(chainId);
+  const { abi } = useFoilAbi();
 
   // Get market data from the contract
   const {
@@ -91,7 +91,7 @@ export function ForecastProvider({
   const { tickSpacing, isLoading: isLoadingTickSpacing } = useMarketTickSpacing(
     {
       marketAddress: marketAddress as Address,
-      abi,
+      abi: abi as any,
       chainId,
       enabled: !!marketAddress && !!abi,
     }
@@ -107,7 +107,7 @@ export function ForecastProvider({
   } = usePositions({
     marketAddress: marketAddress as `0x${string}`,
     chainId,
-    foilAbi: abi,
+    foilAbi: abi as any,
     marketId,
   });
 
