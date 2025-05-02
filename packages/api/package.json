@@ -8,11 +8,12 @@
   "scripts": {
     "compile": "tsc",
     "build": "tsc && npm run sentry:sourcemaps",
-    "dev": "pnpm migration:run && concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\"",
+    "dev": "pnpm migration:run && concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\" \"pnpm run dev:codegen\"",
     "dev:service": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/workers/worker.ts",
     "dev:worker:markets": "tsx watch src/workers/worker.ts markets-only",
     "dev:worker:resources": "tsx watch src/workers/worker.ts resources-only",
+    "dev:codegen": "graphql-codegen --config codegen.ts --watch",
     "start": "pnpm migration:run && concurrently \"pnpm run start:service\" \"pnpm run start:worker\"",
     "start:service": "pnpm migration:run && tsx src/server.ts",
     "start:worker": "pnpm migration:run && tsx src/workers/worker.ts",
