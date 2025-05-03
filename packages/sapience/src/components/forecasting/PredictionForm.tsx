@@ -644,6 +644,8 @@ const PredictionForm: React.FC<PredictionFormProps> = ({
         unitDisplay
       );
 
+      console.log('newPredictionValue', newPredictionValue);
+
       if (newPredictionValue !== currentPredictionValue) {
         return { ...prevFormData, predictionValue: newPredictionValue };
       }

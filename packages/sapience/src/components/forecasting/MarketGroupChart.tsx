@@ -3,18 +3,18 @@
 import type { MarketGroupType } from '@foil/ui/types/graphql';
 import { useMemo } from 'react'; // <-- Import useMemo
 import {
-  ResponsiveContainer,
+  CartesianGrid,
+  Line,
   LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  Line,
-  CartesianGrid,
 } from 'recharts';
 
-import LottieLoader from '../shared/LottieLoader';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { formatTimestamp, getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
+import LottieLoader from '../shared/LottieLoader';
 
 import ChartLegend from './ChartLegend';
 

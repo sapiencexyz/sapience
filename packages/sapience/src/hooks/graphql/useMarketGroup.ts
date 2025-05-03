@@ -1,14 +1,14 @@
 import { gql } from '@apollo/client';
-import type { MarketGroupType, MarketType } from '@foil/ui/types';
+import type { MarketType } from '@foil/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
+import type { Market, MarketGroup } from '../../lib/interfaces';
 import {
   findActiveMarkets,
   foilApi,
   getChainIdFromShortName,
-  getDisplayQuestion,
 } from '../../lib/utils/util';
 
 // GraphQL query to fetch market data
@@ -40,13 +40,13 @@ interface UseMarketGroupProps {
 }
 
 interface UseMarketGroupReturn {
-  marketData: MarketGroupType | null | undefined;
-  isLoadingMarket: boolean;
+  marketGroupData: MarketGroup;
+  isLoading: boolean;
   isSuccess: boolean;
-  displayQuestion: string;
-  currentMarketId: string | null;
-  activeMarkets: MarketType[];
+  activeMarkets: Market[];
   chainId: number;
+  isError: boolean;
+  marketType: MarketType;
 }
 
 export const useMarketGroup = ({
@@ -54,88 +54,55 @@ export const useMarketGroup = ({
   marketAddress,
 }: UseMarketGroupProps): UseMarketGroupReturn => {
   const chainId = getChainIdFromShortName(chainShortName);
-  const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
-  const [currentMarketId, setCurrentMarketId] = useState<string | null>(null);
-  const [activeMarkets, setActiveMarkets] = useState<MarketType[]>([]);
-
+  const [activeMarkets, setActiveMarkets] = useState<Market[]>([]);
+  const [marketType, setMarketType] = useState<MarketType>(MarketType.NUMERIC);
   const {
-    data: marketData,
-    isLoading: isLoadingMarket,
+    data: marketGroupData,
+    isLoading,
     isSuccess,
-  } = useQuery<MarketGroupType | { placeholder: true }>({
+    isError,
+  } = useQuery<MarketGroup>({
     // Type assertion needed for placeholder
     queryKey: ['marketGroup', chainId, marketAddress],
     queryFn: async () => {
-      if (!chainId || !marketAddress || chainId === 0) {
-        return { placeholder: true };
-      }
+      const response = await foilApi.post('/graphql', {
+        query: print(MARKET_GROUP_QUERY),
+        variables: { chainId, address: marketAddress },
+      });
+      const marketResponse = response.data?.marketGroup;
 
-      try {
-        const response = await foilApi.post('/graphql', {
-          query: print(MARKET_GROUP_QUERY),
-          variables: { chainId, address: marketAddress },
-        });
-        const marketResponse = response.data?.marketGroup;
-
-        if (!marketResponse) {
-          console.error('No market group data in response:', response.data);
-          return { placeholder: true };
-        }
-        return marketResponse as MarketGroupType;
-      } catch (error) {
-        console.error('Error fetching market group:', error);
-        return { placeholder: true };
+      if (!marketResponse) {
+        throw new Error('No market group data in response');
       }
+      return marketResponse as MarketGroup; // Use imported MarketGroup type
     },
     enabled: !!chainId && !!marketAddress && chainId !== 0,
     retry: 3,
     retryDelay: 1000,
   });
 
-  // Process market data to find active markets and set current market ID
   useEffect(() => {
-    // Only process if marketData is valid and not a placeholder
-    const currentlyActiveMarkets =
-      marketData && !('placeholder' in marketData)
-        ? findActiveMarkets(marketData)
-        : [];
-    setActiveMarkets(currentlyActiveMarkets as MarketType[]);
+    if (marketGroupData) {
+      const activeMarkets = findActiveMarkets(marketGroupData);
+      setActiveMarkets(activeMarkets);
 
-    if (currentlyActiveMarkets.length > 0) {
-      setCurrentMarketId(currentlyActiveMarkets[0].marketId.toString());
-    } else {
-      setCurrentMarketId(null);
+      if (activeMarkets.length > 1) {
+        setMarketType(MarketType.SINGLE_CHOICE);
+      } else if (marketGroupData.baseTokenName === 'Yes') {
+        setMarketType(MarketType.YES_NO);
+      } else {
+        setMarketType(MarketType.NUMERIC);
+      }
     }
-    // marketData is the dependency
-  }, [marketData]);
-
-  // Process and format the display question
-  useEffect(() => {
-    // Pass valid marketData or null to the utility function
-    const dataForQuestion =
-      marketData && !('placeholder' in marketData) ? marketData : null;
-    const question = getDisplayQuestion(
-      dataForQuestion,
-      activeMarkets,
-      isLoadingMarket,
-      'Loading question...'
-      // defaultErrorMessage is optional, defaults to 'This market question is not available'
-    );
-    setDisplayQuestion(question);
-    // Dependencies: marketData, activeMarkets, isLoadingMarket
-  }, [marketData, isLoadingMarket, activeMarkets]);
-
-  // Ensure marketData returned is not the placeholder
-  const finalMarketData =
-    marketData && !('placeholder' in marketData) ? marketData : null;
+  }, [marketGroupData]);
 
   return {
-    marketData: finalMarketData,
-    isLoadingMarket,
+    marketGroupData: marketGroupData as MarketGroup,
+    isLoading,
     isSuccess,
-    displayQuestion,
-    currentMarketId,
     activeMarkets,
     chainId,
+    isError,
+    marketType,
   };
 };
