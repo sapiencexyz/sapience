@@ -2,6 +2,7 @@ import {
   marketGroupRepository,
   categoryRepository,
   marketRepository,
+  resourceRepository,
 } from '../db';
 import { Router } from 'express';
 import { Request, Response } from 'express';
@@ -27,6 +28,8 @@ router.post('/create-market-group', async (req: Request, res: Response) => {
       collateralAsset,
       minTradeSize,
       marketParams,
+      resourceId,
+      isCumulative,
       markets,
     } = req.body;
 
@@ -77,6 +80,19 @@ router.post('/create-market-group', async (req: Request, res: Response) => {
         .json({ message: `Category with slug ${categorySlug} not found` });
     }
 
+    // Find resource if resourceId is provided
+    let resource = null;
+    if (resourceId) {
+      resource = await resourceRepository.findOne({
+        where: { id: resourceId },
+      });
+      if (!resource) {
+        return res
+          .status(404)
+          .json({ message: `Resource with id ${resourceId} not found` });
+      }
+    }
+
     // Create market group
     const newMarketGroup = new MarketGroup();
     newMarketGroup.chainId = parseInt(chainId, 10);
@@ -90,6 +106,16 @@ router.post('/create-market-group', async (req: Request, res: Response) => {
     newMarketGroup.collateralAsset = collateralAsset;
     newMarketGroup.minTradeSize = minTradeSize;
     newMarketGroup.marketParams = marketParams;
+    
+    // Set resource if provided
+    if (resource) {
+      newMarketGroup.resource = resource;
+      
+      // Set isCumulative if provided with a resource
+      if (isCumulative !== undefined) {
+        newMarketGroup.isCumulative = isCumulative;
+      }
+    }
 
     const savedMarketGroup = await marketGroupRepository.save(newMarketGroup);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Input, Label } from '@foil/ui';
+import { Button, Input, Label, useResources } from '@foil/ui';
 import {
   Accordion,
   AccordionContent,
@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@foil/ui/components/ui/select';
+import { Switch } from '@foil/ui/components/ui/switch';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle, Loader2, Plus, Trash } from 'lucide-react';
@@ -97,6 +98,8 @@ interface CreateCombinedPayload {
   baseTokenName: string;
   quoteTokenName: string;
   factoryAddress: string;
+  resourceId?: number;
+  isCumulative?: boolean;
   markets: MarketInput[];
 }
 
@@ -207,6 +210,8 @@ const combinedSchema = baseSchema.extend({
   baseTokenName: z.string().trim().min(1, 'Base Token Name is required'),
   quoteTokenName: z.string().trim().min(1, 'Quote Token Name is required'),
   factoryAddress: z.string().refine(isAddress, 'Invalid Factory Address'),
+  resourceId: z.number().optional(),
+  isCumulative: z.boolean().optional(),
   markets: z.array(marketSchema).min(1, 'At least one market is required'),
 });
 
@@ -235,6 +240,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   const currentChainId = useChainId();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: resources } = useResources();
 
   // Market group state
   const [chainId, setChainId] = useState<string>('8453');
@@ -269,6 +275,10 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   );
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
   const [quoteTokenName, setQuoteTokenName] = useState<string>('sUSDS');
+  const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
+    null
+  );
+  const [isCumulative, setIsCumulative] = useState<boolean>(false);
 
   // Markets state
   const [markets, setMarkets] = useState<MarketInput[]>([createEmptyMarket(1)]);
@@ -364,6 +374,12 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       category: selectedCategory,
       baseTokenName,
       quoteTokenName,
+      ...(selectedResourceId
+        ? {
+            resourceId: selectedResourceId,
+            isCumulative,
+          }
+        : {}),
       markets,
     };
 
@@ -453,6 +469,12 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       baseTokenName,
       quoteTokenName,
       factoryAddress,
+      ...(selectedResourceId
+        ? {
+            resourceId: selectedResourceId,
+            isCumulative,
+          }
+        : {}),
       markets,
     };
 
@@ -524,6 +546,45 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             />
           </div>
         </div>
+
+        {/* Resource Selection - Full width, under token names */}
+        <div className="space-y-2">
+          <Label htmlFor="resource">Index</Label>
+          <Select
+            value={selectedResourceId?.toString() || 'none'}
+            onValueChange={(value) =>
+              setSelectedResourceId(
+                value !== 'none' ? parseInt(value, 10) : null
+              )
+            }
+          >
+            <SelectTrigger id="resource">
+              <SelectValue placeholder="Select a resource (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {resources?.map((resource) => (
+                <SelectItem key={resource.id} value={resource.id.toString()}>
+                  {resource.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* isCumulative toggle - only shown when a resource is selected */}
+        {selectedResourceId && (
+          <div className="flex items-center gap-2 py-2">
+            <Label htmlFor="isCumulative" className="font-medium">
+              Cumulative
+            </Label>
+            <Switch
+              id="isCumulative"
+              checked={isCumulative}
+              onCheckedChange={setIsCumulative}
+            />
+          </div>
+        )}
 
         {/* Market Group Configuration */}
         <Accordion type="single" collapsible className="w-full">
