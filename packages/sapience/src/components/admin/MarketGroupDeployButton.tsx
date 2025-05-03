@@ -284,7 +284,6 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       <DialogTrigger asChild>
         <Button
           size="sm"
-          variant="secondary"
           // Disable if already deployed (has address) or missing nonce/factory
           disabled={
             !!group.address ||
