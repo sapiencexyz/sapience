@@ -1,21 +1,11 @@
 import { Router } from 'express';
 import { mainnetPublicClient } from '../utils/utils';
 import { formatUnits } from 'viem';
+import { cryptoPriceRepository } from '../db';
+import { CryptoPrice } from '../models/CryptoPrice';
+import { MoreThan } from 'typeorm';
 
 export const router = Router();
-
-// This interface structures our cached crypto prices.
-interface PriceCache {
-  data: {
-    btc: number | null;
-    eth: number | null;
-    sol: number | null;
-  };
-  timestamp: number;
-}
-
-let cache: PriceCache | null = null;
-const CACHE_TTL = 60 * 1000; // 1 minute in milliseconds
 
 // Uniswap V3 pool addresses (all 0.05% fee tier).
 const USDC_ETH_POOL = '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640'; // USDC (6) / ETH (18)
@@ -89,14 +79,46 @@ async function getUniswapPrice(
   }
 }
 
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+
 // This route returns the BTC, ETH, and SOL prices in USD (USDC).
 router.get('/', async (req, res) => {
   try {
-    // If our cached data is still valid, respond with it.
-    if (cache && Date.now() - cache.timestamp < CACHE_TTL) {
-      return res.json(cache.data);
+    const cutoffTime = new Date(Date.now() - CACHE_TTL);
+
+    // Fetch latest prices for each ticker from the DB if they are recent enough
+    const [cachedBtc, cachedEth, cachedSol] = await Promise.all([
+      cryptoPriceRepository.findOne({
+        where: { ticker: 'btc', timestamp: MoreThan(cutoffTime) },
+        order: { timestamp: 'DESC' },
+      }),
+      cryptoPriceRepository.findOne({
+        where: { ticker: 'eth', timestamp: MoreThan(cutoffTime) },
+        order: { timestamp: 'DESC' },
+      }),
+      cryptoPriceRepository.findOne({
+        where: { ticker: 'sol', timestamp: MoreThan(cutoffTime) },
+        order: { timestamp: 'DESC' },
+      }),
+    ]);
+
+    const cachedPrices = {
+      btc: cachedBtc?.price ?? null,
+      eth: cachedEth?.price ?? null,
+      sol: cachedSol?.price ?? null,
+    };
+
+    // If we have all prices cached and they are recent enough, return them.
+    if (
+      cachedPrices.btc !== null &&
+      cachedPrices.eth !== null &&
+      cachedPrices.sol !== null
+    ) {
+      console.log('[USING DB CACHE]');
+      return res.json(cachedPrices);
     }
 
+    console.log('[FETCHING FRESH PRICES]');
     // Otherwise, fetch new prices from the pools.
     const [ethPrice, btcPrice, solEthPrice] = await Promise.all([
       // USDC/ETH price => invert to get ETH in terms of USDC.
@@ -120,30 +142,61 @@ router.get('/', async (req, res) => {
     ]);
 
     // Convert SOL price to USD by combining solEthPrice with ethPrice.
-    // The multiplier of 1e9 in the denominator is to match the actual decimal scaling
-    // used for SOL-based pools (since both tokens are 18 decimals, but we want
-    // canonical USD calculations).
-    const prices = {
+    const freshPrices = {
       eth: ethPrice,
       btc: btcPrice,
       sol:
         solEthPrice && ethPrice ? (1 / (solEthPrice * 1e9)) * ethPrice : null,
     };
 
-    // Update our cache with fresh data.
-    cache = {
-      data: prices,
-      timestamp: Date.now(),
-    };
+    // Update DB cache with fresh data, only saving non-null prices
+    const pricesToSave: Partial<CryptoPrice>[] = [];
+    if (freshPrices.btc !== null) {
+      pricesToSave.push({ ticker: 'btc', price: freshPrices.btc });
+    }
+    if (freshPrices.eth !== null) {
+      pricesToSave.push({ ticker: 'eth', price: freshPrices.eth });
+    }
+    if (freshPrices.sol !== null) {
+      pricesToSave.push({ ticker: 'sol', price: freshPrices.sol });
+    }
 
-    return res.json(prices);
+    if (pricesToSave.length > 0) {
+      await cryptoPriceRepository.save(pricesToSave);
+      console.log('[DB CACHE UPDATED]');
+    }
+
+    return res.json(freshPrices);
   } catch (error) {
     console.error('[ERROR IN CRYPTO PRICES ROUTE]', error);
 
-    // If there's an older cache, return it as a fallback.
-    if (cache) {
-      console.log('[USING STALE CACHE AS FALLBACK]');
-      return res.json(cache.data);
+    // Fallback: Try to fetch the latest prices from DB regardless of timestamp as a last resort
+    try {
+      const [lastBtc, lastEth, lastSol] = await Promise.all([
+        cryptoPriceRepository.findOne({
+          where: { ticker: 'btc' },
+          order: { timestamp: 'DESC' },
+        }),
+        cryptoPriceRepository.findOne({
+          where: { ticker: 'eth' },
+          order: { timestamp: 'DESC' },
+        }),
+        cryptoPriceRepository.findOne({
+          where: { ticker: 'sol' },
+          order: { timestamp: 'DESC' },
+        }),
+      ]);
+
+      if (lastBtc || lastEth || lastSol) {
+        console.log('[USING STALE DB CACHE AS FALLBACK]');
+        return res.json({
+          btc: lastBtc?.price ?? null,
+          eth: lastEth?.price ?? null,
+          sol: lastSol?.price ?? null,
+        });
+      }
+    } catch (dbError) {
+      console.error('[ERROR FETCHING STALE DB CACHE]', dbError);
     }
 
     return res.status(500).json({ error: 'Error fetching crypto prices' });
