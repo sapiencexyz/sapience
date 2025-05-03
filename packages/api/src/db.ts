@@ -10,6 +10,7 @@ import { RenderJob } from './models/RenderJob';
 import { CollateralTransfer } from './models/CollateralTransfer';
 import { Resource } from './models/Resource';
 import { Category } from './models/Category';
+import { CryptoPrice } from './models/CryptoPrice';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path, { dirname } from 'path';
@@ -41,6 +42,7 @@ const devDataSource: DataSource = new DataSource({
     CollateralTransfer,
     Resource,
     Category,
+    CryptoPrice,
   ],
 });
 
@@ -63,6 +65,7 @@ const postgresDataSource: DataSource = new DataSource({
     CollateralTransfer,
     Resource,
     Category,
+    CryptoPrice,
   ],
 });
 
@@ -94,5 +97,6 @@ export const renderJobRepository = dataSource.getRepository(RenderJob);
 export const collateralTransferRepository =
   dataSource.getRepository(CollateralTransfer);
 export const categoryRepository = dataSource.getRepository(Category);
+export const cryptoPriceRepository = dataSource.getRepository(CryptoPrice);
 
 export default dataSource;
