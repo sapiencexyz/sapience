@@ -2,6 +2,7 @@ import {
   marketGroupRepository,
   categoryRepository,
   marketRepository,
+  resourceRepository,
 } from '../db';
 import { Router } from 'express';
 import { Request, Response } from 'express';
@@ -12,12 +13,11 @@ import { watchFactoryAddress } from '../workers/jobs/indexMarkets';
 
 const router = Router();
 
-// Handler for POST /create-market-group/:nonce
-router.post(
-  '/create-market-group/:nonce',
-  async (req: Request, res: Response) => {
-    const { nonce } = req.params;
+// Handler for POST /create-market-group
+router.post('/create-market-group', async (req: Request, res: Response) => {
+  try {
     const {
+      nonce,
       chainId,
       question,
       category: categorySlug,
@@ -28,10 +28,34 @@ router.post(
       collateralAsset,
       minTradeSize,
       marketParams,
+      resourceId,
+      isCumulative,
+      markets,
     } = req.body;
 
-    // if the market group already exists (nonce + chainId + factoryAddress triplet), return HTTP 400 with a message
-    const marketGroup = await marketGroupRepository.findOne({
+    // Validate required market group fields
+    if (
+      !nonce ||
+      !chainId ||
+      !question ||
+      !categorySlug ||
+      !baseTokenName ||
+      !quoteTokenName ||
+      !factoryAddress ||
+      !owner ||
+      !collateralAsset ||
+      !minTradeSize ||
+      !marketParams ||
+      typeof marketParams !== 'object' ||
+      !markets ||
+      !Array.isArray(markets) ||
+      markets.length === 0
+    ) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Check if market group already exists
+    const existingMarketGroup = await marketGroupRepository.findOne({
       where: {
         chainId: parseInt(chainId, 10),
         factoryAddress: factoryAddress.toLowerCase(),
@@ -39,180 +63,144 @@ router.post(
       },
     });
 
-    if (marketGroup) {
+    if (existingMarketGroup) {
       return res.status(400).json({
         message:
           'Market group with the same nonce, chainId and factory address already exists',
       });
     }
 
-    try {
-      if (
-        !chainId ||
-        !question ||
-        !categorySlug ||
-        !baseTokenName ||
-        !quoteTokenName ||
-        !factoryAddress ||
-        !owner ||
-        !collateralAsset ||
-        !minTradeSize ||
-        !marketParams ||
-        typeof marketParams !== 'object'
-      ) {
-        return res.status(400).json({ message: 'Missing required fields' });
-      }
-
-      const category = await categoryRepository.findOne({
-        where: { slug: categorySlug },
-      });
-      if (!category) {
-        return res
-          .status(404)
-          .json({ message: `Category with slug ${categorySlug} not found` });
-      }
-
-      const newMarketGroup = new MarketGroup();
-      newMarketGroup.chainId = parseInt(chainId, 10);
-      newMarketGroup.question = question;
-      newMarketGroup.baseTokenName = baseTokenName;
-      newMarketGroup.quoteTokenName = quoteTokenName;
-      newMarketGroup.initializationNonce = nonce;
-      newMarketGroup.category = category;
-      newMarketGroup.factoryAddress = factoryAddress.toLowerCase();
-      newMarketGroup.owner = owner;
-      newMarketGroup.collateralAsset = collateralAsset;
-      newMarketGroup.minTradeSize = minTradeSize;
-      newMarketGroup.marketParams = marketParams;
-
-      const savedMarketGroup = await marketGroupRepository.save(newMarketGroup);
-
-      // Check if this is a new factory address for this chain
-      const existingFactoryAddresses = await marketGroupRepository
-        .createQueryBuilder('marketGroup')
-        .select('DISTINCT "factoryAddress"')
-        .where(
-          '"marketGroup"."chainId" = :chainId AND "marketGroup"."factoryAddress" = :factoryAddress',
-          {
-            chainId: parseInt(chainId, 10),
-            factoryAddress: factoryAddress.toLowerCase(),
-          }
-        )
-        .getRawMany();
-
-      // If this is a new factory address (count is exactly 1, meaning only our newly saved entry),
-      // set up a watcher for it
-      if (existingFactoryAddresses.length === 1) {
-        console.log(
-          `Setting up watcher for new factory address: ${factoryAddress.toLowerCase()}`
-        );
-        try {
-          // Set up a watcher for this new factory address
-          await watchFactoryAddress(
-            parseInt(chainId, 10),
-            factoryAddress.toLowerCase()
-          );
-        } catch (error) {
-          console.error(
-            `Error setting up watcher for new factory address: ${factoryAddress.toLowerCase()}`,
-            error
-          );
-          // Don't fail the creation of the market group if setting up the watcher fails
-        }
-      }
-
-      res.status(201).json(savedMarketGroup);
-    } catch (error) {
-      console.error('Error creating market group:', error);
-      let errorMessage = 'Internal Server Error';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      res.status(500).json({ message: errorMessage });
+    // Find category
+    const category = await categoryRepository.findOne({
+      where: { slug: categorySlug },
+    });
+    if (!category) {
+      return res
+        .status(404)
+        .json({ message: `Category with slug ${categorySlug} not found` });
     }
-  }
-);
 
-// Handler for POST /create-market/:chainId/:address
-router.post(
-  '/create-market/:chainId/:address',
-  async (req: Request, res: Response) => {
-    const { address, chainId } = req.params;
-    const {
-      marketQuestion,
-      optionName,
-      startTime,
-      endTime,
-      startingSqrtPriceX96,
-      baseAssetMinPriceTick,
-      baseAssetMaxPriceTick,
-      claimStatement, // Add claimStatement to destructuring
-    } = req.body;
-
-    try {
-      const marketGroup = await marketGroupRepository.findOne({
-        where: { address, chainId: parseInt(chainId, 10) },
-        relations: ['markets'],
+    // Find resource if resourceId is provided
+    let resource = null;
+    if (resourceId) {
+      resource = await resourceRepository.findOne({
+        where: { id: resourceId },
       });
-
-      if (!marketGroup) {
+      if (!resource) {
         return res
           .status(404)
-          .json({ message: `Market Group with address ${address} not found` });
+          .json({ message: `Resource with id ${resourceId} not found` });
       }
+    }
 
-      // Update validation to include claimStatement and check others properly
+    // Create market group
+    const newMarketGroup = new MarketGroup();
+    newMarketGroup.chainId = parseInt(chainId, 10);
+    newMarketGroup.question = question;
+    newMarketGroup.baseTokenName = baseTokenName;
+    newMarketGroup.quoteTokenName = quoteTokenName;
+    newMarketGroup.initializationNonce = nonce;
+    newMarketGroup.category = category;
+    newMarketGroup.factoryAddress = factoryAddress.toLowerCase();
+    newMarketGroup.owner = owner;
+    newMarketGroup.collateralAsset = collateralAsset;
+    newMarketGroup.minTradeSize = minTradeSize;
+    newMarketGroup.marketParams = marketParams;
+    
+    // Set resource if provided
+    if (resource) {
+      newMarketGroup.resource = resource;
+      
+      // Set isCumulative if provided with a resource
+      if (isCumulative !== undefined) {
+        newMarketGroup.isCumulative = isCumulative;
+      }
+    }
+
+    const savedMarketGroup = await marketGroupRepository.save(newMarketGroup);
+
+    // Check for new factory address
+    const existingFactoryAddresses = await marketGroupRepository
+      .createQueryBuilder('marketGroup')
+      .select('DISTINCT "factoryAddress"')
+      .where(
+        '"marketGroup"."chainId" = :chainId AND "marketGroup"."factoryAddress" = :factoryAddress',
+        {
+          chainId: parseInt(chainId, 10),
+          factoryAddress: factoryAddress.toLowerCase(),
+        }
+      )
+      .getRawMany();
+
+    // Set up watcher for new factory address
+    if (existingFactoryAddresses.length === 1) {
+      console.log(
+        `Setting up watcher for new factory address: ${factoryAddress.toLowerCase()}`
+      );
+      try {
+        await watchFactoryAddress(
+          parseInt(chainId, 10),
+          factoryAddress.toLowerCase()
+        );
+      } catch (error) {
+        console.error(
+          `Error setting up watcher for new factory address: ${factoryAddress.toLowerCase()}`,
+          error
+        );
+      }
+    }
+
+    // Create markets
+    const savedMarkets = [];
+    for (let i = 0; i < markets.length; i++) {
+      const market = markets[i];
+      const {
+        marketQuestion,
+        optionName,
+        startTime,
+        endTime,
+        startingSqrtPriceX96,
+        baseAssetMinPriceTick,
+        baseAssetMaxPriceTick,
+        claimStatement,
+      } = market;
+
+      // Validate required market fields
       if (
         !marketQuestion ||
         !optionName ||
-        !claimStatement || // Validate claimStatement
-        startTime === undefined || // Keep using undefined checks for potentially 0 values
+        !claimStatement ||
+        startTime === undefined ||
         endTime === undefined ||
         !startingSqrtPriceX96 ||
         baseAssetMinPriceTick === undefined ||
         baseAssetMaxPriceTick === undefined
       ) {
-        return res
-          .status(400)
-          .json({ message: 'Missing required market fields' });
+        return res.status(400).json({
+          message: `Missing required fields for market ${i + 1}`,
+        });
       }
 
-      // Logic to determine nextMarketId remains the same
-      let nextMarketId = 1;
-      if (marketGroup.markets && marketGroup.markets.length > 0) {
-        const validMarketIds = marketGroup.markets
-          .map((m) => m.marketId)
-          .filter((id): id is number => typeof id === 'number' && !isNaN(id)); // Ensure type is number
-
-        if (validMarketIds.length > 0) {
-          const maxMarketId = Math.max(...validMarketIds);
-          nextMarketId = maxMarketId + 1;
-        }
-      }
-
-      // Remove salt generation
-      // const salt = `0x${crypto.randomBytes(18).toString('hex')}`;
-
+      // Create market
       const newMarket = new Market();
-      newMarket.marketGroup = marketGroup;
-      newMarket.marketId = nextMarketId;
+      newMarket.marketGroup = savedMarketGroup;
+      newMarket.marketId = i + 1;
       newMarket.question = marketQuestion;
       newMarket.optionName = optionName;
-      // --- Add the other fields ---
-      // Initialize marketParams if it doesn't exist (TypeORM should handle this, but safety first)
+
+      // Initialize marketParams if it doesn't exist
       if (!newMarket.marketParams) {
-        newMarket.marketParams = new MarketParams(); // Assuming MarketParams is the class name
+        newMarket.marketParams = new MarketParams();
       }
-      newMarket.marketParams.claimStatement = claimStatement; // Save to embedded params
-      // newMarket.salt = salt; // Remove saving salt
+      newMarket.marketParams.claimStatement = claimStatement;
+
       newMarket.startTimestamp = parseInt(startTime, 10);
       newMarket.endTimestamp = parseInt(endTime, 10);
       newMarket.startingSqrtPriceX96 = startingSqrtPriceX96;
       newMarket.baseAssetMinPriceTick = parseInt(baseAssetMinPriceTick, 10);
       newMarket.baseAssetMaxPriceTick = parseInt(baseAssetMaxPriceTick, 10);
-      // Initialize other fields as needed, or rely on defaults/null
+
+      // Initialize other fields
       newMarket.poolAddress = null;
       newMarket.settlementPriceD18 = null;
       newMarket.settled = null;
@@ -220,19 +208,24 @@ router.post(
       newMarket.maxPriceD18 = null;
 
       const savedMarket = await marketRepository.save(newMarket);
-
-      res.status(201).json(savedMarket);
-    } catch (error) {
-      console.error('Error creating market:', error);
-      let errorMessage = 'Internal Server Error';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-      res.status(500).json({ message: errorMessage });
+      savedMarkets.push(savedMarket);
     }
+
+    // Return the created market group and markets
+    return res.status(201).json({
+      marketGroup: savedMarketGroup,
+      markets: savedMarkets,
+    });
+  } catch (error) {
+    console.error('Error creating combined market group and markets:', error);
+    let errorMessage = 'Internal Server Error';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    return res.status(500).json({ message: errorMessage });
   }
-);
+});
 
 export { router };
