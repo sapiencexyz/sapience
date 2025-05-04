@@ -31,12 +31,12 @@ export const POSITIONS_QUERY = gql`
         settled
         settlementPriceD18
         question
+        optionName
         marketGroup {
           id
           chainId
           address
           question
-          optionNames
           collateralSymbol
           collateralDecimals
           baseTokenName
