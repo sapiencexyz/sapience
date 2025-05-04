@@ -88,7 +88,7 @@ const ForecastingDetailPage = () => {
   const router = useRouter();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
-  const [selectedView, setSelectedView] = useState<string>('Market');
+  const [selectedView, setSelectedView] = useState<string>('Predictions');
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
@@ -170,7 +170,7 @@ const ForecastingDetailPage = () => {
           {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col md:flex-row gap-12">
             {/* Left Column: Chart or List */}
-            <div className="w-full md:flex-1">
+            <div className="w-full md:flex-1 border border-border rounded-md">
               {/* Conditionally render Chart or List based on selectedView */}
               {selectedView === 'Market' && (
                 <MarketGroupChart
@@ -237,7 +237,7 @@ const ForecastingDetailPage = () => {
           </div>
 
           {/* Advanced View button positioned above MarketGroupSummary, aligned right */}
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end mb-4 ml-auto">
             <button
               type="button"
               onClick={(e) => {

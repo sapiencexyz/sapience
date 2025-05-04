@@ -157,7 +157,7 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
   }
 
   return (
-    <div className="h-full border border-muted rounded-md bg-background/50 overflow-hidden text-muted-foreground flex justify-center items-center">
+    <div className="h-full border border-muted rounded-md bg-background/50 overflow-hidden text-muted-foreground flex justify-center">
       {data.length === 0 ? (
         <div className="py-16">
           <div className="text-center text-base my-auto">
@@ -168,7 +168,7 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-muted/20">
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
