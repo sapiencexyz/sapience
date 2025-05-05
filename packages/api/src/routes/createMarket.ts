@@ -168,7 +168,6 @@ router.post('/create-market-group', async (req: Request, res: Response) => {
       // Validate required market fields
       if (
         !marketQuestion ||
-        !optionName ||
         !claimStatement ||
         startTime === undefined ||
         endTime === undefined ||
@@ -186,7 +185,7 @@ router.post('/create-market-group', async (req: Request, res: Response) => {
       newMarket.marketGroup = savedMarketGroup;
       newMarket.marketId = i + 1;
       newMarket.question = marketQuestion;
-      newMarket.optionName = optionName;
+      newMarket.optionName = optionName || null;
 
       // Initialize marketParams if it doesn't exist
       if (!newMarket.marketParams) {

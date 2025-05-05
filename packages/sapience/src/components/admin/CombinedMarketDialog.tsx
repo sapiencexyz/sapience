@@ -138,7 +138,7 @@ const marketParamsSchema = z.object({
 const marketSchema = z
   .object({
     marketQuestion: z.string().trim().min(1, 'Market Question is required'),
-    optionName: z.string().trim().min(1, 'Option Name is required'),
+    optionName: z.string().trim().optional(),
     claimStatement: z.string().trim().min(1, 'Claim Statement is required'),
     startTime: z.coerce
       .number()
@@ -791,7 +791,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                       onChange={(e) =>
                         handleMarketChange(index, 'optionName', e.target.value)
                       }
-                      required
                     />
                   </div>
                 </div>
