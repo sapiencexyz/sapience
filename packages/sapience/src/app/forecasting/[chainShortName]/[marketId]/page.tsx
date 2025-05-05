@@ -92,12 +92,10 @@ const ForecastContent = () => {
   // Handler for updating selected prices
   const handlePriceSelection = (line: LineType, selected: boolean) => {
     setSelectedPrices((prev) => {
-      const newState = {
+      return {
         ...prev,
         [line]: selected,
       };
-      console.log('[ForecastContent] handlePriceSelection called:', { line, selected, newState });
-      return newState;
     });
   };
 

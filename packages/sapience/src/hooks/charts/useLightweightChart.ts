@@ -55,8 +55,6 @@ export const useLightweightChart = ({
   priceData,
   selectedPrices, // Destructure selectedPrices
 }: UseLightweightChartProps) => {
-  console.log('[useLightweightChart] Hook Render/Re-render:', { priceDataLength: priceData.length, selectedPrices }); // Log inputs
-
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -257,24 +255,13 @@ export const useLightweightChart = ({
         chartRef.current = null;
       }
     };
-    // Rerun effect if theme changes or container ref changes
-    // Data changes are handled in a separate effect
-  }, [theme, containerRef]); // REMOVE selectedPrices again
+  }, [theme, containerRef, selectedPrices]);
 
   // Effect to update series data when priceData changes OR selectedPrices changes
   useEffect(() => {
-    if (
-      !chartRef.current ||
-      !candlestickSeriesRef.current ||
-      !indexPriceSeriesRef.current ||
-      !resourcePriceSeriesRef.current || // Add check
-      !trailingAvgPriceSeriesRef.current // Add check
-    )
-      return;
+    if (!chartRef.current) return;
 
-    console.log('[useLightweightChart] Setting Data:', { priceDataLength: priceData.length, selectedPrices }); // Log before setting data
-
-    // Prepare data for candlestick series
+    // Prepare data for all series types upfront
     const candleSeriesData: CandlestickData[] = priceData
       .filter(
         (d) =>
@@ -291,7 +278,6 @@ export const useLightweightChart = ({
         close: d.close!,
       }));
 
-    // Prepare data for index price series
     const indexLineData: LineData[] = priceData
       .filter((d) => d.indexPrice !== undefined)
       .map((d) => ({
@@ -299,7 +285,6 @@ export const useLightweightChart = ({
         value: d.indexPrice!,
       }));
 
-    // Prepare data for resource price series
     const resourceLineData: LineData[] = priceData
       .filter((d) => d.resourcePrice !== undefined)
       .map((d) => ({
@@ -307,7 +292,6 @@ export const useLightweightChart = ({
         value: d.resourcePrice!,
       }));
 
-    // Prepare data for trailing average price series
     const trailingAvgLineData: LineData[] = priceData
       .filter((d) => d.trailingAvgPrice !== undefined)
       .map((d) => ({
@@ -315,12 +299,49 @@ export const useLightweightChart = ({
         value: d.trailingAvgPrice!,
       }));
 
-    candlestickSeriesRef.current.setData(candleSeriesData);
-    indexPriceSeriesRef.current.setData(indexLineData);
-    resourcePriceSeriesRef.current.setData(resourceLineData); // Set data
-    trailingAvgPriceSeriesRef.current.setData(trailingAvgLineData); // Set data
+    // Define series configurations
+    const seriesConfigs = [
+      {
+        ref: candlestickSeriesRef,
+        type: LineType.MarketPrice,
+        data: candleSeriesData,
+      },
+      {
+        ref: indexPriceSeriesRef,
+        type: LineType.IndexPrice,
+        data: indexLineData,
+      },
+      {
+        ref: resourcePriceSeriesRef,
+        type: LineType.ResourcePrice,
+        data: resourceLineData,
+      },
+      {
+        ref: trailingAvgPriceSeriesRef,
+        type: LineType.TrailingAvgPrice,
+        data: trailingAvgLineData,
+      },
+    ];
+
+    // Update series visibility and data based on config and selectedPrices
+    seriesConfigs.forEach((config) => {
+      if (config.ref.current) {
+        const isVisible = selectedPrices[config.type];
+        config.ref.current.applyOptions({
+          visible: isVisible,
+        });
+        // Ensure setData is called even if visibility is false, potentially with empty data
+        // Lightweight charts might handle this internally, but being explicit is safer.
+        // However, directly setting empty array might be less performant than letting visibility handle it.
+        // Let's stick to visibility first and only set data if visible for now.
+        // Reverted: Set data regardless, use empty array if not visible to clear previous data.
+        // Let's stick to visibility first and only set data if visible for now.
+        config.ref.current.setData(isVisible ? config.data : []);
+      }
+    });
 
     // Set initial time scale visibility only once after data is loaded
+    // Use candle data as the reference for timescale setting
     if (!hasSetTimeScale.current && candleSeriesData.length > 0) {
       const firstTimestamp = candleSeriesData[0].time;
       const lastTimestamp = candleSeriesData[candleSeriesData.length - 1].time;
@@ -331,39 +352,11 @@ export const useLightweightChart = ({
       hasSetTimeScale.current = true;
     }
 
-    console.log('[useLightweightChart] Processed Data:', { candleDataLength: candleSeriesData.length, indexDataLength: indexLineData.length, resourceDataLength: resourceLineData.length, trailingAvgDataLength: trailingAvgLineData.length }); // Log processed data lengths
-
-    // Log the selectedPrices object THIS effect is seeing
-    console.log('[useLightweightChart] selectedPrices inside setData effect:', selectedPrices);
-
-    // Set data to series CONDITIONALLY based on selectedPrices
-    if (candlestickSeriesRef.current) {
-      candlestickSeriesRef.current.applyOptions({ visible: selectedPrices[LineType.MarketPrice] });
-      candlestickSeriesRef.current.setData(selectedPrices[LineType.MarketPrice] ? candleSeriesData : []);
-    }
-    if (indexPriceSeriesRef.current) {
-      indexPriceSeriesRef.current.applyOptions({ visible: selectedPrices[LineType.IndexPrice] });
-      indexPriceSeriesRef.current.setData(selectedPrices[LineType.IndexPrice] ? indexLineData : []);
-    }
-    if (resourcePriceSeriesRef.current) {
-      console.log(`[useLightweightChart] Setting resourcePrice data (selected: ${selectedPrices[LineType.ResourcePrice]}, length: ${resourceLineData.length})`); // Log resource setData
-      resourcePriceSeriesRef.current.applyOptions({ visible: selectedPrices[LineType.ResourcePrice] });
-      resourcePriceSeriesRef.current.setData(selectedPrices[LineType.ResourcePrice] ? resourceLineData : []);
-    }
-    if (trailingAvgPriceSeriesRef.current) {
-      console.log(`[useLightweightChart] Setting trailingAvg data (selected: ${selectedPrices[LineType.TrailingAvgPrice]}, length: ${trailingAvgLineData.length})`); // Log trailing avg setData
-      trailingAvgPriceSeriesRef.current.applyOptions({ visible: selectedPrices[LineType.TrailingAvgPrice] });
-      trailingAvgPriceSeriesRef.current.setData(selectedPrices[LineType.TrailingAvgPrice] ? trailingAvgLineData : []);
-    }
-
-    console.log('[useLightweightChart] Data Set to Series'); // Log after setting data
-    // Fit content only once after initial data load - MOVED AFTER setData
-    if (!hasSetTimeScale.current && priceData.length > 0) {
+    // Fit content whenever priceData changes and is not empty
+    if (priceData.length > 0) {
       chartRef.current.timeScale().fitContent();
-      hasSetTimeScale.current = true;
     }
-
-  }, [priceData, theme, selectedPrices]); // ADD selectedPrices dependency
+  }, [priceData, selectedPrices]);
 
   // Effect to toggle logarithmic scale
   useEffect(() => {
