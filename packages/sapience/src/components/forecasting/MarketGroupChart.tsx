@@ -1,6 +1,7 @@
 'use client';
 
 import type { MarketGroupType } from '@foil/ui/types/graphql';
+import { useMemo } from 'react'; // <-- Import useMemo
 import {
   ResponsiveContainer,
   LineChart,
@@ -45,10 +46,38 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     quoteTokenName: market?.quoteTokenName ?? undefined,
   });
 
-  // Filter chartData based on minTimestamp if provided
-  const filteredChartData = minTimestamp
-    ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
-    : chartData;
+  // Filter and scale chartData
+  const scaledAndFilteredChartData = useMemo(() => {
+    const filtered = minTimestamp
+      ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
+      : chartData;
+
+    // Scale the indexClose value
+    return filtered.map((point) => {
+      const scaledIndexClose =
+        typeof point.indexClose === 'number'
+          ? point.indexClose / 1e18 // Scale Wei down by 10^18
+          : point.indexClose; // Keep null/undefined as is
+      return { ...point, indexClose: scaledIndexClose };
+    });
+  }, [chartData, minTimestamp]);
+
+  // Find the latest data point that has a valid indexClose value
+  const latestIndexValue = useMemo(() => {
+    // Search backwards through the scaled data
+    for (let i = scaledAndFilteredChartData.length - 1; i >= 0; i--) {
+      const point = scaledAndFilteredChartData[i];
+      // Use the scaled value for the check
+      if (
+        point &&
+        typeof point.indexClose === 'number' &&
+        !isNaN(point.indexClose)
+      ) {
+        return point.indexClose;
+      }
+    }
+    return null; // Return null if no valid indexClose found
+  }, [scaledAndFilteredChartData]);
 
   if (isLoading) {
     return (
@@ -67,7 +96,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   }
 
   // Check if there's any data to display AFTER processing and filtering
-  const hasMarketData = filteredChartData.some(
+  const hasMarketData = scaledAndFilteredChartData.some(
     (d) =>
       d.markets &&
       Object.keys(d.markets).length > 0 &&
@@ -85,20 +114,26 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   const yAxisConfig = getYAxisConfig(market);
 
   // Determine if index data exists to potentially show a second line
-  const hasIndexData = chartData.some((d) => d.indexClose != null);
+  const hasIndexData = scaledAndFilteredChartData.some(
+    (d) => d.indexClose != null
+  );
 
-  // Get the latest data point for the legend
-  const latestDataPoint =
-    filteredChartData.length > 0
-      ? filteredChartData[filteredChartData.length - 1]
+  // Get the latest data point overall (for market values and timestamp)
+  const overallLatestDataPoint =
+    scaledAndFilteredChartData.length > 0
+      ? scaledAndFilteredChartData[scaledAndFilteredChartData.length - 1]
       : null;
+
+  console.log('Latest Data Point for Legend:', overallLatestDataPoint);
 
   return (
     // Adjust main container for flex column layout and height
-    <div className="w-full md:flex-1 flex flex-col min-h-[420px]">
+    // Ensure this component tries to fill the height allocated by the parent flex container
+    <div className="w-full h-full flex flex-col p-4">
       {/* Render the custom legend */}
       <ChartLegend
-        latestDataPoint={latestDataPoint}
+        latestDataPoint={overallLatestDataPoint}
+        latestIndexValue={latestIndexValue}
         marketIds={marketIds}
         hasIndexData={hasIndexData}
         showIndexLine
@@ -107,10 +142,12 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         yAxisConfig={yAxisConfig}
         optionNames={optionNames}
       />
+      {/* This div should grow to fill remaining space */}
       <div className="flex-1 w-full">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* Let ResponsiveContainer determine height based on parent */}
+        <ResponsiveContainer>
           <LineChart
-            data={filteredChartData}
+            data={scaledAndFilteredChartData}
             margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
