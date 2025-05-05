@@ -53,14 +53,31 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       : chartData;
 
     // Scale the indexClose value
-    return filtered.map((point) => ({
-      ...point,
-      indexClose:
+    return filtered.map((point) => {
+      const scaledIndexClose =
         typeof point.indexClose === 'number'
           ? point.indexClose / 1e18 // Scale Wei down by 10^18
-          : point.indexClose,
-    }));
+          : point.indexClose; // Keep null/undefined as is
+      return { ...point, indexClose: scaledIndexClose };
+    });
   }, [chartData, minTimestamp]);
+
+  // Find the latest data point that has a valid indexClose value
+  const latestIndexValue = useMemo(() => {
+    // Search backwards through the scaled data
+    for (let i = scaledAndFilteredChartData.length - 1; i >= 0; i--) {
+      const point = scaledAndFilteredChartData[i];
+      // Use the scaled value for the check
+      if (
+        point &&
+        typeof point.indexClose === 'number' &&
+        !isNaN(point.indexClose)
+      ) {
+        return point.indexClose;
+      }
+    }
+    return null; // Return null if no valid indexClose found
+  }, [scaledAndFilteredChartData]);
 
   if (isLoading) {
     return (
@@ -101,11 +118,13 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     (d) => d.indexClose != null
   );
 
-  // Get the latest data point for the legend
-  const latestDataPoint =
+  // Get the latest data point overall (for market values and timestamp)
+  const overallLatestDataPoint =
     scaledAndFilteredChartData.length > 0
       ? scaledAndFilteredChartData[scaledAndFilteredChartData.length - 1]
       : null;
+
+  console.log('Latest Data Point for Legend:', overallLatestDataPoint);
 
   return (
     // Adjust main container for flex column layout and height
@@ -113,7 +132,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     <div className="w-full h-full flex flex-col p-4">
       {/* Render the custom legend */}
       <ChartLegend
-        latestDataPoint={latestDataPoint}
+        latestDataPoint={overallLatestDataPoint}
+        latestIndexValue={latestIndexValue}
         marketIds={marketIds}
         hasIndexData={hasIndexData}
         showIndexLine

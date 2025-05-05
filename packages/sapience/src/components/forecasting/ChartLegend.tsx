@@ -18,6 +18,7 @@ interface YAxisConfig {
 
 interface ChartLegendProps {
   latestDataPoint: MultiMarketChartDataPoint | null;
+  latestIndexValue: number | null;
   marketIds: number[];
   hasIndexData: boolean;
   showIndexLine: boolean;
@@ -29,6 +30,7 @@ interface ChartLegendProps {
 
 const ChartLegend: React.FC<ChartLegendProps> = ({
   latestDataPoint,
+  latestIndexValue,
   marketIds,
   hasIndexData,
   showIndexLine,
@@ -78,7 +80,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
             style={{ backgroundColor: indexLineColor, opacity: 0.7 }} // Match line style
           />
           <span className="font-medium text-foreground">
-            {formatValue(latestDataPoint.indexClose)}
+            {formatValue(latestIndexValue)}
           </span>
           <span className="text-muted-foreground">Index</span>
           <TooltipProvider>
