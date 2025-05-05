@@ -4,7 +4,7 @@ import { recoverMessageAddress } from 'viem';
 
 // TODO: Update monorepo structure so that we can import this from packages/app/src/lib/constants/constants.ts
 const ADMIN_AUTHENTICATE_MSG =
-  'Please sign this message to authenticate yourself as an admin.';
+  'Sign this message to authenticate for admin actions.';
 
 // Load environment variables
 dotenv.config({
