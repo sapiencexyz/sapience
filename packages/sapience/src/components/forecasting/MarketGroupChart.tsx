@@ -95,7 +95,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
 
   return (
     // Adjust main container for flex column layout and height
-    <div className="w-full md:flex-1 flex flex-col min-h-[420px]">
+    // Ensure this component tries to fill the height allocated by the parent flex container
+    <div className="w-full h-full flex flex-col p-4">
       {/* Render the custom legend */}
       <ChartLegend
         latestDataPoint={latestDataPoint}
@@ -107,8 +108,10 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         yAxisConfig={yAxisConfig}
         optionNames={optionNames}
       />
+      {/* This div should grow to fill remaining space */}
       <div className="flex-1 w-full">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* Let ResponsiveContainer determine height based on parent */}
+        <ResponsiveContainer>
           <LineChart
             data={filteredChartData}
             margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
