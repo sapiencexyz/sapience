@@ -13,17 +13,26 @@ const marketGroupFactoryAbi = marketGroupFactoryData.abi;
 async function startIndexingForMarketGroup(
   marketGroup: MarketGroup,
   client: PublicClient
-) {
+): Promise<() => void> {
   console.log(
     `Starting event indexing for Market Group: ${marketGroup.chainId}:${marketGroup.address}`
   );
   try {
-    await indexMarketEvents(marketGroup, client);
+    const unwatch = await indexMarketEvents(marketGroup, client);
+    if (typeof unwatch === 'function') {
+      return unwatch;
+    } else {
+      console.warn(
+        `indexMarketEvents did not return an unwatch function for market group ${marketGroup.address}`
+      );
+      return () => {};
+    }
   } catch (error) {
     console.error(
       `Error starting indexing for market group ${marketGroup.address}:`,
       error
     );
+    return () => {};
   }
 }
 
@@ -119,11 +128,12 @@ export async function handleMarketGroupInitialized(
 /**
  * Sets up a watcher for a specific factory address to monitor MarketGroupInitialized events.
  * Can be called when a new factory address is detected in the system.
+ *
  */
 export async function watchFactoryAddress(
   chainId: number,
   factoryAddress: string
-) {
+): Promise<() => void> {
   console.log(
     `Setting up watcher for factory address ${factoryAddress} on chain ${chainId}`
   );
@@ -136,7 +146,7 @@ export async function watchFactoryAddress(
     factoryAddress === '0x0000000000000000000000000000000000000000'
   ) {
     console.error(`Invalid factory address ${factoryAddress}`);
-    return;
+    return () => {};
   }
 
   try {
@@ -144,7 +154,7 @@ export async function watchFactoryAddress(
       `Watching MarketGroupInitialized events on factory ${factoryAddress}`
     );
 
-    client.watchContractEvent({
+    const unwatch = client.watchContractEvent({
       address: factoryAddress as `0x${string}`,
       abi: marketGroupFactoryAbi as Abi,
       eventName: 'MarketGroupInitialized',
@@ -187,6 +197,8 @@ export async function watchFactoryAddress(
     console.log(
       `Watcher setup complete for factory ${factoryAddress} on chain ${chainId}`
     );
+
+    return unwatch;
   } catch (error) {
     console.error(
       `Error setting up watcher for factory ${factoryAddress} on chain ${chainId}:`,
@@ -196,8 +208,11 @@ export async function watchFactoryAddress(
   }
 }
 
-export async function startIndexingAndWatchingMarketGroups(chainId: number) {
+export async function startIndexingAndWatchingMarketGroups(
+  chainId: number
+): Promise<() => void> {
   const client = getProviderForChain(chainId);
+  const unwatchFunctions: (() => void)[] = [];
 
   const marketGroups = await marketGroupRepository.find({
     where: { chainId },
@@ -219,7 +234,18 @@ export async function startIndexingAndWatchingMarketGroups(chainId: number) {
       marketGroup.address &&
       marketGroup.address !== '0x0000000000000000000000000000000000000000'
     ) {
-      await startIndexingForMarketGroup(marketGroup, client);
+      try {
+        const unwatch = await createResilientMarketGroupWatcher(
+          marketGroup,
+          client
+        );
+        unwatchFunctions.push(unwatch);
+      } catch (error) {
+        console.error(
+          `Failed to start resilient indexing for market group ${marketGroup.address}:`,
+          error
+        );
+      }
     }
   }
 
@@ -236,10 +262,142 @@ export async function startIndexingAndWatchingMarketGroups(chainId: number) {
 
   // Use the new watchFactoryAddress function for each factory
   for (const factoryAddress of factoryAddresses) {
-    await watchFactoryAddress(chainId, factoryAddress);
+    try {
+      const unwatch = await createResilientFactoryWatcher(
+        chainId,
+        factoryAddress
+      );
+      unwatchFunctions.push(unwatch);
+    } catch (error) {
+      console.error(
+        `Failed to set up resilient watcher for factory ${factoryAddress} on chain ${chainId}:`,
+        error
+      );
+    }
   }
 
   console.log(
     `Initialization and watching setup complete for chainId ${chainId}.`
+  );
+
+  // Return a function that will unwatch all event subscriptions
+  return () => {
+    console.log(`Stopping all watchers for chainId ${chainId}...`);
+    unwatchFunctions.forEach((unwatch) => {
+      try {
+        unwatch();
+      } catch (error) {
+        console.error('Error while unwatching:', error);
+      }
+    });
+    console.log(`All watchers stopped for chainId ${chainId}.`);
+  };
+}
+
+/**
+ * Creates a resilient watcher that will automatically reconnect if the websocket fails
+ * @param setupWatcher Function that sets up the watcher and returns an unwatch function
+ * @param name Descriptive name for logging
+ * @param maxRetries Maximum number of reconnection attempts
+ * @param initialRetryDelay Initial delay before retry (will be exponentially increased)
+ * @returns A function that can be used to stop the watcher completely
+ */
+async function createResilientWatcher(
+  setupWatcher: () => Promise<() => void>,
+  name: string,
+  maxRetries = 5,
+  initialRetryDelay = 5000
+): Promise<() => void> {
+  let isActive = true;
+  let currentUnwatch: (() => void) | null = null;
+  let currentRetry = 0;
+  let retryDelay = initialRetryDelay;
+
+  // Function to start or restart the watcher
+  const startWatcher = async () => {
+    if (!isActive) return;
+
+    try {
+      console.log(`Setting up watcher for ${name}...`);
+      const unwatch = await setupWatcher();
+      currentUnwatch = unwatch;
+      currentRetry = 0;
+      retryDelay = initialRetryDelay;
+      console.log(`Watcher for ${name} successfully established.`);
+    } catch (error) {
+      console.error(`Error setting up watcher for ${name}:`, error);
+      scheduleRetry();
+    }
+  };
+
+  // Function to schedule a retry with exponential backoff
+  const scheduleRetry = () => {
+    if (!isActive) return;
+
+    currentRetry += 1;
+    if (currentRetry > maxRetries) {
+      console.error(
+        `Exceeded maximum retries (${maxRetries}) for ${name}. Giving up.`
+      );
+      return;
+    }
+
+    console.log(
+      `Scheduling retry #${currentRetry} for ${name} in ${retryDelay}ms...`
+    );
+    setTimeout(async () => {
+      await startWatcher();
+    }, retryDelay);
+
+    // Exponential backoff
+    retryDelay = Math.min(retryDelay * 2, 60000); // Cap at 1 minute
+  };
+
+  // Initial start
+  await startWatcher();
+
+  // Return a function to stop the resilient watcher
+  return () => {
+    isActive = false;
+    if (currentUnwatch) {
+      try {
+        currentUnwatch();
+        console.log(`Unwatched ${name} successfully.`);
+      } catch (error) {
+        console.error(`Error unwatching ${name}:`, error);
+      }
+    }
+  };
+}
+
+/**
+ * Creates a resilient factory watcher that automatically reconnects
+ * @param chainId Chain ID to watch
+ * @param factoryAddress Factory address to watch
+ * @returns A function to stop watching
+ */
+async function createResilientFactoryWatcher(
+  chainId: number,
+  factoryAddress: string
+): Promise<() => void> {
+  return createResilientWatcher(
+    async () => watchFactoryAddress(chainId, factoryAddress),
+    `factory ${factoryAddress} on chain ${chainId}`
+  );
+}
+
+/**
+ * Creates a resilient market group watcher that automatically reconnects
+ * @param marketGroup Market group to watch
+ * @param client Public client to use
+ * @returns A function to stop watching
+ */
+async function createResilientMarketGroupWatcher(
+  marketGroup: MarketGroup,
+  client: PublicClient
+): Promise<() => void> {
+  return createResilientWatcher(
+    async () => startIndexingForMarketGroup(marketGroup, client),
+    `market group ${marketGroup.address} on chain ${marketGroup.chainId}`
   );
 }
