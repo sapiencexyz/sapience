@@ -10,6 +10,7 @@ import { MarketGroup } from '../models/MarketGroup';
 import { Market } from '../models/Market';
 import { MarketParams } from '../models/MarketParams';
 import { watchFactoryAddress } from '../workers/jobs/indexMarkets';
+import { isValidWalletSignature } from '../middleware';
 
 const router = Router();
 
@@ -31,7 +32,28 @@ router.post('/create-market-group', async (req: Request, res: Response) => {
       resourceId,
       isCumulative,
       markets,
+      signature,
+      signatureTimestamp,
     } = req.body;
+
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
+
+    // Verify signature in production/staging environments
+    if (isProduction) {
+      if (!signature || !signatureTimestamp) {
+        return res.status(400).json({ message: 'Signature and timestamp required' });
+      }
+
+      // Authenticate the user
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(signatureTimestamp)
+      );
+      if (!isAuthenticated) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+    }
 
     // Validate required market group fields
     if (
