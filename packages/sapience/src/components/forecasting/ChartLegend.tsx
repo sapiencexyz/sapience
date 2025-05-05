@@ -55,8 +55,8 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         const color = lineColors[index % lineColors.length];
         const label =
           optionNames?.length === 1
-            ? 'Current Market Prediction'
-            : (optionNames?.[index] ?? 'Current Market Prediction');
+            ? 'Market Prediction'
+            : (optionNames?.[index] ?? 'Market Prediction');
 
         return (
           <div key={marketIdStr} className="flex items-center gap-1.5">

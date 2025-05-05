@@ -1,6 +1,7 @@
 'use client';
 
 import type { MarketGroupType } from '@foil/ui/types/graphql';
+import { useMemo } from 'react'; // <-- Import useMemo
 import {
   ResponsiveContainer,
   LineChart,
@@ -45,10 +46,21 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     quoteTokenName: market?.quoteTokenName ?? undefined,
   });
 
-  // Filter chartData based on minTimestamp if provided
-  const filteredChartData = minTimestamp
-    ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
-    : chartData;
+  // Filter and scale chartData
+  const scaledAndFilteredChartData = useMemo(() => {
+    const filtered = minTimestamp
+      ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
+      : chartData;
+
+    // Scale the indexClose value
+    return filtered.map((point) => ({
+      ...point,
+      indexClose:
+        typeof point.indexClose === 'number'
+          ? point.indexClose / 1e18 // Scale Wei down by 10^18
+          : point.indexClose,
+    }));
+  }, [chartData, minTimestamp]);
 
   if (isLoading) {
     return (
@@ -67,7 +79,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   }
 
   // Check if there's any data to display AFTER processing and filtering
-  const hasMarketData = filteredChartData.some(
+  const hasMarketData = scaledAndFilteredChartData.some(
     (d) =>
       d.markets &&
       Object.keys(d.markets).length > 0 &&
@@ -85,12 +97,14 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   const yAxisConfig = getYAxisConfig(market);
 
   // Determine if index data exists to potentially show a second line
-  const hasIndexData = chartData.some((d) => d.indexClose != null);
+  const hasIndexData = scaledAndFilteredChartData.some(
+    (d) => d.indexClose != null
+  );
 
   // Get the latest data point for the legend
   const latestDataPoint =
-    filteredChartData.length > 0
-      ? filteredChartData[filteredChartData.length - 1]
+    scaledAndFilteredChartData.length > 0
+      ? scaledAndFilteredChartData[scaledAndFilteredChartData.length - 1]
       : null;
 
   return (
@@ -113,7 +127,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         {/* Let ResponsiveContainer determine height based on parent */}
         <ResponsiveContainer>
           <LineChart
-            data={filteredChartData}
+            data={scaledAndFilteredChartData}
             margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />

@@ -94,7 +94,9 @@ export const processCandleData = (
 
       try {
         const closeValue = parseFloat(String(candle.close));
+        // Check for valid number
         if (!Number.isNaN(closeValue)) {
+          // Multiply raw close value by multiplier to get Wei value (consistent with usePriceChartData)
           combinedData[ts]!.indexClose = closeValue * indexMultiplier;
         } else {
           console.warn(
