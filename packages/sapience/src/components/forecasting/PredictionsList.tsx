@@ -159,8 +159,8 @@ const PredictionsList: React.FC<PredictionsListProps> = ({
   return (
     <div className="h-full border border-muted rounded-md bg-background/50 overflow-hidden text-muted-foreground flex justify-center">
       {data.length === 0 ? (
-        <div className="py-16">
-          <div className="text-center text-base my-auto">
+        <div className="my-auto">
+          <div className="text-center text-base py-16">
             No predictions yet... what&apos;s yours?
           </div>
         </div>
