@@ -27,7 +27,7 @@ async function startIndexingForMarketGroup(
   }
 }
 
-async function handleMarketGroupInitialized(
+export async function handleMarketGroupInitialized(
   eventArgs: {
     sender: `0x${string}`;
     marketGroup: `0x${string}`;
