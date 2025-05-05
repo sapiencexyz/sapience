@@ -25,6 +25,7 @@
   "dependencies": {
     "@apollo/client": "^3.12.4",
     "@foil/ui": "workspace:*",
+    "@hookform/resolvers": "^3.9.1",
     "@privy-io/react-auth": "^2.11.1",
     "@rainbow-me/rainbowkit": "^2.1.5",
     "@sentry/nextjs": "^8",

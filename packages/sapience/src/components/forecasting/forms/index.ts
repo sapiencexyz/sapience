@@ -3,6 +3,14 @@ export { CreateTradeForm } from './CreateTradeForm';
 export { ModifyLiquidityForm } from './ModifyLiquidityForm';
 export { default as ModifyTradeForm } from './ModifyTradeForm';
 
-export { default as MultiChoiceForm } from './MultiChoiceForm';
-export { default as NumericalForm } from './NumericalForm';
-export { default as SingleChoiceForm } from './SingleChoiceForm';
+export { PredictForm } from './PredictForm';
+export { WagerFormFactory } from './WagerFormFactory';
+
+export { NumericPredict } from './inputs/NumericPredict';
+export { SingleChoicePredict } from './inputs/SingleChoicePredict';
+export { WagerInput } from './inputs/WagerInput';
+export { YesNoPredict } from './inputs/YesNoPredict';
+
+export { NumericWagerForm } from './wager/NumericWagerForm';
+export { SingleChoiceWagerForm } from './wager/SingleChoiceWagerForm';
+export { YesNoWagerForm } from './wager/YesNoWagerForm';

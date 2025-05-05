@@ -2,7 +2,7 @@ import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
 import type { MarketType } from '@foil/ui/types';
 import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
-import type { Address, Abi } from 'viem';
+import type { Abi, Address } from 'viem';
 
 import type { UsePositionsResult } from '~/hooks/contract';
 import {
@@ -103,6 +103,7 @@ export function ForecastProvider({
     marketQuestionDisplay,
     numericMarketId,
   } = useMarket({ chainId, marketAddress, marketId });
+
   // Get ABI for contracts
   const { abi } = useFoilAbi();
 
@@ -116,6 +117,8 @@ export function ForecastProvider({
     marketId: BigInt(marketId),
     abi,
   });
+
+  console.log('marketContractData', marketContractData);
 
   // Get the market tick spacing
   const { tickSpacing, isLoading: isLoadingTickSpacing } = useMarketTickSpacing(

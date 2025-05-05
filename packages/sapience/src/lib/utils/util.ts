@@ -158,23 +158,9 @@ export const getDisplayQuestion = (
 /**
  * Finds active markets for a market group based on current timestamp
  */
-<<<<<<< HEAD
 export const findActiveMarkets = (
-  marketGroupData: MarketGroupType | null | undefined // Use MarketGroupType
+  marketGroupData: MarketGroupType
 ): MarketType[] => {
-  // Return type MarketType[]
-  // Adjust placeholder check if necessary for MarketGroupType
-  if (
-    !marketGroupData ||
-    // !('placeholder' in marketGroupData) || // Remove placeholder check if not applicable
-    !Array.isArray(marketGroupData.markets)
-  ) {
-    return [];
-  }
-
-=======
-export const findActiveMarkets = (marketGroupData: MarketGroup): Market[] => {
->>>>>>> fd832329 (wip)
   const nowInSeconds = Date.now() / 1000;
   // Filter markets based on timestamps
   return marketGroupData.markets.filter(

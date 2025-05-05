@@ -16,16 +16,22 @@ import {
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { useState } from 'react';
 
+import { MarketType } from '@foil/ui/types';
+import { PredictForm } from '~/components/forecasting/forms/PredictForm';
+import { WagerFormFactory } from '~/components/forecasting/forms/WagerFormFactory';
+import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import PredictionsList from '~/components/forecasting/PredictionsList';
-import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
-import { MarketType, type Market } from '~/lib/interfaces';
+import {
+  MarketGroupCategory,
+  useMarketGroup,
+} from '~/hooks/graphql/useMarketGroup';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
-import MarketGroupChart from '../../../components/forecasting/MarketGroupChart';
-import { usePredictionFormState } from '../../../hooks/forms/usePredictionFormState';
 import { useSapience } from '../../../lib/context/SapienceProvider';
+
+export type ActiveTab = 'predict' | 'wager';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(
@@ -39,23 +45,11 @@ const LottieLoader = dynamic(
 
 const ForecastingDetailPage = () => {
   const params = useParams();
-  const router = useRouter();
   const pathname = usePathname();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
-  const [selectedView, setSelectedView] = useState<string>('Predictions');
-
-  // Form state with active tab management
-  const {
-    formData,
-    setFormData,
-    activeTab,
-    handleTabChange,
-    handlePredictionChange,
-  } = usePredictionFormState({
-    initialFormData: { predictionValue: '', wagerAmount: '' },
-    initialActiveTab: 'predict',
-  });
+  const [selectedListView, setSelectedListView] = useState<string>('Market');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('predict');
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
@@ -65,14 +59,14 @@ const ForecastingDetailPage = () => {
   const {
     marketGroupData,
     isLoading,
-    isError,
     isSuccess,
     activeMarkets,
-    marketType,
+    marketCategory,
   } = useMarketGroup({ chainShortName, marketAddress });
+  console.log('marketGroupData', marketGroupData);
 
   // If loading, show the Lottie loader
-  if (isLoading) {
+  if (isLoading || isPermitLoadingPermit) {
     return (
       <div className="flex flex-col w-full min-h-[100dvh] items-center justify-center">
         <LottieLoader />
@@ -94,6 +88,10 @@ const ForecastingDetailPage = () => {
     );
   }
 
+  const optionNames = marketGroupData.markets.map(
+    (market) => market.optionName
+  );
+
   // Otherwise show the main content
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
@@ -108,48 +106,16 @@ const ForecastingDetailPage = () => {
         <div className="flex flex-col gap-6 px-3">
           {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col md:flex-row gap-12">
-            {/* NEW Wrapper for Left Column (Chart/List + Dropdown) */}
-            <div className="flex flex-col w-full md:flex-1">
-              {/* Original Bordered Box (Chart/List Area) - Now flex-1 within the wrapper */}
-              <div className="border border-border rounded-md flex flex-col flex-1">
-                {/* Wrapper div to allow chart/list to grow. Add min-h-0 */}
-                <div className="flex-1 min-h-0">
-                  {/* Conditionally render Chart or List based on selectedView */}
-                  {selectedView === 'Market' && (
-                    <MarketGroupChart
-                      chainShortName={chainShortName}
-                      marketAddress={marketAddress}
-                      marketIds={activeMarkets.map((market) =>
-                        Number(market.marketId)
-                      )}
-                      market={marketData}
-                      minTimestamp={minTimestamp}
-                      optionNames={
-                        activeOptionName ? [activeOptionName] : undefined
-                      }
-                    />
+            {/* Left Column: Chart or List */}
+            <div className="w-full md:flex-1">
+              {/* Conditionally render Chart or List based on selectedView */}
+              {selectedListView === 'Market' && (
+                <MarketGroupChart
+                  chainShortName={chainShortName}
+                  marketAddress={marketAddress}
+                  marketIds={activeMarkets.map((market) =>
+                    Number(market.marketId)
                   )}
-<<<<<<< HEAD
-                  {selectedView === 'Predictions' && (
-                    <PredictionsList
-                      marketAddress={marketAddress}
-                      optionNames={
-                        activeOptionName ? [activeOptionName] : undefined
-                      }
-                    />
-                  )}
-                </div>{' '}
-                {/* Closing the flex-1 min-h-0 wrapper */}
-              </div>{' '}
-              {/* Closing the bordered box */}
-              {/* Dropdown Menu - MOVED FROM HERE */}
-            </div>{' '}
-            {/* Closing the NEW Left Column Wrapper */}
-            {/* Form (Right Column) - Make it flex column */}
-            <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
-              {/* Allow card to grow */}
-              <div className="bg-card p-6 rounded-lg shadow-sm border flex-1">
-=======
                   market={marketGroupData}
                   minTimestamp={
                     activeMarkets.length > 0
@@ -160,13 +126,13 @@ const ForecastingDetailPage = () => {
                         )
                       : undefined
                   }
-                  optionNames={marketGroupData.optionNames}
+                  optionNames={optionNames}
                 />
               )}
-              {selectedView === 'Predictions' && (
+              {selectedListView === 'Predictions' && (
                 <PredictionsList
                   marketAddress={marketAddress}
-                  optionNames={marketGroupData.optionNames}
+                  optionNames={optionNames}
                 />
               )}
               <div className="py-6">
@@ -176,18 +142,18 @@ const ForecastingDetailPage = () => {
                       variant="outline"
                       className="flex items-center gap-1"
                     >
-                      {selectedView}
+                      {selectedListView}
                       <ChevronDown className="h-4 w-4 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem
-                      onSelect={() => setSelectedView('Market')}
+                      onSelect={() => setSelectedListView('Market')}
                     >
                       Market
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onSelect={() => setSelectedView('Predictions')}
+                      onSelect={() => setSelectedListView('Predictions')}
                     >
                       Predictions
                     </DropdownMenuItem>
@@ -199,7 +165,6 @@ const ForecastingDetailPage = () => {
             {/* Form (Right Column) */}
             <div className="w-full md:w-[340px] mt-8 md:mt-0">
               <div className="bg-card p-6 rounded-lg shadow-sm border">
->>>>>>> 5b907bbc (wip)
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
 
                 {/* Tabs Section */}
@@ -212,7 +177,7 @@ const ForecastingDetailPage = () => {
                           ? 'border-b-2 border-primary text-primary'
                           : 'text-muted-foreground'
                       }`}
-                      onClick={() => handleTabChange('predict')}
+                      onClick={() => setActiveTab('predict')}
                     >
                       Predict
                     </button>
@@ -223,92 +188,37 @@ const ForecastingDetailPage = () => {
                           ? 'border-b-2 border-primary text-primary'
                           : 'text-muted-foreground'
                       }`}
-                      onClick={() => handleTabChange('wager')}
+                      onClick={() => setActiveTab('wager')}
                     >
                       Wager
                     </button>
                   </div>
 
                   {/* Form Content Based on Market Type */}
-                  <div className="pt-4">{renderFormComponent()}</div>
+                  <div className="pt-4">
+                    {/* Only load the active form */}
+                    {activeTab === 'predict' ? (
+                      <PredictForm
+                        marketGroupData={marketGroupData}
+                        marketCategory={marketCategory}
+                      />
+                    ) : (
+                      <WagerFormFactory
+                        marketCategory={marketCategory}
+                        marketGroupData={marketGroupData}
+                        isPermitted={!!permitData?.permitted}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-<<<<<<< HEAD
-          <div className="flex justify-between items-center">
-            {/* Dropdown Menu (Left Aligned in this flex container) */}
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-1">
-                    {selectedView}
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    onSelect={() => setSelectedView('Predictions')}
-                  >
-                    Predictions
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setSelectedView('Market')}>
-                    Market
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Advanced View button (Right Aligned in this flex container) */}
-            <div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (!activeMarkets || activeMarkets.length === 0) return; // Guard clause using activeMarkets
-
-                  const numberOfActiveMarkets = activeMarkets.length; // Use activeMarkets length
-                  const currentPath = window.location.pathname;
-
-                  if (numberOfActiveMarkets === 1) {
-                    // Navigate to the single active epoch page if not already there
-                    const { marketId } = activeMarkets[0]; // Use the first active market
-                    if (!currentPath.endsWith(`/${marketId}`)) {
-                      router.push(`${currentPath}/${marketId}`);
-                    }
-                  } else if (numberOfActiveMarkets > 1) {
-                    // Open selector if there are multiple active epochs
-                    setShowMarketSelector(true);
-                  }
-                  // If 0 active epochs, the button is disabled, so onClick won't trigger.
-                }}
-                disabled={
-                  isLoadingMarket ||
-                  !marketData ||
-                  !activeMarkets || // Check activeMarkets existence
-                  activeMarkets.length === 0 // Disable if no active markets
-                }
-                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                ADVANCED VIEW
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {/* MarketGroupSummary - now full width */}
-          <div className="w-full px-4 md:px-3">
-            <MarketGroupSummary
-              chainShortName={chainShortName}
-              marketAddress={marketAddress}
-            />
-          </div>
-=======
           {/* Advanced View Navigation */}
           {activeMarkets.length > 0 && (
             <div className="w-full flex justify-end items-start px-4 md:px-3 mt-4 md:mt-0 md:w-[340px] md:ml-auto">
-              {marketType === MarketType.SINGLE_CHOICE ? (
+              {marketCategory === MarketGroupCategory.SINGLE_CHOICE ? (
                 <button
                   type="button"
                   onClick={() => setShowMarketSelector(true)}
@@ -328,7 +238,6 @@ const ForecastingDetailPage = () => {
               )}
             </div>
           )}
->>>>>>> 5b907bbc (wip)
         </div>
       </div>
 
@@ -341,7 +250,7 @@ const ForecastingDetailPage = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 pb-2">
-            {activeMarkets.map((market: Market) => (
+            {activeMarkets.map((market: MarketType) => (
               <Link
                 key={market.id}
                 href={`${pathname}/${market.marketId}`}

@@ -21,13 +21,14 @@ import LottieLoader from '~/components/shared/LottieLoader';
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
 import {
   extractMarketId,
+  extractPredictionValue,
   usePredictions,
 } from '~/hooks/graphql/usePredictions'; // Import hook and necessary items
 import { SCHEMA_UID } from '~/lib/constants/eas'; // Import SCHEMA_UID
 
 interface PredictionsListProps {
   marketAddress?: string;
-  optionNames?: string[];
+  optionNames: string[];
 }
 
 // Define AddressLink component outside of the PredictionsList
@@ -58,9 +59,14 @@ const renderSubmittedCell = ({
 
 const renderPredictionCell = (
   { row }: { row: { original: FormattedAttestation } },
-  optionNames?: string[]
+  optionNames: string[]
 ) => {
   const marketId = extractMarketId(row.original.decodedData);
+  const predictionValue = extractPredictionValue(row.original.decodedData);
+
+  if (optionNames.length && optionNames[0] === null) {
+    return predictionValue === '1' ? 'Yes' : 'No';
+  }
 
   // Use optionNames if available and marketId is valid
   if (optionNames && marketId !== null && marketId > 0) {

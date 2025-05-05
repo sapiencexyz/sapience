@@ -77,6 +77,47 @@ const parseDecodedData = (decodedDataJson: string): DecodedField[] => {
   }
 };
 
+// Helper function to extract prediction value from decoded data
+export const extractPredictionValue = (
+  decodedData: DecodedField[]
+): string | null => {
+  const predictionField = decodedData.find(
+    (field) => field.name === 'prediction'
+  );
+
+  if (!predictionField?.value) {
+    return null;
+  }
+
+  if (typeof predictionField.value === 'number') {
+    return predictionField.value.toString();
+  }
+
+  if (typeof predictionField.value === 'string') {
+    try {
+      return predictionField.value;
+    } catch (e) {
+      console.error('Failed to parse prediction string:', e);
+    }
+  }
+
+  if (
+    typeof predictionField.value === 'object' &&
+    predictionField.value.value?.hex
+  ) {
+    try {
+      // Convert hex value to a number
+      const hexValue = predictionField.value.value.hex;
+      const numericValue = parseInt(hexValue, 16);
+      return numericValue.toString();
+    } catch (e) {
+      console.error('Failed to parse prediction hex:', e);
+    }
+  }
+
+  return null;
+};
+
 // Helper function to extract market ID from decoded data
 export const extractMarketId = (decodedData: DecodedField[]): number | null => {
   const marketIdField = decodedData.find((field) => field.name === 'marketId');
