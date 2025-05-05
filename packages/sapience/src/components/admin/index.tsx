@@ -285,8 +285,11 @@ const ReindexFactoryForm = () => {
         message: ADMIN_AUTHENTICATE_MSG, // Use standard auth message
       });
 
+      // Construct the API URL from environment variable
+      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL || ''}/reindex/market-group-factory`;
+
       // Call the API endpoint
-      const response = await fetch('/api/reindex/market-group-factory', {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
