@@ -3,6 +3,7 @@ import { Resource } from '../../models/Resource';
 import { reindexMarket } from './reindexMarket';
 import { reindexMissingBlocks } from './reindexMissingBlocks';
 import { reindexResource } from './reindexResource';
+import { reindexMarketGroupFactory } from './reindexMarketGroupFactory';
 
 const callReindex = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);
@@ -71,6 +72,21 @@ const callReindexResource = async (argv: string[]) => {
   process.exit(0);
 };
 
+const callReindexMarketGroupFactory = async (argv: string[]) => {
+  const chainId = parseInt(argv[3], 10);
+  const factoryAddress = argv[4];
+
+  if (isNaN(chainId) || !factoryAddress) {
+    console.error(
+      'Invalid arguments. Usage: tsx src/worker.ts reindexMarketGroupFactory <chainId> <factoryAddress>'
+    );
+    process.exit(1);
+  }
+  await reindexMarketGroupFactory(chainId, factoryAddress);
+  console.log('Done reindexing market group factory');
+  process.exit(0);
+};
+
 export async function handleJobCommand(argv: string[]): Promise<boolean> {
   const command = argv[2];
 
@@ -85,6 +101,10 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
     }
     case 'reindexResource': {
       await callReindexResource(argv);
+      return true; // Indicate a job command was handled
+    }
+    case 'reindexMarketGroupFactory': {
+      await callReindexMarketGroupFactory(argv);
       return true; // Indicate a job command was handled
     }
     default: {
