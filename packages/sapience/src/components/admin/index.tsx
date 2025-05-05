@@ -8,11 +8,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
+import { Input } from '@foil/ui/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@foil/ui/components/ui/select';
+import { useToast } from '@foil/ui/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import type { Address } from 'viem';
+import { useSignMessage } from 'wagmi';
 
 import { useMarketGroupLatestEpoch } from '~/hooks/contract/useMarketGroupLatestEpoch';
 import {
@@ -20,6 +30,7 @@ import {
   type EnrichedMarketGroup,
   type Market,
 } from '~/hooks/graphql/useMarketGroups';
+import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
 import CombinedMarketDialog from './CombinedMarketDialog';
 import MarketDeployButton from './MarketDeployButton';
@@ -243,6 +254,133 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
   );
 };
 
+const ReindexFactoryForm = () => {
+  const { signMessageAsync } = useSignMessage();
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const [factoryAddress, setFactoryAddress] = useState(
+    '0xA61BF5F56a6a035408d5d76EbE58F8204891FB40'
+  );
+  const [chainId, setChainId] = useState('8453'); // Default to Base
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Basic validation
+    if (!factoryAddress.startsWith('0x')) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid address',
+        description: 'Factory address must start with 0x',
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // Generate timestamp and signature
+      const timestamp = Date.now(); // Use Date.now() for consistency
+      const signature = await signMessageAsync({
+        message: ADMIN_AUTHENTICATE_MSG, // Use standard auth message
+      });
+
+      // Call the API endpoint
+      const response = await fetch('/api/reindex/market-group-factory', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chainId: Number(chainId),
+          factoryAddress,
+          signature,
+          timestamp, // Send the timestamp used for validation
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reindex factory');
+      }
+
+      toast({
+        title: 'Reindex started',
+        description: 'The market group factory reindexing process has started.',
+      });
+
+      // Reset form
+      setFactoryAddress('');
+    } catch (error) {
+      console.error('Reindex factory error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'An unknown error occurred',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg shadow-sm p-6">
+      <h2 className="text-lg font-semibold mb-4">
+        Reindex Market Group Factory
+      </h2>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-2">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label htmlFor="factoryAddress" className="text-sm font-medium">
+            Factory Address
+          </label>
+          <Input
+            id="factoryAddress"
+            placeholder="0x..."
+            value={factoryAddress}
+            onChange={(e) => setFactoryAddress(e.target.value)}
+          />
+          {factoryAddress && !factoryAddress.startsWith('0x') && (
+            <p className="text-sm text-red-500">Address must start with 0x</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label htmlFor="chainSelect" className="text-sm font-medium">
+            Chain
+          </label>
+          <Select value={chainId} onValueChange={setChainId}>
+            <SelectTrigger id="chainSelect" className="w-full">
+              <SelectValue placeholder="Select chain" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Ethereum</SelectItem>
+              <SelectItem value="10">Optimism</SelectItem>
+              <SelectItem value="8453">Base</SelectItem>
+              <SelectItem value="42161">Arbitrum</SelectItem>
+              <SelectItem value="137">Polygon</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? (
+            <>
+              <LottieLoader width={16} height={16} />
+              <span className="ml-2">Processing...</span>
+            </>
+          ) : (
+            'Reindex Factory'
+          )}
+        </Button>
+      </form>
+    </div>
+  );
+};
+
 const Admin = () => {
   const { data: marketGroups, isLoading, error } = useEnrichedMarketGroups();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -297,6 +435,11 @@ const Admin = () => {
         ) : (
           !isLoading && <p>No active market groups found.</p>
         )}
+      </div>
+
+      {/* Add spacing before the reindex form */}
+      <div className="mt-12 mb-16">
+        <ReindexFactoryForm />
       </div>
     </div>
   );

@@ -29,16 +29,17 @@ import {
 import { Switch } from '@foil/ui/components/ui/switch';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle, Loader2, Plus, Trash } from 'lucide-react';
+import { AlertCircle, Loader2, Plus, Trash } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
-import { useAccount, useChainId } from 'wagmi';
+import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { z } from 'zod';
 
 import {
   FOCUS_AREAS,
   DEFAULT_FOCUS_AREA,
 } from '../../lib/constants/focusAreas';
+import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
 // Use environment variable for API base URL, fallback to /api
 const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
@@ -101,6 +102,8 @@ interface CreateCombinedPayload {
   resourceId?: number;
   isCumulative?: boolean;
   markets: MarketInput[];
+  signature: `0x${string}` | undefined;
+  signatureTimestamp: number;
 }
 
 // Zod validation schemas
@@ -238,6 +241,7 @@ interface CombinedMarketDialogProps {
 const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
+  const { signMessageAsync } = useSignMessage();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: resources } = useResources();
@@ -395,68 +399,84 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
     }
   };
 
-  // Mutation for API call
-  const createCombinedMutation = useMutation({
-    mutationFn: async (payload: CreateCombinedPayload) => {
-      // Use the new combined endpoint
-      const response = await fetch(`${API_BASE_URL}/create-market-group`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+  const createCombinedMarketGroup = async (payload: CreateCombinedPayload) => {
+    // Call the API endpoint
+    const response = await fetch(`${API_BASE_URL}/create-market-group`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.message || `HTTP error! status: ${response.status}`
-        );
-      }
+    const data = await response.json();
 
-      return response.json();
-    },
+    if (!response.ok) {
+      throw new Error(
+        data.message || 'Failed to create market group and markets'
+      );
+    }
+
+    return data;
+  };
+
+  const { mutate: createMarketGroup, isPending } = useMutation<
+    unknown,
+    Error,
+    CreateCombinedPayload
+  >({
+    mutationFn: createCombinedMarketGroup,
     onSuccess: () => {
-      setFormError(null);
-
-      // Show success toast notification
       toast({
-        title: 'Market Group Created',
-        description: `Successfully created market group with ${markets.length} market${markets.length !== 1 ? 's' : ''}.`,
-        duration: 5000,
+        title: 'Success',
+        description: 'Market Group and Markets created successfully.',
+        variant: 'default',
       });
-
-      // Refresh the market groups list
-      queryClient.invalidateQueries({ queryKey: ['enrichedMarketGroups'] });
-
-      // Close dialog if onClose function is provided
-      if (onClose) {
-        onClose();
-      }
+      queryClient.invalidateQueries({ queryKey: ['marketGroups'] });
+      onClose?.(); // Close the dialog on success
     },
     onError: (error: Error) => {
-      console.error('API Submission Error:', error);
-      setFormError(`API Submission Failed: ${error.message}`);
-
-      // Show error toast
+      console.error('Error creating market group:', error);
       toast({
-        title: 'Creation Failed',
-        description: error.message,
         variant: 'destructive',
-        duration: 5000,
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'An unknown error occurred',
       });
     },
   });
 
-  // Form submission handler
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormError(null);
 
     const validationError = validateFormData();
     if (validationError) {
       setFormError(validationError);
+      toast({
+        title: 'Validation Error',
+        description: validationError,
+        variant: 'destructive',
+      });
       return;
     }
 
+    // Generate signature
+    const timestamp = Date.now();
+    let signature: `0x${string}` | undefined;
+    try {
+      signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });
+    } catch (signError) {
+      console.error('Signature failed:', signError);
+      toast({
+        title: 'Signature Required',
+        description: 'Failed to get user signature.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Prepare payload
     const payload: CreateCombinedPayload = {
       chainId,
       owner,
@@ -475,10 +495,12 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             isCumulative,
           }
         : {}),
-      markets,
+      markets: markets.map((m, index) => ({ ...m, id: index + 1 })), // Ensure market ID is set correctly
+      signature,
+      signatureTimestamp: timestamp,
     };
 
-    createCombinedMutation.mutate(payload);
+    createMarketGroup(payload);
   };
 
   return (
@@ -945,39 +967,20 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       </div>
 
       {/* Submit Button */}
-      <Button
-        type="submit"
-        disabled={createCombinedMutation.isPending}
-        className="w-full"
-      >
-        {createCombinedMutation.isPending && (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        )}
-        Create Market Group with Markets
-      </Button>
+      <div className="mt-6">
+        <Button type="submit" disabled={isPending} className="w-full">
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Submit Market Group & Markets
+        </Button>
+      </div>
 
       {/* Status Messages */}
       <div className="space-y-4 mt-4">
-        {createCombinedMutation.isSuccess && (
-          <Alert variant="default">
-            <CheckCircle className="h-4 w-4" />
-            <AlertTitle>Success!</AlertTitle>
-            <AlertDescription>
-              Market group and {markets.length} market
-              {markets.length !== 1 ? 's' : ''} created successfully.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {(formError || createCombinedMutation.isError) && (
+        {formError && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              {formError ||
-                (createCombinedMutation.error as Error)?.message ||
-                'An unknown error occurred'}
-            </AlertDescription>
+            <AlertDescription>{formError}</AlertDescription>
           </Alert>
         )}
       </div>
