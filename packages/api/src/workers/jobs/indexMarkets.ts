@@ -25,14 +25,14 @@ async function startIndexingForMarketGroup(
       console.warn(
         `indexMarketEvents did not return an unwatch function for market group ${marketGroup.address}`
       );
-      return () => {}; 
+      return () => {};
     }
   } catch (error) {
     console.error(
       `Error starting indexing for market group ${marketGroup.address}:`,
       error
     );
-    return () => {}; 
+    return () => {};
   }
 }
 
@@ -146,7 +146,7 @@ export async function watchFactoryAddress(
     factoryAddress === '0x0000000000000000000000000000000000000000'
   ) {
     console.error(`Invalid factory address ${factoryAddress}`);
-    return () => {}; 
+    return () => {};
   }
 
   try {
@@ -197,8 +197,8 @@ export async function watchFactoryAddress(
     console.log(
       `Watcher setup complete for factory ${factoryAddress} on chain ${chainId}`
     );
-    
-    return unwatch; 
+
+    return unwatch;
   } catch (error) {
     console.error(
       `Error setting up watcher for factory ${factoryAddress} on chain ${chainId}:`,
@@ -235,14 +235,16 @@ export async function startIndexingAndWatchingMarketGroups(
       marketGroup.address !== '0x0000000000000000000000000000000000000000'
     ) {
       try {
-        const unwatch = await createResilientMarketGroupWatcher(marketGroup, client);
+        const unwatch = await createResilientMarketGroupWatcher(
+          marketGroup,
+          client
+        );
         unwatchFunctions.push(unwatch);
       } catch (error) {
         console.error(
           `Failed to start resilient indexing for market group ${marketGroup.address}:`,
           error
         );
-      
       }
     }
   }
@@ -261,14 +263,16 @@ export async function startIndexingAndWatchingMarketGroups(
   // Use the new watchFactoryAddress function for each factory
   for (const factoryAddress of factoryAddresses) {
     try {
-      const unwatch = await createResilientFactoryWatcher(chainId, factoryAddress);
+      const unwatch = await createResilientFactoryWatcher(
+        chainId,
+        factoryAddress
+      );
       unwatchFunctions.push(unwatch);
     } catch (error) {
       console.error(
         `Failed to set up resilient watcher for factory ${factoryAddress} on chain ${chainId}:`,
         error
       );
-
     }
   }
 
@@ -279,7 +283,7 @@ export async function startIndexingAndWatchingMarketGroups(
   // Return a function that will unwatch all event subscriptions
   return () => {
     console.log(`Stopping all watchers for chainId ${chainId}...`);
-    unwatchFunctions.forEach(unwatch => {
+    unwatchFunctions.forEach((unwatch) => {
       try {
         unwatch();
       } catch (error) {
@@ -308,11 +312,11 @@ async function createResilientWatcher(
   let currentUnwatch: (() => void) | null = null;
   let currentRetry = 0;
   let retryDelay = initialRetryDelay;
-  
+
   // Function to start or restart the watcher
   const startWatcher = async () => {
     if (!isActive) return;
-    
+
     try {
       console.log(`Setting up watcher for ${name}...`);
       const unwatch = await setupWatcher();
@@ -325,29 +329,33 @@ async function createResilientWatcher(
       scheduleRetry();
     }
   };
-  
+
   // Function to schedule a retry with exponential backoff
   const scheduleRetry = () => {
     if (!isActive) return;
-    
+
     currentRetry += 1;
     if (currentRetry > maxRetries) {
-      console.error(`Exceeded maximum retries (${maxRetries}) for ${name}. Giving up.`);
+      console.error(
+        `Exceeded maximum retries (${maxRetries}) for ${name}. Giving up.`
+      );
       return;
     }
-    
-    console.log(`Scheduling retry #${currentRetry} for ${name} in ${retryDelay}ms...`);
+
+    console.log(
+      `Scheduling retry #${currentRetry} for ${name} in ${retryDelay}ms...`
+    );
     setTimeout(async () => {
       await startWatcher();
     }, retryDelay);
-    
+
     // Exponential backoff
     retryDelay = Math.min(retryDelay * 2, 60000); // Cap at 1 minute
   };
-  
+
   // Initial start
   await startWatcher();
-  
+
   // Return a function to stop the resilient watcher
   return () => {
     isActive = false;

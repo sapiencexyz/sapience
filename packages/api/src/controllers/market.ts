@@ -216,7 +216,7 @@ export const indexMarketEvents = async (
     onLogs: (logs) => processLogs(logs),
     onError: (error) => console.error(error),
   });
-  
+
   return unwatch;
 };
 
