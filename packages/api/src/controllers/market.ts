@@ -164,7 +164,7 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 export const indexMarketEvents = async (
   market: MarketGroup,
   client: PublicClient
-) => {
+): Promise<() => void> => {
   await initializeDataSource();
   const chainId = await client.getChainId();
 
@@ -210,12 +210,14 @@ export const indexMarketEvents = async (
   console.log(
     `Watching contract events for ${market.chainId}:${market.address}`
   );
-  client.watchContractEvent({
+  const unwatch = client.watchContractEvent({
     address: market.address as `0x${string}`,
     abi: Foil.abi,
     onLogs: (logs) => processLogs(logs),
     onError: (error) => console.error(error),
   });
+  
+  return unwatch;
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
