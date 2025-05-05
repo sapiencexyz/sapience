@@ -37,12 +37,15 @@ router.post('/create-market-group', async (req: Request, res: Response) => {
     } = req.body;
 
     const isProduction =
-      process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'staging';
 
     // Verify signature in production/staging environments
     if (isProduction) {
       if (!signature || !signatureTimestamp) {
-        return res.status(400).json({ message: 'Signature and timestamp required' });
+        return res
+          .status(400)
+          .json({ message: 'Signature and timestamp required' });
       }
 
       // Authenticate the user

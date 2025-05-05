@@ -35,6 +35,7 @@ import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import CombinedMarketDialog from './CombinedMarketDialog';
 import MarketDeployButton from './MarketDeployButton';
 import MarketGroupDeployButton from './MarketGroupDeployButton';
+import ReindexMarketButton from './ReindexMarketButton';
 import SettleMarketDialog from './SettleMarketDialog';
 
 // Dynamically import LottieLoader
@@ -207,24 +208,30 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
             latestEpochId={latestEpochId}
           />
         )}
-        <div className="flex items-center gap-4">
-          {!group.address && (
-            <span className="text-sm text-gray-500">
-              Chain ID: {group.chainId}
-            </span>
-          )}
+        <div className="flex items-center gap-2">
           {group.address ? (
-            <Button variant="secondary" size="sm" asChild>
-              <a
-                href={`/forecasting/${getChainShortName(group.chainId)}:${group.address}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View
-              </a>
-            </Button>
+            <>
+              <Button variant="secondary" size="sm" asChild>
+                <a
+                  href={`/forecasting/${getChainShortName(group.chainId)}:${group.address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View
+                </a>
+              </Button>
+              <ReindexMarketButton
+                marketGroupAddress={group.address}
+                chainId={group.chainId}
+              />
+            </>
           ) : (
-            <MarketGroupDeployButton group={group} />
+            <>
+              <span className="text-sm text-gray-500">
+                Chain ID: {group.chainId}
+              </span>
+              <MarketGroupDeployButton group={group} />
+            </>
           )}
         </div>
       </header>
