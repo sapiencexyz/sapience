@@ -11,7 +11,7 @@ import { createResilientProcess } from '../utils/utils';
 
 async function main() {
   await initializeDataSource();
-  let jobs: Promise<void>[] = [];
+  let jobs: Promise<void | (() => void)>[] = [];
 
   await initializeFixtures();
 
@@ -23,7 +23,7 @@ async function main() {
   await Promise.all(jobs);
 }
 
-async function startMarketIndexers(): Promise<Promise<void>[]> {
+async function startMarketIndexers(): Promise<Promise<void | (() => void)>[]> {
   const distinctChainIdsResult = await marketGroupRepository
     .createQueryBuilder('marketGroup')
     .select('DISTINCT "chainId"')
@@ -33,18 +33,21 @@ async function startMarketIndexers(): Promise<Promise<void>[]> {
     (result) => result.chainId
   );
 
-  const allMarketJobs: Promise<void>[] = chainIds.map((chainId) =>
-    createResilientProcess(
-      () => indexMarketsJob(chainId),
-      `indexMarketsJob-${chainId}`
-    )()
+  const allMarketJobs: Promise<void | (() => void)>[] = chainIds.map(
+    (chainId) =>
+      createResilientProcess(
+        () => indexMarketsJob(chainId),
+        `indexMarketsJob-${chainId}`
+      )()
   );
 
   return allMarketJobs;
 }
 
-async function startResourceIndexers(): Promise<Promise<void>[]> {
-  const resourceJobs: Promise<void>[] = [];
+async function startResourceIndexers(): Promise<
+  Promise<void | (() => void)>[]
+> {
+  const resourceJobs: Promise<void | (() => void)>[] = [];
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
     // Find the resource in the database
