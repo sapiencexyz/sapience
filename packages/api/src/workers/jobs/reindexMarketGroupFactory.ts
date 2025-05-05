@@ -46,7 +46,7 @@ export async function reindexMarketGroupFactory(
             marketGroup: `0x${string}`;
             nonce: bigint;
           };
-          handleMarketGroupInitialized(
+          await handleMarketGroupInitialized(
             eventArgs,
             chainId,
             factoryAddress,
