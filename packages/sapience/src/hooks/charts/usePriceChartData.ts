@@ -137,6 +137,7 @@ interface UsePriceChartDataProps {
 interface UsePriceChartDataReturn {
   chartData: PriceChartDataPoint[];
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
   error: Error | null;
 }
@@ -429,7 +430,7 @@ export const usePriceChartData = ({
     );
   };
 
-  const { data, isLoading, isError, error } = useQuery<
+  const { data, isLoading, isError, error, isFetching } = useQuery<
     PriceChartDataPoint[],
     Error
   >({
@@ -452,5 +453,5 @@ export const usePriceChartData = ({
     refetchInterval: 60 * 1000, // 1 minute
   });
 
-  return { chartData: data ?? [], isLoading, isError, error };
+  return { chartData: data ?? [], isLoading, isFetching, isError, error };
 };

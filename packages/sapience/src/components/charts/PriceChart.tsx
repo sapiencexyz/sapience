@@ -7,12 +7,19 @@ import {
 import { cn } from '@foil/ui/lib/utils'; // Assuming shared utils
 import type { LineType } from '@foil/ui/types/charts';
 import { TimeInterval } from '@foil/ui/types/charts'; // Assuming shared types
-import { Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic'; // Add dynamic import
 import { useRef, useEffect } from 'react';
 import type React from 'react';
 
 import { useLightweightChart } from '~/hooks/charts/useLightweightChart';
 import { usePriceChartData } from '~/hooks/charts/usePriceChartData';
+
+// Dynamically import LottieLoader
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+  ssr: false,
+  // Use a simple div as placeholder during load
+  loading: () => <div className="w-8 h-8" />, // Placeholder for main loader
+});
 
 // Map TimeInterval enum to seconds for the hook
 // Consider moving this map to a shared location if used elsewhere
@@ -49,7 +56,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch data using the data hook
-  const { chartData, isLoading, isError } = usePriceChartData({
+  const { chartData, isLoading, isError, isFetching } = usePriceChartData({
     marketAddress: market.address,
     chainId: market.chainId,
     marketId: market.marketId.toString(), // Convert marketId to string for the hook
@@ -83,7 +90,13 @@ const PriceChart: React.FC<PriceChartProps> = ({
       {/* Loading & error overlays */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/10 rounded-md z-10">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-50" />
+          <LottieLoader width={32} height={32} />
+        </div>
+      )}
+      {/* Subtle fetching indicator */}
+      {isFetching && !isLoading && (
+        <div className="absolute top-2 right-2 p-1 bg-background/80 rounded-full z-10 flex items-center justify-center">
+          <LottieLoader width={16} height={16} />
         </div>
       )}
       {isError && (
