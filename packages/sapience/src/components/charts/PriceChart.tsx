@@ -48,8 +48,10 @@ const PriceChart: React.FC<PriceChartProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  console.log('[PriceChart] Props Received:', { market, selectedInterval, selectedPrices, resourceSlug }); // Log props
+
   // Fetch data using the data hook
-  const { chartData, isLoading, isError } = usePriceChartData({
+  const { chartData, isLoading, isError, isFetching } = usePriceChartData({
     marketAddress: market.address,
     chainId: market.chainId,
     marketId: market.marketId.toString(), // Convert marketId to string for the hook
@@ -59,6 +61,8 @@ const PriceChart: React.FC<PriceChartProps> = ({
     // trailingAvgTimeSeconds: 604800, // Pass the 7-day average time (in seconds)
     // Add fromTimestamp/toTimestamp based on selectedWindow if needed in the future
   });
+
+  console.log('[PriceChart] Data passed to useLightweightChart:', { chartData, selectedPrices }); // Log data for rendering hook
 
   // Render the chart using the rendering hook
   const { isLogarithmic, setIsLogarithmic, hoverData } = useLightweightChart({
@@ -84,6 +88,12 @@ const PriceChart: React.FC<PriceChartProps> = ({
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/10 rounded-md z-10">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-50" />
+        </div>
+      )}
+      {/* Subtle fetching indicator */} 
+      {isFetching && !isLoading && (
+        <div className="absolute top-2 right-2 p-1 bg-background/80 rounded-full z-10">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground opacity-70" />
         </div>
       )}
       {isError && (

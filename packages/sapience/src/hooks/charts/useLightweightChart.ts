@@ -55,6 +55,8 @@ export const useLightweightChart = ({
   priceData,
   selectedPrices, // Destructure selectedPrices
 }: UseLightweightChartProps) => {
+  console.log('[useLightweightChart] Hook Render/Re-render:', { priceDataLength: priceData.length, selectedPrices }); // Log inputs
+
   const chartRef = useRef<IChartApi | null>(null);
   const resizeObserverRef = useRef<ResizeObserver>();
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -257,9 +259,9 @@ export const useLightweightChart = ({
     };
     // Rerun effect if theme changes or container ref changes
     // Data changes are handled in a separate effect
-  }, [theme, containerRef, selectedPrices]);
+  }, [theme, containerRef]); // REMOVE selectedPrices again
 
-  // Effect to update series data when priceData changes
+  // Effect to update series data when priceData changes OR selectedPrices changes
   useEffect(() => {
     if (
       !chartRef.current ||
@@ -269,6 +271,8 @@ export const useLightweightChart = ({
       !trailingAvgPriceSeriesRef.current // Add check
     )
       return;
+
+    console.log('[useLightweightChart] Setting Data:', { priceDataLength: priceData.length, selectedPrices }); // Log before setting data
 
     // Prepare data for candlestick series
     const candleSeriesData: CandlestickData[] = priceData
@@ -327,12 +331,39 @@ export const useLightweightChart = ({
       hasSetTimeScale.current = true;
     }
 
-    // Fit content only once after initial data load
+    console.log('[useLightweightChart] Processed Data:', { candleDataLength: candleSeriesData.length, indexDataLength: indexLineData.length, resourceDataLength: resourceLineData.length, trailingAvgDataLength: trailingAvgLineData.length }); // Log processed data lengths
+
+    // Log the selectedPrices object THIS effect is seeing
+    console.log('[useLightweightChart] selectedPrices inside setData effect:', selectedPrices);
+
+    // Set data to series CONDITIONALLY based on selectedPrices
+    if (candlestickSeriesRef.current) {
+      candlestickSeriesRef.current.applyOptions({ visible: selectedPrices[LineType.MarketPrice] });
+      candlestickSeriesRef.current.setData(selectedPrices[LineType.MarketPrice] ? candleSeriesData : []);
+    }
+    if (indexPriceSeriesRef.current) {
+      indexPriceSeriesRef.current.applyOptions({ visible: selectedPrices[LineType.IndexPrice] });
+      indexPriceSeriesRef.current.setData(selectedPrices[LineType.IndexPrice] ? indexLineData : []);
+    }
+    if (resourcePriceSeriesRef.current) {
+      console.log(`[useLightweightChart] Setting resourcePrice data (selected: ${selectedPrices[LineType.ResourcePrice]}, length: ${resourceLineData.length})`); // Log resource setData
+      resourcePriceSeriesRef.current.applyOptions({ visible: selectedPrices[LineType.ResourcePrice] });
+      resourcePriceSeriesRef.current.setData(selectedPrices[LineType.ResourcePrice] ? resourceLineData : []);
+    }
+    if (trailingAvgPriceSeriesRef.current) {
+      console.log(`[useLightweightChart] Setting trailingAvg data (selected: ${selectedPrices[LineType.TrailingAvgPrice]}, length: ${trailingAvgLineData.length})`); // Log trailing avg setData
+      trailingAvgPriceSeriesRef.current.applyOptions({ visible: selectedPrices[LineType.TrailingAvgPrice] });
+      trailingAvgPriceSeriesRef.current.setData(selectedPrices[LineType.TrailingAvgPrice] ? trailingAvgLineData : []);
+    }
+
+    console.log('[useLightweightChart] Data Set to Series'); // Log after setting data
+    // Fit content only once after initial data load - MOVED AFTER setData
     if (!hasSetTimeScale.current && priceData.length > 0) {
       chartRef.current.timeScale().fitContent();
       hasSetTimeScale.current = true;
     }
-  }, [priceData, theme]); // Remove selectedPrices as it's not used in THIS effect
+
+  }, [priceData, theme, selectedPrices]); // ADD selectedPrices dependency
 
   // Effect to toggle logarithmic scale
   useEffect(() => {
@@ -341,39 +372,6 @@ export const useLightweightChart = ({
       mode: isLogarithmic ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
     });
   }, [isLogarithmic]);
-
-  // Effect to toggle series visibility based on selectedPrices
-  useEffect(() => {
-    if (
-      !chartRef.current ||
-      !candlestickSeriesRef.current ||
-      !indexPriceSeriesRef.current ||
-      !resourcePriceSeriesRef.current || // Add check
-      !trailingAvgPriceSeriesRef.current // Add check
-    ) {
-      return;
-    }
-
-    // Toggle Candlestick (Market Price) visibility
-    candlestickSeriesRef.current.applyOptions({
-      visible: selectedPrices[LineType.MarketPrice],
-    });
-
-    // Toggle Line (Index Price) visibility
-    indexPriceSeriesRef.current.applyOptions({
-      visible: selectedPrices[LineType.IndexPrice],
-    });
-
-    // Toggle Resource Price visibility
-    resourcePriceSeriesRef.current.applyOptions({
-      visible: selectedPrices[LineType.ResourcePrice],
-    });
-
-    // Toggle Trailing Average Price visibility
-    trailingAvgPriceSeriesRef.current.applyOptions({
-      visible: selectedPrices[LineType.TrailingAvgPrice],
-    });
-  }, [selectedPrices]); // Rerun when selectedPrices change
 
   return {
     isLogarithmic,

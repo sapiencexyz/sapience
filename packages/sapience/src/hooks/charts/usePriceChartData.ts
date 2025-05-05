@@ -137,6 +137,7 @@ interface UsePriceChartDataProps {
 interface UsePriceChartDataReturn {
   chartData: PriceChartDataPoint[];
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
   error: Error | null;
 }
@@ -297,13 +298,18 @@ export const usePriceChartData = ({
   toTimestamp: propToTimestamp,
 }: UsePriceChartDataProps): UsePriceChartDataReturn => {
   const { stEthPerToken } = useSapience(); // Still needed for index scaling
+  console.log('[usePriceChartData] Hook Render/Re-render:', { marketAddress, chainId, marketId, resourceSlug, interval, quoteTokenName, propFromTimestamp, propToTimestamp }); // Log hook inputs
 
   const fetchData = async (): Promise<PriceChartDataPoint[]> => {
+    console.log(`[usePriceChartData] queryFn (fetchData) CALLED for key containing slug: ${resourceSlug}`); // Log when the actual fetch function starts
+
     // Determine time range
     const now = Math.floor(Date.now() / 1000);
     const defaultLookbackSeconds = 30 * 24 * 60 * 60; // 30 days default
     const from = propFromTimestamp ?? now - defaultLookbackSeconds;
     const to = propToTimestamp ?? now;
+
+    console.log('[usePriceChartData] Starting fetchData:', { from, to, interval, resourceSlug }); // Log fetch start
 
     // Base queries
     const marketQuery = foilApi.post('/graphql', {
@@ -337,6 +343,8 @@ export const usePriceChartData = ({
         })
       : Promise.resolve(null); // Resolve null if no slug
 
+    console.log('[usePriceChartData] Resource Query Promise:', resourceQuery); // Log if resource query is created
+
     const trailingAvgQuery = resourceSlug
       ? foilApi.post('/graphql', {
           query: print(GET_RESOURCE_TRAILING_AVG_CANDLES),
@@ -349,6 +357,8 @@ export const usePriceChartData = ({
           },
         })
       : Promise.resolve(null); // Resolve null if no slug
+
+    console.log('[usePriceChartData] Trailing Avg Query Promise:', trailingAvgQuery); // Log if trailing avg query is created
 
     // Fetch all data concurrently
     const [
@@ -363,6 +373,8 @@ export const usePriceChartData = ({
       trailingAvgQuery,
     ]);
 
+    console.log('[usePriceChartData] API Responses Received:', { marketResponse, indexResponse, resourceResponse, trailingAvgResponse }); // Log raw API responses
+
     // Parse responses using the new helper function
     const {
       marketCandles,
@@ -376,6 +388,8 @@ export const usePriceChartData = ({
       trailingAvgResponse,
       resourceSlug
     );
+
+    console.log('[usePriceChartData] Parsed Candles:', { marketCandles, indexCandlesRaw, resourceCandlesRaw, trailingAvgCandlesRaw }); // Log parsed candle data
 
     // --- Data Processing ---
 
@@ -423,13 +437,19 @@ export const usePriceChartData = ({
       1e9
     ); // Assuming 1e9 multiplier
 
+    console.log('[usePriceChartData] Combined Data Map (before sort):', new Map(combinedDataMap)); // Log combined data before sorting
+
+    console.log('[usePriceChartData] Combined Data Map (after merge):', new Map(combinedDataMap)); // Log combined data after ALL merges
+
     // 3. Convert map values to array and sort
-    return Array.from(combinedDataMap.values()).sort(
+    const finalChartData = Array.from(combinedDataMap.values()).sort(
       (a, b) => a.timestamp - b.timestamp
     );
+    console.log('[usePriceChartData] Final Chart Data:', finalChartData); // Log final sorted data
+    return finalChartData;
   };
 
-  const { data, isLoading, isError, error } = useQuery<
+  const { data, isLoading, isError, error, isFetching } = useQuery<
     PriceChartDataPoint[],
     Error
   >({
@@ -452,5 +472,7 @@ export const usePriceChartData = ({
     refetchInterval: 60 * 1000, // 1 minute
   });
 
-  return { chartData: data ?? [], isLoading, isError, error };
+  console.log('[usePriceChartData] Hook Return:', { data: data ?? [], isLoading, isFetching, isError, error }); // Log hook return value, ADD isFetching
+
+  return { chartData: data ?? [], isLoading, isFetching, isError, error };
 };
