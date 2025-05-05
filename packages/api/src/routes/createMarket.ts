@@ -106,11 +106,11 @@ router.post('/create-market-group', async (req: Request, res: Response) => {
     newMarketGroup.collateralAsset = collateralAsset;
     newMarketGroup.minTradeSize = minTradeSize;
     newMarketGroup.marketParams = marketParams;
-    
+
     // Set resource if provided
     if (resource) {
       newMarketGroup.resource = resource;
-      
+
       // Set isCumulative if provided with a resource
       if (isCumulative !== undefined) {
         newMarketGroup.isCumulative = isCumulative;
