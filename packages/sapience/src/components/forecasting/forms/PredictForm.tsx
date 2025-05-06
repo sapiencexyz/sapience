@@ -145,6 +145,8 @@ export default function PredictForm({
               lowerBound,
               upperBound,
             }}
+            baseTokenName={marketGroupData.baseTokenName || ''}
+            quoteTokenName={marketGroupData.quoteTokenName || ''}
           />
         );
       default:
