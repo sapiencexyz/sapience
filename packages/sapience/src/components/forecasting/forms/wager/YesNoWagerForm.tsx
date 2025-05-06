@@ -147,10 +147,10 @@ export default function YesNoWagerForm({
     if (!quoteData || quoteError) return null;
 
     return (
-      <div className="mt-4 text-sm text-muted-foreground">
+      <div className="mt-2 text-sm text-muted-foreground">
         <p>
           If this market resolves to{' '}
-          <span className="italic font-medium">
+          <span className="font-medium">
             {predictionValue === '1' ? 'Yes' : 'No'}
           </span>
           , you will receive approximately{' '}
@@ -167,15 +167,17 @@ export default function YesNoWagerForm({
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         <YesNoPredict />
+        <div>
+          <WagerInput
+            collateralSymbol={marketGroupData.collateralSymbol || 'Tokens'}
+          />
 
-        <WagerInput
-          collateralSymbol={marketGroupData.collateralSymbol || 'Tokens'}
-        />
+          {quoteError && (
+            <p className="text-destructive text-sm">{quoteError}</p>
+          )}
 
-        {quoteError && <p className="text-destructive text-sm">{quoteError}</p>}
-
-        {renderQuoteData()}
-
+          {renderQuoteData()}
+        </div>
         <PermittedAlert isPermitted={isPermitted} />
 
         <Button
