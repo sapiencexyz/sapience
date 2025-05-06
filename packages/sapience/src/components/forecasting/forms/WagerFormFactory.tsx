@@ -2,9 +2,9 @@ import type { MarketGroupType } from '@foil/ui/types';
 
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 
-import { NumericWagerForm } from './wager/NumericWagerForm';
-import { SingleChoiceWagerForm } from './wager/SingleChoiceWagerForm';
-import { YesNoWagerForm } from './wager/YesNoWagerForm';
+import NumericWagerForm from './wager/NumericWagerForm';
+import SingleChoiceWagerForm from './wager/SingleChoiceWagerForm';
+import YesNoWagerForm from './wager/YesNoWagerForm';
 
 interface WagerFormFactoryProps {
   marketCategory: MarketGroupCategory;
