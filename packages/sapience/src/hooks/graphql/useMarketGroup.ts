@@ -21,6 +21,7 @@ const MARKET_GROUP_QUERY = gql`
       baseTokenName
       quoteTokenName
       collateralSymbol
+      collateralAsset
       markets {
         optionName
         id
@@ -29,6 +30,8 @@ const MARKET_GROUP_QUERY = gql`
         startTimestamp
         endTimestamp
         settled
+        baseAssetMinPriceTick
+        baseAssetMaxPriceTick
       }
     }
   }

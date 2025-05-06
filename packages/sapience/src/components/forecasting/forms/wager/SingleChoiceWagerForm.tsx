@@ -63,8 +63,6 @@ export function SingleChoiceWagerForm({
     createTrade,
     isLoading: isCreatingTrade,
     isSuccess: isTradeCreated,
-    isError: isTradeError,
-    error: tradeError,
     txHash,
     isApproving,
     needsApproval,
@@ -74,10 +72,11 @@ export function SingleChoiceWagerForm({
     chainId: marketGroupData.chainId,
     numericMarketId: Number(predictionValue),
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
-    collateralAmount: quoteData?.collateralAvailable || '0', // The amount to wager
+    collateralAmount: wagerAmount,
     slippagePercent: 0.5, // Default slippage percentage
     enabled: !!quoteData && !!wagerAmount && Number(wagerAmount) > 0,
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
+    collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
 
   // Handle form submission
@@ -119,17 +118,6 @@ export function SingleChoiceWagerForm({
       successHandled.current = false;
     }
   }, [wagerAmount, predictionValue]);
-
-  // Handle trade creation errors
-  useEffect(() => {
-    if (isTradeError && tradeError) {
-      toast({
-        title: 'Error Submitting Wager',
-        description: tradeError.message,
-        variant: 'destructive',
-      });
-    }
-  }, [isTradeError, tradeError, toast]);
 
   const isButtonDisabled =
     !methods.formState.isValid ||

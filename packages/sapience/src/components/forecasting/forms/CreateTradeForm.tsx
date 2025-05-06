@@ -211,6 +211,7 @@ export function CreateTradeForm({
     slippagePercent: slippageAsNumber,
     enabled: isConnected && !isChainMismatch && !!marketAddress,
     collateralTokenAddress: collateralAssetAddress,
+    collateralTokenSymbol: collateralAssetTicker,
   });
 
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
@@ -330,7 +331,6 @@ export function CreateTradeForm({
       !sizeBigInt ||
       sizeBigInt <= BigInt(0) ||
       !formState.isValid ||
-      isTradeError ||
       quoteError
     );
   };

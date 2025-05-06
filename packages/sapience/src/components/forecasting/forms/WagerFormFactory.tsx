@@ -8,6 +8,7 @@ interface WagerFormFactoryProps {
   marketCategory: MarketGroupCategory;
   marketGroupData: MarketGroupType;
   isPermitted?: boolean;
+  onSuccess?: (txHash: `0x${string}`) => void;
 }
 
 export function WagerFormFactory(props: WagerFormFactoryProps) {

@@ -10,6 +10,7 @@ import { z } from 'zod';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
+import { tickToPrice } from '~/lib/utils/tickUtils';
 import { NumericPredict } from '../inputs/NumericPredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import { PermittedAlert } from './PermittedAlert';
@@ -27,8 +28,12 @@ export function NumericWagerForm({
 }: NumericWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const lowerBound = 0; //Number(marketGroupData.lowerBound || 0);
-  const upperBound = 100; //Number(marketGroupData.upperBound || 100);
+  const lowerBound = tickToPrice(
+    marketGroupData.markets[0]?.baseAssetMinPriceTick!
+  );
+  const upperBound = tickToPrice(
+    marketGroupData.markets[0]?.baseAssetMaxPriceTick!
+  );
   const unitDisplay = ''; //marketGroupData.unitDisplay || '';
 
   // Form validation schema
@@ -77,8 +82,6 @@ export function NumericWagerForm({
     createTrade,
     isLoading: isCreatingTrade,
     isSuccess: isTradeCreated,
-    isError: isTradeError,
-    error: tradeError,
     txHash,
     isApproving,
     needsApproval,
@@ -88,10 +91,11 @@ export function NumericWagerForm({
     chainId: marketGroupData.chainId,
     numericMarketId: marketGroupData.markets[0].marketId,
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
-    collateralAmount: quoteData?.collateralAvailable || '0', // The amount to wager
+    collateralAmount: wagerAmount,
     slippagePercent: 0.5, // Default slippage percentage
     enabled: !!quoteData && !!wagerAmount && Number(wagerAmount) > 0,
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
+    collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
 
   // Handle form submission
@@ -133,17 +137,6 @@ export function NumericWagerForm({
       successHandled.current = false;
     }
   }, [wagerAmount, predictionValue]);
-
-  // Handle trade creation errors
-  useEffect(() => {
-    if (isTradeError && tradeError) {
-      toast({
-        title: 'Error Submitting Wager',
-        description: tradeError.message,
-        variant: 'destructive',
-      });
-    }
-  }, [isTradeError, tradeError, toast]);
 
   const isButtonDisabled =
     !methods.formState.isValid ||

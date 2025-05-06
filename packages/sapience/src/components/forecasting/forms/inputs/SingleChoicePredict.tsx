@@ -32,7 +32,6 @@ export function SingleChoicePredict({
               key={marketId}
               type="button"
               onClick={() => {
-                console.log('marketId', marketId, name);
                 setValue(name, marketId.toString(), { shouldValidate: true });
               }}
               className={`py-4 justify-start ${

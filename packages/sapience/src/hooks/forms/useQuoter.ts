@@ -120,7 +120,7 @@ export function useQuoter({
         throw new Error('API URL not configured.');
       }
 
-      const apiUrl = `${apiBaseUrl}/quoter/${marketData.chainId}/${marketData.address}/${marketId}/?expectedPrice=${expectedPrice}&collateralAvailable=${parsedWagerAmount.toString()}`;
+      const apiUrl = `${apiBaseUrl}/quoter/${marketData.chainId}/${marketData.address}/${marketId}/?expectedPrice=${expectedPrice}&collateralAvailable=${parsedWagerAmount.toString()}&maxIterations=${10}`;
 
       const response = await fetch(apiUrl);
       const data = await response.json();

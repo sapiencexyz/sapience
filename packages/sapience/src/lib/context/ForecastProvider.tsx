@@ -118,8 +118,6 @@ export function ForecastProvider({
     abi,
   });
 
-  console.log('marketContractData', marketContractData);
-
   // Get the market tick spacing
   const { tickSpacing, isLoading: isLoadingTickSpacing } = useMarketTickSpacing(
     {

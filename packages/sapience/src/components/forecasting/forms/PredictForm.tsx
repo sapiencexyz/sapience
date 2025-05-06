@@ -6,6 +6,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
+import { tickToPrice } from '~/lib/utils/tickUtils';
 import { NumericPredict } from './inputs/NumericPredict';
 import { SingleChoicePredict } from './inputs/SingleChoicePredict';
 import { YesNoPredict } from './inputs/YesNoPredict';
@@ -19,8 +20,12 @@ export function PredictForm({
   marketGroupData,
   marketCategory,
 }: PredictFormProps) {
-  const lowerBound = 0; //Number(marketGroupData.lowerBound || 0);
-  const upperBound = 100; //Number(marketGroupData.upperBound || 100);
+  const lowerBound = tickToPrice(
+    marketGroupData.markets[0]?.baseAssetMinPriceTick!
+  );
+  const upperBound = tickToPrice(
+    marketGroupData.markets[0]?.baseAssetMaxPriceTick!
+  );
   // Create schema based on market category
   const formSchema = useMemo(() => {
     switch (marketCategory) {
@@ -142,8 +147,8 @@ export function PredictForm({
         return (
           <NumericPredict
             bounds={{
-              lowerBound: Number(lowerBound || 0),
-              upperBound: Number(upperBound || 100),
+              lowerBound,
+              upperBound,
             }}
           />
         );

@@ -20,8 +20,6 @@ import { useParams, usePathname } from 'next/navigation';
 import { useState } from 'react';
 
 import { MarketType } from '@foil/ui/types';
-import { PredictForm } from '~/components/forecasting/forms/PredictForm';
-import { WagerFormFactory } from '~/components/forecasting/forms/WagerFormFactory';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import PredictionsList from '~/components/forecasting/PredictionsList';
 import {
@@ -40,6 +38,36 @@ const LottieLoader = dynamic(
     ssr: false,
     // Use a simple div as placeholder during load
     loading: () => <div className="w-8 h-8" />,
+  }
+);
+
+const DynamicPredictForm = dynamic(
+  () =>
+    import('~/components/forecasting/forms/PredictForm').then((mod) => ({
+      default: mod.PredictForm,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-8">
+        <LottieLoader width={30} height={30} />
+      </div>
+    ),
+  }
+);
+
+const DynamicWagerFormFactory = dynamic(
+  () =>
+    import('~/components/forecasting/forms/WagerFormFactory').then((mod) => ({
+      default: mod.WagerFormFactory,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-8">
+        <LottieLoader width={30} height={30} />
+      </div>
+    ),
   }
 );
 
@@ -63,7 +91,6 @@ const ForecastingDetailPage = () => {
     activeMarkets,
     marketCategory,
   } = useMarketGroup({ chainShortName, marketAddress });
-  console.log('marketGroupData', marketGroupData);
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -89,7 +116,7 @@ const ForecastingDetailPage = () => {
   }
 
   const optionNames = marketGroupData.markets.map(
-    (market) => market.optionName
+    (market) => market.optionName || ''
   );
 
   // Otherwise show the main content
@@ -196,17 +223,21 @@ const ForecastingDetailPage = () => {
 
                   {/* Form Content Based on Market Type */}
                   <div className="pt-4">
-                    {/* Only load the active form */}
+                    {/* Only render the active form component */}
                     {activeTab === 'predict' ? (
-                      <PredictForm
+                      <DynamicPredictForm
                         marketGroupData={marketGroupData}
                         marketCategory={marketCategory}
                       />
                     ) : (
-                      <WagerFormFactory
+                      <DynamicWagerFormFactory
                         marketCategory={marketCategory}
                         marketGroupData={marketGroupData}
                         isPermitted={!!permitData?.permitted}
+                        onSuccess={(txnHash) => {
+                          // TODO: refetch positions/predictions?
+                          console.log(txnHash);
+                        }}
                       />
                     )}
                   </div>

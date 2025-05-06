@@ -37,7 +37,12 @@ export function WagerInput({
     clearErrors,
     getValues,
     trigger,
+    setValue,
+    watch,
   } = useFormContext();
+
+  // Watch the value to handle formatted display
+  const value = watch(name);
 
   // Determine helper text based on collateral symbol
   const helperText =
@@ -76,11 +81,31 @@ export function WagerInput({
       <div className="relative">
         <Input
           id={`${name}-input`}
-          type="number"
+          type="text"
+          inputMode="decimal"
           placeholder="0.00"
           className={`pr-24 ${errors[name] ? 'border-destructive' : ''}`}
           {...register(name, {
-            onChange: () => trigger(name), // Trigger validation on change
+            onChange: (e) => {
+              // Allow only numbers and a single decimal point
+              const value = e.target.value;
+              const cleanedValue = value.replace(/[^0-9.]/g, '');
+
+              // Handle multiple decimal points
+              const parts = cleanedValue.split('.');
+              if (parts.length > 2) {
+                const newValue = parts[0] + '.' + parts.slice(1).join('');
+                setValue(name, newValue, { shouldValidate: false });
+                return;
+              }
+
+              if (value !== cleanedValue) {
+                setValue(name, cleanedValue, { shouldValidate: false });
+              }
+
+              // Trigger validation
+              trigger(name);
+            },
           })}
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground flex items-center pointer-events-none">
