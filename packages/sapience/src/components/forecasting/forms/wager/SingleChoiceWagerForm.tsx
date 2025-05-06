@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { SingleChoicePredict } from '../inputs/SingleChoicePredict';
+import SingleChoicePredict from '../inputs/SingleChoicePredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';

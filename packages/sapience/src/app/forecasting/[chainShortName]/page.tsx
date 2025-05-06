@@ -44,7 +44,7 @@ const LottieLoader = dynamic(
 const DynamicPredictForm = dynamic(
   () =>
     import('~/components/forecasting/forms/PredictForm').then((mod) => ({
-      default: mod.PredictForm,
+      default: mod.default,
     })),
   {
     ssr: false,
