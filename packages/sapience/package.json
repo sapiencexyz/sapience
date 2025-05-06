@@ -1,15 +1,15 @@
 {
-  "name": "@foil/app",
+  "name": "@foil/sapience",
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development next dev --port 3000",
-    "build": "next build",
+    "build": "pnpm lint && next build",
     "build:turbo": "turbo run build",
     "postbuild": "next-sitemap --config next-sitemap.config.js",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "next lint --max-warnings 0",
     "lint:fix": "eslint src --fix && pnpm format",
     "type-check": "tsc --noEmit",
     "check:turbo": "npx turbo lint type-check",
