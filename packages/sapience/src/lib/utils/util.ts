@@ -306,9 +306,6 @@ export const parseUrlParameter = (
   return { chainShortName, marketAddress, chainId };
 };
 
-// --- Constants ---
-const WEI_PER_ETHER_UTIL = 1e18; // Renamed to avoid potential global scope issues if used elsewhere
-
 // --- Function: Calculate Effective Entry Price ---
 
 /**

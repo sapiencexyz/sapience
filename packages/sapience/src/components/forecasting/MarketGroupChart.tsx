@@ -12,9 +12,9 @@ import {
   YAxis,
 } from 'recharts';
 
+import LottieLoader from '../shared/LottieLoader';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { formatTimestamp, getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
-import LottieLoader from '../shared/LottieLoader';
 
 import ChartLegend from './ChartLegend';
 
@@ -71,7 +71,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       if (
         point &&
         typeof point.indexClose === 'number' &&
-        !isNaN(point.indexClose)
+        !Number.isNaN(point.indexClose)
       ) {
         return point.indexClose;
       }

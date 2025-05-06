@@ -28,7 +28,7 @@ export function NumericPredict({
   const value = watch(name);
 
   // Calculate the step size based on decimal places
-  const stepSize = 1 / Math.pow(10, decimalPlaces);
+  const stepSize = 1 / 10 ** decimalPlaces;
 
   // Parse current value for slider
   const numericValue = value
@@ -129,7 +129,7 @@ export function NumericPredict({
                 return true;
               },
               onChange: (e) => {
-                let value = e.target.value;
+                const { value } = e.target;
 
                 // Only allow numbers and a single decimal point
                 const cleanedValue = value.replace(/[^0-9.-]/g, '');
@@ -164,7 +164,7 @@ export function NumericPredict({
               },
               onBlur: (e) => {
                 // Format the number properly on blur to ensure consistent display
-                const value = e.target.value;
+                const { value } = e.target;
                 if (value && !isNaN(parseFloat(value))) {
                   const formattedValue = formatNumber(parseFloat(value));
                   setValue(name, formattedValue, { shouldValidate: true });

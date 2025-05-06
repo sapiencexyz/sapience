@@ -38,11 +38,7 @@ export function WagerInput({
     getValues,
     trigger,
     setValue,
-    watch,
   } = useFormContext();
-
-  // Watch the value to handle formatted display
-  const value = watch(name);
 
   // Determine helper text based on collateral symbol
   const helperText =
@@ -88,13 +84,13 @@ export function WagerInput({
           {...register(name, {
             onChange: (e) => {
               // Allow only numbers and a single decimal point
-              const value = e.target.value;
+              const { value } = e.target;
               const cleanedValue = value.replace(/[^0-9.]/g, '');
 
               // Handle multiple decimal points
               const parts = cleanedValue.split('.');
               if (parts.length > 2) {
-                const newValue = parts[0] + '.' + parts.slice(1).join('');
+                const newValue = `${parts[0]}.${parts.slice(1).join('')}`;
                 setValue(name, newValue, { shouldValidate: false });
                 return;
               }

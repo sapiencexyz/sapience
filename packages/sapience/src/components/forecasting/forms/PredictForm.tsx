@@ -1,12 +1,14 @@
 import { Button } from '@foil/ui/components/ui/button';
-import { MarketGroupType } from '@foil/ui/types';
+import type { MarketGroupType } from '@foil/ui/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
+
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 import { tickToPrice } from '~/lib/utils/tickUtils';
+
 import { NumericPredict } from './inputs/NumericPredict';
 import { SingleChoicePredict } from './inputs/SingleChoicePredict';
 import { YesNoPredict } from './inputs/YesNoPredict';

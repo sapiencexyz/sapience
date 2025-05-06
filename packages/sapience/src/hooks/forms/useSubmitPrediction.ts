@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { encodeAbiParameters, parseAbiParameters } from 'viem';
 import { useAccount, useTransaction, useWriteContract } from 'wagmi';
 
+import type { MarketGroupCategory } from '../graphql/useMarketGroup';
 import { EAS_CONTRACT_ADDRESS, SCHEMA_UID } from '~/lib/constants/eas';
-import { MarketGroupCategory } from '../graphql/useMarketGroup';
 
 interface UseSubmitPredictionProps {
   marketAddress: string;
@@ -15,7 +15,6 @@ interface UseSubmitPredictionProps {
 
 export function useSubmitPrediction({
   marketAddress,
-  marketCategory,
   submissionValue,
   marketId,
 }: UseSubmitPredictionProps) {

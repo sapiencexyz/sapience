@@ -2,17 +2,19 @@ import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { Button } from '@foil/ui/components/ui/button';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { foilAbi } from '@foil/ui/lib/abi';
-import { MarketGroupType } from '@foil/ui/types';
+import type { MarketGroupType } from '@foil/ui/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
+
+import { NumericPredict } from '../inputs/NumericPredict';
+import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-import { NumericPredict } from '../inputs/NumericPredict';
-import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
+
 import { PermittedAlert } from './PermittedAlert';
 
 interface NumericWagerFormProps {
@@ -34,7 +36,7 @@ export function NumericWagerForm({
   const upperBound = tickToPrice(
     marketGroupData.markets[0]?.baseAssetMaxPriceTick!
   );
-  const unitDisplay = ''; //marketGroupData.unitDisplay || '';
+  const unitDisplay = ''; // marketGroupData.unitDisplay || '';
 
   // Form validation schema
   const formSchema = useMemo(() => {

@@ -13,13 +13,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
+import type { MarketType } from '@foil/ui/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { useState } from 'react';
 
-import { MarketType } from '@foil/ui/types';
+import { useSapience } from '../../../lib/context/SapienceProvider';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import PredictionsList from '~/components/forecasting/PredictionsList';
 import {
@@ -27,7 +28,6 @@ import {
   useMarketGroup,
 } from '~/hooks/graphql/useMarketGroup';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
-import { useSapience } from '../../../lib/context/SapienceProvider';
 
 export type ActiveTab = 'predict' | 'wager';
 
@@ -129,71 +129,57 @@ const ForecastingDetailPage = () => {
           </h1>
         </div>
 
-        {/* Main content layout: 2x2 grid on md+, single column stack on mobile */}
-        <div className="flex flex-col gap-8 px-4 md:px-3">
+        {/* Main content layout: Apply gap-6 and px-3 from user example */}
+        <div className="flex flex-col gap-6 px-3">
           {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col md:flex-row gap-12">
-            {/* Left Column: Chart or List */}
-            <div className="w-full md:flex-1">
-              {/* Conditionally render Chart or List based on selectedView */}
-              {selectedListView === 'Market' && (
-                <MarketGroupChart
-                  chainShortName={chainShortName}
-                  marketAddress={marketAddress}
-                  marketIds={activeMarkets.map((market) =>
-                    Number(market.marketId)
+            {/* NEW Wrapper for Left Column (Chart/List) */}
+            <div className="flex flex-col w-full md:flex-1">
+              {/* Original Bordered Box (Chart/List Area) - Now flex-1 within the wrapper */}
+              <div className="border border-border rounded-md flex flex-col flex-1">
+                {/* Wrapper div to allow chart/list to grow. Add min-h-0 */}
+                <div className="flex-1 min-h-0">
+                  {/* Conditionally render Chart or List based on selectedListView */}
+                  {selectedListView === 'Market' && (
+                    <MarketGroupChart
+                      chainShortName={chainShortName}
+                      marketAddress={marketAddress}
+                      marketIds={activeMarkets.map((market) =>
+                        Number(market.marketId)
+                      )}
+                      market={marketGroupData}
+                      minTimestamp={
+                        activeMarkets.length > 0
+                          ? Math.min(
+                              ...activeMarkets.map((market) =>
+                                Number(market.startTimestamp)
+                              )
+                            )
+                          : undefined
+                      }
+                      optionNames={optionNames}
+                    />
                   )}
-                  market={marketGroupData}
-                  minTimestamp={
-                    activeMarkets.length > 0
-                      ? Math.min(
-                          ...activeMarkets.map((market) =>
-                            Number(market.startTimestamp)
-                          )
-                        )
-                      : undefined
-                  }
-                  optionNames={optionNames}
-                />
-              )}
-              {selectedListView === 'Predictions' && (
-                <PredictionsList
-                  marketAddress={marketAddress}
-                  optionNames={optionNames}
-                />
-              )}
-              <div className="py-6">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="flex items-center gap-1"
-                    >
-                      {selectedListView}
-                      <ChevronDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem
-                      onSelect={() => setSelectedListView('Market')}
-                    >
-                      Market
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => setSelectedListView('Predictions')}
-                    >
-                      Predictions
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-
-            {/* Form (Right Column) */}
-            <div className="w-full md:w-[340px] mt-8 md:mt-0">
-              <div className="bg-card p-6 rounded-lg shadow-sm border">
+                  {selectedListView === 'Predictions' && (
+                    <PredictionsList
+                      marketAddress={marketAddress}
+                      optionNames={optionNames}
+                    />
+                  )}
+                </div>{' '}
+                {/* Closing the flex-1 min-h-0 wrapper */}
+              </div>{' '}
+              {/* Closing the bordered box */}
+            </div>{' '}
+            {/* Closing the NEW Left Column Wrapper */}
+            {/* Form (Right Column) - Make it flex column and ensure card grows */}
+            <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
+              {' '}
+              {/* Added flex flex-col */}
+              <div className="bg-card p-6 rounded-lg shadow-sm border flex-1">
+                {' '}
+                {/* Added flex-1 */}
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
-
                 {/* Tabs Section */}
                 <div className="space-y-2 mt-4">
                   <div className="flex w-full border-b">
@@ -246,29 +232,56 @@ const ForecastingDetailPage = () => {
             </div>
           </div>
 
-          {/* Advanced View Navigation */}
-          {activeMarkets.length > 0 && (
-            <div className="w-full flex justify-end items-start px-4 md:px-3 mt-4 md:mt-0 md:w-[340px] md:ml-auto">
-              {marketCategory === MarketGroupCategory.SINGLE_CHOICE ? (
-                <button
-                  type="button"
-                  onClick={() => setShowMarketSelector(true)}
-                  className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
-                >
-                  ADVANCED VIEW
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
-              ) : (
-                <Link
-                  href={`${pathname}/${activeMarkets[0].marketId}`}
-                  className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
-                >
-                  ADVANCED VIEW
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              )}
+          {/* NEW Row for Dropdown and Advanced View */}
+          <div className="flex justify-between items-center">
+            {/* Dropdown Menu (Left Aligned) */}
+            <div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-1">
+                    {selectedListView}
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    onSelect={() => setSelectedListView('Market')}
+                  >
+                    Market
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setSelectedListView('Predictions')}
+                  >
+                    Predictions
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-          )}
+
+            {/* Advanced View button (Right Aligned) */}
+            {/* Retain existing logic for Advanced View from current codebase */}
+            <div>
+              {activeMarkets.length > 0 &&
+                (marketCategory === MarketGroupCategory.SINGLE_CHOICE ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowMarketSelector(true)}
+                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
+                  >
+                    ADVANCED VIEW
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <Link
+                    href={`${pathname}/${activeMarkets[0].marketId}`}
+                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
+                  >
+                    ADVANCED VIEW
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                ))}
+            </div>
+          </div>
         </div>
       </div>
 

@@ -2,16 +2,18 @@ import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { Button } from '@foil/ui/components/ui/button';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { foilAbi } from '@foil/ui/lib/abi';
-import { MarketGroupType } from '@foil/ui/types';
+import type { MarketGroupType } from '@foil/ui/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
+
+import { SingleChoicePredict } from '../inputs/SingleChoicePredict';
+import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-import { SingleChoicePredict } from '../inputs/SingleChoicePredict';
-import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
+
 import { PermittedAlert } from './PermittedAlert';
 
 interface SingleChoiceWagerFormProps {
