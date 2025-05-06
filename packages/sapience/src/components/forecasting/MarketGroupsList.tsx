@@ -490,8 +490,10 @@ const ForecastingTable = () => {
 
   // Sort days chronologically
   const sortedDays = React.useMemo(() => {
-    return Object.keys(marketGroupsByDay).sort();
-  }, [marketGroupsByDay]);
+    return Object.keys(marketGroupsByDay).sort(
+      (a, b) => dayEndTimes[a] - dayEndTimes[b]
+    );
+  }, [marketGroupsByDay, dayEndTimes]);
 
   // Create a key that changes whenever filters change to force complete re-render
   const filterKey = React.useMemo(() => {
