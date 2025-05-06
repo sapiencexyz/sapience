@@ -23,10 +23,10 @@ export default function PredictForm({
   marketCategory,
 }: PredictFormProps) {
   const lowerBound = tickToPrice(
-    marketGroupData.markets[0]?.baseAssetMinPriceTick ?? 0
+    marketGroupData.markets[0].baseAssetMinPriceTick!
   );
   const upperBound = tickToPrice(
-    marketGroupData.markets[0]?.baseAssetMaxPriceTick ?? 0
+    marketGroupData.markets[0].baseAssetMaxPriceTick!
   );
   // Create schema based on market category
   const formSchema = useMemo(() => {
