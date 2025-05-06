@@ -130,7 +130,7 @@ const ForecastingDetailPage = () => {
         </div>
 
         {/* Main content layout: 2x2 grid on md+, single column stack on mobile */}
-        <div className="flex flex-col gap-6 px-3">
+        <div className="flex flex-col gap-8 px-4 md:px-3">
           {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col md:flex-row gap-12">
             {/* Left Column: Chart or List */}
