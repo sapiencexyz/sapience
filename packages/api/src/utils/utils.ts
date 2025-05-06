@@ -50,12 +50,7 @@ const createInfuraWebSocketTransport = (network: string): Transport => {
     `wss://${network}.infura.io/ws/v3/${process.env.INFURA_API_KEY}`,
     {
       key: network,
-      reconnect: {
-        attempts: 5,
-        delay: 1000,
-      },
-      retryCount: 5,
-      timeout: 30000,
+      reconnect: true,
       keepAlive: true,
     }
   );
