@@ -3,13 +3,13 @@
 import type { MarketGroupType } from '@foil/ui/types/graphql';
 import { useMemo } from 'react'; // <-- Import useMemo
 import {
-  ResponsiveContainer,
+  CartesianGrid,
+  Line,
   LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  Line,
-  CartesianGrid,
 } from 'recharts';
 
 import LottieLoader from '../shared/LottieLoader';
@@ -71,7 +71,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       if (
         point &&
         typeof point.indexClose === 'number' &&
-        !isNaN(point.indexClose)
+        !Number.isNaN(point.indexClose)
       ) {
         return point.indexClose;
       }

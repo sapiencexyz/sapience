@@ -1,13 +1,13 @@
 import type {
-  TransactionType,
-  MarketType,
   MarketGroupType,
+  MarketType,
+  TransactionType,
 } from '@foil/ui/types';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { formatEther, createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
+import { createPublicClient, formatEther, http } from 'viem';
 import * as chains from 'viem/chains';
+import { mainnet } from 'viem/chains';
 
 export const foilApi = {
   baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
@@ -159,18 +159,8 @@ export const getDisplayQuestion = (
  * Finds active markets for a market group based on current timestamp
  */
 export const findActiveMarkets = (
-  marketGroupData: MarketGroupType | null | undefined // Use MarketGroupType
+  marketGroupData: MarketGroupType
 ): MarketType[] => {
-  // Return type MarketType[]
-  // Adjust placeholder check if necessary for MarketGroupType
-  if (
-    !marketGroupData ||
-    // !('placeholder' in marketGroupData) || // Remove placeholder check if not applicable
-    !Array.isArray(marketGroupData.markets)
-  ) {
-    return [];
-  }
-
   const nowInSeconds = Date.now() / 1000;
   // Filter markets based on timestamps
   return marketGroupData.markets.filter(
@@ -284,6 +274,36 @@ export const getChainShortName = (id: number): string => {
   return chainObj
     ? chainObj.name.toLowerCase().replace(/\s+/g, '')
     : id.toString();
+};
+
+// Parse URL parameter to extract chain and market address
+export const parseUrlParameter = (
+  paramString: string
+): { chainShortName: string; marketAddress: string; chainId: number } => {
+  // URL decode the parameter first, then parse
+  const decodedParam = decodeURIComponent(paramString);
+
+  // More robust parsing to handle various URL format possibilities
+  let chainShortName = '';
+  let marketAddress = '';
+
+  if (decodedParam) {
+    // Check if the parameter contains a colon (chain:address format)
+    if (decodedParam.includes(':')) {
+      const [parsedChain, parsedAddress] = decodedParam.split(':');
+      chainShortName = parsedChain;
+      marketAddress = parsedAddress;
+    } else {
+      // If no colon, assume it's just the address
+      marketAddress = decodedParam;
+      // Use a default chain if needed
+      chainShortName = 'base';
+    }
+  }
+
+  const chainId = getChainIdFromShortName(chainShortName);
+
+  return { chainShortName, marketAddress, chainId };
 };
 
 // --- Function: Calculate Effective Entry Price ---

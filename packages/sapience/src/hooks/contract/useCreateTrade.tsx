@@ -19,6 +19,7 @@ export interface CreateTradeParams {
   slippagePercent: number; // Slippage tolerance as a percentage (e.g., 0.5 for 0.5%)
   enabled?: boolean;
   collateralTokenAddress?: `0x${string}`;
+  collateralTokenSymbol?: string;
 }
 
 /**
@@ -56,6 +57,7 @@ export function useCreateTrade({
   slippagePercent,
   enabled = true,
   collateralTokenAddress,
+  collateralTokenSymbol,
 }: CreateTradeParams): CreateTradeResult {
   const { toast } = useToast();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
@@ -254,7 +256,7 @@ export function useCreateTrade({
       if (needsApproval) {
         toast({
           title: 'Approval Required',
-          description: `Approving ${collateralAmount} tokens...`, // Be more specific
+          description: `Approving ${collateralAmount} ${collateralTokenSymbol || 'token(s)'}...`, // Be more specific
         });
         await approve(); // Call approve from useTokenApproval
         // The trade creation will be triggered by the useEffect watching isApproveSuccess

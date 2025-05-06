@@ -2,7 +2,7 @@ import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
 import type { MarketType } from '@foil/ui/types';
 import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
-import type { Address, Abi } from 'viem';
+import type { Abi, Address } from 'viem';
 
 import type { UsePositionsResult } from '~/hooks/contract';
 import {
@@ -83,25 +83,27 @@ const ForecastContext = createContext<ForecastContextType | undefined>(
 
 interface ForecastProviderProps {
   children: ReactNode;
-  chainShortName: string;
-  marketId: string;
+  pageDetails: {
+    marketAddress: string;
+    chainId: number;
+    marketId: string;
+  };
 }
 
 export function ForecastProvider({
   children,
-  chainShortName,
-  marketId,
+  pageDetails,
 }: ForecastProviderProps) {
+  const { marketId, chainId, marketAddress } = pageDetails;
   // Call the custom hook to get market data from GraphQL
   const {
     marketData,
     isLoadingMarket,
     displayQuestion,
     marketQuestionDisplay,
-    chainId,
-    marketAddress,
     numericMarketId,
-  } = useMarket({ chainShortName, marketId });
+  } = useMarket({ chainId, marketAddress, marketId });
+
   // Get ABI for contracts
   const { abi } = useFoilAbi();
 

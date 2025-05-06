@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { formatEther } from 'viem';
 
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import { tickToPrice, getChainShortName } from '~/lib/utils/util';
+import { getChainShortName, tickToPrice } from '~/lib/utils/util';
 
 interface LpPositionsTableProps {
   positions: PositionType[];

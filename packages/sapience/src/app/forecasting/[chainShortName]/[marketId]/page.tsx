@@ -18,6 +18,7 @@ import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
+import { parseUrlParameter } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -314,10 +315,12 @@ const ForecastContent = () => {
 const ForecastingDetailPage = () => {
   const params = useParams();
   const marketId = params.marketId as string;
-  const chainShortName = params.chainShortName as string;
+  const chainParam = params.chainShortName as string;
+
+  const { chainId, marketAddress } = parseUrlParameter(chainParam);
 
   return (
-    <ForecastProvider chainShortName={chainShortName} marketId={marketId}>
+    <ForecastProvider pageDetails={{ chainId, marketAddress, marketId }}>
       <ForecastContent />
     </ForecastProvider>
   );

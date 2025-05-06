@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react'; // Removed useMemo
 
 // Import the new structures and the processing function
 import {
-  processCandleData,
+  processCandleData, // Use new data point type
+  type MarketCandleDataWithId,
   type MultiMarketChartDataPoint, // Use new data point type
-  type MarketCandleDataWithId, // Use helper type for input
 } from '../../lib/utils/chartUtils';
 import { foilApi, getChainIdFromShortName } from '../../lib/utils/util'; // Import getChainIdFromShortName
 import { useSapience } from '~/lib/context/SapienceProvider'; // Import useSapience

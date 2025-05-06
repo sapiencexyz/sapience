@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
-import { foilApi, getChainIdFromShortName } from '~/lib/utils/util';
+import { foilApi } from '~/lib/utils/util';
 
 const MARKET_QUERY = gql`
   query GetMarketData($chainId: Int!, $address: String!, $marketId: Int!) {
@@ -58,31 +58,20 @@ const formatQuestion = (rawQuestion: string | undefined | null): string => {
 };
 
 interface UseMarketProps {
-  chainShortName: string;
+  chainId: number;
+  marketAddress: string;
   marketId: string;
 }
 
-export const useMarket = ({ chainShortName, marketId }: UseMarketProps) => {
+export const useMarket = ({
+  chainId,
+  marketAddress,
+  marketId,
+}: UseMarketProps) => {
   const [displayQuestion, setDisplayQuestion] = useState('Loading question...');
   const [marketQuestionDisplay, setMarketQuestionDisplay] = useState<
     string | null
   >(null);
-
-  // Parse chain and market address from chainShortName
-  const decodedParam = decodeURIComponent(chainShortName);
-  let marketAddress = '';
-  let chainId = 0;
-
-  if (decodedParam.includes(':')) {
-    const [parsedChain, parsedAddress] = decodedParam.split(':');
-    chainId = getChainIdFromShortName(parsedChain);
-    marketAddress = parsedAddress;
-  } else {
-    // Assuming the address is directly provided if no chain prefix
-    marketAddress = decodedParam;
-    // Default to base if no chain is specified - consider making this configurable or required
-    chainId = getChainIdFromShortName('base');
-  }
 
   const numericMarketId = Number(marketId);
 

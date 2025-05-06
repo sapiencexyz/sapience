@@ -1,11 +1,9 @@
 import type { MarketGroupType } from '@foil/ui/types/graphql';
-import debounce from 'lodash/debounce';
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useRef } from 'react';
 import { parseUnits } from 'viem';
 
-import type { ActiveTab } from '~/hooks/forms/usePredictionFormState';
-
-// Define type for quoter response data (matching component usage)
+// Define type for quoter response data
 export interface QuoteData {
   direction: 'LONG' | 'SHORT';
   maxSize: string; // BigInt string
@@ -15,151 +13,158 @@ export interface QuoteData {
 }
 
 interface UseQuoterProps {
-  marketData: MarketGroupType | null | undefined;
-  displayMarketId: string | number | null;
+  marketData: MarketGroupType;
+  marketId: number;
+  expectedPrice: number;
   wagerAmount: string;
-  expectedPriceForQuoter: number | null;
-  activeTab: ActiveTab;
 }
 
 export function useQuoter({
   marketData,
-  displayMarketId,
+  marketId,
+  expectedPrice,
   wagerAmount,
-  expectedPriceForQuoter,
-  activeTab,
 }: UseQuoterProps) {
-  const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
-  const [isQuoteLoading, setIsQuoteLoading] = useState(false);
-  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Debounced fetch function
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedFetchQuote = useCallback(
-    debounce(
-      async (params: {
-        chainId: number;
-        marketAddress: string;
-        marketId: string;
-        expectedPrice: number;
-        collateralAvailable: bigint;
-      }) => {
-        const {
-          chainId,
-          marketAddress,
-          marketId,
-          expectedPrice,
-          collateralAvailable,
-        } = params;
+  // Parse the wager amount to bigint if valid
+  const parsedWagerAmount = useMemo(() => {
+    try {
+      if (!wagerAmount || Number(wagerAmount) <= 0) return null;
+      return parseUnits(wagerAmount as `${number}`, 18); // Assuming 18 decimals for sUSDS
+    } catch (error) {
+      console.error('Error parsing wager amount:', error);
+      return null;
+    }
+  }, [wagerAmount]);
 
-        // Only fetch if collateral amount is positive
-        if (collateralAvailable <= BigInt(0)) {
-          setQuoteData(null);
-          setQuoteError(null);
-          setIsQuoteLoading(false);
-          return;
-        }
-
-        setIsQuoteLoading(true);
-        setQuoteError(null);
-        setQuoteData(null); // Clear previous quote data
-
-        try {
-          // Construct the URL using the established environment variable pattern
-          const apiBaseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL || ''; // Use specific FOIL API URL
-          if (!apiBaseUrl) {
-            console.warn(
-              'NEXT_PUBLIC_FOIL_API_URL is not set. Cannot fetch quote.'
-            );
-            throw new Error('API URL not configured.');
-          }
-          const apiUrl = `${apiBaseUrl}/quoter/${chainId}/${marketAddress}/${marketId}/?expectedPrice=${expectedPrice}&collateralAvailable=${collateralAvailable.toString()}`;
-
-          const response = await fetch(apiUrl);
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(
-              data.error || `HTTP error! status: ${response.status}`
-            );
-          }
-
-          setQuoteData(data as QuoteData);
-        } catch (error: unknown) {
-          console.error('Error fetching quote:', error);
-          let finalErrorMessage = 'Failed to fetch quote'; // Default message
-          if (error instanceof Error) {
-            finalErrorMessage =
-              error.message ===
-              'Could not find a valid position size that satisfies the price constraints'
-                ? 'The market cannot accept this wager due to insufficient liquidity.'
-                : error.message;
-          }
-          setQuoteError(finalErrorMessage);
-          setQuoteData(null); // Clear data on error
-        } finally {
-          setIsQuoteLoading(false);
-        }
-      },
-      500 // 500ms debounce delay
-    ),
-    [] // Empty dependency array for useCallback with debounce
+  // Create stable query key
+  const queryKey = useMemo(
+    () => [
+      'quote',
+      marketData?.chainId,
+      marketData?.address,
+      marketId,
+      expectedPrice,
+      parsedWagerAmount?.toString(),
+    ],
+    [
+      marketData?.chainId,
+      marketData?.address,
+      marketId,
+      expectedPrice,
+      parsedWagerAmount,
+    ]
   );
 
-  // useEffect to trigger the debounced fetch when relevant inputs change
+  // Use effect for debouncing
   useEffect(() => {
-    if (
-      activeTab === 'wager' &&
-      marketData?.chainId &&
-      marketData?.address &&
-      displayMarketId &&
-      expectedPriceForQuoter !== null &&
-      wagerAmount
-    ) {
-      try {
-        const collateralAmountBI = parseUnits(
-          wagerAmount as `${number}`,
-          18 // Assuming 18 decimals for sUSDS
-        );
-
-        if (collateralAmountBI > BigInt(0)) {
-          debouncedFetchQuote({
-            chainId: marketData.chainId,
-            marketAddress: marketData.address,
-            marketId: displayMarketId.toString(),
-            expectedPrice: expectedPriceForQuoter,
-            collateralAvailable: collateralAmountBI,
-          });
-        } else {
-          setQuoteData(null);
-          setQuoteError(null);
-          setIsQuoteLoading(false);
-        }
-      } catch (error) {
-        console.error('Error parsing wager amount:', error);
-        setQuoteData(null);
-        setQuoteError('Invalid wager amount entered.');
-        setIsQuoteLoading(false);
-      }
-    } else {
-      setQuoteData(null);
-      setQuoteError(null);
-      setIsQuoteLoading(false);
-      debouncedFetchQuote.cancel();
+    // If any of the parameters change, clear previous timeout
+    if (debounceTimeout.current) {
+      clearTimeout(debounceTimeout.current);
     }
 
+    // Only set up debounce and invalidate query if we have valid parameters
+    if (
+      marketData?.chainId &&
+      marketData?.address &&
+      marketId &&
+      expectedPrice !== undefined &&
+      parsedWagerAmount &&
+      parsedWagerAmount > BigInt(0)
+    ) {
+      // Set a timeout to invalidate the query after a delay (debounce)
+      debounceTimeout.current = setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey });
+      }, 500); // 500ms debounce
+    }
+
+    // Clean up on unmount or when dependencies change
     return () => {
-      debouncedFetchQuote.cancel();
+      if (debounceTimeout.current) {
+        clearTimeout(debounceTimeout.current);
+      }
     };
   }, [
-    activeTab,
+    queryKey,
+    queryClient,
     marketData?.chainId,
     marketData?.address,
-    displayMarketId,
-    expectedPriceForQuoter,
-    wagerAmount,
-    debouncedFetchQuote,
+    marketId,
+    expectedPrice,
+    parsedWagerAmount,
   ]);
+
+  // Use useQuery to handle fetching, caching, loading states
+  const {
+    data: quoteData,
+    isLoading: isQuoteLoading,
+    error,
+  } = useQuery<QuoteData>({
+    queryKey,
+    queryFn: async () => {
+      if (
+        !marketData?.chainId ||
+        !marketData?.address ||
+        !marketId ||
+        expectedPrice === undefined ||
+        !parsedWagerAmount ||
+        parsedWagerAmount <= BigInt(0)
+      ) {
+        throw new Error('Missing required parameters for quote');
+      }
+
+      const apiBaseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
+      if (!apiBaseUrl) {
+        throw new Error('API URL not configured.');
+      }
+
+      const apiUrl = `${apiBaseUrl}/quoter/${marketData.chainId}/${marketData.address}/${marketId}/?expectedPrice=${expectedPrice}&collateralAvailable=${parsedWagerAmount.toString()}&maxIterations=${10}`;
+
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      }
+
+      return data as QuoteData;
+    },
+    // Only enable the query if all required parameters are present and wager amount is valid
+    enabled:
+      !!marketData?.chainId &&
+      !!marketData?.address &&
+      !!marketId &&
+      expectedPrice !== undefined &&
+      !!parsedWagerAmount &&
+      parsedWagerAmount > BigInt(0),
+    // Add reasonable refetch settings
+    refetchOnWindowFocus: false,
+    staleTime: 30000, // 30 seconds
+    retry: 1,
+    refetchInterval: false,
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching
+  });
+
+  // Format the error message if there is an error
+  const getQuoteErrorMessage = (err: Error | null): string | null => {
+    if (!err) {
+      return null;
+    }
+    if (err instanceof Error) {
+      if (
+        err.message ===
+        'Could not find a valid position size that satisfies the price constraints'
+      ) {
+        return 'The market cannot accept this wager due to insufficient liquidity.';
+      }
+      return err.message;
+    }
+    return 'Failed to fetch quote';
+  };
+
+  const quoteError = getQuoteErrorMessage(error);
 
   return { quoteData, isQuoteLoading, quoteError };
 }
