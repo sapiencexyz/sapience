@@ -14,7 +14,7 @@ import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 
-import { PermittedAlert } from './PermittedAlert';
+import PermittedAlert from './PermittedAlert';
 
 interface SingleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -22,7 +22,7 @@ interface SingleChoiceWagerFormProps {
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-export function SingleChoiceWagerForm({
+export default function SingleChoiceWagerForm({
   marketGroupData,
   isPermitted = true,
   onSuccess,
@@ -82,10 +82,7 @@ export function SingleChoiceWagerForm({
   });
 
   // Handle form submission
-  const handleSubmit = async (data: {
-    predictionValue: string;
-    wagerAmount: string;
-  }) => {
+  const handleSubmit = async () => {
     if (!isPermitted) return;
 
     try {
@@ -105,9 +102,7 @@ export function SingleChoiceWagerForm({
         description: 'Your wager has been successfully submitted.',
       });
 
-      if (onSuccess) {
-        onSuccess(txHash);
-      }
+      onSuccess(txHash);
 
       // Reset the form after success
       methods.reset();

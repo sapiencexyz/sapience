@@ -8,7 +8,7 @@ interface PermittedAlertProps {
   isPermitted: boolean;
 }
 
-export function PermittedAlert({ isPermitted }: PermittedAlertProps) {
+export default function PermittedAlert({ isPermitted }: PermittedAlertProps) {
   if (isPermitted) return null;
 
   return (

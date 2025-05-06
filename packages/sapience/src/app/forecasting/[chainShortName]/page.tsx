@@ -59,7 +59,7 @@ const DynamicPredictForm = dynamic(
 const DynamicWagerFormFactory = dynamic(
   () =>
     import('~/components/forecasting/forms/WagerFormFactory').then((mod) => ({
-      default: mod.WagerFormFactory,
+      default: mod.default,
     })),
   {
     ssr: false,

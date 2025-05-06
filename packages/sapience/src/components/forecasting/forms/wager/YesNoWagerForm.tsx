@@ -9,12 +9,12 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
-import { YesNoPredict } from '../inputs/YesNoPredict';
+import YesNoPredict from '../inputs/YesNoPredict';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 
-import { PermittedAlert } from './PermittedAlert';
+import PermittedAlert from './PermittedAlert';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -22,7 +22,7 @@ interface YesNoWagerFormProps {
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-export function YesNoWagerForm({
+export default function YesNoWagerForm({
   marketGroupData,
   isPermitted = true,
   onSuccess,
@@ -84,10 +84,7 @@ export function YesNoWagerForm({
   });
 
   // Handle form submission
-  const handleSubmit = async (data: {
-    predictionValue: string;
-    wagerAmount: string;
-  }) => {
+  const handleSubmit = async () => {
     if (!isPermitted) return;
 
     try {
@@ -107,9 +104,7 @@ export function YesNoWagerForm({
         description: 'Your wager has been successfully submitted.',
       });
 
-      if (onSuccess) {
-        onSuccess(txHash);
-      }
+      onSuccess(txHash);
 
       // Reset the form after success
       methods.reset();

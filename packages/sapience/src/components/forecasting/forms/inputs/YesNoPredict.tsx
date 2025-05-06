@@ -6,7 +6,9 @@ interface YesNoPredictProps {
   name?: string;
 }
 
-export function YesNoPredict({ name = 'predictionValue' }: YesNoPredictProps) {
+export default function YesNoPredict({
+  name = 'predictionValue',
+}: YesNoPredictProps) {
   const { register, setValue, watch } = useFormContext();
   const value = watch(name);
 

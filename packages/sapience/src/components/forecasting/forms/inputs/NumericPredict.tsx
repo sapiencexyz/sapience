@@ -13,7 +13,7 @@ interface NumericPredictProps {
   decimalPlaces?: number;
 }
 
-export function NumericPredict({
+export default function NumericPredict({
   name = 'predictionValue',
   bounds = { lowerBound: 0, upperBound: 100 },
   unitsDisplay = '',
@@ -49,15 +49,19 @@ export function NumericPredict({
   };
 
   // Format bounds with proper decimal places and units
-  const formatBoundValue = (value: number) => {
-    return `${value.toFixed(decimalPlaces)}${unitsDisplay ? ` ${unitsDisplay}` : ''}`;
+  const formatBoundValue = (val: number) => {
+    const formattedVal = val.toFixed(decimalPlaces);
+    if (unitsDisplay) {
+      return `${formattedVal} ${unitsDisplay}`;
+    }
+    return formattedVal;
   };
 
   // Helper function to compare floating point numbers with some tolerance
-  const isInRange = (value: number, min: number, max: number): boolean => {
+  const isInRange = (_value: number, min: number, max: number): boolean => {
     // Add a small epsilon for floating point comparison
     const epsilon = 1e-10;
-    return value >= min - epsilon && value <= max + epsilon;
+    return _value >= min - epsilon && _value <= max + epsilon;
   };
 
   // Format number to ensure proper decimal places
@@ -67,8 +71,8 @@ export function NumericPredict({
 
   // Handle direct increment/decrement
   const incrementValue = (increment: boolean) => {
-    const currentValue = parseFloat(value || '0');
-    if (isNaN(currentValue)) return;
+    const currentValue = parseFloat(watch(name) || '0');
+    if (Number.isNaN(currentValue)) return;
 
     const newValue = increment
       ? Math.min(bounds.upperBound, currentValue + stepSize)
@@ -107,12 +111,12 @@ export function NumericPredict({
             placeholder="Enter prediction"
             className={`${errors[name] ? 'border-destructive' : ''} ${unitsDisplay ? 'pr-12' : ''}`}
             {...register(name, {
-              validate: (value) => {
+              validate: (inputValue) => {
                 // Parse the string to a number for validation
-                const num = parseFloat(String(value));
+                const num = parseFloat(String(inputValue));
 
                 // Check if it's a valid number first
-                if (isNaN(num)) {
+                if (Number.isNaN(num)) {
                   return 'Please enter a valid number';
                 }
 
@@ -129,10 +133,10 @@ export function NumericPredict({
                 return true;
               },
               onChange: (e) => {
-                const { value } = e.target;
+                const { value: inputValue } = e.target;
 
                 // Only allow numbers and a single decimal point
-                const cleanedValue = value.replace(/[^0-9.-]/g, '');
+                const cleanedValue = inputValue.replace(/[^0-9.-]/g, '');
 
                 // Handle invalid cases
                 if (
@@ -147,7 +151,7 @@ export function NumericPredict({
                 const num = parseFloat(cleanedValue);
 
                 // If NaN, don't continue
-                if (isNaN(num)) {
+                if (Number.isNaN(num)) {
                   return;
                 }
 
@@ -164,9 +168,9 @@ export function NumericPredict({
               },
               onBlur: (e) => {
                 // Format the number properly on blur to ensure consistent display
-                const { value } = e.target;
-                if (value && !isNaN(parseFloat(value))) {
-                  const formattedValue = formatNumber(parseFloat(value));
+                const { value: inputValue } = e.target;
+                if (inputValue && !Number.isNaN(parseFloat(inputValue))) {
+                  const formattedValue = formatNumber(parseFloat(inputValue));
                   setValue(name, formattedValue, { shouldValidate: true });
                 }
               },

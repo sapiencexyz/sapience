@@ -94,10 +94,10 @@ export const useMarketGroup = ({
 
   useEffect(() => {
     if (marketGroupData) {
-      const activeMarkets = findActiveMarkets(marketGroupData);
-      setActiveMarkets(activeMarkets);
+      const newActiveMarkets = findActiveMarkets(marketGroupData);
+      setActiveMarkets(newActiveMarkets);
 
-      if (activeMarkets.length > 1) {
+      if (newActiveMarkets.length > 1) {
         setMarketCategory(MarketGroupCategory.SINGLE_CHOICE);
       } else if (marketGroupData.markets[0].optionName === null) {
         setMarketCategory(MarketGroupCategory.YES_NO);

@@ -7,7 +7,7 @@ interface SingleChoicePredictProps {
   options: Array<{ name: string; marketId: number }>;
 }
 
-export function SingleChoicePredict({
+export default function SingleChoicePredict({
   name = 'predictionValue',
   options,
 }: SingleChoicePredictProps) {

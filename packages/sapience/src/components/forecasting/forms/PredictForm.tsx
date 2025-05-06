@@ -9,24 +9,24 @@ import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
-import { NumericPredict } from './inputs/NumericPredict';
-import { SingleChoicePredict } from './inputs/SingleChoicePredict';
-import { YesNoPredict } from './inputs/YesNoPredict';
+import NumericPredict from './inputs/NumericPredict';
+import SingleChoicePredict from './inputs/SingleChoicePredict';
+import YesNoPredict from './inputs/YesNoPredict';
 
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
   marketCategory: MarketGroupCategory;
 }
 
-export function PredictForm({
+export default function PredictForm({
   marketGroupData,
   marketCategory,
 }: PredictFormProps) {
   const lowerBound = tickToPrice(
-    marketGroupData.markets[0]?.baseAssetMinPriceTick!
+    marketGroupData.markets[0]?.baseAssetMinPriceTick ?? 0
   );
   const upperBound = tickToPrice(
-    marketGroupData.markets[0]?.baseAssetMaxPriceTick!
+    marketGroupData.markets[0]?.baseAssetMaxPriceTick ?? 0
   );
   // Create schema based on market category
   const formSchema = useMemo(() => {
@@ -47,7 +47,7 @@ export function PredictForm({
           predictionValue: z
             .string()
             .min(1, 'Please enter a prediction value')
-            .refine((val) => !isNaN(Number(val)), {
+            .refine((val) => !Number.isNaN(Number(val)), {
               message: 'Must be a number',
             })
             .refine((val) => Number(val) >= lowerBound, {
@@ -62,7 +62,7 @@ export function PredictForm({
           predictionValue: z.string().min(1, 'Please enter a prediction'),
         });
     }
-  }, [marketCategory, marketGroupData]);
+  }, [marketCategory, lowerBound, upperBound]);
 
   const defaultPredictionValue: string = useMemo(() => {
     switch (marketCategory) {
@@ -75,11 +75,7 @@ export function PredictForm({
       default:
         return '';
     }
-  }, [marketCategory, marketGroupData]);
-
-  useEffect(() => {
-    methods.setValue('predictionValue', defaultPredictionValue);
-  }, [marketCategory]);
+  }, [marketCategory, marketGroupData, lowerBound, upperBound]);
 
   // Set up form with dynamic schema
   const methods = useForm({
@@ -90,17 +86,19 @@ export function PredictForm({
     mode: 'onChange', // Validate on change for immediate feedback
   });
 
+  useEffect(() => {
+    methods.setValue('predictionValue', defaultPredictionValue);
+  }, [marketCategory, defaultPredictionValue, methods]);
+
   // Get the current prediction value
   const predictionValue = methods.watch('predictionValue');
 
   const marketId = useMemo(() => {
-    switch (marketCategory) {
-      case MarketGroupCategory.SINGLE_CHOICE:
-        return Number(predictionValue);
-      default:
-        return marketGroupData.markets[0].marketId;
+    if (marketCategory === MarketGroupCategory.SINGLE_CHOICE) {
+      return Number(predictionValue);
     }
-  }, [marketCategory, predictionValue]);
+    return marketGroupData.markets[0].marketId;
+  }, [marketCategory, predictionValue, marketGroupData.markets]);
 
   const submissionValue = useMemo(() => {
     switch (marketCategory) {
@@ -115,19 +113,14 @@ export function PredictForm({
     }
   }, [marketCategory, predictionValue]);
   // Use the submit prediction hook
-  const {
-    submitPrediction,
-    isAttesting,
-    attestationError,
-    attestationSuccess,
-  } = useSubmitPrediction({
+  const { submitPrediction, isAttesting } = useSubmitPrediction({
     marketAddress: marketGroupData.address!,
     marketCategory,
     marketId,
     submissionValue,
   });
 
-  const handleSubmit = async (data: { predictionValue: string }) => {
+  const handleSubmit = async () => {
     await submitPrediction();
   };
 

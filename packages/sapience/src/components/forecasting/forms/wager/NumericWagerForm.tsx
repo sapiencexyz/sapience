@@ -8,14 +8,14 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { NumericPredict } from '../inputs/NumericPredict';
+import NumericPredict from '../inputs/NumericPredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
-import { PermittedAlert } from './PermittedAlert';
+import PermittedAlert from './PermittedAlert';
 
 interface NumericWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -23,7 +23,7 @@ interface NumericWagerFormProps {
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-export function NumericWagerForm({
+export default function NumericWagerForm({
   marketGroupData,
   isPermitted = true,
   onSuccess,
@@ -31,10 +31,10 @@ export function NumericWagerForm({
   const { toast } = useToast();
   const successHandled = useRef(false);
   const lowerBound = tickToPrice(
-    marketGroupData.markets[0]?.baseAssetMinPriceTick!
+    marketGroupData.markets[0].baseAssetMinPriceTick!
   );
   const upperBound = tickToPrice(
-    marketGroupData.markets[0]?.baseAssetMaxPriceTick!
+    marketGroupData.markets[0].baseAssetMaxPriceTick!
   );
   const unitDisplay = ''; // marketGroupData.unitDisplay || '';
 
@@ -44,7 +44,7 @@ export function NumericWagerForm({
       predictionValue: z
         .string()
         .min(1, 'Please enter a prediction value')
-        .refine((val) => !isNaN(Number(val)), {
+        .refine((val) => !Number.isNaN(Number(val)), {
           message: 'Must be a number',
         })
         .refine((val) => Number(val) >= lowerBound, {
@@ -101,10 +101,7 @@ export function NumericWagerForm({
   });
 
   // Handle form submission
-  const handleSubmit = async (data: {
-    predictionValue: string;
-    wagerAmount: string;
-  }) => {
+  const handleSubmit = async () => {
     if (!isPermitted) return;
 
     try {
@@ -124,9 +121,7 @@ export function NumericWagerForm({
         description: 'Your wager has been successfully submitted.',
       });
 
-      if (onSuccess) {
-        onSuccess(txHash);
-      }
+      onSuccess(txHash);
 
       // Reset the form after success
       methods.reset();

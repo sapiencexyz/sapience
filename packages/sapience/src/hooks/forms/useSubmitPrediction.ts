@@ -43,13 +43,17 @@ export function useSubmitPrediction({
 
   // Helper function to encode schema data
   const encodeSchemaData = useCallback(
-    (marketAddress: string, marketId: string, prediction: string) => {
+    (_marketAddress: string, _marketId: string, prediction: string) => {
       try {
         return encodeAbiParameters(
           parseAbiParameters(
             'address marketAddress, uint256 marketId, uint160 prediction'
           ),
-          [marketAddress as `0x${string}`, BigInt(marketId), BigInt(prediction)]
+          [
+            _marketAddress as `0x${string}`,
+            BigInt(_marketId),
+            BigInt(prediction),
+          ]
         );
       } catch (error) {
         console.error('Error encoding schema data:', error);

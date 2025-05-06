@@ -19,7 +19,7 @@ interface WagerInputProps {
 export const wagerAmountSchema = z
   .string()
   .min(1, 'Please enter a wager amount')
-  .refine((val) => !isNaN(Number(val)), {
+  .refine((val) => !Number.isNaN(Number(val)), {
     message: 'Must be a valid number',
   })
   .refine((val) => Number(val) > 0, {

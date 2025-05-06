@@ -13,7 +13,7 @@ interface WagerFormFactoryProps {
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-export function WagerFormFactory(props: WagerFormFactoryProps) {
+export default function WagerFormFactory(props: WagerFormFactoryProps) {
   const { marketCategory, ...restOfProps } = props;
 
   switch (marketCategory) {

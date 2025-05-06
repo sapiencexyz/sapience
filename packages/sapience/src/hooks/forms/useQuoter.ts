@@ -148,14 +148,23 @@ export function useQuoter({
   });
 
   // Format the error message if there is an error
-  const quoteError = error
-    ? error instanceof Error
-      ? error.message ===
+  const getQuoteErrorMessage = (err: Error | null): string | null => {
+    if (!err) {
+      return null;
+    }
+    if (err instanceof Error) {
+      if (
+        err.message ===
         'Could not find a valid position size that satisfies the price constraints'
-        ? 'The market cannot accept this wager due to insufficient liquidity.'
-        : error.message
-      : 'Failed to fetch quote'
-    : null;
+      ) {
+        return 'The market cannot accept this wager due to insufficient liquidity.';
+      }
+      return err.message;
+    }
+    return 'Failed to fetch quote';
+  };
+
+  const quoteError = getQuoteErrorMessage(error);
 
   return { quoteData, isQuoteLoading, quoteError };
 }
