@@ -1,6 +1,7 @@
 import { Input } from '@foil/ui/components/ui/input';
 import { Label } from '@foil/ui/components/ui/label';
 import Slider from '@foil/ui/components/ui/slider';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 
 interface NumericPredictProps {
@@ -9,15 +10,17 @@ interface NumericPredictProps {
     lowerBound: number;
     upperBound: number;
   };
-  unitsDisplay?: string;
   decimalPlaces?: number;
+  baseTokenName?: string;
+  quoteTokenName?: string;
 }
 
 export default function NumericPredict({
   name = 'predictionValue',
   bounds = { lowerBound: 0, upperBound: 100 },
-  unitsDisplay = '',
-  decimalPlaces = 3,
+  decimalPlaces = 4,
+  baseTokenName,
+  quoteTokenName,
 }: NumericPredictProps) {
   const {
     register,
@@ -26,6 +29,11 @@ export default function NumericPredict({
     formState: { errors },
   } = useFormContext();
   const value = watch(name);
+
+  const unitsDisplay =
+    baseTokenName && quoteTokenName
+      ? `${baseTokenName}/${quoteTokenName}`
+      : undefined;
 
   // Calculate the step size based on decimal places
   const stepSize = 1 / 10 ** decimalPlaces;
@@ -48,13 +56,9 @@ export default function NumericPredict({
     }
   };
 
-  // Format bounds with proper decimal places and units
+  // Format bounds with proper decimal places (no units)
   const formatBoundValue = (val: number) => {
-    const formattedVal = val.toFixed(decimalPlaces);
-    if (unitsDisplay) {
-      return `${formattedVal} ${unitsDisplay}`;
-    }
-    return formattedVal;
+    return val.toFixed(decimalPlaces);
   };
 
   // Helper function to compare floating point numbers with some tolerance
@@ -86,14 +90,14 @@ export default function NumericPredict({
       <div>
         <Label htmlFor={`${name}-input`}>Your Prediction</Label>
 
-        {/* Range indicator */}
+        {/* Range indicator - removed units */}
         <div className="flex justify-between mt-2 text-xs text-muted-foreground">
           <span>{formatBoundValue(bounds.lowerBound)}</span>
           <span className="text-xs font-medium">Acceptable Range</span>
           <span>{formatBoundValue(bounds.upperBound)}</span>
         </div>
 
-        <div className="mt-2 mb-8 px-2">
+        <div className="mt-2 mb-6 px-2">
           <Slider
             value={sliderValue}
             min={bounds.lowerBound}
@@ -109,7 +113,7 @@ export default function NumericPredict({
             type="text"
             inputMode="decimal"
             placeholder="Enter prediction"
-            className={`${errors[name] ? 'border-destructive' : ''} ${unitsDisplay ? 'pr-12' : ''}`}
+            className={`${errors[name] ? 'border-destructive' : ''}`}
             {...register(name, {
               validate: (inputValue) => {
                 // Parse the string to a number for validation
@@ -177,28 +181,30 @@ export default function NumericPredict({
             })}
           />
 
-          {/* Custom increment/decrement buttons */}
-          <div className="absolute right-0 top-0 h-full flex flex-col">
+          {/* Improved increment/decrement buttons with better styling */}
+          <div className="absolute right-0 top-0 h-full flex flex-col border-l border-input">
             <button
               type="button"
-              className="h-1/2 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+              className="h-1/2 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/30 transition-colors"
               onClick={() => incrementValue(true)}
               tabIndex={-1}
+              aria-label="Increase value"
             >
-              ▲
+              <ChevronUp size={16} />
             </button>
             <button
               type="button"
-              className="h-1/2 px-2 flex items-center justify-center text-muted-foreground hover:text-foreground"
+              className="h-1/2 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/30 border-t border-input transition-colors"
               onClick={() => incrementValue(false)}
               tabIndex={-1}
+              aria-label="Decrease value"
             >
-              ▼
+              <ChevronDown size={16} />
             </button>
           </div>
 
           {unitsDisplay && (
-            <div className="absolute right-8 top-0 h-full px-3 flex items-center text-muted-foreground pointer-events-none">
+            <div className="absolute right-12 top-1/2 -translate-y-1/2 px-2 flex items-center text-sm text-muted-foreground pointer-events-none">
               {unitsDisplay}
             </div>
           )}
@@ -207,15 +213,6 @@ export default function NumericPredict({
         {errors[name] && (
           <p className="text-destructive text-sm mt-1">
             {errors[name]?.message?.toString()}
-          </p>
-        )}
-
-        {/* Display current value with units for clarity */}
-        {value && !errors[name] && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Current prediction:{' '}
-            {parseFloat(String(value)).toFixed(decimalPlaces)}
-            {unitsDisplay && ` ${unitsDisplay}`}
           </p>
         )}
       </div>
