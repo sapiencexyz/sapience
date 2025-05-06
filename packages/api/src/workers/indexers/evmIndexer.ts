@@ -177,7 +177,6 @@ class EvmIndexer implements IResourcePriceIndexer {
             scope.setExtra('chainId', this.client.chain?.id);
             Sentry.captureException(error);
           });
-          console.error(`[EvmIndexer.${resource.slug}] Watch error:`, error);
 
           this.isWatching = false;
           unwatch?.();

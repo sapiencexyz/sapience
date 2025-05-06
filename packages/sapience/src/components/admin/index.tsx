@@ -415,7 +415,7 @@ const Admin = () => {
                 New Market Group
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="sm:max-w-xl overflow-hidden">
               <DialogHeader>
                 <DialogTitle>Launch New Market Group with Markets</DialogTitle>
               </DialogHeader>

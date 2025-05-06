@@ -504,7 +504,10 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-6 overflow-y-auto max-h-[85vh] p-1"
+    >
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Market Group Details</h3>
 
