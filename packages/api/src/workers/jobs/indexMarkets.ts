@@ -138,7 +138,6 @@ export async function watchFactoryAddress(
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY_MS = 5000;
 
-  let isWatching = false;
   let reconnectAttempts = 0;
   let currentUnwatch: (() => void) | null = null;
   let isActive = true; // To allow permanent stop
@@ -149,20 +148,23 @@ export async function watchFactoryAddress(
     !factoryAddress ||
     factoryAddress === '0x0000000000000000000000000000000000000000'
   ) {
-    console.error(`[MarketFactoryWatcher] Invalid factory address ${factoryAddress}`);
+    console.error(
+      `[MarketFactoryWatcher] Invalid factory address ${factoryAddress}`
+    );
     return () => {};
   }
 
   const startFactoryWatcher = () => {
     if (!isActive) {
-      console.log(`[MarketFactoryWatcher] Watcher for ${descriptiveName} is permanently stopped. Not restarting.`);
+      console.log(
+        `[MarketFactoryWatcher] Watcher for ${descriptiveName} is permanently stopped. Not restarting.`
+      );
       return;
     }
 
     console.log(
       `[MarketFactoryWatcher] Setting up watcher for ${descriptiveName}`
     );
-    isWatching = true;
 
     try {
       currentUnwatch = client.watchContractEvent({
@@ -170,7 +172,9 @@ export async function watchFactoryAddress(
         abi: marketGroupFactoryAbi as Abi,
         eventName: 'MarketGroupInitialized',
         onLogs: (logs: Log[]) => {
-          console.log(`[MarketFactoryWatcher] Received ${logs.length} logs for ${descriptiveName}`);
+          console.log(
+            `[MarketFactoryWatcher] Received ${logs.length} logs for ${descriptiveName}`
+          );
           logs.forEach((log) => {
             try {
               const decodedLog = decodeEventLog({
@@ -216,14 +220,15 @@ export async function watchFactoryAddress(
             Sentry.captureException(error);
           });
 
-          isWatching = false;
           if (currentUnwatch) {
             currentUnwatch();
             currentUnwatch = null;
           }
 
           if (!isActive) {
-            console.log(`[MarketFactoryWatcher] Watcher for ${descriptiveName} permanently stopped during error handling.`);
+            console.log(
+              `[MarketFactoryWatcher] Watcher for ${descriptiveName} permanently stopped during error handling.`
+            );
             return;
           }
 
@@ -232,9 +237,12 @@ export async function watchFactoryAddress(
             console.log(
               `[MarketFactoryWatcher] Attempting to reconnect for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`
             );
-            setTimeout(() => {
-              startFactoryWatcher();
-            }, RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts -1)); // Exponential backoff
+            setTimeout(
+              () => {
+                startFactoryWatcher();
+              },
+              RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts - 1)
+            ); // Exponential backoff
           } else {
             console.error(
               `[MarketFactoryWatcher] Max reconnection attempts reached for ${descriptiveName}. Stopping watch.`
@@ -250,59 +258,67 @@ export async function watchFactoryAddress(
         `[MarketFactoryWatcher] Watcher setup complete for ${descriptiveName}`
       );
     } catch (error) {
-        console.error(
-            `[MarketFactoryWatcher] Critical error setting up watcher for ${descriptiveName}:`,
-            error
-        );
-        Sentry.withScope((scope) => {
-            scope.setExtra('factoryAddress', factoryAddress);
-            scope.setExtra('chainId', chainId);
-            Sentry.captureException(error);
-        });
-        // If setup itself fails, try to reconnect as well
-        isWatching = false;
-        if (!isActive) return;
+      console.error(
+        `[MarketFactoryWatcher] Critical error setting up watcher for ${descriptiveName}:`,
+        error
+      );
+      Sentry.withScope((scope) => {
+        scope.setExtra('factoryAddress', factoryAddress);
+        scope.setExtra('chainId', chainId);
+        Sentry.captureException(error);
+      });
+      // If setup itself fails, try to reconnect as well
+      if (!isActive) return;
 
-        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            reconnectAttempts++;
-            console.log(
-              `[MarketFactoryWatcher] Attempting to reconnect (after setup error) for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`
-            );
-            setTimeout(() => {
-                startFactoryWatcher();
-            }, RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts -1));
-        } else {
-            console.error(
-              `[MarketFactoryWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}. Stopping.`
-            );
-            Sentry.captureMessage(
-              `[MarketFactoryWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}`
-            );
-            isActive = false;
-        }
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        console.log(
+          `[MarketFactoryWatcher] Attempting to reconnect (after setup error) for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`
+        );
+        setTimeout(
+          () => {
+            startFactoryWatcher();
+          },
+          RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts - 1)
+        );
+      } else {
+        console.error(
+          `[MarketFactoryWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}. Stopping.`
+        );
+        Sentry.captureMessage(
+          `[MarketFactoryWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}`
+        );
+        isActive = false;
+      }
     }
   };
 
   startFactoryWatcher();
 
   return () => {
-    console.log(`[MarketFactoryWatcher] Permanently stopping watcher for ${descriptiveName}.`);
+    console.log(
+      `[MarketFactoryWatcher] Permanently stopping watcher for ${descriptiveName}.`
+    );
     isActive = false;
     if (currentUnwatch) {
       try {
         currentUnwatch();
-        console.log(`[MarketFactoryWatcher] Unwatched ${descriptiveName} successfully.`);
+        console.log(
+          `[MarketFactoryWatcher] Unwatched ${descriptiveName} successfully.`
+        );
       } catch (error) {
-        console.error(`[MarketFactoryWatcher] Error unwatching ${descriptiveName}:`, error);
+        console.error(
+          `[MarketFactoryWatcher] Error unwatching ${descriptiveName}:`,
+          error
+        );
         Sentry.withScope((scope) => {
-            scope.setExtra('factoryAddress', factoryAddress);
-            scope.setExtra('chainId', chainId);
-            Sentry.captureException(error);
-          });
+          scope.setExtra('factoryAddress', factoryAddress);
+          scope.setExtra('chainId', chainId);
+          Sentry.captureException(error);
+        });
       }
       currentUnwatch = null;
     }
-    isWatching = false;
   };
 }
 
@@ -333,10 +349,7 @@ export async function startIndexingAndWatchingMarketGroups(
       marketGroup.address !== '0x0000000000000000000000000000000000000000'
     ) {
       try {
-        const unwatch = await startIndexingForMarketGroup(
-          marketGroup,
-          client
-        );
+        const unwatch = await startIndexingForMarketGroup(marketGroup, client);
         unwatchFunctions.push(unwatch);
       } catch (error) {
         console.error(
@@ -361,10 +374,7 @@ export async function startIndexingAndWatchingMarketGroups(
   // Use the new watchFactoryAddress function for each factory
   for (const factoryAddress of factoryAddresses) {
     try {
-      const unwatch = await watchFactoryAddress(
-        chainId,
-        factoryAddress
-      );
+      const unwatch = await watchFactoryAddress(chainId, factoryAddress);
       unwatchFunctions.push(unwatch);
     } catch (error) {
       console.error(

@@ -171,7 +171,6 @@ export const indexMarketEvents = async (
 
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY_MS = 5000;
-  let isWatching = false;
   let reconnectAttempts = 0;
   let currentUnwatch: (() => void) | null = null;
   let isActive = true; // To allow permanent stop
@@ -216,7 +215,11 @@ export const indexMarketEvents = async (
         // For now, resetting on any successful log processing to mimic evmIndexer's onBlock success.
         reconnectAttempts = 0;
       } catch (error) {
-        console.error(`[MarketEventWatcher] Error processing a log for ${descriptiveName}:`, error, log);
+        console.error(
+          `[MarketEventWatcher] Error processing a log for ${descriptiveName}:`,
+          error,
+          log
+        );
         Sentry.withScope((scope) => {
           scope.setExtra('marketAddress', market.address);
           scope.setExtra('chainId', chainId);
@@ -231,120 +234,128 @@ export const indexMarketEvents = async (
 
   const startMarketWatcher = () => {
     if (!isActive) {
-        console.log(`[MarketEventWatcher] Watcher for ${descriptiveName} is permanently stopped. Not restarting.`);
-        return;
+      console.log(
+        `[MarketEventWatcher] Watcher for ${descriptiveName} is permanently stopped. Not restarting.`
+      );
+      return;
     }
 
     console.log(
       `[MarketEventWatcher] Setting up contract event watcher for ${descriptiveName}`
     );
-    isWatching = true;
 
     try {
-        currentUnwatch = client.watchContractEvent({
-            address: market.address as `0x${string}`,
-            abi: Foil.abi, // Assuming Foil.abi is the correct ABI for market events
-            onLogs: processLogs,
-            onError: (error) => {
-            console.error(
-                `[MarketEventWatcher] Error watching ${descriptiveName}:`,
-                error
-            );
-            Sentry.withScope((scope) => {
-                scope.setExtra('marketAddress', market.address);
-                scope.setExtra('chainId', chainId);
-                Sentry.captureException(error);
-            });
-
-            isWatching = false;
-            if (currentUnwatch) {
-                currentUnwatch();
-                currentUnwatch = null;
-            }
-
-            if (!isActive) {
-                console.log(`[MarketEventWatcher] Watcher for ${descriptiveName} permanently stopped during error handling.`);
-                return;
-            }
-
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                reconnectAttempts++;
-                const delay = RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts - 1); // Exponential backoff
-                console.log(
-                `[MarketEventWatcher] Attempting to reconnect for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`
-                );
-                setTimeout(() => {
-                startMarketWatcher();
-                }, delay);
-            } else {
-                console.error(
-                `[MarketEventWatcher] Max reconnection attempts reached for ${descriptiveName}. Stopping watch.`
-                );
-                Sentry.captureMessage(
-                `[MarketEventWatcher] Max reconnection attempts reached for ${descriptiveName}`
-                );
-                isActive = false; // Stop trying if max attempts reached
-            }
-            },
-        });
-        console.log(
-            `[MarketEventWatcher] Watcher setup complete for ${descriptiveName}`
-        );
-    } catch (error) {
-        console.error(
-            `[MarketEventWatcher] Critical error setting up watcher for ${descriptiveName}:`,
+      currentUnwatch = client.watchContractEvent({
+        address: market.address as `0x${string}`,
+        abi: Foil.abi, // Assuming Foil.abi is the correct ABI for market events
+        onLogs: processLogs,
+        onError: (error) => {
+          console.error(
+            `[MarketEventWatcher] Error watching ${descriptiveName}:`,
             error
-        );
-        Sentry.withScope((scope) => {
+          );
+          Sentry.withScope((scope) => {
             scope.setExtra('marketAddress', market.address);
             scope.setExtra('chainId', chainId);
             Sentry.captureException(error);
-        });
+          });
 
-        isWatching = false;
-        if (!isActive) return;
+          if (currentUnwatch) {
+            currentUnwatch();
+            currentUnwatch = null;
+          }
 
-        if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            reconnectAttempts++;
-            const delay = RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts - 1);
+          if (!isActive) {
             console.log(
-              `[MarketEventWatcher] Attempting to reconnect (after setup error) for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`
+              `[MarketEventWatcher] Watcher for ${descriptiveName} permanently stopped during error handling.`
+            );
+            return;
+          }
+
+          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            const delay =
+              RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts - 1); // Exponential backoff
+            console.log(
+              `[MarketEventWatcher] Attempting to reconnect for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`
             );
             setTimeout(() => {
-                startMarketWatcher();
+              startMarketWatcher();
             }, delay);
-        } else {
+          } else {
             console.error(
-              `[MarketEventWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}. Stopping.`
+              `[MarketEventWatcher] Max reconnection attempts reached for ${descriptiveName}. Stopping watch.`
             );
             Sentry.captureMessage(
-              `[MarketEventWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}`
+              `[MarketEventWatcher] Max reconnection attempts reached for ${descriptiveName}`
             );
-            isActive = false;
-        }
+            isActive = false; // Stop trying if max attempts reached
+          }
+        },
+      });
+      console.log(
+        `[MarketEventWatcher] Watcher setup complete for ${descriptiveName}`
+      );
+    } catch (error) {
+      console.error(
+        `[MarketEventWatcher] Critical error setting up watcher for ${descriptiveName}:`,
+        error
+      );
+      Sentry.withScope((scope) => {
+        scope.setExtra('marketAddress', market.address);
+        scope.setExtra('chainId', chainId);
+        Sentry.captureException(error);
+      });
+
+      if (!isActive) return;
+
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        const delay = RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts - 1);
+        console.log(
+          `[MarketEventWatcher] Attempting to reconnect (after setup error) for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`
+        );
+        setTimeout(() => {
+          startMarketWatcher();
+        }, delay);
+      } else {
+        console.error(
+          `[MarketEventWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}. Stopping.`
+        );
+        Sentry.captureMessage(
+          `[MarketEventWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}`
+        );
+        isActive = false;
+      }
     }
   };
 
   startMarketWatcher();
 
   return () => {
-    console.log(`[MarketEventWatcher] Permanently stopping watcher for ${descriptiveName}.`);
+    console.log(
+      `[MarketEventWatcher] Permanently stopping watcher for ${descriptiveName}.`
+    );
     isActive = false;
     if (currentUnwatch) {
       try {
         currentUnwatch();
-        console.log(`[MarketEventWatcher] Unwatched ${descriptiveName} successfully.`);
+        console.log(
+          `[MarketEventWatcher] Unwatched ${descriptiveName} successfully.`
+        );
       } catch (error) {
-        console.error(`[MarketEventWatcher] Error unwatching ${descriptiveName}:`, error);
+        console.error(
+          `[MarketEventWatcher] Error unwatching ${descriptiveName}:`,
+          error
+        );
         Sentry.withScope((scope) => {
-            scope.setExtra('marketAddress', market.address);
-            scope.setExtra('chainId', chainId);
-            Sentry.captureException(error);
+          scope.setExtra('marketAddress', market.address);
+          scope.setExtra('chainId', chainId);
+          Sentry.captureException(error);
         });
       }
       currentUnwatch = null;
     }
-    isWatching = false;
   };
 };
 
