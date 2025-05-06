@@ -150,11 +150,11 @@ export default function SingleChoiceWagerForm({
     )?.optionName;
 
     return (
-      <div className="mt-4 text-sm text-muted-foreground">
+      <div className="mt-2 text-sm text-muted-foreground">
         <p>
           If this market resolves to{' '}
-          <span className="italic font-medium">{selectedOptionName}</span>, you
-          will receive approximately{' '}
+          <span className="font-medium">{selectedOptionName}</span>, you will
+          receive approximately{' '}
           <span className="font-medium">
             <NumberDisplay value={BigInt(quoteData.maxSize)} precision={4} />{' '}
             {marketGroupData?.collateralSymbol || 'tokens'}
@@ -173,15 +173,17 @@ export default function SingleChoiceWagerForm({
             marketId: market.marketId,
           }))}
         />
+        <div>
+          <WagerInput
+            collateralSymbol={marketGroupData.collateralSymbol || 'Tokens'}
+          />
 
-        <WagerInput
-          collateralSymbol={marketGroupData.collateralSymbol || 'Tokens'}
-        />
+          {quoteError && (
+            <p className="text-destructive text-sm">{quoteError}</p>
+          )}
 
-        {quoteError && <p className="text-destructive text-sm">{quoteError}</p>}
-
-        {renderQuoteData()}
-
+          {renderQuoteData()}
+        </div>
         <PermittedAlert isPermitted={isPermitted} />
 
         <Button

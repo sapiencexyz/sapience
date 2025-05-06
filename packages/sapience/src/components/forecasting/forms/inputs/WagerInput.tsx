@@ -42,9 +42,19 @@ export function WagerInput({
 
   // Determine helper text based on collateral symbol
   const helperText =
-    collateralSymbol === 'sUSDS'
-      ? 'sUSDS is the yield-bearing token of the Sky Protocol. Get sUSDS.'
-      : undefined;
+    collateralSymbol === 'sUSDS' ? (
+      <>
+        sUSDS is the yield-bearing token of the Sky Protocol.{' '}
+        <a
+          href="https://swap.cow.fi/#/8453/swap/_/sUSDS"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline"
+        >
+          Get sUSDS
+        </a>
+      </>
+    ) : undefined;
 
   // Validate the wager amount independently using the schema
   useEffect(() => {
@@ -119,7 +129,7 @@ export function WagerInput({
                 </button>
               </PopoverTrigger>
               <PopoverContent side="top" className="w-[200px] p-3 text-sm">
-                <p>{helperText}</p>
+                <div>{helperText}</div>
               </PopoverContent>
             </Popover>
           )}
