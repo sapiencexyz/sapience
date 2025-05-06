@@ -1,10 +1,10 @@
+import Foil from '@foil/protocol/deployments/Foil.json';
 import { Router } from 'express';
 import { marketRepository } from 'src/db';
 import { Market } from 'src/models/Market';
+import { formatUnits, parseUnits } from 'viem';
 import { z } from 'zod';
 import { getProviderForChain } from '../utils/utils';
-import { formatUnits, parseUnits } from 'viem';
-import Foil from '@foil/protocol/deployments/Foil.json';
 
 const router = Router();
 const MAX_ITERATIONS = 10;
@@ -133,90 +133,132 @@ async function getMaxSizeForCollateral(
     expectedPrice,
     collateralAvailable,
     isLong,
-    maxIterations = 3,
+    maxIterations = 10,
   } = params;
 
-  console.log('maxIterations', maxIterations);
-  // 1- get the theoretical max size for the collateral (collateralAvailable / currentPrice)
+  console.log('Running binary search with maxIterations:', maxIterations);
+
+  // Calculate theoretical max position size as initial upper bound
   const currentPriceD18 = parseUnits(currentPrice.toString(), 18);
   const UNIT_D18 = parseUnits('1', 18);
   const theoreticalMaxPositionSize =
     (collateralAvailable * UNIT_D18) / currentPriceD18;
 
-  let currentPriceLimit = currentPrice;
-  if (priceLimit !== undefined) {
-    currentPriceLimit = priceLimit;
-  }
+  // Setup binary search parameters
+  let minSize = BigInt(0);
+  let maxSize = theoreticalMaxPositionSize;
+  let viableSize: bigint | null = null;
+  let viableCollateral: bigint | null = null;
+  let viableFillPrice: bigint | null = null;
 
-  let found = false;
-  let currentIteration = 0;
-  let currentPositionSize = theoreticalMaxPositionSize;
-  let positionSize: bigint = BigInt(0);
-
+  const currentPriceLimit =
+    priceLimit !== undefined ? priceLimit : currentPrice;
   const client = getProviderForChain(parseInt(chainId));
 
-  // 2- quote using contract `quoteCreateTraderPosition` and loop to find the max position size between current price and expected price. The quoter function will revert if the size is too large and will return the price after the trade.
-  while (!found && currentIteration < maxIterations) {
-    // get the quote using viem. Notice we need to use a static call here since the function is not a view function
-    try {
-      // Convert position size to the correct sign based on direction
-      positionSize = isLong ? currentPositionSize : -currentPositionSize;
+  console.log(
+    `Starting binary search: minSize=${minSize}, maxSize=${maxSize}, isLong=${isLong}`
+  );
 
-      console.log('positionSize', positionSize);
+  // Binary search for maximum viable size
+  for (let attempt = 0; attempt < maxIterations; attempt++) {
+    // Calculate midpoint between min and max
+    const testSize = (maxSize + minSize) / BigInt(2);
+
+    // Skip unnecessary iterations if we've converged
+    if (maxSize - minSize < BigInt(10)) {
+      console.log(`Binary search converged at iteration ${attempt}`);
+      break;
+    }
+
+    // Convert to signed position size based on direction
+    const signedTestSize = isLong ? testSize : -testSize;
+
+    console.log(
+      `Binary search iteration ${attempt}: Testing size ${signedTestSize}`
+    );
+
+    try {
+      // Test this size with contract call
       const result = await client.simulateContract({
         address: marketAddress as `0x${string}`,
         abi: Foil.abi,
         functionName: 'quoteCreateTraderPosition',
-        args: [BigInt(epochId), positionSize],
+        args: [BigInt(epochId), signedTestSize],
       });
 
-      // Extract the fill price from the result
+      // Extract the relevant values from the result
       const [requiredCollateral, , priceAfterTrade] = result.result as [
         bigint,
         bigint,
         bigint,
       ];
 
-      // if the price after the trade is not defined, use the expected price (this can happen if the version of the contract doesn't support the priceAfterTrade)
+      // Convert price to decimal for comparison
       const priceAfterTradeDecimal = priceAfterTrade
         ? Number(formatUnits(priceAfterTrade, 18))
         : expectedPrice;
 
-      // if the price after the trade is between the current price and the expected price, we found the max size
-      if (
-        requiredCollateral <= collateralAvailable &&
-        isLong &&
-        priceAfterTradeDecimal > currentPriceLimit &&
-        priceAfterTradeDecimal <= expectedPrice
-      ) {
-        found = true;
-      } else if (
-        requiredCollateral <= collateralAvailable &&
-        !isLong &&
-        priceAfterTradeDecimal < currentPriceLimit &&
-        priceAfterTradeDecimal >= expectedPrice
-      ) {
-        found = true;
+      console.log(
+        `Size ${signedTestSize} requires collateral ${requiredCollateral} vs available ${collateralAvailable}`
+      );
+      console.log(
+        `Price after trade: ${priceAfterTradeDecimal}, expected: ${expectedPrice}, limit: ${currentPriceLimit}`
+      );
+
+      // Check if required collateral exceeds available
+      if (requiredCollateral > collateralAvailable) {
+        console.log(
+          `Size ${signedTestSize} REJECTED (collateral ${requiredCollateral} exceeds available ${collateralAvailable})`
+        );
+        maxSize = testSize;
+        continue;
+      }
+
+      // Check if price after trade is in acceptable range
+      const isPriceAcceptable = isLong
+        ? priceAfterTradeDecimal > currentPriceLimit &&
+          priceAfterTradeDecimal <= expectedPrice
+        : priceAfterTradeDecimal < currentPriceLimit &&
+          priceAfterTradeDecimal >= expectedPrice;
+
+      if (isPriceAcceptable) {
+        // This size works, save it and try larger
+        viableSize = signedTestSize;
+        viableCollateral = requiredCollateral;
+        viableFillPrice = priceAfterTrade;
+
+        // Try a larger size next
+        minSize = testSize;
+
+        console.log(
+          `Size ${signedTestSize} ACCEPTED, new min=${minSize}, max=${maxSize}`
+        );
       } else {
-        // Adjust position size for next iteration
-        currentPositionSize = currentPositionSize / 2n;
+        // Price not in acceptable range, try smaller size
+        maxSize = testSize;
+        console.log(
+          `Size ${signedTestSize} REJECTED (price not in acceptable range), new min=${minSize}, max=${maxSize}`
+        );
       }
     } catch (error) {
-      console.error('Error in quoteCreateTraderPosition:', error);
-      // If the quote fails, reduce the position size and try again
-      // console.error('Error in quoteCreateTraderPosition:', currentPositionSize);
-      currentPositionSize = currentPositionSize / 2n;
+      // If error, size is too large
+      console.error(`Size ${signedTestSize} REJECTED (error):`, error);
+      maxSize = testSize;
     }
-
-    // prepare for next iteration
-    currentIteration++;
   }
 
-  if (!found) {
+  // Return the viable size if found
+  if (viableSize !== null) {
+    console.log(
+      `Found maximum viable position size: ${viableSize} ` +
+        `with required collateral: ${viableCollateral} ` +
+        `and fill price: ${viableFillPrice}`
+    );
+    return viableSize;
+  } else {
+    console.error('Failed to find any viable position size');
     return null;
   }
-
-  return positionSize;
 }
 
 async function getMarket(
