@@ -20,7 +20,7 @@ import {
   IndexMetadata,
   TrailingAvgMetadata,
 } from './types';
-import { MoreThan } from 'typeorm';
+import { IsNull, MoreThan } from 'typeorm';
 import { TIME_INTERVALS } from 'src/fixtures';
 
 import {
@@ -40,9 +40,9 @@ import { persist, restore, PersistMode } from './persistenceHelper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
-  static readonly BATCH_SIZE = 1000;
+  static readonly BATCH_SIZE = 50000;
 
-  private resource: Resource;
+  private resource: Resource | undefined;
   private marketGroups: MarketGroup[];
   private markets: Market[];
   private intervals: number[] = [
@@ -127,7 +127,7 @@ export class ResourcePerformance {
     marketProcessData: {},
   };
 
-  constructor(resource: Resource) {
+  constructor(resource: Resource | undefined) {
     this.resource = resource;
     this.persistentStorage = {};
     for (const interval of this.intervals) {
@@ -164,7 +164,9 @@ export class ResourcePerformance {
     const restoredStorage = await this.restorePersistedStorage();
 
     if (!restoredStorage) {
-      console.log('ResourcePerformance - Storage not found, hard initializing');
+      console.log(
+        '  ResourcePerformance - Storage not found, hard initializing'
+      );
       await this.hardInitialize();
       return;
     }
@@ -199,57 +201,64 @@ export class ResourcePerformance {
     let hasMoreResourcePrices = true;
     const lastResourceTimestamp = 0;
 
-    while (hasMoreResourcePrices) {
-      const { prices: dbResourcePrices, hasMore } =
-        await this.pullResourcePrices(
-          initialResourceTimestamp,
-          ResourcePerformance.BATCH_SIZE,
-          resourceSkip
+    if (this.resource) {
+      while (hasMoreResourcePrices) {
+        console.log(
+          '  ResourcePerformance.processResourceData - resources batch',
+          resourceSkip,
+          initialResourceTimestamp
         );
-
-      if (dbResourcePrices.length === 0) {
-        break;
-      }
-
-      this.initializeOrCleanupRuntimeData(dbResourcePrices);
-
-      // Process the current batch
-      for (let i = 0; i < dbResourcePrices.length; i++) {
-        const item = dbResourcePrices[i];
-
-        // Add to trailing avg storage
-        this.persistentResourceCacheTrailingAvgStorage.push({
-          t: item.timestamp,
-          u: item.used,
-          f: item.feePaid,
-        });
-
-        for (const interval of this.intervals) {
-          this.processResourcePriceData(item, i, interval);
-          this.processTrailingAvgPricesData(
-            item,
-            i,
-            interval,
-            this.trailingAvgTime[0],
-            this.persistentResourceCacheTrailingAvgStorage
+        const { prices: dbResourcePrices, hasMore } =
+          await this.pullResourcePrices(
+            initialResourceTimestamp,
+            ResourcePerformance.BATCH_SIZE,
+            resourceSkip
           );
-          this.processTrailingAvgPricesData(
-            item,
-            i,
-            interval,
-            this.trailingAvgTime[1],
-            this.persistentResourceCacheTrailingAvgStorage
-          );
-          this.processIndexPricesData(item, i, interval);
+
+        if (dbResourcePrices.length === 0) {
+          break;
         }
+
+        this.initializeOrCleanupRuntimeData(dbResourcePrices);
+
+        // Process the current batch
+        for (let i = 0; i < dbResourcePrices.length; i++) {
+          const item = dbResourcePrices[i];
+
+          // Add to trailing avg storage
+          this.persistentResourceCacheTrailingAvgStorage.push({
+            t: item.timestamp,
+            u: item.used,
+            f: item.feePaid,
+          });
+
+          for (const interval of this.intervals) {
+            this.processResourcePriceData(item, i, interval);
+            this.processTrailingAvgPricesData(
+              item,
+              i,
+              interval,
+              this.trailingAvgTime[0],
+              this.persistentResourceCacheTrailingAvgStorage
+            );
+            this.processTrailingAvgPricesData(
+              item,
+              i,
+              interval,
+              this.trailingAvgTime[1],
+              this.persistentResourceCacheTrailingAvgStorage
+            );
+            this.processIndexPricesData(item, i, interval);
+          }
+        }
+
+        // Cleanup the runtime data
+        this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
+
+        // Update skip and hasMore
+        resourceSkip += dbResourcePrices.length;
+        hasMoreResourcePrices = hasMore;
       }
-
-      // Cleanup the runtime data
-      this.initializeOrCleanupRuntimeData(dbResourcePrices, true);
-
-      // Update skip and hasMore
-      resourceSkip += dbResourcePrices.length;
-      hasMoreResourcePrices = hasMore;
     }
 
     // Process market prices in batches
@@ -258,6 +267,11 @@ export class ResourcePerformance {
     const lastMarketTimestamp = 0;
 
     while (hasMoreMarketPrices) {
+      console.log(
+        '  ResourcePerformance.processResourceData - markets batch',
+        marketSkip,
+        initialMarketTimestamp
+      );
       const { prices: dbMarketPrices, hasMore } = await this.pullMarketPrices(
         initialMarketTimestamp,
         ResourcePerformance.BATCH_SIZE,
@@ -306,6 +320,13 @@ export class ResourcePerformance {
     batchSize: number = ResourcePerformance.BATCH_SIZE,
     skip: number = 0
   ): Promise<{ prices: ResourcePrice[]; hasMore: boolean }> {
+    if (!this.resource) {
+      return {
+        prices: [],
+        hasMore: false,
+      };
+    }
+
     let whereClause;
     if (initialTimestamp) {
       whereClause = {
@@ -338,22 +359,39 @@ export class ResourcePerformance {
     batchSize: number = ResourcePerformance.BATCH_SIZE,
     skip: number = 0
   ): Promise<{ prices: ReducedMarketPrice[]; hasMore: boolean }> {
-    const batch = await marketPriceRepository
-      .createQueryBuilder('marketPrice')
-      .leftJoinAndSelect('marketPrice.transaction', 'transaction')
-      .leftJoinAndSelect('transaction.event', 'event')
-      .leftJoinAndSelect('event.marketGroup', 'marketGroup')
-      .leftJoinAndSelect('marketGroup.resource', 'resource')
-      .leftJoinAndSelect('transaction.position', 'position')
-      .leftJoinAndSelect('position.market', 'market')
-      .where('resource.id = :resourceId', { resourceId: this.resource.id })
-      .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
-        from: initialTimestamp?.toString() ?? '0',
-      })
-      .orderBy('marketPrice.timestamp', 'ASC')
-      .take(batchSize)
-      .skip(skip)
-      .getMany();
+    let batch;
+    if (this.resource) {
+      batch = await marketPriceRepository
+        .createQueryBuilder('marketPrice')
+        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
+        .leftJoinAndSelect('transaction.event', 'event')
+        .leftJoinAndSelect('event.marketGroup', 'marketGroup')
+        .leftJoinAndSelect('marketGroup.resource', 'resource')
+        .leftJoinAndSelect('transaction.position', 'position')
+        .leftJoinAndSelect('position.market', 'market')
+        .where('resource.id = :resourceId', { resourceId: this.resource.id })
+        .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
+          from: initialTimestamp?.toString() ?? '0',
+        })
+        .orderBy('marketPrice.timestamp', 'ASC')
+        .take(batchSize)
+        .skip(skip)
+        .getMany();
+    } else {
+      batch = await marketPriceRepository
+        .createQueryBuilder('marketPrice')
+        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
+        .leftJoinAndSelect('transaction.event', 'event')
+        .leftJoinAndSelect('event.marketGroup', 'marketGroup')
+        .where('marketGroup.resourceId IS NULL')
+        .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
+          from: initialTimestamp?.toString() ?? '0',
+        })
+        .orderBy('marketPrice.timestamp', 'ASC')
+        .take(batchSize)
+        .skip(skip)
+        .getMany();
+    }
 
     const reducedBatch = batch.map((item) => ({
       value: item.value,
@@ -370,30 +408,49 @@ export class ResourcePerformance {
   private async pullMarketsAndEpochs(onlyIfMissing: boolean = true) {
     // Find marketGroups if not already loaded
     // Notice: doing it everytime since we don't know if a new market was added
+
     if (
       !this.marketGroups ||
       this.marketGroups.length === 0 ||
       !onlyIfMissing
     ) {
-      this.marketGroups = await marketGroupRepository.find({
-        where: {
-          resource: { id: this.resource.id },
-        },
-      });
+      if (this.resource) {
+        this.marketGroups = await marketGroupRepository.find({
+          where: {
+            resource: { id: this.resource.id },
+          },
+        });
+      } else {
+        // resource is undefined. Look for marketGroups where resourceId is null
+        this.marketGroups = await marketGroupRepository.find({
+          where: {
+            resource: IsNull(),
+          },
+        });
+      }
     }
 
     // Find epochs if not already loaded
     // Notice: doing it everytime since we don't know if a new epoch was added
     if (!this.markets || this.markets.length === 0 || !onlyIfMissing) {
-      this.markets = await marketRepository.find({
-        where: {
-          marketGroup: { resource: { id: this.resource.id } },
-        },
-        order: {
-          startTimestamp: 'ASC',
-        },
-        relations: ['marketGroup'],
-      });
+      if (this.resource) {
+        this.markets = await marketRepository.find({
+          where: {
+            marketGroup: { resource: { id: this.resource.id } },
+          },
+          order: {
+            startTimestamp: 'ASC',
+          },
+          relations: ['marketGroup'],
+        });
+      } else {
+        // resource is undefined. Look for markets where marketGroupId is null
+        this.markets = await marketRepository.find({
+          where: {
+            marketGroup: IsNull(),
+          },
+        });
+      }
     }
   }
 
@@ -472,7 +529,7 @@ export class ResourcePerformance {
   }
 
   private async persistStorage() {
-    console.log('LLL ResourcePerformance.persistStorage');
+    console.log('   LLL ResourcePerformance.persistStorage');
 
     // Persist
     await persist(
@@ -1314,7 +1371,7 @@ export class ResourcePerformance {
       if (this.runtime.processingResourceItems) {
         // There's an update already running, don't call it again
         console.log(
-          `ResourcePerformance - Update already running for ${this.resource.slug} to ${to}`
+          `  ResourcePerformance - Update already running for ${this.resource ? this.resource.slug : 'no-resource'} to ${to}`
         );
       } else {
         // Process new data starting from the last timestamp we processed
