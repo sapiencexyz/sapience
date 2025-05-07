@@ -8,12 +8,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import NumericPredict from '../inputs/NumericPredict';
+import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-import NumericPredict from '../inputs/NumericPredict';
-import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 
 import PermittedAlert from './PermittedAlert';
 
