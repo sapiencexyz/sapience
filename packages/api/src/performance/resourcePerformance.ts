@@ -40,7 +40,7 @@ import { persist, restore, PersistMode } from './persistenceHelper';
 
 export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
-  static readonly BATCH_SIZE = 50000;
+  static readonly BATCH_SIZE = 100000;
 
   private resource: Resource | undefined;
   private marketGroups: MarketGroup[];
@@ -199,7 +199,7 @@ export class ResourcePerformance {
     // Process resource prices in batches
     let resourceSkip = 0;
     let hasMoreResourcePrices = true;
-    const lastResourceTimestamp = 0;
+    let lastResourceTimestamp = 0;
 
     if (this.resource) {
       while (hasMoreResourcePrices) {
@@ -250,6 +250,7 @@ export class ResourcePerformance {
             );
             this.processIndexPricesData(item, i, interval);
           }
+          lastResourceTimestamp = item.timestamp;
         }
 
         // Cleanup the runtime data
@@ -264,7 +265,7 @@ export class ResourcePerformance {
     // Process market prices in batches
     let marketSkip = 0;
     let hasMoreMarketPrices = true;
-    const lastMarketTimestamp = 0;
+    let lastMarketTimestamp = 0;
 
     while (hasMoreMarketPrices) {
       console.log(
@@ -297,6 +298,7 @@ export class ResourcePerformance {
             i + 1 >= dbMarketPrices.length && !hasMore
           );
         }
+        lastMarketTimestamp = item.timestamp;
       }
 
       // Update skip and hasMore
