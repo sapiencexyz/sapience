@@ -68,6 +68,7 @@ export default function SingleChoiceWagerForm({
     txHash,
     isApproving,
     needsApproval,
+    reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
     marketAbi: foilAbi().abi,
@@ -106,8 +107,9 @@ export default function SingleChoiceWagerForm({
 
       // Reset the form after success
       methods.reset();
+      resetTrade();
     }
-  }, [isTradeCreated, txHash, onSuccess, methods, toast]);
+  }, [isTradeCreated, txHash, onSuccess, methods, toast, resetTrade]);
 
   // Only reset the success handler when the form is being filled out again
   useEffect(() => {
