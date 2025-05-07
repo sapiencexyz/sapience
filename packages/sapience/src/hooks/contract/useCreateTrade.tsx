@@ -58,7 +58,7 @@ export function useCreateTrade({
   enabled = true,
   collateralTokenAddress,
   collateralTokenSymbol,
-}: CreateTradeParams): CreateTradeResult {
+}: CreateTradeParams): CreateTradeResult & { reset: () => void } {
   const { toast } = useToast();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
@@ -252,26 +252,19 @@ export function useCreateTrade({
     setError(null); // Clear previous errors before starting
 
     try {
-      // First check if we need approval
       if (needsApproval) {
         toast({
           title: 'Approval Required',
           description: `Approving ${collateralAmount} ${collateralTokenSymbol || 'token(s)'}...`, // Be more specific
         });
-        await approve(); // Call approve from useTokenApproval
-        // The trade creation will be triggered by the useEffect watching isApproveSuccess
+        await approve();
       } else {
-        // If we already have allowance, create trade directly
         await performCreateTrade();
       }
     } catch (err) {
-      // Errors during approve() or performCreateTrade() called directly
-      setProcessingTx(false); // Stop processing on error
+      setProcessingTx(false);
       console.error('Error in createTrade flow:', err);
-      // Error toast is likely handled within approve() or performCreateTrade()
-      // If not, add a generic one here. Let's rely on specific handlers for now.
       if (!error) {
-        // Set error state if not already set by specific handlers
         setError(
           err instanceof Error ? err : new Error('An unexpected error occurred')
         );
@@ -288,6 +281,13 @@ export function useCreateTrade({
     // Keep dependencies simple: effect checks internal state (processingTx)
   }, [isSuccess, error, processingTx]);
 
+  // Add a reset function to clear all state
+  const reset = () => {
+    setTxHash(undefined);
+    setError(null);
+    setProcessingTx(false);
+  };
+
   const isLoading =
     isWritePending || isConfirming || processingTx || isApproving;
   const isError = !!error;
@@ -303,5 +303,6 @@ export function useCreateTrade({
     isApproving,
     hasAllowance,
     needsApproval,
+    reset,
   };
 }

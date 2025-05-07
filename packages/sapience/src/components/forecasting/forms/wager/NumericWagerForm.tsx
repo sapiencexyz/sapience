@@ -8,12 +8,12 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import NumericPredict from '../inputs/NumericPredict';
-import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
+import NumericPredict from '../inputs/NumericPredict';
+import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 
 import PermittedAlert from './PermittedAlert';
 
@@ -87,6 +87,7 @@ export default function NumericWagerForm({
     txHash,
     isApproving,
     needsApproval,
+    reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
     marketAbi: foilAbi().abi,
@@ -125,8 +126,9 @@ export default function NumericWagerForm({
 
       // Reset the form after success
       methods.reset();
+      resetTrade(); // <-- Reset the trade state for next submission
     }
-  }, [isTradeCreated, txHash, onSuccess, methods, toast]);
+  }, [isTradeCreated, txHash, onSuccess, methods, toast, resetTrade]);
 
   // Only reset the success handler when the form is being filled out again
   useEffect(() => {

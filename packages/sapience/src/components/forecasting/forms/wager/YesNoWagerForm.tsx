@@ -8,11 +8,11 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
-import YesNoPredict from '../inputs/YesNoPredict';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
+import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
+import YesNoPredict from '../inputs/YesNoPredict';
 
 import PermittedAlert from './PermittedAlert';
 
@@ -70,6 +70,7 @@ export default function YesNoWagerForm({
     txHash,
     isApproving,
     needsApproval,
+    reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
     marketAbi: foilAbi().abi,
@@ -108,8 +109,9 @@ export default function YesNoWagerForm({
 
       // Reset the form after success
       methods.reset();
+      resetTrade();
     }
-  }, [isTradeCreated, txHash, onSuccess, methods, toast]);
+  }, [isTradeCreated, txHash, onSuccess, methods, toast, resetTrade]);
 
   // Only reset the success handler when the form is being filled out again
   useEffect(() => {
