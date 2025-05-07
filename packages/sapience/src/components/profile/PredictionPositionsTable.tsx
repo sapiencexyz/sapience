@@ -63,7 +63,7 @@ const renderPredictionCell = ({
   let baseTokenName = '';
   if (!isMarketsLoading && marketAddress) {
     const marketGroup = marketGroups.find(
-      (group) => group.address.toLowerCase() === marketAddress
+      (group) => group.address?.toLowerCase() === marketAddress
     );
     if (marketGroup) {
       baseTokenName = marketGroup.baseTokenName || '';
@@ -140,7 +140,7 @@ const renderQuestionCell = ({
     const marketId = parseInt(marketIdHex, 16); // Convert hex to number
 
     const marketGroup = marketGroups.find(
-      (group) => group.address.toLowerCase() === marketAddress
+      (group) => group.address?.toLowerCase() === marketAddress
     );
 
     if (marketGroup) {
