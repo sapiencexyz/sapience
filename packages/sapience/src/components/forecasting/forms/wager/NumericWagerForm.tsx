@@ -87,6 +87,7 @@ export default function NumericWagerForm({
     txHash,
     isApproving,
     needsApproval,
+    reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
     marketAbi: foilAbi().abi,
@@ -125,8 +126,9 @@ export default function NumericWagerForm({
 
       // Reset the form after success
       methods.reset();
+      resetTrade(); // <-- Reset the trade state for next submission
     }
-  }, [isTradeCreated, txHash, onSuccess, methods, toast]);
+  }, [isTradeCreated, txHash, onSuccess, methods, toast, resetTrade]);
 
   // Only reset the success handler when the form is being filled out again
   useEffect(() => {
