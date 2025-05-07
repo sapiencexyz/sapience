@@ -199,7 +199,9 @@ export class ResourcePerformance {
     // Process resource prices in batches
     let resourceSkip = 0;
     let hasMoreResourcePrices = true;
-    let lastResourceTimestamp = 0;
+    let lastResourceTimestamp = initialResourceTimestamp ?? 0;
+
+    this.initializeOrCleanupRuntimeData([], true);
 
     if (this.resource) {
       while (hasMoreResourcePrices) {
@@ -265,7 +267,7 @@ export class ResourcePerformance {
     // Process market prices in batches
     let marketSkip = 0;
     let hasMoreMarketPrices = true;
-    let lastMarketTimestamp = 0;
+    let lastMarketTimestamp = initialMarketTimestamp ?? 0;
 
     while (hasMoreMarketPrices) {
       console.log(
@@ -385,6 +387,8 @@ export class ResourcePerformance {
         .leftJoinAndSelect('marketPrice.transaction', 'transaction')
         .leftJoinAndSelect('transaction.event', 'event')
         .leftJoinAndSelect('event.marketGroup', 'marketGroup')
+        .leftJoinAndSelect('transaction.position', 'position')
+        .leftJoinAndSelect('position.market', 'market')
         .where('marketGroup.resourceId IS NULL')
         .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
           from: initialTimestamp?.toString() ?? '0',
@@ -395,7 +399,15 @@ export class ResourcePerformance {
         .getMany();
     }
 
-    const reducedBatch = batch.map((item) => ({
+    const cleanedBatch = batch.filter((item) => {
+      return (
+        item.transaction !== null &&
+        item.transaction.position !== null &&
+        item.transaction.position.market !== null
+      );
+    });
+
+    const reducedBatch = cleanedBatch.map((item) => ({
       value: item.value,
       timestamp: Number(item.timestamp),
       epoch: item.transaction.position.market.id,
@@ -449,8 +461,12 @@ export class ResourcePerformance {
         // resource is undefined. Look for markets where marketGroupId is null
         this.markets = await marketRepository.find({
           where: {
-            marketGroup: IsNull(),
+            marketGroup: { resource: IsNull() },
           },
+          order: {
+            startTimestamp: 'ASC',
+          },
+          relations: ['marketGroup'],
         });
       }
     }
@@ -1322,7 +1338,6 @@ export class ResourcePerformance {
     if (!this.persistentStorage[interval].marketStore[epochId]) {
       return [];
     }
-
     const prices = await this.getPricesFromArray(
       this.persistentStorage[interval].marketStore[epochId].datapoints.map(
         (d) => ({
@@ -1345,6 +1360,10 @@ export class ResourcePerformance {
   }
 
   getMarketFromChainAndAddress(chainId: number, address: string) {
+    if (!this.marketGroups) {
+      return undefined;
+    }
+
     return this.marketGroups.find(
       (m) =>
         m.chainId === chainId &&
@@ -1444,7 +1463,6 @@ export class ResourcePerformance {
     interval: number
   ): ResponseCandleData[] {
     const timeWindow = getTimeWindow(from, to, interval);
-
     const outputEntries = [];
     for (let t = timeWindow.from; t < timeWindow.to; t += interval) {
       outputEntries.push({
@@ -1458,13 +1476,13 @@ export class ResourcePerformance {
     let outputIdx = 0;
     let pricesIdx = 0;
     let lastClose = '0';
+    let lastKnownPrice = '0';
     const pricesLength = prices.length;
     if (pricesLength === 0) {
       return outputEntries;
     }
 
     let nextPriceItemTimestamp = prices[pricesIdx].timestamp;
-
     while (outputIdx < outputEntries.length) {
       if (outputEntries[outputIdx].timestamp < nextPriceItemTimestamp) {
         outputEntries[outputIdx].close = lastClose;
@@ -1477,6 +1495,8 @@ export class ResourcePerformance {
       }
 
       if (outputEntries[outputIdx].timestamp == nextPriceItemTimestamp) {
+        // pick the last known price first
+        lastKnownPrice = prices[pricesIdx].close;
         outputEntries[outputIdx] = prices[pricesIdx];
         lastClose = prices[pricesIdx].close;
         pricesIdx++;
@@ -1490,19 +1510,15 @@ export class ResourcePerformance {
       }
 
       if (outputEntries[outputIdx].timestamp > nextPriceItemTimestamp) {
-        // pick the last known price first
-        let lastKnownPrice = prices[pricesIdx].close;
-
         // then move the prices  the price in the prices array
         while (
-          nextPriceItemTimestamp < outputEntries[outputIdx].timestamp ||
+          nextPriceItemTimestamp < outputEntries[outputIdx].timestamp &&
           pricesIdx < pricesLength
         ) {
           nextPriceItemTimestamp = prices[pricesIdx].timestamp;
           lastKnownPrice = prices[pricesIdx].close;
           pricesIdx++;
         }
-
         if (nextPriceItemTimestamp === outputEntries[outputIdx].timestamp) {
           outputEntries[outputIdx] = prices[pricesIdx];
         } else {
@@ -1511,7 +1527,6 @@ export class ResourcePerformance {
           outputEntries[outputIdx].low = lastKnownPrice;
           outputEntries[outputIdx].open = lastKnownPrice;
         }
-
         outputIdx++;
       }
     }
