@@ -35,6 +35,7 @@ import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import CombinedMarketDialog from './CombinedMarketDialog';
 import MarketDeployButton from './MarketDeployButton';
 import MarketGroupDeployButton from './MarketGroupDeployButton';
+import OwnershipDialog from './OwnershipDialog';
 import ReindexMarketButton from './ReindexMarketButton';
 import SettleMarketDialog from './SettleMarketDialog';
 
@@ -194,39 +195,10 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
   );
   const { address: connectedAddress } = useAccount();
   const [ownershipDialogOpen, setOwnershipDialogOpen] = useState(false);
-  const [nomineeAddress, setNomineeAddress] = useState('');
-  const [nomineeError, setNomineeError] = useState('');
-  // TODO: Replace with actual contract reads
-  const currentOwner = group.owner;
   // TODO: Fetch nominatedOwner from contract
   const [nominatedOwner, setNominatedOwner] = useState<string | undefined>(
     undefined
   );
-
-  const isOwner =
-    connectedAddress &&
-    currentOwner &&
-    connectedAddress.toLowerCase() === currentOwner.toLowerCase();
-  const isNominated =
-    connectedAddress &&
-    nominatedOwner &&
-    connectedAddress.toLowerCase() === nominatedOwner.toLowerCase();
-
-  const handleNominate = () => {
-    // Validate address (simple 0x + 40 hex chars)
-    if (!/^0x[a-fA-F0-9]{40}$/.test(nomineeAddress)) {
-      setNomineeError('Invalid address');
-      return;
-    }
-    setNomineeError('');
-    // TODO: Call contract to nominate new owner
-    alert('Nominate: ' + nomineeAddress);
-  };
-
-  const handleAccept = () => {
-    // TODO: Call contract to accept ownership
-    alert('Accept ownership');
-  };
 
   return (
     <div className="border rounded-lg shadow-sm">
@@ -246,66 +218,13 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
         <div className="flex items-center gap-2">
           {group.address ? (
             <>
-              {/* Ownership Button and Dialog */}
-              <Dialog
+              <OwnershipDialog
                 open={ownershipDialogOpen}
                 onOpenChange={setOwnershipDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Ownership
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Market Group Ownership</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <div>
-                        Current Owner:{' '}
-                        <span className="font-mono text-xs">
-                          {currentOwner || 'N/A'}
-                        </span>
-                      </div>
-                      <div>
-                        Nominated Owner:{' '}
-                        <span className="font-mono text-xs">
-                          {nominatedOwner || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                    {isOwner && (
-                      <div className="space-y-2">
-                        <Input
-                          placeholder="New owner address"
-                          value={nomineeAddress}
-                          onChange={(e) => setNomineeAddress(e.target.value)}
-                        />
-                        {nomineeError && (
-                          <div className="text-destructive text-xs">
-                            {nomineeError}
-                          </div>
-                        )}
-                        <Button onClick={handleNominate} size="sm">
-                          Nominate New Owner
-                        </Button>
-                      </div>
-                    )}
-                    {isNominated && (
-                      <Button onClick={handleAccept} size="sm">
-                        Accept Ownership
-                      </Button>
-                    )}
-                    {!isOwner && !isNominated && (
-                      <div className="text-xs text-muted-foreground">
-                        Only the current owner can nominate a new owner. Only
-                        the nominated owner can accept ownership.
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+                marketGroupAddress={group.address as Address}
+                currentOwner={group.owner}
+                nominatedOwner={nominatedOwner}
+              />
               {/* Existing buttons */}
               <Button variant="secondary" size="sm" asChild>
                 <a
