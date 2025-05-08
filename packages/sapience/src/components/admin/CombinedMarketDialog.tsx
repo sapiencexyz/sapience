@@ -62,6 +62,7 @@ const DEFAULT_MIN_TRADE_SIZE = '10000';
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
 const DEFAULT_MAX_PRICE_TICK = '0';
+const DEFAULT_FACTORY_ADDRESS = '0x5d9aAECe6Af4FfFC5Dca37a753339Ef440B6Be37';
 
 // Type definitions
 interface MarketParamsInput {
@@ -249,7 +250,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   // Market group state
   const [chainId, setChainId] = useState<string>('8453');
   const [factoryAddress, setFactoryAddress] = useState<string>(
-    '0xA61BF5F56a6a035408d5d76EbE58F8204891FB40'
+    DEFAULT_FACTORY_ADDRESS
   );
   const [owner, setOwner] = useState<string>(
     currentChainId === BASE_CHAIN_ID
