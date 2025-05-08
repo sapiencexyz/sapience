@@ -35,6 +35,7 @@ import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import CombinedMarketDialog from './CombinedMarketDialog';
 import MarketDeployButton from './MarketDeployButton';
 import MarketGroupDeployButton from './MarketGroupDeployButton';
+import OwnershipDialog from './OwnershipDialog';
 import ReindexMarketButton from './ReindexMarketButton';
 import SettleMarketDialog from './SettleMarketDialog';
 
@@ -192,6 +193,7 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
     group.address as Address,
     group.chainId
   );
+  const [ownershipDialogOpen, setOwnershipDialogOpen] = useState(false);
 
   return (
     <div className="border rounded-lg shadow-sm">
@@ -211,6 +213,13 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
         <div className="flex items-center gap-2">
           {group.address ? (
             <>
+              <OwnershipDialog
+                open={ownershipDialogOpen}
+                onOpenChange={setOwnershipDialogOpen}
+                marketGroupAddress={group.address as Address}
+                currentOwner={group.owner}
+              />
+              {/* Existing buttons */}
               <Button variant="secondary" size="sm" asChild>
                 <a
                   href={`/forecasting/${getChainShortName(group.chainId)}:${group.address}`}
