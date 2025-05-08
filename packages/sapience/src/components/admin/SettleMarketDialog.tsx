@@ -5,14 +5,14 @@ import { Separator } from '@foil/ui/components/ui/separator'; // Import Separato
 import { useToast } from '@foil/ui/hooks/use-toast'; // Import useToast
 import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi'; // Import the hook
 import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Privy
-import { TickMath } from '@uniswap/v3-sdk'; // Import TickMath
 import { Loader2 } from 'lucide-react'; // Import Loader2
 import type React from 'react';
 import { useState } from 'react'; // Import useState and useMemo
-import { zeroAddress, erc20Abi } from 'viem'; // Import Abi type
+import { erc20Abi, zeroAddress } from 'viem'; // Import Abi type
 import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
 
 import type { Market, MarketGroup } from '~/hooks/graphql/useMarketGroups'; // Import types
+import { NO_SQRT_RATIO, YES_SQRT_RATIO } from '~/lib/constants/numbers';
 
 // Define MarketParams interface (consider moving to a shared location if needed)
 interface MarketParams {
@@ -522,10 +522,10 @@ const SettlementParamsDisplay: React.FC<SettlementParamsDisplayProps> = ({
 
   if (isYesNoMarket) {
     if (settlementValue === '1') {
-      settlementDisplayValue = TickMath.MAX_SQRT_RATIO.toString();
+      settlementDisplayValue = YES_SQRT_RATIO.toString();
     } else {
       // Assuming '0' or empty for No/unset
-      settlementDisplayValue = TickMath.MIN_SQRT_RATIO.toString();
+      settlementDisplayValue = NO_SQRT_RATIO.toString();
     }
   } else {
     const numericValue = Number(settlementValue);
