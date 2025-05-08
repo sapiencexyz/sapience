@@ -317,11 +317,11 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     // Calculate average fee per block
     const averagedFeePerBlock =
       last24HoursBlocks.length > 0
-        ? (totalFees * BigInt(10 ** 9)) / BigInt(last24HoursBlocks.length)
+        ? (totalFees * BigInt(10 ** 12)) / BigInt(last24HoursBlocks.length)
         : 0n;
 
     // Convert hashrate to EH/s
-    const hashrateInEH = hashrate / this.EXA_MULTIPLIER;
+    const hashrateInEH = hashrate * BigInt(10 ** 3) / this.EXA_MULTIPLIER;
 
     // Calculate fee per exahash
     const averageFeePerExahash =
@@ -407,8 +407,8 @@ class BtcHashIndexer implements IResourcePriceIndexer {
       // await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
       console.log(
         `[BtcIndexer] Stored fee per ExaHash metric (scaled by 10 ** 9): ${metrics.averageFeePerExahash.toString()}, ` +
-          `weekly average hashrate: ${metrics.hashrateInEH.toString()} EH/s, ` +
-          `and daily average fee: ${metrics.averagedFeePerBlock.toString()} sat`
+          `weekly average hashrate: ${(metrics.hashrateInEH / BigInt(10 ** 3)).toString()} EH/s, ` +
+          `and daily average fee: ${(metrics.averagedFeePerBlock / BigInt(10 ** 3)).toString()} sat`
       );
     } catch (error) {
       console.error('[BtcIndexer] Error processing last 7 days:', error);
