@@ -664,7 +664,8 @@ export const useChart = ({
       candlestickSeriesRef.current &&
       !isBeforeStart
     ) {
-      const candleSeriesData = marketPrices
+      // Map data first
+      const mappedData = marketPrices
         .map((mp) => {
           if (!mp) return null;
           return {
@@ -696,6 +697,17 @@ export const useChart = ({
           };
         })
         .filter((item): item is NonNullable<typeof item> => item !== null);
+
+      // Deduplicate by timestamp - for candlesticks, keep the latest entry
+      const timeMap = new Map<number, (typeof mappedData)[0]>();
+      mappedData.forEach((item) => {
+        timeMap.set(item.time as number, item);
+      });
+
+      // Convert back to array and sort
+      const candleSeriesData = Array.from(timeMap.values()).sort(
+        (a, b) => (a.time as number) - (b.time as number)
+      );
 
       candlestickSeriesRef.current.setData(candleSeriesData);
     }
@@ -739,7 +751,7 @@ export const useChart = ({
       };
 
       // Start with the existing index prices data
-      let indexLineData = indexPrices?.length
+      const mappedData = indexPrices?.length
         ? indexPrices.map((ip) => ({
             time: (ip.timestamp / 1000) as UTCTimestamp,
             value: processValue(ip.price, ip.timestamp / 1000),
@@ -760,21 +772,23 @@ export const useChart = ({
         );
         const latestValue = processValue(rawValue, latestTimestamp);
 
-        // Remove any existing data points that are within 60 seconds of the latest timestamp
-        indexLineData = indexLineData.filter(
-          (item) =>
-            Math.abs((item.time as number) - (latestTimestamp as number)) >= 60
-        );
-
         // Add the latest point to the data
-        indexLineData.push({
+        mappedData.push({
           time: latestTimestamp,
           value: latestValue,
         });
-
-        // Sort the data by timestamp to ensure proper rendering
-        indexLineData.sort((a, b) => (a.time as number) - (b.time as number));
       }
+
+      // Deduplicate entries with the same timestamp
+      const timeMap = new Map<number, number>();
+      mappedData.forEach((item) => {
+        timeMap.set(item.time as number, item.value);
+      });
+
+      // Convert back to array and sort
+      const indexLineData = Array.from(timeMap.entries())
+        .map(([time, value]) => ({ time: time as UTCTimestamp, value }))
+        .sort((a, b) => (a.time as number) - (b.time as number));
 
       indexPriceSeriesRef.current.setData(indexLineData);
     }
@@ -796,22 +810,48 @@ export const useChart = ({
       !isBeforeStart &&
       (seriesVisibility?.resource ?? true)
     ) {
-      const resourceLineData = resourcePrices.map((rp) => ({
+      // Map the data first
+      const mappedData = resourcePrices.map((rp) => ({
         time: (rp.timestamp / 1000) as UTCTimestamp,
         value: rp.price,
       }));
+
+      // Deduplicate entries with the same timestamp
+      const timeMap = new Map<number, number>();
+      mappedData.forEach((item) => {
+        timeMap.set(item.time as number, item.value);
+      });
+
+      // Convert back to array and sort
+      const resourceLineData = Array.from(timeMap.entries())
+        .map(([time, value]) => ({ time: time as UTCTimestamp, value }))
+        .sort((a, b) => (a.time as number) - (b.time as number));
+
       resourcePriceSeriesRef.current.setData(resourceLineData);
     }
   }, [resourcePrices, isBeforeStart, seriesVisibility]);
 
   const updateTrailingPriceData = useCallback(() => {
     if (trailingResourcePrices?.length && trailingPriceSeriesRef.current) {
-      const trailingLineData = trailingResourcePrices.map((trp) => ({
+      // First map the data
+      const mappedData = trailingResourcePrices.map((trp) => ({
         time: (trp.timestamp / 1000) as UTCTimestamp,
         value: useMarketUnits
           ? Number(trp.price / ((stEthPerToken || 1e9) / 1e9))
           : trp.price,
       }));
+
+      // Then deduplicate entries with the same timestamp
+      const timeMap = new Map<number, number>();
+      mappedData.forEach((item) => {
+        timeMap.set(item.time as number, item.value);
+      });
+
+      // Convert back to array and sort
+      const trailingLineData = Array.from(timeMap.entries())
+        .map(([time, value]) => ({ time: time as UTCTimestamp, value }))
+        .sort((a, b) => (a.time as number) - (b.time as number));
+
       trailingPriceSeriesRef.current.setData(trailingLineData);
     }
   }, [trailingResourcePrices, useMarketUnits, stEthPerToken]);

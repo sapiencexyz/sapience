@@ -22,6 +22,13 @@ import {
   useWriteContract,
 } from 'wagmi';
 
+import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
+import { useFoil } from '../../lib/context/FoilProvider';
+import erc20ABI from '../../lib/erc20abi.json';
+import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
+import NumberDisplay from '../numberDisplay';
+import PositionSelector from '../positionSelector';
+import SlippageTolerance from '../slippageTolerance';
 import {
   CREATE_LIQUIDITY_REDUCTION,
   TICK_SPACING_DEFAULT,
@@ -32,13 +39,6 @@ import { PeriodContext } from '~/lib/context/PeriodProvider';
 import { useTradePool } from '~/lib/context/TradePoolContext';
 import type { FoilPosition } from '~/lib/interfaces/interfaces';
 import { JSBIAbs, convertGgasPerWstEthToGwei } from '~/lib/utils/util';
-import { useConnectWallet } from '../../lib/context/ConnectWalletProvider';
-import { useFoil } from '../../lib/context/FoilProvider';
-import erc20ABI from '../../lib/erc20abi.json';
-import INONFUNGIBLE_POSITION_MANAGER from '../../lib/interfaces/Uniswap.NonfungiblePositionManager.json';
-import NumberDisplay from '../numberDisplay';
-import PositionSelector from '../positionSelector';
-import SlippageTolerance from '../slippageTolerance';
 
 import LiquidityAmountInput from './LiquidityAmountInput';
 import LiquidityPriceInput from './LiquidityPriceInput';
