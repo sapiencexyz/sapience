@@ -6,6 +6,7 @@ import { Category } from './models/Category';
 import { Resource } from './models/Resource';
 import evmIndexer from './workers/indexers/evmIndexer';
 import { WeatherIndexer } from './workers/indexers/weatherIndexer';
+import BtcHashIndexer from './workers/indexers/btcHashIndexer';
 
 export const TIME_INTERVALS = {
   intervals: {
@@ -26,6 +27,7 @@ export const INDEXERS: {
   'ethereum-gas': new evmIndexer(mainnet.id),
   'nyc-air-temperature': new WeatherIndexer('temperature'),
   'sf-precipitation': new WeatherIndexer('precipitation'),
+  'bitcoin-hashrate': new BtcHashIndexer(),
 };
 
 // Function to initialize fixtures - upsert resources and markets from fixtures.json

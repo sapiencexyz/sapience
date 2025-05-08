@@ -19,6 +19,11 @@
       "name": "New York City Air Temperature",
       "slug": "nyc-air-temperature",
       "category": "climate-change"
+    },
+    {
+      "name": "Bitcoin Hashrate",
+      "slug": "bitcoin-hashrate",
+      "category": "decentralized-compute"
     }
   ],
   "CATEGORIES": [
