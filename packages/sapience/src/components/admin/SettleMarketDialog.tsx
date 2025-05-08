@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/cognitive-complexity */
+
 import { Button } from '@foil/ui/components/ui/button'; // Import Button
 import { Input } from '@foil/ui/components/ui/input'; // Import Input
 import { Label } from '@foil/ui/components/ui/label'; // Import Label
@@ -8,7 +10,7 @@ import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Pri
 import { Loader2 } from 'lucide-react'; // Import Loader2
 import type React from 'react';
 import { useState } from 'react'; // Import useState and useMemo
-import { erc20Abi, zeroAddress, fromHex } from 'viem'; // Import Abi type and fromHex
+import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex
 import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
 
 import type { Market, MarketGroup } from '~/hooks/graphql/useMarketGroups'; // Import types
@@ -306,6 +308,39 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
     },
   });
 
+  // Add this helper function to calculate settlement price
+  const calculateSettlementPrice = (
+    inputValue: string,
+    isYesNoMarket: boolean
+  ): { price: bigint | null; errorMessage?: string } => {
+    // For Yes/No markets
+    if (isYesNoMarket) {
+      if (inputValue !== '0' && inputValue !== '1') {
+        return {
+          price: null,
+          errorMessage: 'Please select Yes or No.',
+        };
+      }
+      // Calculate sqrtPriceX96 for 1 if "Yes" is selected, otherwise use 0
+      return {
+        price:
+          inputValue === '1' ? BigInt(convertToSqrtPriceX96(1)) : BigInt(0),
+      };
+    }
+
+    // For numerical markets
+    const numericValue = parseFloat(inputValue);
+    if (Number.isNaN(numericValue) || numericValue < 0) {
+      return {
+        price: null,
+        errorMessage: 'Please enter a valid non-negative number.',
+      };
+    }
+
+    const sqrtPriceString = convertToSqrtPriceX96(numericValue);
+    return { price: BigInt(sqrtPriceString) };
+  };
+
   // --- Handle Settlement ---
   const handleSettle = () => {
     if (
@@ -320,37 +355,18 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
 
     try {
       const epochId = BigInt(market.marketId);
-      let price: bigint;
+      const { price, errorMessage } = calculateSettlementPrice(
+        settlementValue,
+        marketGroup.baseTokenName === 'Yes'
+      );
 
-      // Determine settlement price based on input type
-      if (marketGroup.baseTokenName === 'Yes') {
-        // Yes/No market
-        if (settlementValue !== '0' && settlementValue !== '1') {
-          toast({
-            variant: 'destructive',
-            title: 'Invalid Settlement',
-            description: 'Please select Yes or No.',
-          });
-          return;
-        }
-        // Calculate sqrtPriceX96 for 1 if "Yes" is selected, otherwise use 0
-        price =
-          settlementValue === '1'
-            ? BigInt(convertToSqrtPriceX96(1))
-            : BigInt(0);
-      } else {
-        // Numerical market
-        const numericValue = parseFloat(settlementValue);
-        if (Number.isNaN(numericValue) || numericValue < 0) {
-          toast({
-            variant: 'destructive',
-            title: 'Invalid Settlement Price',
-            description: 'Please enter a valid non-negative number.',
-          });
-          return;
-        }
-        const sqrtPriceString = convertToSqrtPriceX96(numericValue);
-        price = BigInt(sqrtPriceString);
+      if (errorMessage || price === null) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid Settlement',
+          description: errorMessage || 'Invalid price calculation',
+        });
+        return;
       }
 
       settleWrite({
@@ -529,6 +545,33 @@ const SettlementInput: React.FC<SettlementInputProps> = ({
   );
 };
 
+// Helper function to decode and display claim statement
+const decodeClaimStatement = (claimStatement: string): string => {
+  let displayClaimStatement = 'N/A';
+
+  if (
+    claimStatement &&
+    claimStatement.startsWith('0x') &&
+    claimStatement.length > 2
+  ) {
+    try {
+      // Ensure it's a valid hex string before attempting conversion
+      displayClaimStatement = fromHex(
+        claimStatement as `0x${string}`,
+        'string'
+      );
+    } catch (e) {
+      console.error('Failed to convert claim statement from hex:', e);
+      displayClaimStatement = 'Error decoding statement';
+    }
+  } else if (claimStatement) {
+    // If it's not a valid hex (e.g. empty or just "0x"), or not hex at all but somehow passed
+    displayClaimStatement = claimStatement === '0x' ? 'N/A' : claimStatement;
+  }
+
+  return displayClaimStatement;
+};
+
 // NEW: Component for displaying settlement parameters
 interface SettlementParamsDisplayProps {
   marketId: string | number; // Allow string or number
@@ -562,26 +605,7 @@ const SettlementParamsDisplay: React.FC<SettlementParamsDisplayProps> = ({
     }
   }
 
-  let displayClaimStatement = 'N/A';
-  if (
-    claimStatement &&
-    claimStatement.startsWith('0x') &&
-    claimStatement.length > 2
-  ) {
-    try {
-      // Ensure it's a valid hex string before attempting conversion
-      displayClaimStatement = fromHex(
-        claimStatement as `0x${string}`,
-        'string'
-      );
-    } catch (e) {
-      console.error('Failed to convert claim statement from hex:', e);
-      displayClaimStatement = 'Error decoding statement';
-    }
-  } else if (claimStatement) {
-    // If it's not a valid hex (e.g. empty or just "0x"), or not hex at all but somehow passed
-    displayClaimStatement = claimStatement === '0x' ? 'N/A' : claimStatement;
-  }
+  const displayClaimStatement = decodeClaimStatement(claimStatement);
 
   return (
     <div className="text-xs text-muted-foreground space-y-1">
