@@ -7,9 +7,11 @@ import {
   DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
 import { Input } from '@foil/ui/components/ui/input';
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import type { Address } from 'viem';
 import { useAccount } from 'wagmi';
+
 import { useMarketGroupOwnership } from '~/hooks/contract/useMarketGroupOwnership';
 
 interface OwnershipDialogProps {
@@ -17,7 +19,6 @@ interface OwnershipDialogProps {
   onOpenChange: (open: boolean) => void;
   marketGroupAddress: Address;
   currentOwner?: string;
-  nominatedOwner?: string;
 }
 
 const OwnershipDialog: React.FC<OwnershipDialogProps> = ({
@@ -25,7 +26,6 @@ const OwnershipDialog: React.FC<OwnershipDialogProps> = ({
   onOpenChange,
   marketGroupAddress,
   currentOwner,
-  nominatedOwner,
 }) => {
   const { address: connectedAddress } = useAccount();
   const [nomineeAddress, setNomineeAddress] = useState('');
@@ -37,6 +37,9 @@ const OwnershipDialog: React.FC<OwnershipDialogProps> = ({
     acceptOwnership,
     acceptLoading,
     acceptError,
+    pendingOwner,
+    pendingOwnerLoading,
+    pendingOwnerError,
   } = useMarketGroupOwnership(marketGroupAddress);
 
   const isOwner =
@@ -45,8 +48,8 @@ const OwnershipDialog: React.FC<OwnershipDialogProps> = ({
     connectedAddress.toLowerCase() === currentOwner.toLowerCase();
   const isNominated =
     connectedAddress &&
-    nominatedOwner &&
-    connectedAddress.toLowerCase() === nominatedOwner.toLowerCase();
+    pendingOwner &&
+    connectedAddress.toLowerCase() === pendingOwner.toLowerCase();
 
   const handleNominate = async () => {
     if (!/^0x[a-fA-F0-9]{40}$/.test(nomineeAddress)) {
@@ -91,9 +94,19 @@ const OwnershipDialog: React.FC<OwnershipDialogProps> = ({
             </div>
             <div>
               Nominated Owner:{' '}
-              <span className="font-mono text-xs">
-                {nominatedOwner || 'N/A'}
-              </span>
+              {pendingOwnerLoading && (
+                <span className="text-xs">Loading...</span>
+              )}
+              {pendingOwnerError && (
+                <span className="text-destructive text-xs">
+                  Error loading nominated owner
+                </span>
+              )}
+              {!pendingOwnerLoading && !pendingOwnerError && (
+                <span className="font-mono text-xs">
+                  {pendingOwner || 'N/A'}
+                </span>
+              )}
             </div>
           </div>
           {isOwner && (

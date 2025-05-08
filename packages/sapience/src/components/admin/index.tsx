@@ -22,7 +22,7 @@ import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import type { Address } from 'viem';
-import { useAccount, useSignMessage } from 'wagmi';
+import { useSignMessage } from 'wagmi';
 
 import { useMarketGroupLatestEpoch } from '~/hooks/contract/useMarketGroupLatestEpoch';
 import {
@@ -193,12 +193,7 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
     group.address as Address,
     group.chainId
   );
-  const { address: connectedAddress } = useAccount();
   const [ownershipDialogOpen, setOwnershipDialogOpen] = useState(false);
-  // TODO: Fetch nominatedOwner from contract
-  const [nominatedOwner, setNominatedOwner] = useState<string | undefined>(
-    undefined
-  );
 
   return (
     <div className="border rounded-lg shadow-sm">
@@ -223,7 +218,6 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
                 onOpenChange={setOwnershipDialogOpen}
                 marketGroupAddress={group.address as Address}
                 currentOwner={group.owner}
-                nominatedOwner={nominatedOwner}
               />
               {/* Existing buttons */}
               <Button variant="secondary" size="sm" asChild>
