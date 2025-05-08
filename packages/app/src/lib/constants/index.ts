@@ -11,7 +11,7 @@ export const MIN_BIG_INT_SIZE = BigInt(10);
 export const TICK_SPACING_DEFAULT = 200; // i.e. 1% - Hardcoded for now, should be retrieved with pool.tickSpacing()
 
 export const ADMIN_AUTHENTICATE_MSG =
-  'Please sign this message to authenticate yourself as an admin.';
+  'Sign this message to authenticate for admin actions.';
 
 export const HIGH_PRICE_IMPACT = 5;
 
