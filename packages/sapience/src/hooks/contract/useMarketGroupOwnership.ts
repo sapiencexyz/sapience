@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Abi, Address } from 'viem';
 import { useWriteContract } from 'wagmi';
+import { useFoilAbi } from '../../../../ui/hooks/useFoilAbi';
 
 export function useMarketGroupOwnership(marketGroupAddress: Address) {
   const [nominateLoading, setNominateLoading] = useState(false);
@@ -8,8 +9,7 @@ export function useMarketGroupOwnership(marketGroupAddress: Address) {
   const [acceptLoading, setAcceptLoading] = useState(false);
   const [acceptError, setAcceptError] = useState<Error | null>(null);
 
-  // TODO: Replace with actual ABI import
-  const marketGroupAbi: Abi = [];
+  const { abi: marketGroupAbi } = useFoilAbi();
 
   const { writeContractAsync } = useWriteContract();
 
@@ -21,7 +21,7 @@ export function useMarketGroupOwnership(marketGroupAddress: Address) {
       await writeContractAsync({
         address: marketGroupAddress,
         abi: marketGroupAbi,
-        functionName: 'nominateNewOwner',
+        functionName: 'transferOwnership',
         args: [newOwner],
       });
     } catch (err) {
