@@ -413,7 +413,7 @@ const Admin = () => {
     : [];
 
   return (
-    <div className="container pt-16 lg:pt-24 max-w-3xl mx-auto">
+    <div className="container pt-24 mx-auto px-6">
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Control Center</h1>
         <div className="flex items-center space-x-4">
