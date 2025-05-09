@@ -545,15 +545,14 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     // Set up hourly processing
     const scheduleNextRun = () => {
       const now = new Date();
-      const nextRun = new Date(now.getTime() + 60 * 60 * 1000);
-      // const nextRun = new Date(
-      //   now.getFullYear(),
-      //   now.getMonth(),
-      //   now.getDate(),
-      //   now.getHours() + 1, // Schedule for next hour
-      //   0,
-      //   0
-      // );
+      const nextRun = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        now.getHours() + 1, // Schedule for next hour..
+        5, // ..and 5 minutes to make sure we process new data
+        0
+      );
 
       const timeUntilNextRun = nextRun.getTime() - now.getTime();
       console.log(
