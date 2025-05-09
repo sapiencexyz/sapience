@@ -9,7 +9,7 @@ import {
   getChainById,
   mainnetPublicClient,
   sepoliaPublicClient,
-} from '../utils';
+} from '../utils/utils';
 
 const router = Router();
 

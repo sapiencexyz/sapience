@@ -69,7 +69,9 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             position.vGasAmount,
             position.borrowedVEth,
             position.borrowedVGas,
-            deltaCollateral
+            deltaCollateral,
+            position.epochId,
+            msg.sender
         );
     }
 

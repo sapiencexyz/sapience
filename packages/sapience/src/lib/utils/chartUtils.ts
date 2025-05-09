@@ -1,5 +1,5 @@
 // Assuming CandleType is defined elsewhere, e.g., in interfaces or generated types
-import type { CandleType } from '../interfaces/interfaces'; // Adjust path if needed
+import type { CandleType } from '@foil/ui/types/graphql'; // Adjust path if needed
 
 // Define the type for index candle data (partial CandleType)
 // Used because the index query only fetches timestamp and close
@@ -57,7 +57,7 @@ export const processCandleData = (
         // Attempt to parse the close value
         try {
           const closeValue = parseFloat(String(candle.close));
-          if (!isNaN(closeValue)) {
+          if (!Number.isNaN(closeValue)) {
             // Assign value to the specific market ID for this timestamp
             combinedData[ts].markets[marketId] = closeValue;
           } else {
@@ -94,7 +94,9 @@ export const processCandleData = (
 
       try {
         const closeValue = parseFloat(String(candle.close));
-        if (!isNaN(closeValue)) {
+        // Check for valid number
+        if (!Number.isNaN(closeValue)) {
+          // Multiply raw close value by multiplier to get Wei value (consistent with usePriceChartData)
           combinedData[ts]!.indexClose = closeValue * indexMultiplier;
         } else {
           console.warn(

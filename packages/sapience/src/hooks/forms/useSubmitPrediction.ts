@@ -1,31 +1,31 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { encodeAbiParameters, parseAbiParameters } from 'viem';
-import { useAccount, useWriteContract, useTransaction } from 'wagmi';
+import { useAccount, useTransaction, useWriteContract } from 'wagmi';
 
-import type { PredictionMarketType } from '~/components/forecasting/PredictionForm';
+import type { MarketGroupCategory } from '../graphql/useMarketGroup';
 import { EAS_CONTRACT_ADDRESS, SCHEMA_UID } from '~/lib/constants/eas';
 
 interface UseSubmitPredictionProps {
-  marketData: PredictionMarketType | null | undefined;
-  submissionValue: string | number; // N/A indicates invalid
-  selectedMarketId: string | number | null;
+  marketAddress: string;
+  marketCategory: MarketGroupCategory;
+  submissionValue: string; // N/A indicates invalid
+  marketId: number;
 }
 
 export function useSubmitPrediction({
-  marketData,
+  marketAddress,
   submissionValue,
-  selectedMarketId,
+  marketId,
 }: UseSubmitPredictionProps) {
   const { address } = useAccount();
-  const router = useRouter();
   const { toast } = useToast();
 
   const [attestationError, setAttestationError] = useState<string | null>(null);
   const [attestationSuccess, setAttestationSuccess] = useState<string | null>(
     null
   );
+  const [isLoading, setIsLoading] = useState(false);
 
   // EAS contract write hook
   const {
@@ -43,13 +43,17 @@ export function useSubmitPrediction({
 
   // Helper function to encode schema data
   const encodeSchemaData = useCallback(
-    (marketAddress: string, marketId: string, prediction: string) => {
+    (_marketAddress: string, _marketId: string, prediction: string) => {
       try {
         return encodeAbiParameters(
           parseAbiParameters(
             'address marketAddress, uint256 marketId, uint160 prediction'
           ),
-          [marketAddress as `0x${string}`, BigInt(marketId), BigInt(prediction)]
+          [
+            _marketAddress as `0x${string}`,
+            BigInt(_marketId),
+            BigInt(prediction),
+          ]
         );
       } catch (error) {
         console.error('Error encoding schema data:', error);
@@ -67,30 +71,15 @@ export function useSubmitPrediction({
     reset(); // Reset wagmi write state
 
     try {
+      setIsLoading(true);
       if (!address) {
         throw new Error('Wallet not connected');
       }
-      if (!marketData?.address) {
-        throw new Error('Market address not available');
-      }
-      if (
-        submissionValue === 'N/A' ||
-        typeof submissionValue !== 'string' || // Ensure it's the string format expected by EAS
-        !selectedMarketId
-      ) {
-        console.error(
-          'Attempted to submit prediction with invalid value or market ID.',
-          { submissionValue, selectedMarketId }
-        );
-        throw new Error('Cannot submit prediction with the current input.');
-      }
-
-      const finalMarketId = selectedMarketId.toString();
 
       // Encode the schema data
       const encodedData = encodeSchemaData(
-        marketData.address,
-        finalMarketId,
+        marketAddress,
+        marketId.toString(),
         submissionValue // Pass the validated string value
       );
 
@@ -145,6 +134,7 @@ export function useSubmitPrediction({
         ],
       });
     } catch (error) {
+      setIsLoading(false);
       console.error('Attestation submission error:', error);
       setAttestationError(
         error instanceof Error ? error.message : 'Failed to submit prediction'
@@ -152,9 +142,9 @@ export function useSubmitPrediction({
     }
   }, [
     address,
-    marketData,
+    marketAddress,
     submissionValue,
-    selectedMarketId,
+    marketId,
     encodeSchemaData,
     writeContract,
     reset, // Add reset dependency
@@ -165,6 +155,7 @@ export function useSubmitPrediction({
   // Effect for handling writeContract error
   useEffect(() => {
     if (writeError) {
+      setIsLoading(false);
       // Extract user-friendly error message if possible
       const message = writeError.message.includes('User rejected the request')
         ? 'Transaction rejected by user.'
@@ -175,11 +166,12 @@ export function useSubmitPrediction({
       // Clear success message on new error
       setAttestationSuccess(null);
     }
-  }, [writeError]);
+  }, [writeError, setIsLoading]);
 
   // Effect for handling transaction success and redirect
   useEffect(() => {
     if (txSuccess && txReceipt) {
+      setIsLoading(false);
       const successMsg = `Prediction submitted successfully! Transaction: ${txReceipt.hash}`;
       setAttestationSuccess(successMsg);
       setAttestationError(null); // Clear error on success
@@ -189,17 +181,8 @@ export function useSubmitPrediction({
         description: 'Your position will appear on your profile shortly.',
         duration: 5000,
       });
-
-      // Redirect after a short delay to allow toast visibility
-      const timer = setTimeout(() => {
-        if (address) {
-          router.push(`/profile/${address}`);
-        }
-      }, 1000); // 1 second delay
-
-      return () => clearTimeout(timer); // Cleanup timer
     }
-  }, [txSuccess, txReceipt, address, router, toast]);
+  }, [txSuccess, txReceipt, address, toast, setIsLoading]);
 
   // Function to manually reset error/success states if needed externally
   const resetStatus = useCallback(() => {
@@ -209,7 +192,7 @@ export function useSubmitPrediction({
 
   return {
     submitPrediction,
-    isAttesting,
+    isAttesting: isAttesting || isLoading,
     attestationError,
     attestationSuccess,
     resetAttestationStatus: resetStatus, // Expose reset function

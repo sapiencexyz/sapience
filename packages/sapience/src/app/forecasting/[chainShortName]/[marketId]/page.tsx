@@ -1,6 +1,7 @@
 'use client';
 
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
+import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -9,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
+import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { ChevronDown, ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -18,6 +20,7 @@ import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
+import { parseUrlParameter } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -48,6 +51,27 @@ const SimpleLiquidityWrapper = dynamic(
     ),
   }
 );
+
+// Define EndTimeDisplay component
+interface EndTimeDisplayProps {
+  endTime?: number | null;
+}
+
+const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
+  if (typeof endTime !== 'number') {
+    // If endTime is not a number (e.g., null, undefined, or wrong type), show nothing.
+    return null;
+  }
+
+  try {
+    const date = fromUnixTime(endTime);
+    const displayTime = formatDistanceToNow(date, { addSuffix: true });
+    return <Badge>Ends {displayTime}</Badge>;
+  } catch (error) {
+    console.error('Error formatting relative time:', error);
+    return null;
+  }
+};
 
 // Main content component that consumes the forecast context
 const ForecastContent = () => {
@@ -165,8 +189,12 @@ const ForecastContent = () => {
                     poolAddress={
                       marketData?.poolAddress as `0x${string}` | undefined
                     }
-                    baseAssetMinPriceTick={marketData?.baseAssetMinPriceTick}
-                    baseAssetMaxPriceTick={marketData?.baseAssetMaxPriceTick}
+                    baseAssetMinPriceTick={
+                      marketData?.baseAssetMinPriceTick ?? undefined
+                    }
+                    baseAssetMaxPriceTick={
+                      marketData?.baseAssetMaxPriceTick ?? undefined
+                    }
                     quoteTokenName={
                       marketData?.marketGroup?.quoteTokenName || undefined
                     }
@@ -288,7 +316,7 @@ const ForecastContent = () => {
             </div>
           </div>
         </div>
-        <div className="flex justify-start px-4 md:px-3 pt-4 mt-auto">
+        <div className="flex justify-between items-center px-4 md:px-3 pt-4 mt-auto">
           <button
             type="button"
             onClick={(e) => {
@@ -300,6 +328,7 @@ const ForecastContent = () => {
             <ChevronLeft className="h-3.5 w-3.5" />
             EASY MODE
           </button>
+          <EndTimeDisplay endTime={marketData?.endTimestamp} />
         </div>
       </div>
     </div>
@@ -310,10 +339,12 @@ const ForecastContent = () => {
 const ForecastingDetailPage = () => {
   const params = useParams();
   const marketId = params.marketId as string;
-  const chainShortName = params.chainShortName as string;
+  const chainParam = params.chainShortName as string;
+
+  const { chainId, marketAddress } = parseUrlParameter(chainParam);
 
   return (
-    <ForecastProvider chainShortName={chainShortName} marketId={marketId}>
+    <ForecastProvider pageDetails={{ chainId, marketAddress, marketId }}>
       <ForecastContent />
     </ForecastProvider>
   );

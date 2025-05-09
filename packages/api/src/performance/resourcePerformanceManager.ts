@@ -43,12 +43,13 @@ export class ResourcePerformanceManager {
     this.actionIdx++;
   }
 
-  public async hardRefreshResource(resourceSlug: string) {
+  public async hardRefreshResource(resourceSlug: string | undefined) {
+    resourceSlug = resourceSlug ?? 'no-resource';
     console.log(
       `ResourcePerformanceManager Hard Refresh Resource ${resourceSlug} - op# ${this.actionIdx}`
     );
     const resource = this.resources.find((r) => r.slug === resourceSlug);
-    if (!resource) {
+    if (!resource && resourceSlug !== 'no-resource') {
       throw new Error(`Resource ${resourceSlug} not found`);
     }
     await this.updateResourceCache(resource, true, 'refresh');
@@ -59,11 +60,12 @@ export class ResourcePerformanceManager {
   }
 
   public async softRefreshResource(resourceSlug: string) {
+    resourceSlug = resourceSlug ?? 'no-resource';
     console.log(
       `ResourcePerformanceManager Soft Refresh Resource ${resourceSlug} - op# ${this.actionIdx}`
     );
     const resource = this.resources.find((r) => r.slug === resourceSlug);
-    if (!resource) {
+    if (!resource && resourceSlug !== 'no-resource') {
       throw new Error(`Resource ${resourceSlug} not found`);
     }
     await this.updateResourceCache(resource, false, 'refresh');
@@ -95,7 +97,8 @@ export class ResourcePerformanceManager {
     this.actionIdx++;
   }
 
-  public getResourcePerformance(resourceSlug: string) {
+  public getResourcePerformance(resourceSlug: string | undefined) {
+    resourceSlug = resourceSlug ?? 'no-resource';
     if (
       !this.resourcePerformances[resourceSlug] &&
       !ResourcePerformanceManager._initialized
@@ -117,6 +120,10 @@ export class ResourcePerformanceManager {
       if (rp.getMarketFromChainAndAddress(chainId, address)) {
         return rp;
       }
+    }
+
+    if (this.resourcePerformances['no-resource']) {
+      return this.resourcePerformances['no-resource'];
     }
 
     throw new Error(
@@ -169,6 +176,13 @@ export class ResourcePerformanceManager {
       );
     }
 
+    this.resourcePerformances['no-resource'] = new ResourcePerformance(
+      undefined
+    );
+    console.log(
+      `ResourcePerformanceManager Create Resource no-resource done - op# ${this.actionIdx}`
+    );
+
     // Initialize all instances of ResourcePerformance
     for (const resource of this.resources) {
       await this.updateResourceCache(resource, hardInitialize, 'initialize');
@@ -176,33 +190,38 @@ export class ResourcePerformanceManager {
         `ResourcePerformanceManager Initialize Resource ${resource.slug} done - op# ${this.actionIdx}`
       );
     }
+    await this.updateResourceCache(undefined, hardInitialize, 'initialize');
+    console.log(
+      `ResourcePerformanceManager Initialize Resource no-resource done - op# ${this.actionIdx}`
+    );
   }
 
   private async updateResourceCache(
-    resource: Resource,
+    resource: Resource | undefined,
     hardInitialize: boolean,
     logMode: 'initialize' | 'refresh'
   ) {
+    const resourceSlug = resource ? resource.slug : 'no-resource';
     console.log(
-      `Checking CACHE_DISABLED in updateResourceCache for ${resource.slug}. Value: [${process.env.CACHE_DISABLED}]`
+      `Checking CACHE_DISABLED in updateResourceCache for ${resourceSlug}. Value: [${process.env.CACHE_DISABLED}]`
     );
     if (process.env.CACHE_DISABLED === 'true') {
       console.log(
-        `CACHE_DISABLED is true, skipping cache update for resource ${resource.slug}.`
+        `CACHE_DISABLED is true, skipping cache update for ${resourceSlug}.`
       );
       return;
     }
 
     if (hardInitialize) {
       console.log(
-        `ResourcePerformanceManager Hard ${logMode} resource ${resource.slug}`
+        `ResourcePerformanceManager Hard ${logMode} resource ${resourceSlug}`
       );
-      await this.resourcePerformances[resource.slug].hardInitialize();
+      await this.resourcePerformances[resourceSlug].hardInitialize();
     } else {
       console.log(
-        `ResourcePerformanceManager Soft ${logMode} resource ${resource.slug}`
+        `ResourcePerformanceManager Soft ${logMode} resource ${resourceSlug}`
       );
-      await this.resourcePerformances[resource.slug].softInitialize();
+      await this.resourcePerformances[resourceSlug].softInitialize();
     }
   }
 }

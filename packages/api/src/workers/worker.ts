@@ -1,102 +1,55 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import 'reflect-metadata';
-import { initializeDataSource, resourceRepository } from '../db';
-import { indexMarketEvents } from '../controllers/market';
+import {
+  initializeDataSource,
+  resourceRepository,
+  marketGroupRepository,
+} from '../db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
-import * as Sentry from '@sentry/node';
-import { Resource } from '../models/Resource';
-import { reindexMarket } from './reindexMarket';
-import { reindexMissingBlocks } from './reindexMissingBlocks';
-import { reindexResource } from './reindexResource';
-import fixturesData from '../fixtures.json';
-const MAX_RETRIES = Infinity;
-const RETRY_DELAY = 5000; // 5 seconds
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function withRetry<T>(
-  operation: () => Promise<T>,
-  name: string,
-  maxRetries: number = MAX_RETRIES
-): Promise<T> {
-  let lastError: Error | undefined;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error as Error;
-      console.error(
-        `Attempt ${attempt}/${maxRetries} failed for ${name}:`,
-        error
-      );
-
-      // Report error to Sentry with context
-      Sentry.withScope((scope) => {
-        scope.setExtra('attempt', attempt);
-        scope.setExtra('maxRetries', maxRetries);
-        scope.setExtra('operationName', name);
-        Sentry.captureException(error);
-      });
-
-      if (attempt < maxRetries) {
-        console.log(`Retrying ${name} in ${RETRY_DELAY / 1000} seconds...`);
-        await delay(RETRY_DELAY);
-      }
-    }
-  }
-  const finalError = new Error(
-    `All ${maxRetries} attempts failed for ${name}. Last error: ${lastError?.message}`
-  );
-  Sentry.captureException(finalError);
-  throw finalError;
-}
-
-function createResilientProcess<T>(
-  process: () => Promise<T>,
-  name: string
-): () => Promise<T | void> {
-  return async () => {
-    while (true) {
-      try {
-        return await withRetry(process, name);
-      } catch (error) {
-        console.error(
-          `Process ${name} failed after all retries. Restarting...`,
-          error
-        );
-        await delay(RETRY_DELAY);
-      }
-    }
-  };
-}
+import { handleJobCommand } from './jobs';
+import { startIndexingAndWatchingMarketGroups as indexMarketsJob } from './jobs/indexMarkets';
+import { createResilientProcess } from '../utils/utils';
 
 async function main() {
   await initializeDataSource();
-  const jobs: Promise<void>[] = [];
-  console.log('starting worker');
+  let jobs: Promise<void | (() => void)>[] = [];
 
-  // Initialize resources from fixtures
   await initializeFixtures();
 
-  for (const marketInfo of fixturesData.MARKETS) {
-    jobs.push(
-      createResilientProcess(
-        () =>
-          indexMarketEvents({
-            address: marketInfo.address,
-            chainId: marketInfo.chainId,
-            isYin: marketInfo.isYin || true,
-            isCumulative: marketInfo.isCumulative || false,
-          } as any),
-        `indexMarketEvents-${marketInfo.address}`
-      )()
-    );
-  }
+  const marketJobs = await startMarketIndexers();
+  const resourceJobs = await startResourceIndexers();
 
+  jobs = [...marketJobs, ...resourceJobs];
+
+  await Promise.all(jobs);
+}
+
+async function startMarketIndexers(): Promise<Promise<void | (() => void)>[]> {
+  const distinctChainIdsResult = await marketGroupRepository
+    .createQueryBuilder('marketGroup')
+    .select('DISTINCT "chainId"')
+    .getRawMany();
+
+  const chainIds: number[] = distinctChainIdsResult.map(
+    (result) => result.chainId
+  );
+
+  const allMarketJobs: Promise<void | (() => void)>[] = chainIds.map(
+    (chainId) =>
+      createResilientProcess(
+        () => indexMarketsJob(chainId),
+        `indexMarketsJob-${chainId}`
+      )()
+  );
+
+  return allMarketJobs;
+}
+
+async function startResourceIndexers(): Promise<
+  Promise<void | (() => void)>[]
+> {
+  const resourceJobs: Promise<void | (() => void)>[] = [];
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
-    console.log('slug indexer', resourceSlug);
     // Find the resource in the database
     const resource = await resourceRepository.findOne({
       where: { slug: resourceSlug },
@@ -109,7 +62,7 @@ async function main() {
 
     if (indexer) {
       // Then start watching for new blocks
-      jobs.push(
+      resourceJobs.push(
         createResilientProcess(
           () => indexer.watchBlocksForResource(resource) as Promise<void>,
           `watchBlocksForResource-${resourceSlug}`
@@ -117,87 +70,56 @@ async function main() {
       );
     }
   }
-
-  await Promise.all(jobs);
+  return resourceJobs;
 }
 
-if (process.argv[2] === 'reindexMarket') {
-  const callReindex = async () => {
-    const chainId = parseInt(process.argv[3], 10);
-    const address = process.argv[4];
-    const marketId = process.argv[5];
+async function runMarketsOnly() {
+  await initializeDataSource();
+  await initializeFixtures();
 
-    if (isNaN(chainId) || !address) {
-      console.error(
-        'Invalid arguments. Usage: tsx src/worker.ts reindexMarket <chainId> <address> <marketId>'
-      );
-      process.exit(1);
-    }
-    await reindexMarket(chainId, address, marketId);
-    console.log('Done reindexing');
-    process.exit(0);
-  };
-  callReindex();
-} else if (process.argv[2] === 'reindexMissing') {
-  const callReindexMissing = async () => {
-    const chainId = parseInt(process.argv[3], 10);
-    const address = process.argv[4];
-    const marketId = process.argv[5];
-
-    if (isNaN(chainId) || !address || !marketId) {
-      console.error(
-        'Invalid arguments. Usage: tsx src/worker.ts reindexMissing <chainId> <address> <marketId>'
-      );
-      process.exit(1);
-    }
-    await reindexMissingBlocks(chainId, address, marketId);
-    console.log('Done reindexing');
-    process.exit(0);
-  };
-  callReindexMissing();
-} else if (process.argv[2] === 'reindexResource') {
-  const callReindexResource = async () => {
-    const slug = process.argv[3];
-    const startTimestamp = parseInt(process.argv[4], 10);
-
-    const endTimestamp =
-      process.argv[5] !== 'undefined'
-        ? parseInt(process.argv[5], 10)
-        : undefined;
-
-    if (isNaN(startTimestamp) || !slug) {
-      console.error(
-        'Invalid arguments. Usage: tsx src/worker.ts reindexResource <resourceSlug> <startTimestamp> <endTimestamp>'
-      );
-      process.exit(1);
-    }
-    await initializeDataSource();
-    const resource: Resource | null = await resourceRepository.findOne({
-      where: {
-        slug: slug,
-      },
-    });
-
-    if (!resource) {
-      throw new Error('Resource for the chosen slug was not found');
-    }
-    const result = await reindexResource(
-      resource,
-      startTimestamp,
-      endTimestamp
-    );
-
-    if (!result) {
-      console.error('Failed to reindex resource');
-      process.exit(1);
-    }
-
-    process.exit(0);
-  };
-
-  await callReindexResource();
-
-  console.log('Done reindexing');
-} else {
-  main();
+  const marketJobs = await startMarketIndexers();
+  await Promise.all(marketJobs);
 }
+
+async function runResourcesOnly() {
+  await initializeDataSource();
+  await initializeFixtures();
+
+  const resourceJobs = await startResourceIndexers();
+  await Promise.all(resourceJobs);
+}
+
+// Handle command line arguments
+async function handleWorkerCommands(args: string[]): Promise<boolean> {
+  if (args.length <= 2) return false;
+
+  const command = args[2];
+
+  if (command === 'markets-only') {
+    await runMarketsOnly();
+    return true;
+  }
+
+  if (command === 'resources-only') {
+    await runResourcesOnly();
+    return true;
+  }
+
+  return false;
+}
+
+// Immediately try to handle a job command
+(async () => {
+  const handled = await handleJobCommand(process.argv);
+  // If a job command was handled, the process will exit within the handler.
+
+  // Check for worker-specific commands
+  if (!handled) {
+    const workerHandled = await handleWorkerCommands(process.argv);
+
+    // If no worker command was handled, proceed with the default main logic
+    if (!workerHandled) {
+      main();
+    }
+  }
+})();

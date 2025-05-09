@@ -62,7 +62,8 @@ contract ViewsModule is IViewsModule {
             baseAssetMaxPriceTick: epoch.baseAssetMaxPriceTick,
             settled: epoch.settled,
             settlementPriceD18: epoch.settlementPriceD18,
-            assertionId: epoch.assertionId
+            assertionId: epoch.assertionId,
+            claimStatement: epoch.claimStatement
         });
 
         return (epochData, epoch.marketParams);
@@ -96,7 +97,8 @@ contract ViewsModule is IViewsModule {
             baseAssetMaxPriceTick: epoch.baseAssetMaxPriceTick,
             settled: epoch.settled,
             settlementPriceD18: epoch.settlementPriceD18,
-            assertionId: epoch.assertionId
+            assertionId: epoch.assertionId,
+            claimStatement: epoch.claimStatement
         });
 
         return (epochData, epoch.marketParams);

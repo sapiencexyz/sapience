@@ -1,18 +1,23 @@
 import { gql } from '@apollo/client'; // Keep for gql tag even if not using Apollo Client hooks
 // Removed useQuery import from @tanstack/react-query
+import type { CandleType } from '@foil/ui/types';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react'; // Removed useMemo
 
-// Assuming types are defined here - adjust path if necessary
-import type { CandleType } from '../../lib/interfaces/interfaces';
 // Import the new structures and the processing function
 import {
-  processCandleData,
+  processCandleData, // Use new data point type
+  type MarketCandleDataWithId,
   type MultiMarketChartDataPoint, // Use new data point type
-  type MarketCandleDataWithId, // Use helper type for input
 } from '../../lib/utils/chartUtils';
 import { foilApi, getChainIdFromShortName } from '../../lib/utils/util'; // Import getChainIdFromShortName
 import { useSapience } from '~/lib/context/SapienceProvider'; // Import useSapience
+
+// Define minimal GraphQL error type
+interface GraphQLError {
+  message: string;
+  // Add other common fields like locations, path if needed
+}
 
 // Adjust marketId type if needed (String! vs Int!) based on schema
 const GET_MARKET_CANDLES = gql`
@@ -88,6 +93,7 @@ interface MarketCandlesResponse {
 
 // Added interface for IndexCandles response
 interface IndexCandlesResponse {
+  // Ensure the 'close' type matches what the GraphQL query actually returns (likely string or number)
   indexCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
 }
 
@@ -130,13 +136,8 @@ export const useMarketGroupChartData = ({
       setChartData([]);
 
       const interval = 1800; // 30 minutes in seconds
-      // Need to determine time range - how?
-      // Option 1: Fetch last X days? Requires adjusting query/logic.
-      // Option 2: Assume parent provides start/end if needed?
-      // Option 3: Hardcode a range for now? (e.g., last 30 days)
       const now = Math.floor(Date.now() / 1000);
       const defaultLookbackSeconds = 30 * 24 * 60 * 60; // 30 days
-      // Use provided timestamps if available, otherwise use default lookback
       const overallStartTime =
         propFromTimestamp ?? now - defaultLookbackSeconds;
       const overallEndTime = propToTimestamp ?? now;
@@ -146,26 +147,23 @@ export const useMarketGroupChartData = ({
         const marketCandlePromises = activeMarketIds.map(
           async (marketIdNum: number) => {
             const marketIdString = String(marketIdNum); // Convert number to string for consistency
-            // Use calculated time range
-            const from = overallStartTime; // Renamed variable for clarity
-            const to = overallEndTime; // Renamed variable for clarity
+            const from = overallStartTime;
+            const to = overallEndTime;
             const response = await foilApi.post('/graphql', {
               query: print(GET_MARKET_CANDLES),
               variables: {
                 address: marketAddress, // Use prop directly
                 chainId, // Use chainId calculated outside
                 marketId: marketIdString, // Use string ID here
-                from, // Use calculated value
-                to, // Use calculated value
+                from,
+                to,
                 interval,
               },
             });
-            // Correct the type assertion based on observed structure
             const responseData = response.data as
               | MarketCandlesResponse
-              | { errors?: any[] };
+              | { errors?: GraphQLError[] };
 
-            // Check for GraphQL errors (using type guard might be safer)
             if (
               responseData &&
               'errors' in responseData &&
@@ -175,7 +173,6 @@ export const useMarketGroupChartData = ({
                 `GraphQL errors fetching candles for market ${marketIdString}:`,
                 responseData.errors
               );
-              // Return marketId along with null candles and error
               return {
                 marketId: marketIdString,
                 candles: null,
@@ -184,16 +181,13 @@ export const useMarketGroupChartData = ({
                 ),
               };
             }
-            // Check if marketCandles exists (using type guard)
             if (responseData && 'marketCandles' in responseData) {
-              // Return marketId along with candles - CORRECTED PATH & TYPE SAFE
               return {
                 marketId: marketIdString,
                 candles: responseData.marketCandles ?? [],
                 error: null,
               };
             }
-            // Handle cases where neither errors nor marketCandles is present (unexpected response)
             console.warn(
               `Unexpected response structure for market ${marketIdString}:`,
               responseData
@@ -221,25 +215,26 @@ export const useMarketGroupChartData = ({
             },
           })
           .then((response) => {
-            // Correct the type assertion
             const responseData = response.data as
               | IndexCandlesResponse
-              | { errors?: any[] };
+              | { errors?: GraphQLError[] };
             if (
               responseData &&
               'errors' in responseData &&
-              responseData.errors
+              responseData.errors &&
+              responseData.errors.length > 0
             ) {
               console.error(
                 `GraphQL errors fetching index candles:`,
                 responseData.errors
               );
               throw new Error(
-                responseData.errors[0]?.message ||
+                responseData.errors[0].message ||
                   'GraphQL error fetching index candles'
               );
             }
             if (responseData && 'indexCandles' in responseData) {
+              // Return raw index candles here
               return responseData.indexCandles ?? [];
             }
             console.warn(
@@ -250,22 +245,19 @@ export const useMarketGroupChartData = ({
           })
           .catch((err) => {
             console.error('Error fetching index candles directly:', err);
-            // Rethrow or return null/empty to indicate failure
             throw err; // Ensure failure propagates to Promise.all
           });
 
         // Resolve all promises (market and index)
-        const [marketCandleResults, indexCandles] = await Promise.all([
+        const [marketCandleResults, rawIndexCandles] = await Promise.all([
           Promise.all(marketCandlePromises),
-          indexCandlePromise,
+          indexCandlePromise, // Get raw index candles
         ]);
 
         const marketErrors = marketCandleResults
           .map((r) => r.error)
           .filter(Boolean);
-        // const anyError = marketErrors.length > 0;
         if (marketErrors.length > 0) {
-          // Check if any errors occurred
           const combinedError =
             marketErrors[0] || new Error('Unknown error fetching candle data');
           console.error(
@@ -275,38 +267,30 @@ export const useMarketGroupChartData = ({
           throw combinedError; // Throw to be caught below
         }
 
-        // Prepare data for the processing function - THIS IS THE KEY CHANGE
+        // Prepare market data (unchanged)
         const marketDataForProcessing: MarketCandleDataWithId[] =
           marketCandleResults
-            .filter((r) => r.candles !== null) // Filter out any markets that errored or had null data
+            .filter((r) => r.candles !== null) // Filter out errors/null data
             .map((r) => ({
-              marketId: r.marketId, // Keep the marketId (as string)
-              candles: r.candles as CandleType[], // Type assertion safe due to filter
+              marketId: r.marketId,
+              candles: r.candles as CandleType[], // Safe due to filter
             }));
 
-        // Determine the index multiplier based on quoteTokenName and stEthPerToken.
-        // The goal is to scale the raw indexClose value (integer gwei) so that
-        // the chart's `formatTokenValue` (which divides by 1e18) displays the correct units.
+        // Calculate index multiplier (unchanged)
         let indexMultiplier: number;
         if (quoteTokenName?.toLowerCase() === 'wsteth') {
-          // Target value for chart formatter = Ggas/wstETH scaled by 1e18
-          // Ggas/wstETH = (raw_gwei / 1e9) / (stEthPerToken / 1e9) = raw_gwei / stEthPerToken
-          // Multiplier = (target / raw_gwei) = (raw_gwei / stEthPerToken * 1e18) / raw_gwei = 1e18 / stEthPerToken
           indexMultiplier =
-            stEthPerToken && stEthPerToken > 0 ? 1e18 / stEthPerToken : 1e18; // Fallback: Treat as if stEthPerToken = 1 if invalid/missing
+            stEthPerToken && stEthPerToken > 0 ? 1e18 / stEthPerToken : 1e18;
         } else {
-          // Target value for chart formatter = wei (scaled by 1e18)
-          // wei = raw_gwei * 1e9
-          // Multiplier = (target / raw_gwei) = (raw_gwei * 1e9) / raw_gwei = 1e9
           indexMultiplier = 1e9;
         }
 
         // Process data using the refactored function
-        // Pass indexCandles data and the calculated indexMultiplier
+        // Pass the RAW index candles and the calculated multiplier
         const processedData = processCandleData(
           marketDataForProcessing,
-          indexCandles,
-          indexMultiplier // Pass calculated multiplier
+          rawIndexCandles, // Pass the raw index data
+          indexMultiplier // Pass the calculated multiplier
         );
         setChartData(processedData); // Set state with the new structure
       } catch (err) {
@@ -324,9 +308,6 @@ export const useMarketGroupChartData = ({
     };
 
     fetchCandles();
-
-    // Rerun effect if the active IDs or other key identifiers change
-    // Use destructured props in dependencies
   }, [
     activeMarketIds,
     chainId,
@@ -337,7 +318,6 @@ export const useMarketGroupChartData = ({
     stEthPerToken,
   ]);
 
-  // Consolidate loading and error states - simplified as we removed provider dependency
   const isLoading = isLoadingCandles;
   const isError = isErrorCandles;
   const error = errorCandles;

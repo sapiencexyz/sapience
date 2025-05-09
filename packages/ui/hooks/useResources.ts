@@ -4,34 +4,7 @@ import { print } from 'graphql';
 
 import { foilApi } from '../lib';
 import { RESOURCE_ORDER, type ResourceSlug } from '../types/resources';
-
-export interface Epoch {
-  id: number;
-  epochId: number;
-  startTimestamp: number;
-  endTimestamp: number;
-  settled: boolean;
-  public: boolean;
-  question: string | null;
-}
-
-export interface Market {
-  id: number;
-  address: string;
-  chainId: number;
-  name: string;
-  vaultAddress: string;
-  isYin: boolean;
-  epochs: Epoch[];
-}
-
-export interface Resource {
-  id: number;
-  name: string;
-  slug: ResourceSlug;
-  iconPath: string;
-  markets: Market[];
-}
+import { ResourceType, CandleType } from '../types/graphql';
 
 const LATEST_RESOURCE_PRICE_QUERY = gql`
   query GetLatestResourcePrice($slug: String!) {
@@ -69,18 +42,17 @@ const RESOURCES_QUERY = gql`
       id
       name
       slug
-      markets {
+      marketGroups {
         id
         address
         isYin
         vaultAddress
         chainId
-        epochs {
+        markets {
           id
-          epochId
+          marketId
           startTimestamp
           endTimestamp
-          settled
           public
           question
         }
@@ -90,19 +62,19 @@ const RESOURCES_QUERY = gql`
 `;
 
 export const useResources = () => {
-  return useQuery<Resource[]>({
+  return useQuery<(ResourceType & { iconPath: string })[]>({
     queryKey: ['resources'],
     queryFn: async () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
       });
-      const resources = data.resources.sort((a: any, b: any) => {
-        const indexA = RESOURCE_ORDER.indexOf(a.slug);
-        const indexB = RESOURCE_ORDER.indexOf(b.slug);
+      const resources = data.resources.sort((a: ResourceType, b: ResourceType) => {
+        const indexA = RESOURCE_ORDER.indexOf(a.slug as ResourceSlug);
+        const indexB = RESOURCE_ORDER.indexOf(b.slug as ResourceSlug);
         return indexA - indexB;
       });
 
-      return resources.map((resource: any) => ({
+      return resources.map((resource: ResourceType) => ({
         ...resource,
         iconPath: `/resources/${resource.slug}.svg`,
       }));
@@ -111,7 +83,7 @@ export const useResources = () => {
 };
 
 export const useLatestResourcePrice = (slug: string) => {
-  return useQuery({
+  return useQuery<{ timestamp: string; value: string }>({
     queryKey: ['resourcePrice', slug],
     queryFn: async () => {
       const { data } = await foilApi.post('/graphql', {
@@ -124,13 +96,13 @@ export const useLatestResourcePrice = (slug: string) => {
         },
       });
 
-      const candles = data.resourceCandles;
+      const candles = data.resourceCandles as CandleType[];
       if (!candles || candles.length === 0) {
         throw new Error('No price data found');
       }
 
       // Find the latest candle by timestamp
-      const latestCandle = candles.reduce((latest: any, current: any) => {
+      const latestCandle = candles.reduce((latest: CandleType | null, current: CandleType) => {
         if (!latest || current.timestamp > latest.timestamp) {
           return current;
         }
@@ -155,7 +127,7 @@ export const useLatestIndexPrice = (market: {
   chainId: number;
   epochId: number;
 }) => {
-  return useQuery({
+  return useQuery<{ timestamp: string; value: string } | null>({
     queryKey: [
       'indexPrice',
       `${market.chainId}:${market.address}`,
@@ -175,13 +147,13 @@ export const useLatestIndexPrice = (market: {
         },
       });
 
-      const candles = data.indexCandles;
+      const candles = data.indexCandles as CandleType[];
       if (!candles || candles.length === 0) {
         throw new Error('No index price data found');
       }
 
       // Find the latest candle by timestamp
-      const latestCandle = candles.reduce((latest: any, current: any) => {
+      const latestCandle = candles.reduce((latest: CandleType | null, current: CandleType) => {
         if (!latest || current.timestamp > latest.timestamp) {
           return current;
         }

@@ -41,15 +41,28 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
     refetchPositions,
   } = useForecast();
 
-  const position = positionId ? getPositionById(positionId) : null;
-  const hasPosition = !!position;
-
   // Move useTokenBalance hook here
   const { balance: walletBalance } = useTokenBalance({
     tokenAddress: collateralAssetAddress,
     chainId: chainId as number,
     enabled: isConnected && !!collateralAssetAddress,
   });
+
+  // Add loading/missing data check
+  if (
+    !marketContractData ||
+    !marketGroupParams ||
+    !marketAddress ||
+    !chainId ||
+    !collateralAssetAddress
+  ) {
+    // Render loading state or null while data is not ready
+    // TODO: Add a proper loading skeleton or indicator
+    return null;
+  }
+
+  const position = positionId ? getPositionById(positionId) : null;
+  const hasPosition = !!position;
 
   const handleConnectWallet = async () => {
     await connectOrCreateWallet();

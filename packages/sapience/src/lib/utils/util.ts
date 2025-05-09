@@ -1,15 +1,13 @@
+import type {
+  MarketGroupType,
+  MarketType,
+  TransactionType,
+} from '@foil/ui/types';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { formatEther, createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
+import { createPublicClient, formatEther, http } from 'viem';
 import * as chains from 'viem/chains';
-
-import type {
-  Market,
-  MarketGroup,
-  PredictionMarketType,
-  PositionTransaction,
-} from '../interfaces/interfaces';
+import { mainnet } from 'viem/chains';
 
 export const foilApi = {
   baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
@@ -27,7 +25,7 @@ export const foilApi = {
     return headers;
   },
 
-  async post(path: string, body: any) {
+  async post(path: string, body: unknown) {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -108,8 +106,8 @@ export const formatQuestion = (
  * Determines which question to display based on active markets and market group data
  */
 export const getDisplayQuestion = (
-  marketGroupData: MarketGroup | null | undefined, // Use MarketGroup type, allow null/undefined
-  activeMarkets: Market[], // Use Market[] type
+  marketGroupData: MarketGroupType | null | undefined, // Use MarketGroupType
+  activeMarkets: MarketType[], // Use MarketType[]
   isLoading: boolean,
   defaultLoadingMessage: string = '', // Default loading message
   defaultErrorMessage: string = 'This market question is not available' // Default error message
@@ -126,7 +124,9 @@ export const getDisplayQuestion = (
   }
 
   // Handle null, undefined, or placeholder data
-  if (!marketGroupData || marketGroupData.placeholder) {
+  // Note: Assuming MarketGroupType doesn't have a 'placeholder' property like the deprecated interface.
+  // Adjust this check if the GraphQL type structure differs significantly or if placeholder logic is still needed.
+  if (!marketGroupData) {
     return defaultErrorMessage;
   }
 
@@ -145,7 +145,7 @@ export const getDisplayQuestion = (
   // 3. Fallback: If group question isn't available, find the first market (active or not) with a question.
   //    (Consider if this fallback is truly desired, might be better to show defaultErrorMessage)
   const firstMarketWithQuestion = marketGroupData.markets?.find(
-    (market) => market.question
+    (market: MarketType) => market.question // Explicitly type 'market'
   );
   if (firstMarketWithQuestion?.question) {
     return formatOrDefault(firstMarketWithQuestion.question);
@@ -159,31 +159,23 @@ export const getDisplayQuestion = (
  * Finds active markets for a market group based on current timestamp
  */
 export const findActiveMarkets = (
-  marketGroupData: MarketGroup | null | undefined // Use MarketGroup type, allow null/undefined
-): Market[] => {
-  // Return type Market[]
-  if (
-    !marketGroupData ||
-    marketGroupData.placeholder ||
-    !Array.isArray(marketGroupData.markets)
-  ) {
-    return [];
-  }
-
+  marketGroupData: MarketGroupType
+): MarketType[] => {
   const nowInSeconds = Date.now() / 1000;
   // Filter markets based on timestamps
   return marketGroupData.markets.filter(
     (
-      market: Market // Use Market type here
+      market: MarketType // Use MarketType here
     ) => {
       // Check if timestamps are valid numbers before comparison
       const start = market.startTimestamp;
       const end = market.endTimestamp;
+      // Ensure start and end are numbers (GraphQL types might be nullable)
       return (
         typeof start === 'number' &&
-        !isNaN(start) &&
+        !Number.isNaN(start) &&
         typeof end === 'number' &&
-        !isNaN(end) &&
+        !Number.isNaN(end) &&
         nowInSeconds >= start &&
         nowInSeconds < end
       );
@@ -193,52 +185,62 @@ export const findActiveMarkets = (
 
 // Helper to format value as percentage (0-1 -> 0%-100%)
 export const formatPercentage = (value: number): string => {
-  if (value == null || isNaN(value)) return ''; // Handle null/NaN
+  if (value == null || Number.isNaN(value)) return ''; // Use Number.isNaN
   return `${(value * 100).toFixed(0)}%`; // Multiply by 100, format, add %
 };
 
-// Updated helper to format currency/token value, handling 18 decimals
-// Places the unit string AFTER the value
-export const formatTokenValue = (value: number, unit: string = ''): string => {
-  // Adjust for 18 decimals
-  const adjustedValue = value / 1e18;
-  // Format number and append unit (if provided)
-  const formattedNumber = adjustedValue.toFixed(2);
+// Helper to format a numeric value (like a price) to a specified number of decimal places, optionally adding a unit.
+export const formatTokenValue = (
+  value: number | string | undefined | null,
+  unit: string = '',
+  decimals: number = 4
+): string => {
+  if (value === undefined || value === null) {
+    return ''; // Handle undefined/null
+  }
+
+  const numericValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (Number.isNaN(numericValue)) {
+    // Use Number.isNaN
+    return ''; // Handle NaN or non-numeric strings
+  }
+
+  const formattedNumber = numericValue.toFixed(decimals);
   return unit ? `${formattedNumber} ${unit}` : formattedNumber;
 };
 
 // Helper to determine Y-axis configuration based on market type
 export const getYAxisConfig = (
-  market: PredictionMarketType | null | undefined
+  marketGroup: MarketGroupType | null | undefined // Use MarketGroupType
 ) => {
-  // Check for Yes/No OR Group Market
-  if (market?.baseTokenName === 'Yes' || market?.isGroupMarket) {
-    // Yes/No or Group market: Percentage 0%-100%
+  // Check for Yes/No market (based on base token name)
+  // Removed isGroupMarket check as it's not directly on MarketGroupType
+  if (marketGroup?.baseTokenName === 'Yes') {
+    // Yes/No market: Percentage 0%-100%
     return {
       tickFormatter: formatPercentage, // Use percentage formatter
       tooltipValueFormatter: (val: number) => formatPercentage(val), // Use percentage formatter
       domain: [0, 1] as [number, number], // Domain remains 0-1 (representing 0% to 100%)
-      unit: '%', // Unit symbol (kept for tooltip logic maybe, but not used in tick formatter)
+      unit: '%', // Unit symbol
     };
   }
 
-  // Default/Numerical/Group market: Use quote token name, adjust decimals
-  // Construct the unit string as base/quote
+  // Default/Numerical market: Use quote token name, adjust decimals
+  // Construct the unit string as quote/base
   let unit = '';
-  if (market?.baseTokenName && market?.quoteTokenName) {
+  if (marketGroup?.baseTokenName && marketGroup?.quoteTokenName) {
     // Construct unit like "quote/base"
-    unit = `${market.quoteTokenName}/${market.baseTokenName}`;
-  } else if (market?.quoteTokenName) {
+    unit = `${marketGroup.quoteTokenName}/${marketGroup.baseTokenName}`;
+  } else if (marketGroup?.quoteTokenName) {
     // Fallback to just quote token name if base is missing
-    unit = market.quoteTokenName;
+    unit = marketGroup.quoteTokenName;
   }
-  // No default $ sign anymore, handled by formatTokenValue
 
   return {
     tickFormatter: (val: number) => formatTokenValue(val), // Remove unit from tick formatter call
     tooltipValueFormatter: (val: number) => formatTokenValue(val, unit), // Keep unit for tooltip
     domain: ['auto', 'auto'] as [string | number, string | number], // Auto-scale
-    unit, // Keep the constructed unit for potential future use (e.g., tooltips)
+    unit, // Keep the constructed unit for potential future use
   };
 };
 
@@ -274,79 +276,100 @@ export const getChainShortName = (id: number): string => {
     : id.toString();
 };
 
-// --- Constants ---
-const WEI_PER_ETHER_UTIL = 1e18; // Renamed to avoid potential global scope issues if used elsewhere
+// Parse URL parameter to extract chain and market address
+export const parseUrlParameter = (
+  paramString: string
+): { chainShortName: string; marketAddress: string; chainId: number } => {
+  // URL decode the parameter first, then parse
+  const decodedParam = decodeURIComponent(paramString);
+
+  // More robust parsing to handle various URL format possibilities
+  let chainShortName = '';
+  let marketAddress = '';
+
+  if (decodedParam) {
+    // Check if the parameter contains a colon (chain:address format)
+    if (decodedParam.includes(':')) {
+      const [parsedChain, parsedAddress] = decodedParam.split(':');
+      chainShortName = parsedChain;
+      marketAddress = parsedAddress;
+    } else {
+      // If no colon, assume it's just the address
+      marketAddress = decodedParam;
+      // Use a default chain if needed
+      chainShortName = 'base';
+    }
+  }
+
+  const chainId = getChainIdFromShortName(chainShortName);
+
+  return { chainShortName, marketAddress, chainId };
+};
 
 // --- Function: Calculate Effective Entry Price ---
 
 /**
- * Calculates the weighted average entry price for a position based on its transaction history.
- * Weights long positions by base token acquired and short positions by quote token acquired.
- *
- * @param transactions - Array of transactions associated with the position, ordered by timestamp ASC.
- * @param isLong - Boolean indicating if the position is long.
- * @param baseTokenName - The name of the base token (currently unused but kept for potential future logic).
- * @returns The calculated effective entry price (not scaled by 1e18).
+ * Calculate the effective entry price for a position based on its transactions
+ * Uses the UI package TransactionType
  */
 export function calculateEffectiveEntryPrice(
-  transactions: PositionTransaction[],
+  transactions: TransactionType[], // Use TransactionType[]
   isLong: boolean
 ): number {
   if (!transactions || transactions.length === 0) {
-    console.warn('No transactions provided for entry price calculation.');
     return 0;
   }
 
-  let weightedSum = 0;
-  let totalWeight = 0;
-  let entryPriceD18 = 0; // Price will be calculated scaled by 1e18 initially
+  // Sort transactions by timestamp (oldest first)
+  const sortedTransactions = [...transactions].sort(
+    (a, b) => a.timestamp - b.timestamp
+  );
 
-  transactions.forEach((tx) => {
-    if (tx.tradeRatioD18 === null || tx.tradeRatioD18 === undefined) {
-      return; // Skip non-trade transactions
-    }
+  // Initialize entry price calculation variables
+  let totalBaseTokenDelta = 0;
+  let totalQuoteTokenDelta = 0;
 
-    const tradeRatio = Number(tx.tradeRatioD18);
-    if (isNaN(tradeRatio) || tradeRatio < 0) {
-      console.warn(
-        `Invalid tradeRatioD18 (${tx.tradeRatioD18}) in transaction ${tx.id}, skipping.`
+  // Process transactions to calculate deltas
+  for (const tx of sortedTransactions) {
+    // Skip non-trade transactions
+    if (tx.type === 'trade') {
+      // Parse token deltas safely, handling null/undefined and converting from wei string
+      const baseTokenDelta = parseFloat(
+        formatEther(BigInt(tx.baseTokenDelta ?? '0'))
       );
-      return;
-    }
+      const quoteTokenDelta = parseFloat(
+        formatEther(BigInt(tx.quoteTokenDelta ?? '0'))
+      );
 
-    if (isLong) {
-      const baseDelta = tx.baseTokenDelta ? Number(tx.baseTokenDelta) : 0;
-      if (baseDelta > 0) {
-        weightedSum += tradeRatio * baseDelta;
-        totalWeight += baseDelta;
-      }
-    } else {
-      const quoteDelta = tx.quoteTokenDelta ? Number(tx.quoteTokenDelta) : 0;
-      if (quoteDelta > 0) {
-        weightedSum += tradeRatio * quoteDelta;
-        totalWeight += quoteDelta;
+      // Accumulate deltas
+      totalBaseTokenDelta += baseTokenDelta;
+      totalQuoteTokenDelta += quoteTokenDelta;
+
+      // If we've reached a point where the position is flipped (long to short or vice versa),
+      // we should reset our calculations as the effective entry price changes
+      if (
+        (isLong && totalBaseTokenDelta <= 0) ||
+        (!isLong && totalBaseTokenDelta >= 0)
+      ) {
+        totalBaseTokenDelta = 0;
+        totalQuoteTokenDelta = 0;
       }
     }
-  });
-
-  if (totalWeight > 0) {
-    entryPriceD18 = weightedSum / totalWeight;
-  } else {
-    return 0;
   }
 
-  const finalEntryPrice = entryPriceD18 / WEI_PER_ETHER_UTIL;
-
-  if (isNaN(finalEntryPrice)) {
-    console.error('NaN result during entry price calculation.', {
-      weightedSum,
-      totalWeight,
-      isLong,
-    });
-    return 0;
+  // Calculate final entry price based on accumulated deltas
+  if (totalBaseTokenDelta === 0) {
+    return 0; // Avoid division by zero
   }
 
-  return finalEntryPrice;
+  // For short positions, we negate both values to get the correct ratio
+  if (!isLong) {
+    totalBaseTokenDelta = -totalBaseTokenDelta;
+    totalQuoteTokenDelta = -totalQuoteTokenDelta;
+  }
+
+  // Calculate the entry price as the ratio of quote tokens to base tokens
+  return Math.abs(totalQuoteTokenDelta / totalBaseTokenDelta);
 }
 
 /**
@@ -360,7 +383,8 @@ export function tickToPrice(tick: number | string | undefined | null): number {
     return 0; // Or handle as appropriate, e.g., throw an error or return NaN
   }
   const numericTick = typeof tick === 'string' ? Number(tick) : tick;
-  if (isNaN(numericTick)) {
+  if (Number.isNaN(numericTick)) {
+    // Use Number.isNaN
     return 0; // Handle invalid string input
   }
   return 1.0001 ** numericTick;

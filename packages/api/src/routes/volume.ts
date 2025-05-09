@@ -11,7 +11,7 @@ import {
   getStartTimestampFromTimeWindow,
   getTransactionsInTimeRange,
   groupTransactionsByTimeWindow,
-} from 'src/serviceUtil';
+} from 'src/utils/serviceUtil';
 import { formatUnits } from 'viem';
 import { TOKEN_PRECISION } from 'src/constants';
 

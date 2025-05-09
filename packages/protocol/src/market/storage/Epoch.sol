@@ -82,8 +82,8 @@ library Epoch {
             revert Errors.EpochAlreadyStarted();
         }
 
-        if (startTime < block.timestamp) {
-            revert Errors.StartTimeTooEarly(startTime, block.timestamp);
+        if (startTime == 0) {
+            revert Errors.StartTimeCannotBeZero();
         }
 
         if (endTime <= startTime) {

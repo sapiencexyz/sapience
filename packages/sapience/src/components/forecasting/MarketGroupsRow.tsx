@@ -5,14 +5,15 @@ import * as React from 'react';
 
 import { getChainShortName } from '~/lib/utils/util';
 
+// Import the shared type
+import type { MarketWithContext } from './MarketGroupsList';
+
 export interface MarketGroupsRowProps {
   chainId: number;
   marketAddress: string;
-  markets: any[]; // Keep for now, might be needed for other logic or can be removed if unused
+  markets: MarketWithContext[]; // Use the specific type
   color: string;
   displayQuestion: string; // Make displayQuestion required
-  // Remove marketData prop
-  // marketData?: any;
 }
 
 const MarketGroupsRow = ({

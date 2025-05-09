@@ -3,7 +3,7 @@ import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
 import { RenderJob } from '../models/RenderJob';
 import { renderJobRepository } from '../db';
-import { createRenderJob, fetchRenderServices } from 'src/utils';
+import { createRenderJob, fetchRenderServices } from 'src/utils/utils';
 import { Request, Response } from 'express';
 
 const router = Router();
@@ -214,6 +214,81 @@ router.post(
   '/market-events',
   handleAsyncErrors(async (req, res) => {
     await handleReindexRequest(req, res, false);
+  })
+);
+
+// New endpoint for market group factory reindexing
+router.post(
+  '/market-group-factory',
+  handleAsyncErrors(async (req, res) => {
+    const { chainId, factoryAddress, signature, timestamp } = req.body;
+
+    const startCommand = `pnpm run start:reindex-market-group-factory ${chainId} ${factoryAddress}`;
+
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'staging';
+
+    if (isProduction) {
+      // Authenticate the user
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(timestamp)
+      );
+      if (!isAuthenticated) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      let id: string = '';
+      const renderServices = await fetchRenderServices();
+      for (const item of renderServices) {
+        if (
+          item?.service?.type === 'background_worker' &&
+          item?.service?.name?.startsWith('background-worker') &&
+          item?.service?.id &&
+          (process.env.NODE_ENV === 'staging'
+            ? item?.service?.branch === 'staging'
+            : item?.service?.branch === 'main')
+        ) {
+          id = item?.service.id;
+          break;
+        }
+      }
+      if (!id) {
+        throw new Error('Background worker not found');
+      }
+
+      const job = await createRenderJob(id, startCommand);
+
+      const jobDb = new RenderJob();
+      jobDb.jobId = job.id;
+      jobDb.serviceId = job.serviceId;
+      await renderJobRepository.save(jobDb);
+
+      res.json({
+        success: true,
+        message: 'Reindexing market group factory started',
+        job,
+      });
+      return;
+    }
+
+    // local development
+    try {
+      const result = await executeLocalReindex(startCommand);
+      res.json({
+        success: true,
+        message: 'Reindexing market group factory completed',
+        job: result,
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
   })
 );
 

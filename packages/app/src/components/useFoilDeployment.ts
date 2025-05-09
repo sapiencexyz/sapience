@@ -16,9 +16,7 @@ const useFoilDeployment = (chainId?: number) => {
   useEffect(() => {
     const loadFoilData = async () => {
       try {
-        const foil = await import(
-          `@/protocol/deployments/outputs/${chainId}/FoilYin.json`
-        );
+        const foil = await import(`@/protocol/deployments/Foil.json`);
         setFoilData(foil);
       } catch (err) {
         console.log('ERROR', err);
@@ -26,23 +24,13 @@ const useFoilDeployment = (chainId?: number) => {
       }
 
       try {
-        const foilYinVault = await import(
-          `@/protocol/deployments/outputs/${chainId}/VaultYin.json`
-        );
-        const foilYangVault = await import(
-          `@/protocol/deployments/outputs/${chainId}/VaultYang.json`
-        );
-        const foilYinBlobVault = await import(
-          `@/protocol/deployments/outputs/${chainId}-blobs/VaultYin.json`
-        );
-        const foilYangBlobVault = await import(
-          `@/protocol/deployments/outputs/${chainId}-blobs/VaultYang.json`
-        );
+        const vault = await import(`@/protocol/deployments/FoilVault.json`);
+
         setFoilVaultData({
-          yin: foilYinVault,
-          yang: foilYangVault,
-          yinBlob: foilYinBlobVault,
-          yangBlob: foilYangBlobVault,
+          yin: vault,
+          yang: vault,
+          yinBlob: vault,
+          yangBlob: vault,
         });
       } catch (err) {
         setError(err as any);
@@ -51,9 +39,7 @@ const useFoilDeployment = (chainId?: number) => {
       }
     };
 
-    if (chainId) {
-      loadFoilData();
-    }
+    loadFoilData();
   }, [chainId]);
 
   return { foilData, loading, error, foilVaultData };

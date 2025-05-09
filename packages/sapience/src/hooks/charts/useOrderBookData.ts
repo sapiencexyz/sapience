@@ -48,24 +48,17 @@ interface UsePoolOrderBookDataReturn {
   error: Error | null; // Store error object
 }
 
-// Type for the raw tick data returned by useReadContracts
 type TickDataTuple = [
   bigint, // liquidityGross
   bigint, // liquidityNet
   // ... other fields we don't need for order book
 ];
 
-interface TickData {
-  status: 'success' | 'failure';
-  result?: TickDataTuple;
-  error?: Error;
-}
-
 // --- Helper Functions ---
 
 // Basic number formatting (replace with more robust solution if needed)
 const formatNumber = (num: number | undefined | null, decimals = 2): string => {
-  if (num === undefined || num === null || isNaN(num)) {
+  if (num === undefined || num === null || Number.isNaN(num)) {
     return '-';
   }
   // Add locale formatting, significant digits, etc. later
@@ -155,8 +148,8 @@ export function useOrderBookData({
     if (
       baseAssetMinPriceTick === undefined ||
       baseAssetMaxPriceTick === undefined ||
-      isNaN(baseAssetMinPriceTick) ||
-      isNaN(baseAssetMaxPriceTick) ||
+      Number.isNaN(baseAssetMinPriceTick) ||
+      Number.isNaN(baseAssetMaxPriceTick) ||
       baseAssetMinPriceTick >= baseAssetMaxPriceTick ||
       spacing <= 0 // Check if actual spacing is valid
     ) {
@@ -202,130 +195,102 @@ export function useOrderBookData({
     data: rawTickData,
     isLoading: isLoadingTicks,
     isError: isErrorTicks,
-    error: errorTicks,
+    error: readContractsError, // Capture the top-level error
   } = useReadContracts({
     contracts,
     query: {
-      enabled: contracts.length > 0, // Only run query if contracts are ready
-      // Add staleTime/refetchInterval if needed
-      // select: (data) => data.filter(d => d.status === 'success'), // Optionally filter failures early
+      enabled: contracts.length > 0, // Only run if contracts are defined
+      // Add other query options like refetchInterval if needed
     },
   });
 
-  // Handle specific read error
+  // 4. Process Raw Tick Data into PoolData
   useEffect(() => {
-    if (isErrorTicks && errorTicks) {
-      console.error('Error fetching raw tick data:', errorTicks);
-      setHookError(errorTicks);
-    } else {
-      setHookError(null); // Clear error if fetch succeeds later
-    }
-  }, [isErrorTicks, errorTicks]);
+    const processData = async () => {
+      if (isLoadingTicks || !rawTickData || !pool) {
+        setProcessedPoolData(undefined); // Clear data while loading or if pool/data missing
+        return;
+      }
 
-  // 4. Translate Raw Data to GraphTicks
-  const graphTicks: GraphTick[] = useMemo(() => {
-    if (!rawTickData || rawTickData.length === 0) {
-      return [];
-    }
-    // Filter out nulls (failed reads) and type guard
-    return rawTickData
-      .map((tickResult, idx) => {
-        const typedResult = tickResult as TickData; // Type assertion
-        if (typedResult.status === 'success' && typedResult.result) {
-          // We need ticks even if liquidityNet is 0 for getFullPool to calculate active liquidity correctly.
-          const liquidityGross = typedResult.result[0];
-          const liquidityNet = typedResult.result[1];
+      if (isErrorTicks || !Array.isArray(rawTickData)) {
+        console.error(
+          'Error fetching raw tick data or data format invalid:',
+          readContractsError
+        );
+        setHookError(
+          readContractsError || new Error('Invalid tick data format')
+        );
+        setProcessedPoolData(undefined);
+        return;
+      }
 
-          // Return the tick data regardless of liquidityNet, as long as the fetch succeeded.
-          // getFullPool needs the gross liquidity to calculate ranges.
-          return {
-            tickIdx: ticks[idx].toString(),
-            liquidityGross: liquidityGross.toString(),
-            liquidityNet: liquidityNet.toString(),
-          };
-        }
-        return null; // Exclude failed reads
-      })
-      .filter((tick): tick is GraphTick => tick !== null);
-  }, [rawTickData, ticks]);
+      try {
+        const processedTicks: GraphTick[] = rawTickData
+          .map((tickData, index) => {
+            if (tickData.status === 'failure') {
+              console.warn(
+                `Failed to fetch tick ${ticks[index]}:`,
+                tickData.error as Error // Cast error to Error
+              );
+              return null; // Skip failed ticks
+            }
+            const result = tickData.result as TickDataTuple; // Cast result
+            if (!result) {
+              // Should not happen if status is success, but check anyway
+              console.warn(
+                `Missing result for successful tick ${ticks[index]}`
+              );
+              return null;
+            }
+            return {
+              tickIdx: ticks[index].toString(),
+              liquidityGross: result[0].toString(),
+              liquidityNet: result[1].toString(),
+              // price0/price1 can be derived later if needed
+            };
+          })
+          .filter((t): t is GraphTick => t !== null);
 
-  // 5. Process Ticks with getFullPool
-  useEffect(() => {
-    // Requires the pool object, graph ticks, and *valid pool tick spacing*
-    const currentPoolTickSpacing = pool?.tickSpacing;
-
-    if (
-      pool &&
-      graphTicks.length > 0 &&
-      // Use the actual spacing from the pool object for the check and the call
-      currentPoolTickSpacing &&
-      currentPoolTickSpacing > 0 &&
-      !isLoadingTicks &&
-      !isErrorTicks
-    ) {
-      // Set loading state for processing? Maybe not needed if covered by isLoadingTicks
-      getFullPool(pool, graphTicks, currentPoolTickSpacing) // Pass pool's actual spacing
-        .then((fullPoolData) => {
-          setProcessedPoolData(fullPoolData);
-          setHookError(null); // Clear error on success
-        })
-        .catch((err) => {
-          console.error(
-            '[useOrderBookData] Error processing pool data with getFullPool:',
-            err
+        // Check if pool, ticks, and spacing are valid before calling async function
+        if (
+          pool &&
+          processedTicks &&
+          typeof actualTickSpacing === 'number' &&
+          actualTickSpacing > 0
+        ) {
+          const fullPool = await getFullPool(
+            pool,
+            processedTicks,
+            actualTickSpacing // Use actual spacing
           );
-          setHookError(
-            err instanceof Error
-              ? err
-              : new Error('Failed to process pool data')
-          );
-          setProcessedPoolData(undefined); // Clear data on error
-        });
-    } else if (
-      !isLoadingTicks &&
-      (!pool || !currentPoolTickSpacing || currentPoolTickSpacing <= 0)
-    ) {
-      // Update warning log
-      console.warn(
-        '[useOrderBookData] Pool object or valid pool.tickSpacing not available for processing after ticks loaded.',
-        { hasPool: !!pool, poolTickSpacing: currentPoolTickSpacing }
-      );
-      setProcessedPoolData(undefined); // Clear data if pool disappears
-    } else if (
-      !isLoadingTicks &&
-      graphTicks.length === 0 &&
-      ticks.length > 0 &&
-      rawTickData
-    ) {
-      console.warn(
-        '[useOrderBookData] No initialized/valid graph ticks found after fetch.'
-      );
-      setProcessedPoolData({ pool: pool as Pool, ticks: [] }); // Set empty ticks, ensure pool is not null here
-      setHookError(null);
-    } else {
-      // Log skip reason
-      console.log(
-        '[useOrderBookData] Skipping getFullPool call due to conditions:',
-        {
-          poolExists: !!pool,
-          graphTicksCount: graphTicks.length,
-          isLoadingTicks,
-          isErrorTicks,
-          poolTickSpacing: currentPoolTickSpacing,
+          setProcessedPoolData(fullPool);
+          setHookError(null); // Clear previous errors on success
+        } else {
+          // Handle the case where conditions aren't met (e.g., log or set error)
+          console.warn('Skipping getFullPool call due to invalid parameters.');
+          setProcessedPoolData(undefined);
         }
-      );
-    }
+      } catch (processingError) {
+        console.error('Error processing tick data:', processingError);
+        setHookError(
+          processingError instanceof Error
+            ? processingError
+            : new Error('Tick data processing failed')
+        );
+        setProcessedPoolData(undefined);
+      }
+    };
+
+    processData(); // Call the async function
   }, [
-    pool, // Keep pool dependency
-    graphTicks,
-    // Explicitly depend on pool.tickSpacing for the check and call within the effect
-    pool?.tickSpacing,
+    rawTickData,
+    pool,
+    ticks,
     isLoadingTicks,
     isErrorTicks,
-    // No need for ticks.length or rawTickData directly if graphTicks covers the empty case
-    // Ticks array itself depends on actualTickSpacing -> pool?.tickSpacing
-    // rawTickData, // Keep if logic for empty graphTicks needs it
-  ]); // Refined dependencies
+    readContractsError,
+    actualTickSpacing,
+  ]);
 
   // 6. Derive Order Book Levels from Processed Data
   useEffect(() => {
@@ -488,6 +453,6 @@ export function useOrderBookData({
     poolData: processedPoolData,
     isLoading,
     isError,
-    error: hookError || errorTicks, // Return the specific error
+    error: hookError || readContractsError, // Return the specific error
   };
 }

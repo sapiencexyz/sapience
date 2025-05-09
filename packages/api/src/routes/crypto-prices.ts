@@ -1,149 +1,172 @@
 import { Router } from 'express';
-import { mainnetPublicClient } from '../utils';
-import { formatUnits } from 'viem';
+import { cryptoPriceRepository } from '../db';
+import { CryptoPrice } from '../models/CryptoPrice';
+import { MoreThan, In } from 'typeorm';
 
 export const router = Router();
 
-// This interface structures our cached crypto prices.
-interface PriceCache {
-  data: {
-    btc: number | null;
-    eth: number | null;
-    sol: number | null;
-  };
-  timestamp: number;
+// Define all supported crypto tickers
+const TICKERS = ['btc', 'eth', 'sol', 'susds', 'wsteth'] as const;
+type Ticker = (typeof TICKERS)[number];
+
+// Map our tickers to CoinGecko IDs
+const COINGECKO_ID_MAP: Record<Ticker, string> = {
+  btc: 'bitcoin',
+  eth: 'ethereum',
+  sol: 'solana',
+  susds: 'susds',
+  wsteth: 'wrapped-steth',
+};
+
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// Helper function to fetch prices from database
+async function getDbPrices(
+  useTimeCutoff = true
+): Promise<Record<Ticker, number | null>> {
+  const cutoffTime = useTimeCutoff
+    ? new Date(Date.now() - CACHE_TTL)
+    : new Date(0);
+
+  const cachedPrices = await cryptoPriceRepository.find({
+    where: {
+      ticker: In(TICKERS),
+      ...(useTimeCutoff && { timestamp: MoreThan(cutoffTime) }),
+    },
+    order: { timestamp: 'DESC' },
+  });
+
+  // Group by ticker and take the most recent price for each
+  const priceMap: Record<string, number | null> = {};
+
+  // Initialize with null values
+  TICKERS.forEach((ticker) => {
+    priceMap[ticker] = null;
+  });
+
+  // Fill in available prices
+  for (const price of cachedPrices) {
+    // Ensure price.ticker is a valid ticker before using it as an index
+    if (
+      price.ticker &&
+      TICKERS.includes(price.ticker as Ticker) &&
+      priceMap[price.ticker] === null
+    ) {
+      priceMap[price.ticker] = price.price;
+    }
+  }
+
+  return priceMap as Record<Ticker, number | null>;
 }
 
-let cache: PriceCache | null = null;
-const CACHE_TTL = 60 * 1000; // 1 minute in milliseconds
+// Function to fetch prices from CoinGecko API
+async function getCoinGeckoPrices(): Promise<Record<Ticker, number | null>> {
+  const ids = Object.values(COINGECKO_ID_MAP).join(',');
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`;
 
-// Uniswap V3 pool addresses (all 0.05% fee tier).
-const USDC_ETH_POOL = '0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640'; // USDC (6) / ETH (18)
-const BTC_USDC_POOL = '0x99ac8cA7087fA4A2A1FB6357269965A2014ABc35'; // BTC (8) / USDC (6)
-const ETH_SOL_POOL = '0x127452F3f9cDc0389b0Bf59ce6131aA3Bd763598'; // ETH (18) / SOL (18)
-
-// ABI for the Uniswap V3 pool's slot0 function.
-const POOL_ABI = [
-  {
-    inputs: [],
-    name: 'slot0',
-    outputs: [
-      { name: 'sqrtPriceX96', type: 'uint160' },
-      { name: 'tick', type: 'int24' },
-      { name: 'observationIndex', type: 'uint16' },
-      { name: 'observationCardinality', type: 'uint16' },
-      { name: 'observationCardinalityNext', type: 'uint16' },
-      { name: 'feeProtocol', type: 'uint8' },
-      { name: 'unlocked', type: 'bool' },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
-
-// We use this config to specify how to calculate the price
-// based on the pool's token decimals.
-interface PriceConfig {
-  token0Decimals: number;
-  token1Decimals: number;
-}
-
-// Reads slot0 from the specified Uniswap pool,
-// calculates the token pair price, returns it as a number.
-async function getUniswapPrice(
-  poolAddress: string,
-  config: PriceConfig
-): Promise<number | null> {
   try {
-    const result = await mainnetPublicClient.readContract({
-      address: poolAddress as `0x${string}`,
-      abi: POOL_ABI,
-      functionName: 'slot0',
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `CoinGecko API responded with status: ${response.status}`
+      );
+    }
+    const data = await response.json();
+
+    // Initialize result with null values
+    const result: Record<string, number | null> = {};
+    TICKERS.forEach((ticker) => {
+      result[ticker] = null;
     });
 
-    const sqrtPriceX96 = result[0];
-    if (sqrtPriceX96 === BigInt(0)) {
-      return null;
+    // Fill in available prices
+    for (const [ticker, coingeckoId] of Object.entries(COINGECKO_ID_MAP)) {
+      if (data[coingeckoId]?.usd) {
+        result[ticker] = data[coingeckoId].usd;
+      }
     }
 
-    // We handle very small sqrtPriceX96 values (e.g., for SOL/ETH) the same way,
-    // but explicitly checking the threshold is helpful as an illustrative step
-    // of how we might do special handling if needed.
-    const priceInWei =
-      (sqrtPriceX96 * sqrtPriceX96 * BigInt(10 ** 18)) >> BigInt(192);
-
-    // formatUnits converts a BigInt to a human-readable decimal string
-    // based on the token decimals we pass in. This is the final step in
-    // converting from the raw "sqrtPriceX96" to a normal float.
-    const price = Number(
-      formatUnits(
-        priceInWei,
-        18 + config.token1Decimals - config.token0Decimals
-      )
-    );
-
-    return price;
+    return result;
   } catch (error) {
-    console.error(`[ERROR FETCHING UNISWAP PRICE] pool: ${poolAddress}`, error);
-    return null;
+    console.error('[ERROR FETCHING COINGECKO PRICE]', error);
+    return Object.fromEntries(
+      TICKERS.map((ticker) => [ticker, null])
+    ) as Record<Ticker, number | null>;
   }
 }
 
-// This route returns the BTC, ETH, and SOL prices in USD (USDC).
+// Check if all prices are available
+function hasMissingPrices(prices: Record<Ticker, number | null>): boolean {
+  return TICKERS.some((ticker) => prices[ticker] === null);
+}
+
+// This route returns the BTC, ETH, SOL, sUSDS, and wstETH prices in USD.
 router.get('/', async (req, res) => {
   try {
-    // If our cached data is still valid, respond with it.
-    if (cache && Date.now() - cache.timestamp < CACHE_TTL) {
-      return res.json(cache.data);
+    // 1. Try getting prices from cache first
+    const cachedPrices = await getDbPrices(true);
+
+    // If we have all prices cached and they are recent enough, return them
+    if (!hasMissingPrices(cachedPrices)) {
+      console.log('[USING DB CACHE]');
+      return res.json(cachedPrices);
     }
 
-    // Otherwise, fetch new prices from the pools.
-    const [ethPrice, btcPrice, solEthPrice] = await Promise.all([
-      // USDC/ETH price => invert to get ETH in terms of USDC.
-      getUniswapPrice(USDC_ETH_POOL, {
-        token0Decimals: 6, // USDC
-        token1Decimals: 18, // ETH
-      }).then((price) => (price ? 1 / price : null)),
+    // 2. Fetch fresh prices from CoinGecko if cache is incomplete or expired
+    console.log('[FETCHING FRESH PRICES FROM COINGECKO]');
+    const freshPrices = await getCoinGeckoPrices();
 
-      // BTC/USDC price: directly as USDC per BTC.
-      getUniswapPrice(BTC_USDC_POOL, {
-        token0Decimals: 8, // BTC
-        token1Decimals: 6, // USDC
-      }),
+    // 3. If fetch failed completely, try using stale cache
+    if (TICKERS.every((ticker) => freshPrices[ticker] === null)) {
+      if (!TICKERS.every((ticker) => cachedPrices[ticker] === null)) {
+        console.log('[COINGECKO FETCH FAILED, USING STALE DB CACHE]');
+        return res.json(cachedPrices);
+      }
+      throw new Error(
+        'Failed to fetch prices from CoinGecko and no cache available.'
+      );
+    }
 
-      // ETH/SOL price: returns ETH per SOL.
-      // We'll convert it into USD (via ETH price) in the next step.
-      getUniswapPrice(ETH_SOL_POOL, {
-        token0Decimals: 18, // ETH
-        token1Decimals: 18, // SOL
-      }),
-    ]);
+    // 4. Combine fresh and cached prices, prioritizing fresh ones
+    const finalPrices: Record<string, number | null> = {};
+    TICKERS.forEach((ticker) => {
+      finalPrices[ticker] = freshPrices[ticker] ?? cachedPrices[ticker];
+    });
 
-    // Convert SOL price to USD by combining solEthPrice with ethPrice.
-    // The multiplier of 1e9 in the denominator is to match the actual decimal scaling
-    // used for SOL-based pools (since both tokens are 18 decimals, but we want
-    // canonical USD calculations).
-    const prices = {
-      eth: ethPrice,
-      btc: btcPrice,
-      sol:
-        solEthPrice && ethPrice ? (1 / (solEthPrice * 1e9)) * ethPrice : null,
-    };
+    // 5. Update DB with fresh prices (only those successfully fetched)
+    const pricesToSave: Partial<CryptoPrice>[] = [];
+    TICKERS.forEach((ticker) => {
+      if (freshPrices[ticker] !== null) {
+        pricesToSave.push({ ticker, price: freshPrices[ticker] });
+      }
+    });
 
-    // Update our cache with fresh data.
-    cache = {
-      data: prices,
-      timestamp: Date.now(),
-    };
+    if (pricesToSave.length > 0) {
+      // Perform save operation asynchronously but don't wait for it to return response
+      cryptoPriceRepository
+        .save(pricesToSave)
+        .then(() => {
+          console.log('[DB CACHE UPDATED]');
+        })
+        .catch((dbError) => {
+          console.error('[ERROR UPDATING DB CACHE]', dbError);
+        });
+    }
 
-    return res.json(prices);
+    return res.json(finalPrices);
   } catch (error) {
     console.error('[ERROR IN CRYPTO PRICES ROUTE]', error);
 
-    // If there's an older cache, return it as a fallback.
-    if (cache) {
-      console.log('[USING STALE CACHE AS FALLBACK]');
-      return res.json(cache.data);
+    // Fallback: Try to fetch any prices from DB regardless of timestamp
+    try {
+      const stalePrices = await getDbPrices(false);
+
+      if (!TICKERS.every((ticker) => stalePrices[ticker] === null)) {
+        console.log('[USING STALE DB CACHE AS FALLBACK]');
+        return res.json(stalePrices);
+      }
+    } catch (dbError) {
+      console.error('[ERROR FETCHING STALE DB CACHE]', dbError);
     }
 
     return res.status(500).json({ error: 'Error fetching crypto prices' });

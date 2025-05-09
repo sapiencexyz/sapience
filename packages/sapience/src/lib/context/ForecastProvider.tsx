@@ -1,7 +1,8 @@
 import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
+import type { MarketType } from '@foil/ui/types';
 import type { ReactNode } from 'react';
 import { createContext, useContext } from 'react';
-import type { Address } from 'viem';
+import type { Abi, Address } from 'viem';
 
 import type { UsePositionsResult } from '~/hooks/contract';
 import {
@@ -11,9 +12,37 @@ import {
 } from '~/hooks/contract';
 import { useMarket } from '~/hooks/graphql/useMarket';
 
+interface MarketDataContract {
+  epochId: bigint;
+  startTime: bigint;
+  endTime: bigint;
+  pool: Address;
+  ethToken: Address;
+  gasToken: Address;
+  minPriceD18: bigint;
+  maxPriceD18: bigint;
+  baseAssetMinPriceTick: number;
+  baseAssetMaxPriceTick: number;
+  settled: boolean;
+  settlementPriceD18: bigint;
+  assertionId: `0x${string}`;
+}
+
+interface MarketGroupParams {
+  feeRate: number;
+  assertionLiveness: bigint;
+  bondAmount: bigint;
+  bondCurrency: Address;
+  uniswapPositionManager: Address;
+  uniswapSwapRouter: Address;
+  uniswapQuoter: Address;
+  optimisticOracleV3: Address;
+  claimStatement: `0x${string}`;
+}
+
 interface ForecastContextType {
   // Market data from GraphQL
-  marketData: any;
+  marketData: MarketType | null | undefined;
   isLoadingMarket: boolean;
   displayQuestion: string | null;
   marketQuestionDisplay: string | null;
@@ -24,12 +53,12 @@ interface ForecastContextType {
   isLoadingTickSpacing: boolean;
 
   // Market contract data
-  marketContractData: any;
-  marketGroupParams: any;
+  marketContractData: MarketDataContract | undefined;
+  marketGroupParams: MarketGroupParams | undefined;
   isLoadingMarketContract: boolean;
 
   // ABI data
-  abi: any;
+  abi: Abi;
 
   // Market token details
   collateralAssetTicker: string;
@@ -54,27 +83,29 @@ const ForecastContext = createContext<ForecastContextType | undefined>(
 
 interface ForecastProviderProps {
   children: ReactNode;
-  chainShortName: string;
-  marketId: string;
+  pageDetails: {
+    marketAddress: string;
+    chainId: number;
+    marketId: string;
+  };
 }
 
 export function ForecastProvider({
   children,
-  chainShortName,
-  marketId,
+  pageDetails,
 }: ForecastProviderProps) {
+  const { marketId, chainId, marketAddress } = pageDetails;
   // Call the custom hook to get market data from GraphQL
   const {
     marketData,
     isLoadingMarket,
     displayQuestion,
     marketQuestionDisplay,
-    chainId,
-    marketAddress,
     numericMarketId,
-  } = useMarket({ chainShortName, marketId });
+  } = useMarket({ chainId, marketAddress, marketId });
+
   // Get ABI for contracts
-  const { abi } = useFoilAbi(chainId);
+  const { abi } = useFoilAbi();
 
   // Get market data from the contract
   const {

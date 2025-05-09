@@ -31,7 +31,7 @@ const defaultInactiveStyle =
 
 // Helper function to convert number to sqrtPriceX96 using BigInt
 export const convertToSqrtPriceX96 = (price: number): string => {
-  if (typeof price !== 'number' || isNaN(price) || price < 0) {
+  if (typeof price !== 'number' || Number.isNaN(price) || price < 0) {
     return '0';
   }
 
@@ -122,7 +122,7 @@ const PredictionInput: React.FC<PredictionInputProps> = ({
     let displayValue = '';
     if (typeof value === 'string') {
       displayValue = value;
-    } else if (typeof value === 'number' && !isNaN(value)) {
+    } else if (typeof value === 'number' && !Number.isNaN(value)) {
       displayValue = String(value);
     }
 

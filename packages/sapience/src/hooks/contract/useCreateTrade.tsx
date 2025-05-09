@@ -19,6 +19,7 @@ export interface CreateTradeParams {
   slippagePercent: number; // Slippage tolerance as a percentage (e.g., 0.5 for 0.5%)
   enabled?: boolean;
   collateralTokenAddress?: `0x${string}`;
+  collateralTokenSymbol?: string;
 }
 
 /**
@@ -31,7 +32,7 @@ export interface CreateTradeResult {
   isError: boolean;
   error: Error | null;
   txHash: `0x${string}` | undefined;
-  data?: any; // Result from useWriteContract
+  data?: `0x${string}` | undefined; // Use specific type
   isApproving: boolean;
   hasAllowance: boolean;
   needsApproval: boolean;
@@ -39,6 +40,9 @@ export interface CreateTradeResult {
 
 // Assuming collateral uses 18 decimals
 const COLLATERAL_DECIMALS = 18;
+
+// Add a type for potential RPC errors with shortMessage
+type PotentialRpcError = Error & { shortMessage?: string };
 
 /**
  * Hook for creating a trader position with automatic token approval and slippage handling
@@ -53,7 +57,8 @@ export function useCreateTrade({
   slippagePercent,
   enabled = true,
   collateralTokenAddress,
-}: CreateTradeParams): CreateTradeResult {
+  collateralTokenSymbol,
+}: CreateTradeParams): CreateTradeResult & { reset: () => void } {
   const { toast } = useToast();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
@@ -214,12 +219,18 @@ export function useCreateTrade({
         title: 'Transaction Submitted',
         description: 'Your trade transaction has been submitted.',
       });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error creating trade position:', err);
-      const errorMessage =
-        err?.shortMessage ||
-        err?.message ||
-        'Failed to submit trade transaction.';
+      // Refactored nested ternary
+      let errorMessage: string;
+      if (err instanceof Error && 'shortMessage' in err) {
+        errorMessage = (err as PotentialRpcError).shortMessage!;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      } else {
+        errorMessage = 'Failed to submit trade transaction.';
+      }
+
       setError(err instanceof Error ? err : new Error(errorMessage));
       toast({
         title: 'Transaction Failed',
@@ -241,26 +252,19 @@ export function useCreateTrade({
     setError(null); // Clear previous errors before starting
 
     try {
-      // First check if we need approval
       if (needsApproval) {
         toast({
           title: 'Approval Required',
-          description: `Approving ${collateralAmount} tokens...`, // Be more specific
+          description: `Approving ${collateralAmount} ${collateralTokenSymbol || 'token(s)'}...`, // Be more specific
         });
-        await approve(); // Call approve from useTokenApproval
-        // The trade creation will be triggered by the useEffect watching isApproveSuccess
+        await approve();
       } else {
-        // If we already have allowance, create trade directly
         await performCreateTrade();
       }
     } catch (err) {
-      // Errors during approve() or performCreateTrade() called directly
-      setProcessingTx(false); // Stop processing on error
+      setProcessingTx(false);
       console.error('Error in createTrade flow:', err);
-      // Error toast is likely handled within approve() or performCreateTrade()
-      // If not, add a generic one here. Let's rely on specific handlers for now.
       if (!error) {
-        // Set error state if not already set by specific handlers
         setError(
           err instanceof Error ? err : new Error('An unexpected error occurred')
         );
@@ -277,6 +281,13 @@ export function useCreateTrade({
     // Keep dependencies simple: effect checks internal state (processingTx)
   }, [isSuccess, error, processingTx]);
 
+  // Add a reset function to clear all state
+  const reset = () => {
+    setTxHash(undefined);
+    setError(null);
+    setProcessingTx(false);
+  };
+
   const isLoading =
     isWritePending || isConfirming || processingTx || isApproving;
   const isError = !!error;
@@ -292,5 +303,6 @@ export function useCreateTrade({
     isApproving,
     hasAllowance,
     needsApproval,
+    reset,
   };
 }

@@ -1,10 +1,10 @@
 import { gql } from '@apollo/client'; // Keep for gql tag
+import type { CandleType } from '@foil/ui/types/graphql';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
-import type { CandleType } from '../../lib/interfaces/interfaces'; // Adjust path as needed
+import { useSapience } from '../../lib/context/SapienceProvider'; // Corrected path
 import { foilApi } from '../../lib/utils/util'; // Adjust path as needed
-import { useSapience } from '~/lib/context/SapienceProvider'; // Adjust path as needed
 
 // GraphQL Queries
 const GET_MARKET_CANDLES = gql`
@@ -94,26 +94,20 @@ const GET_RESOURCE_TRAILING_AVG_CANDLES = gql`
   }
 `;
 
-// Interfaces for API responses
-interface MarketCandlesResponse {
-  marketCandles: CandleType[] | null;
-}
-
-interface IndexCandlesResponse {
-  indexCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
-}
-
-// Add Resource Candles Response Interface
-interface ResourceCandlesResponse {
-  resourceCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
-}
-
-// Add Trailing Average Candles Response Interface
-interface TrailingAvgCandlesResponse {
-  resourceTrailingAverageCandles:
-    | Pick<CandleType, 'timestamp' | 'close'>[]
-    | null;
-}
+// Interfaces for API responses - Can be removed or simplified if direct type usage is preferred
+// interface MarketCandlesResponse {
+//   marketCandles: CandleType[] | null;
+// }
+// interface IndexCandlesResponse {
+//   indexCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+// }
+// interface ResourceCandlesResponse {
+//   resourceCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+// }
+// interface TrailingAvgCandlesResponse {
+//   resourceTrailingAverageCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+// }
+// Use Pick<Query, 'marketCandles'> etc. inline or define simpler interfaces if needed
 
 // Type for individual data points in the returned chartData array
 export interface PriceChartDataPoint {
@@ -143,6 +137,7 @@ interface UsePriceChartDataProps {
 interface UsePriceChartDataReturn {
   chartData: PriceChartDataPoint[];
   isLoading: boolean;
+  isFetching: boolean;
   isError: boolean;
   error: Error | null;
 }
@@ -151,13 +146,13 @@ interface UsePriceChartDataReturn {
 const safeParseFloat = (value: string | null | undefined): number | null => {
   if (value === null || value === undefined || value === '') return null;
   const num = parseFloat(value);
-  return isNaN(num) ? null : num;
+  return Number.isNaN(num) ? null : num;
 };
 
 // Helper function to merge price data into the map
 const mergePriceData = (
   map: Map<number, PriceChartDataPoint>,
-  candles: Pick<CandleType, 'timestamp' | 'close'>[],
+  candles: Pick<CandleType, 'timestamp' | 'close'>[], // Use imported CandleType
   priceFieldName: keyof PriceChartDataPoint,
   multiplier: number
 ) => {
@@ -175,54 +170,84 @@ const mergePriceData = (
 };
 
 // Helper function to parse GraphQL candle responses
-const parseCandleResponse = <T extends object, K extends keyof T>(
-  response: any,
-  dataKey: K,
+const parseCandleResponse = <
+  TResponse extends object, // Generic response type
+  TKey extends keyof TResponse, // Key within the response (e.g., 'marketCandles')
+>(
+  response: unknown, // Raw response from API call - Use unknown instead of any
+  dataKey: TKey,
   entityName: string
-): T[K] | null => {
-  if (!response || typeof response !== 'object' || !response.data) {
-    console.warn(`Invalid or missing response data for ${entityName} candles.`);
+): TResponse[TKey] | null => {
+  // Ensure response is an object before proceeding with checks
+  if (!response || typeof response !== 'object') {
+    console.warn(`Invalid response type for ${entityName} candles.`);
     return null;
   }
-  const data = response.data as T | { errors?: any[] };
+
+  // Check if 'data' property exists
+  if (!('data' in response)) {
+    console.warn(
+      `Missing 'data' property in response for ${entityName} candles.`
+    );
+    return null;
+  }
+
+  const data = response.data as TResponse | { errors?: { message: string }[] }; // Type errors more specifically
 
   // Type guard for error checking
   if (data && typeof data === 'object' && 'errors' in data && data.errors) {
     console.error(`GraphQL error fetching ${entityName} candles:`, data.errors);
+    // Use the more specific error type
     throw new Error(
-      (data.errors[0] as any)?.message || `Error fetching ${entityName} candles`
+      data.errors[0]?.message || `Error fetching ${entityName} candles`
     );
   }
 
-  // Type guard for data key check
+  // Type guard for data key check and return type
   if (data && typeof data === 'object' && dataKey in data) {
-    return (data as T)[dataKey] ?? null; // Return null if data[dataKey] is null/undefined
+    // Ensure the return type matches the expected structure (e.g., CandleType[] | null)
+    return (data as TResponse)[dataKey] ?? null;
   }
   console.warn(`Unexpected ${entityName} candle response structure:`, data);
   return null;
 };
 
+// Define expected shapes for parseCandleResponses arguments, referencing Query type keys
+type MarketCandlesQueryResponse = { marketCandles: CandleType[] | null };
+type IndexCandlesQueryResponse = {
+  indexCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+};
+type ResourceCandlesQueryResponse = {
+  resourceCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+};
+type TrailingAvgCandlesQueryResponse = {
+  resourceTrailingAverageCandles:
+    | Pick<CandleType, 'timestamp' | 'close'>[]
+    | null;
+};
+
 // Helper function to parse multiple candle responses
 const parseCandleResponses = (
-  marketResponse: any,
-  indexResponse: any,
-  resourceResponse: any,
-  trailingAvgResponse: any,
+  marketResponse: unknown,
+  indexResponse: unknown,
+  resourceResponse: unknown,
+  trailingAvgResponse: unknown,
   resourceSlug: string | undefined
 ) => {
-  let marketCandles: CandleType[];
-  let indexCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[];
+  let marketCandles: CandleType[]; // Use imported CandleType
+  let indexCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[]; // Use Pick with imported CandleType
 
   // Parse required responses, re-throwing errors for useQuery
   try {
+    // Use the specific response types for better type checking
     marketCandles =
-      parseCandleResponse<MarketCandlesResponse, 'marketCandles'>(
+      parseCandleResponse<MarketCandlesQueryResponse, 'marketCandles'>(
         marketResponse,
         'marketCandles',
         'market'
       ) ?? [];
     indexCandlesRaw =
-      parseCandleResponse<IndexCandlesResponse, 'indexCandles'>(
+      parseCandleResponse<IndexCandlesQueryResponse, 'indexCandles'>(
         indexResponse,
         'indexCandles',
         'index'
@@ -232,20 +257,20 @@ const parseCandleResponses = (
     throw error;
   }
 
-  // Parse optional responses (parseCandleResponse handles internal errors/warnings)
-  const resourceCandlesRaw =
+  // Parse optional responses
+  const resourceCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[] =
     resourceSlug && resourceResponse
-      ? (parseCandleResponse<ResourceCandlesResponse, 'resourceCandles'>(
+      ? (parseCandleResponse<ResourceCandlesQueryResponse, 'resourceCandles'>(
           resourceResponse,
           'resourceCandles',
           'resource'
         ) ?? [])
       : [];
 
-  const trailingAvgCandlesRaw =
+  const trailingAvgCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[] =
     resourceSlug && trailingAvgResponse
       ? (parseCandleResponse<
-          TrailingAvgCandlesResponse,
+          TrailingAvgCandlesQueryResponse,
           'resourceTrailingAverageCandles'
         >(
           trailingAvgResponse,
@@ -405,7 +430,7 @@ export const usePriceChartData = ({
     );
   };
 
-  const { data, isLoading, isError, error } = useQuery<
+  const { data, isLoading, isError, error, isFetching } = useQuery<
     PriceChartDataPoint[],
     Error
   >({
@@ -424,9 +449,9 @@ export const usePriceChartData = ({
     queryFn: fetchData,
     // Enable query only if essential base params are present
     enabled: !!marketAddress && !!chainId && !!marketId && interval > 0,
-    staleTime: 60 * 1000,
-    refetchInterval: 60 * 1000,
+    staleTime: 60 * 1000, // 1 minute
+    refetchInterval: 60 * 1000, // 1 minute
   });
 
-  return { chartData: data ?? [], isLoading, isError, error };
+  return { chartData: data ?? [], isLoading, isFetching, isError, error };
 };

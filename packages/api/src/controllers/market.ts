@@ -23,7 +23,7 @@ import {
   sqrtPriceX96ToSettlementPriceD18,
   getBlockByTimestamp,
   getContractCreationBlock,
-} from '../utils';
+} from '../utils/utils';
 import {
   createEpochFromEvent,
   createOrUpdateMarketFromEvent,
@@ -42,7 +42,9 @@ import {
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
 import * as Chains from 'viem/chains';
-import Foil from '@foil/protocol/deployments/FoilLegacy.json';
+import Foil from '@foil/protocol/deployments/Foil.json';
+import { PublicClient } from 'viem';
+import Sentry from '../instrument';
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
@@ -160,59 +162,201 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 };
 
 // Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
-export const indexMarketEvents = async (market: MarketGroup) => {
+export const indexMarketEvents = async (
+  market: MarketGroup,
+  client: PublicClient
+): Promise<() => void> => {
   await initializeDataSource();
-  const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
+
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const RECONNECT_DELAY_MS = 5000;
+  let reconnectAttempts = 0;
+  let currentUnwatch: (() => void) | null = null;
+  let isActive = true; // To allow permanent stop
+
+  const descriptiveName = `market ${market.address} on chain ${chainId}`;
 
   const processLogs = async (logs: Log[]) => {
     console.log(
-      '[MarketIndexer]',
-      `Processing logs for market ${market.chainId}:${market.address}`
+      `[MarketEventWatcher] Processing ${logs.length} logs for ${descriptiveName}`
     );
     for (const log of logs) {
-      const serializedLog = JSON.stringify(log, bigintReplacer);
+      try {
+        const serializedLog = JSON.stringify(log, bigintReplacer);
+        const blockNumber = log.blockNumber || 0n;
+        const block = await client.getBlock({
+          blockNumber,
+        });
+        const logIndex = log.logIndex || 0;
+        const logData = JSON.parse(serializedLog);
+        const epochId = logData.args?.epochId || 0;
 
-      const blockNumber = log.blockNumber || 0n;
-      const block = await client.getBlock({
-        blockNumber,
-      });
+        await alertEvent(
+          chainId,
+          market.address,
+          epochId,
+          blockNumber,
+          block.timestamp,
+          logData
+        );
 
-      const logIndex = log.logIndex || 0;
-      const logData = JSON.parse(serializedLog); // Parse back to JSON object
-
-      const epochId = logData.args?.epochId || 0;
-
-      await alertEvent(
-        chainId,
-        market.address,
-        epochId,
-        blockNumber,
-        block.timestamp,
-        logData
-      );
-
-      await upsertEvent(
-        chainId,
-        market.address,
-        epochId,
-        blockNumber,
-        block.timestamp,
-        logIndex,
-        logData
-      );
+        await upsertEvent(
+          chainId,
+          market.address,
+          epochId,
+          blockNumber,
+          block.timestamp,
+          logIndex,
+          logData
+        );
+        // Reset reconnect attempts on successful processing of a log entry
+        // Potentially, we might want to reset only if all logs in the batch are processed successfully.
+        // For now, resetting on any successful log processing to mimic evmIndexer's onBlock success.
+        reconnectAttempts = 0;
+      } catch (error) {
+        console.error(
+          `[MarketEventWatcher] Error processing a log for ${descriptiveName}:`,
+          error,
+          log
+        );
+        Sentry.withScope((scope) => {
+          scope.setExtra('marketAddress', market.address);
+          scope.setExtra('chainId', chainId);
+          scope.setExtra('log', log);
+          Sentry.captureException(error);
+        });
+        // Decide if one failed log processing should stop the watcher or trigger reconnect for the whole watcher.
+        // For now, it continues processing other logs in the batch and doesn't trigger a reconnect for the watcher itself here.
+      }
     }
   };
 
-  console.log(
-    `Watching contract events for ${market.chainId}:${market.address}`
-  );
-  client.watchContractEvent({
-    address: market.address as `0x${string}`,
-    abi: Foil.abi,
-    onLogs: (logs) => processLogs(logs),
-    onError: (error) => console.error(error),
-  });
+  const startMarketWatcher = () => {
+    if (!isActive) {
+      console.log(
+        `[MarketEventWatcher] Watcher for ${descriptiveName} is permanently stopped. Not restarting.`
+      );
+      return;
+    }
+
+    console.log(
+      `[MarketEventWatcher] Setting up contract event watcher for ${descriptiveName}`
+    );
+
+    try {
+      currentUnwatch = client.watchContractEvent({
+        address: market.address as `0x${string}`,
+        abi: Foil.abi, // Assuming Foil.abi is the correct ABI for market events
+        onLogs: processLogs,
+        onError: (error) => {
+          console.error(
+            `[MarketEventWatcher] Error watching ${descriptiveName}:`,
+            error
+          );
+          Sentry.withScope((scope) => {
+            scope.setExtra('marketAddress', market.address);
+            scope.setExtra('chainId', chainId);
+            Sentry.captureException(error);
+          });
+
+          if (currentUnwatch) {
+            currentUnwatch();
+            currentUnwatch = null;
+          }
+
+          if (!isActive) {
+            console.log(
+              `[MarketEventWatcher] Watcher for ${descriptiveName} permanently stopped during error handling.`
+            );
+            return;
+          }
+
+          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            const delay =
+              RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts - 1); // Exponential backoff
+            console.log(
+              `[MarketEventWatcher] Attempting to reconnect for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`
+            );
+            setTimeout(() => {
+              startMarketWatcher();
+            }, delay);
+          } else {
+            console.error(
+              `[MarketEventWatcher] Max reconnection attempts reached for ${descriptiveName}. Stopping watch.`
+            );
+            Sentry.captureMessage(
+              `[MarketEventWatcher] Max reconnection attempts reached for ${descriptiveName}`
+            );
+            isActive = false; // Stop trying if max attempts reached
+          }
+        },
+      });
+      console.log(
+        `[MarketEventWatcher] Watcher setup complete for ${descriptiveName}`
+      );
+    } catch (error) {
+      console.error(
+        `[MarketEventWatcher] Critical error setting up watcher for ${descriptiveName}:`,
+        error
+      );
+      Sentry.withScope((scope) => {
+        scope.setExtra('marketAddress', market.address);
+        scope.setExtra('chainId', chainId);
+        Sentry.captureException(error);
+      });
+
+      if (!isActive) return;
+
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        const delay = RECONNECT_DELAY_MS * Math.pow(2, reconnectAttempts - 1);
+        console.log(
+          `[MarketEventWatcher] Attempting to reconnect (after setup error) for ${descriptiveName} (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}) in ${delay}ms...`
+        );
+        setTimeout(() => {
+          startMarketWatcher();
+        }, delay);
+      } else {
+        console.error(
+          `[MarketEventWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}. Stopping.`
+        );
+        Sentry.captureMessage(
+          `[MarketEventWatcher] Max reconnection attempts reached after setup error for ${descriptiveName}`
+        );
+        isActive = false;
+      }
+    }
+  };
+
+  startMarketWatcher();
+
+  return () => {
+    console.log(
+      `[MarketEventWatcher] Permanently stopping watcher for ${descriptiveName}.`
+    );
+    isActive = false;
+    if (currentUnwatch) {
+      try {
+        currentUnwatch();
+        console.log(
+          `[MarketEventWatcher] Unwatched ${descriptiveName} successfully.`
+        );
+      } catch (error) {
+        console.error(
+          `[MarketEventWatcher] Error unwatching ${descriptiveName}:`,
+          error
+        );
+        Sentry.withScope((scope) => {
+          scope.setExtra('marketAddress', market.address);
+          scope.setExtra('chainId', chainId);
+          Sentry.captureException(error);
+        });
+      }
+      currentUnwatch = null;
+    }
+  };
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.

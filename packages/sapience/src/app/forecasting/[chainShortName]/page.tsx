@@ -13,18 +13,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import type { MarketType } from '@foil/ui/types';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useParams, usePathname } from 'next/navigation';
+import { useState } from 'react';
 
-import MarketGroupChart from '../../../components/forecasting/MarketGroupChart';
-import PredictionForm from '../../../components/forecasting/PredictionForm';
 import { useSapience } from '../../../lib/context/SapienceProvider';
+import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import PredictionsList from '~/components/forecasting/PredictionsList';
-import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
-import type { Market } from '~/lib/interfaces/interfaces';
+import {
+  MarketGroupCategory,
+  useMarketGroup,
+} from '~/hooks/graphql/useMarketGroup';
+import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
+
+export type ActiveTab = 'predict' | 'wager';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(
@@ -36,58 +41,43 @@ const LottieLoader = dynamic(
   }
 );
 
-// Parse URL parameter to extract chain and market address
-const parseUrlParameter = (
-  paramString: string
-): { chainShortName: string; marketAddress: string } => {
-  // URL decode the parameter first, then parse
-  const decodedParam = decodeURIComponent(paramString);
-
-  // More robust parsing to handle various URL format possibilities
-  let chainShortName = '';
-  let marketAddress = '';
-
-  if (decodedParam) {
-    // Check if the parameter contains a colon (chain:address format)
-    if (decodedParam.includes(':')) {
-      const [parsedChain, parsedAddress] = decodedParam.split(':');
-      chainShortName = parsedChain;
-      marketAddress = parsedAddress;
-    } else {
-      // If no colon, assume it's just the address
-      marketAddress = decodedParam;
-      // Use a default chain if needed
-      chainShortName = 'base';
-    }
+const DynamicPredictForm = dynamic(
+  () =>
+    import('~/components/forecasting/forms/PredictForm').then((mod) => ({
+      default: mod.default,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-8">
+        <LottieLoader width={30} height={30} />
+      </div>
+    ),
   }
+);
 
-  return { chainShortName, marketAddress };
-};
-
-// Helper function to format the question string (moved outside component)
-const formatQuestion = (rawQuestion: string): string => {
-  // Format the question - ensure it has proper capitalization and ends with a question mark
-  let formattedQuestion = rawQuestion.trim();
-
-  // Capitalize first letter if it's not already capitalized
-  if (formattedQuestion.length > 0 && !/^[A-Z]/.test(formattedQuestion)) {
-    formattedQuestion =
-      formattedQuestion.charAt(0).toUpperCase() + formattedQuestion.slice(1);
+const DynamicWagerFormFactory = dynamic(
+  () =>
+    import('~/components/forecasting/forms/WagerFormFactory').then((mod) => ({
+      default: mod.default,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-8">
+        <LottieLoader width={30} height={30} />
+      </div>
+    ),
   }
-
-  // Add question mark if missing
-  if (!formattedQuestion.endsWith('?')) {
-    formattedQuestion += '?';
-  }
-  return formattedQuestion;
-};
+);
 
 const ForecastingDetailPage = () => {
   const params = useParams();
-  const router = useRouter();
+  const pathname = usePathname();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
-  const [selectedView, setSelectedView] = useState<string>('Market');
+  const [selectedListView, setSelectedListView] = useState<string>('Market');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('predict');
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
@@ -95,197 +85,202 @@ const ForecastingDetailPage = () => {
 
   // Fetch market data using the hook with correct variable names
   const {
-    marketData,
-    isLoadingMarket,
+    marketGroupData,
+    isLoading,
     isSuccess,
-    displayQuestion,
-    currentMarketId,
     activeMarkets,
+    marketCategory,
   } = useMarketGroup({ chainShortName, marketAddress });
 
-  // Calculate the minimum start timestamp from active markets
-  const minTimestamp =
-    activeMarkets.length > 0
-      ? Math.min(
-          ...activeMarkets.map((market) => Number(market.startTimestamp))
-        )
-      : undefined;
-
-  // Keep useEffect for checking market count (if needed for UI logic)
-  useEffect(() => {
-    // Wait until loading is finished, the query was successful, and we have valid, non-placeholder data
-    if (isLoadingMarket || !isSuccess || !marketData) {
-      return; // Exit early if still loading, query failed, data is invalid/placeholder
-    }
-
-    // Ensure epochs is an array before proceeding
-    if (!Array.isArray(marketData.markets)) {
-      // Exit if epochs structure is incorrect
-    }
-  }, [marketData, isLoadingMarket, isSuccess]); // Dependencies remain the same for now
-
-  // Form data with tab selection
-  const [formData, setFormData] = useState<{
-    predictionValue: string | number;
-    wagerAmount: string; // Keep wager amount as string for input control
-  }>({
-    predictionValue: '', // Initialize empty, will set based on market later
-    wagerAmount: '10',
-  });
-
-  // Update state initialization based on market data
-  useEffect(() => {
-    if (marketData) {
-      let initialPredictionValue: string | number = '';
-      // Use optional chaining for safer access
-      if (marketData.optionNames && marketData.optionNames.length > 0) {
-        const [firstOption] = marketData.optionNames;
-        initialPredictionValue = firstOption; // Default to first option
-      } else if (marketData.baseTokenName?.toLowerCase() === 'yes') {
-        initialPredictionValue = 'yes'; // Default to 'yes'
-      } else {
-        // Check if it should be numerical based on lack of options/yes
-        // Assuming numerical if not options or yes/no
-        initialPredictionValue = 0; // Default to 0 for numerical input
-      }
-      setFormData((prev) => ({
-        ...prev,
-        predictionValue: initialPredictionValue,
-      }));
-    }
-  }, [marketData]);
-
-  // Form submission handler (basic example)
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    console.log('Form submitted:', { formData });
-    // Add actual submission logic here (e.g., API call)
-    alert(`Submitting: ${JSON.stringify(formData)}`);
-  };
-
-  if (isLoadingMarket || isPermitLoadingPermit) {
+  // If loading, show the Lottie loader
+  if (isLoading || isPermitLoadingPermit) {
     return (
-      <div className="flex justify-center items-center min-h-[100dvh] w-full">
-        <LottieLoader width={32} height={32} />
+      <div className="flex flex-col w-full min-h-[100dvh] items-center justify-center">
+        <LottieLoader />
       </div>
     );
   }
 
+  // If error or no data, show error screen
+  if (!isSuccess || !marketGroupData) {
+    return (
+      <div className="flex flex-col w-full min-h-[100dvh] items-center justify-center p-4">
+        <h2 className="text-2xl font-medium mb-4">
+          Unable to load market data
+        </h2>
+        <p className="text-muted-foreground">
+          Please try again later or check your connection.
+        </p>
+      </div>
+    );
+  }
+
+  const optionNames = marketGroupData.markets.map(
+    (market) => market.optionName || ''
+  );
+
+  // Otherwise show the main content
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-5xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3">
-          {displayQuestion && (
-            <h1 className="text-2xl md:text-4xl font-normal mb-8 leading-tight">
-              {displayQuestion}
-            </h1>
-          )}
+          <h1 className="text-2xl md:text-4xl font-normal mb-8 leading-tight">
+            {formatQuestion(marketGroupData.question)}
+          </h1>
         </div>
 
-        {/* Main content layout: 2x2 grid on md+, single column stack on mobile */}
-        <div className="flex flex-col gap-8 px-4 md:px-3">
+        {/* Main content layout: Apply gap-6 and px-3 from user example */}
+        <div className="flex flex-col gap-6 px-3">
           {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col md:flex-row gap-12">
-            {/* Left Column: Chart or List */}
-            <div className="w-full md:flex-1">
-              {/* Conditionally render Chart or List based on selectedView */}
-              {selectedView === 'Market' && (
-                <MarketGroupChart
-                  chainShortName={chainShortName}
-                  marketAddress={marketAddress}
-                  marketIds={activeMarkets.map((market) =>
-                    Number(market.marketId)
+            {/* NEW Wrapper for Left Column (Chart/List) */}
+            <div className="flex flex-col w-full md:flex-1">
+              {/* Original Bordered Box (Chart/List Area) - Now flex-1 within the wrapper */}
+              <div className="border border-border rounded-md flex flex-col flex-1">
+                {/* Wrapper div to allow chart/list to grow. Add min-h-0 */}
+                <div className="flex-1 min-h-0">
+                  {/* Conditionally render Chart or List based on selectedListView */}
+                  {selectedListView === 'Market' && (
+                    <MarketGroupChart
+                      chainShortName={chainShortName}
+                      marketAddress={marketAddress}
+                      marketIds={activeMarkets.map((market) =>
+                        Number(market.marketId)
+                      )}
+                      market={marketGroupData}
+                      minTimestamp={
+                        activeMarkets.length > 0
+                          ? Math.min(
+                              ...activeMarkets.map((market) =>
+                                Number(market.startTimestamp)
+                              )
+                            )
+                          : undefined
+                      }
+                      optionNames={optionNames}
+                    />
                   )}
-                  market={marketData}
-                  minTimestamp={minTimestamp}
-                  optionNames={marketData?.optionNames}
-                />
-              )}
-              {selectedView === 'Predictions' && (
-                <PredictionsList
-                  marketAddress={marketAddress}
-                  optionNames={marketData?.optionNames}
-                />
-              )}
-              <div className="py-6">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="flex items-center gap-1"
-                    >
-                      {selectedView}
-                      <ChevronDown className="h-4 w-4 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem
-                      onSelect={() => setSelectedView('Market')}
-                    >
-                      Market
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => setSelectedView('Predictions')}
-                    >
-                      Predictions
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-
-            {/* Form (Right Column) */}
-            <div className="w-full md:w-[340px] mt-8 md:mt-0">
-              <div className="bg-card p-6 rounded-lg shadow-sm border">
+                  {selectedListView === 'Predictions' && (
+                    <PredictionsList
+                      marketAddress={marketAddress}
+                      optionNames={optionNames}
+                    />
+                  )}
+                </div>{' '}
+                {/* Closing the flex-1 min-h-0 wrapper */}
+              </div>{' '}
+              {/* Closing the bordered box */}
+            </div>{' '}
+            {/* Closing the NEW Left Column Wrapper */}
+            {/* Form (Right Column) - Make it flex column and ensure card grows */}
+            <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
+              {' '}
+              {/* Added flex flex-col */}
+              <div className="bg-card p-6 rounded-lg shadow-sm border flex-1">
+                {' '}
+                {/* Added flex-1 */}
                 <h2 className="text-3xl font-normal mb-4">Forecast</h2>
-                <PredictionForm
-                  marketData={marketData}
-                  externalHandleSubmit={handleSubmit}
-                  isPermitLoadingPermit={isPermitLoadingPermit}
-                  permitData={permitData}
-                  currentMarketId={currentMarketId}
-                />
+                {/* Tabs Section */}
+                <div className="space-y-2 mt-4">
+                  <div className="flex w-full border-b">
+                    <button
+                      type="button"
+                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+                        activeTab === 'predict'
+                          ? 'border-b-2 border-primary text-primary'
+                          : 'text-muted-foreground'
+                      }`}
+                      onClick={() => setActiveTab('predict')}
+                    >
+                      Predict
+                    </button>
+                    <button
+                      type="button"
+                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+                        activeTab === 'wager'
+                          ? 'border-b-2 border-primary text-primary'
+                          : 'text-muted-foreground'
+                      }`}
+                      onClick={() => setActiveTab('wager')}
+                    >
+                      Wager
+                    </button>
+                  </div>
+
+                  {/* Form Content Based on Market Type */}
+                  <div className="pt-4">
+                    {/* Only render the active form component */}
+                    {activeTab === 'predict' ? (
+                      <DynamicPredictForm
+                        marketGroupData={marketGroupData}
+                        marketCategory={marketCategory}
+                      />
+                    ) : (
+                      <DynamicWagerFormFactory
+                        marketCategory={marketCategory}
+                        marketGroupData={marketGroupData}
+                        isPermitted={!!permitData?.permitted}
+                        onSuccess={(txnHash) => {
+                          // TODO: refetch positions/predictions?
+                          console.log(txnHash);
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Moved ADVANCED VIEW button here, now outside the flex rows */}
-          <div className="w-full flex justify-end items-start px-4 md:px-3 mt-4 md:mt-0 md:w-[340px] md:ml-auto">
-            {' '}
-            {/* Adjust positioning relative to the form column */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                if (!activeMarkets || activeMarkets.length === 0) return; // Guard clause using activeMarkets
+          {/* NEW Row for Dropdown and Advanced View */}
+          <div className="flex justify-between items-center">
+            {/* Dropdown Menu (Left Aligned) */}
+            <div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-1">
+                    {selectedListView}
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    onSelect={() => setSelectedListView('Market')}
+                  >
+                    Market
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setSelectedListView('Predictions')}
+                  >
+                    Predictions
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
-                const numberOfActiveMarkets = activeMarkets.length; // Use activeMarkets length
-                const currentPath = window.location.pathname;
-
-                if (numberOfActiveMarkets === 1) {
-                  // Navigate to the single active epoch page if not already there
-                  const { marketId } = activeMarkets[0]; // Use the first active market
-                  if (!currentPath.endsWith(`/${marketId}`)) {
-                    router.push(`${currentPath}/${marketId}`);
-                  }
-                } else if (numberOfActiveMarkets > 1) {
-                  // Open selector if there are multiple active epochs
-                  setShowMarketSelector(true);
-                }
-                // If 0 active epochs, the button is disabled, so onClick won't trigger.
-              }}
-              disabled={
-                isLoadingMarket ||
-                !marketData ||
-                marketData.placeholder ||
-                !activeMarkets || // Check activeMarkets existence
-                activeMarkets.length === 0 // Disable if no active markets
-              }
-              className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              ADVANCED VIEW
-              <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+            {/* Advanced View button (Right Aligned) */}
+            {/* Retain existing logic for Advanced View from current codebase */}
+            <div>
+              {activeMarkets.length > 0 &&
+                (marketCategory === MarketGroupCategory.SINGLE_CHOICE ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowMarketSelector(true)}
+                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
+                  >
+                    ADVANCED VIEW
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <Link
+                    href={`${pathname}/${activeMarkets[0].marketId}`}
+                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
+                  >
+                    ADVANCED VIEW
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                ))}
+            </div>
           </div>
         </div>
       </div>
@@ -299,26 +294,18 @@ const ForecastingDetailPage = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-5 pb-2">
-            {activeMarkets?.map(
-              (
-                market: Market // Map over activeMarkets
-              ) => (
-                <Link
-                  key={market.id}
-                  href={`${window.location.pathname}/${market.marketId}`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setShowMarketSelector(false)}
-                    className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
-                  >
-                    {market.question
-                      ? formatQuestion(market.question)
-                      : `Market ${market.marketId}`}
-                  </button>
-                </Link>
-              )
-            )}
+            {activeMarkets.map((market: MarketType) => (
+              <Link
+                key={market.id}
+                href={`${pathname}/${market.marketId}`}
+                onClick={() => setShowMarketSelector(false)}
+                className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
+              >
+                {market.question
+                  ? formatQuestion(market.question)
+                  : `Market ${market.marketId}`}
+              </Link>
+            ))}
           </div>
         </DialogContent>
       </Dialog>

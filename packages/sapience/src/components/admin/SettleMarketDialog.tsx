@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/cognitive-complexity */
+
 import { Button } from '@foil/ui/components/ui/button'; // Import Button
 import { Input } from '@foil/ui/components/ui/input'; // Import Input
 import { Label } from '@foil/ui/components/ui/label'; // Import Label
@@ -8,10 +10,11 @@ import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Pri
 import { Loader2 } from 'lucide-react'; // Import Loader2
 import type React from 'react';
 import { useState } from 'react'; // Import useState and useMemo
-import { zeroAddress, erc20Abi } from 'viem'; // Import Abi type
+import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex
 import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
 
 import type { Market, MarketGroup } from '~/hooks/graphql/useMarketGroups'; // Import types
+import { NO_SQRT_RATIO, YES_SQRT_RATIO } from '~/lib/constants/numbers';
 
 // Define MarketParams interface (consider moving to a shared location if needed)
 interface MarketParams {
@@ -19,17 +22,34 @@ interface MarketParams {
   bondAmount: bigint;
   bondCurrency: `0x${string}`;
   feeRate: number;
-  optimisticOracleV3: string;
-  claimStatement: string;
+  optimisticOracleV3: `0x${string}`;
   uniswapPositionManager: `0x${string}`;
   uniswapQuoter: `0x${string}`;
   uniswapSwapRouter: `0x${string}`;
 }
 
+// Interface for EpochData based on ABI
+interface EpochData {
+  epochId: bigint;
+  startTime: bigint;
+  endTime: bigint;
+  pool: `0x${string}`;
+  ethToken: `0x${string}`;
+  gasToken: `0x${string}`;
+  minPriceD18: bigint;
+  maxPriceD18: bigint;
+  baseAssetMinPriceTick: number;
+  baseAssetMaxPriceTick: number;
+  settled: boolean;
+  settlementPriceD18: bigint;
+  assertionId: `0x${string}`;
+  claimStatement: `0x${string}`; // This is a hex string for bytes
+}
+
 // Helper function (copied from PredictionInput) - Needs refinement for BigInt math
 // TODO: Replace with a robust BigInt-based sqrt calculation if precision is critical
 export const convertToSqrtPriceX96 = (price: number): string => {
-  if (typeof price !== 'number' || isNaN(price) || price < 0) {
+  if (typeof price !== 'number' || Number.isNaN(price) || price < 0) {
     console.warn('Invalid price input for sqrtPriceX96 conversion:', price);
     return '0';
   }
@@ -84,7 +104,9 @@ const BondInfoSection: React.FC<BondInfoSectionProps> = ({
       {!!error && (
         <p className="text-red-500">
           Error loading bond info: {/* Safely access message property */}
-          {(error as any)?.message || 'Unknown error'}
+          {error instanceof Error
+            ? error.message
+            : String(error) || 'Unknown error'}
         </p>
       )}
 
@@ -152,34 +174,40 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
   const [isApproving, setIsApproving] = useState(false);
 
   // 1. Get the ABI using the hook
-  const {
-    abi: foilAbi,
-    loading: isLoadingAbi,
-    error: abiError,
-  } = useFoilAbi(marketGroup.chainId);
+  const { abi: foilAbi } = useFoilAbi();
 
-  // 2. Fetch market data using the ABI
+  // 2. Fetch epoch data (which includes marketParams and claimStatement) using the ABI
   const {
-    data: marketViewResult,
-    isLoading: isLoadingMarketData,
-    error: marketDataError,
+    data: epochResult, // Typed as [EpochData, MarketParams] | undefined based on ABI
+    isLoading: isLoadingEpochAndMarketData,
+    error: epochAndMarketDataError,
   } = useReadContract({
     address: marketGroup.address as `0x${string}`,
     abi: foilAbi, // Use the fetched ABI
-    functionName: 'getMarket',
+    functionName: 'getEpoch',
+    args: [BigInt(market.marketId)], // market.marketId is the epochId
     chainId: marketGroup.chainId,
     query: {
-      // Only run the query if we have the ABI and address/chainId
       enabled:
         !!foilAbi &&
         foilAbi.length > 0 &&
         !!marketGroup?.address &&
-        !!marketGroup?.chainId,
+        !!marketGroup?.chainId &&
+        market.marketId !== undefined && // Ensure marketId is available
+        market.marketId !== null,
     },
   });
 
-  // Extract data (handle potential undefined result)
-  const marketParams = marketViewResult?.[4] as MarketParams | undefined; // Cast to the defined type
+  // Destructure the result from getEpoch with type safety
+  const epochData: EpochData | undefined =
+    Array.isArray(epochResult) && epochResult.length > 0
+      ? (epochResult[0] as EpochData)
+      : undefined;
+  const marketParams: MarketParams | undefined =
+    Array.isArray(epochResult) && epochResult.length > 1
+      ? (epochResult[1] as MarketParams)
+      : undefined;
+
   const bondCurrency = marketParams?.bondCurrency;
   const bondAmount = marketParams?.bondAmount;
 
@@ -244,10 +272,8 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
 
   // Combined loading and error states
   const isLoading =
-    isLoadingAbi ||
-    isLoadingMarketData ||
-    (!!connectedAddress && isLoadingAllowance); // Check connectedAddress existence
-  const error = abiError || marketDataError || allowanceError;
+    isLoadingEpochAndMarketData || (!!connectedAddress && isLoadingAllowance); // Check connectedAddress existence
+  const error = epochAndMarketDataError || allowanceError;
 
   const requiresApproval =
     bondAmount !== undefined &&
@@ -262,13 +288,13 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
   const { writeContract: settleWrite } = useWriteContract({
     mutation: {
       onMutate: () => setIsSettling(true),
-      onError: (error) => {
-        console.error('Failed to settle market: ', error);
+      onError: (settleError) => {
+        console.error('Failed to settle market: ', settleError);
         setIsSettling(false);
         toast({
           variant: 'destructive',
           title: 'Failed to settle market',
-          description: error.message,
+          description: settleError.message, // Assuming settleError has a message
         });
       },
       onSuccess: (hash) => {
@@ -281,6 +307,39 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
       },
     },
   });
+
+  // Add this helper function to calculate settlement price
+  const calculateSettlementPrice = (
+    inputValue: string,
+    isYesNoMarket: boolean
+  ): { price: bigint | null; errorMessage?: string } => {
+    // For Yes/No markets
+    if (isYesNoMarket) {
+      if (inputValue !== '0' && inputValue !== '1') {
+        return {
+          price: null,
+          errorMessage: 'Please select Yes or No.',
+        };
+      }
+      // Calculate sqrtPriceX96 for 1 if "Yes" is selected, otherwise use 0
+      return {
+        price:
+          inputValue === '1' ? BigInt(convertToSqrtPriceX96(1)) : BigInt(0),
+      };
+    }
+
+    // For numerical markets
+    const numericValue = parseFloat(inputValue);
+    if (Number.isNaN(numericValue) || numericValue < 0) {
+      return {
+        price: null,
+        errorMessage: 'Please enter a valid non-negative number.',
+      };
+    }
+
+    const sqrtPriceString = convertToSqrtPriceX96(numericValue);
+    return { price: BigInt(sqrtPriceString) };
+  };
 
   // --- Handle Settlement ---
   const handleSettle = () => {
@@ -296,37 +355,18 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
 
     try {
       const epochId = BigInt(market.marketId);
-      let price: bigint;
+      const { price, errorMessage } = calculateSettlementPrice(
+        settlementValue,
+        marketGroup.baseTokenName === 'Yes'
+      );
 
-      // Determine settlement price based on input type
-      if (marketGroup.baseTokenName === 'Yes') {
-        // Yes/No market
-        if (settlementValue !== '0' && settlementValue !== '1') {
-          toast({
-            variant: 'destructive',
-            title: 'Invalid Settlement',
-            description: 'Please select Yes or No.',
-          });
-          return;
-        }
-        // Calculate sqrtPriceX96 for 1 if "Yes" is selected, otherwise use 0
-        price =
-          settlementValue === '1'
-            ? BigInt(convertToSqrtPriceX96(1))
-            : BigInt(0);
-      } else {
-        // Numerical market
-        const numericValue = parseFloat(settlementValue);
-        if (isNaN(numericValue) || numericValue < 0) {
-          toast({
-            variant: 'destructive',
-            title: 'Invalid Settlement Price',
-            description: 'Please enter a valid non-negative number.',
-          });
-          return;
-        }
-        const sqrtPriceString = convertToSqrtPriceX96(numericValue);
-        price = BigInt(sqrtPriceString);
+      if (errorMessage || price === null) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid Settlement',
+          description: errorMessage || 'Invalid price calculation',
+        });
+        return;
       }
 
       settleWrite({
@@ -336,15 +376,20 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
         args: [epochId, connectedAddress, price], // Add asserter (connectedAddress)
         chainId: marketGroup.chainId,
       });
-    } catch (error: any) {
-      console.error('Error preparing settlement transaction:', error);
+    } catch (settlePrepareError: unknown) {
+      console.error(
+        'Error preparing settlement transaction:',
+        settlePrepareError
+      );
       setIsSettling(false);
+      const message =
+        settlePrepareError instanceof Error
+          ? settlePrepareError.message
+          : 'An unexpected error occurred preparing the transaction.';
       toast({
         variant: 'destructive',
         title: 'Settlement Error',
-        description:
-          error.message ||
-          'An unexpected error occurred preparing the transaction.',
+        description: message,
       });
     }
   };
@@ -415,6 +460,7 @@ const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
             connectedAddress={connectedAddress}
             isYesNoMarket={isYesNoMarket}
             settlementValue={settlementValue}
+            claimStatement={epochData?.claimStatement ?? ''}
           />
 
           {/* Submit Button */}
@@ -499,12 +545,40 @@ const SettlementInput: React.FC<SettlementInputProps> = ({
   );
 };
 
+// Helper function to decode and display claim statement
+const decodeClaimStatement = (claimStatement: string): string => {
+  let displayClaimStatement = 'N/A';
+
+  if (
+    claimStatement &&
+    claimStatement.startsWith('0x') &&
+    claimStatement.length > 2
+  ) {
+    try {
+      // Ensure it's a valid hex string before attempting conversion
+      displayClaimStatement = fromHex(
+        claimStatement as `0x${string}`,
+        'string'
+      );
+    } catch (e) {
+      console.error('Failed to convert claim statement from hex:', e);
+      displayClaimStatement = 'Error decoding statement';
+    }
+  } else if (claimStatement) {
+    // If it's not a valid hex (e.g. empty or just "0x"), or not hex at all but somehow passed
+    displayClaimStatement = claimStatement === '0x' ? 'N/A' : claimStatement;
+  }
+
+  return displayClaimStatement;
+};
+
 // NEW: Component for displaying settlement parameters
 interface SettlementParamsDisplayProps {
   marketId: string | number; // Allow string or number
   connectedAddress: `0x${string}` | undefined;
   isYesNoMarket: boolean;
   settlementValue: string;
+  claimStatement: string; // This is `0x${string}` or empty string from prop
 }
 
 const SettlementParamsDisplay: React.FC<SettlementParamsDisplayProps> = ({
@@ -512,24 +586,37 @@ const SettlementParamsDisplay: React.FC<SettlementParamsDisplayProps> = ({
   connectedAddress,
   isYesNoMarket,
   settlementValue,
-}) => (
-  <div className="text-xs space-y-1 text-muted-foreground">
-    <p>
-      <span>epochId:</span> {marketId}
-    </p>
-    <p>
-      <span>asserter:</span> {connectedAddress || 'Not connected'}
-    </p>
-    {!isYesNoMarket &&
-      settlementValue &&
-      !isNaN(parseFloat(settlementValue)) && (
-        <p>
-          <span>settlementSqrtPriceX96:</span>{' '}
-          {convertToSqrtPriceX96(parseFloat(settlementValue))}
-        </p>
-      )}
-  </div>
-);
+  claimStatement,
+}) => {
+  let settlementDisplayValue: string;
+
+  if (isYesNoMarket) {
+    if (settlementValue === '1') {
+      settlementDisplayValue = YES_SQRT_RATIO.toString();
+    } else {
+      settlementDisplayValue = NO_SQRT_RATIO.toString();
+    }
+  } else {
+    const numericValue = Number(settlementValue);
+    if (Number.isNaN(numericValue) || settlementValue === '') {
+      settlementDisplayValue = 'Invalid Price';
+    } else {
+      settlementDisplayValue = convertToSqrtPriceX96(numericValue);
+    }
+  }
+
+  const displayClaimStatement = decodeClaimStatement(claimStatement);
+
+  return (
+    <div className="text-xs text-muted-foreground space-y-1">
+      <p>Market ID: {marketId.toString()}</p>
+      <p>Connected Wallet: {connectedAddress || 'N/A'}</p>
+      <p className="font-bold">
+        {displayClaimStatement} {settlementDisplayValue}
+      </p>
+    </div>
+  );
+};
 
 // NEW: Component for Settle Button and related messages
 interface SettleButtonProps {
