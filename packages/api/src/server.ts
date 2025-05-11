@@ -11,6 +11,7 @@ import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
 import { ResourcePerformanceManager } from './performance';
 import { initializeFixtures } from './fixtures';
+import { CandleCacheBuilder } from './candle-cache/candleCacheBuilder';
 
 const PORT = 3001;
 
@@ -73,8 +74,12 @@ const startServer = async () => {
     resources = await resourceRepository.find();
   }
 
-  const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-  await resourcePerformanceManager.initialize(resources);
+  // const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
+  // await resourcePerformanceManager.initialize(resources);
+  console.log('CandleCacheBuilder instance - geting')
+  const candleCacheBuilder = CandleCacheBuilder.getInstance();
+  console.log('CandleCacheBuilder instance - ok');
+  await candleCacheBuilder.updateCandles();
   console.log('ResourcePerformanceManager - Initialized');
 
   // Global error handle

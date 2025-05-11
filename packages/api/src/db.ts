@@ -14,6 +14,8 @@ import { CryptoPrice } from './models/CryptoPrice';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path, { dirname } from 'path';
+import { CacheCandle } from './models/CacheCandle';
+import { CacheMetadata } from './models/CacheMetadata';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -43,6 +45,8 @@ const devDataSource: DataSource = new DataSource({
     Resource,
     Category,
     CryptoPrice,
+    CacheCandle,
+    CacheMetadata,
   ],
 });
 
@@ -66,6 +70,8 @@ const postgresDataSource: DataSource = new DataSource({
     Resource,
     Category,
     CryptoPrice,
+    CacheCandle,
+    CacheMetadata,
   ],
 });
 
@@ -98,5 +104,7 @@ export const collateralTransferRepository =
   dataSource.getRepository(CollateralTransfer);
 export const categoryRepository = dataSource.getRepository(Category);
 export const cryptoPriceRepository = dataSource.getRepository(CryptoPrice);
+export const cacheCandleRepository = dataSource.getRepository(CacheCandle);
+export const cacheMetadataRepository = dataSource.getRepository(CacheMetadata);
 
 export default dataSource;
