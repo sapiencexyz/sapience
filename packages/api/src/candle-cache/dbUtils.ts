@@ -12,6 +12,7 @@ import { ResourcePrice } from 'src/models/ResourcePrice';
 import { FindOptionsWhere, MoreThan } from 'typeorm';
 import { ReducedMarketPrice } from './types';
 import { CacheCandle } from 'src/models/CacheCandle';
+import { log } from 'src/utils/logs';
 
 export async function getConfig(paramName: string) {
   const config = await cacheMetadataRepository.findOne({
@@ -48,6 +49,7 @@ export async function getResourcePrices({
     order: {
       timestamp: 'ASC',
     },
+    relations: ['resource'],
     take: quantity,
   });
   return {
@@ -147,6 +149,10 @@ export async function getLastCandleFromDb({
   resourceSlug?: string;
   trailingAvgTime?: number;
 }) {
+  // log({
+  //   message: `Getting last candle for ${candleType} ${interval} ${marketIdx} ${resourceSlug} ${trailingAvgTime}`,
+  //   prefix: 'getLatestCandleFromDb',
+  // });
   let where: FindOptionsWhere<CacheCandle> = { candleType, interval };
   if (marketIdx) {
     where.marketIdx = marketIdx;

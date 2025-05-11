@@ -29,7 +29,7 @@ export class CacheCandle {
   trailingAvgTime: number;
 
   // Resource / Market identification
-  @Column({ type: 'integer' })
+  @Column({ type: 'varchar' })
   @Index()
   resourceSlug: string;
 

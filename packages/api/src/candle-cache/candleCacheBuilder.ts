@@ -9,7 +9,7 @@ import {
 import { CANDLE_CACHE_CONFIG } from './config';
 import { log } from 'src/utils/logs';
 import { ResourcePrice } from 'src/models/ResourcePrice';
-import { PriceDatapoint, ReducedMarketPrice } from './types';
+import { ReducedMarketPrice } from './types';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { RuntimeCandleStore } from './runtimeCandleStore';
 import { TrailingAvgHistoryStore } from './trailingAvgHistoryStore';
@@ -211,6 +211,10 @@ export class CandleCacheBuilder {
 
   private async processResourcePriceForTrailingAvgCandle(price: ResourcePrice, trailingAvgTime: number) {
     // Add the price to the history
+    // log({
+    //   message: `Adding price to trailing avg history for ${JSON.stringify(price)} ${trailingAvgTime}`,
+    //   prefix: CANDLE_CACHE_CONFIG.logPrefix,
+    // });
     this.trailingAvgHistory.addPrice(price.resource.slug, {
       timestamp: price.timestamp,
       used: price.used,
