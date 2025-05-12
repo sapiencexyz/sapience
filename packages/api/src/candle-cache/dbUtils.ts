@@ -4,15 +4,14 @@ import {
   resourcePriceRepository,
   cacheCandleRepository,
   marketGroupRepository,
-  marketRepository,
-  resourceRepository,
 } from 'src/db';
 import { CacheMetadata } from 'src/models/CacheMetadata';
 import { ResourcePrice } from 'src/models/ResourcePrice';
 import { FindOptionsWhere, MoreThan } from 'typeorm';
 import { ReducedMarketPrice } from './types';
 import { CacheCandle } from 'src/models/CacheCandle';
-import { log } from 'src/utils/logs';
+// import { log } from 'src/utils/logs';
+// import { CANDLE_CACHE_CONFIG } from './config';
 
 export async function getConfig(paramName: string) {
   const config = await cacheMetadataRepository.findOne({
@@ -170,3 +169,18 @@ export async function getLastCandleFromDb({
   });
   return candle;
 }
+
+export async function saveCandle(candle: CacheCandle) {
+  // if( candle.interval >= 1800) {
+  //   log({
+  //     message: `Saving candle ${candle.candleType} ${candle.interval} ${candle.timestamp} ${candle.trailingAvgTime} ${candle.resourceSlug} ${candle.marketIdx}`,
+  //     prefix: CANDLE_CACHE_CONFIG.logPrefix,
+  //   });
+  // }
+  await cacheCandleRepository.save(candle);
+}
+
+export async function saveCandles(candles: CacheCandle[]) {
+  await cacheCandleRepository.save(candles);
+}
+

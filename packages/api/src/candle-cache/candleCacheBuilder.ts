@@ -4,6 +4,7 @@ import {
   getMarketGroups,
   getMarketPrices,
   getResourcePrices,
+  saveCandle,
   setConfig,
 } from './dbUtils';
 import { CANDLE_CACHE_CONFIG } from './config';
@@ -13,6 +14,7 @@ import { ReducedMarketPrice } from './types';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { RuntimeCandleStore } from './runtimeCandleStore';
 import { TrailingAvgHistoryStore } from './trailingAvgHistoryStore';
+import { getTimtestampCandleInterval } from './candleUtils';
 
 export class CandleCacheBuilder {
   private static instance: CandleCacheBuilder;
@@ -66,12 +68,8 @@ export class CandleCacheBuilder {
     const marketGroups = await getMarketGroups();
 
     for (const marketGroup of marketGroups) {
-      // Add market group
-      // this.marketGroupIds.add(marketGroup.id);
-
       // Add resource slug
       const resourceSlug = marketGroup.resource ? marketGroup.resource.slug : 'no-resource';
-      // this.resourceSlugs.add(resourceSlug);
 
       // Add market with extra data
       if (marketGroup.markets) {
@@ -202,6 +200,45 @@ export class CandleCacheBuilder {
   }
 
   private async processResourcePriceForResourceCandle(price: ResourcePrice) {
+    const getNewCandle = (interval: number, candleTimestamp: number, candleEndTimestamp: number, price: ResourcePrice, resourceSlug: string) => {
+      const candle = new CacheCandle();
+      candle.candleType = 'resource';
+      candle.interval = interval;
+      candle.resourceSlug = resourceSlug;
+      candle.timestamp = candleTimestamp;
+      candle.endTimestamp = candleEndTimestamp;
+      candle.open = price.value;
+      candle.high = price.value;
+      candle.low = price.value;
+      candle.close = price.value;
+      return candle;
+    }
+
+    // For each interval add the price to the candle
+    for (const interval of CANDLE_CACHE_CONFIG.intervals) {
+      // Calculate the start and end of the candle
+      const { start: candleTimestamp, end: candleEndTimestamp } = getTimtestampCandleInterval(price.timestamp, interval);
+
+      // Get existing candle or create new one
+      let candle = this.runtimeCandles.getResourceCandle(price.resource.slug, interval);
+
+      if (!candle) {
+        // Create new candle if none exists
+        candle = getNewCandle(interval, candleTimestamp, candleEndTimestamp, price, price.resource.slug);
+        this.runtimeCandles.setResourceCandle(price.resource.slug, interval, candle);
+      } else if (candle.timestamp < candleTimestamp) {
+        // Save old candle and create new one if timestamp differs
+        await saveCandle(candle);
+        
+        candle = getNewCandle(interval, candleTimestamp, candleEndTimestamp, price, price.resource.slug);
+        this.runtimeCandles.setResourceCandle(price.resource.slug, interval, candle);
+      } else {
+        // Update existing candle
+        candle.high = String(Math.max(Number(candle.high), Number(price.value)));
+        candle.low = String(Math.min(Number(candle.low), Number(price.value)));
+        candle.close = price.value;
+      }
+    }
 
   }
 
@@ -210,16 +247,19 @@ export class CandleCacheBuilder {
   }
 
   private async processResourcePriceForTrailingAvgCandle(price: ResourcePrice, trailingAvgTime: number) {
-    // Add the price to the history
-    // log({
-    //   message: `Adding price to trailing avg history for ${JSON.stringify(price)} ${trailingAvgTime}`,
-    //   prefix: CANDLE_CACHE_CONFIG.logPrefix,
-    // });
     this.trailingAvgHistory.addPrice(price.resource.slug, {
       timestamp: price.timestamp,
       used: price.used,
       fee: price.feePaid
     });
+
+    const getNewCandle = (interval: number, candleTimestamp: number, candleEndTimestamp: number, price: ResourcePrice, resourceSlug: string) => {
+      const candle = new CacheCandle();
+      candle.candleType = 'trailingAvg';
+      candle.interval = interval;
+      candle.resourceSlug = resourceSlug;
+      return candle;
+    }
 
     // Get the prices for this trailing average period
     const prices = this.trailingAvgHistory.getPricesForTrailingAvg(price.resource.slug, trailingAvgTime);
@@ -250,7 +290,7 @@ export class CandleCacheBuilder {
           candle.trailingStartTimestamp = prices[0].timestamp;
           candle.trailingAvgTime = trailingAvgTime;
         } else if (candle.timestamp < candleTimestamp) {
-          await this.saveCandle(candle);
+          await saveCandle(candle);
           
           candle = new CacheCandle();
           candle.candleType = 'trailingAvg';
@@ -276,7 +316,22 @@ export class CandleCacheBuilder {
     }
   }
 
-  private async processMarketPriceForMarketCandle(price: ReducedMarketPrice) {
+  private async processMarketPriceForMarketCandle(price: ReducedMarketPrice ) {
+    const getNewCandle = (interval: number, candleTimestamp: number, candleEndTimestamp: number, price: ReducedMarketPrice, resourceSlug: string) => {
+      const candle = new CacheCandle();
+      candle.candleType = 'market';
+      candle.interval = interval;
+      candle.marketIdx = price.market;
+      candle.resourceSlug = resourceSlug;
+      candle.timestamp = candleTimestamp;
+      candle.endTimestamp = candleEndTimestamp;
+      candle.open = price.value;
+      candle.high = price.value;
+      candle.low = price.value;
+      candle.close = price.value;
+      candle.marketId = price.market;
+      return candle;
+    }
     // Find the market data from marketIds using price.market
     const marketData = this.marketIds.get(price.market);
     if (!marketData) {
@@ -285,61 +340,29 @@ export class CandleCacheBuilder {
 
     // For each interval add the price to the candle
     for (const interval of CANDLE_CACHE_CONFIG.intervals) {
-      // Calculate the candle timestamp by rounding down to nearest interval
-      const candleTimestamp = Math.floor(price.timestamp / interval) * interval;
+      // Calculate the start and end of the candle
+      const { start: candleTimestamp, end: candleEndTimestamp } = getTimtestampCandleInterval(price.timestamp, interval);
 
       // Get existing candle or create new one
       let candle = this.runtimeCandles.getMarketCandle(price.market, interval);
 
       if (!candle) {
         // Create new candle if none exists
-        candle = new CacheCandle();
-        candle.candleType = 'market';
-        candle.interval = interval;
-        candle.marketIdx = price.market;
-        candle.resourceSlug = marketData.resourceSlug;
-        candle.timestamp = candleTimestamp;
-        candle.open = price.value;
-        candle.high = price.value;
-        candle.low = price.value;
-        candle.close = price.value;
-        candle.sumUsed = '0';
-        candle.sumFeePaid = '0';
-        candle.trailingStartTimestamp = candleTimestamp;
-        candle.marketId = price.market;
+        candle = getNewCandle(interval, candleTimestamp, candleEndTimestamp, price, marketData.resourceSlug);
         this.runtimeCandles.setMarketCandle(price.market, interval, candle);
       } else if (candle.timestamp < candleTimestamp) {
         // Save old candle and create new one if timestamp differs
-        await this.saveCandle(candle);
+        await saveCandle(candle);
         
-        candle = new CacheCandle();
-        candle.candleType = 'market';
-        candle.interval = interval;
-        candle.marketIdx = price.market;
-        candle.resourceSlug = marketData.resourceSlug;
-        candle.timestamp = candleTimestamp;
-        candle.open = price.value;
-        candle.high = price.value;
-        candle.low = price.value;
-        candle.close = price.value;
-        candle.sumUsed = '0';
-        candle.sumFeePaid = '0';
-        candle.trailingStartTimestamp = candleTimestamp;
-        candle.marketId = price.market;
+        candle = getNewCandle(interval, candleTimestamp, candleEndTimestamp, price, marketData.resourceSlug);
         this.runtimeCandles.setMarketCandle(price.market, interval, candle);
       } else {
         // Update existing candle
         candle.high = String(Math.max(Number(candle.high), Number(price.value)));
         candle.low = String(Math.min(Number(candle.low), Number(price.value)));
         candle.close = price.value;
-        this.runtimeCandles.setMarketCandle(price.market, interval, candle);
       }
     }
-  }
-
-  private async saveCandle(candle: CacheCandle) {
-    // TODO: Implement saving to database
-    // This should be implemented based on your database access pattern
   }
 
   // This helper that can be moved to some utils library
