@@ -127,13 +127,13 @@ export class CandleCacheBuilder {
     let iter = 0;
     while (getNextBatch) {
       iter++;
-      log({ message: `${iter} - 1`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
+      log({ message: `batch: ${iter} - step 1`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
       const { prices, hasMore } = await getResourcePrices({
         initialTimestamp,
         quantity: CANDLE_CACHE_CONFIG.batchSize,
       });
       log({
-        message: `${iter} - 2, ${prices.length}`,
+        message: `batch: ${iter} - step 2, batch size: ${prices.length}`,
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
       });
       getNextBatch = hasMore;
@@ -163,7 +163,7 @@ export class CandleCacheBuilder {
         }
         batchIdx++;
       }
-      log({ message: `${iter} - 3`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
+      log({ message: `batch: ${iter} - step 3`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
 
       // 4. Save the candles to the database
       // 5. Update indexes for the next batch
