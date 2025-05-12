@@ -1,0 +1,158 @@
+{
+  "address": "0x5d9aAECe6Af4FfFC5Dca37a753339Ef440B6Be37",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_implementation",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "cloneAndInitializeMarketGroup",
+      "inputs": [
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "feeCollectors",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "minTradeSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "implementation",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "MarketGroupInitialized",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "marketGroup",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "nonce",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "ERC1167FailedCreateClone",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [
+    "0xe445c827cb64ce0dc431ae9a0e313441daf7067e"
+  ],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x13a78e4f9cbb508de2ebd4933767195bf5a35659b67715779472504827e4c72e",
+  "deployTxnBlockNumber": "29972305",
+  "deployTimestamp": "1746733957",
+  "sourceName": "src/marketGroupFactory/MarketGroupFactory.sol",
+  "contractName": "MarketGroupFactory",
+  "deployedOn": "deploy.MarketGroupFactory",
+  "highlight": true,
+  "gasUsed": 323360,
+  "gasCost": "3303664"
+}

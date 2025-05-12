@@ -123,8 +123,8 @@ library Market {
         }
 
         require(
-            marketParams.assertionLiveness >= 6 hours,
-            "assertionLiveness must be at least six hours"
+            marketParams.assertionLiveness > 0,
+            "assertionLiveness must be greater than 0"
         );
         require(
             marketParams.bondCurrency != address(0),
