@@ -4,7 +4,7 @@
 
 GraphQL is a query language for APIs that allows clients to request exactly the data they need. Unlike REST APIs, GraphQL provides a single endpoint where you can request multiple resources in a single query, reducing the number of network requests and giving you more control over the data you receive.
 
-All data indexed by the Sapience API is available via the GraphQL endpoint. Explore what's available using [**the GraphQL sandbox**](https://api.sapeince.xyz) in your web browser.
+All data indexed by the Sapience API is available via the GraphQL endpoint. Explore what's available using [**the GraphQL sandbox**](https://api.sapience.xyz/graphql) in your web browser.
 
 ## Endpoint
 
@@ -47,8 +47,7 @@ from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 
 transport = RequestsHTTPTransport(
-    url='https://api.sapience.xyz/graphql',
-    headers={'Authorization': 'Bearer YOUR_TOKEN'}
+    url='https://api.sapience.xyz/graphql'
 )
 
 client = Client(transport=transport, fetch_schema_from_transport=True)
@@ -68,51 +67,56 @@ result = client.execute(query)
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{"query": "{ yourQuery }"}' \
   https://api.sapience.xyz/graphql
 ```
 
 ## Entities
 
+### Market Data
+* `marketGroups`
+* `marketGroup`
+* `markets`
+* `marketCandles`
+* `positions`
+* `transactions`
+
+### Auxiliary Data
 * `categories`
 * `getMarketLeaderboard`
-* `indexCandles`
+* `totalVolumeByMarket`
+
+### For Numeric Markets
 * `indexPriceAtTime`
-* `legacyMarketCandles`
-* `marketCandles`
-* `marketGroup`
-* `marketGroups`
-* `marketGroupsByCategory`
-* `markets`
-* `positions`
+* `indexCandles`
+* `resources`
 * `resource`
 * `resourceCandles`
-* `resourcePrices`
 * `resourceTrailingAverageCandles`
-* `resources`
-* `totalVolumeByMarket`
-* `transactions`
 
 ## Example Queries
 
-### Basic Query
+### Get the questions and end times for the three Sapience markets that end next
+
 ```graphql
-query GetBasicInfo {
-  // Add basic query example
+query GetNextEndingMarkets {
+  markets(
+    first: 3, 
+    orderBy: endTimestamp, 
+    orderDirection: asc, 
+    where: { 
+      settled: false,
+      endTimestamp_gt: ${Math.floor(Date.now() / 1000)}
+    }
+  ) {
+    marketId
+    question
+    endTimestamp
+    marketGroup {
+      question
+      address
+      chainId
+    }
+  }
 }
 ```
-
-### Complex Query
-```graphql
-query GetComplexData {
-  // Add complex query example
-}
-```
-
-### Mutation Example
-```graphql
-mutation UpdateData {
-  // Add mutation example
-}
-``` 

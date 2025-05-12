@@ -25,3 +25,10 @@ The prices are represented in Uniswap V3's sqrtPriceX96 format. This is a fixed-
 
 For example, if sqrtPriceX96 is 79228162514264337593543950336 (2^96), the price would be 1e18. (This is 1 followed by 18 zeros representing decimal places). This value is used to represent "yes" in binary markets. This format allows for precise price calculations while maintaining high numerical precision in the smart contract.
 
+### What are index, resource, and trailing index prices? 
+
+These prices are only relevant to numeric markets (not binary or "yes"/"no" markets).
+
+- **Resource Price**: The actual price paid for the underlying resource at a given time (e.g., gas price on a specific block)
+- **Index Price**: The average resource price over a given period, used as a Settlement Price estimate while the period is in progress
+- **Trailing Average Resource Price**: The average resource price over a previous duration, useful for estimating what a Settlement Price would be for a hypothetical period 
