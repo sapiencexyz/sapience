@@ -52,6 +52,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
       : chartData;
 
+    // Scale the indexClose value
     return filtered.map((point) => {
       const scaledIndexClose =
         typeof point.indexClose === 'number'
@@ -63,8 +64,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         Object.entries(point.markets).forEach(([marketId, value]) => {
           scaledMarkets[marketId] =
             typeof value === 'number'
-              ? value / 1e18 //
-              : value; //
+              ? value / 1e18 
+              : value; 
         });
       }
 
