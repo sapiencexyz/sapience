@@ -1,7 +1,27 @@
 # Frequently Asked Questions
 
-* market is epoch, market group is market
-* sequential on marketgroup but unique to a market
-* LP -> trader position conversion
-* Converting ticks to prices
-* Converting prices to contract prices
+### What's an epoch?
+
+The underlying smart contract code refers to markets as epochs (more relevant to series of markets over time). The smart contract code refers to market groups as markets.
+
+### Can I reuse my position across markets?
+
+No. Once a position is created, it is associated with its market as either a trader or liquidity position for its entire lifetime. There is one exception...
+
+### Why did my liquidity position become a trader position when I closed it?
+
+Market activity can make a liquidity position long or short in the market. When closing out a liquidity position, it may be converted to a trader position of that size. This can be closed in a subsequent call to `modifyTraderPosition`. 
+
+### What are ticks?
+
+Ticks are units of measurement used to define specific price ranges in the Uniswap V3 pools. A tick is the smallest area where liquidity can be placed. Trades are filled with liquidity from ticks sequentially, like an onchain orderbook.
+
+### What units are used for prices?
+
+The prices are represented in Uniswap V3's sqrtPriceX96 format. This is a fixed-point number that represents the square root of the price, scaled by 2^96. To convert to a regular price:
+
+1. Divide the sqrtPriceX96 by 2^96 to get the square root of the price
+2. Square the result to get the actual price
+
+For example, if sqrtPriceX96 is 79228162514264337593543950336 (2^96), the price would be 1e18. (This is 1 followed by 18 zeros representing decimal places). This value is used to represent "yes" in binary markets. This format allows for precise price calculations while maintaining high numerical precision in the smart contract.
+
