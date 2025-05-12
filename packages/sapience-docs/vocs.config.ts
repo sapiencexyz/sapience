@@ -16,15 +16,15 @@ export default defineConfig({
       link: '/faq',
     },
     {
-      text: 'Trade Onchain',
+      text: 'Protocol',
       items: [
         {
-          text: 'TypeScript Guide',
-          link: '/typescript',
+          text: 'Protocol Summary',
+          link: '/protocol-overview',
         },
         {
-          text: 'Protocol Reference',
-          link: '/protocol',
+          text: 'Smart Contract Reference',
+          link: '/protocol-reference',
         },
       ],
     },
