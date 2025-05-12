@@ -264,16 +264,9 @@ export class CandleCacheBuilder {
       );
 
       // Skip if this price is older than the last update of the current candle
-      if (
-        candle &&
-        (candle.lastUpdatedTimestamp >= price.timestamp ||
-          candle.timestamp < candleTimestamp)
-      ) {
+      if (candle && candle.lastUpdatedTimestamp >= price.timestamp) {
         continue;
       }
-      console.log(
-        `LLL 1 ${price.timestamp} ${candle?.timestamp} ${candle?.lastUpdatedTimestamp} ${candleTimestamp} ${candleEndTimestamp}`
-      );
 
       // If we have a candle but it's from a different period, save it and create a new one
       if (candle && candle.timestamp < candleTimestamp) {
@@ -439,6 +432,7 @@ export class CandleCacheBuilder {
       candle.marketId = price.market;
       return candle;
     };
+
     // Find the market data from marketIds using price.market
     const marketData = this.marketIds.get(price.market);
     if (!marketData) {
@@ -453,22 +447,24 @@ export class CandleCacheBuilder {
 
       // Get existing candle or create new one
       let candle = this.runtimeCandles.getMarketCandle(price.market, interval);
-      if (
-        candle &&
-        (candle.timestamp < price.timestamp ||
-          candle.lastUpdatedTimestamp >= price.timestamp)
-      ) {
+
+      // Skip if this price is older than the last update of the current candle
+      if (candle && candle.lastUpdatedTimestamp >= price.timestamp) {
         continue;
       }
 
-      console.log(
-        'LLL candle market',
-        price.timestamp,
-        candle != undefined,
-        candle?.lastUpdatedTimestamp
-      );
-
-      if (!candle) {
+      // If we have a candle but it's from a different period, save it and create a new one
+      if (candle && candle.timestamp < candleTimestamp) {
+        await saveCandle(candle);
+        candle = getNewCandle(
+          interval,
+          candleTimestamp,
+          candleEndTimestamp,
+          price,
+          marketData.resourceSlug
+        );
+        this.runtimeCandles.setMarketCandle(price.market, interval, candle);
+      } else if (!candle) {
         // Create new candle if none exists
         candle = getNewCandle(
           interval,
@@ -478,7 +474,7 @@ export class CandleCacheBuilder {
           marketData.resourceSlug
         );
         this.runtimeCandles.setMarketCandle(price.market, interval, candle);
-      } else if (candle.timestamp === candleTimestamp) {
+      } else {
         // Update existing candle
         candle.high = String(
           Math.max(Number(candle.high), Number(price.value))
@@ -486,19 +482,9 @@ export class CandleCacheBuilder {
         candle.low = String(Math.min(Number(candle.low), Number(price.value)));
         candle.close = price.value;
         candle.lastUpdatedTimestamp = price.timestamp;
-      } else {
-        // we changed of candle, so we need to save the old one and create a new one
-        await saveCandle(candle);
-
-        candle = getNewCandle(
-          interval,
-          candleTimestamp,
-          candleEndTimestamp,
-          price,
-          marketData.resourceSlug
-        );
-        this.runtimeCandles.setMarketCandle(price.market, interval, candle);
       }
+
+      // Save the candle if it's the last item in the batch
       if (isLast) {
         await saveCandle(candle);
       }
