@@ -1,6 +1,7 @@
 # Protocol
 
-## Functions
+## Read Functions
+
 ### getMarket
 
 
@@ -132,51 +133,6 @@ function getMarketTickSpacing() view returns (int24);
 function getDecimalPriceFromSqrtPriceX96(uint160 sqrtPriceX96) view returns (uint256);
 ```
 
-### createTraderPosition
-
-*Create a new trader position.*
-
-
-```solidity
-function createTraderPosition(uint256 epochId, int256 size, uint256 deltaCollateralLimit, uint256 deadline)
-    nonReentrant
-    returns (uint256 positionId);
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`epochId`|`uint256`|The epoch id.|
-|`size`|`int256`|The position size.|
-|`deltaCollateralLimit`|`uint256`||
-|`deadline`|`uint256`|The deadline for the transaction.|
-
-**Returns**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|The position id.|
-
-
-### modifyTraderPosition
-
-*Modify an existing trader position.*
-
-
-```solidity
-function modifyTraderPosition(uint256 positionId, int256 size, int256 deltaCollateralLimit, uint256 deadline)
-    nonReentrant;
-```
-**Parameters**
-
-|Name|Type|Description|
-|----|----|-----------|
-|`positionId`|`uint256`|The position id.|
-|`size`|`int256`|The new position size.|
-|`deltaCollateralLimit`|`int256`|The change in the collateral limit. Positive for adding collateral, negative for reomving (closing a position means minimum profit to withdraw). If 0, no limit.|
-|`deadline`|`uint256`|The deadline for the transaction.|
-
-
 ### quoteCreateTraderPosition
 
 *Quotes the required collateral to create a new trader position.*
@@ -270,13 +226,6 @@ function symbol() view returns (string memory);
 function tokenURI(uint256 tokenId) view returns (string memory);
 ```
 
-### approve
-
-
-```solidity
-function approve(address to, uint256 tokenId);
-```
-
 ### getApproved
 
 
@@ -284,39 +233,11 @@ function approve(address to, uint256 tokenId);
 function getApproved(uint256 tokenId) view returns (address operator);
 ```
 
-### setApprovalForAll
-
-
-```solidity
-function setApprovalForAll(address operator, bool approved);
-```
-
 ### isApprovedForAll
 
 
 ```solidity
 function isApprovedForAll(address holder, address operator) view returns (bool);
-```
-
-### transferFrom
-
-
-```solidity
-function transferFrom(address from, address to, uint256 tokenId);
-```
-
-### safeTransferFrom
-
-
-```solidity
-function safeTransferFrom(address from, address to, uint256 tokenId);
-```
-
-### safeTransferFrom
-
-
-```solidity
-function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data);
 ```
 
 ### tokenOfOwnerByIndex
@@ -349,6 +270,118 @@ index is offset by +1 at creation time
 function tokenByIndex(uint256 index) view returns (uint256);
 ```
 
+### quoteRequiredCollateral
+
+
+```solidity
+function quoteRequiredCollateral(uint256 positionId, uint128 liquidity)
+    view
+    returns (uint256 requiredCollateral);
+```
+
+### quoteLiquidityPositionTokens
+
+
+```solidity
+function quoteLiquidityPositionTokens(
+    uint256 epochId,
+    uint256 depositedCollateralAmount,
+    uint160 sqrtPriceX96,
+    uint160 sqrtPriceAX96,
+    uint160 sqrtPriceBX96
+) view returns (uint256 amount0, uint256 amount1, uint128 liquidity);
+```
+
+### getTokensFromLiquidity
+
+
+```solidity
+function getTokensFromLiquidity(uint128 liquidity, uint160 sqrtPriceX96, uint160 sqrtPriceAX96, uint160 sqrtPriceBX96)
+    pure
+    returns (uint256 amount0, uint256 amount1);
+```
+
+## Write Functions
+
+### createTraderPosition
+
+*Create a new trader position.*
+
+
+```solidity
+function createTraderPosition(uint256 epochId, int256 size, uint256 deltaCollateralLimit, uint256 deadline)
+    nonReentrant
+    returns (uint256 positionId);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`epochId`|`uint256`|The epoch id.|
+|`size`|`int256`|The position size.|
+|`deltaCollateralLimit`|`uint256`||
+|`deadline`|`uint256`|The deadline for the transaction.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The position id.|
+
+
+### modifyTraderPosition
+
+*Modify an existing trader position.*
+
+
+```solidity
+function modifyTraderPosition(uint256 positionId, int256 size, int256 deltaCollateralLimit, uint256 deadline)
+    nonReentrant;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The position id.|
+|`size`|`int256`|The new position size.|
+|`deltaCollateralLimit`|`int256`|The change in the collateral limit. Positive for adding collateral, negative for reomving (closing a position means minimum profit to withdraw). If 0, no limit.|
+|`deadline`|`uint256`|The deadline for the transaction.|
+
+
+### approve
+
+
+```solidity
+function approve(address to, uint256 tokenId);
+```
+
+### setApprovalForAll
+
+
+```solidity
+function setApprovalForAll(address operator, bool approved);
+```
+
+### transferFrom
+
+
+```solidity
+function transferFrom(address from, address to, uint256 tokenId);
+```
+
+### safeTransferFrom
+
+
+```solidity
+function safeTransferFrom(address from, address to, uint256 tokenId);
+```
+
+### safeTransferFrom
+
+
+```solidity
+function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data);
+```
 
 ### createLiquidityPosition
 
@@ -391,28 +424,6 @@ function increaseLiquidityPosition(IFoilStructs.LiquidityIncreaseParams memory p
     );
 ```
 
-### quoteRequiredCollateral
-
-
-```solidity
-function quoteRequiredCollateral(uint256 positionId, uint128 liquidity)
-    view
-    returns (uint256 requiredCollateral);
-```
-
-### quoteLiquidityPositionTokens
-
-
-```solidity
-function quoteLiquidityPositionTokens(
-    uint256 epochId,
-    uint256 depositedCollateralAmount,
-    uint160 sqrtPriceX96,
-    uint160 sqrtPriceAX96,
-    uint160 sqrtPriceBX96
-) view returns (uint256 amount0, uint256 amount1, uint128 liquidity);
-```
-
 ### depositCollateral
 
 
@@ -420,41 +431,7 @@ function quoteLiquidityPositionTokens(
 function depositCollateral(uint256 positionId, uint256 collateralAmount);
 ```
 
-### getTokensFromLiquidity
-
-
-```solidity
-function getTokensFromLiquidity(uint128 liquidity, uint160 sqrtPriceX96, uint160 sqrtPriceAX96, uint160 sqrtPriceBX96)
-    pure
-    returns (uint256 amount0, uint256 amount1);
-```
-
 ## Structs
-### ModifyTraderPositionRuntime
-
-```solidity
-struct ModifyTraderPositionRuntime {
-    int256 deltaSize;
-    int256 deltaCollateral;
-    uint256 initialPrice;
-    uint256 finalPrice;
-}
-```
-
-### QuoteRuntime
-
-```solidity
-struct QuoteRuntime {
-    bool isLongDirection;
-    uint256 tradedVGas;
-    uint256 tradedVEth;
-    int256 signedTradedVGas;
-    int256 signedTradedVEth;
-    uint256 vEthFromZero;
-    uint256 tradeRatioD18RoundDown;
-    uint256 tradeRatioD18RoundUp;
-}
-```
 
 ### QuoteOrTradeInputParams
 
@@ -480,22 +457,3 @@ struct QuoteOrTradeOutputParams {
     uint160 sqrtPriceX96After;
 }
 ```
-### QuoteCollateralStack
-
-```solidity
-struct QuoteCollateralStack {
-    int24 lowerTick;
-    int24 upperTick;
-    uint128 currentLiquidity;
-    uint256 tokensOwed0;
-    uint256 tokensOwed1;
-    uint160 sqrtPriceX96;
-    uint160 sqrtPriceAX96;
-    uint160 sqrtPriceBX96;
-    uint256 finalLoanAmount0;
-    uint256 finalLoanAmount1;
-    uint256 amount0;
-    uint256 amount1;
-}
-```
-
