@@ -118,14 +118,20 @@ const ForecastingDetailPage = () => {
   const optionNames = marketGroupData.markets.map(
     (market) => market.optionName || ''
   );
-
   // Otherwise show the main content
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-5xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3">
           <h1 className="text-2xl md:text-4xl font-normal mb-8 leading-tight">
-            {formatQuestion(marketGroupData.question)}
+            {formatQuestion(
+              activeMarkets.find(
+                (market) => market.poolAddress === marketAddress
+              )?.question ||
+                (activeMarkets.length === 1
+                  ? activeMarkets[0].question
+                  : marketGroupData.question)
+            )}
           </h1>
         </div>
 
