@@ -19,6 +19,7 @@ import { useEffect, useState } from 'react';
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
 import PositionSelector from '~/components/forecasting/PositionSelector';
+import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 import { parseUrlParameter } from '~/lib/utils/util';
 
@@ -254,6 +255,16 @@ const ForecastContent = () => {
                 </div>
               </div>
             </div>
+
+            {/* User Positions Table */}
+            <div className="mt-6 mb-4">
+              <h3 className="text-xl font-medium mb-4">Your Positions</h3>
+              <UserPositionsTable
+                marketAddress={marketAddress!}
+                chainId={chainId!}
+              />
+            </div>
+
             <div className="w-full md:max-w-[340px] pb-4">
               <div className="bg-card p-6 rounded-lg border mb-5 overflow-auto">
                 <div className="w-full">

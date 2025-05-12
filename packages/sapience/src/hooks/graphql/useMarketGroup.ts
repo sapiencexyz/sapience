@@ -30,6 +30,7 @@ const MARKET_GROUP_QUERY = gql`
         startTimestamp
         endTimestamp
         settled
+        settlementPriceD18
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
       }
@@ -97,7 +98,7 @@ export const useMarketGroup = ({
       const newActiveMarkets = findActiveMarkets(marketGroupData);
       setActiveMarkets(newActiveMarkets);
 
-      if (newActiveMarkets.length > 1) {
+      if (marketGroupData.markets.length > 1) {
         setMarketCategory(MarketGroupCategory.SINGLE_CHOICE);
       } else if (marketGroupData.markets[0].optionName === null) {
         setMarketCategory(MarketGroupCategory.YES_NO);

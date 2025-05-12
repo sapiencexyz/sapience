@@ -18,16 +18,20 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
-import { useSapience } from '../../../lib/context/SapienceProvider';
+import { useAccount } from 'wagmi';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
+import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import PredictionsList from '~/components/forecasting/PredictionsList';
+import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import {
   MarketGroupCategory,
   useMarketGroup,
 } from '~/hooks/graphql/useMarketGroup';
+import { usePositions } from '~/hooks/graphql/usePositions';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
+import { useSapience } from '../../../lib/context/SapienceProvider';
 
 export type ActiveTab = 'predict' | 'wager';
 
@@ -71,13 +75,106 @@ const DynamicWagerFormFactory = dynamic(
   }
 );
 
+// Create a ForecastingForm component to handle the form rendering logic
+const ForecastingForm = ({
+  marketGroupData,
+  marketCategory,
+  permitData,
+  onWagerSuccess,
+}: {
+  marketGroupData: any;
+  marketCategory: MarketGroupCategory;
+  permitData: any;
+  onWagerSuccess: (txnHash: string) => void;
+}) => {
+  const [activeTab, setActiveTab] = useState<ActiveTab>('predict');
+
+  // Check if market is active (not expired or settled)
+  const isActive = useMemo(() => {
+    if (
+      !marketGroupData ||
+      !marketGroupData.markets ||
+      marketGroupData.markets.length === 0
+    ) {
+      return false;
+    }
+
+    const firstMarket = marketGroupData.markets[0];
+    const isExpired =
+      firstMarket.endTimestamp &&
+      Date.now() > Number(firstMarket.endTimestamp) * 1000;
+
+    return !isExpired;
+  }, [marketGroupData]);
+
+  if (!isActive) {
+    return (
+      <MarketStatusDisplay
+        marketGroupData={marketGroupData}
+        marketCategory={marketCategory}
+      />
+    );
+  }
+
+  return (
+    <div className="bg-card p-6 rounded-lg shadow-sm border flex-1">
+      <h2 className="text-3xl font-normal mb-4">Forecast</h2>
+      {/* Tabs Section */}
+      <div className="space-y-2 mt-4">
+        <div className="flex w-full border-b">
+          <button
+            type="button"
+            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+              activeTab === 'predict'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => setActiveTab('predict')}
+          >
+            Predict
+          </button>
+          <button
+            type="button"
+            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+              activeTab === 'wager'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => setActiveTab('wager')}
+          >
+            Wager
+          </button>
+        </div>
+
+        {/* Form Content Based on Market Type */}
+        <div className="pt-4">
+          {/* Only render the active form component */}
+          {activeTab === 'predict' ? (
+            <DynamicPredictForm
+              marketGroupData={marketGroupData}
+              marketCategory={marketCategory}
+            />
+          ) : (
+            <DynamicWagerFormFactory
+              marketCategory={marketCategory}
+              marketGroupData={marketGroupData}
+              isPermitted={!!permitData?.permitted}
+              onSuccess={onWagerSuccess}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ForecastingDetailPage = () => {
+  const { address } = useAccount();
   const params = useParams();
   const pathname = usePathname();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
   const [selectedListView, setSelectedListView] = useState<string>('Market');
-  const [activeTab, setActiveTab] = useState<ActiveTab>('predict');
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
@@ -91,6 +188,15 @@ const ForecastingDetailPage = () => {
     activeMarkets,
     marketCategory,
   } = useMarketGroup({ chainShortName, marketAddress });
+
+  const {
+    data: userPositions,
+    isLoading: isUserPositionsLoading,
+    refetch: refetchUserPositions,
+  } = usePositions({
+    address: address || '',
+    marketAddress,
+  });
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -133,13 +239,10 @@ const ForecastingDetailPage = () => {
         <div className="flex flex-col gap-6 px-3">
           {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col md:flex-row gap-12">
-            {/* NEW Wrapper for Left Column (Chart/List) */}
+            {/* Left Column (Chart/List) */}
             <div className="flex flex-col w-full md:flex-1">
-              {/* Original Bordered Box (Chart/List Area) - Now flex-1 within the wrapper */}
               <div className="border border-border rounded-md flex flex-col flex-1">
-                {/* Wrapper div to allow chart/list to grow. Add min-h-0 */}
                 <div className="flex-1 min-h-0">
-                  {/* Conditionally render Chart or List based on selectedListView */}
                   {selectedListView === 'Market' && (
                     <MarketGroupChart
                       chainShortName={chainShortName}
@@ -166,73 +269,24 @@ const ForecastingDetailPage = () => {
                       optionNames={optionNames}
                     />
                   )}
-                </div>{' '}
-                {/* Closing the flex-1 min-h-0 wrapper */}
-              </div>{' '}
-              {/* Closing the bordered box */}
-            </div>{' '}
-            {/* Closing the NEW Left Column Wrapper */}
-            {/* Form (Right Column) - Make it flex column and ensure card grows */}
-            <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
-              {' '}
-              {/* Added flex flex-col */}
-              <div className="bg-card p-6 rounded-lg shadow-sm border flex-1">
-                {' '}
-                {/* Added flex-1 */}
-                <h2 className="text-3xl font-normal mb-4">Forecast</h2>
-                {/* Tabs Section */}
-                <div className="space-y-2 mt-4">
-                  <div className="flex w-full border-b">
-                    <button
-                      type="button"
-                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                        activeTab === 'predict'
-                          ? 'border-b-2 border-primary text-primary'
-                          : 'text-muted-foreground'
-                      }`}
-                      onClick={() => setActiveTab('predict')}
-                    >
-                      Predict
-                    </button>
-                    <button
-                      type="button"
-                      className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-                        activeTab === 'wager'
-                          ? 'border-b-2 border-primary text-primary'
-                          : 'text-muted-foreground'
-                      }`}
-                      onClick={() => setActiveTab('wager')}
-                    >
-                      Wager
-                    </button>
-                  </div>
-
-                  {/* Form Content Based on Market Type */}
-                  <div className="pt-4">
-                    {/* Only render the active form component */}
-                    {activeTab === 'predict' ? (
-                      <DynamicPredictForm
-                        marketGroupData={marketGroupData}
-                        marketCategory={marketCategory}
-                      />
-                    ) : (
-                      <DynamicWagerFormFactory
-                        marketCategory={marketCategory}
-                        marketGroupData={marketGroupData}
-                        isPermitted={!!permitData?.permitted}
-                        onSuccess={(txnHash) => {
-                          // TODO: refetch positions/predictions?
-                          console.log(txnHash);
-                        }}
-                      />
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Form (Right Column) */}
+            <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
+              <ForecastingForm
+                marketGroupData={marketGroupData}
+                marketCategory={marketCategory}
+                permitData={permitData}
+                onWagerSuccess={() => {
+                  refetchUserPositions();
+                }}
+              />
+            </div>
           </div>
 
-          {/* NEW Row for Dropdown and Advanced View */}
+          {/* Row 2: Dropdown and Advanced View */}
           <div className="flex justify-between items-center">
             {/* Dropdown Menu (Left Aligned) */}
             <div>
@@ -259,7 +313,6 @@ const ForecastingDetailPage = () => {
             </div>
 
             {/* Advanced View button (Right Aligned) */}
-            {/* Retain existing logic for Advanced View from current codebase */}
             <div>
               {activeMarkets.length > 0 &&
                 (marketCategory === MarketGroupCategory.SINGLE_CHOICE ? (
@@ -282,6 +335,32 @@ const ForecastingDetailPage = () => {
                 ))}
             </div>
           </div>
+
+          {/* Row 3: User Positions Table */}
+          {!address ? (
+            <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
+              <p className="text-muted-foreground">
+                Connect your wallet to view your positions
+              </p>
+            </div>
+          ) : isUserPositionsLoading ? (
+            <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
+              <div className="flex flex-col items-center justify-center py-2">
+                <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2"></div>
+                <p className="text-sm text-muted-foreground">
+                  Loading your positions...
+                </p>
+              </div>
+            </div>
+          ) : (
+            <UserPositionsTable
+              marketAddress={marketAddress}
+              marketCategory={marketCategory}
+              chainId={marketGroupData.chainId}
+              userPositions={userPositions || []}
+              refetchUserPositions={refetchUserPositions}
+            />
+          )}
         </div>
       </div>
 
