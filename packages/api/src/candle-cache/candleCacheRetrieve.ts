@@ -17,7 +17,7 @@ export class CandleCacheRetrieve {
     return this.instance;
   }
 
-  async getResourcePrices(resourceId: string, from: number, to: number, interval: number) {
+  async getResourcePrices(resourceId: string, from: number, to: number, interval: number): Promise<{data: ResponseCandleData[], lastUpdateTimestamp: number}> {
     this.checkInterval(interval);
     const {from: allignedFrom, to: allignedTo} = getTimeWindow(from, to, interval);
 
