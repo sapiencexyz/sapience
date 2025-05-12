@@ -1,0 +1,47 @@
+# Typescript Guide
+
+The Sapience protocol is implemented as a set of smart contracts on the Ethereum blockchain. We recommend using TypeScript with viem and ABITypes, although you can use whatever libraries you'd like to interact with a market's smart contracts.
+
+The ABI is available at ___
+
+## Integration with viem and ABITypes
+
+```typescript
+import { createPublicClient, http, type Address } from 'viem'
+import { mainnet } from 'viem/chains'
+import { parseAbi } from 'abitype'
+import FoilABI from './Foil.json'
+
+// Create a viem client
+const client = createPublicClient({
+  chain: mainnet,
+  transport: http()
+})
+
+// Parse the ABI for type safety
+const abi = parseAbi(FoilABI)
+
+// Contract configuration
+const contractConfig = {
+  address: '0x...' as Address, // Your contract address
+  abi,
+  chainId: 1 // mainnet
+}
+
+// Example of type-safe contract interaction
+const result = await client.readContract({
+  ...contractConfig,
+  functionName: 'someFunction',
+  args: ['0x...'] // Type-safe arguments
+})
+
+// Example of type-safe event watching
+const unwatch = client.watchContractEvent({
+  ...contractConfig,
+  eventName: 'SomeEvent',
+  onLogs: (logs) => {
+    // Logs are fully typed based on the ABI
+    console.log(logs)
+  }
+})
+```
