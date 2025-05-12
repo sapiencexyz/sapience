@@ -25,85 +25,45 @@ import { parseAbi } from 'abitype'
 import FoilABI from './Foil.json'
 import { privateKeyToAccount } from 'viem/accounts'
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY
-const RPC_ENDPOINT = process.env.RPC_ENDPOINT
-
-if (!PRIVATE_KEY || !RPC_ENDPOINT) {
-  throw new Error('Missing required environment variables: PRIVATE_KEY and RPC_ENDPOINT')
-}
-
-const MARKET_GROUP_CHAIN_ID = "8453"
-const MARKET_GROUP_ADDRESS = "0x..." as Address
-const WAGER_SIZE = 1000000n
-
-const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`)
+// Basic setup
+const account = privateKeyToAccount('0xYourPrivateKey' as `0x${string}`)
 const client = createWalletClient({
   account,
   chain: base,
-  transport: http(RPC_ENDPOINT)
+  transport: http('https://mainnet.base.org')
 })
 
-const abi = parseAbi(FoilABI)
+const MARKET_ADDRESS = '0xYourMarketAddress' as Address
+const MARKET_ID = 1n
 
-const contractConfig = {
-  chainId: MARKET_GROUP_CHAIN_ID,
-  address: MARKET_GROUP_ADDRESS,
-  abi
-}
-
-// Get the address of the token used as collateral
-const { collateralAsset } = await client.readContract({
-  ...contractConfig,
-  functionName: 'getMarket',
-  args: []
+// 1. Read function example - Get current price
+const price = await client.readContract({
+  address: MARKET_ADDRESS,
+  abi: parseAbi(FoilABI),
+  functionName: 'getReferencePrice',
+  args: [MARKET_ID]
 })
 
-// Watch for new positions created by this address
-const unwatch = client.watchContractEvent({
-  ...contractConfig,
-  eventName: 'TraderPositionCreated',
-  args: {
-    sender: account.address
-  },
-  onLogs: (logs) => {
-    logs.forEach(log => {
-      console.log(`New position created:
-        Position ID: ${log.args.positionId}
-        Market ID: ${log.args.epochId}
-        Required Collateral: ${log.args.requiredCollateral}
-        Initial Price: ${log.args.initialPrice}
-        Final Price: ${log.args.finalPrice}
-        Trade Ratio: ${log.args.tradeRatio}
-      `)
-    })
-  }
-})
-
-// First approve the collateral token
-const approveHash = await client.writeContract({
-  address: collateralAsset as Address,
-  abi: erc20Abi,
-  functionName: 'approve',
-  args: [contractConfig.address, WAGER_SIZE]
-})
-
-// Wait for approval to be confirmed
-await client.waitForTransactionReceipt({ hash: approveHash })
-
-// Then create the position
-const positionHash = await client.writeContract({
-  ...contractConfig,
+// 2. Write function example - Create a position
+const hash = await client.writeContract({
+  address: MARKET_ADDRESS,
+  abi: parseAbi(FoilABI),
   functionName: 'createTraderPosition',
   args: [
-    1n, // marketId (i.e. epochId)
-    WAGER_SIZE, // Size (positive for long/"yes", negative for short/"no")
-    WAGER_SIZE / 100n, // 1% slippage tolerance (delta collateral limit)
-    Math.floor(Date.now() / 1000) + 3600 // Order deadline (1 hour from now)
+    MARKET_ID,                       // marketId
+    1000000n,                        // size (positive for long/"yes")
+    10000n,                          // slippage tolerance
+    BigInt(Math.floor(Date.now() / 1000) + 3600) // deadline
   ]
 })
 
-// Wait for position creation to be confirmed
-await client.waitForTransactionReceipt({ hash: positionHash })
+// 3. Simulate function example - Needed for some functions like quotes
+const { requiredCollateral, fillPrice } = await client.simulateContract({
+  address: MARKET_ADDRESS,
+  abi: parseAbi(FoilABI), 
+  functionName: 'quoteCreateTraderPosition',
+  args: [MARKET_ID, 1000000n]        // marketId, size
+})
 ```
 
 ## Use Python
