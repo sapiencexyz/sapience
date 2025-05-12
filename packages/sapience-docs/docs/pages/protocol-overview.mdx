@@ -1,0 +1,61 @@
+# Protocol Overview
+
+The Sapience protocol is implemented as a set of smart contracts on the Ethereum blockchain. We recommend using TypeScript with viem and ABITypes, although you can use whatever libraries you'd like to interact with a market's smart contracts.
+
+Users create a position (trader or LP), which is represented by an NFT. sequential on marketgroup but unique to a market
+
+Users deposit collateral and can borrow base and quote tokens to trade in a uniswap pool. (examples for binary "Yes" tokens and "virtual sUSDS" tokens, or numeric example.)
+
+Going long (predicting yes), involves borrowing quote tokens and trading them for base tokens. Shorting is the opposite. Providing liquidity entails borrow some of both to provide to the uniswap pool and earning trading fees.
+
+After the end time, the market price is ignored and instead a settlement price (verified via UMA) is used.
+
+The ABI is available at ___
+
+## Use TypeScript
+
+Integration with viem and ABITypes
+
+```typescript
+import { createPublicClient, http, type Address } from 'viem'
+import { mainnet } from 'viem/chains'
+import { parseAbi } from 'abitype'
+import FoilABI from './Foil.json'
+
+// Create a viem client
+const client = createPublicClient({
+  chain: mainnet,
+  transport: http()
+})
+
+// Parse the ABI for type safety
+const abi = parseAbi(FoilABI)
+
+// Contract configuration
+const contractConfig = {
+  address: '0x...' as Address, // Your contract address
+  abi,
+  chainId: 1 // mainnet
+}
+
+// Example of type-safe contract interaction
+const result = await client.readContract({
+  ...contractConfig,
+  functionName: 'someFunction',
+  args: ['0x...'] // Type-safe arguments
+})
+
+// Example of type-safe event watching
+const unwatch = client.watchContractEvent({
+  ...contractConfig,
+  eventName: 'SomeEvent',
+  onLogs: (logs) => {
+    // Logs are fully typed based on the ABI
+    console.log(logs)
+  }
+})
+```
+
+## Use Python
+
+*Coming soon.*
