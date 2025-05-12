@@ -1,7 +1,9 @@
-import dynamic from 'next/dynamic';
-import React from 'react';
+/* eslint-disable sonarjs/cognitive-complexity */
 
 import type { MarketGroupType, MarketType } from '@foil/ui/types';
+import dynamic from 'next/dynamic';
+import type React from 'react';
+
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 import { formatNumber } from '~/lib/utils/util';
 

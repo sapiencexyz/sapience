@@ -40,36 +40,33 @@ export function useSettlePosition({
   });
 
   // Function to settle a position
-  const settlePosition = useCallback(
-    async (positionId: string): Promise<string | undefined> => {
-      setIsSettling(true);
-      setError(null);
-      setTxHash(null);
+  const settlePosition = useCallback(async (): Promise<string | undefined> => {
+    setIsSettling(true);
+    setError(null);
+    setTxHash(null);
 
-      try {
-        // Call settle position function
-        const hash = await writeContractAsync({
-          address: marketAddress as `0x${string}`,
-          abi: foilAbi().abi as Abi,
-          functionName: 'settlePosition',
-          args: [BigInt(positionId)],
-          chainId,
-        });
+    try {
+      // Call settle position function
+      const hash = await writeContractAsync({
+        address: marketAddress as `0x${string}`,
+        abi: foilAbi().abi as Abi,
+        functionName: 'settlePosition',
+        args: [BigInt(positionId)],
+        chainId,
+      });
 
-        setTxHash(hash);
-        return hash;
-      } catch (err) {
-        console.error('Error settling position:', err);
-        setError(
-          err instanceof Error ? err : new Error('Failed to settle position')
-        );
-        return undefined;
-      } finally {
-        setIsSettling(false);
-      }
-    },
-    [marketAddress, chainId, writeContractAsync]
-  );
+      setTxHash(hash);
+      return hash;
+    } catch (err) {
+      console.error('Error settling position:', err);
+      setError(
+        err instanceof Error ? err : new Error('Failed to settle position')
+      );
+      return undefined;
+    } finally {
+      setIsSettling(false);
+    }
+  }, [marketAddress, chainId, writeContractAsync, positionId]);
 
   return {
     settlePosition,

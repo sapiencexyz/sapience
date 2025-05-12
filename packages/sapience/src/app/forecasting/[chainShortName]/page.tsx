@@ -13,14 +13,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
-import type { MarketType } from '@foil/ui/types';
+import type { MarketGroupType, MarketType } from '@foil/ui/types';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
-
 import { useAccount } from 'wagmi';
+
+import { useSapience } from '../../../lib/context/SapienceProvider';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import PredictionsList from '~/components/forecasting/PredictionsList';
@@ -31,7 +32,6 @@ import {
 } from '~/hooks/graphql/useMarketGroup';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
-import { useSapience } from '../../../lib/context/SapienceProvider';
 
 export type ActiveTab = 'predict' | 'wager';
 
@@ -82,9 +82,9 @@ const ForecastingForm = ({
   permitData,
   onWagerSuccess,
 }: {
-  marketGroupData: any;
+  marketGroupData: MarketGroupType;
   marketCategory: MarketGroupCategory;
-  permitData: any;
+  permitData: { permitted: boolean };
   onWagerSuccess: (txnHash: string) => void;
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('predict');
@@ -276,9 +276,9 @@ const ForecastingDetailPage = () => {
             {/* Form (Right Column) */}
             <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
               <ForecastingForm
-                marketGroupData={marketGroupData}
+                marketGroupData={marketGroupData!}
                 marketCategory={marketCategory}
-                permitData={permitData}
+                permitData={permitData!}
                 onWagerSuccess={() => {
                   refetchUserPositions();
                 }}
@@ -337,6 +337,7 @@ const ForecastingDetailPage = () => {
           </div>
 
           {/* Row 3: User Positions Table */}
+          {/* eslint-disable-next-line no-nested-ternary */}
           {!address ? (
             <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
               <p className="text-muted-foreground">
@@ -346,7 +347,7 @@ const ForecastingDetailPage = () => {
           ) : isUserPositionsLoading ? (
             <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
               <div className="flex flex-col items-center justify-center py-2">
-                <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2"></div>
+                <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
                 <p className="text-sm text-muted-foreground">
                   Loading your positions...
                 </p>

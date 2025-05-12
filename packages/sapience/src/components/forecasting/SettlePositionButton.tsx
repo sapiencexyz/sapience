@@ -22,18 +22,13 @@ const SettlePositionButton = ({
 }: SettlePositionButtonProps) => {
   const { toast } = useToast();
 
-  const {
-    settlePosition,
-    simulationData,
-    loadingSimulation,
-    isSettling,
-    error,
-  } = useSettlePosition({
-    positionId,
-    marketAddress,
-    chainId,
-    enabled: true,
-  });
+  const { settlePosition, simulationData, loadingSimulation, isSettling } =
+    useSettlePosition({
+      positionId,
+      marketAddress,
+      chainId,
+      enabled: true,
+    });
 
   const expectedCollateral = useMemo(
     () => simulationData?.result || BigInt(0),

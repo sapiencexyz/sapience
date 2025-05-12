@@ -7,6 +7,8 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
+import { foilAbi } from '@foil/ui/lib/abi';
+import type { PositionType } from '@foil/ui/types';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   flexRender,
@@ -20,10 +22,9 @@ import React from 'react';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 
-import { foilAbi } from '@foil/ui/lib/abi';
-import type { PositionType } from '@foil/ui/types';
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 import { formatNumber } from '~/lib/utils/util';
+
 import SettlePositionButton from './SettlePositionButton';
 
 interface UserPositionsTableProps {
@@ -35,7 +36,7 @@ interface UserPositionsTableProps {
 }
 
 // LP Value display component
-const LPValueDisplay: React.FC<{ position: PositionType }> = ({ position }) => {
+const LPValueDisplay: React.FC<{ position: PositionType }> = () => {
   return (
     <div className="flex flex-col">
       <span className="text-muted-foreground text-sm">TBD</span>
@@ -55,6 +56,7 @@ const TradeValueDisplay: React.FC<{
 
     return (
       <div className="flex flex-col">
+        {/* eslint-disable-next-line no-nested-ternary */}
         {hasBorrowedBase ? (
           <span className="font-medium">No</span>
         ) : hasBorrowedQuote ? (
@@ -81,11 +83,10 @@ const PositionValueDisplay: React.FC<{
 }> = ({ position, marketCategory }) => {
   if (position.isLP) {
     return <LPValueDisplay position={position} />;
-  } else {
-    return (
-      <TradeValueDisplay position={position} marketCategory={marketCategory} />
-    );
   }
+  return (
+    <TradeValueDisplay position={position} marketCategory={marketCategory} />
+  );
 };
 
 // PnL display component with loading state
@@ -115,7 +116,7 @@ const PnLDisplay = ({
   if (isLoading) {
     return (
       <div className="flex flex-col">
-        <div className="h-5 w-20 bg-secondary/20 animate-pulse rounded"></div>
+        <div className="h-5 w-20 bg-secondary/20 animate-pulse rounded" />
         <span className="text-xs text-muted-foreground mt-1">
           {formattedCollateral} collateral
         </span>
@@ -316,7 +317,8 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
         cell: ({ row }) => renderExpirationCell(row.original),
       },
     ];
-  }, [chainId, marketAddress, marketCategory, userPositions]);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [userPositions]);
 
   // Initialize the table
   const table = useReactTable({
@@ -330,7 +332,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     return (
       <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
         <p className="text-muted-foreground">
-          You don't have any positions in this market yet
+          You don&apos;t have any positions in this market yet.
         </p>
       </div>
     );
