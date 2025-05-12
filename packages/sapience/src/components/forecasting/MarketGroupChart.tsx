@@ -52,13 +52,27 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
       : chartData;
 
-    // Scale the indexClose value
     return filtered.map((point) => {
       const scaledIndexClose =
         typeof point.indexClose === 'number'
           ? point.indexClose / 1e18 // Scale Wei down by 10^18
           : point.indexClose; // Keep null/undefined as is
-      return { ...point, indexClose: scaledIndexClose };
+
+      const scaledMarkets: { [marketId: string]: number | undefined } = {};
+      if (point.markets) {
+        Object.entries(point.markets).forEach(([marketId, value]) => {
+          scaledMarkets[marketId] =
+            typeof value === 'number'
+              ? value / 1e18 //
+              : value; //
+        });
+      }
+
+      return {
+        ...point,
+        indexClose: scaledIndexClose,
+        markets: scaledMarkets,
+      };
     });
   }, [chartData, minTimestamp]);
 
