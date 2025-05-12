@@ -7,9 +7,10 @@ import {
 } from 'src/db';
 import { CacheMetadata } from 'src/models/CacheMetadata';
 import { ResourcePrice } from 'src/models/ResourcePrice';
-import { FindOptionsWhere, MoreThan } from 'typeorm';
+import { FindOptionsWhere, MoreThan, Between } from 'typeorm';
 import { ReducedMarketPrice } from './types';
 import { CacheCandle } from 'src/models/CacheCandle';
+import { CANDLE_TYPES } from './config';
 // import { log } from 'src/utils/logs';
 // import { CANDLE_CACHE_CONFIG } from './config';
 
@@ -184,3 +185,40 @@ export async function saveCandles(candles: CacheCandle[]) {
   await cacheCandleRepository.save(candles);
 }
 
+export async function getCandles({
+  from,
+  to,
+  interval,
+  candleType,
+  resourceId,
+  marketIdx,
+  trailingAvgTime,
+}: {
+  from: number;
+  to: number;
+  interval: number;
+  candleType: string;
+  resourceId?: string;
+  marketIdx?: number;
+  trailingAvgTime?: number;
+}) {
+  let where: FindOptionsWhere<CacheCandle> = { candleType, interval, timestamp: Between(from, to) };
+  if(candleType == CANDLE_TYPES.RESOURCE) {
+    where.resourceSlug = resourceId;
+  } else if(candleType == CANDLE_TYPES.MARKET) {
+    where.marketIdx = marketIdx;
+  } else if(candleType == CANDLE_TYPES.TRAILING_AVG) {
+    where.trailingAvgTime = trailingAvgTime;
+    where.resourceSlug = resourceId;
+  } else if(candleType == CANDLE_TYPES.INDEX) {
+    where.marketIdx = marketIdx;
+  } else {
+    throw new Error(`Invalid candle type: ${candleType}`);
+  }
+
+  const candles = await cacheCandleRepository.find({
+    where,
+    order: { timestamp: 'ASC' },
+  });
+  return candles;
+}

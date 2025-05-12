@@ -21,3 +21,10 @@ export const CANDLE_CACHE_CONFIG = {
   lastProcessedResourcePrice: 'lastProcessedResourcePrice',
   lastProcessedMarketPrice: 'lastProcessedMarketPrice',
 };
+
+export const CANDLE_TYPES = {
+  RESOURCE: 'resource',
+  MARKET: 'market',
+  TRAILING_AVG: 'trailingAvg',
+  INDEX: 'index',
+};

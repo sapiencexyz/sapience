@@ -7,7 +7,7 @@ import {
   saveCandle,
   setConfig,
 } from './dbUtils';
-import { CANDLE_CACHE_CONFIG } from './config';
+import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
 import { log } from 'src/utils/logs';
 import { ResourcePrice } from 'src/models/ResourcePrice';
 import { ReducedMarketPrice } from './types';
@@ -202,11 +202,12 @@ export class CandleCacheBuilder {
   private async processResourcePriceForResourceCandle(price: ResourcePrice) {
     const getNewCandle = (interval: number, candleTimestamp: number, candleEndTimestamp: number, price: ResourcePrice, resourceSlug: string) => {
       const candle = new CacheCandle();
-      candle.candleType = 'resource';
+      candle.candleType = CANDLE_TYPES.RESOURCE;
       candle.interval = interval;
       candle.resourceSlug = resourceSlug;
       candle.timestamp = candleTimestamp;
       candle.endTimestamp = candleEndTimestamp;
+      candle.lastUpdatedTimestamp = price.timestamp;
       candle.open = price.value;
       candle.high = price.value;
       candle.low = price.value;
@@ -237,6 +238,7 @@ export class CandleCacheBuilder {
         candle.high = String(Math.max(Number(candle.high), Number(price.value)));
         candle.low = String(Math.min(Number(candle.low), Number(price.value)));
         candle.close = price.value;
+        candle.lastUpdatedTimestamp = price.timestamp;
       }
     }
 
@@ -255,7 +257,7 @@ export class CandleCacheBuilder {
 
     const getNewCandle = (interval: number, candleTimestamp: number, candleEndTimestamp: number, price: ResourcePrice, resourceSlug: string) => {
       const candle = new CacheCandle();
-      candle.candleType = 'trailingAvg';
+      candle.candleType = CANDLE_TYPES.TRAILING_AVG;
       candle.interval = interval;
       candle.resourceSlug = resourceSlug;
       return candle;
@@ -277,7 +279,7 @@ export class CandleCacheBuilder {
         
         if (!candle) {
           candle = new CacheCandle();
-          candle.candleType = 'trailingAvg';
+          candle.candleType = CANDLE_TYPES.TRAILING_AVG;
           candle.interval = interval;
           candle.resourceSlug = price.resource.slug;
           candle.timestamp = candleTimestamp;
@@ -293,7 +295,7 @@ export class CandleCacheBuilder {
           await saveCandle(candle);
           
           candle = new CacheCandle();
-          candle.candleType = 'trailingAvg';
+          candle.candleType = CANDLE_TYPES.TRAILING_AVG;
           candle.interval = interval;
           candle.resourceSlug = price.resource.slug;
           candle.timestamp = candleTimestamp;
@@ -319,12 +321,13 @@ export class CandleCacheBuilder {
   private async processMarketPriceForMarketCandle(price: ReducedMarketPrice ) {
     const getNewCandle = (interval: number, candleTimestamp: number, candleEndTimestamp: number, price: ReducedMarketPrice, resourceSlug: string) => {
       const candle = new CacheCandle();
-      candle.candleType = 'market';
+      candle.candleType = CANDLE_TYPES.MARKET;
       candle.interval = interval;
       candle.marketIdx = price.market;
       candle.resourceSlug = resourceSlug;
       candle.timestamp = candleTimestamp;
       candle.endTimestamp = candleEndTimestamp;
+      candle.lastUpdatedTimestamp = price.timestamp;
       candle.open = price.value;
       candle.high = price.value;
       candle.low = price.value;
@@ -361,6 +364,7 @@ export class CandleCacheBuilder {
         candle.high = String(Math.max(Number(candle.high), Number(price.value)));
         candle.low = String(Math.min(Number(candle.low), Number(price.value)));
         candle.close = price.value;
+        candle.lastUpdatedTimestamp = price.timestamp;
       }
     }
   }
@@ -375,7 +379,7 @@ export class CandleCacheBuilder {
     for (const marketIdx of missingCandles.marketMarketCandles) {
       for (const interval of CANDLE_CACHE_CONFIG.intervals) {
         const candle = await getLastCandleFromDb({
-          candleType: 'market',
+          candleType: CANDLE_TYPES.MARKET,
           marketIdx,
           interval,
         });
@@ -392,7 +396,7 @@ export class CandleCacheBuilder {
     for (const resourceSlug of missingCandles.resourceResourceCandles) {
       for (const interval of CANDLE_CACHE_CONFIG.intervals) {
         const candle = await getLastCandleFromDb({
-          candleType: 'resource',
+          candleType: CANDLE_TYPES.RESOURCE,
           resourceSlug,
           interval,
         });
@@ -409,7 +413,7 @@ export class CandleCacheBuilder {
     for (const marketIdx of missingCandles.resourceIndexCandles) {
       for (const interval of CANDLE_CACHE_CONFIG.intervals) {
         const candle = await getLastCandleFromDb({
-          candleType: 'index',
+          candleType: CANDLE_TYPES.INDEX,
           marketIdx,
           interval,
         });
@@ -427,7 +431,7 @@ export class CandleCacheBuilder {
       for (const interval of CANDLE_CACHE_CONFIG.intervals) {
         for (const trailingAvgTime of CANDLE_CACHE_CONFIG.trailingAvgTime) {
           const candle = await getLastCandleFromDb({
-            candleType: 'trailingAvg',
+            candleType: CANDLE_TYPES.TRAILING_AVG,
             resourceSlug,
             interval,
             trailingAvgTime,

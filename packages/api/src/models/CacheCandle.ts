@@ -59,9 +59,12 @@ export class CacheCandle {
   @Column({ type: 'varchar' })
   close: string;
 
-  // Time window
   @Column({ type: 'integer' })
   endTimestamp: number; // endTimestamp is the end of the candle, exclusive
+
+  // Last updated timestamp
+  @Column({ type: 'integer' })
+  lastUpdatedTimestamp: number;
 
   // Cummulative values
   @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0, nullable: true })
