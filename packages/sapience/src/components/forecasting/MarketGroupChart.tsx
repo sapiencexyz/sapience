@@ -63,9 +63,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       if (point.markets) {
         Object.entries(point.markets).forEach(([marketId, value]) => {
           scaledMarkets[marketId] =
-            typeof value === 'number'
-              ? value / 1e18 
-              : value; 
+            typeof value === 'number' ? value / 1e18 : value;
         });
       }
 
