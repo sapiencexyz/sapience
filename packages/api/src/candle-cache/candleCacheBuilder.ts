@@ -165,8 +165,7 @@ export class CandleCacheBuilder {
       }
       log({ message: `batch: ${iter} - step 3`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
 
-      // 4. Save the candles to the database
-      // 5. Update indexes for the next batch
+      // 4. Update indexes for the next batch
       initialTimestamp = prices[prices.length - 1].timestamp;
       // Check if we are still in the trailing period
       lastProcessedResourcePrice =
@@ -175,7 +174,7 @@ export class CandleCacheBuilder {
           : lastProcessedResourcePrice;
     }
     log({ message: 'step 4', prefix: CANDLE_CACHE_CONFIG.logPrefix });
-    // 6. update the last processed resource price
+    // 5. update the last processed resource price
     await setConfig(
       CANDLE_CACHE_CONFIG.lastProcessedResourcePrice,
       lastProcessedResourcePrice

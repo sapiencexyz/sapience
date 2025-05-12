@@ -5,9 +5,11 @@ import {
   Column,
   CreateDateColumn,
   Index,
+  Unique,
 } from 'typeorm';
 
 @Entity()
+@Unique(['candleType', 'interval', 'timestamp', 'resourceSlug', 'marketIdx', 'trailingAvgTime'])
 export class CacheCandle {
   @PrimaryGeneratedColumn()
   id: number;
