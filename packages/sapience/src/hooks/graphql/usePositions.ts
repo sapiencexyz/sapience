@@ -84,14 +84,19 @@ export function usePositions({ address, marketAddress }: UsePositionsProps) {
         throw new Error(errors[0].message);
       }
 
-      // TODO: remove this after marketAddress filtering works
+      // If no marketAddress is provided, return all positions
+      if (!marketAddress) {
+        return data.positions;
+      }
+
+      // Only filter by marketAddress if one is provided
       return data.positions.filter((position: PositionType) => {
         // Check if position has market and marketGroup data
         if (!position.market || !position.market.marketGroup) return false;
 
         // Compare marketGroup.address with our marketAddress, ignoring case
         const groupAddress = position.market.marketGroup.address?.toLowerCase();
-        return groupAddress === marketAddress?.toLowerCase();
+        return groupAddress === marketAddress.toLowerCase();
       });
     },
     enabled: Boolean(address),
