@@ -1,13 +1,19 @@
 'use client';
 
 import { Button } from '@foil/ui/components/ui/button';
-import { Megaphone, Github, Search, TrendingUp, RefreshCw } from 'lucide-react';
+import {
+  Megaphone,
+  Search,
+  TrendingUp,
+  RefreshCw,
+  BookOpen,
+} from 'lucide-react';
 import Link from 'next/link';
 
 // Template section renamed to Research Bot Boilerplate
 export default function TemplateSection() {
   return (
-    <section id="templates" className="py-16 md:py-32 px-4 sm:px-6 w-full">
+    <section id="templates" className="py-16 md:py-24 px-4 sm:px-6 w-full">
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex flex-col md:flex-row gap-8 items-center">
           {/* Left side: Flow chart with loop */}
@@ -81,13 +87,14 @@ export default function TemplateSection() {
 
             <div className="pt-2">
               <Link
-                href="https://github.com/foilxyz/foil/tree/main/packages/agent"
+                href="https://docs.sapience.xyz"
                 target="_blank"
                 rel="noopener noreferrer"
                 passHref
               >
                 <Button>
-                  <Github className="mr-1 h-4 w-4" /> Clone the codebase
+                  <BookOpen className="h-4 w-4 mr-1" />
+                  Read the Docs
                 </Button>
               </Link>
             </div>

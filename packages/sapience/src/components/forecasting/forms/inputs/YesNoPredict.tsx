@@ -20,7 +20,7 @@ export default function YesNoPredict({
           <Button
             type="button"
             onClick={() => setValue(name, '1', { shouldValidate: true })}
-            className={`py-6 ${
+            className={`py-6 text-lg ${
               value === '1'
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -31,7 +31,7 @@ export default function YesNoPredict({
           <Button
             type="button"
             onClick={() => setValue(name, '0', { shouldValidate: true })}
-            className={`py-6 ${
+            className={`py-6 text-lg ${
               value === '0'
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
