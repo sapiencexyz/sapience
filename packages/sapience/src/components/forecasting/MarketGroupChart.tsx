@@ -137,8 +137,6 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       ? scaledAndFilteredChartData[scaledAndFilteredChartData.length - 1]
       : null;
 
-  console.log('Latest Data Point for Legend:', overallLatestDataPoint);
-
   return (
     // Adjust main container for flex column layout and height
     // Ensure this component tries to fill the height allocated by the parent flex container

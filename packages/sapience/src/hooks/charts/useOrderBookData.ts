@@ -443,9 +443,17 @@ export function useOrderBookData({
   }, [processedPoolData, pool, quoteTokenName, baseTokenName]);
 
   // 7. Combine loading states and return
-  const isLoading =
+  const isLoading = Boolean(
     isLoadingTicks ||
-    (!processedPoolData && !hookError && contracts.length > 0 && pool !== null); // Also check pool exists before declaring loading finished
+      (!processedPoolData &&
+        !hookError &&
+        contracts.length > 0 &&
+        pool !== null) ||
+      (processedPoolData &&
+        orderBookData.asks.length === 0 &&
+        orderBookData.bids.length === 0 &&
+        !hookError)
+  );
   const isError = isErrorTicks || hookError !== null;
 
   return {

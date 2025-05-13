@@ -1,9 +1,16 @@
-import { Loader2 } from 'lucide-react'; // For loading state
+import dynamic from 'next/dynamic'; // For dynamic importing
 import type React from 'react';
 
 import NumberDisplay from '../shared/NumberDisplay'; // Import NumberDisplay
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool'; // Import from UI package
+
+// Dynamically import LottieLoader
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+  ssr: false,
+  // Use a simple div as placeholder during load
+  loading: () => <div className="w-8 h-8" />,
+});
 
 interface OrderBookRowProps {
   price: number;
@@ -105,6 +112,9 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 
   const isLoading = isLoadingPool || isLoadingBook;
   const isError = isErrorPool || isErrorBook;
+  // Determine if there's truly no liquidity data available (not just loading)
+  const hasNoLiquidity =
+    !isLoading && !isError && asks.length === 0 && bids.length === 0;
 
   // Display Loading State
   if (isLoading) {
@@ -112,7 +122,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
       <div
         className={`w-full border rounded bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
       >
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-50" />
+        <LottieLoader width={32} height={32} />
       </div>
     );
   }
@@ -132,7 +142,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   }
 
   // Display Empty State (if no asks or bids found after loading)
-  if (asks.length === 0 && bids.length === 0 && !isLoading) {
+  if (hasNoLiquidity) {
     return (
       <div
         className={`w-full border rounded bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}

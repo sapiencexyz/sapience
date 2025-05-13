@@ -57,7 +57,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         const color = lineColors[index % lineColors.length];
         const label =
           optionNames?.length === 1
-            ? 'Market Prediction'
+            ? 'Current Market Prediction'
             : (optionNames?.[index] ?? 'Market Prediction');
 
         return (

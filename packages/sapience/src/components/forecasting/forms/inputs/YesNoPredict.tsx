@@ -16,11 +16,11 @@ export default function YesNoPredict({
     <div className="space-y-4">
       <div>
         <Label>Your Prediction</Label>
-        <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="grid grid-cols-2 gap-4 mt-2">
           <Button
             type="button"
             onClick={() => setValue(name, '1', { shouldValidate: true })}
-            className={`py-6 text-lg ${
+            className={`py-6 text-lg font-normal ${
               value === '1'
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -31,7 +31,7 @@ export default function YesNoPredict({
           <Button
             type="button"
             onClick={() => setValue(name, '0', { shouldValidate: true })}
-            className={`py-6 text-lg ${
+            className={`py-6 text-lg font-normal ${
               value === '0'
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'

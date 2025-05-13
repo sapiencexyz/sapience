@@ -2,14 +2,8 @@
 
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
 import { Button } from '@foil/ui/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@foil/ui/components/ui/dropdown-menu';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import { ChevronDown, ChevronLeft } from 'lucide-react';
+import { ChevronLeft, LineChart, BarChart2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
@@ -211,29 +205,32 @@ const ForecastContent = () => {
                 <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
                   <div className="flex flex-row flex-wrap gap-3 w-full items-center">
                     <div className="order-1 sm:order-1">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="flex items-center gap-1"
-                          >
-                            {chartType}
-                            <ChevronDown className="h-4 w-4 opacity-50" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            onSelect={() => setChartType(ChartType.PRICE)}
-                          >
-                            {ChartType.PRICE}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => setChartType(ChartType.ORDER_BOOK)}
-                          >
-                            {ChartType.ORDER_BOOK}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex rounded-md overflow-hidden">
+                        <Button
+                          variant={
+                            chartType === ChartType.PRICE
+                              ? 'default'
+                              : 'outline'
+                          }
+                          className="rounded-r-none px-4"
+                          onClick={() => setChartType(ChartType.PRICE)}
+                        >
+                          <LineChart className="h-4 w-4" />
+                          {ChartType.PRICE}
+                        </Button>
+                        <Button
+                          variant={
+                            chartType === ChartType.ORDER_BOOK
+                              ? 'default'
+                              : 'outline'
+                          }
+                          className="rounded-l-none px-4"
+                          onClick={() => setChartType(ChartType.ORDER_BOOK)}
+                        >
+                          <BarChart2 className="h-4 w-4 rotate-90" />
+                          {ChartType.ORDER_BOOK}
+                        </Button>
+                      </div>
                     </div>
 
                     {chartType === ChartType.PRICE && (

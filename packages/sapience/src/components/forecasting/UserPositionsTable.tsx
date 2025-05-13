@@ -128,7 +128,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       )}
       <div>
         <Link href={`/profile/${account}`}>
-          <Button>View your profile</Button>
+          <Button>View Your Profile</Button>
         </Link>
       </div>
     </div>
