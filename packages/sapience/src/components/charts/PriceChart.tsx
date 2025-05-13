@@ -56,7 +56,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch data using the data hook
-  const { chartData, isLoading, isError, isFetching } = usePriceChartData({
+  const { chartData, isLoading, isError } = usePriceChartData({
     marketAddress: market.address,
     chainId: market.chainId,
     marketId: market.marketId.toString(), // Convert marketId to string for the hook
@@ -91,12 +91,6 @@ const PriceChart: React.FC<PriceChartProps> = ({
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/10 rounded z-10">
           <LottieLoader width={32} height={32} />
-        </div>
-      )}
-      {/* Subtle fetching indicator */}
-      {isFetching && !isLoading && (
-        <div className="absolute top-2 right-2 p-1 bg-background/80 rounded-full z-10 flex items-center justify-center">
-          <LottieLoader width={16} height={16} />
         </div>
       )}
       {isError && (

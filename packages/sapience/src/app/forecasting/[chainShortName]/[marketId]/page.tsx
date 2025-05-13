@@ -3,6 +3,7 @@
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
 import { Button } from '@foil/ui/components/ui/button';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, LineChart, BarChart2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -155,42 +156,63 @@ const ForecastContent = () => {
           <div className="flex flex-col gap-12">
             <div className="flex flex-col md:flex-row gap-12">
               <div className="flex flex-col w-full relative">
-                <div className="w-full h-[500px]">
-                  {chartType === ChartType.PRICE && (
-                    <PriceChart
-                      market={{
-                        marketId: numericMarketId!,
-                        chainId: chainId!,
-                        address: marketAddress!,
-                        quoteTokenName:
-                          marketData?.marketGroup?.quoteTokenName || undefined,
-                      }}
-                      selectedInterval={selectedInterval}
-                      selectedPrices={selectedPrices}
-                      resourceSlug={resourceSlug}
-                    />
-                  )}
-                  {chartType === ChartType.ORDER_BOOK && (
-                    <OrderBookChart
-                      chainId={chainId!}
-                      poolAddress={
-                        marketData?.poolAddress as `0x${string}` | undefined
-                      }
-                      baseAssetMinPriceTick={
-                        marketData?.baseAssetMinPriceTick ?? undefined
-                      }
-                      baseAssetMaxPriceTick={
-                        marketData?.baseAssetMaxPriceTick ?? undefined
-                      }
-                      quoteTokenName={
-                        marketData?.marketGroup?.quoteTokenName || undefined
-                      }
-                      baseTokenName={
-                        marketData?.marketGroup?.baseTokenName || undefined
-                      }
-                      className="h-full"
-                    />
-                  )}
+                <div className="w-full h-[500px] relative">
+                  <AnimatePresence>
+                    {chartType === ChartType.PRICE && (
+                      <motion.div
+                        key="price-chart"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full h-full absolute top-0 left-0"
+                      >
+                        <PriceChart
+                          market={{
+                            marketId: numericMarketId!,
+                            chainId: chainId!,
+                            address: marketAddress!,
+                            quoteTokenName:
+                              marketData?.marketGroup?.quoteTokenName ||
+                              undefined,
+                          }}
+                          selectedInterval={selectedInterval}
+                          selectedPrices={selectedPrices}
+                          resourceSlug={resourceSlug}
+                        />
+                      </motion.div>
+                    )}
+                    {chartType === ChartType.ORDER_BOOK && (
+                      <motion.div
+                        key="orderbook-chart"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full h-full absolute top-0 left-0"
+                      >
+                        <OrderBookChart
+                          chainId={chainId!}
+                          poolAddress={
+                            marketData?.poolAddress as `0x${string}` | undefined
+                          }
+                          baseAssetMinPriceTick={
+                            marketData?.baseAssetMinPriceTick ?? undefined
+                          }
+                          baseAssetMaxPriceTick={
+                            marketData?.baseAssetMaxPriceTick ?? undefined
+                          }
+                          quoteTokenName={
+                            marketData?.marketGroup?.quoteTokenName || undefined
+                          }
+                          baseTokenName={
+                            marketData?.marketGroup?.baseTokenName || undefined
+                          }
+                          className="h-full"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
                   <div className="flex flex-row flex-wrap gap-3 w-full items-center">
@@ -225,19 +247,31 @@ const ForecastContent = () => {
 
                     {chartType === ChartType.PRICE && (
                       <>
-                        <div className="order-2 sm:order-2 ml-auto">
+                        <motion.div
+                          className="order-2 sm:order-2 ml-auto"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
                           <IntervalSelector
                             selectedInterval={selectedInterval}
                             setSelectedInterval={setSelectedInterval}
                           />
-                        </div>
+                        </motion.div>
                         {marketData?.marketGroup?.resource?.slug && (
-                          <div className="order-3 sm:order-3">
+                          <motion.div
+                            className="order-3 sm:order-3"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
                             <PriceSelector
                               selectedPrices={selectedPrices}
                               setSelectedPrices={handlePriceSelection}
                             />
-                          </div>
+                          </motion.div>
                         )}
                       </>
                     )}
