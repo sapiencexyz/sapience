@@ -8,24 +8,24 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import SingleChoicePredict from '../inputs/SingleChoicePredict';
+import MultipleChoicePredict from '../inputs/MultipleChoicePredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 
 import PermittedAlert from './PermittedAlert';
 
-interface SingleChoiceWagerFormProps {
+interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
   isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
-export default function SingleChoiceWagerForm({
+export default function MultipleChoiceWagerForm({
   marketGroupData,
   isPermitted = true,
   onSuccess,
-}: SingleChoiceWagerFormProps) {
+}: MultipleChoiceWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
 
@@ -165,7 +165,7 @@ export default function SingleChoiceWagerForm({
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
-        <SingleChoicePredict
+        <MultipleChoicePredict
           options={marketGroupData.markets.map((market) => ({
             name: market.optionName || '',
             marketId: market.marketId,

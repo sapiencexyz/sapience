@@ -2,8 +2,8 @@ import type { MarketGroupType } from '@foil/ui/types';
 
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 
+import MultipleChoiceWagerForm from './wager/MultipleChoiceWagerForm';
 import NumericWagerForm from './wager/NumericWagerForm';
-import SingleChoiceWagerForm from './wager/SingleChoiceWagerForm';
 import YesNoWagerForm from './wager/YesNoWagerForm';
 
 interface WagerFormFactoryProps {
@@ -18,7 +18,7 @@ export default function WagerFormFactory(props: WagerFormFactoryProps) {
 
   switch (marketCategory) {
     case MarketGroupCategory.SINGLE_CHOICE:
-      return <SingleChoiceWagerForm {...restOfProps} />;
+      return <MultipleChoiceWagerForm {...restOfProps} />;
     case MarketGroupCategory.NUMERIC:
       return <NumericWagerForm {...restOfProps} />;
     case MarketGroupCategory.YES_NO:

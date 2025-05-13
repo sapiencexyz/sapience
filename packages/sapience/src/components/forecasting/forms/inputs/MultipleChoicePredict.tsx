@@ -2,15 +2,15 @@ import { Button } from '@foil/ui/components/ui/button';
 import { Label } from '@foil/ui/components/ui/label';
 import { useFormContext } from 'react-hook-form';
 
-interface SingleChoicePredictProps {
+interface MultipleChoicePredictProps {
   name?: string;
   options: Array<{ name: string; marketId: number }>;
 }
 
-export default function SingleChoicePredict({
+export default function MultipleChoicePredict({
   name = 'predictionValue',
   options,
-}: SingleChoicePredictProps) {
+}: MultipleChoicePredictProps) {
   const { register, setValue, watch } = useFormContext();
   const value = watch(name);
 
@@ -34,7 +34,7 @@ export default function SingleChoicePredict({
               onClick={() => {
                 setValue(name, marketId.toString(), { shouldValidate: true });
               }}
-              className={`py-4 justify-start ${
+              className={`py-6 justify-start text-lg font-normal ${
                 value === marketId.toString()
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'

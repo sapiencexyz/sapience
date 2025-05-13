@@ -9,8 +9,8 @@ import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
+import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
-import SingleChoicePredict from './inputs/SingleChoicePredict';
 import YesNoPredict from './inputs/YesNoPredict';
 
 // Define sqrtPriceX96 constants to match those in YesNoPredict
@@ -135,7 +135,7 @@ export default function PredictForm({
         return <YesNoPredict />;
       case MarketGroupCategory.SINGLE_CHOICE:
         return (
-          <SingleChoicePredict
+          <MultipleChoicePredict
             options={marketGroupData.markets.map((market) => ({
               name: market.optionName || '',
               marketId: market.marketId,
