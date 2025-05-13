@@ -17,7 +17,9 @@ import type { PositionType } from '@foil/ui/types';
 import { Info } from 'lucide-react';
 import Link from 'next/link';
 import { formatEther } from 'viem';
+import { useAccount } from 'wagmi';
 
+import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { getChainShortName, tickToPrice } from '~/lib/utils/util';
 
@@ -101,6 +103,8 @@ function PnLHeaderCell() {
 }
 
 export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
+  const { address: connectedAddress } = useAccount();
+
   if (!positions || positions.length === 0) {
     return null;
   }
@@ -162,6 +166,23 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
                 <span className="text-xs text-muted-foreground">N/A</span>
               );
 
+              // Logic for Settle/View button
+              const isOwner =
+                connectedAddress &&
+                position.owner &&
+                connectedAddress.toLowerCase() === position.owner.toLowerCase();
+
+              const endTimestamp = position.market?.endTimestamp;
+              // Assuming PositionType might include isSettled for LPs, defaulting to false
+              const isPositionSettled = position.isSettled || false;
+              const now = Date.now();
+              const isExpired = endTimestamp
+                ? Number(endTimestamp) * 1000 < now
+                : false;
+
+              const marketAddress = marketGroup?.address || '';
+              const chainId = marketGroup?.chainId || 0;
+
               return (
                 <TableRow key={position.id}>
                   <TableCell>
@@ -205,11 +226,32 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
                       </TableCell>
                       <TableCell>{pnlContent}</TableCell>
                       <TableCell>
-                        <Link href={positionUrl} passHref>
-                          <Button size="sm" variant="outline">
-                            View
-                          </Button>
-                        </Link>
+                        {(() => {
+                          if (!isClosed && isOwner) {
+                            if (isExpired && !isPositionSettled) {
+                              return (
+                                <SettlePositionButton
+                                  positionId={position.positionId.toString()}
+                                  marketAddress={marketAddress}
+                                  chainId={chainId}
+                                  onSuccess={() => {
+                                    console.log(
+                                      `Settle action for LP position ${position.positionId} initiated. Consider a data refetch.`
+                                    );
+                                  }}
+                                />
+                              );
+                            }
+                            return (
+                              <Link href={positionUrl} passHref>
+                                <Button size="sm" variant="outline">
+                                  View
+                                </Button>
+                              </Link>
+                            );
+                          }
+                          return null;
+                        })()}
                       </TableCell>
                     </>
                   )}
