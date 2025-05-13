@@ -1,7 +1,6 @@
 'use client';
 
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
-import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -10,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from '@foil/ui/components/ui/dropdown-menu';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { ChevronDown, ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -21,6 +19,7 @@ import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
+import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
@@ -55,27 +54,6 @@ const SimpleLiquidityWrapper = dynamic(
     ),
   }
 );
-
-// Define EndTimeDisplay component
-interface EndTimeDisplayProps {
-  endTime?: number | null;
-}
-
-const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
-  if (typeof endTime !== 'number') {
-    // If endTime is not a number (e.g., null, undefined, or wrong type), show nothing.
-    return null;
-  }
-
-  try {
-    const date = fromUnixTime(endTime);
-    const displayTime = formatDistanceToNow(date, { addSuffix: true });
-    return <Badge>Ends {displayTime}</Badge>;
-  } catch (error) {
-    console.error('Error formatting relative time:', error);
-    return null;
-  }
-};
 
 // Main content component that consumes the forecast context
 const ForecastContent = () => {
@@ -366,7 +344,6 @@ const ForecastContent = () => {
 
             {/* User Positions Table - Full Width */}
             <div className="w-full my-4">
-              <h3 className="text-xl font-medium mb-4">Your Positions</h3>
               {/* eslint-disable-next-line no-nested-ternary */}
               {!address ? (
                 <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
@@ -384,13 +361,16 @@ const ForecastContent = () => {
                   </div>
                 </div>
               ) : (
-                <UserPositionsTable
-                  marketAddress={marketAddress!}
-                  chainId={chainId!}
-                  userPositions={userPositions || []}
-                  marketCategory={marketCategory}
-                  refetchUserPositions={refetchUserPositions}
-                />
+                <>
+                  <h3 className="text-xl font-medium mb-4">Your Positions</h3>
+                  <UserPositionsTable
+                    marketAddress={marketAddress!}
+                    chainId={chainId!}
+                    userPositions={userPositions || []}
+                    marketCategory={marketCategory}
+                    refetchUserPositions={refetchUserPositions}
+                  />
+                </>
               )}
             </div>
           </div>

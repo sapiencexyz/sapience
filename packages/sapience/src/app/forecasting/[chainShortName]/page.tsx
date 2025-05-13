@@ -1,20 +1,13 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@foil/ui/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@foil/ui/components/ui/dropdown-menu';
 import type { MarketGroupType, MarketType } from '@foil/ui/types';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
@@ -24,8 +17,8 @@ import { useAccount } from 'wagmi';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
-import PredictionsList from '~/components/forecasting/PredictionsList';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
+import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import {
   MarketGroupCategory,
   useMarketGroup,
@@ -174,7 +167,6 @@ const ForecastingDetailPage = () => {
   const pathname = usePathname();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
-  const [selectedListView, setSelectedListView] = useState<string>('Market');
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
@@ -224,16 +216,23 @@ const ForecastingDetailPage = () => {
   const optionNames = marketGroupData.markets.map(
     (market) => market.optionName || ''
   );
+
+  // Find the active market once
+  const activeMarket =
+    activeMarkets.find((market) => market.poolAddress === marketAddress) ||
+    activeMarkets[0];
+
   // Otherwise show the main content
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-5xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3">
+          <div className="flex justify-start mb-6">
+            <EndTimeDisplay endTime={activeMarket?.endTimestamp} />
+          </div>
           <h1 className="text-2xl md:text-4xl font-normal mb-8 leading-tight">
             {formatQuestion(
-              activeMarkets.find(
-                (market) => market.poolAddress === marketAddress
-              )?.question ||
+              activeMarket?.question ||
                 (activeMarkets.length === 1
                   ? activeMarkets[0].question
                   : marketGroupData.question)
@@ -249,32 +248,24 @@ const ForecastingDetailPage = () => {
             <div className="flex flex-col w-full md:flex-1">
               <div className="border border-border rounded-md flex flex-col flex-1">
                 <div className="flex-1 min-h-0">
-                  {selectedListView === 'Market' && (
-                    <MarketGroupChart
-                      chainShortName={chainShortName}
-                      marketAddress={marketAddress}
-                      marketIds={activeMarkets.map((market) =>
-                        Number(market.marketId)
-                      )}
-                      market={marketGroupData}
-                      minTimestamp={
-                        activeMarkets.length > 0
-                          ? Math.min(
-                              ...activeMarkets.map((market) =>
-                                Number(market.startTimestamp)
-                              )
+                  <MarketGroupChart
+                    chainShortName={chainShortName}
+                    marketAddress={marketAddress}
+                    marketIds={activeMarkets.map((market) =>
+                      Number(market.marketId)
+                    )}
+                    market={marketGroupData}
+                    minTimestamp={
+                      activeMarkets.length > 0
+                        ? Math.min(
+                            ...activeMarkets.map((market) =>
+                              Number(market.startTimestamp)
                             )
-                          : undefined
-                      }
-                      optionNames={optionNames}
-                    />
-                  )}
-                  {selectedListView === 'Predictions' && (
-                    <PredictionsList
-                      marketAddress={marketAddress}
-                      optionNames={optionNames}
-                    />
-                  )}
+                          )
+                        : undefined
+                    }
+                    optionNames={optionNames}
+                  />
                 </div>
               </div>
             </div>
@@ -294,30 +285,7 @@ const ForecastingDetailPage = () => {
 
           {/* Row 2: Dropdown and Advanced View */}
           <div className="flex justify-between items-center">
-            {/* Dropdown Menu (Left Aligned) */}
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-1">
-                    {selectedListView}
-                    <ChevronDown className="h-4 w-4 opacity-50" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    onSelect={() => setSelectedListView('Market')}
-                  >
-                    Market
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => setSelectedListView('Predictions')}
-                  >
-                    Predictions
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
+            <div>{/* placeholder */}</div>
             {/* Advanced View button (Right Aligned) */}
             <div>
               {activeMarkets.length > 0 &&
@@ -360,13 +328,16 @@ const ForecastingDetailPage = () => {
               </div>
             </div>
           ) : (
-            <UserPositionsTable
-              marketAddress={marketAddress}
-              marketCategory={marketCategory}
-              chainId={marketGroupData.chainId}
-              userPositions={userPositions || []}
-              refetchUserPositions={refetchUserPositions}
-            />
+            <>
+              <h3 className="text-xl font-medium mb-4">Your Positions</h3>
+              <UserPositionsTable
+                marketAddress={marketAddress}
+                marketCategory={marketCategory}
+                chainId={marketGroupData.chainId}
+                userPositions={userPositions || []}
+                refetchUserPositions={refetchUserPositions}
+              />
+            </>
           )}
         </div>
       </div>
