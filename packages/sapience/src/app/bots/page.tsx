@@ -20,8 +20,8 @@ export default function BotsPage() {
   return (
     <main className="min-h-screen w-full">
       <BotsHero />
-      <MCPSection />
       <TemplateSection />
+      <MCPSection />
     </main>
   );
 }

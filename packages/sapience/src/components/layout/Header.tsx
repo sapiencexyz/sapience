@@ -88,7 +88,7 @@ const NavLinks = ({
           className={`${linkClass} ${isActive('/bots', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
-          Use Bots
+          Build Bots
         </Button>
       </Link>
       <Link href="/futarchy" passHref className="flex w-fit">
@@ -98,6 +98,24 @@ const NavLinks = ({
           onClick={handleLinkClick}
         >
           Futarchy
+        </Button>
+      </Link>
+      <Link
+        href="https://x.com/sapiencexyz"
+        passHref
+        className="flex w-fit"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/news', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          <span className="flex items-center">
+            News
+            <ExternalLink className="h-4 w-4 ml-1.5 opacity-70" />
+          </span>
         </Button>
       </Link>
       <Link
