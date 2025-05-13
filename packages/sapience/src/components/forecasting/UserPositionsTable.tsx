@@ -1,3 +1,5 @@
+import { Button } from '@foil/ui/components/ui/button';
+import Link from 'next/link';
 import type React from 'react';
 import { useEffect } from 'react';
 import type { Address } from 'viem';
@@ -107,6 +109,11 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       {hasAttestations && (
         <PredictionPositionsTable attestations={safeAttestations} />
       )}
+      <div>
+        <Link href={`/profile/${account}`}>
+          <Button>View your profile</Button>
+        </Link>
+      </div>
     </div>
   );
 };
