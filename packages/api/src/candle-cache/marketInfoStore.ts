@@ -3,16 +3,18 @@ import { MarketGroup } from 'src/models/MarketGroup';
 export interface MarketInfo {
   resourceSlug: string;
   marketGroupIdx: number;
+  marketIdx: number;
   marketId: number;
   marketGroupAddress: string;
   marketGroupChainId: number;
   startTimestamp: number;
   endTimestamp: number;
+  isCumulative: boolean;
 }
 
 export class MarketInfoStore {
   private static instance: MarketInfoStore;
-  private marketInfoById: Map<number, MarketInfo> = new Map();
+  private marketInfoByIdx: Map<number, MarketInfo> = new Map();
 
   private constructor() {}
 
@@ -33,17 +35,19 @@ export class MarketInfoStore {
       // Add market with extra data
       if (marketGroup.markets) {
         for (const market of marketGroup.markets) {
-          if (this.marketInfoById.has(market.id)) {
+          if (this.marketInfoByIdx.has(market.id)) {
             continue;
           }
-          this.marketInfoById.set(market.id, {
+          this.marketInfoByIdx.set(market.id, {
             marketId: market.marketId,
             marketGroupIdx: marketGroup.id,
+            marketIdx: market.id,
             resourceSlug,
             marketGroupAddress: marketGroup.address,
             marketGroupChainId: marketGroup.chainId,
             startTimestamp: market.startTimestamp ?? 0,
             endTimestamp: market.endTimestamp ?? 0,
+            isCumulative: marketGroup.isCumulative ?? false,
           });
         }
       }
@@ -51,19 +55,32 @@ export class MarketInfoStore {
   }
 
   public getMarketInfo(marketId: number): MarketInfo | undefined {
-    return this.marketInfoById.get(marketId);
+    return this.marketInfoByIdx.get(marketId);
   }
 
-  public getAllMarketIds(): number[] {
-    return Array.from(this.marketInfoById.keys());
+  public getMarketInfoByChainAndAddress(chainId: number, address: string, marketId: string): MarketInfo | undefined {
+    for (const marketInfo of this.marketInfoByIdx.values()) {
+      if (
+        marketInfo.marketGroupChainId === chainId &&
+        marketInfo.marketGroupAddress.toLowerCase() === address.toLowerCase() &&
+        marketInfo.marketId === Number(marketId)
+      ) {
+        return marketInfo;
+      }
+    }
+    return undefined;
+  }
+
+  public getAllMarketIndexes(): number[] {
+    return Array.from(this.marketInfoByIdx.keys());
   }
 
   public getAllResourceSlugs(): string[] {
-    return Array.from(this.marketInfoById.values()).map((m) => m.resourceSlug);
+    return Array.from(this.marketInfoByIdx.values()).map((m) => m.resourceSlug);
   }
 
   public isMarketActive(marketId: number, timestamp: number): boolean {
-    const marketInfo = this.marketInfoById.get(marketId);
+    const marketInfo = this.marketInfoByIdx.get(marketId);
     if (!marketInfo) return false;
     
     return timestamp >= marketInfo.startTimestamp && 
@@ -71,7 +88,7 @@ export class MarketInfoStore {
   }
 
   public getActiveMarkets(timestamp: number): number[] {
-    return this.getAllMarketIds().filter(marketId => 
+    return this.getAllMarketIndexes().filter(marketId => 
       this.isMarketActive(marketId, timestamp)
     );
   }

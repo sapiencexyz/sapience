@@ -272,7 +272,7 @@ export class CandleCacheBuilder {
   }
 
   private getRuntimeMissingCandleStores() {
-    const allMarketIds = this.marketInfoStore.getAllMarketIds();
+    const allMarketIds = this.marketInfoStore.getAllMarketIndexes();
     const allResourceSlugs = this.marketInfoStore.getAllResourceSlugs();
 
     const missingCandles: {

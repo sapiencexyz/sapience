@@ -3,11 +3,14 @@ import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from "./config";
 import { getTimeWindow } from "./candleUtils";
 import { getCandles } from "./dbUtils";
 import { CacheCandle } from "src/models/CacheCandle";
+import { MarketInfoStore } from "./marketInfoStore";
 
 export class CandleCacheRetrieve {
   private static instance: CandleCacheRetrieve;
+  private marketInfoStore: MarketInfoStore;
 
   private constructor() {
+    this.marketInfoStore = MarketInfoStore.getInstance();
   }
 
   public static getInstance() {
@@ -42,28 +45,27 @@ export class CandleCacheRetrieve {
     interval: number,
     chainId: number,
     address: string,
-    epoch: string
+    marketId: string
   ) {
     this.checkInterval(interval);
-    // TODO: get the market id and check if it's cumulative
-    let isCumulative = false;
-    let marketIdx = 0;
+    const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(chainId, address, marketId);
+    if (!marketInfo) {
+      throw new Error(`Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`);
+    }
 
-    this.checkInterval(interval);
     const {from: allignedFrom, to: allignedTo} = getTimeWindow(from, to, interval);
 
     const candles = await getCandles({  
-      marketIdx,
+      marketIdx: marketInfo.marketIdx,
       interval,
       candleType: CANDLE_TYPES.INDEX,
       from: allignedFrom,
       to: allignedTo,
     }); 
 
-
     return this.getAndFillResponseCandles({
       candles,
-      isCumulative,
+      isCumulative: marketInfo.isCumulative,
       fillMissingCandles: false,
     });
   }
@@ -72,14 +74,19 @@ export class CandleCacheRetrieve {
     from: number,
     to: number,
     interval: number,
-    trailingAvgTime: number
+    trailingAvgTime: number,
+    chainId: number,
+    address: string,
+    marketId: string
   ) {
     this.checkInterval(interval);
-    // TODO: get the market id
-    let marketIdx = 0;
+    const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(chainId, address, marketId);
+    if (!marketInfo) {
+      throw new Error(`Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`);
+    }
 
     const candles = await getCandles({
-      marketIdx,
+      marketIdx: marketInfo.marketIdx,
       interval,
       trailingAvgTime,
       candleType: CANDLE_TYPES.TRAILING_AVG,
@@ -100,14 +107,16 @@ export class CandleCacheRetrieve {
     interval: number,
     chainId: number,
     address: string,
-    epoch: string
+    marketId: string
   ) {
     this.checkInterval(interval);
-    // TODO: get the market id
-    let marketIdx = 0;
+    const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(chainId, address, marketId);
+    if (!marketInfo) {
+      throw new Error(`Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`);
+    }
 
     const candles = await getCandles({
-      marketIdx,
+      marketIdx: marketInfo.marketIdx,
       interval,
       candleType: CANDLE_TYPES.MARKET,
       from,
@@ -116,7 +125,7 @@ export class CandleCacheRetrieve {
 
     return this.getAndFillResponseCandles({
       candles,
-      isCumulative: false,
+      isCumulative: marketInfo.isCumulative,
       fillMissingCandles: true,
     });
   }
