@@ -184,14 +184,14 @@ const FocusAreaFilter = ({
         <div className="flex space-x-1">
           <button
             type="button"
-            className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
+            className={`px-3 py-1 text-xs rounded ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
             onClick={() => handleStatusFilterClick('active')}
           >
             Active
           </button>
           <button
             type="button"
-            className={`px-3 py-1 text-xs rounded-md ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
+            className={`px-3 py-1 text-xs rounded ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
             onClick={() => handleStatusFilterClick('all')}
           >
             All
@@ -661,7 +661,7 @@ const ForecastingTable = () => {
                       <h3 className="font-medium text-sm text-muted-foreground mb-2">
                         {formatEndDate(dayEndTimes[dayKey])}
                       </h3>
-                      <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
+                      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
                         {marketGroupsByDay[dayKey].map((marketGroup) => (
                           <motion.div
                             layout

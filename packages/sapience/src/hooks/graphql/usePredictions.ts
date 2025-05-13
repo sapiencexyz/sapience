@@ -330,6 +330,7 @@ export const usePredictions = ({
     enabled: Boolean(schemaId && (marketAddress || attesterAddress)),
     retry: 3,
     retryDelay: 1000,
+    refetchInterval: 4000, // Refetch every 4 seconds
   });
 
   // Transform raw attestations data into the proper format for the table

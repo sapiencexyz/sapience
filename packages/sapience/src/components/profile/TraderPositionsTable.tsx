@@ -23,6 +23,9 @@ import {
 
 interface TraderPositionsTableProps {
   positions: PositionType[];
+  parentMarketAddress?: string;
+  parentChainId?: number;
+  parentMarketId?: number;
 }
 
 function PositionCell({ position }: { position: PositionType }) {
@@ -197,8 +200,14 @@ function PositionValueCell({ position }: { position: PositionType }) {
 
 export default function TraderPositionsTable({
   positions,
+  parentMarketAddress,
+  parentChainId,
+  parentMarketId,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
+
+  const isMarketPage = parentMarketAddress && parentChainId && parentMarketId; // True for a specific market page (with marketId)
+  const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
 
   if (!positions || positions.length === 0) {
     return null;
@@ -214,14 +223,32 @@ export default function TraderPositionsTable({
     return null;
   }
 
+  let displayQuestionColumn;
+  if (isProfilePageContext) {
+    displayQuestionColumn = true; // Always show on profile page
+  } else if (isMarketPage) {
+    // Specific market page
+    displayQuestionColumn = false; // Never show on specific market page
+  } else {
+    // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
+    displayQuestionColumn = validPositions.some(
+      (p) =>
+        p.market.marketGroup &&
+        p.market.marketGroup.markets &&
+        p.market.marketGroup.markets.length > 1
+    );
+  }
+
   return (
     <div>
-      <h3 className="font-medium mb-4">Positions</h3>
-      <div className="rounded-md border">
+      <h3 className="font-medium mb-4">Trader Positions</h3>
+      <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="whitespace-nowrap">Question</TableHead>
+              {displayQuestionColumn && (
+                <TableHead className="whitespace-nowrap">Question</TableHead>
+              )}
               <TableHead className="whitespace-nowrap">Position</TableHead>
               <TableHead className="whitespace-nowrap">Wager</TableHead>
               <TableHead className="whitespace-nowrap">
@@ -263,10 +290,12 @@ export default function TraderPositionsTable({
 
               return (
                 <TableRow key={position.id}>
-                  <TableCell>{position.market.question || 'N/A'}</TableCell>
+                  {displayQuestionColumn && (
+                    <TableCell>{position.market.question || 'N/A'}</TableCell>
+                  )}
                   {isClosed ? (
                     <TableCell
-                      colSpan={5}
+                      colSpan={displayQuestionColumn ? 6 : 5}
                       className="text-center font-medium text-muted-foreground"
                     >
                       CLOSED
@@ -307,14 +336,17 @@ export default function TraderPositionsTable({
                                 }}
                               />
                             ) : (
-                              <Link
-                                href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
-                                passHref
-                              >
-                                <Button size="sm" variant="outline">
-                                  Sell
-                                </Button>
-                              </Link>
+                              // Render Sell button only if not on Market Page
+                              !isMarketPage && (
+                                <Link
+                                  href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
+                                  passHref
+                                >
+                                  <Button size="sm" variant="outline">
+                                    Sell
+                                  </Button>
+                                </Link>
+                              )
                             ))}
                         </div>
                       </TableCell>

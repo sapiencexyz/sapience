@@ -117,7 +117,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   );
   if (!hasMarketData) {
     return (
-      <div className="w-full md:flex-1 h-full flex items-center justify-center text-muted-foreground border border-muted rounded-md bg-background/50">
+      <div className="w-full md:flex-1 h-full flex items-center justify-center text-muted-foreground border border-muted rounded bg-background/50">
         No market data available
       </div>
     );
@@ -259,7 +259,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
     const formattedLabel = formatTimestamp(label as number);
 
     return (
-      <div className="p-3.5 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-md shadow-sm">
+      <div className="p-3.5 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded shadow-sm">
         <p className="mb-1.5 font-semibold text-black">{formattedLabel}</p>
         <div className="flex flex-col gap-2 text-sm">
           {payload.map((pld, index) => {

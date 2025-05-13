@@ -1,3 +1,4 @@
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -6,14 +7,13 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, CellContext } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
 import { formatEther } from 'viem';
@@ -23,6 +23,9 @@ import { useSapience } from '~/lib/context/SapienceProvider';
 
 interface PredictionPositionsTableProps {
   attestations: FormattedAttestation[] | undefined;
+  parentMarketAddress?: string;
+  parentChainId?: number;
+  parentMarketId?: number;
 }
 
 const renderSubmittedCell = ({
@@ -172,16 +175,64 @@ const renderActionsCell = ({
     href={`https://base.easscan.org/attestation/view/${row.original.id}`}
     target="_blank"
     rel="noopener noreferrer"
-    className="text-muted-foreground hover:text-foreground underline"
   >
-    <ChevronRight className="h-4 w-4" />
+    <Button variant="outline" size="sm">
+      View
+    </Button>
   </a>
 );
 
 const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
   attestations,
+  parentMarketAddress,
+  parentChainId,
+  parentMarketId,
 }) => {
   const { marketGroups, isMarketsLoading } = useSapience();
+
+  const isMarketPage = parentMarketAddress && parentChainId && parentMarketId;
+
+  // Memoize the calculation for showing the question column
+  const shouldDisplayQuestionColumn = React.useMemo(() => {
+    if (
+      isMarketPage ||
+      !attestations ||
+      attestations.length === 0 ||
+      !marketGroups ||
+      marketGroups.length === 0
+    ) {
+      return false;
+    }
+    return attestations.some((attestation) => {
+      const marketAddressField = attestation.decodedData.find(
+        (field) => field.name === 'marketAddress'
+      );
+      const potentialMarketAddress =
+        marketAddressField &&
+        typeof marketAddressField.value === 'object' &&
+        marketAddressField.value !== null &&
+        'value' in marketAddressField.value
+          ? marketAddressField.value.value
+          : null;
+      const marketAddress =
+        typeof potentialMarketAddress === 'string'
+          ? (potentialMarketAddress as string).toLowerCase()
+          : null;
+
+      if (marketAddress) {
+        const marketGroup = marketGroups.find(
+          (group) => group.address?.toLowerCase() === marketAddress
+        );
+        return (
+          marketGroup &&
+          marketGroup.markets &&
+          Array.isArray(marketGroup.markets) &&
+          marketGroup.markets.length > 1
+        );
+      }
+      return false;
+    });
+  }, [isMarketPage, attestations, marketGroups]);
 
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
@@ -190,12 +241,22 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
         header: 'Submitted',
         cell: renderSubmittedCell,
       },
-      {
-        id: 'question',
-        header: 'Question',
-        cell: (props) =>
-          renderQuestionCell({ ...props, marketGroups, isMarketsLoading }),
-      },
+      ...(!isMarketPage && shouldDisplayQuestionColumn
+        ? [
+            {
+              id: 'question',
+              header: 'Question',
+              cell: (
+                props: CellContext<FormattedAttestation, unknown> // Type props
+              ) =>
+                renderQuestionCell({
+                  row: props.row,
+                  marketGroups,
+                  isMarketsLoading,
+                }), // Pass props.row
+            },
+          ]
+        : []),
       {
         accessorKey: 'value',
         header: 'Prediction',
@@ -208,7 +269,12 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
         cell: renderActionsCell,
       },
     ],
-    [marketGroups, isMarketsLoading]
+    [
+      marketGroups,
+      isMarketsLoading,
+      isMarketPage,
+      shouldDisplayQuestionColumn, // Use memoized value and remove attestations
+    ]
   );
 
   const table = useReactTable({
@@ -225,13 +291,18 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
   return (
     <div>
       <h3 className="font-medium mb-4">Predictions</h3>
-      <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
+      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className={
+                      header.id === 'question' ? '' : 'whitespace-nowrap'
+                    }
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -251,7 +322,12 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
                   className="hover:bg-secondary/10 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={
+                        cell.column.id === 'question' ? '' : 'whitespace-nowrap'
+                      }
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

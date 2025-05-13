@@ -39,7 +39,7 @@ const SimpleTradeWrapper = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-64 animate-pulse bg-muted/40 rounded-md" />
+      <div className="w-full h-64 animate-pulse bg-muted/40 rounded" />
     ),
   }
 );
@@ -49,7 +49,7 @@ const SimpleLiquidityWrapper = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-64 animate-pulse bg-muted/40 rounded-md" />
+      <div className="w-full h-64 animate-pulse bg-muted/40 rounded" />
     ),
   }
 );
@@ -259,7 +259,7 @@ const ForecastContent = () => {
               </div>
 
               <div className="w-full md:max-w-[340px] pb-4">
-                <div className="bg-card p-6 rounded-lg border mb-5 overflow-auto">
+                <div className="bg-card p-6 rounded border mb-5 overflow-auto">
                   <div className="w-full">
                     <h3 className="text-3xl font-normal mb-4">
                       Prediction Market
@@ -336,34 +336,35 @@ const ForecastContent = () => {
 
             {/* User Positions Table - Full Width */}
             <div className="w-full my-4">
-              {/* eslint-disable-next-line no-nested-ternary */}
-              {!address ? (
-                <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
-                  <p className="text-muted-foreground">
-                    Connect your wallet to view your positions
-                  </p>
-                </div>
-              ) : isUserPositionsLoading ? (
-                <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
-                  <div className="flex flex-col items-center justify-center py-2">
-                    <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Loading your positions...
-                    </p>
+              {(() => {
+                if (!address) {
+                  return null;
+                }
+                if (isUserPositionsLoading) {
+                  return (
+                    <div className="mt-6 text-center p-6 border border-muted rounded bg-background/50">
+                      <div className="flex flex-col items-center justify-center py-2">
+                        <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          Loading your positions...
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div>
+                    <h3 className="text-xl font-medium mb-4">Your Positions</h3>
+                    <UserPositionsTable
+                      account={address}
+                      marketAddress={marketAddress!}
+                      chainId={chainId!}
+                      marketId={numericMarketId}
+                      refetchUserPositions={refetchUserPositions}
+                    />
                   </div>
-                </div>
-              ) : (
-                <>
-                  <h3 className="text-xl font-medium">Your Positions</h3>
-                  <UserPositionsTable
-                    account={address}
-                    marketAddress={marketAddress!}
-                    chainId={chainId!}
-                    marketId={numericMarketId}
-                    refetchUserPositions={refetchUserPositions}
-                  />
-                </>
-              )}
+                );
+              })()}
             </div>
           </div>
         </div>

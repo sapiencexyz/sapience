@@ -25,6 +25,9 @@ import { getChainShortName, tickToPrice } from '~/lib/utils/util';
 
 interface LpPositionsTableProps {
   positions: PositionType[];
+  parentMarketAddress?: string;
+  parentChainId?: number;
+  parentMarketId?: number;
 }
 
 // Helper component for Market Cell (similar to app package but simpler for now)
@@ -83,8 +86,8 @@ function PriceTickCell({
 // Helper component for PnL Header Cell
 function PnLHeaderCell() {
   return (
-    <span className="flex items-center gap-1">
-      Unrealized PnL{' '}
+    <span className="flex items-center gap-1 ">
+      Unrealized Profit/Loss{' '}
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger>
@@ -102,8 +105,16 @@ function PnLHeaderCell() {
   );
 }
 
-export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
+export default function LpPositionsTable({
+  positions,
+  parentMarketAddress,
+  parentChainId,
+  parentMarketId,
+}: LpPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
+
+  const isMarketPage = parentMarketAddress && parentChainId && parentMarketId; // True for a specific market page (with marketId)
+  const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
 
   if (!positions || positions.length === 0) {
     return null;
@@ -126,14 +137,30 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
     return null;
   }
 
+  let displayQuestionColumn;
+  if (isProfilePageContext) {
+    displayQuestionColumn = true; // Always show on profile page
+  } else if (isMarketPage) {
+    // Specific market page
+    displayQuestionColumn = false; // Never show on specific market page
+  } else {
+    // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
+    displayQuestionColumn = validPositions.some(
+      (p) =>
+        p.market.marketGroup &&
+        p.market.marketGroup.markets &&
+        p.market.marketGroup.markets.length > 1
+    );
+  }
+
   return (
     <div>
       <h3 className="font-medium mb-4">Liquidity Positions</h3>
-      <div className="rounded-md border">
+      <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Question</TableHead>
+              {displayQuestionColumn && <TableHead>Question</TableHead>}
               <TableHead>Collateral</TableHead>
               <TableHead>Base Tokens</TableHead> {/* Updated Header */}
               <TableHead>Quote Tokens</TableHead> {/* Updated Header */}
@@ -163,7 +190,7 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
               // For displaying PnL, we'll need to adapt since totalPnL might not exist
               // We'll just show N/A in that case
               const pnlContent = (
-                <span className="text-xs text-muted-foreground">N/A</span>
+                <span className="text-muted-foreground">N/A</span>
               );
 
               // Logic for Settle/View button
@@ -185,12 +212,14 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
 
               return (
                 <TableRow key={position.id}>
-                  <TableCell>
-                    <MarketCell position={position} />
-                  </TableCell>
+                  {displayQuestionColumn && (
+                    <TableCell>
+                      <MarketCell position={position} />
+                    </TableCell>
+                  )}
                   {isClosed ? (
                     <TableCell
-                      colSpan={7} // Adjusted colSpan to 7 to include the "More Info" column
+                      colSpan={displayQuestionColumn ? 8 : 7} // Adjusted colSpan
                       className="text-center font-medium text-muted-foreground"
                     >
                       CLOSED
@@ -242,13 +271,20 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
                                 />
                               );
                             }
-                            return (
-                              <Link href={positionUrl} passHref>
-                                <Button size="sm" variant="outline">
-                                  View
-                                </Button>
-                              </Link>
-                            );
+                            // Render Sell button only if not on Market Page and other conditions met
+                            // On the profile page (isMarketPage === false), the sell button should be shown.
+                            // On a specific market page (isMarketPage === true), it should not be shown.
+                            if (!isMarketPage) {
+                              // !isMarketPage means it's a Profile page OR a Market Group page
+                              return (
+                                <Link href={positionUrl} passHref>
+                                  <Button size="sm" variant="outline">
+                                    Sell
+                                  </Button>
+                                </Link>
+                              );
+                            }
+                            return null;
                           }
                           return null;
                         })()}

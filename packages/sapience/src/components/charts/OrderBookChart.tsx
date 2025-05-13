@@ -110,7 +110,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   if (isLoading) {
     return (
       <div
-        className={`w-full border rounded-md bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
+        className={`w-full border rounded bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
       >
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-50" />
       </div>
@@ -121,7 +121,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   if (isError) {
     return (
       <div
-        className={`w-full border rounded-md bg-destructive/10 text-destructive-foreground flex items-center justify-center min-h-[200px] p-4 ${className}`}
+        className={`w-full border rounded bg-destructive/10 text-destructive-foreground flex items-center justify-center min-h-[200px] p-4 ${className}`}
       >
         <p className="text-sm text-center">
           Error loading order book data.
@@ -135,7 +135,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   if (asks.length === 0 && bids.length === 0 && !isLoading) {
     return (
       <div
-        className={`w-full border rounded-md bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
+        className={`w-full border rounded bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
       >
         <p className="text-sm text-muted-foreground">
           No liquidity data available for this range.
@@ -161,7 +161,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 
   return (
     <div
-      className={`w-full border rounded-md bg-background text-foreground ${className} h-full flex flex-col`}
+      className={`w-full border rounded bg-background text-foreground ${className} h-full flex flex-col`}
     >
       {/* Header */}
       <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground/70 tracking-widest transition-all duration-300 font-semibold flex-shrink-0 py-2 px-2 border-b">

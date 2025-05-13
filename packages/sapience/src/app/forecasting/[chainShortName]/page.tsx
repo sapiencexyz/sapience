@@ -110,7 +110,7 @@ const ForecastingForm = ({
   }
 
   return (
-    <div className="bg-card p-6 rounded-lg shadow-sm border flex-1">
+    <div className="bg-card p-6 rounded shadow-sm border flex-1">
       <h2 className="text-3xl font-normal mb-4">Forecast</h2>
       {/* Tabs Section */}
       <div className="space-y-2 mt-4">
@@ -252,7 +252,7 @@ const ForecastingDetailPage = () => {
           <div className="flex flex-col md:flex-row gap-12">
             {/* Left Column (Chart/List) */}
             <div className="flex flex-col w-full md:flex-1">
-              <div className="border border-border rounded-md flex flex-col flex-1">
+              <div className="border border-border rounded flex flex-col flex-1">
                 <div className="flex-1 min-h-0">
                   <MarketGroupChart
                     chainShortName={chainShortName}
@@ -315,33 +315,34 @@ const ForecastingDetailPage = () => {
           </div>
 
           {/* Row 3: User Positions Table */}
-          {/* eslint-disable-next-line no-nested-ternary */}
-          {!address ? (
-            <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
-              <p className="text-muted-foreground">
-                Connect your wallet to view your positions
-              </p>
-            </div>
-          ) : isUserPositionsLoading ? (
-            <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
-              <div className="flex flex-col items-center justify-center py-2">
-                <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Loading your positions...
-                </p>
+          {(() => {
+            if (!address) {
+              return null;
+            }
+            if (isUserPositionsLoading) {
+              return (
+                <div className="mt-6 text-center p-6 border border-muted rounded bg-background/50">
+                  <div className="flex flex-col items-center justify-center py-2">
+                    <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Loading your positions...
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div>
+                <h3 className="text-xl font-medium mb-4">Your Positions</h3>
+                <UserPositionsTable
+                  account={address}
+                  marketAddress={marketAddress}
+                  chainId={marketGroupData.chainId}
+                  refetchUserPositions={refetchUserPositions}
+                />
               </div>
-            </div>
-          ) : (
-            <>
-              <h3 className="text-xl font-medium">Your Positions</h3>
-              <UserPositionsTable
-                account={address}
-                marketAddress={marketAddress}
-                chainId={marketGroupData.chainId}
-                refetchUserPositions={refetchUserPositions}
-              />
-            </>
-          )}
+            );
+          })()}
         </div>
       </div>
 
@@ -359,7 +360,7 @@ const ForecastingDetailPage = () => {
                 key={market.id}
                 href={`${pathname}/${market.marketId}`}
                 onClick={() => setShowMarketSelector(false)}
-                className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded-md text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
+                className="block w-full p-4 bg-secondary hover:bg-secondary/80 rounded text-secondary-foreground transition-colors duration-300 text-left text-lg font-medium"
               >
                 {market.question
                   ? formatQuestion(market.question)

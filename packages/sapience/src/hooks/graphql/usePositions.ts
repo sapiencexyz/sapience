@@ -101,5 +101,6 @@ export function usePositions({ address, marketAddress }: UsePositionsProps) {
     },
     enabled: Boolean(address),
     staleTime: 30000, // 30 seconds
+    refetchInterval: 4000, // Refetch every 4 seconds
   });
 }

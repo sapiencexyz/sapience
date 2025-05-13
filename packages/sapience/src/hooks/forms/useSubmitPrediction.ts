@@ -178,7 +178,8 @@ export function useSubmitPrediction({
 
       toast({
         title: 'Prediction Submitted',
-        description: 'Your position will appear on your profile shortly.',
+        description:
+          'Your position will appear on this page and your profile shortly.',
         duration: 5000,
       });
     }

@@ -103,11 +103,28 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
   return (
     <div className="space-y-8">
       {hasTraderPositions && (
-        <TraderPositionsTable positions={traderPositions} />
+        <TraderPositionsTable
+          positions={traderPositions}
+          parentMarketAddress={marketAddress}
+          parentChainId={chainId}
+          parentMarketId={marketId}
+        />
       )}
-      {hasLpPositions && <LpPositionsTable positions={lpPositions} />}
+      {hasLpPositions && (
+        <LpPositionsTable
+          positions={lpPositions}
+          parentMarketAddress={marketAddress}
+          parentChainId={chainId}
+          parentMarketId={marketId}
+        />
+      )}
       {hasAttestations && (
-        <PredictionPositionsTable attestations={safeAttestations} />
+        <PredictionPositionsTable
+          attestations={safeAttestations}
+          parentMarketAddress={marketAddress}
+          parentChainId={chainId}
+          parentMarketId={marketId}
+        />
       )}
       <div>
         <Link href={`/profile/${account}`}>

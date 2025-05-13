@@ -488,7 +488,7 @@ export function CreateTradeForm({
             {!isPermitLoadingPermit && permitData?.permitted === false && (
               <Alert
                 variant="destructive"
-                className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
+                className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
               >
                 <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
                 <AlertDescription>
