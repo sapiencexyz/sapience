@@ -43,7 +43,7 @@ const SettlePositionButton = ({
 
   const handleSettle = async () => {
     try {
-      const hash = await settlePosition(positionId);
+      const hash = await settlePosition();
 
       if (hash) {
         toast({

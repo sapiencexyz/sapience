@@ -15,11 +15,14 @@ import { ChevronDown, ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useAccount } from 'wagmi';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
+import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
+import { usePositions } from '~/hooks/graphql/usePositions';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 import { parseUrlParameter } from '~/lib/utils/util';
 
@@ -76,6 +79,7 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
 
 // Main content component that consumes the forecast context
 const ForecastContent = () => {
+  const { address } = useAccount();
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -93,6 +97,15 @@ const ForecastContent = () => {
     numericMarketId,
     getPositionById,
   } = useForecast();
+
+  const {
+    data: userPositions,
+    isLoading: isUserPositionsLoading,
+    refetch: refetchUserPositions,
+  } = usePositions({
+    address: address || '',
+    marketAddress: marketAddress as string,
+  });
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
@@ -131,6 +144,24 @@ const ForecastContent = () => {
       setActiveFormTab(selectedPosition.kind === 1 ? 'liquidity' : 'trade');
     }
   }, [selectedPosition]);
+
+  const determineMarketCategory = () => {
+    if (!marketData || !marketData.marketGroup) {
+      return MarketGroupCategory.NUMERIC;
+    }
+
+    const { markets } = marketData.marketGroup;
+
+    if (markets.length > 1) {
+      return MarketGroupCategory.SINGLE_CHOICE;
+    }
+    if (markets[0]?.optionName === null) {
+      return MarketGroupCategory.YES_NO;
+    }
+    return MarketGroupCategory.NUMERIC;
+  };
+
+  const marketCategory = determineMarketCategory();
 
   // Show loader while market data is loading
   if (isLoadingMarket || isLoadingMarketContract) {
@@ -259,10 +290,31 @@ const ForecastContent = () => {
             {/* User Positions Table */}
             <div className="mt-6 mb-4">
               <h3 className="text-xl font-medium mb-4">Your Positions</h3>
-              <UserPositionsTable
-                marketAddress={marketAddress!}
-                chainId={chainId!}
-              />
+              {/* eslint-disable-next-line no-nested-ternary */}
+              {!address ? (
+                <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
+                  <p className="text-muted-foreground">
+                    Connect your wallet to view your positions
+                  </p>
+                </div>
+              ) : isUserPositionsLoading ? (
+                <div className="mt-6 text-center p-6 border border-muted rounded-md bg-background/50">
+                  <div className="flex flex-col items-center justify-center py-2">
+                    <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Loading your positions...
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <UserPositionsTable
+                  marketAddress={marketAddress!}
+                  chainId={chainId!}
+                  userPositions={userPositions || []}
+                  marketCategory={marketCategory}
+                  refetchUserPositions={refetchUserPositions}
+                />
+              )}
             </div>
 
             <div className="w-full md:max-w-[340px] pb-4">
