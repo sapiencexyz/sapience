@@ -80,7 +80,7 @@ export class CandleCacheBuilder {
     log({ message: 'step 2', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     // 2. process by batches from last processed resource price to the latest resource price
     let getNextBatch = true;
-    let needsTrailing = this.trailingResourceRuntime.length == 0; // not initialized, we need to get data from the past to fill the trailingResourceRuntime
+    const needsTrailing = this.trailingResourceRuntime.length == 0; // not initialized, we need to get data from the past to fill the trailingResourceRuntime
     let initialTimestamp = needsTrailing
       ? Math.max(
           lastProcessedResourcePrice - CANDLE_CACHE_CONFIG.preTrailingAvgTime,

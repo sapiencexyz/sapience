@@ -179,11 +179,13 @@ export class CandleCacheRetrieve {
 
     while (outputIdx < outputEntries.length) {
       if (outputEntries[outputIdx].timestamp < nextCandleTimestamp) {
-        // Fill with last known price
-        outputEntries[outputIdx].close = lastClose;
-        outputEntries[outputIdx].high = lastClose;
-        outputEntries[outputIdx].low = lastClose;
-        outputEntries[outputIdx].open = lastClose;
+        // Fill with last known price if fillMissingCandles is true, otherwise keep zeros
+        if (fillMissingCandles) {
+          outputEntries[outputIdx].close = lastClose;
+          outputEntries[outputIdx].high = lastClose;
+          outputEntries[outputIdx].low = lastClose;
+          outputEntries[outputIdx].open = lastClose;
+        }
 
         outputIdx++;
         continue;
@@ -191,15 +193,16 @@ export class CandleCacheRetrieve {
 
       if (outputEntries[outputIdx].timestamp === nextCandleTimestamp) {
         // Use the actual candle data
-        lastKnownPrice = candles[candlesIdx].close;
+        const candle = candles[candlesIdx];
+        lastKnownPrice = isCumulative ? candle.sumUsed : candle.close;
         outputEntries[outputIdx] = {
-          timestamp: candles[candlesIdx].timestamp,
-          open: candles[candlesIdx].open,
-          high: candles[candlesIdx].high,
-          low: candles[candlesIdx].low,
-          close: candles[candlesIdx].close,
+          timestamp: candle.timestamp,
+          open: isCumulative ? candle.sumUsed : candle.open,
+          high: isCumulative ? candle.sumUsed : candle.high,
+          low: isCumulative ? candle.sumUsed : candle.low,
+          close: isCumulative ? candle.sumUsed : candle.close,
         };
-        lastClose = candles[candlesIdx].close;
+        lastClose = isCumulative ? candle.sumUsed : candle.close;
         candlesIdx++;
         nextCandleTimestamp = candlesIdx < candlesLength 
           ? candles[candlesIdx].timestamp 
@@ -216,21 +219,22 @@ export class CandleCacheRetrieve {
           candlesIdx < candlesLength
         ) {
           nextCandleTimestamp = candles[candlesIdx].timestamp;
-          lastKnownPrice = candles[candlesIdx].close;
+          lastKnownPrice = isCumulative ? candles[candlesIdx].sumUsed : candles[candlesIdx].close;
           candlesIdx++;
         }
 
         if (nextCandleTimestamp === outputEntries[outputIdx].timestamp) {
           // Found a matching candle
+          const candle = candles[candlesIdx - 1];
           outputEntries[outputIdx] = {
-            timestamp: candles[candlesIdx - 1].timestamp,
-            open: candles[candlesIdx - 1].open,
-            high: candles[candlesIdx - 1].high,
-            low: candles[candlesIdx - 1].low,
-            close: candles[candlesIdx - 1].close,
+            timestamp: candle.timestamp,
+            open: isCumulative ? candle.sumUsed : candle.open,
+            high: isCumulative ? candle.sumUsed : candle.high,
+            low: isCumulative ? candle.sumUsed : candle.low,
+            close: isCumulative ? candle.sumUsed : candle.close,
           };
-        } else {
-          // Fill with last known price
+        } else if (fillMissingCandles) {
+          // Fill with last known price if fillMissingCandles is true
           outputEntries[outputIdx].close = lastKnownPrice;
           outputEntries[outputIdx].high = lastKnownPrice;
           outputEntries[outputIdx].low = lastKnownPrice;

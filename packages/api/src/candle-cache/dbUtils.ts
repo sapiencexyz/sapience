@@ -114,7 +114,7 @@ export async function getLatestCandle({
   marketIdx: number | undefined;
   resourceSlug: string | undefined;
 }): Promise<CacheCandle | null> {
-  let where: FindOptionsWhere<CacheCandle> = { candleType, interval };
+  const where: FindOptionsWhere<CacheCandle> = { candleType, interval };
   if (marketIdx) {
     where.marketIdx = marketIdx;
   }
@@ -153,7 +153,7 @@ export async function getLastCandleFromDb({
   //   message: `Getting last candle for ${candleType} ${interval} ${marketIdx} ${resourceSlug} ${trailingAvgTime}`,
   //   prefix: 'getLatestCandleFromDb',
   // });
-  let where: FindOptionsWhere<CacheCandle> = { candleType, interval };
+  const where: FindOptionsWhere<CacheCandle> = { candleType, interval };
   if (marketIdx) {
     where.marketIdx = marketIdx;
   }
@@ -202,7 +202,7 @@ export async function getCandles({
   marketIdx?: number;
   trailingAvgTime?: number;
 }) {
-  let where: FindOptionsWhere<CacheCandle> = { candleType, interval, timestamp: Between(from, to) };
+  const where: FindOptionsWhere<CacheCandle> = { candleType, interval, timestamp: Between(from, to) };
   if(candleType == CANDLE_TYPES.RESOURCE) {
     where.resourceSlug = resourceId;
   } else if(candleType == CANDLE_TYPES.MARKET) {

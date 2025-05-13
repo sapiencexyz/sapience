@@ -2,7 +2,7 @@ import { ResourcePrice } from 'src/models/ResourcePrice';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
-import { getTimtestampCandleInterval } from '../candleUtils';
+// import { getTimtestampCandleInterval } from '../candleUtils';
 import { saveCandle } from '../dbUtils';
 import { TrailingAvgHistoryStore } from '../trailingAvgHistoryStore';
 
@@ -17,19 +17,19 @@ export class TrailingAvgCandleProcessor {
     trailingAvgTime: number,
     isLast: boolean
   ) {
-    const getNewCandle = (
-      interval: number,
-      candleTimestamp: number,
-      candleEndTimestamp: number,
-      price: ResourcePrice,
-      resourceSlug: string
-    ) => {
-      const candle = new CacheCandle();
-      candle.candleType = CANDLE_TYPES.TRAILING_AVG;
-      candle.interval = interval;
-      candle.resourceSlug = resourceSlug;
-      return candle;
-    };
+    // const getNewCandle = (
+    //   interval: number,
+    //   candleTimestamp: number,
+    //   candleEndTimestamp: number,
+    //   price: ResourcePrice,
+    //   resourceSlug: string
+    // ) => {
+    //   const candle = new CacheCandle();
+    //   candle.candleType = CANDLE_TYPES.TRAILING_AVG;
+    //   candle.interval = interval;
+    //   candle.resourceSlug = resourceSlug;
+    //   return candle;
+    // };
 
     // Get the prices for this trailing average period
     const prices = this.trailingAvgHistory.getPricesForTrailingAvg(
