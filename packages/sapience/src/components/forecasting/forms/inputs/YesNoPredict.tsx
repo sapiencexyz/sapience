@@ -2,6 +2,10 @@ import { Button } from '@foil/ui/components/ui/button';
 import { Label } from '@foil/ui/components/ui/label';
 import { useFormContext } from 'react-hook-form';
 
+// Define constants for sqrtPriceX96 values
+const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
+const NO_SQRT_PRICE_X96 = '0';
+
 interface YesNoPredictProps {
   name?: string;
 }
@@ -19,9 +23,11 @@ export default function YesNoPredict({
         <div className="grid grid-cols-2 gap-4 mt-2">
           <Button
             type="button"
-            onClick={() => setValue(name, '1', { shouldValidate: true })}
+            onClick={() =>
+              setValue(name, YES_SQRT_PRICE_X96, { shouldValidate: true })
+            }
             className={`py-6 text-lg font-normal ${
-              value === '1'
+              value === YES_SQRT_PRICE_X96
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
             }`}
@@ -30,9 +36,11 @@ export default function YesNoPredict({
           </Button>
           <Button
             type="button"
-            onClick={() => setValue(name, '0', { shouldValidate: true })}
+            onClick={() =>
+              setValue(name, NO_SQRT_PRICE_X96, { shouldValidate: true })
+            }
             className={`py-6 text-lg font-normal ${
-              value === '0'
+              value === NO_SQRT_PRICE_X96
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
             }`}

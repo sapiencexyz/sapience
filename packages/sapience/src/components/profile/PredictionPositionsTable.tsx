@@ -79,6 +79,9 @@ const renderPredictionCell = ({
     if (value === '1000000000000000000') {
       return 'Yes';
     }
+    if (value === '1') {
+      return 'Yes';
+    }
     if (value === '0') {
       return 'No';
     }

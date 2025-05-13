@@ -13,6 +13,10 @@ import NumericPredict from './inputs/NumericPredict';
 import SingleChoicePredict from './inputs/SingleChoicePredict';
 import YesNoPredict from './inputs/YesNoPredict';
 
+// Define sqrtPriceX96 constants to match those in YesNoPredict
+const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
+const NO_SQRT_PRICE_X96 = '0';
+
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
   marketCategory: MarketGroupCategory;
@@ -37,7 +41,7 @@ export default function PredictForm({
         });
       case MarketGroupCategory.YES_NO:
         return z.object({
-          predictionValue: z.enum(['0', '1'], {
+          predictionValue: z.enum([NO_SQRT_PRICE_X96, YES_SQRT_PRICE_X96], {
             required_error: 'Please select Yes or No',
             invalid_type_error: 'Please select Yes or No',
           }),
@@ -67,7 +71,7 @@ export default function PredictForm({
   const defaultPredictionValue: string = useMemo(() => {
     switch (marketCategory) {
       case MarketGroupCategory.YES_NO:
-        return '1';
+        return YES_SQRT_PRICE_X96;
       case MarketGroupCategory.SINGLE_CHOICE:
         return marketGroupData.markets[0].marketId.toString();
       case MarketGroupCategory.NUMERIC:

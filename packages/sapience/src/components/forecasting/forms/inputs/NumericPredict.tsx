@@ -93,7 +93,6 @@ export default function NumericPredict({
         {/* Range indicator - removed units */}
         <div className="flex justify-between mt-2 text-xs text-muted-foreground">
           <span>{formatBoundValue(bounds.lowerBound)}</span>
-          <span className="text-xs font-medium">Acceptable Range</span>
           <span>{formatBoundValue(bounds.upperBound)}</span>
         </div>
 

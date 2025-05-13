@@ -10,7 +10,6 @@ import { z } from 'zod';
 
 import SingleChoicePredict from '../inputs/SingleChoicePredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
-import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 
@@ -132,15 +131,12 @@ export default function SingleChoiceWagerForm({
     if (isApproving)
       return `Approving ${marketGroupData.collateralSymbol || 'tokens'}...`;
     if (isCreatingTrade) return 'Submitting Wager...';
-    if (needsApproval) return `Approve & Submit Wager`;
+    if (needsApproval) return `Submit Wager`;
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 
     return 'Submit Wager';
   };
-
-  // Determine if button should show loading state
-  const isButtonLoading = isQuoteLoading || isApproving || isCreatingTrade;
 
   // Render quote data if available
   const renderQuoteData = () => {
@@ -193,9 +189,6 @@ export default function SingleChoiceWagerForm({
           disabled={isButtonDisabled}
           className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isButtonLoading && (
-            <LottieLoader className="mr-2 invert" width={20} height={20} />
-          )}
           {getButtonText()}
         </Button>
       </form>
