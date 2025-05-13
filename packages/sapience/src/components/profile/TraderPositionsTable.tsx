@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
+import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
 import {
@@ -251,6 +252,15 @@ export default function TraderPositionsTable({
               );
               const marketAddress = position.market.marketGroup.address || '';
 
+              // Determine if the position is expired and settled
+              const endTimestamp = position.market?.endTimestamp;
+              // Ensure PositionType includes isSettled. Assuming it does based on UserPositionsTable.
+              const isPositionSettled = position.isSettled || false;
+              const now = Date.now();
+              const isExpired = endTimestamp
+                ? Number(endTimestamp) * 1000 < now
+                : false;
+
               return (
                 <TableRow key={position.id}>
                   <TableCell>{position.market.question || 'N/A'}</TableCell>
@@ -282,23 +292,30 @@ export default function TraderPositionsTable({
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={
-                              position.isSettled ? 'default' : 'secondary'
-                            }
-                            disabled={!isOwner} // Keep disabled logic based on ownership
-                          >
-                            {position.isSettled ? 'Claim' : 'Sell'}
-                          </Button>
-                          <Link
-                            href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
-                            passHref
-                          >
-                            <Button size="sm" variant="outline">
-                              View
-                            </Button>
-                          </Link>
+                          {isOwner &&
+                            (isExpired && !isPositionSettled ? (
+                              <SettlePositionButton
+                                positionId={position.positionId.toString()}
+                                marketAddress={marketAddress}
+                                chainId={
+                                  position.market.marketGroup.chainId || 0
+                                }
+                                onSuccess={() => {
+                                  console.log(
+                                    `Settle action for position ${position.positionId} initiated. Consider implementing a data refetch mechanism.`
+                                  );
+                                }}
+                              />
+                            ) : (
+                              <Link
+                                href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
+                                passHref
+                              >
+                                <Button size="sm" variant="outline">
+                                  Sell
+                                </Button>
+                              </Link>
+                            ))}
                         </div>
                       </TableCell>
                     </>
