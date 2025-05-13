@@ -148,8 +148,8 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
           <TableBody>
             {validPositions.map((position: PositionType) => {
               const { marketGroup } = position.market;
-              const baseUnit = `v${marketGroup?.baseTokenName || 'Base'}`;
-              const quoteUnit = `v${marketGroup?.collateralSymbol || 'Quote'}`;
+              const baseUnit = `${marketGroup?.baseTokenName || 'Base'}`;
+              const quoteUnit = `${marketGroup?.collateralSymbol || 'Quote'}`;
               const priceUnit = `${marketGroup?.collateralSymbol || 'Quote'}/${marketGroup?.baseTokenName || 'Base'}`;
 
               const isClosed =

@@ -12,7 +12,7 @@ import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
 import { ChevronDown, ChevronLeft } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
@@ -20,7 +20,6 @@ import PriceChart from '~/components/charts/PriceChart';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
-import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 import { parseUrlParameter } from '~/lib/utils/util';
@@ -76,15 +75,6 @@ const ForecastContent = () => {
     getPositionById,
   } = useForecast();
 
-  const {
-    data: userPositions,
-    isLoading: isUserPositionsLoading,
-    refetch: refetchUserPositions,
-  } = usePositions({
-    address: address || '',
-    marketAddress: marketAddress as string,
-  });
-
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
   );
@@ -97,6 +87,22 @@ const ForecastContent = () => {
     [LineType.IndexPrice]: true,
     [LineType.ResourcePrice]: false,
     [LineType.TrailingAvgPrice]: false,
+  });
+
+  const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
+
+  // Bump the trigger when we want the child <UserPositionsTable /> to refresh
+  const handleUserPositionsRefetch = useCallback(() => {
+    setUserPositionsTrigger((prev) => prev + 1);
+  }, []);
+
+  // A memoised callback whose identity changes when the trigger changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const refetchUserPositions = useCallback(() => {}, [userPositionsTrigger]);
+
+  const { isLoading: isUserPositionsLoading } = usePositions({
+    address: address || '',
+    marketAddress: marketAddress || undefined,
   });
 
   // Extract resource slug
@@ -122,24 +128,6 @@ const ForecastContent = () => {
       setActiveFormTab(selectedPosition.kind === 1 ? 'liquidity' : 'trade');
     }
   }, [selectedPosition]);
-
-  const determineMarketCategory = () => {
-    if (!marketData || !marketData.marketGroup) {
-      return MarketGroupCategory.NUMERIC;
-    }
-
-    const { markets } = marketData.marketGroup;
-
-    if (markets?.length > 1) {
-      return MarketGroupCategory.SINGLE_CHOICE;
-    }
-    if (markets?.[0]?.optionName === null) {
-      return MarketGroupCategory.YES_NO;
-    }
-    return MarketGroupCategory.NUMERIC;
-  };
-
-  const marketCategory = determineMarketCategory();
 
   // Show loader while market data is loading
   if (isLoadingMarket || isLoadingMarketContract) {
@@ -307,21 +295,25 @@ const ForecastContent = () => {
                       {selectedPosition && selectedPosition.kind === 2 && (
                         <SimpleTradeWrapper
                           positionId={positionId || undefined}
+                          onActionComplete={handleUserPositionsRefetch}
                         />
                       )}
                       {selectedPosition && selectedPosition.kind === 1 && (
                         <SimpleLiquidityWrapper
                           positionId={positionId || undefined}
+                          onActionComplete={handleUserPositionsRefetch}
                         />
                       )}
                       {!selectedPosition && activeFormTab === 'trade' && (
                         <SimpleTradeWrapper
                           positionId={positionId || undefined}
+                          onActionComplete={handleUserPositionsRefetch}
                         />
                       )}
                       {!selectedPosition && activeFormTab === 'liquidity' && (
                         <SimpleLiquidityWrapper
                           positionId={positionId || undefined}
+                          onActionComplete={handleUserPositionsRefetch}
                         />
                       )}
                     </div>
@@ -364,10 +356,10 @@ const ForecastContent = () => {
                 <>
                   <h3 className="text-xl font-medium mb-4">Your Positions</h3>
                   <UserPositionsTable
+                    account={address}
                     marketAddress={marketAddress!}
                     chainId={chainId!}
-                    userPositions={userPositions || []}
-                    marketCategory={marketCategory}
+                    marketId={numericMarketId}
                     refetchUserPositions={refetchUserPositions}
                   />
                 </>

@@ -10,10 +10,12 @@ import type { TradeFormMarketDetails } from './forms/CreateTradeForm';
 
 interface SimpleTradeWrapperProps {
   positionId?: string;
+  onActionComplete?: () => void;
 }
 
 const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
   positionId,
+  onActionComplete,
 }) => {
   const { isConnected } = useAccount();
   const { connectOrCreateWallet } = useConnectOrCreateWallet();
@@ -40,6 +42,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
 
   const handleSuccess = () => {
     refetchPositions();
+    onActionComplete?.();
   };
 
   const marketDetails: TradeFormMarketDetails = {

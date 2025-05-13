@@ -242,6 +242,8 @@ interface UsePredictionsProps {
   schemaId?: string;
   optionNames?: string[];
   attesterAddress?: string;
+  chainId?: number;
+  marketId?: number;
 }
 
 export const usePredictions = ({
@@ -249,13 +251,23 @@ export const usePredictions = ({
   schemaId = SCHEMA_UID,
   optionNames,
   attesterAddress,
+  chainId,
+  marketId,
 }: UsePredictionsProps) => {
   const {
     data: attestationsData,
     isLoading,
     error,
+    refetch,
   } = useQuery<{ attestations: RawAttestation[] } | undefined>({
-    queryKey: ['attestations', schemaId, marketAddress, attesterAddress],
+    queryKey: [
+      'attestations',
+      schemaId,
+      marketAddress,
+      attesterAddress,
+      chainId,
+      marketId,
+    ],
     queryFn: async () => {
       // Normalize addresses if provided
       let normalizedMarketAddress = marketAddress;
@@ -323,11 +335,21 @@ export const usePredictions = ({
   // Transform raw attestations data into the proper format for the table
   const data: FormattedAttestation[] = React.useMemo(() => {
     if (!attestationsData?.attestations) return [];
-    // Pass optionNames to formatAttestationData
-    return attestationsData.attestations.map((att: RawAttestation) =>
+
+    let formatted = attestationsData.attestations.map((att: RawAttestation) =>
       formatAttestationData(att, optionNames)
     );
-  }, [attestationsData, optionNames]); // Added optionNames dependency
 
-  return { data, isLoading, error };
+    // Filter by marketId if provided
+    if (marketId !== undefined) {
+      formatted = formatted.filter((attestation) => {
+        const attMarketId = extractMarketId(attestation.decodedData);
+        return attMarketId === marketId;
+      });
+    }
+
+    return formatted;
+  }, [attestationsData, optionNames, marketId]); // Added marketId to dependency array
+
+  return { data, isLoading, error, refetch };
 };

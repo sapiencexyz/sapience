@@ -11,7 +11,7 @@ import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
@@ -168,9 +168,24 @@ const ForecastingDetailPage = () => {
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
 
+  // Local trigger that will be bumped whenever the user submits a new wager
+  const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
+
+  const handleUserPositionsRefetch = useCallback(() => {
+    setUserPositionsTrigger((prev) => prev + 1);
+  }, []);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const refetchUserPositions = useCallback(() => {}, [userPositionsTrigger]);
+
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
   const { chainShortName, marketAddress } = parseUrlParameter(paramString);
+
+  const { isLoading: isUserPositionsLoading } = usePositions({
+    address: address || '',
+    marketAddress,
+  });
 
   // Fetch market data using the hook with correct variable names
   const {
@@ -180,15 +195,6 @@ const ForecastingDetailPage = () => {
     activeMarkets,
     marketCategory,
   } = useMarketGroup({ chainShortName, marketAddress });
-
-  const {
-    data: userPositions,
-    isLoading: isUserPositionsLoading,
-    refetch: refetchUserPositions,
-  } = usePositions({
-    address: address || '',
-    marketAddress,
-  });
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -276,9 +282,7 @@ const ForecastingDetailPage = () => {
                 marketGroupData={marketGroupData!}
                 marketCategory={marketCategory}
                 permitData={permitData!}
-                onWagerSuccess={() => {
-                  refetchUserPositions();
-                }}
+                onWagerSuccess={handleUserPositionsRefetch}
               />
             </div>
           </div>
@@ -331,10 +335,9 @@ const ForecastingDetailPage = () => {
             <>
               <h3 className="text-xl font-medium mb-4">Your Positions</h3>
               <UserPositionsTable
+                account={address}
                 marketAddress={marketAddress}
-                marketCategory={marketCategory}
                 chainId={marketGroupData.chainId}
-                userPositions={userPositions || []}
                 refetchUserPositions={refetchUserPositions}
               />
             </>

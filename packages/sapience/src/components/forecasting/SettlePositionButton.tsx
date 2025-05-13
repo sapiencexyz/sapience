@@ -1,4 +1,3 @@
-import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
@@ -69,12 +68,14 @@ const SettlePositionButton = ({
   // If the position is lost, show a "Wager Lost" badge
   if (isLost && !loadingSimulation) {
     return (
-      <Badge
+      <Button
         variant="outline"
-        className="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+        size="sm"
+        disabled
+        className="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 cursor-not-allowed"
       >
         Wager Lost
-      </Badge>
+      </Button>
     );
   }
 
