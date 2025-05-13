@@ -2,9 +2,9 @@ import { ResourcePrice } from 'src/models/ResourcePrice';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
-// import { getTimtestampCandleInterval } from '../candleUtils';
 import { saveCandle } from '../dbUtils';
 import { TrailingAvgHistoryStore } from '../trailingAvgHistoryStore';
+import { startOfInterval, startOfNextInterval } from '../candleUtils';
 
 export class TrailingAvgCandleProcessor {
   constructor(
@@ -12,94 +12,100 @@ export class TrailingAvgCandleProcessor {
     private trailingAvgHistory: TrailingAvgHistoryStore
   ) {}
 
+  private getNewCandle(
+    interval: number,
+    candleTimestamp: number,
+    candleEndTimestamp: number,
+    price: ResourcePrice,
+    trailingAvgTime: number,
+    sumUsed: bigint,
+    sumFeePaid: bigint,
+    startOfTrailingWindow: number
+  ): CacheCandle {
+    const candle = new CacheCandle();
+    const avg = sumUsed > 0n ? sumFeePaid / sumUsed : 0n;
+
+    candle.candleType = CANDLE_TYPES.TRAILING_AVG;
+    candle.interval = interval;
+    candle.resourceSlug = price.resource.slug;
+    candle.timestamp = candleTimestamp;
+    candle.endTimestamp = candleEndTimestamp;
+    candle.lastUpdatedTimestamp = price.timestamp;
+    candle.open = avg.toString();
+    candle.high = avg.toString();
+    candle.low = avg.toString();
+    candle.close = avg.toString();
+    candle.sumUsed = sumUsed.toString();
+    candle.sumFeePaid = sumFeePaid.toString();
+    candle.trailingStartTimestamp = startOfTrailingWindow;
+    candle.trailingAvgTime = trailingAvgTime;
+    return candle;
+  }
+
   public async processResourcePrice(
     price: ResourcePrice,
     trailingAvgTime: number,
     isLast: boolean
   ) {
-    // const getNewCandle = (
-    //   interval: number,
-    //   candleTimestamp: number,
-    //   candleEndTimestamp: number,
-    //   price: ResourcePrice,
-    //   resourceSlug: string
-    // ) => {
-    //   const candle = new CacheCandle();
-    //   candle.candleType = CANDLE_TYPES.TRAILING_AVG;
-    //   candle.interval = interval;
-    //   candle.resourceSlug = resourceSlug;
-    //   return candle;
-    // };
-
-    // Get the prices for this trailing average period
-    const prices = this.trailingAvgHistory.getPricesForTrailingAvg(
+    // Add the new price to history and get the updated sums
+    const { sumUsed, sumFeePaid, startOfTrailingWindow } = this.trailingAvgHistory.getSums (
       price.resource.slug,
       trailingAvgTime
     );
 
-    // Calculate the trailing average
-    if (prices.length > 0) {
-      const sum = prices.reduce((acc, p) => acc + Number(p.used), 0);
-      const avg = sum / prices.length;
+    // For each interval, update the trailing average candle
+    for (const interval of CANDLE_CACHE_CONFIG.intervals) {
+      const candleTimestamp = startOfInterval(price.timestamp, interval);
+      const candleEndTimestamp = startOfNextInterval(price.timestamp, interval);
 
-      // For each interval, update the trailing average candle
-      for (const interval of CANDLE_CACHE_CONFIG.intervals) {
-        const candleTimestamp =
-          Math.floor(price.timestamp / interval) * interval;
+      let candle = this.runtimeCandles.getTrailingAvgCandle(
+        price.resource.slug,
+        interval,
+        trailingAvgTime
+      );
 
-        let candle = this.runtimeCandles.getTrailingAvgCandle(
-          price.resource.slug,
-          interval,
-          trailingAvgTime
-        );
-
-        if (!candle) {
-          candle = new CacheCandle();
-          candle.candleType = CANDLE_TYPES.TRAILING_AVG;
-          candle.interval = interval;
-          candle.resourceSlug = price.resource.slug;
-          candle.timestamp = candleTimestamp;
-          candle.open = String(avg);
-          candle.high = String(avg);
-          candle.low = String(avg);
-          candle.close = String(avg);
-          candle.sumUsed = '0';
-          candle.sumFeePaid = '0';
-          candle.trailingStartTimestamp = prices[0].timestamp;
-          candle.trailingAvgTime = trailingAvgTime;
-        } else if (candle.timestamp < candleTimestamp) {
+      // If no candle exists or we're starting a new interval
+      if (!candle || candle.timestamp < candleTimestamp) {
+        // Save existing candle if it exists
+        if (candle) {
           await saveCandle(candle);
-
-          candle = new CacheCandle();
-          candle.candleType = CANDLE_TYPES.TRAILING_AVG;
-          candle.interval = interval;
-          candle.resourceSlug = price.resource.slug;
-          candle.timestamp = candleTimestamp;
-          candle.open = String(avg);
-          candle.high = String(avg);
-          candle.low = String(avg);
-          candle.close = String(avg);
-          candle.sumUsed = '0';
-          candle.sumFeePaid = '0';
-          candle.trailingStartTimestamp = prices[0].timestamp;
-          candle.trailingAvgTime = trailingAvgTime;
-        } else {
-          candle.high = String(Math.max(Number(candle.high), avg));
-          candle.low = String(Math.min(Number(candle.low), avg));
-          candle.close = String(avg);
         }
 
-        this.runtimeCandles.setTrailingAvgCandle(
-          price.resource.slug,
+        // Create new candle
+        candle = this.getNewCandle(
           interval,
+          candleTimestamp,
+          candleEndTimestamp,
+          price,  
           trailingAvgTime,
-          candle
+          sumUsed,
+          sumFeePaid,
+          startOfTrailingWindow
         );
+      } else {
+        // Update existing candle
+        const avg = sumUsed > 0n ? sumFeePaid / sumUsed : 0n;
+        candle.open = avg.toString();
+        candle.high = avg.toString();
+        candle.low = avg.toString();
+        candle.close = avg.toString();
+        candle.sumUsed = sumUsed.toString();
+        candle.sumFeePaid = sumFeePaid.toString();
+        candle.trailingStartTimestamp = startOfTrailingWindow;
+        candle.lastUpdatedTimestamp = price.timestamp;
+      }
 
-        // Save the candle if it's the last item in the batch
-        if (isLast) {
-          await saveCandle(candle);
-        }
+      // Store the candle in runtime
+      this.runtimeCandles.setTrailingAvgCandle(
+        price.resource.slug,
+        interval,
+        trailingAvgTime,
+        candle
+      );
+
+      // Save the candle if it's the last item in the batch
+      if (isLast) {
+        await saveCandle(candle);
       }
     }
   }
