@@ -20,7 +20,7 @@ export default function PortfolioPage() {
     data: positions,
     isLoading: isLoadingPositions,
     error: positionsError,
-  } = usePositions(address);
+  } = usePositions({ address });
   const {
     data: attestations,
     isLoading: isLoadingAttestations,

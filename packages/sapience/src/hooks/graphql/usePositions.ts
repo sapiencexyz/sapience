@@ -5,10 +5,10 @@ import { print } from 'graphql';
 
 import { foilApi } from '~/lib/utils/util';
 
-// GraphQL query to fetch positions by owner address
+// GraphQL query to fetch positions by owner address and optional market address
 export const POSITIONS_QUERY = gql`
-  query GetPositions($owner: String!) {
-    positions(owner: $owner) {
+  query GetPositions($owner: String!, $marketAddress: String) {
+    positions(owner: $owner, marketAddress: $marketAddress) {
       id
       positionId
       owner
@@ -56,22 +56,43 @@ export const POSITIONS_QUERY = gql`
   }
 `;
 
-export function usePositions(address: string) {
+interface UsePositionsProps {
+  address: string;
+  marketAddress?: string;
+}
+
+export function usePositions({ address, marketAddress }: UsePositionsProps) {
   return useQuery<PositionType[]>({
-    queryKey: ['positions', address],
+    queryKey: ['positions', address, marketAddress],
     queryFn: async () => {
+      // Build variables object, only including marketAddress if it exists and isn't empty
+      const variables: { owner: string; marketAddress?: string } = {
+        owner: address,
+      };
+
+      // Only add marketAddress to variables if it exists and isn't an empty string
+      if (marketAddress && marketAddress.trim() !== '') {
+        variables.marketAddress = marketAddress;
+      }
+
       const { data, errors } = await foilApi.post('/graphql', {
         query: print(POSITIONS_QUERY),
-        variables: {
-          owner: address,
-        },
+        variables,
       });
 
       if (errors) {
         throw new Error(errors[0].message);
       }
 
-      return data.positions;
+      // TODO: remove this after marketAddress filtering works
+      return data.positions.filter((position: PositionType) => {
+        // Check if position has market and marketGroup data
+        if (!position.market || !position.market.marketGroup) return false;
+
+        // Compare marketGroup.address with our marketAddress, ignoring case
+        const groupAddress = position.market.marketGroup.address?.toLowerCase();
+        return groupAddress === marketAddress?.toLowerCase();
+      });
     },
     enabled: Boolean(address),
     staleTime: 30000, // 30 seconds
