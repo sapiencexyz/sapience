@@ -75,6 +75,10 @@ export class MarketInfoStore {
     return Array.from(this.marketInfoByIdx.keys());
   }
 
+  public getAllMarketIndexesByResourceSlug(resourceSlug: string): number[] {
+    return Array.from(this.marketInfoByIdx.values()).filter(m => m.resourceSlug === resourceSlug).map(m => m.marketIdx);
+  }
+
   public getAllResourceSlugs(): string[] {
     return Array.from(this.marketInfoByIdx.values()).map((m) => m.resourceSlug);
   }

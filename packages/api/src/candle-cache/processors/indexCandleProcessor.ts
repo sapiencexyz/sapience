@@ -54,7 +54,7 @@ export class IndexCandleProcessor {
     };
 
     // For each market, check if the price timestamp is within the market's active period
-    for (const marketId of this.marketInfoStore.getAllMarketIndexes()) {
+    for (const marketId of this.marketInfoStore.getAllMarketIndexesByResourceSlug(price.resource.slug)) {
       const isMarketActive = this.marketInfoStore.isMarketActive(marketId, price.timestamp);
 
       // For each interval add the price to the candle
