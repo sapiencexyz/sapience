@@ -321,7 +321,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         : 0n;
 
     // Convert hashrate to EH/s
-    const hashrateInEH = hashrate * BigInt(10 ** 3) / this.EXA_MULTIPLIER;
+    const hashrateInEH = (hashrate * BigInt(10 ** 3)) / this.EXA_MULTIPLIER;
 
     // Calculate fee per exahash
     const averageFeePerExahash =

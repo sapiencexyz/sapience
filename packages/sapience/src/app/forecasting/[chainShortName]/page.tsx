@@ -46,8 +46,8 @@ const DynamicPredictForm = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex justify-center py-8">
-        <LottieLoader width={30} height={30} />
+      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+        <LottieLoader width={32} height={32} />
       </div>
     ),
   }
@@ -233,10 +233,7 @@ const ForecastingDetailPage = () => {
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-4xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3">
-          <div className="flex justify-start mb-6">
-            <EndTimeDisplay endTime={activeMarket?.endTimestamp} />
-          </div>
-          <h1 className="text-2xl md:text-4xl font-normal mb-8 leading-tight">
+          <h1 className="text-2xl md:text-4xl font-normal mb-2 leading-tight">
             {formatQuestion(
               activeMarket?.question ||
                 (activeMarkets.length === 1
@@ -244,6 +241,9 @@ const ForecastingDetailPage = () => {
                   : marketGroupData.question)
             )}
           </h1>
+          <div className="flex justify-start mb-6 mt-2">
+            <EndTimeDisplay endTime={activeMarket?.endTimestamp} />
+          </div>
         </div>
 
         {/* Main content layout: Apply gap-6 and px-3 from user example */}
