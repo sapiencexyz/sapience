@@ -6,6 +6,8 @@ import {
   getResourcePrices,
   setConfig,
   saveCandle,
+  getResourcePricesCount,
+  getMarketPricesCount,
 } from './dbUtils';
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
 import { log } from 'src/utils/logs';
@@ -55,17 +57,17 @@ export class CandleCacheBuilder {
   }
 
   public async updateCandles() {
-    log({ message: 'step 1', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 1: get updated markets and market groups', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await this.getUpdatedMarketsAndMarketGroups();
-    log({ message: 'step 2', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 2: update candles if needed', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await this.updateCandlesIfNeeded();
-    log({ message: 'step 3', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 3: process resource prices', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await this.processResourcePrices();
-    log({ message: 'step 4', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 4: process market prices', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await this.processMarketPrices();
-    log({ message: 'step 5', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 5: save all runtime candles', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await this.saveAllRuntimeCandles();
-    log({ message: 'step 6', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 6: done', prefix: CANDLE_CACHE_CONFIG.logPrefix });
   }
 
   private async getUpdatedMarketsAndMarketGroups() {
@@ -75,12 +77,12 @@ export class CandleCacheBuilder {
   }
 
   private async processResourcePrices() {
-    log({ message: 'step 1', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 1: get the last processed resource price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     // 1. get the last processed resource price
     let lastProcessedResourcePrice = await getConfig(
       CANDLE_CACHE_CONFIG.lastProcessedResourcePrice
     );
-    log({ message: 'step 2', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 2: process by batches from last processed resource price to the latest resource price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     // 2. process by batches from last processed resource price to the latest resource price
     let getNextBatch = true;
     const needsTrailing = this.trailingResourceRuntime.length == 0; // not initialized, we need to get data from the past to fill the trailingResourceRuntime
@@ -90,18 +92,20 @@ export class CandleCacheBuilder {
           0
         )
       : lastProcessedResourcePrice;
-    log({ message: 'step 3', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 3: process the batches', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    const totalResourcePrices = await getResourcePricesCount(initialTimestamp);
+    const totalBatches = Math.ceil(totalResourcePrices / CANDLE_CACHE_CONFIG.batchSize);
     let iter = 0;
     while (getNextBatch) {
       iter++;
-      log({ message: `batch: ${iter} - step 1`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
+      log({ message: `batch: ${iter}/${totalBatches} - step 1: get the batch`, prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2 });
       const { prices, hasMore } = await getResourcePrices({
         initialTimestamp,
         quantity: CANDLE_CACHE_CONFIG.batchSize,
       });
       log({
-        message: `batch: ${iter} - step 2, batch size: ${prices.length}`,
-        prefix: CANDLE_CACHE_CONFIG.logPrefix,
+        message: `batch: ${iter}/${totalBatches} - step 2, process the batch of size: ${prices.length}`,
+        prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2,
       });
       getNextBatch = hasMore;
       // 3. Process the batch
@@ -130,7 +134,7 @@ export class CandleCacheBuilder {
         }
         batchIdx++;
       }
-      log({ message: `batch: ${iter} - step 3`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
+      log({ message: `batch: ${iter}/${totalBatches} - step 3: done processing the batch`, prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2 });
 
       // 4. Update indexes for the next batch
       initialTimestamp = prices[prices.length - 1].timestamp;
@@ -140,7 +144,7 @@ export class CandleCacheBuilder {
           ? initialTimestamp
           : lastProcessedResourcePrice;
     }
-    log({ message: 'step 4', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 4: update the last processed resource price', prefix: CANDLE_CACHE_CONFIG.logPrefix, });
     // 5. update the last processed resource price
     await setConfig(
       CANDLE_CACHE_CONFIG.lastProcessedResourcePrice,
@@ -149,25 +153,27 @@ export class CandleCacheBuilder {
   }
 
   private async processMarketPrices() {
-    log({ message: 'step 1', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 1: get the last processed market price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     // 1. get the last processed market price
     let lastProcessedMarketPrice = await getConfig(
       CANDLE_CACHE_CONFIG.lastProcessedMarketPrice
     );
-    log({ message: 'step 2', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 2: process by batches from last processed market price to the latest market price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     // 2. process by batches from last processed market price to the latest market price
     let getNextBatch = true;
+    const totalMarketPrices = await getMarketPricesCount(lastProcessedMarketPrice);
+    const totalBatches = Math.ceil(totalMarketPrices / CANDLE_CACHE_CONFIG.batchSize);
     let iter = 0;
     while (getNextBatch) {
       iter++;
-      log({ message: `${iter} - 1`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
+      log({ message: `${iter}/${totalBatches} - 1`, prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2 });
       const { prices, hasMore } = await getMarketPrices({
         initialTimestamp: lastProcessedMarketPrice,
         quantity: CANDLE_CACHE_CONFIG.batchSize,
       });
       log({
-        message: `${iter} - 2, ${prices.length}`,
-        prefix: CANDLE_CACHE_CONFIG.logPrefix,
+        message: `${iter}/${totalBatches} - 2, ${prices.length}`,
+        prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2,
       });
       getNextBatch = hasMore;
       // 3. Process the batch
@@ -188,7 +194,7 @@ export class CandleCacheBuilder {
           }
     }
 
-    log({ message: 'step 3', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: 'step 3: update the last processed market price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await setConfig(
       CANDLE_CACHE_CONFIG.lastProcessedMarketPrice,
       lastProcessedMarketPrice

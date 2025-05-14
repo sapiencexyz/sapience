@@ -222,3 +222,19 @@ export async function getCandles({
   });
   return candles;
 }
+
+export async function getResourcePricesCount(initialTimestamp?: number): Promise<number> {
+  return await resourcePriceRepository.count({
+    where: {
+      timestamp: MoreThan(initialTimestamp || 0),
+    },
+  });
+}
+
+export async function getMarketPricesCount(initialTimestamp?: number): Promise<number> {
+  return await marketPriceRepository.count({
+    where: {
+      timestamp: MoreThan(initialTimestamp?.toString() ?? '0'),
+    },
+  });
+}
