@@ -11,7 +11,6 @@ import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
 import { ResourcePerformanceManager } from './performance';
 import { initializeFixtures } from './fixtures';
-import { CandleCacheBuilder } from './candle-cache/candleCacheBuilder';
 
 const PORT = 3001;
 
