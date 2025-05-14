@@ -28,7 +28,8 @@ import {
   useCategories,
 } from '~/hooks/graphql/useMarketGroups';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
-import { formatQuestion } from '~/lib/utils/util';
+import type { MarketGroupClassification } from '~/lib/types'; // Added import
+import { formatQuestion, getYAxisConfig } from '~/lib/utils/util';
 
 import MarketGroupsRow from './MarketGroupsRow';
 
@@ -93,6 +94,9 @@ interface GroupedMarketGroup {
   marketQuestion?: string | null;
   markets: MarketWithContext[];
   displayQuestion?: string;
+  isActive?: boolean;
+  marketClassification?: MarketGroupClassification;
+  displayUnit?: string;
 }
 
 // Define FocusAreaFilter component outside ForecastingTable
@@ -367,17 +371,20 @@ const ForecastingTable = () => {
 
         acc[marketKey] = {
           key: marketKey,
-          marketAddress: market.marketAddress, // string from MarketWithContext
+          marketAddress: market.marketAddress,
           chainId: market.chainId,
-          marketName, // Now type string
-          collateralAsset, // Now type string
+          marketName,
+          collateralAsset,
           color,
-          categorySlug: market.categorySlug, // string from MarketWithContext
-          categoryId: market.categoryId, // string from MarketWithContext
+          categorySlug: market.categorySlug,
+          categoryId: market.categoryId,
           isYin: market.isYin,
           marketQuestion: undefined,
           markets: [],
           displayQuestion: undefined,
+          isActive: undefined,
+          marketClassification: undefined,
+          displayUnit: undefined,
         };
       }
       acc[marketKey].markets.push(market);
@@ -400,6 +407,17 @@ const ForecastingTable = () => {
           (market) =>
             now >= market.startTimestamp! && now < market.endTimestamp!
         );
+        const isActive = activeMarkets.length > 0;
+
+        // Get the market classification directly
+        const marketClassification = sourceMarketGroup?.marketClassification;
+
+        // Get display unit from yAxisConfig
+        let displayUnit = '';
+        if (sourceMarketGroup) {
+          const yAxisConfig = getYAxisConfig(sourceMarketGroup);
+          displayUnit = yAxisConfig.unit;
+        }
 
         // Determine the raw question (will be formatted by MarketGroupsRow)
         let rawQuestion: string | null = null;
@@ -434,6 +452,9 @@ const ForecastingTable = () => {
           ...groupedMarketGroup,
           marketQuestion,
           displayQuestion,
+          isActive,
+          marketClassification,
+          displayUnit,
         };
       }
     );
@@ -734,6 +755,11 @@ const ForecastingTable = () => {
                               }
                               color={marketGroup.color}
                               markets={marketGroup.markets}
+                              isActive={marketGroup.isActive}
+                              marketClassification={
+                                marketGroup.marketClassification
+                              }
+                              displayUnit={marketGroup.displayUnit}
                             />
                           </motion.div>
                         ))}
