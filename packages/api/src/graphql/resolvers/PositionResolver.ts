@@ -53,7 +53,7 @@ export class PositionResolver {
         return { ...position, transactions: hydratedTransactions };
       });
 
-      return hydratedPositions.map(mapPositionToType);
+      return Promise.all(hydratedPositions.map(mapPositionToType));
     } catch (error) {
       console.error('Error fetching positions:', error);
       throw new Error('Failed to fetch positions');

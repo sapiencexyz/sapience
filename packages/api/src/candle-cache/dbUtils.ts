@@ -4,12 +4,12 @@ import {
   resourcePriceRepository,
   cacheCandleRepository,
   marketGroupRepository,
-} from 'src/db';
-import { CacheParam } from 'src/models/CacheParam';
-import { ResourcePrice } from 'src/models/ResourcePrice';
+} from '../db';
+import { CacheParam } from '../models/CacheParam';
+import { ResourcePrice } from '../models/ResourcePrice';
 import { FindOptionsWhere, MoreThan, Between } from 'typeorm';
 import { ReducedMarketPrice } from './types';
-import { CacheCandle } from 'src/models/CacheCandle';
+import { CacheCandle } from '../models/CacheCandle';
 import { CANDLE_TYPES } from './config';
 // import { log } from 'src/utils/logs';
 // import { CANDLE_CACHE_CONFIG } from './config';

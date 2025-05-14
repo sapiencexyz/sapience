@@ -110,14 +110,13 @@ export class ResourcePerformanceManager {
     return this.resourcePerformances[resourceSlug];
   }
 
-  public getResourcePerformanceFromChainAndAddress(
+  public async getResourcePerformanceFromChainAndAddress(
     chainId: number,
     address: string
   ) {
     for (const resource of this.resources) {
-      const slug = resource.slug;
-      const rp = this.resourcePerformances[slug];
-      if (rp.getMarketFromChainAndAddress(chainId, address)) {
+      const rp = this.resourcePerformances[resource.slug];
+      if (await rp.getMarketFromChainAndAddress(chainId, address)) {
         return rp;
       }
     }

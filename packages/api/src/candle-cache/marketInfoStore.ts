@@ -1,4 +1,4 @@
-import { MarketGroup } from 'src/models/MarketGroup';
+import { MarketGroup } from '../models/MarketGroup';
 
 export interface MarketInfo {
   resourceSlug: string;
@@ -28,28 +28,26 @@ export class MarketInfoStore {
   public async updateMarketInfo(marketGroups: MarketGroup[]) {
     for (const marketGroup of marketGroups) {
       // Add resource slug
-      const resourceSlug = marketGroup.resource
-        ? marketGroup.resource.slug
-        : 'no-resource';
+      const resource = await marketGroup.resource;
+      const resourceSlug = resource ? resource.slug : 'no-resource';
 
       // Add market with extra data
-      if (marketGroup.markets) {
-        for (const market of marketGroup.markets) {
-          if (this.marketInfoByIdx.has(market.id)) {
-            continue;
-          }
-          this.marketInfoByIdx.set(market.id, {
-            marketId: market.marketId,
-            marketGroupIdx: marketGroup.id,
-            marketIdx: market.id,
-            resourceSlug,
-            marketGroupAddress: marketGroup.address,
-            marketGroupChainId: marketGroup.chainId,
-            startTimestamp: market.startTimestamp ?? 0,
-            endTimestamp: market.endTimestamp ?? 0,
-            isCumulative: marketGroup.isCumulative ?? false,
-          });
+      const markets = await marketGroup.markets;
+      for (const market of markets) {
+        if (this.marketInfoByIdx.has(market.id)) {
+          continue;
         }
+        this.marketInfoByIdx.set(market.id, {
+          marketId: market.marketId,
+          marketGroupIdx: marketGroup.id,
+          marketIdx: market.id,
+          resourceSlug,
+          marketGroupAddress: marketGroup.address,
+          marketGroupChainId: marketGroup.chainId,
+          startTimestamp: market.startTimestamp ?? 0,
+          endTimestamp: market.endTimestamp ?? 0,
+          isCumulative: marketGroup.isCumulative ?? false,
+        });
       }
     }
   }

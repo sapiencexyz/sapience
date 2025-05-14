@@ -1,5 +1,6 @@
-import { ResourcePrice } from 'src/models/ResourcePrice';
-import { CacheCandle } from 'src/models/CacheCandle';
+
+import { ResourcePrice } from '../../models/ResourcePrice';
+import { CacheCandle } from '../../models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getTimtestampCandleInterval } from '../candleUtils';
@@ -41,7 +42,7 @@ export class ResourceCandleProcessor {
 
       // Get existing candle or create new one
       let candle = this.runtimeCandles.getResourceCandle(
-        price.resource.slug,
+        (await price.resource).slug,
         interval
       );
 
@@ -58,10 +59,10 @@ export class ResourceCandleProcessor {
           candleTimestamp,
           candleEndTimestamp,
           price,
-          price.resource.slug
+          (await price.resource).slug
         );
         this.runtimeCandles.setResourceCandle(
-          price.resource.slug,
+          (await price.resource).slug,
           interval,
           candle
         );
@@ -72,10 +73,10 @@ export class ResourceCandleProcessor {
           candleTimestamp,
           candleEndTimestamp,
           price,
-          price.resource.slug
+          (await price.resource).slug
         );
         this.runtimeCandles.setResourceCandle(
-          price.resource.slug,
+          (await price.resource).slug,
           interval,
           candle
         );

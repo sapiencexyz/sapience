@@ -1,5 +1,6 @@
-import { ResourcePrice } from 'src/models/ResourcePrice';
-import { CacheCandle } from 'src/models/CacheCandle';
+
+import { ResourcePrice } from '../../models/ResourcePrice';
+import { CacheCandle } from '../../models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { saveCandle } from '../dbUtils';
@@ -12,7 +13,7 @@ export class TrailingAvgCandleProcessor {
     private trailingAvgHistory: TrailingAvgHistoryStore
   ) {}
 
-  private getNewCandle(
+  private getNewCandle = async (
     interval: number,
     candleTimestamp: number,
     candleEndTimestamp: number,
@@ -21,13 +22,14 @@ export class TrailingAvgCandleProcessor {
     sumUsed: bigint,
     sumFeePaid: bigint,
     startOfTrailingWindow: number
-  ): CacheCandle {
+  ): Promise<CacheCandle> => {
+    const resource = await price.resource;
     const candle = new CacheCandle();
     const avg = sumUsed > 0n ? sumFeePaid / sumUsed : 0n;
 
     candle.candleType = CANDLE_TYPES.TRAILING_AVG;
     candle.interval = interval;
-    candle.resourceSlug = price.resource.slug;
+    candle.resourceSlug = resource.slug;
     candle.timestamp = candleTimestamp;
     candle.endTimestamp = candleEndTimestamp;
     candle.lastUpdatedTimestamp = price.timestamp;
@@ -46,9 +48,10 @@ export class TrailingAvgCandleProcessor {
     price: ResourcePrice,
     trailingAvgTime: number
   ) {
+    const resource = await price.resource;
     // Add the new price to history and get the updated sums
     const { sumUsed, sumFeePaid, startOfTrailingWindow } = this.trailingAvgHistory.getSums (
-      price.resource.slug,
+      resource.slug,
       trailingAvgTime
     );
 
@@ -58,7 +61,7 @@ export class TrailingAvgCandleProcessor {
       const candleEndTimestamp = startOfNextInterval(price.timestamp, interval);
 
       let candle = this.runtimeCandles.getTrailingAvgCandle(
-        price.resource.slug,
+        resource.slug,
         interval,
         trailingAvgTime
       );
@@ -71,7 +74,7 @@ export class TrailingAvgCandleProcessor {
         }
 
         // Create new candle
-        candle = this.getNewCandle(
+        candle = await this.getNewCandle(
           interval,
           candleTimestamp,
           candleEndTimestamp,
@@ -96,7 +99,7 @@ export class TrailingAvgCandleProcessor {
 
       // Store the candle in runtime
       this.runtimeCandles.setTrailingAvgCandle(
-        price.resource.slug,
+        resource.slug,
         interval,
         trailingAvgTime,
         candle

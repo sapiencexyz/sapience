@@ -16,9 +16,9 @@ import { MarketParams } from './MarketParams';
 @Entity()
 @Unique(['marketGroup', 'marketId'])
 export class Market {
-  @ManyToOne(() => MarketGroup, (marketGroup) => marketGroup.markets)
+  @ManyToOne(() => MarketGroup, (marketGroup) => marketGroup.markets, { lazy: true })
   @Index()
-  marketGroup: MarketGroup;
+  marketGroup: Promise<MarketGroup>;
 
   @OneToMany(() => Position, (position) => position.market)
   positions: Position[];

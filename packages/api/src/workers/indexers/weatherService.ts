@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios';
 import dotenv from 'dotenv';
 import fs from 'fs/promises';
 import path from 'path';
-import { sleep } from 'src/utils/utils';
+import { sleep } from '../../utils/utils';
 
 dotenv.config();
 

@@ -1,5 +1,5 @@
 import { ReducedMarketPrice } from '../types';
-import { CacheCandle } from 'src/models/CacheCandle';
+import { CacheCandle } from '../../models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getTimtestampCandleInterval } from '../candleUtils';

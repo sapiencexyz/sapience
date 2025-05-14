@@ -69,7 +69,7 @@ export const initializeFixtures = async (): Promise<void> => {
         resource = new Resource();
         resource.name = resourceData.name;
         resource.slug = resourceData.slug;
-        resource.category = category;
+        resource.category = Promise.resolve(category);
         await resourceRepository.save(resource);
         console.log('Created resource:', resourceData.name);
       } else {
@@ -78,18 +78,20 @@ export const initializeFixtures = async (): Promise<void> => {
           resource.slug = resourceData.slug;
           updated = true;
         }
+        const currentCategory = await resource.category;
 
-        if (!resource.category || resource.category.id !== category.id) {
+        if (!currentCategory || currentCategory.id !== category.id) {
           const currentResource = await resourceRepository.findOne({
             where: { id: resource.id },
             relations: ['category'],
           });
+          const currentCategory = await currentResource?.category;
           if (
             currentResource &&
-            (!currentResource.category ||
-              currentResource.category.id !== category.id)
+            (!currentCategory ||
+              currentCategory.id !== category.id)
           ) {
-            resource.category = category;
+            resource.category = Promise.resolve(category);
             updated = true;
           } else if (!currentResource) {
             console.log(`Resource ${resource.name} not found for update.`);

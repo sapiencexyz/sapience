@@ -19,9 +19,9 @@ export class ResourcePrice {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => Resource, (resource) => resource.resourcePrices)
+  @ManyToOne(() => Resource, (resource) => resource.resourcePrices, { lazy: true })
   @Index()
-  resource: Resource;
+  resource: Promise<Resource>;
 
   @Column({ type: 'integer' })
   @Index()

@@ -20,8 +20,9 @@ import { NUMERIC_PRECISION } from '../constants';
 export class MarketGroup {
   @OneToMany(() => Market, (market) => market.marketGroup, {
     cascade: true,
+    lazy: true
   })
-  markets: Market[];
+  markets: Promise<Market[]>;
 
   @OneToMany(() => Event, (event) => event.marketGroup)
   events: Event[];
