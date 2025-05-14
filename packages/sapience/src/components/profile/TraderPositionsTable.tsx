@@ -256,7 +256,7 @@ export default function TraderPositionsTable({
               if (!position.market?.marketGroup) {
                 console.warn(
                   'Skipping position render due to missing market data:',
-                  position.id
+                  position.positionId
                 );
                 return null;
               }
@@ -279,7 +279,7 @@ export default function TraderPositionsTable({
               return (
                 <TableRow key={position.id}>
                   <TableCell className="text-muted-foreground">
-                    #{position.id}
+                    #{position.positionId}
                   </TableCell>
                   {displayQuestionColumn && (
                     <TableCell>{position.market.question || 'N/A'}</TableCell>

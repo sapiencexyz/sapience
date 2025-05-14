@@ -27,6 +27,7 @@
     "@foil/ui": "workspace:*",
     "@hookform/resolvers": "3.9.0",
     "@privy-io/react-auth": "^2.11.1",
+    "@privy-io/wagmi": "^1.0.3",
     "@rainbow-me/rainbowkit": "^2.1.5",
     "@sentry/nextjs": "^8",
     "@tanstack/react-query": "^5.56.2",
