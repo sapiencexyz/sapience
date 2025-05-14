@@ -10,7 +10,7 @@ import {
 
 @Entity()
 @Unique(['paramName'])
-export class CacheMetadata {
+export class CacheParam {
   @PrimaryGeneratedColumn()
   id: number;
 

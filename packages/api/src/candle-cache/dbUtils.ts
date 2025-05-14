@@ -1,11 +1,11 @@
 import {
-  cacheMetadataRepository,
+  cacheParamRepository,
   marketPriceRepository,
   resourcePriceRepository,
   cacheCandleRepository,
   marketGroupRepository,
 } from 'src/db';
-import { CacheMetadata } from 'src/models/CacheMetadata';
+import { CacheParam } from 'src/models/CacheParam';
 import { ResourcePrice } from 'src/models/ResourcePrice';
 import { FindOptionsWhere, MoreThan, Between } from 'typeorm';
 import { ReducedMarketPrice } from './types';
@@ -14,8 +14,8 @@ import { CANDLE_TYPES } from './config';
 // import { log } from 'src/utils/logs';
 // import { CANDLE_CACHE_CONFIG } from './config';
 
-export async function getConfig(paramName: string) {
-  const config = await cacheMetadataRepository.findOne({
+export async function getParam(paramName: string) {
+  const config = await cacheParamRepository.findOne({
     where: { paramName },
   });
   if (!config) {
@@ -24,15 +24,15 @@ export async function getConfig(paramName: string) {
   return config.paramValueNumber;
 }
 
-export async function setConfig(paramName: string, paramValue: number) {
-  let config = await cacheMetadataRepository.findOne({ where: { paramName } });
+export async function setParam(paramName: string, paramValue: number) {
+  let config = await cacheParamRepository.findOne({ where: { paramName } });
   if (!config) {
-    config = new CacheMetadata();
+    config = new CacheParam();
     config.paramName = paramName;
     config.paramValueNumber = paramValue;
   }
   config.paramValueNumber = paramValue;
-  await cacheMetadataRepository.save(config);
+  await cacheParamRepository.save(config);
 }
 
 export async function getResourcePrices({

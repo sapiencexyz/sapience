@@ -1,10 +1,10 @@
 import {
-  getConfig,
+  getParam,
   getLastCandleFromDb,
   getMarketGroups,
   getMarketPrices,
   getResourcePrices,
-  setConfig,
+  setParam,
   saveCandle,
   getResourcePricesCount,
   getMarketPricesCount,
@@ -66,7 +66,7 @@ export class CandleCacheBuilder {
 
   private async hardRefreshIfNeeded() {
     // 1. check in the db if the config is set to hard refresh
-    const hardRefresh = await getConfig(
+    const hardRefresh = await getParam(
       CANDLE_CACHE_CONFIG.hardRefresh
     );
     if (hardRefresh) {
@@ -74,16 +74,16 @@ export class CandleCacheBuilder {
       // 2. truncate the candles table
       await truncateCandlesTable();
       // 3. clean up all the configs
-      await setConfig(
+      await setParam(
         CANDLE_CACHE_CONFIG.lastProcessedResourcePrice,
         0
       );
-      await setConfig(
+      await setParam(
         CANDLE_CACHE_CONFIG.lastProcessedMarketPrice,
         0
       );
       // 4. set the hard refresh config to false
-      await setConfig(
+      await setParam(
         CANDLE_CACHE_CONFIG.hardRefresh,
         0
       );
@@ -108,7 +108,7 @@ export class CandleCacheBuilder {
   private async processResourcePrices() {
     log({ message: 'step 1: get the last processed resource price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     // 1. get the last processed resource price
-    let lastProcessedResourcePrice = await getConfig(
+    let lastProcessedResourcePrice = await getParam(
       CANDLE_CACHE_CONFIG.lastProcessedResourcePrice
     );
     log({ message: 'step 2: process by batches from last processed resource price to the latest resource price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
@@ -183,7 +183,7 @@ export class CandleCacheBuilder {
           ? initialTimestamp
           : lastProcessedResourcePrice;
 
-      await setConfig(
+      await setParam(
         CANDLE_CACHE_CONFIG.lastProcessedResourcePrice,
         lastProcessedResourcePrice
       );
@@ -191,7 +191,7 @@ export class CandleCacheBuilder {
     }
     log({ message: 'step 4: update the last processed resource price', prefix: CANDLE_CACHE_CONFIG.logPrefix, });
     // 5. update the last processed resource price
-    await setConfig(
+    await setParam(
       CANDLE_CACHE_CONFIG.lastProcessedResourcePrice,
       lastProcessedResourcePrice
     );
@@ -200,7 +200,7 @@ export class CandleCacheBuilder {
   private async processMarketPrices() {
     log({ message: 'step 1: get the last processed market price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     // 1. get the last processed market price
-    let lastProcessedMarketPrice = await getConfig(
+    let lastProcessedMarketPrice = await getParam(
       CANDLE_CACHE_CONFIG.lastProcessedMarketPrice
     );
     log({ message: 'step 2: process by batches from last processed market price to the latest market price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
@@ -244,7 +244,7 @@ export class CandleCacheBuilder {
       // 4. Update the last processed market price and update the pointer for the next batch in case of restart
       if (prices.length > 0) {
         lastProcessedMarketPrice = prices[prices.length - 1].timestamp;
-        await setConfig(
+        await setParam(
           CANDLE_CACHE_CONFIG.lastProcessedMarketPrice,
           lastProcessedMarketPrice
         );
@@ -252,7 +252,7 @@ export class CandleCacheBuilder {
     }
 
     log({ message: 'step 3: update the last processed market price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
-    await setConfig(
+    await setParam(
       CANDLE_CACHE_CONFIG.lastProcessedMarketPrice,
       lastProcessedMarketPrice
     );
