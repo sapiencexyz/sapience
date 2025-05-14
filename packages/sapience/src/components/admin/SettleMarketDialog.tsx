@@ -6,6 +6,10 @@ import { Label } from '@foil/ui/components/ui/label'; // Import Label
 import { Separator } from '@foil/ui/components/ui/separator'; // Import Separator
 import { useToast } from '@foil/ui/hooks/use-toast'; // Import useToast
 import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi'; // Import the hook
+import type {
+  MarketType as Market,
+  MarketGroupType as MarketGroup,
+} from '@foil/ui/types'; // Import types
 import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Privy
 import { Loader2 } from 'lucide-react'; // Import Loader2
 import type React from 'react';
@@ -13,7 +17,6 @@ import { useState } from 'react'; // Import useState and useMemo
 import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex
 import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
 
-import type { Market, MarketGroup } from '~/hooks/graphql/useMarketGroups'; // Import types
 import { NO_SQRT_RATIO, YES_SQRT_RATIO } from '~/lib/constants/numbers';
 
 // Define MarketParams interface (consider moving to a shared location if needed)

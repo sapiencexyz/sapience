@@ -6,14 +6,14 @@ The Quoter API helps determine the maximum position size that can be taken with 
 
 ## Endpoints
 
-### GET `/quoter/:chainId/:marketAddress/:epochId`
+### GET `/quoter/:chainId/:marketAddress/:marketId`
 
 Calculates the maximum position size for a given market and epoch based on available collateral and price expectations.
 
 #### URL Parameters
 - `chainId`: The blockchain network ID
-- `marketAddress`: The address of the market contract
-- `epochId`: The ID of the market epoch
+- `marketAddress`: The address of the market group contract
+- `marketId`: The ID of the market
 
 #### Query Parameters
 - `expectedPrice` (required): The target price for the position

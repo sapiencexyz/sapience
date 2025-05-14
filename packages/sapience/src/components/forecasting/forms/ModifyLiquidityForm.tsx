@@ -379,7 +379,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
               <FormLabel className="text-xs text-muted-foreground">
                 Low Price
               </FormLabel>
-              <div className="border rounded-md p-2.5 bg-muted/30 text-sm">
+              <div className="border rounded p-2.5 bg-muted/30 text-sm">
                 <NumberDisplay
                   value={tickToPrice(Number(marketDetails.lowPriceTick))}
                   precision={6}
@@ -390,7 +390,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
               <FormLabel className="text-xs text-muted-foreground">
                 High Price
               </FormLabel>
-              <div className="border rounded-md p-2.5 bg-muted/30 text-sm">
+              <div className="border rounded p-2.5 bg-muted/30 text-sm">
                 <NumberDisplay
                   value={tickToPrice(Number(marketDetails.highPriceTick))}
                   precision={6}
@@ -406,7 +406,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
         {!isPermitLoadingPermit && permitData?.permitted === false && (
           <Alert
             variant="destructive"
-            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
+            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
           >
             <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
             <AlertDescription>

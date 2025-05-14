@@ -31,9 +31,9 @@ export async function isValidWalletSignature(
   const now = Date.now();
   console.log(
     `Trying to auth: time right now ${now},` +
-    `timestamp for signature ${timestamp}, ` +
-    `time difference ${now - timestamp}, ` +
-    `expected time diff ${MESSAGE_EXPIRY}`
+      `timestamp for signature ${timestamp}, ` +
+      `time difference ${now - timestamp}, ` +
+      `expected time diff ${MESSAGE_EXPIRY}`
   );
   if (now - timestamp > MESSAGE_EXPIRY) {
     return false;
@@ -52,8 +52,8 @@ export async function isValidWalletSignature(
     );
     console.log(
       `Recovered address: ${recoveredAddress}, ` +
-      `is allowed: ${isAllowed}, ` +
-      `allowed addresses ${ALLOWED_ADDRESSES}`
+        `is allowed: ${isAllowed}, ` +
+        `allowed addresses ${ALLOWED_ADDRESSES}`
     );
 
     return isAllowed;

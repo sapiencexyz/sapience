@@ -44,13 +44,17 @@ export const NumberDisplay: React.FC<NumberDisplayProps> = ({
   };
 
   const displayValue = formatNumber(value || 0);
-  const originalValue = value?.toString() || '0';
+  
+  // Format original value for tooltip as a decimal if it's a BigInt
+  const tooltipValue = typeof value === 'bigint' 
+    ? (Number(value) / 10 ** 18).toString()
+    : value?.toString() || '0';
 
   if (!displayValue.length) {
     return <Minus className="opacity-20" />;
   }
 
-  if (displayValue === originalValue) {
+  if (displayValue === tooltipValue) {
     return <span className="cursor-default">{displayValue}</span>;
   }
 
@@ -60,7 +64,7 @@ export const NumberDisplay: React.FC<NumberDisplayProps> = ({
         <TooltipTrigger type="button" className="cursor-default">
           {displayValue}
         </TooltipTrigger>
-        <TooltipContent className="font-normal">{originalValue}</TooltipContent>
+        <TooltipContent className="font-normal">{tooltipValue}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );

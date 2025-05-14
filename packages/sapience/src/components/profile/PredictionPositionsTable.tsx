@@ -1,3 +1,5 @@
+import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
+import { Button } from '@foil/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -6,23 +8,39 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, CellContext } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import React from 'react';
-import { formatEther } from 'viem';
 
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
 import { useSapience } from '~/lib/context/SapienceProvider';
 
+// Helper function to render prediction when baseTokenName is 'Yes'
+const renderConditionalPrediction = (value: string) => {
+  if (value === '1000000000000000000' || value === '1') {
+    return 'Yes';
+  }
+  if (value === '0') {
+    return 'No';
+  }
+  try {
+    return <NumberDisplay value={BigInt(value)} />;
+  } catch (e) {
+    return value; // Fallback if not a BigInt string
+  }
+};
+
 interface PredictionPositionsTableProps {
   attestations: FormattedAttestation[] | undefined;
+  parentMarketAddress?: string;
+  parentChainId?: number;
+  parentMarketId?: number;
 }
 
 const renderSubmittedCell = ({
@@ -70,21 +88,25 @@ const renderPredictionCell = ({
     }
   }
 
+  const { value } = row.original; // value is a string
+
   // Conditionally render 'Yes'/'No' if baseTokenName is 'Yes'
   if (baseTokenName === 'Yes') {
-    const { value } = row.original; // Assuming value is a string representation
-    if (value === '1000000000000000000') {
-      return 'Yes';
-    }
-    if (value === '0') {
-      return 'No';
-    }
-
-    return formatEther(BigInt(value));
+    return renderConditionalPrediction(value);
   }
 
-  // Default: Display the pre-formatted value from the hook along with the token name
-  return `${row.original.value} ${baseTokenName}`;
+  try {
+    const numericValue = BigInt(value);
+    return (
+      <>
+        <NumberDisplay value={numericValue} />
+        {baseTokenName && ` ${baseTokenName}`}
+      </>
+    );
+  } catch (e) {
+    // Fallback: if value is not a string parsable to BigInt (e.g., "CAT", "DOG" for a categorical market)
+    return `${value} ${baseTokenName || ''}`.trim();
+  }
 };
 
 const renderQuestionCell = ({
@@ -172,16 +194,64 @@ const renderActionsCell = ({
     href={`https://base.easscan.org/attestation/view/${row.original.id}`}
     target="_blank"
     rel="noopener noreferrer"
-    className="text-muted-foreground hover:text-foreground underline"
   >
-    <ChevronRight className="h-4 w-4" />
+    <Button variant="outline" size="xs">
+      View
+    </Button>
   </a>
 );
 
 const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
   attestations,
+  parentMarketAddress,
+  parentChainId,
+  parentMarketId,
 }) => {
   const { marketGroups, isMarketsLoading } = useSapience();
+
+  const isMarketPage = parentMarketAddress && parentChainId && parentMarketId;
+
+  // Memoize the calculation for showing the question column
+  const shouldDisplayQuestionColumn = React.useMemo(() => {
+    if (
+      isMarketPage ||
+      !attestations ||
+      attestations.length === 0 ||
+      !marketGroups ||
+      marketGroups.length === 0
+    ) {
+      return false;
+    }
+    return attestations.some((attestation) => {
+      const marketAddressField = attestation.decodedData.find(
+        (field) => field.name === 'marketAddress'
+      );
+      const potentialMarketAddress =
+        marketAddressField &&
+        typeof marketAddressField.value === 'object' &&
+        marketAddressField.value !== null &&
+        'value' in marketAddressField.value
+          ? marketAddressField.value.value
+          : null;
+      const marketAddress =
+        typeof potentialMarketAddress === 'string'
+          ? (potentialMarketAddress as string).toLowerCase()
+          : null;
+
+      if (marketAddress) {
+        const marketGroup = marketGroups.find(
+          (group) => group.address?.toLowerCase() === marketAddress
+        );
+        return (
+          marketGroup &&
+          marketGroup.markets &&
+          Array.isArray(marketGroup.markets) &&
+          marketGroup.markets.length > 1
+        );
+      }
+      return false;
+    });
+  }, [isMarketPage, attestations, marketGroups]);
 
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
@@ -190,12 +260,22 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
         header: 'Submitted',
         cell: renderSubmittedCell,
       },
-      {
-        id: 'question',
-        header: 'Question',
-        cell: (props) =>
-          renderQuestionCell({ ...props, marketGroups, isMarketsLoading }),
-      },
+      ...(!isMarketPage && shouldDisplayQuestionColumn
+        ? [
+            {
+              id: 'question',
+              header: 'Question',
+              cell: (
+                props: CellContext<FormattedAttestation, unknown> // Type props
+              ) =>
+                renderQuestionCell({
+                  row: props.row,
+                  marketGroups,
+                  isMarketsLoading,
+                }), // Pass props.row
+            },
+          ]
+        : []),
       {
         accessorKey: 'value',
         header: 'Prediction',
@@ -208,7 +288,12 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
         cell: renderActionsCell,
       },
     ],
-    [marketGroups, isMarketsLoading]
+    [
+      marketGroups,
+      isMarketsLoading,
+      isMarketPage,
+      shouldDisplayQuestionColumn, // Use memoized value and remove attestations
+    ]
   );
 
   const table = useReactTable({
@@ -225,13 +310,18 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
   return (
     <div>
       <h3 className="font-medium mb-4">Predictions</h3>
-      <div className="border border-muted rounded-md shadow-sm bg-background/50 overflow-hidden">
+      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className={
+                      header.id === 'question' ? '' : 'whitespace-nowrap'
+                    }
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -251,7 +341,12 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
                   className="hover:bg-secondary/10 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={`${
+                        cell.column.id === 'question' ? '' : 'whitespace-nowrap'
+                      } ${cell.column.id === 'actions' ? 'text-right' : ''}`}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
@@ -261,10 +356,10 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="min-h-[69px]">
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-24 text-center align-middle"
                 >
                   No results.
                 </TableCell>

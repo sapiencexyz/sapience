@@ -12,10 +12,12 @@ import { CreateLiquidityForm, ModifyLiquidityForm } from './forms';
 
 interface SimpleLiquidityWrapperProps {
   positionId?: string;
+  onActionComplete?: () => void;
 }
 
 const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   positionId,
+  onActionComplete,
 }) => {
   const { isConnected } = useAccount();
   const { connectOrCreateWallet } = useConnectOrCreateWallet();
@@ -70,6 +72,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
 
   const handleSuccess = () => {
     refetchPositions();
+    onActionComplete?.();
   };
 
   const marketDetails = {

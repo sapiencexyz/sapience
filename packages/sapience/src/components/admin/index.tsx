@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@foil/ui/components/ui/select';
 import { useToast } from '@foil/ui/hooks/use-toast';
+import type { MarketType } from '@foil/ui/types';
 import { formatDistanceToNow } from 'date-fns';
 import { Plus } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -28,7 +29,6 @@ import { useMarketGroupLatestEpoch } from '~/hooks/contract/useMarketGroupLatest
 import {
   useEnrichedMarketGroups,
   type EnrichedMarketGroup,
-  type Market,
 } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
@@ -80,7 +80,7 @@ const getChainShortName = (chainId: number): string => {
 };
 
 const MarketItem: React.FC<{
-  market: Market;
+  market: MarketType;
   group: EnrichedMarketGroup;
   latestEpochId?: bigint;
 }> = ({ market, group, latestEpochId }) => {
@@ -92,7 +92,7 @@ const MarketItem: React.FC<{
     !!market.marketParams?.claimStatement;
 
   const isDeployed = !!market.poolAddress;
-  const isFutureEndTime = market.endTimestamp * 1000 > Date.now();
+  const isFutureEndTime = (market.endTimestamp ?? 0) * 1000 > Date.now();
 
   const formatTimestamp = (timestamp: number) => {
     if (!timestamp) return 'N/A';
@@ -105,17 +105,7 @@ const MarketItem: React.FC<{
     if (group.address && !isDeployed && shouldShowDeployButton) {
       return (
         <MarketDeployButton
-          market={{
-            id: market.id,
-            marketId: market.marketId || 0,
-            startTimestamp: market.startTimestamp,
-            endTimestamp: market.endTimestamp,
-            startingSqrtPriceX96: market.startingSqrtPriceX96 || '',
-            baseAssetMinPriceTick: market.baseAssetMinPriceTick || 0,
-            baseAssetMaxPriceTick: market.baseAssetMaxPriceTick || 0,
-            poolAddress: market.poolAddress ?? null,
-            claimStatement: market.marketParams?.claimStatement || '',
-          }}
+          market={market}
           marketGroupAddress={group.address}
           chainId={group.chainId}
         />
@@ -136,7 +126,7 @@ const MarketItem: React.FC<{
       return (
         <Dialog>
           <DialogTrigger asChild>
-            <Button size="sm" disabled={market.settled}>
+            <Button size="sm" disabled={market.settled ?? false}>
               {market.settled ? 'Settled' : 'Settle'}
             </Button>
           </DialogTrigger>
@@ -177,7 +167,7 @@ const MarketItem: React.FC<{
       <div className="flex items-center space-x-4">
         {isDeployed && isFutureEndTime && (
           <span className="text-sm text-gray-500 whitespace-nowrap">
-            ends {formatTimestamp(market.endTimestamp)}
+            ends {formatTimestamp(market.endTimestamp ?? 0)}
           </span>
         )}
         {renderMarketActions()}
@@ -217,7 +207,7 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
                 open={ownershipDialogOpen}
                 onOpenChange={setOwnershipDialogOpen}
                 marketGroupAddress={group.address as Address}
-                currentOwner={group.owner}
+                currentOwner={group.owner ?? undefined}
               />
               {/* Existing buttons */}
               <Button variant="secondary" size="sm" asChild>

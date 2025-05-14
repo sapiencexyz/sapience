@@ -75,6 +75,7 @@ export type MarketType = {
   __typename?: 'MarketType';
   baseAssetMaxPriceTick?: Maybe<Scalars['Int']['output']>;
   baseAssetMinPriceTick?: Maybe<Scalars['Int']['output']>;
+  currentPrice?: Maybe<Scalars['String']['output']>;
   endTimestamp?: Maybe<Scalars['Int']['output']>;
   id: Scalars['ID']['output'];
   marketGroup?: Maybe<MarketGroupType>;

@@ -19,8 +19,8 @@ export default defineConfig({
       text: 'Protocol',
       items: [
         {
-          text: 'Protocol Summary',
-          link: '/protocol-overview',
+          text: 'Technical Reference',
+          link: '/technical-reference',
         },
         {
           text: 'Smart Contract Reference',

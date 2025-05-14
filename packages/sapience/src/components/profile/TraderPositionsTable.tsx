@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
+import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
 import {
@@ -22,6 +23,9 @@ import {
 
 interface TraderPositionsTableProps {
   positions: PositionType[];
+  parentMarketAddress?: string;
+  parentChainId?: number;
+  parentMarketId?: number;
 }
 
 function PositionCell({ position }: { position: PositionType }) {
@@ -123,7 +127,7 @@ function PositionValueCell({ position }: { position: PositionType }) {
   // --- Calculate Position Size, Value, PnL ---
   let positionSize = 0;
   let currentPositionValue = 0;
-  let costBasis = 0; // The value at entry
+  let costBasis = 0; // The value at entry (note: this is different from wager for PnL%)
 
   if (baseTokenName === 'Yes') {
     // Yes/No Market
@@ -135,10 +139,7 @@ function PositionValueCell({ position }: { position: PositionType }) {
     } else {
       // Short YES (Long NO)
       positionSize = borrowedBaseTokenAmount;
-      // Current value of a short YES position = Size * (1 - CurrentPrice)
       currentPositionValue = positionSize * (1 - currentMarketPrice);
-      // Cost basis of a short YES position = Size * (1 - EntryPrice)
-      // This represents the collateral 'locked' or the value obtained at entry
       costBasis = positionSize * (1 - entryPrice);
     }
   } else if (isLong) {
@@ -149,30 +150,19 @@ function PositionValueCell({ position }: { position: PositionType }) {
   } else {
     // Linear or other Market Types - Short Position
     positionSize = borrowedBaseTokenAmount;
-    // Current value of a short position = Size * (EntryPrice - CurrentPrice) + CostBasis ? Needs verification.
-    // Let's try: Value = Initial Collateral + PnL = CostBasis + PnL
-    // PnL = Size * (EntryPrice - CurrentPrice)
-    // simpler: represent value based on closing the position
     const pnlPerUnit = entryPrice - currentMarketPrice;
     const totalPnl = positionSize * pnlPerUnit;
-    // Assuming cost basis represents initial collateral required or value at entry
-    // For a simple short, cost basis might be complex. Let's use entryPrice * size for now,
-    // but this needs validation based on the specific market mechanics.
-    costBasis = positionSize * entryPrice; // This might not be the intuitive 'cost'
-    // Current Value = Cost Basis + PnL
-    // OR Current Value could be seen as liability: -(PositionSize * CurrentMarketPrice) ?
-    // Let's stick to PnL calculation for display consistency.
-    currentPositionValue = costBasis + totalPnl; // Value = What you started with + Profit/Loss
+    costBasis = positionSize * entryPrice;
+    currentPositionValue = costBasis + totalPnl;
   }
 
-  // --- PnL Calculation ---
-  // Ensure values are numbers before calculation (redundant as Number() already used)
-  // currentPositionValue = isNaN(currentPositionValue) ? 0 : currentPositionValue;
-  // costBasis = isNaN(costBasis) ? 0 : costBasis;
+  // --- PnL Calculation based on Wager (position.collateral) ---
+  const wagerAmount = Number(formatEther(BigInt(position.collateral || '0')));
 
-  const pnl = currentPositionValue - costBasis;
-  // Calculate PnL percentage, handle division by zero if costBasis is 0
-  const pnlPercentage = costBasis !== 0 ? (pnl / costBasis) * 100 : 0;
+  // 'pnl' is the profit or loss amount relative to the initial wager
+  const pnl = currentPositionValue - wagerAmount;
+  // Calculate PnL percentage relative to the wagerAmount
+  const pnlPercentage = wagerAmount !== 0 ? (pnl / wagerAmount) * 100 : 0;
 
   // Display loading state or handle potential errors
   if (priceLoading) {
@@ -187,6 +177,7 @@ function PositionValueCell({ position }: { position: PositionType }) {
   return (
     <>
       <NumberDisplay value={currentPositionValue} /> {collateralSymbol}{' '}
+      {/* A positive pnl means a gain (value > wager), so green. A negative pnl means a loss. */}
       <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
         ({pnlPercentage.toFixed(2)}%)
       </small>
@@ -196,8 +187,14 @@ function PositionValueCell({ position }: { position: PositionType }) {
 
 export default function TraderPositionsTable({
   positions,
+  parentMarketAddress,
+  parentChainId,
+  parentMarketId,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
+
+  const isMarketPage = parentMarketAddress && parentChainId && parentMarketId; // True for a specific market page (with marketId)
+  const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
 
   if (!positions || positions.length === 0) {
     return null;
@@ -213,14 +210,33 @@ export default function TraderPositionsTable({
     return null;
   }
 
+  let displayQuestionColumn;
+  if (isProfilePageContext) {
+    displayQuestionColumn = true; // Always show on profile page
+  } else if (isMarketPage) {
+    // Specific market page
+    displayQuestionColumn = false; // Never show on specific market page
+  } else {
+    // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
+    displayQuestionColumn = validPositions.some(
+      (p) =>
+        p.market.marketGroup &&
+        p.market.marketGroup.markets &&
+        p.market.marketGroup.markets.length > 1
+    );
+  }
+
   return (
     <div>
-      <h3 className="font-medium mb-4">Positions</h3>
-      <div className="rounded-md border">
+      <h3 className="font-medium mb-4">Trader Positions</h3>
+      <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="whitespace-nowrap">Question</TableHead>
+              <TableHead /> {/* Header for Position ID */}
+              {displayQuestionColumn && (
+                <TableHead className="whitespace-nowrap">Question</TableHead>
+              )}
               <TableHead className="whitespace-nowrap">Position</TableHead>
               <TableHead className="whitespace-nowrap">Wager</TableHead>
               <TableHead className="whitespace-nowrap">
@@ -251,13 +267,27 @@ export default function TraderPositionsTable({
               );
               const marketAddress = position.market.marketGroup.address || '';
 
+              // Determine if the position is expired and settled
+              const endTimestamp = position.market?.endTimestamp;
+              // Ensure PositionType includes isSettled. Assuming it does based on UserPositionsTable.
+              const isPositionSettled = position.isSettled || false;
+              const now = Date.now();
+              const isExpired = endTimestamp
+                ? Number(endTimestamp) * 1000 < now
+                : false;
+
               return (
                 <TableRow key={position.id}>
-                  <TableCell>{position.market.question || 'N/A'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    #{position.id}
+                  </TableCell>
+                  {displayQuestionColumn && (
+                    <TableCell>{position.market.question || 'N/A'}</TableCell>
+                  )}
                   {isClosed ? (
                     <TableCell
-                      colSpan={5}
-                      className="text-center font-medium text-muted-foreground"
+                      colSpan={displayQuestionColumn ? 7 : 6}
+                      className="text-center font-medium text-muted-foreground tracking-wider"
                     >
                       CLOSED
                     </TableCell>
@@ -280,25 +310,35 @@ export default function TraderPositionsTable({
                       <TableCell>
                         <MaxPayoutCell position={position} />
                       </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant={
-                              position.isSettled ? 'default' : 'secondary'
-                            }
-                            disabled={!isOwner} // Keep disabled logic based on ownership
-                          >
-                            {position.isSettled ? 'Claim' : 'Sell'}
-                          </Button>
-                          <Link
-                            href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
-                            passHref
-                          >
-                            <Button size="sm" variant="outline">
-                              View
-                            </Button>
-                          </Link>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          {isOwner &&
+                            (isExpired && !isPositionSettled ? (
+                              <SettlePositionButton
+                                positionId={position.positionId.toString()}
+                                marketAddress={marketAddress}
+                                chainId={
+                                  position.market.marketGroup.chainId || 0
+                                }
+                                onSuccess={() => {
+                                  console.log(
+                                    `Settle action for position ${position.positionId} initiated. Consider implementing a data refetch mechanism.`
+                                  );
+                                }}
+                              />
+                            ) : (
+                              // Render Sell button only if not on Market Page
+                              !isMarketPage && (
+                                <Link
+                                  href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
+                                  passHref
+                                >
+                                  <Button size="xs" variant="outline">
+                                    Sell
+                                  </Button>
+                                </Link>
+                              )
+                            ))}
                         </div>
                       </TableCell>
                     </>

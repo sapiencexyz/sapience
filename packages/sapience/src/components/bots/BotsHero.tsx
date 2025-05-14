@@ -24,7 +24,7 @@ export default function BotsHero() {
   return (
     <div className="relative overflow-hidden flex items-center justify-center w-full">
       {/* Outer container with padding and iframe background */}
-      <div className="relative z-10 w-full px-6 py-36 max-w-screen-xl mx-auto">
+      <div className="relative z-10 w-full px-6 pt-36 max-w-screen-xl mx-auto">
         <div className="relative overflow-hidden rounded-xl shadow-inner">
           {/* Iframe as background within the outer box */}
           <div

@@ -614,7 +614,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   // Handle disconnected state first
   if (!isConnected) {
     return (
-      <div className="text-center p-4 border rounded-md bg-muted/30">
+      <div className="text-center p-4 border rounded bg-muted/30">
         <Button size="lg" onClick={onConnectWallet}>
           Connect Wallet
         </Button>
@@ -711,7 +711,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         {!isPermitLoadingPermit && permitData?.permitted === false && (
           <Alert
             variant="destructive"
-            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
+            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
           >
             <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
             <AlertDescription>

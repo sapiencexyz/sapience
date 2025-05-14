@@ -756,7 +756,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             <button
               key={index}
               type="button"
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${
+              className={`px-3 py-1 text-sm rounded flex items-center ${
                 activeMarketIndex === index
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary'
