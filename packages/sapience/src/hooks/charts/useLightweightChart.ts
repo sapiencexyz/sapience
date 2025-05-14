@@ -6,10 +6,15 @@ import type {
   CandlestickData,
   LineData,
 } from 'lightweight-charts';
-import { CandlestickSeries, createChart, CrosshairMode, LineSeries, PriceScaleMode } from 'lightweight-charts';
+import {
+  CandlestickSeries,
+  createChart,
+  CrosshairMode,
+  LineSeries,
+  PriceScaleMode,
+} from 'lightweight-charts';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
-import { formatEther } from 'viem'; // Import formatEther
 
 import type { PriceChartDataPoint } from './usePriceChartData'; // Import the shared type
 

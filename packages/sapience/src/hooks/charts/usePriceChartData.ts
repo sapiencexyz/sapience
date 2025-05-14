@@ -2,10 +2,10 @@ import { gql } from '@apollo/client'; // Keep for gql tag
 import type { CandleType } from '@foil/ui/types/graphql';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
+import { formatEther } from 'viem';
 
 import { useSapience } from '../../lib/context/SapienceProvider'; // Corrected path
 import { foilApi } from '../../lib/utils/util'; // Adjust path as needed
-import { formatEther } from 'viem';
 
 // GraphQL Queries
 const GET_MARKET_CANDLES = gql`
@@ -397,14 +397,12 @@ export const usePriceChartData = ({
     const marketCandlesFiltered = [];
     let flag = true;
     for (let i = 0; i < marketCandles.length; i++) {
-      if (flag && marketCandles[i].close === '0') {
-        continue;
-      } else {
+      if (!(flag && marketCandles[i].close === '0')) {
         marketCandlesFiltered.push(marketCandles[i]);
         flag = false;
       }
     }
-    
+
     const marketCandlesFormatter = (price: bigint) => {
       try {
         // Lightweight Charts provides price as number, viem expects bigint.
@@ -418,8 +416,8 @@ export const usePriceChartData = ({
         // Fallback or default display in case of error
         throw e;
       }
-    }
-    
+    };
+
     // Process market candles
     marketCandlesFiltered.forEach((candle) => {
       const dataPoint: PriceChartDataPoint = {
@@ -430,10 +428,8 @@ export const usePriceChartData = ({
         close: marketCandlesFormatter(BigInt(candle.close) ?? undefined),
       };
 
-      
       combinedDataMap.set(candle.timestamp, dataPoint);
     });
-
 
     // Process and merge index candles
     mergePriceData(
@@ -443,7 +439,6 @@ export const usePriceChartData = ({
       indexMultiplier
     );
 
- 
     // Process and merge resource candles
     mergePriceData(combinedDataMap, resourceCandlesRaw, 'resourcePrice', 1e9); // Assuming 1e9 multiplier
 
