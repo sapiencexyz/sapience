@@ -92,7 +92,7 @@ export class CandleCacheBuilder {
           0
         )
       : lastProcessedResourcePrice;
-    log({ message: 'step 3: process the batches', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({ message: `step 3: process the batches from ${initialTimestamp} (${lastProcessedResourcePrice})`, prefix: CANDLE_CACHE_CONFIG.logPrefix });
     const totalResourcePrices = await getResourcePricesCount(initialTimestamp);
     const totalBatches = Math.ceil(totalResourcePrices / CANDLE_CACHE_CONFIG.batchSize);
     let iter = 0;
@@ -107,6 +107,7 @@ export class CandleCacheBuilder {
         message: `batch: ${iter}/${totalBatches} - step 2, process the batch of size: ${prices.length}`,
         prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2,
       });
+      const batchStartTime = Date.now();
       getNextBatch = hasMore;
       // 3. Process the batch
       let batchIdx = 0;
@@ -134,7 +135,9 @@ export class CandleCacheBuilder {
         }
         batchIdx++;
       }
-      log({ message: `batch: ${iter}/${totalBatches} - step 3: done processing the batch`, prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2 });
+      const batchEndTime = Date.now();
+      const batchDuration = (batchEndTime - batchStartTime) / 1000; // Convert to seconds
+      log({ message: `batch: ${iter}/${totalBatches} - step 3: done processing the batch in ${batchDuration} seconds`, prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2 });
 
       // 4. Update indexes for the next batch
       initialTimestamp = prices[prices.length - 1].timestamp;
@@ -143,6 +146,12 @@ export class CandleCacheBuilder {
         initialTimestamp > lastProcessedResourcePrice
           ? initialTimestamp
           : lastProcessedResourcePrice;
+
+      await setConfig(
+        CANDLE_CACHE_CONFIG.lastProcessedResourcePrice,
+        lastProcessedResourcePrice
+      );
+      
     }
     log({ message: 'step 4: update the last processed resource price', prefix: CANDLE_CACHE_CONFIG.logPrefix, });
     // 5. update the last processed resource price
