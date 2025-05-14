@@ -20,6 +20,7 @@ interface UserPositionsTableProps {
   chainId?: number;
   marketId?: number; // Changed from string to number to match typical ID types
   refetchUserPositions?: () => void;
+  showProfileButton?: boolean;
 }
 
 const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
@@ -28,6 +29,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
   chainId,
   marketId,
   refetchUserPositions,
+  showProfileButton = true,
 }) => {
   const positionVars: {
     address: Address;
@@ -130,14 +132,16 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
           parentMarketId={marketId}
         />
       )}
-      <div>
-        <Link href={`/profile/${account}`}>
-          <Button>
-            <User className="h-4 w-4" />
-            View Your Profile
-          </Button>
-        </Link>
-      </div>
+      {showProfileButton && (
+        <div>
+          <Link href={`/profile/${account}`}>
+            <Button>
+              <User className="h-4 w-4" />
+              View Your Profile
+            </Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 };

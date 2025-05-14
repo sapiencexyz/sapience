@@ -1,6 +1,7 @@
-import { Resolver, Query, Arg, Int } from 'type-graphql';
+import { Resolver, Query, Arg, Int, FieldResolver, Root } from 'type-graphql';
 import dataSource from '../../db';
 import { Market } from '../../models/Market';
+import { MarketPrice } from '../../models/MarketPrice';
 import { MarketType } from '../types';
 import { mapMarketToType } from './mappers';
 
@@ -32,6 +33,32 @@ export class MarketResolver {
     } catch (error) {
       console.error('Error fetching markets:', error);
       throw new Error('Failed to fetch markets');
+    }
+  }
+
+  @FieldResolver(() => String, { nullable: true })
+  async currentPrice(@Root() market: Market): Promise<string | null> {
+    if (market.settled) {
+      return null;
+    }
+
+    try {
+      // We need to find the latest MarketPrice associated with this Market.
+      // The path is Market -> Position -> Transaction -> MarketPrice.
+      const latestMarketPrice = await dataSource
+        .getRepository(MarketPrice)
+        .createQueryBuilder('marketPrice')
+        .innerJoin('marketPrice.transaction', 'transaction')
+        .innerJoin('transaction.position', 'position')
+        .innerJoin('position.market', 'market_alias') // market is a keyword, use alias
+        .where('market_alias.id = :marketId', { marketId: market.id })
+        .orderBy('marketPrice.timestamp', 'DESC')
+        .getOne();
+
+      return latestMarketPrice ? latestMarketPrice.value : null;
+    } catch (e) {
+      console.error(`Error fetching currentPrice for market ${market.id}:`, e);
+      return null;
     }
   }
 }

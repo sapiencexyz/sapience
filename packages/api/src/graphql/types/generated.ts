@@ -85,6 +85,7 @@ export type MarketType = {
   __typename?: 'MarketType';
   baseAssetMaxPriceTick?: Maybe<Scalars['Int']['output']>;
   baseAssetMinPriceTick?: Maybe<Scalars['Int']['output']>;
+  currentPrice?: Maybe<Scalars['String']['output']>;
   endTimestamp?: Maybe<Scalars['Int']['output']>;
   id: Scalars['ID']['output'];
   marketGroup?: Maybe<MarketGroupType>;
@@ -466,6 +467,7 @@ export type MarketParamsTypeResolvers<ContextType = ApolloContext, ParentType ex
 export type MarketTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['MarketType'] = ResolversParentTypes['MarketType']> = ResolversObject<{
   baseAssetMaxPriceTick?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   baseAssetMinPriceTick?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  currentPrice?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   endTimestamp?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   marketGroup?: Resolver<Maybe<ResolversTypes['MarketGroupType']>, ParentType, ContextType>;

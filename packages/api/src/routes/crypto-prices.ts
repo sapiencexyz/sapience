@@ -147,9 +147,6 @@ router.get('/', async (req, res) => {
         .save(pricesToSave)
         .then(() => {
           console.log('[DB CACHE UPDATED]');
-        })
-        .catch((dbError) => {
-          console.error('[ERROR UPDATING DB CACHE]', dbError);
         });
     }
 

@@ -113,6 +113,7 @@ const MARKET_GROUPS_QUERY = gql`
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
         poolAddress
+        currentPrice
         marketParams {
           claimStatement
         }
@@ -120,8 +121,6 @@ const MARKET_GROUPS_QUERY = gql`
     }
   }
 `;
-
-// const LOCAL_STORAGE_KEY = 'foil_install_dialog_shown';
 
 // Define response types based on MARKET_GROUPS_QUERY
 interface ApiMarketResponse {

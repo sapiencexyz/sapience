@@ -10,12 +10,12 @@ export default function PortfolioPage() {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
 
-  const content = <UserPositionsTable account={address} />;
-
   return (
     <div className="container max-w-6xl mx-auto py-32 px-4">
-      <ProfileHeader address={address} />
-      <div className="mt-12">{content}</div>
+      <div className="mb-12">
+        <ProfileHeader address={address} />
+      </div>
+      <UserPositionsTable account={address} showProfileButton={false} />
     </div>
   );
 }

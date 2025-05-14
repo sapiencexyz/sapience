@@ -55,4 +55,7 @@ export class MarketType {
 
   @Field(() => String, { nullable: true })
   optionName: string | null;
+
+  @Field(() => String, { nullable: true })
+  currentPrice: string | null;
 }
