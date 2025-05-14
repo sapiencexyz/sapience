@@ -515,8 +515,8 @@ importers:
         specifier: '3'
         version: 3.2.5
       lightweight-charts:
-        specifier: ^4.2.1
-        version: 4.2.1
+        specifier: ^5.0.1
+        version: 5.0.6
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -13147,6 +13147,9 @@ packages:
 
   lightweight-charts@4.2.1:
     resolution: {integrity: sha512-nE2zCZ5Gp7KZbVHUJi6QhQLkYRvYyxsQTnSLEXIFmc8iHOFBT4rk/Dbyecq+CLW59FNuoCPNOYjZnS63/uHDrA==}
+
+  lightweight-charts@5.0.6:
+    resolution: {integrity: sha512-A7mkToJ3ZPecKkWWM5afN5PZUUf5BlQ+UgcYbWuSlpe1V18n61ahtbtToCSIL0VpSgE5sQPJ/k+/ieQ7/FJe+Q==}
 
   lilconfig@2.1.0:
     resolution: {integrity: sha512-utWOt/GHzuUxnLKxB6dk81RoOeoNeHgbrXiuGk4yyF5qlRz+iIVWu56E2fqGHFrXz0QNUhLB/8nKqvRH66JKGQ==}
@@ -35849,7 +35852,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.8.4)
+      retry-axios: 2.6.0(axios@1.8.4(debug@4.4.0))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -37416,6 +37419,10 @@ snapshots:
       lightningcss-win32-x64-msvc: 1.29.3
 
   lightweight-charts@4.2.1:
+    dependencies:
+      fancy-canvas: 2.1.0
+
+  lightweight-charts@5.0.6:
     dependencies:
       fancy-canvas: 2.1.0
 
@@ -41353,7 +41360,7 @@ snapshots:
 
   retimer@2.0.0: {}
 
-  retry-axios@2.6.0(axios@1.8.4):
+  retry-axios@2.6.0(axios@1.8.4(debug@4.4.0)):
     dependencies:
       axios: 1.8.4(debug@4.4.0)
 

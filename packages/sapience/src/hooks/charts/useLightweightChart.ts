@@ -6,7 +6,7 @@ import type {
   CandlestickData,
   LineData,
 } from 'lightweight-charts';
-import { createChart, CrosshairMode, PriceScaleMode } from 'lightweight-charts';
+import { CandlestickSeries, createChart, CrosshairMode, LineSeries, PriceScaleMode } from 'lightweight-charts';
 import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
 import { formatEther } from 'viem'; // Import formatEther
@@ -106,6 +106,7 @@ export const useLightweightChart = ({
         borderColor: theme === 'dark' ? '#363537' : '#cccccc',
         timeVisible: true,
         secondsVisible: false,
+        maxBarSpacing: 30,
         // fixRightEdge: true, // Often not desired, allow scrolling past last bar
         // fixLeftEdge: true, // Avoid fixing left edge
       },
@@ -120,20 +121,7 @@ export const useLightweightChart = ({
           if (typeof price !== 'number' || Number.isNaN(price) || price < 0) {
             return ''; // Return empty for invalid inputs
           }
-          try {
-            // Lightweight Charts provides price as number, viem expects bigint.
-            // Rounding might be needed if intermediate calcs create decimals,
-            // though raw wei should be integers. Use Math.round for safety.
-            const priceBigInt = BigInt(Math.round(price));
-            const formattedPrice = formatEther(priceBigInt);
-            // formatEther returns string, convert back to number for toFixed
-            // Limit to desired decimal places (e.g., 4)
-            return Number(formattedPrice).toFixed(4);
-          } catch (e) {
-            console.error('Error formatting price with formatEther:', e);
-            // Fallback or default display in case of error
-            return price.toString(); // Display raw number as fallback
-          }
+          return price.toFixed(4);
         },
       },
     });
@@ -141,7 +129,7 @@ export const useLightweightChart = ({
     chartRef.current = chart;
 
     // Add Candlestick Series
-    candlestickSeriesRef.current = chart.addCandlestickSeries({
+    candlestickSeriesRef.current = chart.addSeries(CandlestickSeries, {
       upColor: GREEN,
       downColor: RED,
       borderVisible: false,
@@ -151,7 +139,7 @@ export const useLightweightChart = ({
     });
 
     // Add Index Price Line Series
-    indexPriceSeriesRef.current = chart.addLineSeries({
+    indexPriceSeriesRef.current = chart.addSeries(LineSeries, {
       color: BLUE,
       lineStyle: 2, // Dashed line style
       lineWidth: 2,
@@ -161,7 +149,7 @@ export const useLightweightChart = ({
     });
 
     // Add Resource Price Line Series
-    resourcePriceSeriesRef.current = chart.addLineSeries({
+    resourcePriceSeriesRef.current = chart.addSeries(LineSeries, {
       color: GREEN,
       lineStyle: 0, // Solid line style
       lineWidth: 1,
@@ -171,7 +159,7 @@ export const useLightweightChart = ({
     });
 
     // Add Trailing Average Price Line Series
-    trailingAvgPriceSeriesRef.current = chart.addLineSeries({
+    trailingAvgPriceSeriesRef.current = chart.addSeries(LineSeries, {
       color: BLUE,
       lineStyle: 0,
       lineWidth: 1,

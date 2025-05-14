@@ -5,6 +5,7 @@ import { print } from 'graphql';
 
 import { useSapience } from '../../lib/context/SapienceProvider'; // Corrected path
 import { foilApi } from '../../lib/utils/util'; // Adjust path as needed
+import { formatEther } from 'viem';
 
 // GraphQL Queries
 const GET_MARKET_CANDLES = gql`
@@ -393,17 +394,46 @@ export const usePriceChartData = ({
     // 2. Combine data using a Map
     const combinedDataMap = new Map<number, PriceChartDataPoint>();
 
+    const marketCandlesFiltered = [];
+    let flag = true;
+    for (let i = 0; i < marketCandles.length; i++) {
+      if (flag && marketCandles[i].close === '0') {
+        continue;
+      } else {
+        marketCandlesFiltered.push(marketCandles[i]);
+        flag = false;
+      }
+    }
+    
+    const marketCandlesFormatter = (price: bigint) => {
+      try {
+        // Lightweight Charts provides price as number, viem expects bigint.
+        // Rounding might be needed if intermediate calcs create decimals,
+        // though raw wei should be integers. Use Math.round for safety.
+        const formattedPrice = formatEther(price);
+        // formatEther returns string, convert back to number for toFixedF
+        return Number(formattedPrice);
+      } catch (e) {
+        console.error('Error formatting price with formatEther:', e);
+        // Fallback or default display in case of error
+        throw e;
+      }
+    }
+    
     // Process market candles
-    marketCandles.forEach((candle) => {
+    marketCandlesFiltered.forEach((candle) => {
       const dataPoint: PriceChartDataPoint = {
         timestamp: candle.timestamp,
-        open: safeParseFloat(candle.open) ?? undefined,
-        high: safeParseFloat(candle.high) ?? undefined,
-        low: safeParseFloat(candle.low) ?? undefined,
-        close: safeParseFloat(candle.close) ?? undefined,
+        open: marketCandlesFormatter(BigInt(candle.open) ?? undefined),
+        high: marketCandlesFormatter(BigInt(candle.high) ?? undefined),
+        low: marketCandlesFormatter(BigInt(candle.low) ?? undefined),
+        close: marketCandlesFormatter(BigInt(candle.close) ?? undefined),
       };
+
+      
       combinedDataMap.set(candle.timestamp, dataPoint);
     });
+
 
     // Process and merge index candles
     mergePriceData(
@@ -413,6 +443,7 @@ export const usePriceChartData = ({
       indexMultiplier
     );
 
+ 
     // Process and merge resource candles
     mergePriceData(combinedDataMap, resourceCandlesRaw, 'resourcePrice', 1e9); // Assuming 1e9 multiplier
 
