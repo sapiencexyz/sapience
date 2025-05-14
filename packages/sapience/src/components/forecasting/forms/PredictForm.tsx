@@ -6,7 +6,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
-import { MarketGroupClassification } from '~/hooks/graphql/useMarketGroup';
+import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';

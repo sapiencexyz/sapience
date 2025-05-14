@@ -4,7 +4,7 @@ import type { MarketGroupType, MarketType } from '@foil/ui/types';
 import dynamic from 'next/dynamic';
 import type React from 'react';
 
-import { MarketGroupClassification } from '~/hooks/graphql/useMarketGroup';
+import { MarketGroupClassification } from '~/lib/types';
 import { formatNumber } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader

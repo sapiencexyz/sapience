@@ -68,13 +68,18 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
           baseLabel = optionNames?.[index] ?? 'Market Prediction';
         }
 
-        const label = hoveredDataPoint ? baseLabel : `Current ${baseLabel}`;
+        let label: string;
+        if (optionNames && optionNames.length > 1) {
+          label = baseLabel;
+        } else {
+          label = hoveredDataPoint ? baseLabel : `Current ${baseLabel}`;
+        }
+
+        const isMultipleChoice = optionNames && optionNames.length > 1;
+        const itemClassName = `flex items-center gap-1.5 mb-0.5 ${isMultipleChoice ? '' : 'text-lg'}`;
 
         return (
-          <div
-            key={marketIdStr}
-            className="flex items-center gap-1.5 text-lg mb-0.5"
-          >
+          <div key={marketIdStr} className={itemClassName}>
             <span
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: color }}

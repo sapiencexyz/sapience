@@ -9,6 +9,7 @@ import {
 } from '@foil/ui/components/ui/sheet';
 import { Skeleton } from '@foil/ui/components/ui/skeleton';
 import { useIsMobile } from '@foil/ui/hooks/use-mobile';
+import { type MarketType as GraphQLMarketType } from '@foil/ui/types/graphql';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -25,7 +26,6 @@ import * as React from 'react';
 import {
   useEnrichedMarketGroups,
   useCategories,
-  type Market,
 } from '~/hooks/graphql/useMarketGroups';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import { formatQuestion } from '~/lib/utils/util';
@@ -70,7 +70,7 @@ const hoverStatusClass = 'hover:bg-secondary/50';
 const DEFAULT_CATEGORY_COLOR = '#71717a';
 
 // Define local interfaces based on expected data shape
-export interface MarketWithContext extends Market {
+export interface MarketWithContext extends GraphQLMarketType {
   marketAddress: string;
   chainId: number;
   collateralAsset: string;
@@ -270,16 +270,52 @@ const ForecastingTable = () => {
 
     // 2. Map filteredMarketGroups to MarketWithContext[]
     const allMarkets: MarketWithContext[] = filteredByCategory.flatMap(
-      (marketGroup) =>
-        marketGroup.markets.map((market) => ({
-          ...market, // Spread market details
-          marketAddress: marketGroup.address,
-          chainId: marketGroup.chainId,
-          collateralAsset: marketGroup.collateralAsset,
-          isYin: marketGroup.isYin,
-          categorySlug: marketGroup.category.slug,
-          categoryId: marketGroup.category.id,
-        }))
+      (marketGroup) => {
+        // Ensure required fields for MarketWithContext from marketGroup are present AND are strings
+        if (
+          typeof marketGroup.address !== 'string' ||
+          typeof marketGroup.collateralAsset !== 'string' ||
+          !marketGroup.category || // Ensure category object itself exists
+          typeof marketGroup.category.slug !== 'string' ||
+          typeof marketGroup.category.id !== 'string'
+        ) {
+          return []; // Skip this marketGroup if essential context fields are missing or not strings
+        }
+
+        // Filter and map markets within this marketGroup
+        return marketGroup.markets
+          .filter(
+            (
+              market // market is GraphQLMarketType
+            ) =>
+              // Ensure startTimestamp and endTimestamp are numbers
+              typeof market.startTimestamp === 'number' &&
+              typeof market.endTimestamp === 'number'
+            // You might also want to check if market.public is a boolean, etc., if those cause issues.
+            // For now, focusing on timestamps as requested and common sources of null/undefined issues.
+          )
+          .map((market): MarketWithContext => {
+            // At this point, market.startTimestamp and market.endTimestamp are numbers.
+            // marketGroup.address, collateralAsset, category.slug, category.id are strings.
+            return {
+              ...market, // Spread properties from GraphQLMarketType (which includes start/end timestamps)
+
+              // Explicitly assign core GraphQLMarketType properties that were filtered,
+              // ensuring their type is number for consumers of MarketWithContext.
+              // This helps TypeScript understand they are no longer Maybe<number>.
+              startTimestamp: market.startTimestamp,
+              endTimestamp: market.endTimestamp,
+
+              // Add context fields from marketGroup
+              marketAddress: marketGroup.address!,
+              chainId: marketGroup.chainId,
+              collateralAsset: marketGroup.collateralAsset!,
+              isYin: marketGroup.isYin,
+              categorySlug: marketGroup.category!.slug!,
+              categoryId: marketGroup.category!.id!,
+            };
+          });
+      }
     );
 
     // 3. Filter markets based on status
@@ -307,32 +343,41 @@ const ForecastingTable = () => {
     }>((acc, market) => {
       const marketKey = `${market.chainId}:${market.marketAddress}`;
       if (!acc[marketKey]) {
-        // Find the corresponding enrichedMarketGroup to get details
-        // Use filteredByCategory to ensure we only consider market groups matching the slug filter
         const sourceMarketGroup = filteredByCategory.find(
           (m) => `${m.chainId}:${m.address}` === marketKey
         );
 
-        // Find the FocusArea data that includes this market group's category slug
         const focusAreaStyle = FOCUS_AREAS.find(
           (fa) => fa.id === sourceMarketGroup?.category?.slug
         );
         const color = focusAreaStyle?.color ?? DEFAULT_CATEGORY_COLOR;
 
+        // Ensure properties used for GroupedMarketGroup are valid strings
+        const marketName = sourceMarketGroup?.category?.name;
+        const { collateralAsset } = market; // This is string from MarketWithContext
+
+        if (
+          typeof marketName !== 'string' ||
+          typeof collateralAsset !== 'string'
+        ) {
+          // Skip creating this group if essential display names are not strings
+          // This is a safeguard, though collateralAsset should be string from MarketWithContext
+          return acc;
+        }
+
         acc[marketKey] = {
           key: marketKey,
-          marketAddress: market.marketAddress,
+          marketAddress: market.marketAddress, // string from MarketWithContext
           chainId: market.chainId,
-          // Use sourceMarketGroup details safely
-          marketName: sourceMarketGroup?.category?.name ?? 'Unknown Market',
-          collateralAsset: market.collateralAsset,
+          marketName, // Now type string
+          collateralAsset, // Now type string
           color,
-          categorySlug: market.categorySlug,
-          categoryId: market.categoryId,
+          categorySlug: market.categorySlug, // string from MarketWithContext
+          categoryId: market.categoryId, // string from MarketWithContext
           isYin: market.isYin,
-          marketQuestion: undefined, // Initialize
-          markets: [], // Initialize
-          displayQuestion: undefined, // Initialize
+          marketQuestion: undefined,
+          markets: [],
+          displayQuestion: undefined,
         };
       }
       acc[marketKey].markets.push(market);
@@ -352,7 +397,8 @@ const ForecastingTable = () => {
 
         // Find active markets for this market group using the existing 'now'
         const activeMarkets = groupedMarketGroup.markets.filter(
-          (market) => now >= market.startTimestamp && now < market.endTimestamp
+          (market) =>
+            now >= market.startTimestamp! && now < market.endTimestamp!
         );
 
         // Determine the raw question (will be formatted by MarketGroupsRow)
@@ -373,7 +419,7 @@ const ForecastingTable = () => {
         // Fallback to first market with a question
         else if (groupedMarketGroup.markets.length > 0) {
           const firstMarketWithQuestion = [...groupedMarketGroup.markets]
-            .sort((a, b) => a.startTimestamp - b.startTimestamp)
+            .sort((a, b) => a.startTimestamp! - b.startTimestamp!)
             .find((market) => market.question);
 
           rawQuestion = firstMarketWithQuestion?.question || null;
@@ -425,25 +471,23 @@ const ForecastingTable = () => {
         const nowForDayGrouping = Math.floor(Date.now() / 1000);
         const activeMarkets = marketGroup.markets.filter(
           (market) =>
-            nowForDayGrouping >= market.startTimestamp &&
-            nowForDayGrouping < market.endTimestamp
+            nowForDayGrouping >= market.startTimestamp! &&
+            nowForDayGrouping < market.endTimestamp!
         );
 
         // Determine the timestamp to use for day grouping
         let timestamp;
         if (activeMarkets.length > 0) {
-          // Sort by end time and get the earliest ending market
           timestamp = [...activeMarkets].sort(
-            (a, b) => a.endTimestamp - b.endTimestamp
-          )[0].endTimestamp;
+            (a, b) => a.endTimestamp! - b.endTimestamp!
+          )[0].endTimestamp!;
         } else {
-          // If no active markets, use the earliest ending market
           timestamp = [...marketGroup.markets].sort(
-            (a, b) => a.endTimestamp - b.endTimestamp
-          )[0].endTimestamp;
+            (a, b) => a.endTimestamp! - b.endTimestamp!
+          )[0].endTimestamp!;
         }
 
-        const dayKey = getDayKey(timestamp);
+        const dayKey = getDayKey(timestamp!);
         if (!acc[dayKey]) {
           acc[dayKey] = [];
         }
@@ -462,26 +506,29 @@ const ForecastingTable = () => {
       // Get all active markets from all market groups in this day
       const now = Math.floor(Date.now() / 1000);
       const allActiveMarkets = marketGroups.flatMap((marketGroup) =>
-        marketGroup.markets.filter((market) => now < market.endTimestamp)
+        marketGroup.markets.filter((market) => now < market.endTimestamp!)
       );
 
       if (allActiveMarkets.length > 0) {
-        // Sort by end time and get the one ending soonest
         const nextEndingMarket = [...allActiveMarkets].sort(
-          (a, b) => a.endTimestamp - b.endTimestamp
+          (a, b) => a.endTimestamp! - b.endTimestamp!
         )[0];
 
-        result[dayKey] = nextEndingMarket.endTimestamp;
+        result[dayKey] = nextEndingMarket.endTimestamp!;
       } else {
-        // If no active markets, use the latest end time from any market
-        const allMarkets = marketGroups.flatMap(
+        const allMarketsInDay = marketGroups.flatMap(
           (marketGroup) => marketGroup.markets
         );
-        const latestEndingMarket = [...allMarkets].sort(
-          (a, b) => b.endTimestamp - a.endTimestamp
-        )[0];
-
-        result[dayKey] = latestEndingMarket.endTimestamp;
+        // Ensure we handle the case where allMarketsInDay might be empty, though unlikely if marketGroupsByDay[dayKey] exists
+        if (allMarketsInDay.length > 0) {
+          const latestEndingMarket = [...allMarketsInDay].sort(
+            (a, b) => b.endTimestamp! - a.endTimestamp!
+          )[0];
+          result[dayKey] = latestEndingMarket.endTimestamp!;
+        } else {
+          // Fallback if absolutely no markets, though getDayKey should prevent this dayKey from existing
+          result[dayKey] = now;
+        }
       }
     });
 
@@ -490,9 +537,16 @@ const ForecastingTable = () => {
 
   // Sort days chronologically
   const sortedDays = React.useMemo(() => {
-    return Object.keys(marketGroupsByDay).sort(
-      (a, b) => dayEndTimes[a] - dayEndTimes[b]
-    );
+    // Ensure dayEndTimes[a] and dayEndTimes[b] are numbers before sorting
+    return Object.keys(marketGroupsByDay).sort((a, b) => {
+      const timeA = dayEndTimes[a];
+      const timeB = dayEndTimes[b];
+      if (typeof timeA === 'number' && typeof timeB === 'number') {
+        return timeA - timeB;
+      }
+      // Fallback sort if types are not numbers (should not happen with current logic)
+      return 0;
+    });
   }, [marketGroupsByDay, dayEndTimes]);
 
   // Create a key that changes whenever filters change to force complete re-render

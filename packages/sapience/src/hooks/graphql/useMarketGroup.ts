@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';
 
+import type { MarketGroupClassification } from '../../lib/types';
+import { getMarketGroupClassification } from '../../lib/utils/marketUtils';
 import {
   findActiveMarkets,
   foilApi,
@@ -43,20 +45,14 @@ interface UseMarketGroupProps {
   marketAddress: string;
 }
 
-export enum MarketGroupClassification {
-  MULTIPLE_CHOICE = '1',
-  YES_NO = '2',
-  NUMERIC = '3',
-}
-
 interface UseMarketGroupReturn {
-  marketGroupData: MarketGroupType;
+  marketGroupData: MarketGroupType | undefined;
   isLoading: boolean;
   isSuccess: boolean;
   activeMarkets: MarketType[];
   chainId: number;
   isError: boolean;
-  marketClassification: MarketGroupClassification;
+  marketClassification: MarketGroupClassification | undefined;
 }
 
 export const useMarketGroup = ({
@@ -65,8 +61,6 @@ export const useMarketGroup = ({
 }: UseMarketGroupProps): UseMarketGroupReturn => {
   const chainId = getChainIdFromShortName(chainShortName);
   const [activeMarkets, setActiveMarkets] = useState<MarketType[]>([]);
-  const [marketClassification, setMarketClassification] =
-    useState<MarketGroupClassification>(MarketGroupClassification.NUMERIC);
 
   const {
     data: marketGroupData,
@@ -85,7 +79,7 @@ export const useMarketGroup = ({
       if (!marketResponse) {
         throw new Error('No market group data in response');
       }
-      return marketResponse; // Use imported MarketGroup type
+      return marketResponse;
     },
     enabled: !!chainId && !!marketAddress && chainId !== 0,
     retry: 3,
@@ -96,19 +90,15 @@ export const useMarketGroup = ({
     if (marketGroupData) {
       const newActiveMarkets = findActiveMarkets(marketGroupData);
       setActiveMarkets(newActiveMarkets);
-
-      if (marketGroupData.markets.length > 1) {
-        setMarketClassification(MarketGroupClassification.MULTIPLE_CHOICE);
-      } else if (marketGroupData.markets[0].optionName === null) {
-        setMarketClassification(MarketGroupClassification.YES_NO);
-      } else {
-        setMarketClassification(MarketGroupClassification.NUMERIC);
-      }
     }
   }, [marketGroupData]);
 
+  const marketClassification = marketGroupData
+    ? getMarketGroupClassification(marketGroupData)
+    : undefined;
+
   return {
-    marketGroupData: marketGroupData as MarketGroupType,
+    marketGroupData,
     isLoading,
     isSuccess,
     activeMarkets,

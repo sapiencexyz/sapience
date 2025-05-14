@@ -1,6 +1,6 @@
 import type { MarketGroupType } from '@foil/ui/types';
 
-import { MarketGroupClassification } from '~/hooks/graphql/useMarketGroup';
+import { MarketGroupClassification } from '~/lib/types';
 
 import MultipleChoiceWagerForm from './wager/MultipleChoiceWagerForm';
 import NumericWagerForm from './wager/NumericWagerForm';

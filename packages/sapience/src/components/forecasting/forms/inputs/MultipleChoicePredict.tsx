@@ -34,7 +34,7 @@ export default function MultipleChoicePredict({
               onClick={() => {
                 setValue(name, marketId.toString(), { shouldValidate: true });
               }}
-              className={`py-6 justify-start text-lg font-normal ${
+              className={`text-center justify-start font-normal ${
                 value === marketId.toString()
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                   : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'

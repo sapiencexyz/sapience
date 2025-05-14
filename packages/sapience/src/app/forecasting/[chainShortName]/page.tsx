@@ -19,11 +19,9 @@ import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
-import {
-  MarketGroupClassification,
-  useMarketGroup,
-} from '~/hooks/graphql/useMarketGroup';
+import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
 import { usePositions } from '~/hooks/graphql/usePositions';
+import { MarketGroupClassification } from '~/lib/types';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 
 export type ActiveTab = 'predict' | 'wager';
@@ -280,7 +278,7 @@ const ForecastingDetailPage = () => {
             <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
               <ForecastingForm
                 marketGroupData={marketGroupData!}
-                marketClassification={marketClassification}
+                marketClassification={marketClassification!}
                 permitData={permitData!}
                 onWagerSuccess={handleUserPositionsRefetch}
               />
