@@ -7,6 +7,10 @@ export class TrailingAvgHistoryStore {
     sums: Map<number, { sumUsed: bigint; sumFeePaid: bigint, startOfTrailingWindow: number }>; // trailingAvgTime -> sums
   }> = new Map();
 
+  isEmpty(): boolean {
+    return this.history.size === 0;
+  }
+
   // Add a new price datapoint for a resource and get updated sums
   addPriceAndGetSums(
     resourceSlug: string,
@@ -78,49 +82,9 @@ export class TrailingAvgHistoryStore {
     return sums;
   } 
 
-  // Get all prices for a resource
-  getPrices(resourceSlug: string): PriceDatapoint[] {
-    return this.history.get(resourceSlug)?.prices || [];
-  }
-
-  // Get prices for a specific trailing average period
-  getPricesForTrailingAvg(resourceSlug: string, trailingAvgTime: number): PriceDatapoint[] {
-    const resourceHistory = this.history.get(resourceSlug);
-    if (!resourceHistory) {
-      return [];
-    }
-
-    const startIndex = resourceHistory.pointers.get(trailingAvgTime);
-    if (startIndex === undefined) {
-      return [];
-    }
-
-    return resourceHistory.prices.slice(startIndex);
-  }
-
-  // Get the pointer for a specific trailing average period
-  getPointer(resourceSlug: string, trailingAvgTime: number): number | undefined {
-    return this.history.get(resourceSlug)?.pointers.get(trailingAvgTime);
-  }
-
-  // Check if a resource has history
-  hasHistory(resourceSlug: string): boolean {
-    return this.history.has(resourceSlug);
-  }
-
   // Get all resource slugs that have history
   getAllResourceSlugs(): string[] {
     return Array.from(this.history.keys());
-  }
-
-  // Clear history for a resource
-  clearHistory(resourceSlug: string): void {
-    this.history.delete(resourceSlug);
-  }
-
-  // Clear all history
-  clearAllHistory(): void {
-    this.history.clear();
   }
 
   private cleanupOldPrices(resourceSlug: string): void {

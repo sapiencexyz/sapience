@@ -30,15 +30,6 @@ export class CandleCacheBuilder {
   private trailingAvgCandleProcessor: TrailingAvgCandleProcessor;
   private marketCandleProcessor: MarketCandleProcessor;
 
-  private trailingResourceRuntime: {
-    resourceIdx: number;
-    trainingData: {
-      timestamp: number;
-      used: number;
-      fee: number;
-    }[];
-  }[] = [];
-
   private constructor() {
     this.runtimeCandles = new RuntimeCandleStore();
     this.trailingAvgHistory = new TrailingAvgHistoryStore();
@@ -85,7 +76,7 @@ export class CandleCacheBuilder {
     log({ message: 'step 2: process by batches from last processed resource price to the latest resource price', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     // 2. process by batches from last processed resource price to the latest resource price
     let getNextBatch = true;
-    const needsTrailing = this.trailingResourceRuntime.length == 0; // not initialized, we need to get data from the past to fill the trailingResourceRuntime
+    const needsTrailing = this.trailingAvgHistory.isEmpty(); // not initialized, we need to get data from the past to fill the trailingResourceRuntime
     let initialTimestamp = needsTrailing
       ? Math.max(
           lastProcessedResourcePrice - CANDLE_CACHE_CONFIG.preTrailingAvgTime,
@@ -103,12 +94,19 @@ export class CandleCacheBuilder {
         initialTimestamp,
         quantity: CANDLE_CACHE_CONFIG.batchSize,
       });
+      getNextBatch = hasMore;
+      if (prices.length === 0) {
+        log({
+          message: `batch is empty: ${iter}/${totalBatches} - step 2`,
+          prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2,
+        });
+          break;
+      }
       log({
         message: `batch: ${iter}/${totalBatches} - step 2, process the batch of size: ${prices.length}`,
         prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2,
       });
       const batchStartTime = Date.now();
-      getNextBatch = hasMore;
       // 3. Process the batch
       let batchIdx = 0;
       while (batchIdx < prices.length) {
@@ -175,23 +173,35 @@ export class CandleCacheBuilder {
     let iter = 0;
     while (getNextBatch) {
       iter++;
-      log({ message: `${iter}/${totalBatches} - 1`, prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2 });
+      log({ message: `${iter}/${totalBatches} - step 1`, prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2 });
       const { prices, hasMore } = await getMarketPrices({
         initialTimestamp: lastProcessedMarketPrice,
         quantity: CANDLE_CACHE_CONFIG.batchSize,
       });
+      getNextBatch = hasMore;
+      if (prices.length === 0) {
+        log({
+          message: `batch is empty: ${iter}/${totalBatches} - step 2`,
+          prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2,
+        });
+        break;
+      }
       log({
-        message: `${iter}/${totalBatches} - 2, ${prices.length}`,
+        message: `batch: ${iter}/${totalBatches} - step 2, process the batch of size: ${prices.length}`,
         prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2,
       });
-      getNextBatch = hasMore;
       // 3. Process the batch
+      const batchStartTime = Date.now();
       let batchIdx = 0;
       while (batchIdx < prices.length) {
         const price = prices[batchIdx];
         await this.marketCandleProcessor.processMarketPrice(price);
         batchIdx++;
       }
+
+      const batchEndTime = Date.now();
+      const batchDuration = (batchEndTime - batchStartTime) / 1000; // Convert to seconds
+      log({ message: `batch: ${iter}/${totalBatches} - step 3: done processing the batch in ${batchDuration} seconds`, prefix: CANDLE_CACHE_CONFIG.logPrefix, indent: 2 });
 
       // 4. Update the last processed market price and update the pointer for the next batch in case of restart
       if (prices.length > 0) {
