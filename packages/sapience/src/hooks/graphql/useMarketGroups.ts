@@ -1,26 +1,18 @@
 import { gql } from '@apollo/client';
+import type { MarketType, MarketGroupType, CategoryType } from '@foil/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
 import { FOCUS_AREAS, DEFAULT_FOCUS_AREA } from '~/lib/constants/focusAreas';
+import type { MarketGroupClassification } from '~/lib/types';
+import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import { foilApi } from '~/lib/utils/util';
-
-// Define the Category type based on schema.graphql
-export interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  iconSvg?: string;
-  color?: string;
-  // Add other fields from CategoryType if needed elsewhere
-}
 
 // Define the structure of the data returned by the category query
 interface GetCategoriesApiResponse {
   data: {
-    categories: Category[];
+    categories: CategoryType[];
   };
-  // Add other potential API response fields if necessary
 }
 
 // GraphQL query to fetch categories
@@ -39,10 +31,10 @@ const GET_CATEGORIES = gql`
 
 // Custom hook to fetch categories using Tanstack Query
 export const useCategories = () => {
-  return useQuery<Category[], Error>({
+  return useQuery<CategoryType[], Error>({
     // Specify return type and error type
     queryKey: ['categories'], // Define a query key
-    queryFn: async (): Promise<Category[]> => {
+    queryFn: async (): Promise<CategoryType[]> => {
       // Define the async function
       try {
         const response: GetCategoriesApiResponse = await foilApi.post(
@@ -79,65 +71,12 @@ export const useCategories = () => {
   });
 };
 
-export interface Market {
-  id: number;
-  marketId: number;
-  startTimestamp: number;
-  endTimestamp: number;
-  settled: boolean;
-  public: boolean;
-  question: string | null;
-  poolAddress?: string | null;
-  settlementPriceD18?: string | null;
-  optionName?: string | null;
-  baseAssetMinPriceTick?: number | null;
-  baseAssetMaxPriceTick?: number | null;
-  startingSqrtPriceX96?: string | null;
-  // Add nested marketParams based on query
-  marketParams?: {
-    claimStatement?: string | null;
-  } | null;
-  // Keep claimStatement at top level for mapped data compatibility? No, access nested.
-}
-
-// Define MarketParams type based on GraphQL schema
-// Ensure field names match the GQL schema
-export interface MarketParams {
-  feeRate?: number | null;
-  assertionLiveness?: string | null; // Keep as string if it can be large number
-  bondCurrency?: string | null;
-  bondAmount?: string | null; // Keep as string if it can be large number
-  claimStatement?: string | null;
-  uniswapPositionManager?: string | null;
-  uniswapSwapRouter?: string | null;
-  uniswapQuoter?: string | null;
-  optimisticOracleV3?: string | null;
-}
-
-export interface MarketGroup {
-  id: number;
-  address: string;
-  chainId: number;
-  vaultAddress: string;
-  owner?: `0x${string}`; // Kept as wagmi Address type
-  isYin: boolean;
-  collateralAsset: string;
-  question?: string | null;
-  baseTokenName?: string | null;
-  quoteTokenName?: string | null;
-  markets: Market[];
-  // Add fields needed for deployment
-  factoryAddress?: string | null;
-  initializationNonce?: string | null; // Renamed from nonce for clarity? Or keep as nonce if GQL uses that? Assuming GQL uses initializationNonce
-  minTradeSize?: string | null; // Keep as string if it can be large number
-  marketParams?: MarketParams | null;
-}
-
-// Define the new EnrichedMarket type
-export interface EnrichedMarketGroup extends MarketGroup {
-  category: Category;
-  latestEpochId?: bigint; // Add the latest epoch ID field
-  // No need to repeat fields already in MarketGroup
+export interface EnrichedMarketGroup
+  extends Omit<MarketGroupType, 'category' | 'markets'> {
+  category: CategoryType & { iconSvg?: string; color?: string };
+  markets: MarketType[];
+  latestEpochId?: bigint;
+  marketClassification: MarketGroupClassification;
 }
 
 export interface Candle {
@@ -172,16 +111,25 @@ const MARKETS_QUERY = gql`
       chainId
       isYin
       vaultAddress
-      owner # Added owner
+      owner
       collateralAsset
       question
       baseTokenName
       quoteTokenName
-      factoryAddress # Added factoryAddress
-      initializationNonce # Added initializationNonce
-      minTradeSize # Added minTradeSize
+      factoryAddress
+      initializationNonce
+      minTradeSize
+      collateralDecimals
+      collateralSymbol
+      deployTimestamp
+      deployTxnBlockNumber
+      isCumulative
+      resource {
+        id
+        name
+        slug
+      }
       marketParams {
-        # Added marketParams structure
         feeRate
         assertionLiveness
         bondCurrency
@@ -205,16 +153,23 @@ const MARKETS_QUERY = gql`
         settled
         public
         question
-        poolAddress # Valid field from schema
-        settlementPriceD18 # Valid field from schema
-        optionName # Valid field from schema
-        baseAssetMinPriceTick # Valid field from schema
-        baseAssetMaxPriceTick # Valid field from schema
-        startingSqrtPriceX96 # Added field
+        poolAddress
+        settlementPriceD18
+        optionName
+        baseAssetMinPriceTick
+        baseAssetMaxPriceTick
+        startingSqrtPriceX96
         marketParams {
-          # Added nested field
-          claimStatement # Added nested field
-        } # Added nested field
+          feeRate
+          assertionLiveness
+          bondCurrency
+          bondAmount
+          claimStatement
+          uniswapPositionManager
+          uniswapSwapRouter
+          uniswapQuoter
+          optimisticOracleV3
+        }
       }
     }
   }
@@ -260,26 +215,6 @@ const TOTAL_VOLUME_QUERY = gql`
   }
 `;
 
-// Define an interface for the market data structure returned by MARKETS_QUERY
-interface MarketGroupApiResponse {
-  id: number;
-  address: string;
-  chainId: number;
-  isYin: boolean;
-  vaultAddress: string;
-  collateralAsset: string;
-  question?: string | null;
-  baseTokenName?: string | null;
-  quoteTokenName?: string | null;
-  category: Category | null; // Allow null based on schema possibility
-  markets: Market[];
-  factoryAddress?: string | null;
-  initializationNonce?: string | null;
-  owner?: `0x${string}`;
-  minTradeSize?: string | null;
-  marketParams?: MarketParams | null;
-}
-
 // Rename the hook to reflect its output
 export const useEnrichedMarketGroups = () => {
   // Update the return type to use EnrichedMarketGroup[]
@@ -314,16 +249,17 @@ export const useEnrichedMarketGroups = () => {
 
       // --- Process market groups (enrichment only) ---
       return apiResponseData.marketGroups.map(
-        (marketGroup: MarketGroupApiResponse): EnrichedMarketGroup => {
-          // Return EnrichedMarketGroup
-          let categoryInfo: Category;
-          // ... (category enrichment logic - keep as is) ...
+        (marketGroup: MarketGroupType): EnrichedMarketGroup => {
+          // marketGroup is now MarketGroupType
+          let categoryInfo: CategoryType & { iconSvg?: string; color?: string };
+
           if (marketGroup.category) {
             const focusAreaData = focusAreaMap.get(marketGroup.category.slug);
             categoryInfo = {
               id: marketGroup.category.id,
               name: focusAreaData?.name || marketGroup.category.name,
               slug: marketGroup.category.slug,
+              marketGroups: marketGroup.category.marketGroups,
               iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
               color: focusAreaData?.color || DEFAULT_FOCUS_AREA.color,
             };
@@ -332,23 +268,29 @@ export const useEnrichedMarketGroups = () => {
               id: 'unknown',
               name: 'Unknown',
               slug: 'unknown',
+              marketGroups: [],
               iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
               color: DEFAULT_FOCUS_AREA.color,
             };
           }
 
-          const mappedMarkets = marketGroup.markets.map((market: Market) => ({
-            ...market,
-            // Access nested claimStatement safely
-            claimStatement: market.marketParams?.claimStatement,
-          }));
+          const mappedMarkets = marketGroup.markets.map(
+            (market): MarketType => ({
+              ...market,
+              id: market.id.toString(),
+              positions: market.positions || [],
+            })
+          );
+
+          // Get classification
+          const classification = getMarketGroupClassification(marketGroup);
 
           // Return the enriched group WITHOUT fetching epochId here
           return {
             ...marketGroup,
             category: categoryInfo,
             markets: mappedMarkets,
-            // latestEpochId is NOT fetched here anymore
+            marketClassification: classification,
           };
         }
       );

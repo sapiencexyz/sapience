@@ -1,7 +1,7 @@
 'use client';
 
 import type { MarketGroupType } from '@foil/ui/types/graphql';
-import { useMemo } from 'react'; // <-- Import useMemo
+import { useMemo, useState } from 'react'; // <-- Import useMemo and useState
 import {
   CartesianGrid,
   Line,
@@ -14,6 +14,7 @@ import {
 
 import LottieLoader from '../shared/LottieLoader';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
+import type { MultiMarketChartDataPoint } from '~/lib/utils/chartUtils'; // Added for type safety
 import { formatTimestamp, getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
 
 import ChartLegend from './ChartLegend';
@@ -46,19 +47,79 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     quoteTokenName: market?.quoteTokenName ?? undefined,
   });
 
+  const [hoveredChartData, setHoveredChartData] =
+    useState<MultiMarketChartDataPoint | null>(null); // New state for hovered data
+
   // Filter and scale chartData
   const scaledAndFilteredChartData = useMemo(() => {
-    const filtered = minTimestamp
+    const filteredByTimestamp = minTimestamp
       ? chartData.filter((dataPoint) => dataPoint.timestamp >= minTimestamp)
       : chartData;
 
-    // Scale the indexClose value
-    return filtered.map((point) => {
+    const scaledData = filteredByTimestamp.map((point) => {
       const scaledIndexClose =
         typeof point.indexClose === 'number'
           ? point.indexClose / 1e18 // Scale Wei down by 10^18
           : point.indexClose; // Keep null/undefined as is
-      return { ...point, indexClose: scaledIndexClose };
+
+      const scaledMarkets: { [marketId: string]: number | undefined } = {};
+      if (point.markets) {
+        Object.entries(point.markets).forEach(([marketId, value]) => {
+          scaledMarkets[marketId] =
+            typeof value === 'number' ? value / 1e18 : value;
+        });
+      }
+
+      return {
+        ...point, // Preserves original timestamp
+        indexClose: scaledIndexClose,
+        markets: scaledMarkets,
+      };
+    });
+
+    // If scaledData is empty after initial filtering and scaling, return it early
+    if (scaledData.length === 0) {
+      return [];
+    }
+
+    // Find the index of the first data point that has at least one non-zero market value
+    let firstNonZeroMarketDataIndex = -1;
+    for (let i = 0; i < scaledData.length; i++) {
+      const point = scaledData[i];
+      if (point.markets && Object.keys(point.markets).length > 0) {
+        const marketValues = Object.values(point.markets);
+        const hasNonZeroMarket = marketValues.some(
+          (value) => typeof value === 'number' && value !== 0
+        );
+        if (hasNonZeroMarket) {
+          firstNonZeroMarketDataIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Map over scaledData to produce the final chart data.
+    // For points in the leading segment (before firstNonZeroMarketDataIndex or all if none found),
+    // convert market values of 0 to undefined.
+    return scaledData.map((point, index) => {
+      const isLeadingSegment =
+        firstNonZeroMarketDataIndex === -1 ||
+        index < firstNonZeroMarketDataIndex;
+
+      if (isLeadingSegment && point.markets) {
+        const updatedMarkets: { [marketId: string]: number | undefined } = {};
+        Object.entries(point.markets).forEach(([marketId, value]) => {
+          // If the value is 0 in the leading segment, set to undefined
+          // Otherwise, keep the original value (could be non-zero, null, or already undefined)
+          updatedMarkets[marketId] = value === 0 ? undefined : value;
+        });
+        return {
+          ...point,
+          markets: updatedMarkets,
+        };
+      }
+      // If not in the leading segment, or if the point has no markets, return as is
+      return point;
     });
   }, [chartData, minTimestamp]);
 
@@ -104,7 +165,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   );
   if (!hasMarketData) {
     return (
-      <div className="w-full md:flex-1 h-full flex items-center justify-center text-muted-foreground border border-muted rounded-md bg-background/50">
+      <div className="w-full md:flex-1 h-full flex items-center justify-center text-muted-foreground border border-muted rounded bg-background/50">
         No market data available
       </div>
     );
@@ -124,8 +185,6 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       ? scaledAndFilteredChartData[scaledAndFilteredChartData.length - 1]
       : null;
 
-  console.log('Latest Data Point for Legend:', overallLatestDataPoint);
-
   return (
     // Adjust main container for flex column layout and height
     // Ensure this component tries to fill the height allocated by the parent flex container
@@ -141,6 +200,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         indexLineColor={indexLineColor}
         yAxisConfig={yAxisConfig}
         optionNames={optionNames}
+        hoveredDataPoint={hoveredChartData} // Pass hovered data to legend
       />
       {/* This div should grow to fill remaining space */}
       <div className="flex-1 w-full">
@@ -149,6 +209,24 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
           <LineChart
             data={scaledAndFilteredChartData}
             margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
+            onMouseMove={(state) => {
+              if (
+                state.isTooltipActive &&
+                state.activePayload &&
+                state.activePayload.length > 0
+              ) {
+                // The payload here is the raw data point from scaledAndFilteredChartData
+                const currentHoveredData = state.activePayload[0]
+                  .payload as MultiMarketChartDataPoint;
+                setHoveredChartData(currentHoveredData);
+              } else if (hoveredChartData !== null) {
+                // Clear only if it was previously set, to avoid needless re-renders
+                setHoveredChartData(null);
+              }
+            }}
+            onMouseLeave={() => {
+              setHoveredChartData(null);
+            }}
           >
             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
             <XAxis
@@ -171,13 +249,11 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
               width={40}
               stroke="rgba(0, 0, 0, 0.5)"
             />
+            {/* Tooltip configured to show a custom cursor line */}
             <Tooltip
-              content={
-                <CustomTooltip
-                  yAxisConfig={yAxisConfig}
-                  optionNames={optionNames}
-                />
-              }
+              content={() => null} // Still render no actual tooltip content
+              wrapperStyle={{ display: 'none' }} // Ensure no wrapper is rendered
+              cursor={{ stroke: 'lightgray', strokeDasharray: '3 3' }} // Show a light gray dashed vertical line
             />
 
             {/* Dynamically render a Line for each marketId */}
@@ -215,81 +291,5 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     </div>
   );
 };
-
-// --- Custom Tooltip Component ---
-
-// Define a more specific type for the tooltip payload item
-interface TooltipPayloadItem {
-  name?: string; // The key of the data (e.g., 'markets.0', 'indexClose')
-  value?: number | string; // The value corresponding to the key
-  color?: string; // The color of the corresponding line/bar
-  // Add other potential properties if needed, like payload for the raw data point
-  payload?: Record<string, unknown>; // Use unknown instead of any
-}
-
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: TooltipPayloadItem[]; // Use the specific type
-  label?: number | string;
-  yAxisConfig: ReturnType<typeof getYAxisConfig>;
-  optionNames?: string[] | null;
-}
-
-const CustomTooltip: React.FC<CustomTooltipProps> = ({
-  active,
-  payload,
-  label,
-  yAxisConfig,
-  optionNames,
-}) => {
-  if (active && payload && payload.length && label != null) {
-    const formattedLabel = formatTimestamp(label as number);
-
-    return (
-      <div className="p-3.5 bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded-md shadow-sm">
-        <p className="mb-1.5 font-semibold text-black">{formattedLabel}</p>
-        <div className="flex flex-col gap-2 text-sm">
-          {payload.map((pld, index) => {
-            const marketIdMatch = pld.name?.match(/^markets\.(\d+)$/);
-            let displayName: string;
-
-            if (marketIdMatch) {
-              const marketIndex = parseInt(marketIdMatch[1], 10);
-              // Attempt to use optionNames if available
-              displayName =
-                optionNames?.[marketIndex] ?? `Option ${marketIndex + 1}`;
-            } else if (pld.name === 'indexClose') {
-              displayName = 'Index';
-            } else {
-              displayName = pld.name as string;
-            }
-
-            // Safely handle the value type (Refactored from nested ternary)
-            let formattedValue: string;
-            if (typeof pld.value === 'number') {
-              formattedValue = yAxisConfig.tooltipValueFormatter(pld.value);
-            } else if (typeof pld.value === 'string') {
-              formattedValue = pld.value; // Or handle string values appropriately if needed
-            } else {
-              formattedValue = 'N/A'; // Default case for unexpected types
-            }
-
-            return (
-              <div key={`${pld.name}-${index}`} className="flex flex-col">
-                <div className="font-medium text-muted-foreground">
-                  {displayName}
-                </div>
-                {formattedValue}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-};
-// --- End Custom Tooltip Component ---
 
 export default MarketGroupChart;

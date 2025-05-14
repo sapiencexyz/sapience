@@ -14,29 +14,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
+import type { MarketType } from '@foil/ui/types';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toBytes, bytesToHex } from 'viem';
 import type { Address } from 'viem';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-
-// Assuming Market type is defined elsewhere, e.g., fetched from API
-// We need properties like: id, marketId, marketGroup.address, marketGroup.chainId,
-// startTimestamp, endTimestamp, startingSqrtPriceX96, baseAssetMinPriceTick,
-// baseAssetMaxPriceTick, claimStatement, salt, poolAddress (to check if deployed)
-
-// Placeholder type - adjust according to actual API response structure
-interface ApiMarket {
-  id: number;
-  marketId: number;
-  startTimestamp: number | null;
-  endTimestamp: number | null;
-  startingSqrtPriceX96: string | null;
-  baseAssetMinPriceTick: number | null;
-  baseAssetMaxPriceTick: number | null;
-  poolAddress: string | null; // Indicates if already deployed
-  claimStatement: string | null; // Moved from nested marketParams
-}
 
 // ABI for the createEpoch function (from CreateMarketDialog originally)
 const createEpochAbiFragment = [
@@ -62,7 +45,7 @@ const createEpochAbiFragment = [
 ] as const;
 
 interface MarketDeployButtonProps {
-  market: ApiMarket; // Use the adjusted market type
+  market: MarketType; // Use the adjusted market type
   marketGroupAddress: string; // Added prop
   chainId: number; // Added prop
 }
@@ -137,7 +120,7 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
     ) {
       return 'Missing base asset maximum price tick.';
     }
-    if (!market.claimStatement) {
+    if (!market.marketParams?.claimStatement) {
       return 'Missing or invalid claim statement.';
     }
     return null;
@@ -157,7 +140,7 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
     }
 
     try {
-      const { claimStatement } = market;
+      const { claimStatement } = market.marketParams!;
       const claimStatementBytes = toBytes(claimStatement as string);
       const claimStatementHex = bytesToHex(claimStatementBytes);
 
@@ -275,7 +258,7 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
               </p>
               <p>
                 <strong>claimStatement (bytes):</strong>{' '}
-                {market.claimStatement ?? 'N/A'}
+                {market.marketParams?.claimStatement ?? 'N/A'}
               </p>
               <p>
                 <strong>salt (uint256):</strong> {'<generated on deploy>'}
