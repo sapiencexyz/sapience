@@ -9,8 +9,7 @@ export class ResourceCandleProcessor {
   constructor(private runtimeCandles: RuntimeCandleStore) {}
 
   public async processResourcePrice(
-    price: ResourcePrice,
-    isLast: boolean
+    price: ResourcePrice
   ) {
     const getNewCandle = (
       interval: number,
@@ -87,11 +86,6 @@ export class ResourceCandleProcessor {
         candle.low = String(Math.min(Number(candle.low), Number(price.value)));
         candle.close = price.value;
         candle.lastUpdatedTimestamp = price.timestamp;
-      }
-
-      // Save the candle if it's the last item in the batch
-      if (isLast) {
-        await saveCandle(candle);
       }
     }
   }

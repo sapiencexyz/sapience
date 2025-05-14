@@ -4,7 +4,7 @@ import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getTimtestampCandleInterval } from '../candleUtils';
 import { saveCandle } from '../dbUtils';
-import { MarketInfoStore } from '../marketInfoStore';
+import { MarketInfo, MarketInfoStore } from '../marketInfoStore';
 
 export class MarketCandleProcessor {
   constructor(
@@ -12,33 +12,34 @@ export class MarketCandleProcessor {
     private marketInfoStore: MarketInfoStore
   ) {}
 
-  public async processMarketPrice(
+  private getNewCandle = (
+    interval: number,
+    candleTimestamp: number,
+    candleEndTimestamp: number,
     price: ReducedMarketPrice,
-    isLast: boolean
-  ) {
-    const getNewCandle = (
-      interval: number,
-      candleTimestamp: number,
-      candleEndTimestamp: number,
-      price: ReducedMarketPrice,
-      resourceSlug: string
-    ) => {
-      const candle = new CacheCandle();
-      candle.candleType = CANDLE_TYPES.MARKET;
-      candle.interval = interval;
-      candle.marketIdx = price.market;
-      candle.resourceSlug = resourceSlug;
-      candle.timestamp = candleTimestamp;
-      candle.endTimestamp = candleEndTimestamp;
-      candle.lastUpdatedTimestamp = price.timestamp;
-      candle.open = price.value;
-      candle.high = price.value;
-      candle.low = price.value;
-      candle.close = price.value;
-      candle.marketId = price.market;
-      return candle;
-    };
+    marketInfo: MarketInfo
+  ) => {
+    const candle = new CacheCandle();
+    candle.candleType = CANDLE_TYPES.MARKET;
+    candle.interval = interval;
+    candle.marketIdx = price.market;
+    candle.resourceSlug = marketInfo.resourceSlug;
+    candle.marketId = price.market;
+    candle.resourceSlug = marketInfo.resourceSlug;
+    candle.address = marketInfo.marketGroupAddress;
+    candle.chainId = marketInfo.marketGroupChainId;
+    candle.timestamp = candleTimestamp;
+    candle.endTimestamp = candleEndTimestamp;
+    candle.lastUpdatedTimestamp = price.timestamp;
+    candle.open = price.value;
+    candle.high = price.value;
+    candle.low = price.value;
+    candle.close = price.value;
+    candle.marketId = price.market;
+    return candle;
+  };
 
+  public async processMarketPrice(price: ReducedMarketPrice) {
     // Find the market data from marketIds using price.market
     const marketInfo = this.marketInfoStore.getMarketInfo(price.market);
     if (!marketInfo) {
@@ -53,7 +54,6 @@ export class MarketCandleProcessor {
 
       // Get existing candle or create new one
       let candle = this.runtimeCandles.getMarketCandle(price.market, interval);
-
       // Skip if this price is older than the last update of the current candle
       if (candle && candle.lastUpdatedTimestamp >= price.timestamp) {
         continue;
@@ -62,22 +62,22 @@ export class MarketCandleProcessor {
       // If we have a candle but it's from a different period, save it and create a new one
       if (candle && candle.timestamp < candleTimestamp) {
         await saveCandle(candle);
-        candle = getNewCandle(
+        candle = this.getNewCandle(
           interval,
           candleTimestamp,
           candleEndTimestamp,
           price,
-          marketInfo.resourceSlug
+          marketInfo
         );
         this.runtimeCandles.setMarketCandle(price.market, interval, candle);
       } else if (!candle) {
         // Create new candle if none exists
-        candle = getNewCandle(
+        candle = this.getNewCandle(
           interval,
           candleTimestamp,
           candleEndTimestamp,
           price,
-          marketInfo.resourceSlug
+          marketInfo
         );
         this.runtimeCandles.setMarketCandle(price.market, interval, candle);
       } else {
@@ -89,11 +89,6 @@ export class MarketCandleProcessor {
         candle.close = price.value;
         candle.lastUpdatedTimestamp = price.timestamp;
       }
-
-      // Save the candle if it's the last item in the batch
-      if (isLast) {
-        await saveCandle(candle);
-      }
     }
   }
-} 
+}

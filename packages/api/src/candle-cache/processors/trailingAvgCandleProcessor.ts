@@ -44,8 +44,7 @@ export class TrailingAvgCandleProcessor {
 
   public async processResourcePrice(
     price: ResourcePrice,
-    trailingAvgTime: number,
-    isLast: boolean
+    trailingAvgTime: number
   ) {
     // Add the new price to history and get the updated sums
     const { sumUsed, sumFeePaid, startOfTrailingWindow } = this.trailingAvgHistory.getSums (
@@ -102,11 +101,6 @@ export class TrailingAvgCandleProcessor {
         trailingAvgTime,
         candle
       );
-
-      // Save the candle if it's the last item in the batch
-      if (isLast) {
-        await saveCandle(candle);
-      }
     }
   }
 } 

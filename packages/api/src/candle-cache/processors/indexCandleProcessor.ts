@@ -14,7 +14,6 @@ export class IndexCandleProcessor {
 
   public async processResourcePrice(
     price: ResourcePrice,
-    isLast: boolean
   ) {
     const getNewAvgPaidAndFee = (
       prevCandle: CacheCandle | undefined,
@@ -92,7 +91,7 @@ export class IndexCandleProcessor {
           );
           this.runtimeCandles.setIndexCandle(marketId, interval, candle);
         } else if (candle && isMarketActive) {
-          // Update existing candle if market is active
+          // Update existing candle
           const { feePaid, used, avg } = getNewAvgPaidAndFee(candle, price);
           candle.high = String(avg);
           candle.low = String(avg);
@@ -100,13 +99,6 @@ export class IndexCandleProcessor {
           candle.lastUpdatedTimestamp = price.timestamp;
           candle.sumFeePaid = String(feePaid);
           candle.sumUsed = String(used);
-        }
-
-        // Save the candle if it's the last item in the batch or if the market just became inactive
-        if (isLast || (candle && !isMarketActive && candle.lastUpdatedTimestamp < price.timestamp)) {
-          if(candle) {
-            await saveCandle(candle);
-          }
         }
       }
     }

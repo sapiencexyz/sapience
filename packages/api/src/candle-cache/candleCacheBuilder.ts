@@ -5,6 +5,7 @@ import {
   getMarketPrices,
   getResourcePrices,
   setConfig,
+  saveCandle,
 } from './dbUtils';
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
 import { log } from 'src/utils/logs';
@@ -63,6 +64,8 @@ export class CandleCacheBuilder {
     log({ message: 'step 4', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await this.processMarketPrices();
     log({ message: 'step 5', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    await this.saveAllRuntimeCandles();
+    log({ message: 'step 6', prefix: CANDLE_CACHE_CONFIG.logPrefix });
   }
 
   private async getUpdatedMarketsAndMarketGroups() {
@@ -105,7 +108,6 @@ export class CandleCacheBuilder {
       let batchIdx = 0;
       while (batchIdx < prices.length) {
         const price = prices[batchIdx];
-        const isLast = batchIdx == prices.length - 1;
         // Add it to the trailing avg history
         for (const trailingAvgTime of CANDLE_CACHE_CONFIG.trailingAvgTime) {
           this.trailingAvgHistory.addPriceAndGetSums(price.resource.slug, trailingAvgTime, {
@@ -117,13 +119,12 @@ export class CandleCacheBuilder {
 
         if (price.timestamp > lastProcessedResourcePrice) {
           // process the item for the candles
-          await this.resourceCandleProcessor.processResourcePrice(price, isLast);
-          await this.indexCandleProcessor.processResourcePrice(price, isLast);
+          await this.resourceCandleProcessor.processResourcePrice(price);
+          await this.indexCandleProcessor.processResourcePrice(price);
           for (const trailingAvgTime of CANDLE_CACHE_CONFIG.trailingAvgTime) {
             await this.trailingAvgCandleProcessor.processResourcePrice(
               price,
-              trailingAvgTime,
-              isLast
+              trailingAvgTime
             );
           }
         }
@@ -173,17 +174,20 @@ export class CandleCacheBuilder {
       let batchIdx = 0;
       while (batchIdx < prices.length) {
         const price = prices[batchIdx];
-        const isLast = batchIdx == prices.length - 1;
-        await this.marketCandleProcessor.processMarketPrice(price, isLast);
+        await this.marketCandleProcessor.processMarketPrice(price);
         batchIdx++;
       }
 
-      // 4. Save the candles to the database
-      // 5. Update the last processed market price
+      // 4. Update the last processed market price and update the pointer for the next batch in case of restart
       if (prices.length > 0) {
         lastProcessedMarketPrice = prices[prices.length - 1].timestamp;
-      }
+        await setConfig(
+          CANDLE_CACHE_CONFIG.lastProcessedMarketPrice,
+          lastProcessedMarketPrice
+        );
+          }
     }
+
     log({ message: 'step 3', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await setConfig(
       CANDLE_CACHE_CONFIG.lastProcessedMarketPrice,
@@ -310,5 +314,42 @@ export class CandleCacheBuilder {
     }
 
     return missingCandles;
+  }
+
+  private async saveAllRuntimeCandles() {
+    // Save all market candles
+    const marketIndices = this.runtimeCandles.getAllMarketIndices();
+    for (const marketIdx of marketIndices) {
+      const marketCandles = this.runtimeCandles.getAllMarketCandles(marketIdx);
+      for (const candle of marketCandles.values()) {
+        await saveCandle(candle);
+      }
+    }
+
+    // Save all resource candles
+    const resourceSlugs = this.runtimeCandles.getAllResourceSlugs();
+    for (const resourceSlug of resourceSlugs) {
+      const resourceCandles = this.runtimeCandles.getAllResourceCandles(resourceSlug);
+      for (const candle of resourceCandles.values()) {
+        await saveCandle(candle);
+      }
+
+      // Save all index candles for this resource's markets
+      const marketIds = this.marketInfoStore.getAllMarketIndexesByResourceSlug(resourceSlug);
+      for (const marketId of marketIds) {
+        const indexCandles = this.runtimeCandles.getAllIndexCandles(marketId);
+        for (const candle of indexCandles.values()) {
+          await saveCandle(candle);
+        }
+      }
+
+      // Save all trailing average candles for this resource
+      for (const trailingAvgTime of CANDLE_CACHE_CONFIG.trailingAvgTime) {
+        const trailingAvgCandles = this.runtimeCandles.getAllTrailingAvgCandles(resourceSlug, trailingAvgTime);
+        for (const candle of trailingAvgCandles.values()) {
+          await saveCandle(candle);
+        }
+      }
+    }
   }
 }
