@@ -1,16 +1,18 @@
 import { ResponseCandleData } from "./types";
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from "./config";
 import { getTimeWindow } from "./candleUtils";
-import { getCandles } from "./dbUtils";
+import { getCandles, getMarketGroups } from "./dbUtils";
 import { CacheCandle } from "src/models/CacheCandle";
 import { MarketInfoStore } from "./marketInfoStore";
 
 export class CandleCacheRetrieve {
   private static instance: CandleCacheRetrieve;
   private marketInfoStore: MarketInfoStore;
+  private lastUpdateTimestamp: number;
 
   private constructor() {
     this.marketInfoStore = MarketInfoStore.getInstance();
+    this.lastUpdateTimestamp = 0;
   }
 
   public static getInstance() {
@@ -48,6 +50,7 @@ export class CandleCacheRetrieve {
     marketId: string
   ) {
     this.checkInterval(interval);
+    await this.getUpdatedMarketsAndMarketGroupsIfNeeded();
     const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(chainId, address, marketId);
     if (!marketInfo) {
       throw new Error(`Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`);
@@ -71,22 +74,16 @@ export class CandleCacheRetrieve {
   }
 
   async getTrailingAvgPrices(
+    resourceId: string,
     from: number,
     to: number,
     interval: number,
-    trailingAvgTime: number,
-    chainId: number,
-    address: string,
-    marketId: string
+    trailingAvgTime: number
   ) {
     this.checkInterval(interval);
-    const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(chainId, address, marketId);
-    if (!marketInfo) {
-      throw new Error(`Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`);
-    }
 
     const candles = await getCandles({
-      marketIdx: marketInfo.marketIdx,
+      resourceId,
       interval,
       trailingAvgTime,
       candleType: CANDLE_TYPES.TRAILING_AVG,
@@ -110,6 +107,7 @@ export class CandleCacheRetrieve {
     marketId: string
   ) {
     this.checkInterval(interval);
+    await this.getUpdatedMarketsAndMarketGroupsIfNeeded();
     const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(chainId, address, marketId);
     if (!marketInfo) {
       throw new Error(`Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`);
@@ -248,6 +246,15 @@ export class CandleCacheRetrieve {
       data: outputEntries,
       lastUpdateTimestamp: candles[candles.length - 1].lastUpdatedTimestamp
     };
+  }
+
+  private async getUpdatedMarketsAndMarketGroupsIfNeeded() {
+    if (this.lastUpdateTimestamp > 0 && this.lastUpdateTimestamp > (Date.now() - 1000) * 300) {
+      return;
+    }
+    // get all market groups
+    const marketGroups = await getMarketGroups();
+    await this.marketInfoStore.updateMarketInfo(marketGroups);
   }
 
 }

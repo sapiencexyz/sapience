@@ -429,6 +429,7 @@ export class CandleResolver {
   ): Promise<CandleAndTimestampType> {  
     const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
     const {data, lastUpdateTimestamp} = await candleCacheRetrieve.getTrailingAvgPrices(
+      slug,
       from,
       to,
       interval,
