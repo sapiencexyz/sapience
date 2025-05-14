@@ -20,6 +20,7 @@ export const CANDLE_CACHE_CONFIG = {
   preTrailingAvgTime: TIME_INTERVALS.intervals.INTERVAL_28_DAYS,
   lastProcessedResourcePrice: 'lastProcessedResourcePrice',
   lastProcessedMarketPrice: 'lastProcessedMarketPrice',
+  hardRefresh: 'hardRefresh',
 };
 
 export const CANDLE_TYPES = {

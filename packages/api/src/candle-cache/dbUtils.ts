@@ -238,3 +238,7 @@ export async function getMarketPricesCount(initialTimestamp?: number): Promise<n
     },
   });
 }
+
+export async function truncateCandlesTable() {
+  await cacheCandleRepository.clear();
+}

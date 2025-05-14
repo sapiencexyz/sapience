@@ -8,6 +8,7 @@ import {
   saveCandle,
   getResourcePricesCount,
   getMarketPricesCount,
+  truncateCandlesTable,
 } from './dbUtils';
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
 import { log } from 'src/utils/logs';
@@ -48,6 +49,8 @@ export class CandleCacheBuilder {
   }
 
   public async updateCandles() {
+    log({ message: 'step 0: hard refresh if needed', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    await this.hardRefreshIfNeeded();
     log({ message: 'step 1: get updated markets and market groups', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await this.getUpdatedMarketsAndMarketGroups();
     log({ message: 'step 2: update candles if needed', prefix: CANDLE_CACHE_CONFIG.logPrefix });
@@ -59,6 +62,41 @@ export class CandleCacheBuilder {
     log({ message: 'step 5: save all runtime candles', prefix: CANDLE_CACHE_CONFIG.logPrefix });
     await this.saveAllRuntimeCandles();
     log({ message: 'step 6: done', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+  }
+
+  private async hardRefreshIfNeeded() {
+    // 1. check in the db if the config is set to hard refresh
+    const hardRefresh = await getConfig(
+      CANDLE_CACHE_CONFIG.hardRefresh
+    );
+    if (hardRefresh) {
+      log({ message: 'hard refresh needed', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+      // 2. truncate the candles table
+      await truncateCandlesTable();
+      // 3. clean up all the configs
+      await setConfig(
+        CANDLE_CACHE_CONFIG.lastProcessedResourcePrice,
+        0
+      );
+      await setConfig(
+        CANDLE_CACHE_CONFIG.lastProcessedMarketPrice,
+        0
+      );
+      // 4. set the hard refresh config to false
+      await setConfig(
+        CANDLE_CACHE_CONFIG.hardRefresh,
+        0
+      );
+      // 5. restart all the stores and processors to start from scratch
+      this.runtimeCandles = new RuntimeCandleStore();
+      this.trailingAvgHistory = new TrailingAvgHistoryStore();
+      this.marketInfoStore = MarketInfoStore.getInstance();
+      this.resourceCandleProcessor = new ResourceCandleProcessor(this.runtimeCandles);
+      this.indexCandleProcessor = new IndexCandleProcessor(this.runtimeCandles, this.marketInfoStore);
+      this.trailingAvgCandleProcessor = new TrailingAvgCandleProcessor(this.runtimeCandles, this.trailingAvgHistory);
+      this.marketCandleProcessor = new MarketCandleProcessor(this.runtimeCandles, this.marketInfoStore);
+      log({ message: 'hard refresh done', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    }
   }
 
   private async getUpdatedMarketsAndMarketGroups() {
