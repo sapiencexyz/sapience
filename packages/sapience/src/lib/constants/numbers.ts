@@ -24,3 +24,5 @@ export const MIN_BIG_INT_SIZE = BigInt(1e10);
 
 export const YES_SQRT_RATIO = BigInt('79228162514264337593543950336');
 export const NO_SQRT_RATIO = BigInt('0');
+
+export const MINIMUM_POSITION_WIN = BigInt('10000000000000');

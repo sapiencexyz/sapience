@@ -1,0 +1,85 @@
+# Quoter API
+
+## Overview
+
+The Quoter API helps determine the maximum position size that can be taken with available collateral while respecting price constraints. It uses a binary search algorithm to find the optimal position size that satisfies both collateral and price requirements.
+
+## Endpoints
+
+### GET `/quoter/:chainId/:marketAddress/:marketId`
+
+Calculates the maximum position size for a given market and epoch based on available collateral and price expectations.
+
+#### URL Parameters
+- `chainId`: The blockchain network ID
+- `marketAddress`: The address of the market group contract
+- `marketId`: The ID of the market
+
+#### Query Parameters
+- `expectedPrice` (required): The target price for the position
+- `collateralAvailable` (required): The amount of collateral available in wei
+- `maxIterations` (optional): Maximum number of binary search iterations (default: 10, max: 10)
+- `priceLimit` (optional): Price limit for the position (defaults to current price)
+
+#### Response Format
+```typescript
+{
+  direction: "LONG" | "SHORT",
+  maxSize: string, // Position size in wei
+  currentPrice: string, // Current market price
+  expectedPrice: string, // Expected price after position
+  collateralAvailable: string // Available collateral in wei
+}
+```
+
+#### Error Responses
+- `400 Bad Request`: Invalid query parameters or price constraints
+- `404 Not Found`: Market or current price not found
+- `500 Internal Server Error`: Server-side error
+
+## Examples
+
+### Basic Usage
+```typescript
+// Example request
+GET /quoter/1/0x1234...5678/1?expectedPrice=1000&collateralAvailable=1000000000000000000
+
+// Example response
+{
+  "direction": "LONG",
+  "maxSize": "500000000000000000",
+  "currentPrice": "950",
+  "expectedPrice": "1000",
+  "collateralAvailable": "1000000000000000000"
+}
+```
+
+### Advanced Usage with Price Limit
+```typescript
+// Example request with price limit and custom iterations
+GET /quoter/1/0x1234...5678/1?expectedPrice=1000&collateralAvailable=1000000000000000000&priceLimit=980&maxIterations=5
+
+// Example response
+{
+  "direction": "LONG",
+  "maxSize": "450000000000000000",
+  "currentPrice": "950",
+  "expectedPrice": "1000",
+  "collateralAvailable": "1000000000000000000"
+}
+```
+
+## Error Handling
+
+The API returns appropriate error responses with detailed messages:
+
+- Invalid query parameters will return a 400 status with validation details
+- Market not found errors return 404 status
+- Price constraint violations return 400 status with specific error messages
+- Server errors return 500 status
+
+## Notes
+
+- The API automatically determines if the position should be LONG or SHORT based on the expected price relative to the current price
+- The binary search algorithm ensures efficient discovery of the maximum viable position size
+- All numeric values are handled as strings to preserve precision with large numbers 

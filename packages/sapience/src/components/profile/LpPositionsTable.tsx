@@ -17,12 +17,17 @@ import type { PositionType } from '@foil/ui/types';
 import { Info } from 'lucide-react';
 import Link from 'next/link';
 import { formatEther } from 'viem';
+import { useAccount } from 'wagmi';
 
+import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { getChainShortName, tickToPrice } from '~/lib/utils/util';
 
 interface LpPositionsTableProps {
   positions: PositionType[];
+  parentMarketAddress?: string;
+  parentChainId?: number;
+  parentMarketId?: number;
 }
 
 // Helper component for Market Cell (similar to app package but simpler for now)
@@ -81,8 +86,8 @@ function PriceTickCell({
 // Helper component for PnL Header Cell
 function PnLHeaderCell() {
   return (
-    <span className="flex items-center gap-1">
-      Unrealized PnL{' '}
+    <span className="flex items-center gap-1 ">
+      Unrealized Profit/Loss{' '}
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger>
@@ -100,7 +105,17 @@ function PnLHeaderCell() {
   );
 }
 
-export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
+export default function LpPositionsTable({
+  positions,
+  parentMarketAddress,
+  parentChainId,
+  parentMarketId,
+}: LpPositionsTableProps) {
+  const { address: connectedAddress } = useAccount();
+
+  const isMarketPage = parentMarketAddress && parentChainId && parentMarketId; // True for a specific market page (with marketId)
+  const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
+
   if (!positions || positions.length === 0) {
     return null;
   }
@@ -122,14 +137,31 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
     return null;
   }
 
+  let displayQuestionColumn;
+  if (isProfilePageContext) {
+    displayQuestionColumn = true; // Always show on profile page
+  } else if (isMarketPage) {
+    // Specific market page
+    displayQuestionColumn = false; // Never show on specific market page
+  } else {
+    // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
+    displayQuestionColumn = validPositions.some(
+      (p) =>
+        p.market.marketGroup &&
+        p.market.marketGroup.markets &&
+        p.market.marketGroup.markets.length > 1
+    );
+  }
+
   return (
     <div>
       <h3 className="font-medium mb-4">Liquidity Positions</h3>
-      <div className="rounded-md border">
+      <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Question</TableHead>
+              <TableHead /> {/* Header for Position ID */}
+              {displayQuestionColumn && <TableHead>Question</TableHead>}
               <TableHead>Collateral</TableHead>
               <TableHead>Base Tokens</TableHead> {/* Updated Header */}
               <TableHead>Quote Tokens</TableHead> {/* Updated Header */}
@@ -144,8 +176,8 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
           <TableBody>
             {validPositions.map((position: PositionType) => {
               const { marketGroup } = position.market;
-              const baseUnit = `v${marketGroup?.baseTokenName || 'Base'}`;
-              const quoteUnit = `v${marketGroup?.collateralSymbol || 'Quote'}`;
+              const baseUnit = `${marketGroup?.baseTokenName || 'Base'}`;
+              const quoteUnit = `${marketGroup?.collateralSymbol || 'Quote'}`;
               const priceUnit = `${marketGroup?.collateralSymbol || 'Quote'}/${marketGroup?.baseTokenName || 'Base'}`;
 
               const isClosed =
@@ -159,18 +191,43 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
               // For displaying PnL, we'll need to adapt since totalPnL might not exist
               // We'll just show N/A in that case
               const pnlContent = (
-                <span className="text-xs text-muted-foreground">N/A</span>
+                <span className="text-muted-foreground">N/A</span>
               );
 
+              // Logic for Settle/View button
+              const isOwner =
+                connectedAddress &&
+                position.owner &&
+                connectedAddress.toLowerCase() === position.owner.toLowerCase();
+
+              const endTimestamp = position.market?.endTimestamp;
+              // Assuming PositionType might include isSettled for LPs, defaulting to false
+              const isPositionSettled = position.isSettled || false;
+              const now = Date.now();
+              const isExpired = endTimestamp
+                ? Number(endTimestamp) * 1000 < now
+                : false;
+
+              const marketAddress = marketGroup?.address || '';
+              const chainId = marketGroup?.chainId || 0;
+
               return (
-                <TableRow key={position.id}>
-                  <TableCell>
-                    <MarketCell position={position} />
+                <TableRow
+                  key={position.id}
+                  className={isClosed ? 'min-h-[69px]' : ''}
+                >
+                  <TableCell className="text-muted-foreground">
+                    #{position.positionId}
                   </TableCell>
+                  {displayQuestionColumn && (
+                    <TableCell>
+                      <MarketCell position={position} />
+                    </TableCell>
+                  )}
                   {isClosed ? (
                     <TableCell
-                      colSpan={7} // Adjusted colSpan to 7 to include the "More Info" column
-                      className="text-center font-medium text-muted-foreground"
+                      colSpan={displayQuestionColumn ? 9 : 8} // Adjusted colSpan
+                      className="text-center font-medium text-muted-foreground align-middle tracking-wider"
                     >
                       CLOSED
                     </TableCell>
@@ -204,12 +261,40 @@ export default function LpPositionsTable({ positions }: LpPositionsTableProps) {
                         />
                       </TableCell>
                       <TableCell>{pnlContent}</TableCell>
-                      <TableCell>
-                        <Link href={positionUrl} passHref>
-                          <Button size="sm" variant="outline">
-                            View
-                          </Button>
-                        </Link>
+                      <TableCell className="text-right">
+                        {(() => {
+                          if (!isClosed && isOwner) {
+                            if (isExpired && !isPositionSettled) {
+                              return (
+                                <SettlePositionButton
+                                  positionId={position.positionId.toString()}
+                                  marketAddress={marketAddress}
+                                  chainId={chainId}
+                                  onSuccess={() => {
+                                    console.log(
+                                      `Settle action for LP position ${position.positionId} initiated. Consider a data refetch.`
+                                    );
+                                  }}
+                                />
+                              );
+                            }
+                            // Render Sell button only if not on Market Page and other conditions met
+                            // On the profile page (isMarketPage === false), the sell button should be shown.
+                            // On a specific market page (isMarketPage === true), it should not be shown.
+                            if (!isMarketPage) {
+                              // !isMarketPage means it's a Profile page OR a Market Group page
+                              return (
+                                <Link href={positionUrl} passHref>
+                                  <Button size="xs" variant="outline">
+                                    Sell
+                                  </Button>
+                                </Link>
+                              );
+                            }
+                            return null;
+                          }
+                          return null;
+                        })()}
                       </TableCell>
                     </>
                   )}

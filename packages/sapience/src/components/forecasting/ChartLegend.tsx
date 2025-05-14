@@ -26,6 +26,7 @@ interface ChartLegendProps {
   indexLineColor: string;
   yAxisConfig: YAxisConfig;
   optionNames?: string[] | null;
+  hoveredDataPoint?: MultiMarketChartDataPoint | null;
 }
 
 const ChartLegend: React.FC<ChartLegendProps> = ({
@@ -38,8 +39,11 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   indexLineColor,
   yAxisConfig,
   optionNames,
+  hoveredDataPoint,
 }) => {
-  if (!latestDataPoint) {
+  const displayDataPoint = hoveredDataPoint || latestDataPoint;
+
+  if (!displayDataPoint) {
     return null; // No data to display legend for
   }
 
@@ -50,18 +54,27 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 pb-4 text-sm">
+    <div className="flex flex-col items-start gap-y-1 pb-4 text-sm">
       {marketIds.map((marketIdNum, index) => {
         const marketIdStr = String(marketIdNum);
-        const value = latestDataPoint.markets?.[marketIdStr];
+        const value = displayDataPoint.markets?.[marketIdStr];
         const color = lineColors[index % lineColors.length];
-        const label =
-          optionNames?.length === 1
-            ? 'Market Prediction'
-            : (optionNames?.[index] ?? 'Market Prediction');
+
+        // Determine label based on hover state and option names
+        let baseLabel: string;
+        if (optionNames?.length === 1) {
+          baseLabel = 'Market Prediction';
+        } else {
+          baseLabel = optionNames?.[index] ?? 'Market Prediction';
+        }
+
+        const label = hoveredDataPoint ? baseLabel : `Current ${baseLabel}`;
 
         return (
-          <div key={marketIdStr} className="flex items-center gap-1.5">
+          <div
+            key={marketIdStr}
+            className="flex items-center gap-1.5 text-lg mb-0.5"
+          >
             <span
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: color }}
@@ -80,7 +93,12 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
             style={{ backgroundColor: indexLineColor, opacity: 0.7 }} // Match line style
           />
           <span className="font-medium text-foreground">
-            {formatValue(latestIndexValue)}
+            {formatValue(
+              hoveredDataPoint &&
+                typeof hoveredDataPoint.indexClose === 'number'
+                ? hoveredDataPoint.indexClose
+                : latestIndexValue
+            )}
           </span>
           <span className="text-muted-foreground">Index</span>
           <TooltipProvider>

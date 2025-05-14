@@ -193,7 +193,7 @@ export const formatPercentage = (value: number): string => {
 export const formatTokenValue = (
   value: number | string | undefined | null,
   unit: string = '',
-  decimals: number = 4
+  decimals: number = 2
 ): string => {
   if (value === undefined || value === null) {
     return ''; // Handle undefined/null

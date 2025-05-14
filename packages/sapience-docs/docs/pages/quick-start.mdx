@@ -1,0 +1,252 @@
+# Quick Start
+
+Welcome to the Sapience developer quick-start! This guide walks you through writing a tiny TypeScript bot that:
+
+1. Connects to the Sapience GraphQL API to discover open markets.
+2. Lets ChatGPT pick an answer 🤖.
+3. Gets a quote for the new position.
+4. Approves collateral and opens a trader position.
+
+**Prerequisites**
+• Node ≥ 18, Git, and a funded EVM account (gas + collateral token).  
+• Basic command-line knowledge—no prior Ethereum experience required.
+
+## 1. Initialize a TypeScript project
+
+```bash
+mkdir sapience-bot && cd sapience-bot
+pnpm init
+pnpm add viem abitype graphql-request dotenv node-fetch
+pnpm add -D typescript ts-node @types/node
+pnpm exec tsc --init --strict --esnext --moduleResolution node --outDir dist
+```
+
+Add a minimal **tsconfig.json** tweak so TypeScript understands ESM:
+
+```json title="tsconfig.json"{5}
+{
+  "compilerOptions": {
+    // ... existing options ...
+    "module": "esnext",
+    "target": "es2020"
+  }
+}
+```
+
+## 2. Get the latest Foil ABI
+
+Download the artifact straight from GitHub:
+
+```bash
+curl -L https://raw.githubusercontent.com/foilxyz/foil/main/packages/protocol/deployments/Foil.json -o Foil.json
+```
+
+## 3. Configure environment variables
+
+Create a **.env** file (never commit this!):
+
+```ini
+PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE        # Wallet that has gas + collateral
+RPC_ENDPOINT=https://rpc.<your_chosen_chain>.org
+GRAPHQL_ENDPOINT=https://api.sapience.xyz/graphql
+MARKET_GROUP_ADDRESS=0x...                 # Foil market group you want to trade
+MARKET_GROUP_CHAIN_ID=8453                 # e.g. Base chain id
+```
+
+Load them via **dotenv** at runtime.
+
+## 4. Write the bot
+
+Create **index.ts**:
+
+```typescript
+import 'dotenv/config'
+import { createWalletClient, http, type Address, erc20Abi } from 'viem'
+import { parseAbi } from 'abitype'
+import FoilABI from './Foil.json' assert { type: 'json' }
+import { request, gql } from 'graphql-request'
+import fetch from 'node-fetch'
+
+const {
+  PRIVATE_KEY,
+  RPC_ENDPOINT,
+  GRAPHQL_ENDPOINT,
+  MARKET_GROUP_ADDRESS,
+  MARKET_GROUP_CHAIN_ID
+} = process.env
+
+if (!PRIVATE_KEY || !RPC_ENDPOINT || !GRAPHQL_ENDPOINT || !MARKET_GROUP_ADDRESS || !MARKET_GROUP_CHAIN_ID) {
+  throw new Error('Please fill out .env')
+}
+
+// 1️⃣  Setup wallet client
+const client = createWalletClient({
+  account: PRIVATE_KEY as `0x${string}`,
+  chain: { id: Number(MARKET_GROUP_CHAIN_ID) },
+  transport: http(RPC_ENDPOINT)
+})
+
+const foil = {
+  address: MARKET_GROUP_ADDRESS as Address,
+  abi: parseAbi(FoilABI as any)
+} as const
+
+// 2️⃣  Helper – fetch markets without a position yet
+async function fetchOpenMarkets(owner: Address) {
+  const query = gql`
+    query ($address: String!, $chainId: Int!, $owner: String!) {
+      marketGroups(chainId: $chainId, address: $address) {
+        markets {
+          marketId
+          settled
+        }
+      }
+      positions(chainId: $chainId, marketAddress: $address, owner: $owner) {
+        market { marketId }
+      }
+    }
+  `
+  const data = await request(GRAPHQL_ENDPOINT, query, {
+    address: MARKET_GROUP_ADDRESS,
+    chainId: Number(MARKET_GROUP_CHAIN_ID),
+    owner
+  })
+
+  const allMarketIds = data.marketGroups[0].markets.map((m: any) => m.marketId)
+  const ownedMarketIds = new Set(
+    data.positions.map((p: any) => p.market.marketId)
+  )
+  return allMarketIds.filter((id: number) => !ownedMarketIds.has(id))
+}
+
+// 3️⃣  Ask ChatGPT what the answer is
+async function getPrediction(question: string): Promise<bigint> {
+  // Call the OpenAI API
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that answers questions about markets. Reply with "Yes", "No", or a specific number.'
+        },
+        {
+          role: 'user',
+          content: question
+        }
+      ],
+      temperature: 0.7
+    })
+  });
+  
+  const data = await response.json();
+  const answer = data.choices[0].message.content.trim().toLowerCase();
+  
+  // Parse the response:
+  // If the answer is "yes", return 1e18
+  if (answer.includes('yes')) {
+    return 10n ** 18n;
+  }
+  // If the answer is "no", return 0
+  else if (answer.includes('no')) {
+    return 0n;
+  }
+  // Try to parse as a number
+  else {
+    const numberMatch = answer.match(/\d+(\.\d+)?/);
+    if (numberMatch) {
+      const num = parseFloat(numberMatch[0]);
+      return BigInt(Math.floor(num * 10**18));
+    }
+    return 0n; // Default to 0 if no number found
+  }
+}
+
+// 4️⃣  Quote, approve and trade
+async function trade(marketId: bigint, positionSize: bigint) {
+  const size = positionSize
+  
+  // Get the collateral required using the quoter API
+  const chainId = MARKET_GROUP_CHAIN_ID as string
+  const marketAddress = MARKET_GROUP_ADDRESS as string
+  const account = (await client.getAddresses())[0]
+  
+  // Get the current price and collateral availability
+  const { collateralAsset } = await client.readContract({
+    ...foil,
+    functionName: 'getMarket',
+    args: [marketId]
+  })
+  
+  const currentPrice = await client.readContract({
+    ...foil,
+    functionName: 'getReferencePrice',
+    args: [marketId]
+  }) as bigint
+  
+  const balance = await client.readContract({
+    address: collateralAsset as Address,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [account]
+  }) as bigint
+  
+  // Use the quoter API to determine the optimal position size
+  const quoterUrl = `${process.env.API_BASE_URL || 'https://api.sapience.xyz'}/quoter/${chainId}/${marketAddress}/${marketId}?expectedPrice=${Number(currentPrice) * 1.05}&collateralAvailable=${balance}`
+  
+  const response = await fetch(quoterUrl)
+  const quote = await response.json()
+  
+  if (!response.ok) {
+    throw new Error(`Quoter API error: ${quote.error || 'Unknown error'}`)
+  }
+  
+  const requiredCollateral = BigInt(quote.collateralAvailable)
+  const positionSize = positionSize
+  
+  // Approve collateral once per session
+  const allowanceTx = await client.writeContract({
+    address: collateralAsset as Address,
+    abi: erc20Abi,
+    functionName: 'approve',
+    args: [foil.address, requiredCollateral]
+  })
+  await client.waitForTransactionReceipt({ hash: allowanceTx })
+
+  // Create position with size from quoter API
+  const tx = await client.writeContract({
+    ...foil,
+    functionName: 'createTraderPosition',
+    args: [marketId, positionSize, requiredCollateral, BigInt(Date.now() / 1000 + 60 * 60)]
+  })
+  console.log(`Opened position on market ${marketId}. Tx: ${tx}`)
+  await client.waitForTransactionReceipt({ hash: tx })
+}
+
+(async () => {
+  const owner = (await client.getAddresses())[0]
+  const openMarkets = await fetchOpenMarkets(owner)
+  console.log('Open markets:', openMarkets)
+
+  for (const id of openMarkets) {
+    const positionSize = await getPrediction(`What position should I take on market #${id}? Answer with "yes" for long, "no" for short, or a specific number.`)
+    const isLong = positionSize > 0n;
+    console.log(`ChatGPT says ${positionSize === 10n ** 18n ? 'YES' : positionSize === 0n ? 'NO' : positionSize.toString()} – placing trade with size ${positionSize}...`)
+    await trade(BigInt(id), positionSize)
+  }
+})().catch(console.error)
+
+## 5. Run it
+
+```bash
+node --loader ts-node/esm index.ts
+```
+
+Feel free to expand on it—add risk controls, position modification logic, liquidity provisioning strategies, smarter AI logic, a beautiful UI, or social media integrations to share trades.
+
+Join the Sapience Discord server to chat with other bots builders.

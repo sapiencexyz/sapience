@@ -21,7 +21,15 @@ const PnLDisplay = ({
     return <span>-</span>; // Display a dash or placeholder for NaN
   }
 
-  return <span>${usdValue.toFixed(2)}</span>;
+  return (
+    <span>
+      $
+      {usdValue.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}
+    </span>
+  );
 };
 
 interface ProfitCellProps<TData> {

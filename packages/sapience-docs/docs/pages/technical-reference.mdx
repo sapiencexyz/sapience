@@ -1,0 +1,71 @@
+# Technical Reference
+
+Sapience markets use the open source Foil protocol, which can run on any Ethereum (EVM) blockchain. It has no offchain dependencies outside of the settlement process, so all functions can be called by other smart contracts. You can use [Remix](https://remix.ethereum.org/) or [any other Ethereum developer tools](https://github.com/foundry-rs/foundry) to build your own smart contracts that connect to Sapience.
+
+When users open a position as a trader or liquidity provider, they receive a transferrable NFT which represents this position. NFT IDs increment sequentially on the market group but are unique to a market.
+
+Users deposit collateral (an ERC-20 compatible token) to "borrow" base and quote tokens to trade in a Uniswap pool. Though the mutable/write functions controlled by the Foil protocol, the view functions on a market's pool address can be useful.
+
+Going long (which typically means "predicting yes"), involves borrowing quote tokens and trading them for base tokens. Shorting is the opposite. Providing liquidity involves borrowing some of both for the Uniswap pool and earning trading fees. These processes are all handled by functions like `createTraderPosition`.
+
+After the end time, the market price is ignored and instead a settlement price (via UMA) is used to determine the value of the base and quote tokens when users return to redeem their collateral, after profits or losses.
+
+The latest deployment information can be found [on Cannon](https://usecannon.com/packages/foil/latest/8453-factory). The latest smart contract ABI (needed for offchain integrations) is also available [on GitHub](https://github.com/foilxyz/foil/blob/main/packages/protocol/deployments/Foil.json).
+
+When writing an offchain integration, you'll need an [RPC endpoint](https://chainlist.org/) (where you can read and write to the blockchain), and a private key for an Ethereum account with some gas tokens (typically ETH) and collateral you wish to have it trade.
+
+## Use TypeScript
+
+When building integrations using TypeScript, like prediction market trading bots, we recommend you use [viem](https://viem.sh/) and [ABITypes](https://abitype.dev/).
+
+```typescript
+import { createWalletClient, http, type Address, erc20Abi } from 'viem'
+import { base } from 'viem/chains'
+import { parseAbi } from 'abitype'
+import FoilABI from './Foil.json'
+import { privateKeyToAccount } from 'viem/accounts'
+
+// Basic setup
+const account = privateKeyToAccount('0xYourPrivateKey' as `0x${string}`)
+const client = createWalletClient({
+  account,
+  chain: base,
+  transport: http('https://mainnet.base.org')
+})
+
+const MARKET_ADDRESS = '0xYourMarketAddress' as Address
+const MARKET_ID = 1n
+
+// 1. Read function example - Get current price
+const price = await client.readContract({
+  address: MARKET_ADDRESS,
+  abi: parseAbi(FoilABI),
+  functionName: 'getReferencePrice',
+  args: [MARKET_ID]
+})
+
+// 2. Write function example - Create a position
+const hash = await client.writeContract({
+  address: MARKET_ADDRESS,
+  abi: parseAbi(FoilABI),
+  functionName: 'createTraderPosition',
+  args: [
+    MARKET_ID,                       // marketId
+    1000000n,                        // size (positive for long/"yes")
+    10000n,                          // slippage tolerance
+    BigInt(Math.floor(Date.now() / 1000) + 3600) // deadline
+  ]
+})
+
+// 3. Simulate function example - Needed for some functions like quotes
+const { requiredCollateral, fillPrice } = await client.simulateContract({
+  address: MARKET_ADDRESS,
+  abi: parseAbi(FoilABI), 
+  functionName: 'quoteCreateTraderPosition',
+  args: [MARKET_ID, 1000000n]        // marketId, size
+})
+```
+
+## Use Python
+
+See [web3.py](https://github.com/ethereum/web3.py).

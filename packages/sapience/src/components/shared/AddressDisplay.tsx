@@ -122,7 +122,7 @@ const AddressDisplay = ({
               href={`https://app.zerion.io/${address}/history`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 p-1 rounded-md hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
             >
               <Image src="/zerion.svg" alt="Zerion" width={12} height={12} />
               <span className="font-medium">Zerion</span>
@@ -131,7 +131,7 @@ const AddressDisplay = ({
               href={`https://debank.com/profile/${address}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 p-1 rounded-md hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
             >
               <Image
                 src="/debank.svg"
@@ -146,7 +146,7 @@ const AddressDisplay = ({
               href={`https://intel.arkm.com/explorer/address/${address}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 p-1 rounded-md hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
             >
               <Image
                 src="/arkm.svg"
@@ -160,7 +160,7 @@ const AddressDisplay = ({
               href={`https://blockscan.com/address/${address}#transactions`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 p-1 rounded-md hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
             >
               <Image
                 src="/blockscan.svg"
