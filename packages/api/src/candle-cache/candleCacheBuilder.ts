@@ -11,7 +11,7 @@ import {
   truncateCandlesTable,
 } from './dbUtils';
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
-import { log } from 'src/utils/logs';
+import { log } from '../utils/logs';
 import { RuntimeCandleStore } from './runtimeCandleStore';
 import { TrailingAvgHistoryStore } from './trailingAvgHistoryStore';
 import { MarketInfoStore } from './marketInfoStore';
@@ -149,9 +149,10 @@ export class CandleCacheBuilder {
       let batchIdx = 0;
       while (batchIdx < prices.length) {
         const price = prices[batchIdx];
+        const resource = await price.resource;
         // Add it to the trailing avg history
         for (const trailingAvgTime of CANDLE_CACHE_CONFIG.trailingAvgTime) {
-          this.trailingAvgHistory.addPriceAndGetSums(price.resource.slug, trailingAvgTime, {
+          this.trailingAvgHistory.addPriceAndGetSums(resource.slug, trailingAvgTime, {
             timestamp: price.timestamp,
             used: price.used,
             fee: price.feePaid,

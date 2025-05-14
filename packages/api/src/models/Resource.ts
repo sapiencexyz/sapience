@@ -26,12 +26,12 @@ export class Resource {
   @Index()
   slug: string;
 
-  @OneToMany(() => MarketGroup, (marketGroup) => marketGroup.resource)
-  marketGroups: MarketGroup[];
+  @OneToMany(() => MarketGroup, (marketGroup) => marketGroup.resource, { lazy: true })
+  marketGroups: Promise<MarketGroup[]>;
 
-  @OneToMany(() => ResourcePrice, (resourcePrice) => resourcePrice.resource)
-  resourcePrices: ResourcePrice[];
+  @OneToMany(() => ResourcePrice, (resourcePrice) => resourcePrice.resource, { lazy: true })
+  resourcePrices: Promise<ResourcePrice[]>;
 
-  @ManyToOne(() => Category, (category) => category.resources)
-  category: Category;
+  @ManyToOne(() => Category, (category) => category.resources, { lazy: true })
+  category: Promise<Category>;
 }

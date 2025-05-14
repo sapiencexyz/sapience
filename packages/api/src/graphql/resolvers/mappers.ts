@@ -52,98 +52,123 @@ const mapMarketParamsToType = (
   };
 };
 
-export const mapMarketGroupToType = (
+export const mapMarketGroupToType = async (
   marketGroup: MarketGroup
-): MarketGroupType => ({
-  id: marketGroup.id,
-  address: marketGroup.address?.toLowerCase(),
-  vaultAddress: marketGroup.vaultAddress,
-  chainId: marketGroup.chainId,
-  isYin: marketGroup.isYin,
-  isCumulative: marketGroup.isCumulative,
-  markets: marketGroup.markets?.map(mapMarketToType) || [],
-  resource: marketGroup.resource
-    ? mapResourceToType(marketGroup.resource)
-    : null,
-  category: marketGroup.category
-    ? mapCategoryToType(marketGroup.category)
-    : null,
-  deployTimestamp: marketGroup.deployTimestamp,
-  deployTxnBlockNumber: marketGroup.deployTxnBlockNumber,
-  owner: marketGroup.owner?.toLowerCase() || null,
-  collateralAsset: marketGroup.collateralAsset,
-  collateralSymbol: marketGroup.collateralSymbol,
-  collateralDecimals: marketGroup.collateralDecimals,
-  minTradeSize: marketGroup.minTradeSize,
-  factoryAddress: marketGroup.factoryAddress,
-  initializationNonce: marketGroup.initializationNonce,
-  marketParams: mapMarketParamsToType(marketGroup.marketParams),
-  question: marketGroup.question,
-  claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
-  baseTokenName: marketGroup.baseTokenName,
-  quoteTokenName: marketGroup.quoteTokenName,
-});
+): Promise<MarketGroupType> => {
+  const markets = await marketGroup.markets;
+  const resource = await marketGroup.resource;
+  const category = await marketGroup.category;
 
-export const mapResourceToType = (resource: Resource): ResourceType => ({
-  id: resource.id,
-  name: resource.name,
-  slug: resource.slug,
-  category: resource.category ? mapCategoryToType(resource.category) : null,
-  marketGroups: resource.marketGroups?.map(mapMarketGroupToType) || [],
-  resourcePrices: resource.resourcePrices?.map(mapResourcePriceToType) || [],
-});
+  const mappedMarkets = await Promise.all(markets.map(mapMarketToType));
 
-export const mapCategoryToType = (category: Category): CategoryType => ({
-  id: category.id,
-  name: category.name,
-  slug: category.slug,
-  marketGroups: category.marketGroups?.map(mapMarketGroupToType) || [],
-});
+  return {
+    id: marketGroup.id,
+    address: marketGroup.address?.toLowerCase(),
+    vaultAddress: marketGroup.vaultAddress,
+    chainId: marketGroup.chainId,
+    isYin: marketGroup.isYin,
+    isCumulative: marketGroup.isCumulative,
+    markets: mappedMarkets,
+    resource: resource ? await mapResourceToType(resource) : null,
+    category: category ? await mapCategoryToType(category) : null,
+    deployTimestamp: marketGroup.deployTimestamp,
+    deployTxnBlockNumber: marketGroup.deployTxnBlockNumber,
+    owner: marketGroup.owner?.toLowerCase() || null,
+    collateralAsset: marketGroup.collateralAsset,
+    collateralSymbol: marketGroup.collateralSymbol,
+    collateralDecimals: marketGroup.collateralDecimals,
+    minTradeSize: marketGroup.minTradeSize,
+    factoryAddress: marketGroup.factoryAddress,
+    initializationNonce: marketGroup.initializationNonce,
+    marketParams: mapMarketParamsToType(marketGroup.marketParams),
+    question: marketGroup.question,
+    claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
+    baseTokenName: marketGroup.baseTokenName,
+    quoteTokenName: marketGroup.quoteTokenName,
+  };
+};
 
-export const mapMarketToType = (market: Market): MarketType => ({
-  id: market.id,
-  marketId: market.marketId,
-  startTimestamp: market.startTimestamp,
-  endTimestamp: market.endTimestamp,
-  marketGroup: market.marketGroup
-    ? mapMarketGroupToType(market.marketGroup)
-    : null,
-  positions: market.positions?.map(mapPositionToType) || [],
-  settled: market.settled,
-  settlementPriceD18: market.settlementPriceD18,
-  public: market.public,
-  question: market.question || '',
-  baseAssetMinPriceTick: market.baseAssetMinPriceTick,
-  baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
-  poolAddress: market.poolAddress,
-  optionName: market.optionName,
-  startingSqrtPriceX96: market.startingSqrtPriceX96,
-  marketParams: mapMarketParamsToType(market.marketParams),
-  currentPrice: null,
-});
+export const mapResourceToType = async (resource: Resource): Promise<ResourceType> => {
+  const marketGroups = await resource.marketGroups;
+  const resourcePrices = await resource.resourcePrices;
+  const category = await resource.category;
 
-export const mapPositionToType = (position: Position): PositionType => ({
-  id: position.id,
-  positionId: position.positionId,
-  owner: position.owner?.toLowerCase() || '',
-  isLP: position.isLP,
-  baseToken: position.baseToken,
-  quoteToken: position.quoteToken,
-  collateral: position.collateral,
-  market: mapMarketToType(position.market),
-  transactions: position.transactions?.map(mapTransactionToType) || [],
-  borrowedBaseToken: position.borrowedBaseToken,
-  borrowedQuoteToken: position.borrowedQuoteToken,
-  lpBaseToken: position.lpBaseToken,
-  lpQuoteToken: position.lpQuoteToken,
-  isSettled: position.isSettled,
-  lowPriceTick: position.lowPriceTick,
-  highPriceTick: position.highPriceTick,
-});
+  const mappedMarketGroups = await Promise.all(marketGroups.map(mapMarketGroupToType));
+  const mappedResourcePrices = await Promise.all(resourcePrices.map(mapResourcePriceToType));
 
-export const mapTransactionToType = (
+  return {
+    id: resource.id,
+    name: resource.name,
+    slug: resource.slug,
+    category: category ? await mapCategoryToType(category) : null,
+    marketGroups: mappedMarketGroups,
+    resourcePrices: mappedResourcePrices,
+  };
+};
+
+export const mapCategoryToType = async (category: Category): Promise<CategoryType> => {
+  const mappedMarketGroups = await Promise.all(category.marketGroups?.map(mapMarketGroupToType) || []);
+
+  return {
+    id: category.id,
+    name: category.name,
+    slug: category.slug,
+    marketGroups: mappedMarketGroups,
+  };
+};
+
+export const mapMarketToType = async (market: Market): Promise<MarketType> => {
+  const marketGroup = await market.marketGroup;
+  const mappedMarketGroup = marketGroup ? await mapMarketGroupToType(marketGroup) : null;
+  const mappedPositions = await Promise.all(market.positions?.map(mapPositionToType) || []);
+
+  return {
+    id: market.id,
+    marketId: market.marketId,
+    startTimestamp: market.startTimestamp,
+    endTimestamp: market.endTimestamp,
+    public: market.public,
+    question: market.question || '',
+    marketGroup: mappedMarketGroup,
+    positions: mappedPositions,
+    settled: market.settled,
+    settlementPriceD18: market.settlementPriceD18,
+    baseAssetMinPriceTick: market.baseAssetMinPriceTick,
+    baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
+    poolAddress: market.poolAddress,
+    optionName: market.optionName,
+    startingSqrtPriceX96: market.startingSqrtPriceX96,
+    marketParams: mapMarketParamsToType(market.marketParams),
+    currentPrice: null,
+  };
+};
+
+export const mapPositionToType = async (position: Position): Promise<PositionType> => {
+  const mappedMarket = await mapMarketToType(position.market);
+
+  return {
+    id: position.id,
+    positionId: position.positionId,
+    owner: position.owner?.toLowerCase() || '',
+    isLP: position.isLP,
+    baseToken: position.baseToken,
+    quoteToken: position.quoteToken,
+    collateral: position.collateral,
+    market: mappedMarket,
+    transactions: await Promise.all(position.transactions?.map(mapTransactionToType) || []),
+    borrowedBaseToken: position.borrowedBaseToken,
+    borrowedQuoteToken: position.borrowedQuoteToken,
+    lpBaseToken: position.lpBaseToken,
+    lpQuoteToken: position.lpQuoteToken,
+    isSettled: position.isSettled,
+    lowPriceTick: position.lowPriceTick,
+    highPriceTick: position.highPriceTick,
+  };
+};
+
+export const mapTransactionToType = async   (
   transaction: HydratedTransaction | Transaction
-): TransactionType => ({
+): Promise<TransactionType> => ({
   id: transaction.id,
   type: transaction.type,
   timestamp: transaction.event?.timestamp
@@ -151,7 +176,7 @@ export const mapTransactionToType = (
     : 0,
   transactionHash: transaction.event?.transactionHash || null,
   position: transaction.position
-    ? mapPositionToType(transaction.position)
+    ? await mapPositionToType(transaction.position)
     : null,
   baseToken: transaction.baseToken,
   quoteToken: transaction.quoteToken,
@@ -164,12 +189,20 @@ export const mapTransactionToType = (
   tradeRatioD18: transaction.tradeRatioD18 || null,
 });
 
-export const mapResourcePriceToType = (
+export const mapResourcePriceToType = async (
   price: ResourcePrice
-): ResourcePriceType => ({
-  id: price.id,
-  timestamp: price.timestamp,
-  value: price.value,
-  resource: price.resource ? mapResourceToType(price.resource) : null,
-  blockNumber: price.blockNumber,
-});
+): Promise<ResourcePriceType> => {
+  const resource = await price.resource;
+  const mappedResource = resource ? await mapResourceToType(resource) : null;
+
+  return {
+    id: price.id,
+    timestamp: price.timestamp,
+    value: price.value,
+    resource: mappedResource,
+    blockNumber: price.blockNumber,
+  };
+};
+
+// Export the helper functions
+export { hexToString, mapMarketParamsToType };

@@ -3,7 +3,7 @@ import dataSource from '../../db';
 import { MarketGroup } from '../../models/MarketGroup';
 import { Market } from '../../models/Market';
 import { MarketType, MarketGroupType } from '../types';
-import { mapMarketGroupToType, mapMarketToType } from './mappers';
+import { mapMarketGroupToType, mapMarketToType, mapResourceToType, mapCategoryToType, mapMarketParamsToType, hexToString } from './mappers';
 
 @Resolver(() => MarketGroupType)
 export class MarketGroupResolver {
@@ -13,7 +13,8 @@ export class MarketGroupResolver {
       const marketGroups = await dataSource.getRepository(MarketGroup).find({
         relations: ['markets', 'category', 'resource'],
       });
-      return marketGroups.map(mapMarketGroupToType);
+
+      return await Promise.all(marketGroups.map(mapMarketGroupToType));
     } catch (error) {
       console.error('Error fetching market groups:', error);
       throw new Error('Failed to fetch market groups');
@@ -33,7 +34,7 @@ export class MarketGroupResolver {
 
       if (!marketGroup) return null;
 
-      return mapMarketGroupToType(marketGroup);
+      return await mapMarketGroupToType(marketGroup);
     } catch (error) {
       console.error('Error fetching market group:', error);
       throw new Error('Failed to fetch market group');
@@ -43,15 +44,8 @@ export class MarketGroupResolver {
   @FieldResolver(() => [MarketType])
   async markets(@Root() marketGroup: MarketGroup): Promise<MarketType[]> {
     try {
-      if (marketGroup.markets) {
-        return marketGroup.markets.map(mapMarketToType);
-      }
-
-      const markets = await dataSource.getRepository(Market).find({
-        where: { marketGroup: { id: marketGroup.id } },
-      });
-
-      return markets.map(mapMarketToType);
+      const markets = await marketGroup.markets;
+      return await Promise.all(markets.map(mapMarketToType));
     } catch (error) {
       console.error('Error fetching markets for market group:', error);
       throw new Error('Failed to fetch markets');

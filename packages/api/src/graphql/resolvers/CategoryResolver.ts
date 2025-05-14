@@ -17,12 +17,12 @@ export class CategoryResolver {
           'marketGroups.resource',
         ],
       });
-      return categories.map((category) => ({
+      return Promise.all(categories.map(async (category) => ({
         id: category.id,
         name: category.name,
         slug: category.slug,
-        marketGroups: category.marketGroups?.map(mapMarketGroupToType) || [],
-      }));
+        marketGroups: await Promise.all(category.marketGroups?.map(mapMarketGroupToType) || []),
+      })));
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw new Error('Failed to fetch categories');
@@ -47,7 +47,7 @@ export class CategoryResolver {
         throw new Error(`Category with slug ${slug} not found`);
       }
 
-      return category.marketGroups.map(mapMarketGroupToType);
+      return Promise.all(category.marketGroups.map(mapMarketGroupToType));
     } catch (error) {
       console.error('Error fetching markets by category:', error);
       throw new Error('Failed to fetch markets by category');

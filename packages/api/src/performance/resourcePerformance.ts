@@ -1239,21 +1239,19 @@ export class ResourcePerformance {
     }
   }
 
-  private getMarketId(chainId: number, address: string, market: string) {
-    const theMarket = this.markets.find(
-      (e) =>
-        e.marketGroup.chainId === chainId &&
-        e.marketGroup.address === address.toLowerCase() &&
-        e.marketId === Number(market)
-    );
-    if (!theMarket) {
-      throw new Error(`Epoch not found for ${chainId}-${address}-${market}`);
+  private async getMarketId(chainId: number, address: string, market: string): Promise<{ id: number; isCumulative: boolean }> {
+    for (const e of this.markets) {
+      const marketGroup = await e.marketGroup;
+      if (marketGroup.chainId === chainId &&
+          marketGroup.address === address.toLowerCase() &&
+          e.marketId === Number(market)) {
+        return {
+          id: e.id,
+          isCumulative: marketGroup.isCumulative,
+        };
+      }
     }
-
-    return {
-      id: theMarket.id,
-      isCumulative: theMarket.marketGroup.isCumulative,
-    };
+    throw new Error(`Epoch not found for ${chainId}-${address}-${market}`);
   }
 
   getResourcePrices(from: number, to: number, interval: number) {
@@ -1273,7 +1271,7 @@ export class ResourcePerformance {
     );
   }
 
-  getIndexPrices(
+  async getIndexPrices(
     from: number,
     to: number,
     interval: number,
@@ -1282,7 +1280,7 @@ export class ResourcePerformance {
     epoch: string
   ) {
     this.checkInterval(interval);
-    const { id: epochId, isCumulative } = this.getMarketId(
+    const { id: epochId, isCumulative } = await this.getMarketId(
       chainId,
       address,
       epoch
@@ -1334,7 +1332,7 @@ export class ResourcePerformance {
     epoch: string
   ) {
     this.checkInterval(interval);
-    const { id: epochId } = this.getMarketId(chainId, address, epoch);
+    const { id: epochId } = await this.getMarketId(chainId, address, epoch);
     if (!this.persistentStorage[interval].marketStore[epochId]) {
       return [];
     }
@@ -1359,16 +1357,18 @@ export class ResourcePerformance {
     return filledPrices;
   }
 
-  getMarketFromChainAndAddress(chainId: number, address: string) {
+  async getMarketFromChainAndAddress(chainId: number, address: string) {
     if (!this.marketGroups) {
       return undefined;
     }
 
-    return this.marketGroups.find(
-      (m) =>
-        m.chainId === chainId &&
-        m.address.toLowerCase() === address.toLowerCase()
-    );
+    for (const m of this.marketGroups) {
+      if (m.chainId === chainId &&
+          m.address.toLowerCase() === address.toLowerCase()) {
+        return m;
+      }
+    }
+    return undefined;
   }
 
   private checkInterval(interval: number) {
