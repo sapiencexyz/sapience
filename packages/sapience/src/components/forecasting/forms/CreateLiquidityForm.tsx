@@ -18,6 +18,7 @@ import {
 } from '@foil/ui/components/ui/form';
 import { Input } from '@foil/ui/components/ui/input';
 import { useToast } from '@foil/ui/hooks/use-toast';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import type { Abi } from 'viem';
 import { formatUnits } from 'viem';
@@ -404,56 +405,71 @@ export function CreateLiquidityForm({
         </div>
 
         {/* Preview Section */}
-        <div className="pt-4 mt-4">
-          <div className="flex flex-col gap-3">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">
-                {virtualBaseTokensName} Tokens
-              </p>
-              <p className="text-sm">
-                <NumberDisplay value={formattedAmount0} />{' '}
-                {virtualBaseTokensName}
-              </p>
-            </div>
+        <AnimatePresence>
+          {parseFloat(depositAmount || '0') > 0 && (
+            <motion.div
+              key="liquidity-preview-container"
+              layout
+              initial={{ opacity: 0, height: 0, transformOrigin: 'top' }}
+              animate={{ opacity: 1, height: 'auto', transformOrigin: 'top' }}
+              exit={{ opacity: 0, height: 0, transformOrigin: 'top' }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="pt-2 relative overflow-hidden"
+            >
+              <h4 className="text-sm font-medium mb-2.5 flex items-center">
+                Order Quote
+              </h4>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    {virtualBaseTokensName} Tokens
+                  </p>
+                  <p className="text-sm">
+                    <NumberDisplay value={formattedAmount0} />{' '}
+                    {virtualBaseTokensName}
+                  </p>
+                </div>
 
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">
-                {virtualQuoteTokensName} Tokens
-              </p>
-              <p className="text-sm">
-                <NumberDisplay value={formattedAmount1} />{' '}
-                {virtualQuoteTokensName}
-              </p>
-            </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    {virtualQuoteTokensName} Tokens
+                  </p>
+                  <p className="text-sm">
+                    <NumberDisplay value={formattedAmount1} />{' '}
+                    {virtualQuoteTokensName}
+                  </p>
+                </div>
 
-            <div>
-              <p className="text-sm font-medium text-muted-foreground mb-1">
-                Wallet Balance
-              </p>
-              <p
-                className={`text-sm ${hasInsufficientFunds ? 'text-red-500' : ''}`}
-              >
-                <span className="line-through text-muted-foreground">
-                  <NumberDisplay value={walletBalance} />
-                </span>{' '}
-                → <NumberDisplay value={estimatedResultingBalance} />{' '}
-                {collateralAssetTicker}
-              </p>
-            </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    Wallet Balance
+                  </p>
+                  <p
+                    className={`text-sm ${hasInsufficientFunds ? 'text-red-500' : ''}`}
+                  >
+                    <span className="line-through text-muted-foreground">
+                      <NumberDisplay value={walletBalance} />
+                    </span>{' '}
+                    → <NumberDisplay value={estimatedResultingBalance} />{' '}
+                    {collateralAssetTicker}
+                  </p>
+                </div>
 
-            {quoteError && (
-              <div className="text-red-500 text-sm mt-2">
-                Failed to load quote: {quoteError.message}
+                {quoteError && (
+                  <div className="text-red-500 text-sm mt-2">
+                    Failed to load quote: {quoteError.message}
+                  </div>
+                )}
+
+                {lpError && (
+                  <div className="text-red-500 text-sm mt-2">
+                    Failed to create position: {lpError.message}
+                  </div>
+                )}
               </div>
-            )}
-
-            {lpError && (
-              <div className="text-red-500 text-sm mt-2">
-                Failed to create position: {lpError.message}
-              </div>
-            )}
-          </div>
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </form>
     </Form>
   );
