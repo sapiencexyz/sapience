@@ -21,6 +21,47 @@ interface BlockData {
   difficulty: bigint;
 }
 
+class BlockDeque {
+  private blocks: BlockData[] = [];
+  private readonly maxAge: number; // Maximum age of blocks in seconds
+
+  constructor(maxAgeInDays: number) {
+    this.maxAge = maxAgeInDays * 24 * 60 * 60;
+  }
+
+  // Add new blocks to the front (newest)
+  pushFrontAndCleanOld(newBlocks: BlockData[], targetDate: Date) {
+    this.blocks = [...newBlocks, ...this.blocks];
+    this.trimOldBlocks(targetDate);
+  }
+
+  // Remove blocks older than maxAge
+  private trimOldBlocks(targetDate: Date) {
+    const targetDateSeconds = Math.floor(targetDate.getTime() / 1000);
+    const cutoffTime = targetDateSeconds - this.maxAge;
+    this.blocks = this.blocks.filter((block) => block.timestamp >= cutoffTime);
+  }
+
+  // Get all blocks
+  getAllBlocks(): BlockData[] {
+    return this.blocks;
+  }
+
+  // Get the latest block
+  getLatestBlock(): BlockData | null {
+    return this.blocks.length > 0 ? this.blocks[0] : null;
+  }
+
+  // Get the oldest block
+  getOldestBlock(): BlockData | null {
+    return this.blocks.length > 0 ? this.blocks[this.blocks.length - 1] : null;
+  }
+
+  isEmpty(): boolean {
+    return this.blocks.length === 0;
+  }
+}
+
 class BtcHashIndexer implements IResourcePriceIndexer {
   private isWatching: boolean = false;
   private apiUrl: string = 'https://mempool.space/api/v1';
@@ -31,6 +72,12 @@ class BtcHashIndexer implements IResourcePriceIndexer {
   private readonly DIFFICULTY_1_TARGET = 2n ** 32n; // Number of hashes needed for difficulty 1
   private readonly CHUNK_SIZE = 15; // Number of blocks to fetch in one request
   private readonly EXA_MULTIPLIER = 10n ** 18n; // Multiplier for exa hashrate
+  private blockDeque: BlockDeque;
+
+  constructor() {
+    // Initialize deque with 7 days capacity (7 days)
+    this.blockDeque = new BlockDeque(7);
+  }
 
   private async sleep(ms: number) {
     return await new Promise((resolve) => setTimeout(resolve, ms));
@@ -100,9 +147,9 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     for (
       let timestamp = startTimestamp;
       timestamp <= nonNullEndTimestamp;
-      timestamp += 24 * 60 * 60
+      timestamp += 60 * 60 // hourly intervals in seconds
     ) {
-      await this.calcAndStoreMetricsForToday(
+      await this.calcAndStoreMetrics(
         resource,
         new Date(timestamp * 1000),
         overwriteExisting
@@ -334,84 +381,145 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     };
   }
 
-  private async calcAndStoreMetricsForToday(
+  private async calcAndStoreMetrics(
     resource: Resource,
     targetDate: Date,
     overwriteExisting: boolean = false
   ): Promise<void> {
     try {
-      // Get target date's midnight and 7 days ago midnight
-      const targetMidnight = new Date(
-        targetDate.getFullYear(),
-        targetDate.getMonth(),
-        targetDate.getDate()
-      );
-      const weekAgoMidnight = new Date(targetMidnight);
-      weekAgoMidnight.setDate(weekAgoMidnight.getDate() - 7);
+      // Set endTimestamp to start of the hour
+      const endTimestamp =
+        new Date(
+          targetDate.getFullYear(),
+          targetDate.getMonth(),
+          targetDate.getDate(),
+          targetDate.getHours(),
+          0,
+          0
+        ).getTime() / 1000;
+      const startTimestamp = endTimestamp - 7 * 24 * 60 * 60; // 7 days before target date
 
-      const endTimestamp = Math.floor(targetMidnight.getTime() / 1000);
-      const startTimestamp = Math.floor(weekAgoMidnight.getTime() / 1000);
-
-      console.log(
-        `[BtcIndexer] Fetching blocks from ${new Date(startTimestamp * 1000).toISOString()} to ${new Date(endTimestamp * 1000).toISOString()}`
-      );
-
-      // Fetch all blocks from the last 7 days
-      const blocks = await this.getBlocksForDateRange(
-        startTimestamp,
-        endTimestamp
-      );
-
-      if (blocks.length === 0) {
-        console.log('[BtcIndexer] No blocks found in the last 7 days');
-        return;
-      }
-
-      // Validate block sequence a.k.a. assert that the blocks are in descending order and that there are no gaps
-      if (!this.validateBlockSequence(blocks)) {
-        console.error('[BtcIndexer] Invalid block sequence detected');
-        return;
-      }
-
-      // Calculate weighted average difficulty for hashrate
-      const weightedDifficulty =
-        await this.calculateWeightedAverageDifficulty(blocks);
-      const hashrate = this.calculateHashrate(weightedDifficulty);
-
-      // Calculate metrics using target date's midnight
-      const metrics = this.calculateMetrics(blocks, hashrate, targetMidnight);
-
-      // Store the weekly average hashrate and daily average fees
-      const priceData: PriceData = {
-        timestamp: targetMidnight,
-        fee_per_exahash: metrics.averageFeePerExahash,
-        hashrate: metrics.hashrateInEH,
-        average_fee: metrics.averagedFeePerBlock,
-        difficulty: weightedDifficulty, // Use the latest block number
-      };
-
-      console.log(priceData);
       const existingPrice = await resourcePriceRepository.findOne({
         where: {
           resource: { id: resource.id },
-          timestamp: targetMidnight.getTime() / 1000,
+          timestamp: endTimestamp,
         },
       });
 
       if (existingPrice && !overwriteExisting) {
         console.log('[BtcIndexer] Skipping existing price');
       } else {
-        await this.storeBlockPrice(-1, resource, priceData);
-      }
+        console.log(
+          `[BtcIndexer] Processing metrics for hour: ${new Date(endTimestamp * 1000).toISOString()}`
+        );
+        console.log(
+          `[BtcIndexer] Time window: ${new Date(startTimestamp * 1000).toISOString()} to ${new Date(endTimestamp * 1000).toISOString()}`
+        );
 
-      // await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
-      console.log(
-        `[BtcIndexer] Stored fee per ExaHash metric (scaled by 10 ** 9): ${metrics.averageFeePerExahash.toString()}, ` +
-          `weekly average hashrate: ${(metrics.hashrateInEH / BigInt(10 ** 3)).toString()} EH/s, ` +
-          `and daily average fee: ${(metrics.averagedFeePerBlock / BigInt(10 ** 3)).toString()} sat`
-      );
+        // Get blocks for the time window from deque
+        let blocks = this.blockDeque.getAllBlocks();
+        console.log(`[BtcIndexer] Current blocks in deque: ${blocks.length}`);
+
+        const oldestBlockInDeque = this.blockDeque.getOldestBlock();
+        const latestBlockInDeque = this.blockDeque.getLatestBlock();
+
+        let startBlockHeight: number;
+        // Get the latest block height from deque or fetch from API if deque is empty
+        const endBlockHeight = await this.getClosestBlockToDate(
+          endTimestamp,
+          'before'
+        );
+
+        if (this.blockDeque.isEmpty()) {
+          console.log('[BtcIndexer] No blocks in deque, fetching from API');
+          startBlockHeight = await this.getClosestBlockToDate(
+            startTimestamp,
+            'after'
+          );
+        } else {
+          startBlockHeight = latestBlockInDeque
+            ? latestBlockInDeque.height + 1
+            : 1;
+        }
+
+        console.log(
+          `[BtcIndexer] Latest block in deque: ${latestBlockInDeque?.height || 'none'}`
+        );
+        console.log(
+          `[BtcIndexer] Oldest block in deque: ${oldestBlockInDeque?.height || 'none'}`
+        );
+        console.log(`[BtcIndexer] Target end block height: ${endBlockHeight}`);
+
+        console.log(
+          `[BtcIndexer] Fetching blocks from height ${startBlockHeight} to ${endBlockHeight}`
+        );
+
+        const newBlocks = await this.fetchIntervalOfBlocks(
+          startBlockHeight,
+          endBlockHeight
+        );
+        console.log(`[BtcIndexer] Fetched ${newBlocks.length} new blocks`);
+
+        this.blockDeque.pushFrontAndCleanOld(
+          newBlocks,
+          new Date(endTimestamp * 1000)
+        );
+        blocks = this.blockDeque.getAllBlocks();
+        console.log(`[BtcIndexer] Total blocks after update: ${blocks.length}`);
+
+        if (blocks.length === 0) {
+          console.log('[BtcIndexer] No blocks found in the deque after update');
+          return;
+        }
+
+        // Validate block sequence a.k.a. assert that the blocks are in descending order and that there are no gaps
+        if (!this.validateBlockSequence(blocks)) {
+          console.error('[BtcIndexer] Invalid block sequence detected');
+          return;
+        }
+
+        // Calculate weighted average difficulty for hashrate
+        const weightedDifficulty =
+          await this.calculateWeightedAverageDifficulty(blocks);
+        const hashrate = this.calculateHashrate(weightedDifficulty);
+
+        console.log(
+          `[BtcIndexer] Calculated weighted difficulty: ${weightedDifficulty.toString()}`
+        );
+        console.log(
+          `[BtcIndexer] Calculated hashrate: ${hashrate.toString()} H/s`
+        );
+
+        // Calculate metrics using exact target date
+        const metrics = this.calculateMetrics(blocks, hashrate, targetDate);
+
+        console.log(`[BtcIndexer] Calculated metrics:
+          - Average fee per block (* 10^12): ${metrics.averagedFeePerBlock.toString()}
+          - Fee per exahash (* 10^9): ${metrics.averageFeePerExahash.toString()}
+          - Hashrate in EH/s (* 10^3): ${metrics.hashrateInEH.toString()}`);
+
+        // Store the weekly average hashrate and daily average fees
+        const priceData: PriceData = {
+          timestamp: new Date(endTimestamp * 1000),
+          fee_per_exahash: metrics.averageFeePerExahash,
+          hashrate: metrics.hashrateInEH,
+          average_fee: metrics.averagedFeePerBlock,
+          difficulty: weightedDifficulty,
+        };
+
+        console.log('priceData', priceData);
+
+        await this.storeBlockPrice(-1, resource, priceData);
+        console.log('[BtcIndexer] Stored new price data');
+
+        console.log(
+          `[BtcIndexer] Stored fee per ExaHash metric (scaled by 10 ** 9): ${metrics.averageFeePerExahash.toString()}, ` +
+            `weekly average hashrate: ${(metrics.hashrateInEH / BigInt(10 ** 3)).toString()} EH/s, ` +
+            `and daily average fee: ${(metrics.averagedFeePerBlock / BigInt(10 ** 3)).toString()} sat`
+        );
+      }
     } catch (error) {
-      console.error('[BtcIndexer] Error processing last 7 days:', error);
+      console.error('[BtcIndexer] Error processing metrics:', error);
       Sentry.captureException(error);
     }
   }
@@ -432,24 +540,19 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     this.isWatching = true;
 
     // Initial processing
-    await this.calcAndStoreMetricsForToday(resource, new Date(), true);
+    await this.calcAndStoreMetrics(resource, new Date(), true);
 
-    // Set up weekly processing at 2am
+    // Set up hourly processing
     const scheduleNextRun = () => {
       const now = new Date();
       const nextRun = new Date(
         now.getFullYear(),
         now.getMonth(),
         now.getDate(),
-        2,
-        0,
+        now.getHours() + 1, // Schedule for next hour..
+        5, // ..and 5 minutes to make sure we process new data
         0
       );
-
-      // If it's already past 2am, schedule for tomorrow
-      if (now.getHours() >= 2) {
-        nextRun.setDate(nextRun.getDate() + 1);
-      }
 
       const timeUntilNextRun = nextRun.getTime() - now.getTime();
       console.log(
@@ -457,7 +560,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
       );
 
       this.pollInterval = setTimeout(async () => {
-        await this.calcAndStoreMetricsForToday(resource, new Date(), true);
+        await this.calcAndStoreMetrics(resource, new Date(), true);
         scheduleNextRun(); // Schedule the next run
       }, timeUntilNextRun);
     };
