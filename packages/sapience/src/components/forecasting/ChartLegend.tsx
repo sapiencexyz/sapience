@@ -54,7 +54,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-1 pb-4 text-sm">
+    <div className="flex flex-col items-start gap-y-1 pb-4 text-sm">
       {marketIds.map((marketIdNum, index) => {
         const marketIdStr = String(marketIdNum);
         const value = displayDataPoint.markets?.[marketIdStr];
@@ -71,7 +71,10 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         const label = hoveredDataPoint ? baseLabel : `Current ${baseLabel}`;
 
         return (
-          <div key={marketIdStr} className="flex items-center gap-1.5">
+          <div
+            key={marketIdStr}
+            className="flex items-center gap-1.5 text-lg mb-0.5"
+          >
             <span
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: color }}

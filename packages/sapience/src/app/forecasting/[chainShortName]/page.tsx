@@ -231,7 +231,7 @@ const ForecastingDetailPage = () => {
   // Otherwise show the main content
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
-      <div className="container mx-auto max-w-5xl flex flex-col">
+      <div className="container mx-auto max-w-4xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3">
           <div className="flex justify-start mb-6">
             <EndTimeDisplay endTime={activeMarket?.endTimestamp} />
@@ -293,7 +293,7 @@ const ForecastingDetailPage = () => {
             {/* Advanced View button (Right Aligned) */}
             <div>
               {activeMarkets.length > 0 &&
-                (marketCategory === MarketGroupCategory.SINGLE_CHOICE ? (
+                (marketCategory === MarketGroupCategory.MULTIPLE_CHOICE ? (
                   <button
                     type="button"
                     onClick={() => setShowMarketSelector(true)}

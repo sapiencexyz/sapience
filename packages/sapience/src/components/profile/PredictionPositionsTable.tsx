@@ -1,3 +1,4 @@
+import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Table,
@@ -16,10 +17,24 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import React from 'react';
-import { formatEther } from 'viem';
 
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
 import { useSapience } from '~/lib/context/SapienceProvider';
+
+// Helper function to render prediction when baseTokenName is 'Yes'
+const renderConditionalPrediction = (value: string) => {
+  if (value === '1000000000000000000' || value === '1') {
+    return 'Yes';
+  }
+  if (value === '0') {
+    return 'No';
+  }
+  try {
+    return <NumberDisplay value={BigInt(value)} />;
+  } catch (e) {
+    return value; // Fallback if not a BigInt string
+  }
+};
 
 interface PredictionPositionsTableProps {
   attestations: FormattedAttestation[] | undefined;
@@ -73,24 +88,25 @@ const renderPredictionCell = ({
     }
   }
 
+  const { value } = row.original; // value is a string
+
   // Conditionally render 'Yes'/'No' if baseTokenName is 'Yes'
   if (baseTokenName === 'Yes') {
-    const { value } = row.original; // Assuming value is a string representation
-    if (value === '1000000000000000000') {
-      return 'Yes';
-    }
-    if (value === '1') {
-      return 'Yes';
-    }
-    if (value === '0') {
-      return 'No';
-    }
-
-    return formatEther(BigInt(value));
+    return renderConditionalPrediction(value);
   }
 
-  // Default: Display the pre-formatted value from the hook along with the token name
-  return `${row.original.value} ${baseTokenName}`;
+  try {
+    const numericValue = BigInt(value);
+    return (
+      <>
+        <NumberDisplay value={numericValue} />
+        {baseTokenName && ` ${baseTokenName}`}
+      </>
+    );
+  } catch (e) {
+    // Fallback: if value is not a string parsable to BigInt (e.g., "CAT", "DOG" for a categorical market)
+    return `${value} ${baseTokenName || ''}`.trim();
+  }
 };
 
 const renderQuestionCell = ({

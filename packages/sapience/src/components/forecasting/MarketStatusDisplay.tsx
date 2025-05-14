@@ -61,7 +61,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
     // Determine the display result based on market category
     let settlementResult: React.ReactNode;
 
-    if (marketCategory === MarketGroupCategory.SINGLE_CHOICE) {
+    if (marketCategory === MarketGroupCategory.MULTIPLE_CHOICE) {
       // For single choice markets, find the option with settlement price of 1
       const settledMarket = marketGroupData.markets.find(
         (market) => market.settlementPriceD18 === '1000000000000000000' // 1 with 18 decimals

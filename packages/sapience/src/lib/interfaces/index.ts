@@ -129,6 +129,6 @@ export interface Position {
 
 export enum MarketType {
   YES_NO = 'YES_NO',
-  SINGLE_CHOICE = 'SINGLE_CHOICE',
+  MULTIPLE_CHOICE = 'MULTIPLE_CHOICE',
   NUMERIC = 'NUMERIC',
 }

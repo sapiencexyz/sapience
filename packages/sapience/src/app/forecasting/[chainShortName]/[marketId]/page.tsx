@@ -214,7 +214,7 @@ const ForecastContent = () => {
 
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-32">
-      <div className="container mx-auto max-w-5xl flex flex-col">
+      <div className="container mx-auto max-w-6xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3 flex-1">
           <div className="flex justify-start mb-6">
             <EndTimeDisplay endTime={marketData?.endTimestamp} />

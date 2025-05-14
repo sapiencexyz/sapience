@@ -44,7 +44,7 @@ interface UseMarketGroupProps {
 }
 
 export enum MarketGroupCategory {
-  SINGLE_CHOICE = '1',
+  MULTIPLE_CHOICE = '1',
   YES_NO = '2',
   NUMERIC = '3',
 }
@@ -99,7 +99,7 @@ export const useMarketGroup = ({
       setActiveMarkets(newActiveMarkets);
 
       if (marketGroupData.markets.length > 1) {
-        setMarketCategory(MarketGroupCategory.SINGLE_CHOICE);
+        setMarketCategory(MarketGroupCategory.MULTIPLE_CHOICE);
       } else if (marketGroupData.markets[0].optionName === null) {
         setMarketCategory(MarketGroupCategory.YES_NO);
       } else {

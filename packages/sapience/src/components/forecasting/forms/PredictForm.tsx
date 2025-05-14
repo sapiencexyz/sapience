@@ -35,7 +35,7 @@ export default function PredictForm({
   // Create schema based on market category
   const formSchema = useMemo(() => {
     switch (marketCategory) {
-      case MarketGroupCategory.SINGLE_CHOICE:
+      case MarketGroupCategory.MULTIPLE_CHOICE:
         return z.object({
           predictionValue: z.string().min(1, 'Please select an option'),
         });
@@ -72,7 +72,7 @@ export default function PredictForm({
     switch (marketCategory) {
       case MarketGroupCategory.YES_NO:
         return YES_SQRT_PRICE_X96;
-      case MarketGroupCategory.SINGLE_CHOICE:
+      case MarketGroupCategory.MULTIPLE_CHOICE:
         return marketGroupData.markets[0].marketId.toString();
       case MarketGroupCategory.NUMERIC:
         return String(Math.round((lowerBound + upperBound) / 2));
@@ -98,7 +98,7 @@ export default function PredictForm({
   const predictionValue = methods.watch('predictionValue');
 
   const marketId = useMemo(() => {
-    if (marketCategory === MarketGroupCategory.SINGLE_CHOICE) {
+    if (marketCategory === MarketGroupCategory.MULTIPLE_CHOICE) {
       return Number(predictionValue);
     }
     return marketGroupData.markets[0].marketId;
@@ -106,7 +106,7 @@ export default function PredictForm({
 
   const submissionValue = useMemo(() => {
     switch (marketCategory) {
-      case MarketGroupCategory.SINGLE_CHOICE:
+      case MarketGroupCategory.MULTIPLE_CHOICE:
         return '1';
       case MarketGroupCategory.YES_NO:
         return predictionValue;
@@ -133,7 +133,7 @@ export default function PredictForm({
     switch (marketCategory) {
       case MarketGroupCategory.YES_NO:
         return <YesNoPredict />;
-      case MarketGroupCategory.SINGLE_CHOICE:
+      case MarketGroupCategory.MULTIPLE_CHOICE:
         return (
           <MultipleChoicePredict
             options={marketGroupData.markets.map((market) => ({

@@ -17,7 +17,7 @@ export default function WagerFormFactory(props: WagerFormFactoryProps) {
   const { marketCategory, ...restOfProps } = props;
 
   switch (marketCategory) {
-    case MarketGroupCategory.SINGLE_CHOICE:
+    case MarketGroupCategory.MULTIPLE_CHOICE:
       return <MultipleChoiceWagerForm {...restOfProps} />;
     case MarketGroupCategory.NUMERIC:
       return <NumericWagerForm {...restOfProps} />;
