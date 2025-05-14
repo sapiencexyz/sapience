@@ -170,7 +170,10 @@ export default function NumericWagerForm({
           </span>
           , you will receive approximately{' '}
           <span className="font-medium">
-            <NumberDisplay value={BigInt(quoteData.maxSize)} precision={4} />{' '}
+            <NumberDisplay
+              value={BigInt(Math.abs(Number(quoteData.maxSize)))}
+              precision={4}
+            />{' '}
             {marketGroupData?.collateralSymbol || 'tokens'}
           </span>
         </p>
