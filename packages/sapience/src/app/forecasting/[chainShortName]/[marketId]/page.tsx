@@ -3,6 +3,7 @@
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
 import { Button } from '@foil/ui/components/ui/button';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
+import type { MarketType as GqlMarketType } from '@foil/ui/types/graphql';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, LineChart, BarChart2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -15,9 +16,13 @@ import PriceChart from '~/components/charts/PriceChart';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
+import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
+import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
 import { parseUrlParameter } from '~/lib/utils/util';
+
+// Import hooks for OrderBook data fetching
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -49,6 +54,41 @@ const SimpleLiquidityWrapper = dynamic(
   }
 );
 
+// Helper component for displaying market loading/error states
+const MarketStatusDisplay = ({
+  isLoadingMarket,
+  isLoadingMarketContract,
+  marketData,
+  chainId,
+  marketAddress,
+  numericMarketId,
+}: {
+  isLoadingMarket: boolean;
+  isLoadingMarketContract: boolean;
+  marketData: GqlMarketType | null | undefined;
+  chainId: number | null | undefined;
+  marketAddress: string | null | undefined;
+  numericMarketId: number | null | undefined;
+}) => {
+  if (isLoadingMarket || isLoadingMarketContract) {
+    return (
+      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+        <LottieLoader width={32} height={32} />
+      </div>
+    );
+  }
+
+  if (!marketData || !chainId || !marketAddress || !numericMarketId) {
+    return (
+      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+        <p className="text-destructive">Failed to load market data.</p>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 // Main content component that consumes the forecast context
 const ForecastContent = () => {
   const { address } = useAccount();
@@ -67,6 +107,11 @@ const ForecastContent = () => {
     marketAddress,
     numericMarketId,
     getPositionById,
+    minTick,
+    maxTick,
+    tickSpacing,
+    baseTokenName,
+    quoteTokenName,
   } = useForecast();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
@@ -105,6 +150,36 @@ const ForecastContent = () => {
   // Determine the selected position if positionId exists
   const selectedPosition = positionId ? getPositionById(positionId) : null;
 
+  // ---- Start: Hoisted OrderBook Data Fetching ----
+  const {
+    pool,
+    isLoading: isLoadingPool,
+    isError: isErrorPool,
+  } = useUniswapPool(
+    chainId ?? 0,
+    marketData?.poolAddress ? (marketData.poolAddress as `0x${string}`) : '0x'
+  );
+
+  const {
+    asks,
+    bids,
+    lastPrice,
+    isLoading: isLoadingBook,
+    isError: isErrorBook,
+  } = useOrderBookData({
+    pool,
+    chainId: chainId === null ? undefined : chainId,
+    poolAddress: marketData?.poolAddress
+      ? (marketData.poolAddress as `0x${string}`)
+      : undefined,
+    baseAssetMinPriceTick: minTick,
+    baseAssetMaxPriceTick: maxTick,
+    tickSpacing,
+    quoteTokenName,
+    baseTokenName,
+  });
+  // ---- End: Hoisted OrderBook Data Fetching ----
+
   // Handler for updating selected prices
   const handlePriceSelection = (line: LineType, selected: boolean) => {
     setSelectedPrices((prev) => {
@@ -123,22 +198,18 @@ const ForecastContent = () => {
     }
   }, [selectedPosition]);
 
-  // Show loader while market data is loading
-  if (isLoadingMarket || isLoadingMarketContract) {
-    return (
-      <div className="flex justify-center items-center min-h-[100dvh] w-full">
-        <LottieLoader width={32} height={32} />
-      </div>
-    );
-  }
+  // Use the new MarketStatusDisplay component
+  const marketStatusElement = MarketStatusDisplay({
+    isLoadingMarket,
+    isLoadingMarketContract,
+    marketData,
+    chainId,
+    marketAddress,
+    numericMarketId,
+  });
 
-  // Handle case where market data failed to load or is missing essentials
-  if (!marketData || !chainId || !marketAddress || !numericMarketId) {
-    return (
-      <div className="flex justify-center items-center min-h-[100dvh] w-full">
-        <p className="text-destructive">Failed to load market data.</p>
-      </div>
-    );
+  if (marketStatusElement) {
+    return marketStatusElement;
   }
 
   return (
@@ -164,7 +235,7 @@ const ForecastContent = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.1 }}
                         className="w-full h-full absolute top-0 left-0"
                       >
                         <PriceChart
@@ -188,27 +259,20 @@ const ForecastContent = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.1 }}
                         className="w-full h-full absolute top-0 left-0"
                       >
                         <OrderBookChart
-                          chainId={chainId!}
-                          poolAddress={
-                            marketData?.poolAddress as `0x${string}` | undefined
-                          }
-                          baseAssetMinPriceTick={
-                            marketData?.baseAssetMinPriceTick ?? undefined
-                          }
-                          baseAssetMaxPriceTick={
-                            marketData?.baseAssetMaxPriceTick ?? undefined
-                          }
-                          quoteTokenName={
-                            marketData?.marketGroup?.quoteTokenName || undefined
-                          }
-                          baseTokenName={
-                            marketData?.marketGroup?.baseTokenName || undefined
-                          }
+                          quoteTokenName={quoteTokenName}
+                          baseTokenName={baseTokenName}
                           className="h-full"
+                          asks={asks}
+                          bids={bids}
+                          lastPrice={lastPrice}
+                          isLoadingPool={isLoadingPool}
+                          isErrorPool={isErrorPool}
+                          isLoadingBook={isLoadingBook}
+                          isErrorBook={isErrorBook}
                         />
                       </motion.div>
                     )}
@@ -252,7 +316,7 @@ const ForecastContent = () => {
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          transition={{ duration: 0.3 }}
+                          transition={{ duration: 0.1 }}
                         >
                           <IntervalSelector
                             selectedInterval={selectedInterval}
@@ -265,7 +329,7 @@ const ForecastContent = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
+                            transition={{ duration: 0.1 }}
                           >
                             <PriceSelector
                               selectedPrices={selectedPrices}
@@ -375,14 +439,13 @@ const ForecastContent = () => {
                 }
                 return (
                   <div>
-                    <h3 className="text-2xl font-medium mb-4">
-                      Your Positions
-                    </h3>
                     <UserPositionsTable
                       account={address}
                       marketAddress={marketAddress!}
-                      chainId={chainId!}
-                      marketId={numericMarketId}
+                      chainId={chainId === null ? undefined : chainId}
+                      marketId={
+                        numericMarketId === null ? undefined : numericMarketId
+                      }
                       refetchUserPositions={refetchUserPositions}
                     />
                   </div>

@@ -2,8 +2,7 @@ import dynamic from 'next/dynamic'; // For dynamic importing
 import type React from 'react';
 
 import NumberDisplay from '../shared/NumberDisplay'; // Import NumberDisplay
-import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
-import { useUniswapPool } from '~/hooks/charts/useUniswapPool'; // Import from UI package
+import type { OrderBookLevel } from '~/hooks/charts/useOrderBookData'; // Keep type import
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -61,55 +60,33 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
 
 // --- Component Props ---
 interface OrderBookChartProps {
-  // Required props to fetch pool data
-  chainId: number | undefined;
-  poolAddress: `0x${string}` | undefined;
-  baseAssetMinPriceTick: number | undefined;
-  baseAssetMaxPriceTick: number | undefined;
   quoteTokenName?: string;
-  // Add className for styling from parent
   className?: string;
-  // Explicitly pass the desired base token name for display
   baseTokenName?: string;
+
+  // Data passed from parent
+  asks: OrderBookLevel[];
+  bids: OrderBookLevel[];
+  lastPrice: string | null;
+  isLoadingPool: boolean;
+  isErrorPool: boolean;
+  isLoadingBook: boolean;
+  isErrorBook: boolean;
+  // Removed bookError as specific errors are combined now
 }
 
 const OrderBookChart: React.FC<OrderBookChartProps> = ({
-  chainId,
-  poolAddress,
-  baseAssetMinPriceTick,
-  baseAssetMaxPriceTick,
-  quoteTokenName, // Optional
+  quoteTokenName,
   className,
-  baseTokenName, // Destructure the new prop
+  baseTokenName,
+  asks,
+  bids,
+  lastPrice,
+  isLoadingPool,
+  isErrorPool,
+  isLoadingBook,
+  isErrorBook,
 }) => {
-  // 1. Fetch base pool info
-  const {
-    pool,
-    isLoading: isLoadingPool,
-    isError: isErrorPool,
-  } = useUniswapPool(
-    chainId ?? 0, // Provide a default chainId if undefined initially
-    poolAddress ?? '0x' // Provide a default address if undefined initially
-  );
-
-  // 2. Fetch and process order book data
-  const {
-    asks,
-    bids,
-    lastPrice,
-    isLoading: isLoadingBook,
-    isError: isErrorBook,
-  } = useOrderBookData({
-    pool,
-    chainId,
-    poolAddress: poolAddress || undefined,
-    baseAssetMinPriceTick,
-    baseAssetMaxPriceTick,
-    tickSpacing: pool?.tickSpacing,
-    quoteTokenName,
-    baseTokenName,
-  });
-
   const isLoading = isLoadingPool || isLoadingBook;
   const isError = isErrorPool || isErrorBook;
   // Determine if there's truly no liquidity data available (not just loading)
@@ -135,7 +112,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
       >
         <p className="text-sm text-center">
           Error loading order book data.
-          {/* Optionally display error message: {bookError?.message} */}
+          {/* Optionally display error message: {isErrorPool ? "Pool Error" : "Book Error"} */}
         </p>
       </div>
     );

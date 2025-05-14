@@ -79,15 +79,6 @@ const formatPrice = (
 
   // Append symbol if it exists
   return symbol ? `${formattedNumber} ${symbol}` : formattedNumber;
-
-  /* Previous logic removed/modified:
-  // Consider pool.token1.decimals for precision if needed later
-  // const decimals = pool.token1.decimals < 4 ? 4 : pool.token1.decimals; // Reverted this logic
-  // Example: Format with significant digits if needed
-  // const formattedPrice = price.toPrecision(6);
-  // return formattedPrice;
-  return formatNumber(price, 2); // Always use 2 decimals
-  */
 };
 
 // Format size (improve with actual symbols/decimals)

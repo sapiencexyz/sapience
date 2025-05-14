@@ -1,4 +1,5 @@
 import { Button } from '@foil/ui/components/ui/button';
+import { User } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
 import { useEffect } from 'react';
@@ -102,6 +103,9 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
 
   return (
     <div className="space-y-8">
+      {hasAnyData && (
+        <h3 className="text-2xl font-medium mb-4">Your Positions</h3>
+      )}
       {hasTraderPositions && (
         <TraderPositionsTable
           positions={traderPositions}
@@ -128,7 +132,10 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       )}
       <div>
         <Link href={`/profile/${account}`}>
-          <Button>View Your Profile</Button>
+          <Button>
+            <User className="h-4 w-4" />
+            View Your Profile
+          </Button>
         </Link>
       </div>
     </div>
