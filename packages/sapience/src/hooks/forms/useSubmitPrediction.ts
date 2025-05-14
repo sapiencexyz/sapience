@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { encodeAbiParameters, parseAbiParameters } from 'viem';
 import { useAccount, useTransaction, useWriteContract } from 'wagmi';
 
-import { MarketGroupCategory } from '../graphql/useMarketGroup';
+import { MarketGroupClassification } from '../graphql/useMarketGroup';
 import { EAS_CONTRACT_ADDRESS, SCHEMA_UID } from '~/lib/constants/eas';
 
 // Constant for 2^96 as a BigInt, which is used for sqrt(1) * 2^96
@@ -11,14 +11,14 @@ const BIGINT_2_POW_96 = BigInt('79228162514264337593543950336');
 
 interface UseSubmitPredictionProps {
   marketAddress: string;
-  marketCategory: MarketGroupCategory;
+  marketClassification: MarketGroupClassification;
   submissionValue: string; // Value from the form (e.g. "1.23" for numeric, "marketId" for MCQ, pre-calc sqrtPriceX96 for Yes/No)
   marketId: number; // Specific market ID for the attestation (for MCQ, this is the ID of the chosen option)
 }
 
 export function useSubmitPrediction({
   marketAddress,
-  marketCategory,
+  marketClassification,
   submissionValue,
   marketId,
 }: UseSubmitPredictionProps) {
@@ -48,13 +48,13 @@ export function useSubmitPrediction({
       _marketAddress: string,
       _marketId: string,
       predictionInput: string,
-      category: MarketGroupCategory
+      classification: MarketGroupClassification
     ) => {
       try {
         let finalPredictionBigInt: bigint;
         const JS_2_POW_96 = 2 ** 96;
 
-        if (category === MarketGroupCategory.NUMERIC) {
+        if (classification === MarketGroupClassification.NUMERIC) {
           const inputNum = parseFloat(predictionInput);
           if (Number.isNaN(inputNum) || inputNum < 0) {
             throw new Error(
@@ -65,14 +65,16 @@ export function useSubmitPrediction({
           const sqrtEffectivePrice = Math.sqrt(effectivePrice);
           const sqrtPriceX96Float = sqrtEffectivePrice * JS_2_POW_96;
           finalPredictionBigInt = BigInt(Math.round(sqrtPriceX96Float));
-        } else if (category === MarketGroupCategory.YES_NO) {
+        } else if (classification === MarketGroupClassification.YES_NO) {
           finalPredictionBigInt = BigInt(predictionInput);
-        } else if (category === MarketGroupCategory.MULTIPLE_CHOICE) {
+        } else if (
+          classification === MarketGroupClassification.MULTIPLE_CHOICE
+        ) {
           finalPredictionBigInt = BIGINT_2_POW_96;
         } else {
-          const _exhaustiveCheck: never = category;
+          const _exhaustiveCheck: never = classification;
           throw new Error(
-            `Unsupported market category for encoding: ${_exhaustiveCheck}`
+            `Unsupported market classification for encoding: ${_exhaustiveCheck}`
           );
         }
 
@@ -116,7 +118,7 @@ export function useSubmitPrediction({
         marketAddress,
         marketId.toString(),
         submissionValue,
-        marketCategory
+        marketClassification
       );
 
       writeContract({
@@ -177,7 +179,7 @@ export function useSubmitPrediction({
   }, [
     address,
     marketAddress,
-    marketCategory,
+    marketClassification,
     submissionValue,
     marketId,
     encodeSchemaData,

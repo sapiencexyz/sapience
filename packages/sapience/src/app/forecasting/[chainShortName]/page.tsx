@@ -20,7 +20,7 @@ import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import {
-  MarketGroupCategory,
+  MarketGroupClassification,
   useMarketGroup,
 } from '~/hooks/graphql/useMarketGroup';
 import { usePositions } from '~/hooks/graphql/usePositions';
@@ -71,12 +71,12 @@ const DynamicWagerFormFactory = dynamic(
 // Create a ForecastingForm component to handle the form rendering logic
 const ForecastingForm = ({
   marketGroupData,
-  marketCategory,
+  marketClassification,
   permitData,
   onWagerSuccess,
 }: {
   marketGroupData: MarketGroupType;
-  marketCategory: MarketGroupCategory;
+  marketClassification: MarketGroupClassification;
   permitData: { permitted: boolean };
   onWagerSuccess: (txnHash: string) => void;
 }) => {
@@ -104,7 +104,7 @@ const ForecastingForm = ({
     return (
       <MarketStatusDisplay
         marketGroupData={marketGroupData}
-        marketCategory={marketCategory}
+        marketClassification={marketClassification}
       />
     );
   }
@@ -145,11 +145,11 @@ const ForecastingForm = ({
           {activeTab === 'predict' ? (
             <DynamicPredictForm
               marketGroupData={marketGroupData}
-              marketCategory={marketCategory}
+              marketClassification={marketClassification}
             />
           ) : (
             <DynamicWagerFormFactory
-              marketCategory={marketCategory}
+              marketClassification={marketClassification}
               marketGroupData={marketGroupData}
               isPermitted={!!permitData?.permitted}
               onSuccess={onWagerSuccess}
@@ -193,7 +193,7 @@ const ForecastingDetailPage = () => {
     isLoading,
     isSuccess,
     activeMarkets,
-    marketCategory,
+    marketClassification,
   } = useMarketGroup({ chainShortName, marketAddress });
 
   // If loading, show the Lottie loader
@@ -280,7 +280,7 @@ const ForecastingDetailPage = () => {
             <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
               <ForecastingForm
                 marketGroupData={marketGroupData!}
-                marketCategory={marketCategory}
+                marketClassification={marketClassification}
                 permitData={permitData!}
                 onWagerSuccess={handleUserPositionsRefetch}
               />
@@ -293,7 +293,8 @@ const ForecastingDetailPage = () => {
             {/* Advanced View button (Right Aligned) */}
             <div>
               {activeMarkets.length > 0 &&
-                (marketCategory === MarketGroupCategory.MULTIPLE_CHOICE ? (
+                (marketClassification ===
+                MarketGroupClassification.MULTIPLE_CHOICE ? (
                   <button
                     type="button"
                     onClick={() => setShowMarketSelector(true)}

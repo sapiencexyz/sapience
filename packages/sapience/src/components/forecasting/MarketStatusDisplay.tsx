@@ -4,7 +4,7 @@ import type { MarketGroupType, MarketType } from '@foil/ui/types';
 import dynamic from 'next/dynamic';
 import type React from 'react';
 
-import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
+import { MarketGroupClassification } from '~/hooks/graphql/useMarketGroup';
 import { formatNumber } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
@@ -16,12 +16,12 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 
 interface MarketStatusDisplayProps {
   marketGroupData: MarketGroupType;
-  marketCategory: MarketGroupCategory;
+  marketClassification: MarketGroupClassification;
 }
 
 const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
   marketGroupData,
-  marketCategory,
+  marketClassification,
 }) => {
   const firstMarket = marketGroupData.markets[0] as MarketType | undefined;
 
@@ -61,14 +61,14 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
     // Determine the display result based on market category
     let settlementResult: React.ReactNode;
 
-    if (marketCategory === MarketGroupCategory.MULTIPLE_CHOICE) {
+    if (marketClassification === MarketGroupClassification.MULTIPLE_CHOICE) {
       // For single choice markets, find the option with settlement price of 1
       const settledMarket = marketGroupData.markets.find(
         (market) => market.settlementPriceD18 === '1000000000000000000' // 1 with 18 decimals
       );
 
       settlementResult = settledMarket?.optionName || 'Unknown option';
-    } else if (marketCategory === MarketGroupCategory.YES_NO) {
+    } else if (marketClassification === MarketGroupClassification.YES_NO) {
       // For Yes/No markets, check if settlement price is 1 or 0
       const price = Number(firstMarket.settlementPriceD18) / 10 ** 18;
       settlementResult = price === 1 ? 'Yes' : 'No';

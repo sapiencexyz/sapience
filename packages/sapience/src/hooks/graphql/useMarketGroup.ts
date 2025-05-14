@@ -43,7 +43,7 @@ interface UseMarketGroupProps {
   marketAddress: string;
 }
 
-export enum MarketGroupCategory {
+export enum MarketGroupClassification {
   MULTIPLE_CHOICE = '1',
   YES_NO = '2',
   NUMERIC = '3',
@@ -56,7 +56,7 @@ interface UseMarketGroupReturn {
   activeMarkets: MarketType[];
   chainId: number;
   isError: boolean;
-  marketCategory: MarketGroupCategory;
+  marketClassification: MarketGroupClassification;
 }
 
 export const useMarketGroup = ({
@@ -65,9 +65,8 @@ export const useMarketGroup = ({
 }: UseMarketGroupProps): UseMarketGroupReturn => {
   const chainId = getChainIdFromShortName(chainShortName);
   const [activeMarkets, setActiveMarkets] = useState<MarketType[]>([]);
-  const [marketCategory, setMarketCategory] = useState<MarketGroupCategory>(
-    MarketGroupCategory.NUMERIC
-  );
+  const [marketClassification, setMarketClassification] =
+    useState<MarketGroupClassification>(MarketGroupClassification.NUMERIC);
 
   const {
     data: marketGroupData,
@@ -99,11 +98,11 @@ export const useMarketGroup = ({
       setActiveMarkets(newActiveMarkets);
 
       if (marketGroupData.markets.length > 1) {
-        setMarketCategory(MarketGroupCategory.MULTIPLE_CHOICE);
+        setMarketClassification(MarketGroupClassification.MULTIPLE_CHOICE);
       } else if (marketGroupData.markets[0].optionName === null) {
-        setMarketCategory(MarketGroupCategory.YES_NO);
+        setMarketClassification(MarketGroupClassification.YES_NO);
       } else {
-        setMarketCategory(MarketGroupCategory.NUMERIC);
+        setMarketClassification(MarketGroupClassification.NUMERIC);
       }
     }
   }, [marketGroupData]);
@@ -115,6 +114,6 @@ export const useMarketGroup = ({
     activeMarkets,
     chainId,
     isError,
-    marketCategory,
+    marketClassification,
   };
 };

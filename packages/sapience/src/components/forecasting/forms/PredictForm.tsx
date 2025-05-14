@@ -6,7 +6,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
-import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
+import { MarketGroupClassification } from '~/hooks/graphql/useMarketGroup';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
@@ -19,12 +19,12 @@ const NO_SQRT_PRICE_X96 = '0';
 
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
-  marketCategory: MarketGroupCategory;
+  marketClassification: MarketGroupClassification;
 }
 
 export default function PredictForm({
   marketGroupData,
-  marketCategory,
+  marketClassification,
 }: PredictFormProps) {
   const lowerBound = tickToPrice(
     marketGroupData.markets[0].baseAssetMinPriceTick!
@@ -34,19 +34,19 @@ export default function PredictForm({
   );
   // Create schema based on market category
   const formSchema = useMemo(() => {
-    switch (marketCategory) {
-      case MarketGroupCategory.MULTIPLE_CHOICE:
+    switch (marketClassification) {
+      case MarketGroupClassification.MULTIPLE_CHOICE:
         return z.object({
           predictionValue: z.string().min(1, 'Please select an option'),
         });
-      case MarketGroupCategory.YES_NO:
+      case MarketGroupClassification.YES_NO:
         return z.object({
           predictionValue: z.enum([NO_SQRT_PRICE_X96, YES_SQRT_PRICE_X96], {
             required_error: 'Please select Yes or No',
             invalid_type_error: 'Please select Yes or No',
           }),
         });
-      case MarketGroupCategory.NUMERIC:
+      case MarketGroupClassification.NUMERIC:
         return z.object({
           predictionValue: z
             .string()
@@ -66,20 +66,20 @@ export default function PredictForm({
           predictionValue: z.string().min(1, 'Please enter a prediction'),
         });
     }
-  }, [marketCategory, lowerBound, upperBound]);
+  }, [marketClassification, lowerBound, upperBound]);
 
   const defaultPredictionValue: string = useMemo(() => {
-    switch (marketCategory) {
-      case MarketGroupCategory.YES_NO:
+    switch (marketClassification) {
+      case MarketGroupClassification.YES_NO:
         return YES_SQRT_PRICE_X96;
-      case MarketGroupCategory.MULTIPLE_CHOICE:
+      case MarketGroupClassification.MULTIPLE_CHOICE:
         return marketGroupData.markets[0].marketId.toString();
-      case MarketGroupCategory.NUMERIC:
+      case MarketGroupClassification.NUMERIC:
         return String(Math.round((lowerBound + upperBound) / 2));
       default:
         return '';
     }
-  }, [marketCategory, marketGroupData, lowerBound, upperBound]);
+  }, [marketClassification, marketGroupData, lowerBound, upperBound]);
 
   // Set up form with dynamic schema
   const methods = useForm({
@@ -92,34 +92,34 @@ export default function PredictForm({
 
   useEffect(() => {
     methods.setValue('predictionValue', defaultPredictionValue);
-  }, [marketCategory, defaultPredictionValue, methods]);
+  }, [marketClassification, defaultPredictionValue, methods]);
 
   // Get the current prediction value
   const predictionValue = methods.watch('predictionValue');
 
   const marketId = useMemo(() => {
-    if (marketCategory === MarketGroupCategory.MULTIPLE_CHOICE) {
+    if (marketClassification === MarketGroupClassification.MULTIPLE_CHOICE) {
       return Number(predictionValue);
     }
     return marketGroupData.markets[0].marketId;
-  }, [marketCategory, predictionValue, marketGroupData.markets]);
+  }, [marketClassification, predictionValue, marketGroupData.markets]);
 
   const submissionValue = useMemo(() => {
-    switch (marketCategory) {
-      case MarketGroupCategory.MULTIPLE_CHOICE:
+    switch (marketClassification) {
+      case MarketGroupClassification.MULTIPLE_CHOICE:
         return '1';
-      case MarketGroupCategory.YES_NO:
+      case MarketGroupClassification.YES_NO:
         return predictionValue;
-      case MarketGroupCategory.NUMERIC:
+      case MarketGroupClassification.NUMERIC:
         return predictionValue;
       default:
         return predictionValue;
     }
-  }, [marketCategory, predictionValue]);
+  }, [marketClassification, predictionValue]);
   // Use the submit prediction hook
   const { submitPrediction, isAttesting } = useSubmitPrediction({
     marketAddress: marketGroupData.address!,
-    marketCategory,
+    marketClassification,
     marketId,
     submissionValue,
   });
@@ -130,10 +130,10 @@ export default function PredictForm({
 
   // Render the appropriate prediction input based on market category
   const renderCategoryInput = () => {
-    switch (marketCategory) {
-      case MarketGroupCategory.YES_NO:
+    switch (marketClassification) {
+      case MarketGroupClassification.YES_NO:
         return <YesNoPredict />;
-      case MarketGroupCategory.MULTIPLE_CHOICE:
+      case MarketGroupClassification.MULTIPLE_CHOICE:
         return (
           <MultipleChoicePredict
             options={marketGroupData.markets.map((market) => ({
@@ -142,7 +142,7 @@ export default function PredictForm({
             }))}
           />
         );
-      case MarketGroupCategory.NUMERIC:
+      case MarketGroupClassification.NUMERIC:
         return (
           <NumericPredict
             bounds={{
