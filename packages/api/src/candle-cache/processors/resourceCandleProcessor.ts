@@ -8,30 +8,31 @@ import { saveCandle } from '../dbUtils';
 export class ResourceCandleProcessor {
   constructor(private runtimeCandles: RuntimeCandleStore) {}
 
+  private getNewCandle = (
+    interval: number,
+    candleTimestamp: number,
+    candleEndTimestamp: number,
+    price: ResourcePrice,
+    resourceSlug: string
+  ) => {
+    const candle = new CacheCandle();
+    candle.candleType = CANDLE_TYPES.RESOURCE;
+    candle.interval = interval;
+    candle.resourceSlug = resourceSlug;
+    candle.timestamp = candleTimestamp;
+    candle.endTimestamp = candleEndTimestamp;
+    candle.lastUpdatedTimestamp = price.timestamp;
+    candle.open = price.value;
+    candle.high = price.value;
+    candle.low = price.value;
+    candle.close = price.value;
+    return candle;
+  };
+
+
   public async processResourcePrice(
     price: ResourcePrice
   ) {
-    const getNewCandle = (
-      interval: number,
-      candleTimestamp: number,
-      candleEndTimestamp: number,
-      price: ResourcePrice,
-      resourceSlug: string
-    ) => {
-      const candle = new CacheCandle();
-      candle.candleType = CANDLE_TYPES.RESOURCE;
-      candle.interval = interval;
-      candle.resourceSlug = resourceSlug;
-      candle.timestamp = candleTimestamp;
-      candle.endTimestamp = candleEndTimestamp;
-      candle.lastUpdatedTimestamp = price.timestamp;
-      candle.open = price.value;
-      candle.high = price.value;
-      candle.low = price.value;
-      candle.close = price.value;
-      return candle;
-    };
-
     // For each interval add the price to the candle
     for (const interval of CANDLE_CACHE_CONFIG.intervals) {
       // Calculate the start and end of the candle
@@ -52,7 +53,7 @@ export class ResourceCandleProcessor {
       // If we have a candle but it's from a different period, save it and create a new one
       if (candle && candle.timestamp < candleTimestamp) {
         await saveCandle(candle);
-        candle = getNewCandle(
+        candle = this.getNewCandle(
           interval,
           candleTimestamp,
           candleEndTimestamp,
@@ -66,7 +67,7 @@ export class ResourceCandleProcessor {
         );
       } else if (!candle) {
         // Create new candle if none exists
-        candle = getNewCandle(
+        candle = this.getNewCandle(
           interval,
           candleTimestamp,
           candleEndTimestamp,
