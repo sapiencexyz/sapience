@@ -144,27 +144,25 @@ interface UsePriceChartDataReturn {
 }
 
 // Helper to safely parse string numbers, returning null if invalid
-const safeParseFloat = (value: string | null | undefined): number | null => {
-  if (value === null || value === undefined || value === '') return null;
-  const num = parseFloat(value);
-  return Number.isNaN(num) ? null : num;
-};
+// const safeParseFloat = (value: string | null | undefined): number | null => {
+//   if (value === null || value === undefined || value === '') return null;
+//   const num = parseFloat(value);
+//   return Number.isNaN(num) ? null : num;
+// };
 
 // Helper function to merge price data into the map
 const mergePriceData = (
   map: Map<number, PriceChartDataPoint>,
   candles: Pick<CandleType, 'timestamp' | 'close'>[], // Use imported CandleType
-  priceFieldName: keyof PriceChartDataPoint,
-  multiplier: number
+  priceFieldName: keyof PriceChartDataPoint
 ) => {
   candles.forEach((candle) => {
-    const closeNum = safeParseFloat(candle.close);
-    if (closeNum !== null) {
-      const scaledPrice = closeNum * multiplier;
+    const closeNum = Number(candle.close);
+    if (!Number.isNaN(closeNum)) {
       map.set(candle.timestamp, {
         timestamp: candle.timestamp, // Ensure timestamp is always present
         ...map.get(candle.timestamp), // Spread existing data first
-        [priceFieldName]: scaledPrice, // Add/overwrite the specific price
+        [priceFieldName]: closeNum, // Add/overwrite the specific price
       });
     }
   });
@@ -383,12 +381,16 @@ export const usePriceChartData = ({
 
     // 1. Determine Index Multiplier (assuming resource/avg prices don't need scaling for now)
     // TODO: Confirm if resource/trailing avg prices need scaling
-    let indexMultiplier: number;
+    let indexMultiplier: bigint;
+    const scalingConstant = 1e18;
     if (quoteTokenName?.toLowerCase() === 'wsteth') {
       indexMultiplier =
-        stEthPerToken && stEthPerToken > 0 ? 1e18 / stEthPerToken : 1e18;
+        stEthPerToken && stEthPerToken > 0
+          ? (BigInt(1e18) * BigInt(scalingConstant)) /
+            BigInt(Math.floor(stEthPerToken * scalingConstant))
+          : BigInt(1e18);
     } else {
-      indexMultiplier = 1e9; // Scale gwei to wei (Assuming default)
+      indexMultiplier = BigInt(1e9); // Scale gwei to wei (Assuming default)
     }
 
     // 2. Combine data using a Map
@@ -431,23 +433,46 @@ export const usePriceChartData = ({
       combinedDataMap.set(candle.timestamp, dataPoint);
     });
 
-    // Process and merge index candles
-    mergePriceData(
-      combinedDataMap,
-      indexCandlesRaw,
-      'indexPrice',
-      indexMultiplier
-    );
+    const indexCandlesProcessed = indexCandlesRaw.map((candle) => {
+      const formattedPrice = marketCandlesFormatter(
+        BigInt(candle.close) * indexMultiplier
+      );
+      return {
+        timestamp: candle.timestamp,
+        close: formattedPrice.toFixed(4),
+      };
+    });
+
+    const resourceCandlesProcessed = resourceCandlesRaw.map((candle) => {
+      const formattedPrice = marketCandlesFormatter(
+        BigInt(candle.close) * BigInt(1e9)
+      );
+      return {
+        timestamp: candle.timestamp,
+        close: formattedPrice.toFixed(4),
+      };
+    });
+
+    const trailingAvgCandlesProcessed = trailingAvgCandlesRaw.map((candle) => {
+      const formattedPrice = marketCandlesFormatter(
+        BigInt(candle.close) * BigInt(1e9)
+      );
+      return {
+        timestamp: candle.timestamp,
+        close: formattedPrice.toFixed(4),
+      };
+    });
+
+    mergePriceData(combinedDataMap, indexCandlesProcessed, 'indexPrice');
 
     // Process and merge resource candles
-    mergePriceData(combinedDataMap, resourceCandlesRaw, 'resourcePrice', 1e9); // Assuming 1e9 multiplier
+    mergePriceData(combinedDataMap, resourceCandlesProcessed, 'resourcePrice'); // Assuming 1e9 multiplier
 
     // Process and merge trailing average candles
     mergePriceData(
       combinedDataMap,
-      trailingAvgCandlesRaw,
-      'trailingAvgPrice',
-      1e9
+      trailingAvgCandlesProcessed,
+      'trailingAvgPrice'
     ); // Assuming 1e9 multiplier
 
     // 3. Convert map values to array and sort
@@ -478,6 +503,5 @@ export const usePriceChartData = ({
     staleTime: 60 * 1000, // 1 minute
     refetchInterval: 60 * 1000, // 1 minute
   });
-
   return { chartData: data ?? [], isLoading, isFetching, isError, error };
 };
