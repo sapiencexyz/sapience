@@ -74,12 +74,8 @@ const startServer = async () => {
     resources = await resourceRepository.find();
   }
 
-  // const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-  // await resourcePerformanceManager.initialize(resources);
-  console.log('CandleCacheBuilder instance - geting')
-  const candleCacheBuilder = CandleCacheBuilder.getInstance();
-  console.log('CandleCacheBuilder instance - ok');
-  await candleCacheBuilder.updateCandles();
+  const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
+  await resourcePerformanceManager.initialize(resources);
   console.log('ResourcePerformanceManager - Initialized');
 
   // Global error handle
