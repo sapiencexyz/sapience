@@ -179,7 +179,7 @@ const renderActionsCell = ({
     target="_blank"
     rel="noopener noreferrer"
   >
-    <Button variant="outline" size="sm">
+    <Button variant="outline" size="xs">
       View
     </Button>
   </a>
@@ -327,9 +327,9 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className={
+                      className={`${
                         cell.column.id === 'question' ? '' : 'whitespace-nowrap'
-                      }
+                      } ${cell.column.id === 'actions' ? 'text-right' : ''}`}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -340,10 +340,10 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="min-h-[69px]">
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-24 text-center align-middle"
                 >
                   No results.
                 </TableCell>

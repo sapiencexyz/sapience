@@ -160,6 +160,7 @@ export default function LpPositionsTable({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead /> {/* Header for Position ID */}
               {displayQuestionColumn && <TableHead>Question</TableHead>}
               <TableHead>Collateral</TableHead>
               <TableHead>Base Tokens</TableHead> {/* Updated Header */}
@@ -211,7 +212,13 @@ export default function LpPositionsTable({
               const chainId = marketGroup?.chainId || 0;
 
               return (
-                <TableRow key={position.id}>
+                <TableRow
+                  key={position.id}
+                  className={isClosed ? 'min-h-[69px]' : ''}
+                >
+                  <TableCell className="text-muted-foreground">
+                    #{position.positionId}
+                  </TableCell>
                   {displayQuestionColumn && (
                     <TableCell>
                       <MarketCell position={position} />
@@ -219,8 +226,8 @@ export default function LpPositionsTable({
                   )}
                   {isClosed ? (
                     <TableCell
-                      colSpan={displayQuestionColumn ? 8 : 7} // Adjusted colSpan
-                      className="text-center font-medium text-muted-foreground"
+                      colSpan={displayQuestionColumn ? 9 : 8} // Adjusted colSpan
+                      className="text-center font-medium text-muted-foreground align-middle tracking-wider"
                     >
                       CLOSED
                     </TableCell>
@@ -254,7 +261,7 @@ export default function LpPositionsTable({
                         />
                       </TableCell>
                       <TableCell>{pnlContent}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-right">
                         {(() => {
                           if (!isClosed && isOwner) {
                             if (isExpired && !isPositionSettled) {
@@ -278,7 +285,7 @@ export default function LpPositionsTable({
                               // !isMarketPage means it's a Profile page OR a Market Group page
                               return (
                                 <Link href={positionUrl} passHref>
-                                  <Button size="sm" variant="outline">
+                                  <Button size="xs" variant="outline">
                                     Sell
                                   </Button>
                                 </Link>

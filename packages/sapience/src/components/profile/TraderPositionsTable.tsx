@@ -233,6 +233,7 @@ export default function TraderPositionsTable({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead /> {/* Header for Position ID */}
               {displayQuestionColumn && (
                 <TableHead className="whitespace-nowrap">Question</TableHead>
               )}
@@ -277,13 +278,16 @@ export default function TraderPositionsTable({
 
               return (
                 <TableRow key={position.id}>
+                  <TableCell className="text-muted-foreground">
+                    #{position.id}
+                  </TableCell>
                   {displayQuestionColumn && (
                     <TableCell>{position.market.question || 'N/A'}</TableCell>
                   )}
                   {isClosed ? (
                     <TableCell
-                      colSpan={displayQuestionColumn ? 6 : 5}
-                      className="text-center font-medium text-muted-foreground"
+                      colSpan={displayQuestionColumn ? 7 : 6}
+                      className="text-center font-medium text-muted-foreground tracking-wider"
                     >
                       CLOSED
                     </TableCell>
@@ -306,8 +310,8 @@ export default function TraderPositionsTable({
                       <TableCell>
                         <MaxPayoutCell position={position} />
                       </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
                           {isOwner &&
                             (isExpired && !isPositionSettled ? (
                               <SettlePositionButton
@@ -329,7 +333,7 @@ export default function TraderPositionsTable({
                                   href={`/forecasting/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
                                   passHref
                                 >
-                                  <Button size="sm" variant="outline">
+                                  <Button size="xs" variant="outline">
                                     Sell
                                   </Button>
                                 </Link>

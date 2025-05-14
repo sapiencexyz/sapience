@@ -70,7 +70,7 @@ const SettlePositionButton = ({
     return (
       <Button
         variant="outline"
-        size="sm"
+        size="xs"
         disabled
         className="bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800 cursor-not-allowed"
       >
@@ -82,7 +82,7 @@ const SettlePositionButton = ({
   return (
     <Button
       variant="outline"
-      size="sm"
+      size="xs"
       onClick={handleSettle}
       disabled={isSettling || loadingSimulation}
       className="bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 dark:border-green-800"

@@ -333,7 +333,7 @@ const ForecastingDetailPage = () => {
             }
             return (
               <div>
-                <h3 className="text-xl font-medium mb-4">Your Positions</h3>
+                <h3 className="text-2xl font-medium mb-4">Your Positions</h3>
                 <UserPositionsTable
                   account={address}
                   marketAddress={marketAddress}
