@@ -169,7 +169,7 @@ export class CandleCacheRetriever {
     candles,
     isCumulative,
     fillMissingCandles,
-    fillInitialCandlesWithZeroes
+    fillInitialCandlesWithZeroes,
   }: {
     candles: CacheCandle[];
     isCumulative: boolean;
@@ -187,14 +187,13 @@ export class CandleCacheRetriever {
     );
 
     // First, create entries only for the candles we have
-    const outputEntries: ResponseCandleData[] = candles.map(candle => ({
+    const outputEntries: ResponseCandleData[] = candles.map((candle) => ({
       timestamp: candle.timestamp,
       open: isCumulative ? candle.sumUsed : candle.open,
       high: isCumulative ? candle.sumUsed : candle.high,
       low: isCumulative ? candle.sumUsed : candle.low,
       close: isCumulative ? candle.sumUsed : candle.close,
     }));
-
 
     // If we need to fill missing candles or initial zeroes
     if (fillMissingCandles || fillInitialCandlesWithZeroes) {
@@ -204,7 +203,11 @@ export class CandleCacheRetriever {
 
       // Add initial zero entries if needed
       if (fillInitialCandlesWithZeroes) {
-        for (let t = timeWindow.from; t < candles[0].timestamp; t += candles[0].interval) {
+        for (
+          let t = timeWindow.from;
+          t < candles[0].timestamp;
+          t += candles[0].interval
+        ) {
           filledEntries.push({
             timestamp: t,
             open: '0',
@@ -216,18 +219,25 @@ export class CandleCacheRetriever {
       }
 
       // Process all timestamps in the window
-      for (let t = fillInitialCandlesWithZeroes ? timeWindow.from : candles[0].timestamp; 
-           t < timeWindow.to; 
-           t += candles[0].interval) {
-        
+      for (
+        let t = fillInitialCandlesWithZeroes
+          ? timeWindow.from
+          : candles[0].timestamp;
+        t < timeWindow.to;
+        t += candles[0].interval
+      ) {
         // Move pointer forward until we find a matching or later timestamp
-        while (outputEntriesIdx < outputEntries.length && 
-               outputEntries[outputEntriesIdx].timestamp < t) {
+        while (
+          outputEntriesIdx < outputEntries.length &&
+          outputEntries[outputEntriesIdx].timestamp < t
+        ) {
           outputEntriesIdx++;
         }
 
-        if (outputEntriesIdx < outputEntries.length && 
-            outputEntries[outputEntriesIdx].timestamp === t) {
+        if (
+          outputEntriesIdx < outputEntries.length &&
+          outputEntries[outputEntriesIdx].timestamp === t
+        ) {
           // Use the actual candle data
           filledEntries.push(outputEntries[outputEntriesIdx]);
           lastKnownPrice = outputEntries[outputEntriesIdx].close;

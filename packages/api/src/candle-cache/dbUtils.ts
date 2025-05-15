@@ -243,7 +243,7 @@ export async function getCandles({
     where.resourceSlug = resourceId;
     where.trailingAvgTime = trailingAvgTime;
   } else if (candleType == CANDLE_TYPES.INDEX) {
-    where.marketIdx = marketIdx; 
+    where.marketIdx = marketIdx;
   }
   return cacheCandleRepository.find({
     where,
