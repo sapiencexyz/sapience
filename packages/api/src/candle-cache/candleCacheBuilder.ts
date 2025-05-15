@@ -17,7 +17,7 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
     return this.instance;
   }
 
-  public async buildAllCandles() {
+  public async builCandles() {
     log({
       message: 'step 1: get updated markets and market groups',
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
