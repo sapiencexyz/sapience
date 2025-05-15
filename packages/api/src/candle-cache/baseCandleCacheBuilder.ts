@@ -77,7 +77,7 @@ export abstract class BaseCandleCacheBuilder {
       ? Math.max(initialTimestamp - CANDLE_CACHE_CONFIG.preTrailingAvgTime, 0)
       : initialTimestamp;
     log({
-      message: `step 1: process resource prices from ${correctedInitialTimestamp} (${initialTimestamp})}`,
+      message: `step 1: process resource prices from ${correctedInitialTimestamp} (${initialTimestamp})`,
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
 
