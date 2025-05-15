@@ -44,8 +44,10 @@ import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import { useTradeForm } from '~/hooks/forms/useTradeForm';
 import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
-import { MarketGroupClassification } from '~/lib/types';
-import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
+import {
+  getMarketGroupClassification,
+  getMarketPresentationLabels,
+} from '~/lib/utils/marketUtils';
 
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
 
@@ -142,37 +144,14 @@ export function CreateTradeForm({
     return null;
   }, [marketData]);
 
-  const { longLabel, shortLabel } = React.useMemo(() => {
-    let useYesNoLabels =
-      classification === MarketGroupClassification.YES_NO ||
-      classification === MarketGroupClassification.MULTIPLE_CHOICE;
-
-    // If classification is NUMERIC, but the group's baseTokenName suggests Yes/No style
-    if (
-      classification === MarketGroupClassification.NUMERIC &&
-      (marketData?.marketGroup?.baseTokenName === 'Yes' ||
-        marketData?.marketGroup?.baseTokenName === 'No')
-    ) {
-      console.log(
-        '[CreateTradeForm] Overriding to Yes/No labels based on marketGroup.baseTokenName despite NUMERIC classification.'
-      );
-      useYesNoLabels = true;
-    }
-
-    const labels = {
-      longLabel: useYesNoLabels ? 'Yes' : 'Long',
-      shortLabel: useYesNoLabels ? 'No' : 'Short',
-    };
-    console.log(
-      '[CreateTradeForm] Derived labels:',
-      labels,
-      'based on classification:',
-      classification,
-      'and marketGroup.baseTokenName:',
-      marketData?.marketGroup?.baseTokenName
-    );
-    return labels;
-  }, [classification, marketData?.marketGroup?.baseTokenName]);
+  const { longLabel, shortLabel } = React.useMemo(
+    () =>
+      getMarketPresentationLabels(
+        classification,
+        marketData?.marketGroup?.baseTokenName
+      ),
+    [classification, marketData?.marketGroup?.baseTokenName]
+  );
 
   const isChainMismatch = isConnected && currentChainId !== chainId;
 

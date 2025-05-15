@@ -46,8 +46,10 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
-import { MarketGroupClassification } from '~/lib/types'; // Added import
-import { getMarketGroupClassification } from '~/lib/utils/marketUtils'; // Added import
+import {
+  getMarketGroupClassification,
+  getMarketPresentationLabels,
+} from '~/lib/utils/marketUtils';
 
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 
@@ -324,27 +326,10 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     return null;
   }, [marketData]);
 
-  const { longLabel, shortLabel } = useMemo(() => {
-    let useYesNoLabels =
-      classification === MarketGroupClassification.YES_NO ||
-      classification === MarketGroupClassification.MULTIPLE_CHOICE;
-
-    // If classification is NUMERIC, but the group's baseTokenName suggests Yes/No style
-    if (
-      classification === MarketGroupClassification.NUMERIC &&
-      (marketData?.marketGroup?.baseTokenName === 'Yes' ||
-        marketData?.marketGroup?.baseTokenName === 'No')
-    ) {
-      // Add a console log here if desired for ModifyTradeForm as well
-      useYesNoLabels = true;
-    }
-
-    // Add a console log here if desired for ModifyTradeForm as well
-    return {
-      longLabel: useYesNoLabels ? 'Yes' : 'Long',
-      shortLabel: useYesNoLabels ? 'No' : 'Short',
-    };
-  }, [classification, marketData?.marketGroup?.baseTokenName]); // Add marketData?.marketGroup?.baseTokenName as dependency
+  const { longLabel, shortLabel } = useMemo(
+    () => getMarketPresentationLabels(classification),
+    [classification]
+  );
 
   // Fetch position data using positionId
   const { data: positionData, refetch: refetchPositionData } = useReadContract({

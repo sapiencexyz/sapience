@@ -93,3 +93,16 @@ export const getMarketGroupClassification = (
   );
   return MarketGroupClassification.NUMERIC;
 };
+
+export const getMarketPresentationLabels = (
+  classification: MarketGroupClassification | null
+): { longLabel: string; shortLabel: string } => {
+  const useYesNoLabels =
+    classification === MarketGroupClassification.YES_NO ||
+    classification === MarketGroupClassification.MULTIPLE_CHOICE;
+
+  return {
+    longLabel: useYesNoLabels ? 'Yes' : 'Long',
+    shortLabel: useYesNoLabels ? 'No' : 'Short',
+  };
+};
