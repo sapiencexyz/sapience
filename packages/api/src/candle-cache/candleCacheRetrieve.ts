@@ -1,9 +1,9 @@
-import { ResponseCandleData } from "./types";
-import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from "./config";
-import { getTimeWindow } from "./candleUtils";
-import { getCandles, getMarketGroups } from "./dbUtils";
-import { CacheCandle } from "src/models/CacheCandle";
-import { MarketInfoStore } from "./marketInfoStore";
+import { ResponseCandleData } from './types';
+import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
+import { getTimeWindow } from './candleUtils';
+import { getCandles, getMarketGroups } from './dbUtils';
+import { CacheCandle } from 'src/models/CacheCandle';
+import { MarketInfoStore } from './marketInfoStore';
 
 export class CandleCacheRetrieve {
   private static instance: CandleCacheRetrieve;
@@ -22,9 +22,18 @@ export class CandleCacheRetrieve {
     return this.instance;
   }
 
-  async getResourcePrices(resourceId: string, from: number, to: number, interval: number): Promise<{data: ResponseCandleData[], lastUpdateTimestamp: number}> {
+  async getResourcePrices(
+    resourceId: string,
+    from: number,
+    to: number,
+    interval: number
+  ): Promise<{ data: ResponseCandleData[]; lastUpdateTimestamp: number }> {
     this.checkInterval(interval);
-    const {from: allignedFrom, to: allignedTo} = getTimeWindow(from, to, interval);
+    const { from: allignedFrom, to: allignedTo } = getTimeWindow(
+      from,
+      to,
+      interval
+    );
 
     const candles = await getCandles({
       resourceId,
@@ -32,7 +41,7 @@ export class CandleCacheRetrieve {
       candleType: CANDLE_TYPES.RESOURCE,
       from: allignedFrom,
       to: allignedTo,
-    }); 
+    });
 
     return this.getAndFillResponseCandles({
       candles,
@@ -51,20 +60,30 @@ export class CandleCacheRetrieve {
   ) {
     this.checkInterval(interval);
     await this.getUpdatedMarketsAndMarketGroupsIfNeeded();
-    const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(chainId, address, marketId);
+    const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(
+      chainId,
+      address,
+      marketId
+    );
     if (!marketInfo) {
-      throw new Error(`Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`);
+      throw new Error(
+        `Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`
+      );
     }
 
-    const {from: allignedFrom, to: allignedTo} = getTimeWindow(from, to, interval);
+    const { from: allignedFrom, to: allignedTo } = getTimeWindow(
+      from,
+      to,
+      interval
+    );
 
-    const candles = await getCandles({  
+    const candles = await getCandles({
       marketIdx: marketInfo.marketIdx,
       interval,
       candleType: CANDLE_TYPES.INDEX,
       from: allignedFrom,
       to: allignedTo,
-    }); 
+    });
 
     return this.getAndFillResponseCandles({
       candles,
@@ -89,7 +108,7 @@ export class CandleCacheRetrieve {
       candleType: CANDLE_TYPES.TRAILING_AVG,
       from,
       to,
-    }); 
+    });
 
     return this.getAndFillResponseCandles({
       candles,
@@ -108,9 +127,15 @@ export class CandleCacheRetrieve {
   ) {
     this.checkInterval(interval);
     await this.getUpdatedMarketsAndMarketGroupsIfNeeded();
-    const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(chainId, address, marketId);
+    const marketInfo = this.marketInfoStore.getMarketInfoByChainAndAddress(
+      chainId,
+      address,
+      marketId
+    );
     if (!marketInfo) {
-      throw new Error(`Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`);
+      throw new Error(
+        `Market not found for chainId: ${chainId}, address: ${address}, marketId: ${marketId}`
+      );
     }
 
     const candles = await getCandles({
@@ -119,7 +144,7 @@ export class CandleCacheRetrieve {
       candleType: CANDLE_TYPES.MARKET,
       from,
       to,
-    }); 
+    });
 
     return this.getAndFillResponseCandles({
       candles,
@@ -144,12 +169,16 @@ export class CandleCacheRetrieve {
     candles: CacheCandle[];
     isCumulative: boolean;
     fillMissingCandles: boolean;
-  }): Promise<{data: ResponseCandleData[], lastUpdateTimestamp: number}> {
+  }): Promise<{ data: ResponseCandleData[]; lastUpdateTimestamp: number }> {
     if (!candles || candles.length === 0) {
-      return {data: [], lastUpdateTimestamp: 0};
+      return { data: [], lastUpdateTimestamp: 0 };
     }
 
-    const timeWindow = getTimeWindow(candles[0].timestamp, candles[candles.length - 1].timestamp, candles[0].interval);
+    const timeWindow = getTimeWindow(
+      candles[0].timestamp,
+      candles[candles.length - 1].timestamp,
+      candles[0].interval
+    );
     const outputEntries: ResponseCandleData[] = [];
 
     // Create empty entries for the entire time window
@@ -170,7 +199,7 @@ export class CandleCacheRetrieve {
     const candlesLength = candles.length;
 
     if (candlesLength === 0) {
-      return {data: outputEntries, lastUpdateTimestamp: 0};
+      return { data: outputEntries, lastUpdateTimestamp: 0 };
     }
 
     let nextCandleTimestamp = candles[candlesIdx].timestamp;
@@ -202,9 +231,10 @@ export class CandleCacheRetrieve {
         };
         lastClose = isCumulative ? candle.sumUsed : candle.close;
         candlesIdx++;
-        nextCandleTimestamp = candlesIdx < candlesLength 
-          ? candles[candlesIdx].timestamp 
-          : timeWindow.to + 1; // Set to future if no more candles
+        nextCandleTimestamp =
+          candlesIdx < candlesLength
+            ? candles[candlesIdx].timestamp
+            : timeWindow.to + 1; // Set to future if no more candles
 
         outputIdx++;
         continue;
@@ -217,7 +247,9 @@ export class CandleCacheRetrieve {
           candlesIdx < candlesLength
         ) {
           nextCandleTimestamp = candles[candlesIdx].timestamp;
-          lastKnownPrice = isCumulative ? candles[candlesIdx].sumUsed : candles[candlesIdx].close;
+          lastKnownPrice = isCumulative
+            ? candles[candlesIdx].sumUsed
+            : candles[candlesIdx].close;
           candlesIdx++;
         }
 
@@ -244,17 +276,19 @@ export class CandleCacheRetrieve {
 
     return {
       data: outputEntries,
-      lastUpdateTimestamp: candles[candles.length - 1].lastUpdatedTimestamp
+      lastUpdateTimestamp: candles[candles.length - 1].lastUpdatedTimestamp,
     };
   }
 
   private async getUpdatedMarketsAndMarketGroupsIfNeeded() {
-    if (this.lastUpdateTimestamp > 0 && this.lastUpdateTimestamp > (Date.now() - 1000) * 300) {
+    if (
+      this.lastUpdateTimestamp > 0 &&
+      this.lastUpdateTimestamp > (Date.now() - 1000) * 300
+    ) {
       return;
     }
     // get all market groups
     const marketGroups = await getMarketGroups();
     await this.marketInfoStore.updateMarketInfo(marketGroups);
   }
-
 }

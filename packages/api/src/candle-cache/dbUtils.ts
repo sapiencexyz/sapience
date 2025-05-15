@@ -42,7 +42,9 @@ export async function setParam(paramName: string, paramValue: number) {
   await cacheParamRepository.save(config);
 }
 
-export async function getResourcePricesCount(params: ResourcePriceParams): Promise<number> {
+export async function getResourcePricesCount(
+  params: ResourcePriceParams
+): Promise<number> {
   const where: FindOptionsWhere<ResourcePrice> = {
     timestamp: MoreThan(params.initialTimestamp),
   };
@@ -65,7 +67,9 @@ export async function getResourcePricesCount(params: ResourcePriceParams): Promi
   });
 }
 
-export async function getResourcePrices(params: ResourcePriceParams): Promise<{ prices: ResourcePrice[]; hasMore: boolean }> {
+export async function getResourcePrices(
+  params: ResourcePriceParams
+): Promise<{ prices: ResourcePrice[]; hasMore: boolean }> {
   const where: FindOptionsWhere<ResourcePrice> = {
     timestamp: MoreThan(params.initialTimestamp),
   };
@@ -193,7 +197,7 @@ export async function getLastCandleFromDb({
   if (trailingAvgTime) {
     where.trailingAvgTime = trailingAvgTime;
   }
-  
+
   const candle = await cacheCandleRepository.findOne({
     where,
     order: { timestamp: 'DESC' },
@@ -226,12 +230,16 @@ export async function getCandles({
   marketIdx?: number;
   trailingAvgTime?: number;
 }) {
-  const where: FindOptionsWhere<CacheCandle> = { candleType, interval, timestamp: Between(from, to) };
-  if(candleType == CANDLE_TYPES.RESOURCE) {
+  const where: FindOptionsWhere<CacheCandle> = {
+    candleType,
+    interval,
+    timestamp: Between(from, to),
+  };
+  if (candleType == CANDLE_TYPES.RESOURCE) {
     where.resourceSlug = resourceId;
-  } else if(candleType == CANDLE_TYPES.MARKET) {
+  } else if (candleType == CANDLE_TYPES.MARKET) {
     where.marketIdx = marketIdx;
-  } else if(candleType == CANDLE_TYPES.TRAILING_AVG) {
+  } else if (candleType == CANDLE_TYPES.TRAILING_AVG) {
     where.resourceSlug = resourceId;
     where.trailingAvgTime = trailingAvgTime;
   }
@@ -241,7 +249,9 @@ export async function getCandles({
   });
 }
 
-export async function getMarketPricesCount(initialTimestamp: number): Promise<number> {
+export async function getMarketPricesCount(
+  initialTimestamp: number
+): Promise<number> {
   return marketPriceRepository.count({
     where: {
       timestamp: MoreThan(initialTimestamp?.toString() ?? '0'),

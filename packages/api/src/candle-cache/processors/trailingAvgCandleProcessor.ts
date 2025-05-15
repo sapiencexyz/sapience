@@ -47,10 +47,8 @@ export class TrailingAvgCandleProcessor {
     trailingAvgTime: number
   ) {
     // Add the new price to history and get the updated sums
-    const { sumUsed, sumFeePaid, startOfTrailingWindow } = this.trailingAvgHistory.getSums (
-      price.resource.slug,
-      trailingAvgTime
-    );
+    const { sumUsed, sumFeePaid, startOfTrailingWindow } =
+      this.trailingAvgHistory.getSums(price.resource.slug, trailingAvgTime);
 
     // For each interval, update the trailing average candle
     for (const interval of CANDLE_CACHE_CONFIG.intervals) {
@@ -75,7 +73,7 @@ export class TrailingAvgCandleProcessor {
           interval,
           candleTimestamp,
           candleEndTimestamp,
-          price,  
+          price,
           trailingAvgTime,
           sumUsed,
           sumFeePaid,
@@ -103,4 +101,4 @@ export class TrailingAvgCandleProcessor {
       );
     }
   }
-} 
+}

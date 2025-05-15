@@ -1,7 +1,4 @@
-export function startOfInterval(
-  timestamp: number,
-  interval: number
-): number {
+export function startOfInterval(timestamp: number, interval: number): number {
   return Math.floor(timestamp / interval) * interval;
 }
 

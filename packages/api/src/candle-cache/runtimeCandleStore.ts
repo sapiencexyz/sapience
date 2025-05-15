@@ -6,7 +6,12 @@ export class RuntimeCandleStore {
   private candles: Map<string, CacheCandle> = new Map();
 
   // Optimized key generation for known small number of intervals/times
-  private static getKey(type: CandleType, id: number | string, interval: number, trailingAvgTime?: number): string {
+  private static getKey(
+    type: CandleType,
+    id: number | string,
+    interval: number,
+    trailingAvgTime?: number
+  ): string {
     if (type === 'trailingAvg' && trailingAvgTime !== undefined) {
       return `${type}:${id}:${interval}:${trailingAvgTime}`;
     }
@@ -14,43 +19,100 @@ export class RuntimeCandleStore {
   }
 
   // Get a market candle
-  getMarketCandle(marketIdx: number, interval: number): CacheCandle | undefined {
-    return this.candles.get(RuntimeCandleStore.getKey('market', marketIdx, interval));
+  getMarketCandle(
+    marketIdx: number,
+    interval: number
+  ): CacheCandle | undefined {
+    return this.candles.get(
+      RuntimeCandleStore.getKey('market', marketIdx, interval)
+    );
   }
 
   // Get a resource candle
-  getResourceCandle(resourceSlug: string, interval: number): CacheCandle | undefined {
-    return this.candles.get(RuntimeCandleStore.getKey('resource', resourceSlug, interval));
+  getResourceCandle(
+    resourceSlug: string,
+    interval: number
+  ): CacheCandle | undefined {
+    return this.candles.get(
+      RuntimeCandleStore.getKey('resource', resourceSlug, interval)
+    );
   }
 
   // Get an index candle
   getIndexCandle(marketIdx: number, interval: number): CacheCandle | undefined {
-    return this.candles.get(RuntimeCandleStore.getKey('index', marketIdx, interval));
+    return this.candles.get(
+      RuntimeCandleStore.getKey('index', marketIdx, interval)
+    );
   }
 
   // Get a trailing average candle
-  getTrailingAvgCandle(resourceSlug: string, interval: number, trailingAvgTime: number): CacheCandle | undefined {
-    return this.candles.get(RuntimeCandleStore.getKey('trailingAvg', resourceSlug, interval, trailingAvgTime));
+  getTrailingAvgCandle(
+    resourceSlug: string,
+    interval: number,
+    trailingAvgTime: number
+  ): CacheCandle | undefined {
+    return this.candles.get(
+      RuntimeCandleStore.getKey(
+        'trailingAvg',
+        resourceSlug,
+        interval,
+        trailingAvgTime
+      )
+    );
   }
 
   // Set a market candle
-  setMarketCandle(marketIdx: number, interval: number, candle: CacheCandle): void {
-    this.candles.set(RuntimeCandleStore.getKey('market', marketIdx, interval), candle);
+  setMarketCandle(
+    marketIdx: number,
+    interval: number,
+    candle: CacheCandle
+  ): void {
+    this.candles.set(
+      RuntimeCandleStore.getKey('market', marketIdx, interval),
+      candle
+    );
   }
 
   // Set a resource candle
-  setResourceCandle(resourceSlug: string, interval: number, candle: CacheCandle): void {
-    this.candles.set(RuntimeCandleStore.getKey('resource', resourceSlug, interval), candle);
+  setResourceCandle(
+    resourceSlug: string,
+    interval: number,
+    candle: CacheCandle
+  ): void {
+    this.candles.set(
+      RuntimeCandleStore.getKey('resource', resourceSlug, interval),
+      candle
+    );
   }
 
   // Set an index candle
-  setIndexCandle(marketIdx: number, interval: number, candle: CacheCandle): void {
-    this.candles.set(RuntimeCandleStore.getKey('index', marketIdx, interval), candle);
+  setIndexCandle(
+    marketIdx: number,
+    interval: number,
+    candle: CacheCandle
+  ): void {
+    this.candles.set(
+      RuntimeCandleStore.getKey('index', marketIdx, interval),
+      candle
+    );
   }
 
   // Set a trailing average candle
-  setTrailingAvgCandle(resourceSlug: string, interval: number, trailingAvgTime: number, candle: CacheCandle): void {
-    this.candles.set(RuntimeCandleStore.getKey('trailingAvg', resourceSlug, interval, trailingAvgTime), candle);
+  setTrailingAvgCandle(
+    resourceSlug: string,
+    interval: number,
+    trailingAvgTime: number,
+    candle: CacheCandle
+  ): void {
+    this.candles.set(
+      RuntimeCandleStore.getKey(
+        'trailingAvg',
+        resourceSlug,
+        interval,
+        trailingAvgTime
+      ),
+      candle
+    );
   }
 
   // Get all market candles for a specific market
@@ -93,7 +155,10 @@ export class RuntimeCandleStore {
   }
 
   // Get all trailing average candles for a specific resource and trailing average time
-  getAllTrailingAvgCandles(resourceSlug: string, trailingAvgTime: number): Map<number, CacheCandle> {
+  getAllTrailingAvgCandles(
+    resourceSlug: string,
+    trailingAvgTime: number
+  ): Map<number, CacheCandle> {
     const result = new Map<number, CacheCandle>();
     const prefix = `trailingAvg:${resourceSlug}:`;
     for (const [key, candle] of this.candles.entries()) {
@@ -174,4 +239,4 @@ export class RuntimeCandleStore {
     }
     return Array.from(slugs);
   }
-} 
+}

@@ -9,18 +9,20 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
   await initializeFixtures();
 
   const candleCacheBuilder = CandleCacheBuilder.getInstance();
-  
+
   while (true) {
     try {
       console.log(`Running candle cache update at ${new Date().toISOString()}`);
       await candleCacheBuilder.updateCandles();
-      console.log(`Candle cache update completed at ${new Date().toISOString()}`);
+      console.log(
+        `Candle cache update completed at ${new Date().toISOString()}`
+      );
     } catch (error) {
       console.error('Error in candle cache update:', error);
     }
-    
+
     // Wait for the specified interval
-    await new Promise(resolve => setTimeout(resolve, intervalSeconds * 1000));
+    await new Promise((resolve) => setTimeout(resolve, intervalSeconds * 1000));
   }
 }
 
@@ -34,11 +36,15 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
     // Get interval from command line, default to 60 seconds if not specified
     const intervalSeconds = parseInt(args[3] || '60', 10);
     if (isNaN(intervalSeconds) || intervalSeconds <= 0) {
-      console.error('Invalid interval specified. Please provide a positive number of seconds.');
+      console.error(
+        'Invalid interval specified. Please provide a positive number of seconds.'
+      );
       return true;
     }
 
-    console.log(`Starting candle cache worker with ${intervalSeconds} second interval`);
+    console.log(
+      `Starting candle cache worker with ${intervalSeconds} second interval`
+    );
     await createResilientProcess(
       () => runCandleCacheBuilder(intervalSeconds),
       'candleCacheBuilder'
@@ -61,4 +67,4 @@ async function handleWorkerCommands(args: string[]): Promise<boolean> {
       'candleCacheBuilder'
     )();
   }
-})(); 
+})();

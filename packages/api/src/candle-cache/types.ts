@@ -16,4 +16,4 @@ export type PriceDatapoint = {
   timestamp: number;
   used: string;
   fee: string;
-}
+};

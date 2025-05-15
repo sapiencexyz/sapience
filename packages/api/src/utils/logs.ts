@@ -12,7 +12,7 @@ export function log({
   if (!prefix) {
     prefix = '';
   } else {
-    prefix += ' '
+    prefix += ' ';
   }
   const indentSpaces = ' '.repeat(indent || 0);
 

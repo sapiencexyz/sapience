@@ -1,11 +1,17 @@
 import { PriceDatapoint } from './types';
 
 export class TrailingAvgHistoryStore {
-  private history: Map<string, {
-    prices: PriceDatapoint[];
-    pointers: Map<number, number>; // trailingAvgTime -> index in prices array
-    sums: Map<number, { sumUsed: bigint; sumFeePaid: bigint, startOfTrailingWindow: number }>; // trailingAvgTime -> sums
-  }> = new Map();
+  private history: Map<
+    string,
+    {
+      prices: PriceDatapoint[];
+      pointers: Map<number, number>; // trailingAvgTime -> index in prices array
+      sums: Map<
+        number,
+        { sumUsed: bigint; sumFeePaid: bigint; startOfTrailingWindow: number }
+      >; // trailingAvgTime -> sums
+    }
+  > = new Map();
 
   isEmpty(): boolean {
     return this.history.size === 0;
@@ -18,19 +24,23 @@ export class TrailingAvgHistoryStore {
     price: PriceDatapoint
   ): { sumUsed: bigint; sumFeePaid: bigint } {
     let resourceHistory = this.history.get(resourceSlug);
-    
+
     if (!resourceHistory) {
       resourceHistory = {
         prices: [],
         pointers: new Map(),
-        sums: new Map()
+        sums: new Map(),
       };
       this.history.set(resourceSlug, resourceHistory);
     }
 
     // Initialize sums if they don't exist
     if (!resourceHistory.sums.has(trailingAvgTime)) {
-      resourceHistory.sums.set(trailingAvgTime, { sumUsed: 0n, sumFeePaid: 0n, startOfTrailingWindow: price.timestamp });
+      resourceHistory.sums.set(trailingAvgTime, {
+        sumUsed: 0n,
+        sumFeePaid: 0n,
+        startOfTrailingWindow: price.timestamp,
+      });
     }
 
     // Get current sums
@@ -46,8 +56,10 @@ export class TrailingAvgHistoryStore {
     let pointer = resourceHistory.pointers.get(trailingAvgTime) || 0;
 
     // Remove old values that are before the cutoff time
-    while (pointer < resourceHistory.prices.length && 
-           resourceHistory.prices[pointer].timestamp < cutoffTime) {
+    while (
+      pointer < resourceHistory.prices.length &&
+      resourceHistory.prices[pointer].timestamp < cutoffTime
+    ) {
       const oldPrice = resourceHistory.prices[pointer];
       sums.sumUsed -= BigInt(oldPrice.used);
       sums.sumFeePaid -= BigInt(oldPrice.fee);
@@ -69,7 +81,10 @@ export class TrailingAvgHistoryStore {
   }
 
   // Get the sums for a resource and trailing average time
-  getSums(resourceSlug: string, trailingAvgTime: number): { sumUsed: bigint; sumFeePaid: bigint, startOfTrailingWindow: number } {
+  getSums(
+    resourceSlug: string,
+    trailingAvgTime: number
+  ): { sumUsed: bigint; sumFeePaid: bigint; startOfTrailingWindow: number } {
     const resourceHistory = this.history.get(resourceSlug);
     if (!resourceHistory) {
       return { sumUsed: 0n, sumFeePaid: 0n, startOfTrailingWindow: 0 };
@@ -80,7 +95,7 @@ export class TrailingAvgHistoryStore {
       return { sumUsed: 0n, sumFeePaid: 0n, startOfTrailingWindow: 0 };
     }
     return sums;
-  } 
+  }
 
   // Get all resource slugs that have history
   getAllResourceSlugs(): string[] {
@@ -102,11 +117,17 @@ export class TrailingAvgHistoryStore {
     // Only clean up if we have more than 10000 unused items
     if (earliestPointer > 10000) {
       resourceHistory.prices = resourceHistory.prices.slice(earliestPointer);
-      
+
       // Adjust all pointers
-      for (const [trailingAvgTime, pointer] of resourceHistory.pointers.entries()) {
-        resourceHistory.pointers.set(trailingAvgTime, pointer - earliestPointer);
+      for (const [
+        trailingAvgTime,
+        pointer,
+      ] of resourceHistory.pointers.entries()) {
+        resourceHistory.pointers.set(
+          trailingAvgTime,
+          pointer - earliestPointer
+        );
       }
     }
   }
-} 
+}

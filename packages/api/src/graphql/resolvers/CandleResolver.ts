@@ -410,15 +410,11 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleAndTimestampType> {
     const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
-    const {data, lastUpdateTimestamp} = await candleCacheRetrieve.getResourcePrices(
-      slug,
-      from,
-      to,
-      interval
-    );
-    return {data, lastUpdateTimestamp};
+    const { data, lastUpdateTimestamp } =
+      await candleCacheRetrieve.getResourcePrices(slug, from, to, interval);
+    return { data, lastUpdateTimestamp };
   }
-  
+
   @Query(() => CandleAndTimestampType)
   async resourceTrailingAverageCandlesFromCache(
     @Arg('slug', () => String) slug: string,
@@ -426,16 +422,17 @@ export class CandleResolver {
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number,
     @Arg('trailingAvgTime', () => Int) trailingAvgTime: number
-  ): Promise<CandleAndTimestampType> {  
+  ): Promise<CandleAndTimestampType> {
     const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
-    const {data, lastUpdateTimestamp} = await candleCacheRetrieve.getTrailingAvgPrices(
-      slug,
-      from,
-      to,
-      interval,
-      trailingAvgTime
-    );
-    return {data, lastUpdateTimestamp};
+    const { data, lastUpdateTimestamp } =
+      await candleCacheRetrieve.getTrailingAvgPrices(
+        slug,
+        from,
+        to,
+        interval,
+        trailingAvgTime
+      );
+    return { data, lastUpdateTimestamp };
   }
 
   @Query(() => CandleAndTimestampType)
@@ -448,20 +445,21 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleAndTimestampType> {
     const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
-    const {data, lastUpdateTimestamp} = await candleCacheRetrieve.getIndexPrices(
-      from,
-      to,
-      interval,
-      chainId,
-      address,
-      marketId
-    );
-    return {data, lastUpdateTimestamp};
+    const { data, lastUpdateTimestamp } =
+      await candleCacheRetrieve.getIndexPrices(
+        from,
+        to,
+        interval,
+        chainId,
+        address,
+        marketId
+      );
+    return { data, lastUpdateTimestamp };
   }
 
   @Query(() => CandleAndTimestampType)
   async marketCandlesFromCache(
-    @Arg('chainId', () => Int) chainId: number, 
+    @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
     @Arg('marketId', () => String) marketId: string,
     @Arg('from', () => Int) from: number,
@@ -469,14 +467,15 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleAndTimestampType> {
     const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
-    const {data, lastUpdateTimestamp} = await candleCacheRetrieve.getMarketPrices(
-      from,
-      to,
-      interval,
-      chainId,
-      address,
-      marketId
-    );
-    return {data, lastUpdateTimestamp};
+    const { data, lastUpdateTimestamp } =
+      await candleCacheRetrieve.getMarketPrices(
+        from,
+        to,
+        interval,
+        chainId,
+        address,
+        marketId
+      );
+    return { data, lastUpdateTimestamp };
   }
 }

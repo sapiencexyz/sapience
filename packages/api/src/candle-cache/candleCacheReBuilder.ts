@@ -1,7 +1,9 @@
-import { MarketGroup } from "src/models/MarketGroup";
-import { CANDLE_CACHE_CONFIG } from "./config";
+import { CANDLE_CACHE_CONFIG } from './config';
 import { log } from 'src/utils/logs';
-import { BaseCandleCacheBuilder, ResourcePriceParams } from './baseCandleCacheBuilder';
+import {
+  BaseCandleCacheBuilder,
+  ResourcePriceParams,
+} from './baseCandleCacheBuilder';
 
 export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
   private static instance: CandleCacheReBuilder;
@@ -55,7 +57,10 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
     await this.commonRebuildCandles();
   }
 
-  public async rebuildCandlesForRange(startTimestamp: number, endTimestamp: number) {
+  public async rebuildCandlesForRange(
+    startTimestamp: number,
+    endTimestamp: number
+  ) {
     this.resourceSlug = undefined;
     this.startTimestamp = startTimestamp;
     this.endTimestamp = endTimestamp;
@@ -63,7 +68,10 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
   }
 
   private async commonRebuildCandles() {
-    log({ message: 'Starting candle rebuild', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({
+      message: 'Starting candle rebuild',
+      prefix: CANDLE_CACHE_CONFIG.logPrefix,
+    });
 
     // Get updated market groups
     await this.getUpdatedMarketsAndMarketGroups();
@@ -77,8 +85,9 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
     // Save all runtime candles
     await this.saveAllRuntimeCandles();
 
-    log({ message: 'Finished candle rebuild', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+    log({
+      message: 'Finished candle rebuild',
+      prefix: CANDLE_CACHE_CONFIG.logPrefix,
+    });
   }
-
-
 }

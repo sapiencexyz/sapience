@@ -16,11 +16,13 @@ export class IndexCandleProcessor {
     prevCandle: CacheCandle | undefined,
     price: ResourcePrice
   ) => {
-    const feePaid = (prevCandle ? Number(prevCandle.sumFeePaid) : 0) + Number(price.feePaid);
-    const used = (prevCandle ? Number(prevCandle.sumUsed) : 0) + Number(price.used);
+    const feePaid =
+      (prevCandle ? Number(prevCandle.sumFeePaid) : 0) + Number(price.feePaid);
+    const used =
+      (prevCandle ? Number(prevCandle.sumUsed) : 0) + Number(price.used);
     const avg = feePaid > 0 ? used / feePaid : 0;
     return { feePaid, used, avg };
-  }
+  };
 
   private getNewCandle = (
     interval: number,
@@ -31,7 +33,7 @@ export class IndexCandleProcessor {
     prevCandle: CacheCandle | undefined
   ) => {
     const { feePaid, used, avg } = this.getNewAvgPaidAndFee(prevCandle, price);
-    
+
     const candle = new CacheCandle();
     candle.candleType = CANDLE_TYPES.INDEX;
     candle.interval = interval;
@@ -52,20 +54,21 @@ export class IndexCandleProcessor {
     return candle;
   };
 
-
-  public async processResourcePrice(
-    price: ResourcePrice,
-  ) {
-    
+  public async processResourcePrice(price: ResourcePrice) {
     // For each market, check if the price timestamp is within the market's active period
-    for (const marketIdx of this.marketInfoStore.getAllMarketIndexesByResourceSlug(price.resource.slug)) {
-      const isMarketActive = this.marketInfoStore.isMarketActive(marketIdx, price.timestamp);
+    for (const marketIdx of this.marketInfoStore.getAllMarketIndexesByResourceSlug(
+      price.resource.slug
+    )) {
+      const isMarketActive = this.marketInfoStore.isMarketActive(
+        marketIdx,
+        price.timestamp
+      );
 
       const marketInfo = this.marketInfoStore.getMarketInfo(marketIdx);
       if (!marketInfo) {
         throw Error(`Market ${marketIdx} not found`);
       }
-  
+
       // For each interval add the price to the candle
       for (const interval of CANDLE_CACHE_CONFIG.intervals) {
         // Calculate the start and end of the candle
@@ -96,13 +99,16 @@ export class IndexCandleProcessor {
             candleTimestamp,
             candleEndTimestamp,
             price,
-            marketInfo, 
+            marketInfo,
             undefined
           );
           this.runtimeCandles.setIndexCandle(marketIdx, interval, candle);
         } else if (candle && isMarketActive) {
           // Update existing candle
-          const { feePaid, used, avg } = this.getNewAvgPaidAndFee(candle, price);
+          const { feePaid, used, avg } = this.getNewAvgPaidAndFee(
+            candle,
+            price
+          );
           candle.high = String(avg);
           candle.low = String(avg);
           candle.close = String(avg);
@@ -113,4 +119,4 @@ export class IndexCandleProcessor {
       }
     }
   }
-} 
+}

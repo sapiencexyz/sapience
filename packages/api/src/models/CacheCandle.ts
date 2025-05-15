@@ -9,7 +9,14 @@ import {
 } from 'typeorm';
 
 @Entity()
-@Unique(['candleType', 'interval', 'timestamp', 'resourceSlug', 'marketIdx', 'trailingAvgTime'])
+@Unique([
+  'candleType',
+  'interval',
+  'timestamp',
+  'resourceSlug',
+  'marketIdx',
+  'trailingAvgTime',
+])
 export class CacheCandle {
   @PrimaryGeneratedColumn()
   id: number;
@@ -49,7 +56,7 @@ export class CacheCandle {
   timestamp: number; // timestamp is the start of the candle, inclusive
 
   // open, high, low, close
-  @Column({ type: 'varchar'  })
+  @Column({ type: 'varchar' })
   open: string;
 
   @Column({ type: 'varchar' })
@@ -69,10 +76,20 @@ export class CacheCandle {
   lastUpdatedTimestamp: number;
 
   // Cummulative values
-  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
   sumUsed: string;
 
-  @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0, nullable: true })
+  @Column({
+    type: 'numeric',
+    precision: NUMERIC_PRECISION,
+    scale: 0,
+    nullable: true,
+  })
   sumFeePaid: string;
 
   @Column({ type: 'integer', nullable: true })

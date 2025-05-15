@@ -58,7 +58,11 @@ export class MarketInfoStore {
     return this.marketInfoByIdx.get(marketId);
   }
 
-  public getMarketInfoByChainAndAddress(chainId: number, address: string, marketId: string): MarketInfo | undefined {
+  public getMarketInfoByChainAndAddress(
+    chainId: number,
+    address: string,
+    marketId: string
+  ): MarketInfo | undefined {
     for (const marketInfo of this.marketInfoByIdx.values()) {
       if (
         marketInfo.marketGroupChainId === chainId &&
@@ -76,7 +80,9 @@ export class MarketInfoStore {
   }
 
   public getAllMarketIndexesByResourceSlug(resourceSlug: string): number[] {
-    return Array.from(this.marketInfoByIdx.values()).filter(m => m.resourceSlug === resourceSlug).map(m => m.marketIdx);
+    return Array.from(this.marketInfoByIdx.values())
+      .filter((m) => m.resourceSlug === resourceSlug)
+      .map((m) => m.marketIdx);
   }
 
   public getAllResourceSlugs(): string[] {
@@ -86,14 +92,16 @@ export class MarketInfoStore {
   public isMarketActive(marketId: number, timestamp: number): boolean {
     const marketInfo = this.marketInfoByIdx.get(marketId);
     if (!marketInfo) return false;
-    
-    return timestamp >= marketInfo.startTimestamp && 
-      (marketInfo.endTimestamp === 0 || timestamp <= marketInfo.endTimestamp);
+
+    return (
+      timestamp >= marketInfo.startTimestamp &&
+      (marketInfo.endTimestamp === 0 || timestamp <= marketInfo.endTimestamp)
+    );
   }
 
   public getActiveMarkets(timestamp: number): number[] {
-    return this.getAllMarketIndexes().filter(marketId => 
+    return this.getAllMarketIndexes().filter((marketId) =>
       this.isMarketActive(marketId, timestamp)
     );
   }
-} 
+}

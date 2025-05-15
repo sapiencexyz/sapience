@@ -29,10 +29,7 @@ export class ResourceCandleProcessor {
     return candle;
   };
 
-
-  public async processResourcePrice(
-    price: ResourcePrice
-  ) {
+  public async processResourcePrice(price: ResourcePrice) {
     // For each interval add the price to the candle
     for (const interval of CANDLE_CACHE_CONFIG.intervals) {
       // Calculate the start and end of the candle
@@ -90,4 +87,4 @@ export class ResourceCandleProcessor {
       }
     }
   }
-} 
+}

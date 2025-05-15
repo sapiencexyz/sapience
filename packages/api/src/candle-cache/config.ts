@@ -1,4 +1,4 @@
-import { TIME_INTERVALS } from "src/fixtures";
+import { TIME_INTERVALS } from 'src/fixtures';
 
 export const CANDLE_CACHE_CONFIG = {
   logPrefix: '[CANDLE_CACHE]',
