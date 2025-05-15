@@ -44,9 +44,10 @@ export function WagerInput({
   const helperText =
     collateralSymbol === 'sUSDS' ? (
       <>
-        sUSDS is the yield-bearing token of the Sky Protocol.{' '}
+        sUSDS is the yield-bearing token of the Sky Protocol, currently earning
+        4.5% APY.{' '}
         <a
-          href="https://swap.cow.fi/#/8453/swap/_/sUSDS"
+          href="https://swap.defillama.com/?chain=base&from=_&tab=swap&to=0x5875eee11cf8398102fdad704c9e96607675467a"
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary underline"
