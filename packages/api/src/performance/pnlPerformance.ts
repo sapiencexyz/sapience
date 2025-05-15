@@ -1,10 +1,6 @@
 import { TIME_INTERVALS } from 'src/fixtures';
 import { startOfCurrentInterval } from './helper';
 import { marketRepository, positionRepository } from 'src/db';
-import { Position } from 'src/models/Position';
-import { getProviderForChain } from 'src/utils/utils';
-import { PublicClient } from 'viem';
-import { calculateOpenPositionPnL } from 'src/helpers/positionPnL';
 
 interface PnLData {
   owner: string;
@@ -96,8 +92,6 @@ export class PnLPerformance {
       // 2 & 3. Group positions by owner and create PnL entries
       const pnlByOwner = new Map<string, PnLData>();
 
-      const openPositionsOwners = new Map<number, string>();
-
       for (const position of positions) {
         const ownerId = position.owner.toLowerCase();
 
@@ -134,31 +128,6 @@ export class PnLPerformance {
           }
         }
         ownerPnl.totalPnL = ownerPnl.totalWithdrawals - ownerPnl.totalDeposits;
-
-        // 5. Account for open positions PnL
-        if (this.isOpenPosition(position)) {
-          if (!openPositionsOwners.has(position.positionId)) {
-            openPositionsOwners.set(position.positionId, ownerId);
-          }
-        }
-      }
-
-      // 5.2. Calculate open positions PnL for open positions
-      const client = getProviderForChain(Number(epochData.chainId));
-
-      for (const [positionId, ownerId] of openPositionsOwners) {
-        const ownerPnl = pnlByOwner.get(ownerId)!;
-        const rawPnl = await calculateOpenPositionPnL(
-          positionId,
-          epochData.address,
-          client
-        );
-
-        const openPositionPnl = rawPnl;
-
-        ownerPnl.openPositionsPnL += openPositionPnl;
-        ownerPnl.totalPnL += openPositionPnl;
-        pnlByOwner.set(ownerId, ownerPnl);
       }
 
       // 6. Return the PnL data array
@@ -167,19 +136,6 @@ export class PnLPerformance {
       console.error(`Error building PnL data: ${error}`);
       return [];
     }
-  }
-
-  // Helper method to get open positions PnL from contracts
-  private async getOpenPositionsPnl(
-    epochData: EpochData,
-    positionId: number,
-    client: PublicClient
-  ): Promise<bigint> {
-    return calculateOpenPositionPnL(positionId, epochData.address, client);
-  }
-
-  private isOpenPosition(position: Position): boolean {
-    return !position.isSettled;
   }
 
   private async getMarketData(
