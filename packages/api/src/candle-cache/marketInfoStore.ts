@@ -28,9 +28,7 @@ export class MarketInfoStore {
   public async updateMarketInfo(marketGroups: MarketGroup[]) {
     for (const marketGroup of marketGroups) {
       // Add resource slug
-      const resourceSlug = marketGroup.resource
-        ? marketGroup.resource.slug
-        : 'no-resource';
+      const resourceSlug = marketGroup.resource?.slug ?? 'no-resource';
 
       // Add market with extra data
       if (marketGroup.markets) {

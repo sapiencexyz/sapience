@@ -170,7 +170,7 @@ export async function getLatestCandle({
 
 export async function getMarketGroups(): Promise<MarketGroup[]> {
   return marketGroupRepository.find({
-    relations: ['markets', 'markets.resource'],
+    relations: ['markets', 'resource'],
   });
 }
 
