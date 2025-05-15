@@ -160,7 +160,7 @@ const ForecastingForm = ({
   );
 };
 
-const ForecastingDetailPage = () => {
+const MarketGroupPage = () => {
   const { address } = useAccount();
   const params = useParams();
   const pathname = usePathname();
@@ -373,4 +373,4 @@ const ForecastingDetailPage = () => {
   );
 };
 
-export default ForecastingDetailPage;
+export default MarketGroupPage;
