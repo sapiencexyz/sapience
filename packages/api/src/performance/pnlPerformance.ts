@@ -4,7 +4,7 @@ import { marketRepository, positionRepository } from 'src/db';
 import { Position } from 'src/models/Position';
 import { getProviderForChain } from 'src/utils/utils';
 import { PublicClient } from 'viem';
-import { calculateOpenPositionValue } from 'src/helpers/positionPnL';
+import { calculateOpenPositionPnL } from 'src/helpers/positionPnL';
 
 interface PnLData {
   owner: string;
@@ -148,11 +148,14 @@ export class PnLPerformance {
 
       for (const [positionId, ownerId] of openPositionsOwners) {
         const ownerPnl = pnlByOwner.get(ownerId)!;
-        const openPositionPnl = await this.getOpenPositionsPnl(
-          epochData,
+        const rawPnl = await calculateOpenPositionPnL(
           positionId,
+          epochData.address,
           client
         );
+
+        const openPositionPnl = rawPnl;
+
         ownerPnl.openPositionsPnL += openPositionPnl;
         ownerPnl.totalPnL += openPositionPnl;
         pnlByOwner.set(ownerId, ownerPnl);
@@ -172,7 +175,7 @@ export class PnLPerformance {
     positionId: number,
     client: PublicClient
   ): Promise<bigint> {
-    return calculateOpenPositionValue(positionId, epochData.address, client);
+    return calculateOpenPositionPnL(positionId, epochData.address, client);
   }
 
   private isOpenPosition(position: Position): boolean {
