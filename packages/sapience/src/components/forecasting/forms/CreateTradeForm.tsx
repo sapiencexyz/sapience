@@ -1,11 +1,9 @@
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from '@foil/ui/components/ui/alert';
-import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Form,
@@ -17,14 +15,7 @@ import {
 } from '@foil/ui/components/ui/form';
 import { Input } from '@foil/ui/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import type { Abi } from 'viem';
@@ -45,6 +36,8 @@ import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
 import { MarketGroupClassification } from '~/lib/types';
 
+import OrderQuote from './OrderQuote';
+
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
 
 export type TradeFormMarketDetails = {
@@ -54,7 +47,6 @@ export type TradeFormMarketDetails = {
   marketAbi: Abi;
   collateralAssetTicker: string;
   collateralAssetAddress?: `0x${string}`;
-  // Add any other market-specific details needed for trading
 };
 
 export interface TradeFormProps {
@@ -348,224 +340,149 @@ export function CreateTradeForm({
     setValue('direction', value as 'Long' | 'Short', { shouldValidate: true });
   };
 
+  // Determine if quote should be shown (similar to ModifyTradeForm)
+  const shouldShowQuote = React.useMemo(() => {
+    return sizeBigInt > BigInt(0) && !quoteError;
+  }, [sizeBigInt, quoteError]);
+
+  // Determine if quote is currently loading (similar to ModifyTradeForm)
+  const isQuoteLoading = React.useMemo(() => {
+    return quoteLoading && shouldShowQuote; // quoteLoading is from useSimulateContract
+  }, [quoteLoading, shouldShowQuote]);
+
   return (
-    <TooltipProvider>
-      <Form {...form}>
-        <form onSubmit={handleSubmit(submitForm)} className="space-y-4">
-          <Tabs
-            defaultValue="Long"
-            value={direction}
-            onValueChange={handleDirectionChange}
-            className="mb-4"
-          >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="Long">
-                {marketClassification === MarketGroupClassification.NUMERIC
-                  ? 'Long'
-                  : 'Yes'}
-              </TabsTrigger>
-              <TabsTrigger value="Short">
-                {marketClassification === MarketGroupClassification.NUMERIC
-                  ? 'Short'
-                  : 'No'}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+    <Form {...form}>
+      <form onSubmit={handleSubmit(submitForm)} className="space-y-4">
+        <Tabs
+          defaultValue="Long"
+          value={direction}
+          onValueChange={handleDirectionChange}
+          className="mb-4"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="Long">
+              {marketClassification === MarketGroupClassification.NUMERIC
+                ? 'Long'
+                : 'Yes'}
+            </TabsTrigger>
+            <TabsTrigger value="Short">
+              {marketClassification === MarketGroupClassification.NUMERIC
+                ? 'Short'
+                : 'No'}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
-          <div className="mb-8">
-            <FormField
-              control={control}
-              name="size"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Size</FormLabel>
-                  <FormControl>
-                    <div className="flex">
-                      <Input
-                        placeholder="0.0"
-                        type="number"
-                        step="any"
-                        className={
-                          marketClassification ===
-                          MarketGroupClassification.NUMERIC
-                            ? 'rounded-r-none'
-                            : ''
-                        }
-                        {...field}
-                      />
-                      {marketClassification ===
-                        MarketGroupClassification.NUMERIC && (
-                        <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
-                          {baseTokenName}
-                        </div>
-                      )}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="mb-8">
-            <SlippageTolerance />
-          </div>
-
-          <div className="mt-6 space-y-2">
-            {!isPermitLoadingPermit && permitData?.permitted === false && (
-              <Alert
-                variant="destructive"
-                className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
-              >
-                <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
-                <AlertDescription>
-                  You cannot trade using this app.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="mt-0">
-              {isConnected ? (
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  disabled={isSubmitDisabled}
-                >
-                  {buttonState.loading && (
-                    <LottieLoader className="invert" width={20} height={20} />
-                  )}
-                  {buttonState.text}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  className="w-full"
-                  size="lg"
-                  onClick={onConnectWallet}
-                >
-                  Connect Wallet
-                </Button>
-              )}
-              {isConnected &&
-                !isChainMismatch &&
-                quoteError &&
-                sizeBigInt > BigInt(0) && (
-                  <p className="text-red-500 text-sm text-center mt-2 font-medium">
-                    <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
-                    Insufficient liquidity or error fetching quote. Try a
-                    smaller size.
-                  </p>
-                )}
-            </div>
-          </div>
-
-          <AnimatePresence>
-            {sizeBigInt > BigInt(0) && !quoteError && (
-              <motion.div
-                key="details-container"
-                layout
-                initial={{ opacity: 0, height: 0, transformOrigin: 'top' }}
-                animate={{ opacity: 1, height: 'auto', transformOrigin: 'top' }}
-                exit={{ opacity: 0, height: 0, transformOrigin: 'top' }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="mb-6 relative overflow-hidden"
-              >
-                <div
-                  className={`transition-opacity duration-150 ${quoteLoading ? 'opacity-30' : 'opacity-100'}`}
-                >
-                  <h4 className="text-sm font-medium mb-2.5 flex items-center">
-                    Order Quote
-                  </h4>
-                  <div className="flex flex-col gap-2.5 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Size</span>
-                      <span className="flex items-center">
-                        {marketClassification ===
-                          MarketGroupClassification.NUMERIC && (
-                          <Badge
-                            variant="outline"
-                            className={`mr-2 px-1.5 py-0.5 text-xs font-medium ${
-                              direction === 'Long'
-                                ? 'border-green-500/40 bg-green-500/10 text-green-600'
-                                : 'border-red-500/40 bg-red-500/10 text-red-600'
-                            }`}
-                          >
-                            {direction}
-                          </Badge>
-                        )}
-                        <NumberDisplay value={sizeInput || '0'} />{' '}
-                        {marketClassification ===
-                        MarketGroupClassification.NUMERIC ? (
-                          <span className="ml-1">{baseTokenName}</span>
-                        ) : (
-                          <span className="ml-1">
-                            {direction === 'Long' ? 'Yes' : 'No'}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-
-                    {estimatedCollateralBI > BigInt(0) && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Position Collateral
-                        </span>
-                        <span>
-                          0 → <NumberDisplay value={estimatedCollateral} />{' '}
-                          {collateralAssetTicker}
-                        </span>
-                      </div>
-                    )}
-
-                    {quotedFillPriceBI > BigInt(0) && (
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-muted-foreground">
-                          Estimated Fill Price
-                        </span>
-                        <span className="flex items-baseline">
-                          <NumberDisplay value={estimatedFillPrice} />
-                          {quoteTokenName}
-                          {priceImpact > 0 && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span
-                                  className={`ml-2 text-xs cursor-help ${showPriceImpactWarning ? 'text-red-500' : 'text-muted-foreground'}`}
-                                >
-                                  {Number(priceImpact.toFixed(2)).toString()}%
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <p>
-                                  This is the impact your order will make on the
-                                  current market price.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </span>
-                      </div>
-                    )}
-
-                    {isConnected && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Wallet Balance
-                        </span>
-                        <span>
-                          <NumberDisplay value={walletBalance} /> →{' '}
-                          <NumberDisplay value={estimatedResultingBalance} />{' '}
-                          {collateralAssetTicker}
-                        </span>
+        <div className="mb-8">
+          <FormField
+            control={control}
+            name="size"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Size</FormLabel>
+                <FormControl>
+                  <div className="flex">
+                    <Input
+                      placeholder="0.0"
+                      type="number"
+                      step="any"
+                      className={
+                        marketClassification ===
+                        MarketGroupClassification.NUMERIC
+                          ? 'rounded-r-none'
+                          : ''
+                      }
+                      {...field}
+                    />
+                    {marketClassification ===
+                      MarketGroupClassification.NUMERIC && (
+                      <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
+                        {baseTokenName}
                       </div>
                     )}
                   </div>
-                </div>
-              </motion.div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
             )}
-          </AnimatePresence>
-        </form>
-      </Form>
-    </TooltipProvider>
+          />
+        </div>
+
+        <div className="mb-8">
+          <SlippageTolerance />
+        </div>
+
+        <div className="mt-6 space-y-2">
+          {!isPermitLoadingPermit && permitData?.permitted === false && (
+            <Alert
+              variant="destructive"
+              className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
+            >
+              <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
+              <AlertDescription>
+                You cannot trade using this app.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="mt-0">
+            {isConnected ? (
+              <Button
+                type="submit"
+                className="w-full"
+                size="lg"
+                disabled={isSubmitDisabled}
+              >
+                {buttonState.loading && (
+                  <LottieLoader className="invert" width={20} height={20} />
+                )}
+                {buttonState.text}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="w-full"
+                size="lg"
+                onClick={onConnectWallet}
+              >
+                Connect Wallet
+              </Button>
+            )}
+            {isConnected &&
+              !isChainMismatch &&
+              quoteError &&
+              sizeBigInt > BigInt(0) && (
+                <p className="text-red-500 text-sm text-center mt-2 font-medium">
+                  <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
+                  Insufficient liquidity or error fetching quote. Try a smaller
+                  size.
+                </p>
+              )}
+          </div>
+        </div>
+
+        {marketClassification !== null && (
+          <OrderQuote
+            formType="create"
+            marketClassification={marketClassification}
+            baseTokenName={baseTokenName}
+            quoteTokenName={quoteTokenName}
+            collateralAssetTicker={collateralAssetTicker}
+            direction={direction}
+            priceImpact={priceImpact}
+            showPriceImpactWarning={showPriceImpactWarning}
+            walletBalance={walletBalance}
+            estimatedResultingBalance={estimatedResultingBalance}
+            isLoading={isQuoteLoading} // Pass the specific quote loading state
+            showQuote={shouldShowQuote}
+            sizeInput={sizeInput}
+            estimatedCollateral={estimatedCollateral}
+            estimatedFillPrice={estimatedFillPrice}
+            estimatedCollateralBI={estimatedCollateralBI}
+            quotedFillPriceBI_create={quotedFillPriceBI}
+          />
+        )}
+      </form>
+    </Form>
   );
 }

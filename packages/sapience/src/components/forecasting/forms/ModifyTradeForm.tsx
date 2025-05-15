@@ -1,11 +1,9 @@
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
 } from '@foil/ui/components/ui/alert';
-import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Form,
@@ -17,18 +15,11 @@ import {
 } from '@foil/ui/components/ui/form';
 import { Input } from '@foil/ui/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useRef } from 'react';
-import type { FormState } from 'react-hook-form'; // Or import specific type if known
+import type { FormState } from 'react-hook-form';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { useReadContract } from 'wagmi';
 
@@ -47,6 +38,7 @@ import { useForecast } from '~/lib/context/ForecastProvider';
 import { MarketGroupClassification } from '~/lib/types'; // Added import
 
 import type { TradeFormMarketDetails } from './CreateTradeForm';
+import OrderQuote from './OrderQuote'; // Import the new component
 
 // Action type constants
 const NOUN_POSITION = 'Position';
@@ -220,9 +212,6 @@ function calculateResultingBalances(
 interface PoolData {
   token0Price?: { toSignificant: (decimals: number) => string };
 }
-
-// Helper function to check if inputs are valid for price impact calculation
-// Removed: hasValidInputsForPriceImpact
 
 function calculatePriceImpact(
   pool: PoolData | null | undefined, // Allow null/undefined
@@ -700,14 +689,14 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                       type="number"
                       step="any"
                       className={
-                        marketClassification !==
+                        marketClassification ===
                         MarketGroupClassification.NUMERIC
                           ? ''
                           : 'rounded-r-none'
                       }
                       {...field}
                     />
-                    {marketClassification !==
+                    {marketClassification ===
                       MarketGroupClassification.NUMERIC && (
                       <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
                         {baseTokenName}
@@ -760,149 +749,34 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         </div>
 
         {/* Preview Section - Show if quote is expected, dim if loading new one */}
-        <AnimatePresence mode="wait">
-          {/* Only render the motion.div if we should show the quote */}
-          {shouldShowQuote && (
-            <motion.div
-              key="details-container-modify"
-              layout
-              initial={{ opacity: 0, height: 0, transformOrigin: 'top' }}
-              animate={{ opacity: 1, height: 'auto', transformOrigin: 'top' }}
-              exit={{ opacity: 0, height: 0, transformOrigin: 'top' }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="mb-6 relative overflow-hidden"
-            >
-              {/* Wrapper for content dimming during load */}
-              <div
-                className={`transition-opacity duration-150 ${isQuoteLoading ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
-              >
-                <h4 className="text-sm font-medium mb-2.5 flex items-center">
-                  Order Quote
-                </h4>
-                <div className="flex flex-col gap-2.5 text-sm">
-                  {/* Size Change */}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Size</span>
-                    <span className="flex items-center space-x-1">
-                      {/* Original Size and Direction */}
-                      {marketClassification ===
-                        MarketGroupClassification.NUMERIC && (
-                        <Badge
-                          variant="outline"
-                          className={`px-1.5 py-0.5 text-xs font-medium ${
-                            originalPositionDirection === 'Long'
-                              ? 'border-green-500/40 bg-green-500/10 text-green-600'
-                              : 'border-red-500/40 bg-red-500/10 text-red-600'
-                          }`}
-                        >
-                          {originalPositionDirection}
-                        </Badge>
-                      )}
-                      <NumberDisplay value={originalSizeFormatted} />
-                      <span className="ml-1">{baseTokenName}</span>
-                      <span className="mx-1">→</span>
-                      {/* Target Size and Direction - Conditionally render badge based on target size being non-zero */}
-                      {marketClassification ===
-                        MarketGroupClassification.NUMERIC &&
-                        sizeChangeBigInt !== BigInt(0) && (
-                          <Badge
-                            variant="outline"
-                            className={`px-1.5 py-0.5 text-xs font-medium ${
-                              direction === 'Long'
-                                ? 'border-green-500/40 bg-green-500/10 text-green-600'
-                                : 'border-red-500/40 bg-red-500/10 text-red-600'
-                            }`}
-                          >
-                            {direction}
-                          </Badge>
-                        )}
-                      <NumberDisplay value={targetSizeFormatted} />
-                      {marketClassification ===
-                      MarketGroupClassification.NUMERIC ? (
-                        <span className="ml-1">{baseTokenName}</span>
-                      ) : (
-                        <span className="ml-1">
-                          {direction === 'Long' ? 'Yes' : 'No'}
-                        </span>
-                      )}
-                    </span>
-                  </div>
-
-                  {/* Collateral Change */}
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      Position Collateral
-                    </span>
-                    <span>
-                      <NumberDisplay
-                        value={formatUnits(
-                          positionData?.depositedCollateralAmount ?? BigInt(0),
-                          COLLATERAL_DECIMALS
-                        )}
-                      />{' '}
-                      → <NumberDisplay value={resultingPositionCollateral} />{' '}
-                      {collateralAssetTicker}
-                    </span>
-                  </div>
-
-                  {/* Estimated Fill Price */}
-                  {quotedFillPriceBI &&
-                    quotedFillPriceBI > BigInt(0) &&
-                    targetSizeForHook !== BigInt(0) && ( // Only show fill price if not closing
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-muted-foreground">
-                          Estimated Fill Price
-                        </span>
-                        <span className="flex items-baseline">
-                          <NumberDisplay value={quotedFillPrice} />{' '}
-                          {quoteTokenName}
-                          {/* Re-add price impact display with Tooltip */}
-                          {priceImpact > 0 && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span
-                                    className={`ml-2 text-xs cursor-help ${
-                                      showPriceImpactWarning
-                                        ? 'text-red-500'
-                                        : 'text-muted-foreground'
-                                    }`}
-                                  >
-                                    {Number(priceImpact.toFixed(2)).toString()}%
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs">
-                                  <p>
-                                    This is the impact your order will make on
-                                    the current market price.
-                                  </p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </span>
-                      </div>
-                    )}
-
-                  {/* Wallet Balance Change */}
-                  {isConnected && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Wallet Balance
-                      </span>
-                      <span>
-                        <NumberDisplay value={walletBalance || '0'} /> →{' '}
-                        <NumberDisplay value={estimatedResultingBalance} />{' '}
-                        {collateralAssetTicker}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* End of dimming wrapper */}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {marketClassification !== null && (
+          <OrderQuote
+            formType="modify"
+            marketClassification={marketClassification} 
+            baseTokenName={baseTokenName}
+            quoteTokenName={quoteTokenName}
+            collateralAssetTicker={collateralAssetTicker}
+            direction={direction}
+            priceImpact={priceImpact}
+            showPriceImpactWarning={showPriceImpactWarning}
+            walletBalance={walletBalance}
+            estimatedResultingBalance={estimatedResultingBalance}
+            isLoading={isQuoteLoading} 
+            showQuote={shouldShowQuote}
+            originalSizeFormatted={originalSizeFormatted}
+            targetSizeFormatted={targetSizeFormatted}
+            originalPositionDirection={originalPositionDirection}
+            sizeChangeBigInt={sizeChangeBigInt}
+            currentPositionCollateral={formatUnits(
+              positionData?.depositedCollateralAmount ?? BigInt(0),
+              COLLATERAL_DECIMALS
+            )}
+            resultingPositionCollateral={resultingPositionCollateral}
+            quotedFillPrice_modify={quotedFillPrice} 
+            quotedFillPriceBI_modify={quotedFillPriceBI} 
+            isClosing={targetSizeForHook === BigInt(0)} 
+          />
+        )}
       </form>
     </Form>
   );
