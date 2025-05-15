@@ -1,7 +1,7 @@
 import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
 import type { MarketType } from '@foil/ui/types';
 import type { ReactNode } from 'react';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { Abi, Address } from 'viem';
 
 import type { UsePositionsResult } from '~/hooks/contract';
@@ -11,6 +11,8 @@ import {
   usePositions,
 } from '~/hooks/contract';
 import { useMarket } from '~/hooks/graphql/useMarket';
+import type { MarketGroupClassification } from '~/lib/types';
+import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 
 interface MarketDataContract {
   epochId: bigint;
@@ -49,6 +51,7 @@ interface ForecastContextType {
   chainId: number | null;
   marketAddress: Address | null;
   numericMarketId: number | null;
+  marketClassification: MarketGroupClassification | null;
   tickSpacing: number;
   isLoadingTickSpacing: boolean;
 
@@ -153,6 +156,20 @@ export function ForecastProvider({
   const minTick = marketContractData?.baseAssetMinPriceTick || 0;
   const maxTick = marketContractData?.baseAssetMaxPriceTick || 0;
 
+  const marketClassification = useMemo(() => {
+    if (!marketData) {
+      console.log(
+        '[ForecastProvider] marketData is null, returning null for marketClassification.'
+      );
+      return null;
+    }
+
+    // Assuming GraphQL provides marketData.marketGroup structured appropriately
+    // for all cases, including single markets (e.g., marketGroup.markets = [singleMarket]).
+    // getMarketGroupClassification handles cases where marketGroup.markets is undefined or empty.
+    return getMarketGroupClassification(marketData.marketGroup || {});
+  }, [marketData]);
+
   const value = {
     // Market data from GraphQL
     marketData,
@@ -162,6 +179,9 @@ export function ForecastProvider({
     chainId,
     marketAddress: marketAddress as Address | null,
     numericMarketId,
+    marketClassification,
+    tickSpacing,
+    isLoadingTickSpacing,
 
     // Market contract data
     marketContractData,
@@ -178,8 +198,6 @@ export function ForecastProvider({
     quoteTokenName,
     minTick,
     maxTick,
-    tickSpacing,
-    isLoadingTickSpacing,
 
     // User Positions (if wallet connected)
     lpPositions,

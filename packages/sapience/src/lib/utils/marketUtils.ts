@@ -46,8 +46,6 @@ export const getMarketGroupClassification = (
     }
   }
 
-  console.log('markets', markets);
-
   // Logic for single market classification (YES_NO or NUMERIC),
   // or fallback if MULTIPLE_CHOICE condition (shared endTime) was not met for multiple markets.
   if (markets.length === 1) {
@@ -66,17 +64,4 @@ export const getMarketGroupClassification = (
   //    In this case, it defaults to NUMERIC.
   // 2. markets.length === 0 (already handled by the guard clause, but as a theoretical fallback path)
   return MarketGroupClassification.NUMERIC;
-};
-
-export const getMarketPresentationLabels = (
-  classification: MarketGroupClassification | null
-): { longLabel: string; shortLabel: string } => {
-  const useYesNoLabels =
-    classification === MarketGroupClassification.YES_NO ||
-    classification === MarketGroupClassification.MULTIPLE_CHOICE;
-
-  return {
-    longLabel: useYesNoLabels ? 'Yes' : 'Long',
-    shortLabel: useYesNoLabels ? 'No' : 'Short',
-  };
 };

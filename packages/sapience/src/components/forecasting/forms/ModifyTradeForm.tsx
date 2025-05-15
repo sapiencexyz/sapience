@@ -24,7 +24,6 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import type { MarketGroupType, MarketType } from '@foil/ui/types'; // Added import
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
@@ -32,7 +31,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { FormState } from 'react-hook-form'; // Or import specific type if known
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { useReadContract } from 'wagmi';
-// Type definition for useFormState - adjust if using react-hook-form v7+
 
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
@@ -46,10 +44,7 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
-import {
-  getMarketGroupClassification,
-  getMarketPresentationLabels,
-} from '~/lib/utils/marketUtils';
+import { MarketGroupClassification } from '~/lib/types'; // Added import
 
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 
@@ -291,8 +286,12 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   isPermitLoadingPermit, // Destructure props
 }) => {
   const { toast } = useToast();
-  const { baseTokenName, quoteTokenName, marketContractData, marketData } =
-    useForecast(); // Get marketContractData and marketData
+  const {
+    baseTokenName,
+    quoteTokenName,
+    marketContractData,
+    marketClassification,
+  } = useForecast();
   const successHandled = useRef(false);
 
   const {
@@ -302,34 +301,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     collateralAssetTicker,
     collateralAssetAddress,
   } = marketDetails;
-
-  // Determine market classification
-  const classification = useMemo(() => {
-    let inputForClassifier: Partial<Pick<MarketGroupType, 'markets'>> | null =
-      null;
-
-    if (
-      marketData?.marketGroup?.markets &&
-      marketData.marketGroup.markets.length > 0
-    ) {
-      // Case 1: marketData has a marketGroup with a populated markets array
-      inputForClassifier = marketData.marketGroup;
-    } else if (marketData && typeof marketData.optionName !== 'undefined') {
-      // Case 2: marketData itself looks like a single market (e.g., has optionName)
-      inputForClassifier = { markets: [marketData as MarketType] };
-    }
-
-    if (inputForClassifier) {
-      return getMarketGroupClassification(inputForClassifier);
-    }
-
-    return null;
-  }, [marketData]);
-
-  const { longLabel, shortLabel } = useMemo(
-    () => getMarketPresentationLabels(classification),
-    [classification]
-  );
 
   // Fetch position data using positionId
   const { data: positionData, refetch: refetchPositionData } = useReadContract({
@@ -697,16 +668,20 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
             setValue('direction', value as 'Long' | 'Short', {
               shouldValidate: true,
             });
-            // No need to reset actionType here
-            // if (actionType === ACTION_TYPE_CLOSE) {
-            //   setActionType(ACTION_TYPE_UPDATE);
-            // }
           }}
           className="mb-4"
         >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="Long">{longLabel}</TabsTrigger>
-            <TabsTrigger value="Short">{shortLabel}</TabsTrigger>
+            <TabsTrigger value="Long">
+              {marketClassification === MarketGroupClassification.NUMERIC
+                ? 'Long'
+                : 'Yes'}
+            </TabsTrigger>
+            <TabsTrigger value="Short">
+              {marketClassification === MarketGroupClassification.NUMERIC
+                ? 'Short'
+                : 'No'}
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -714,20 +689,26 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         <div className="mb-6">
           <FormField
             control={control}
-            name="size" // Input represents the target absolute size
+            name="size"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Target Size</FormLabel>
                 <FormControl>
                   <div className="flex">
                     <Input
-                      placeholder={originalSizeFormatted} // Show current abs size as placeholder
+                      placeholder={originalSizeFormatted}
                       type="number"
                       step="any"
-                      className={longLabel === 'Yes' ? '' : 'rounded-r-none'} // Conditionally apply rounded-r-none
+                      className={
+                        marketClassification !==
+                        MarketGroupClassification.NUMERIC
+                          ? ''
+                          : 'rounded-r-none'
+                      }
                       {...field}
                     />
-                    {longLabel !== 'Yes' && (
+                    {marketClassification !==
+                      MarketGroupClassification.NUMERIC && (
                       <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
                         {baseTokenName}
                       </div>
@@ -804,38 +785,46 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                     <span className="text-muted-foreground">Size</span>
                     <span className="flex items-center space-x-1">
                       {/* Original Size and Direction */}
-                      <Badge
-                        variant="outline"
-                        className={`px-1.5 py-0.5 text-xs font-medium ${
-                          originalPositionDirection === 'Long'
-                            ? 'border-green-500/40 bg-green-500/10 text-green-600'
-                            : 'border-red-500/40 bg-red-500/10 text-red-600'
-                        }`}
-                      >
-                        {originalPositionDirection === 'Long'
-                          ? longLabel
-                          : shortLabel}
-                      </Badge>
-                      <NumberDisplay value={originalSizeFormatted} />
-                      <span className="ml-1">{baseTokenName}</span>
-                      <span className="mx-1">→</span>
-                      {/* Target Size and Direction - Conditionally render badge based on target size being non-zero */}
-                      {sizeChangeBigInt !== BigInt(0) && ( // Use sizeChangeBigInt to check if target is zero
+                      {marketClassification ===
+                        MarketGroupClassification.NUMERIC && (
                         <Badge
                           variant="outline"
                           className={`px-1.5 py-0.5 text-xs font-medium ${
-                            direction === 'Long'
+                            originalPositionDirection === 'Long'
                               ? 'border-green-500/40 bg-green-500/10 text-green-600'
                               : 'border-red-500/40 bg-red-500/10 text-red-600'
                           }`}
                         >
-                          {direction === 'Long' ? longLabel : shortLabel}
+                          {originalPositionDirection}
                         </Badge>
                       )}
-                      <NumberDisplay
-                        value={targetSizeFormatted} // Display the formatted target size directly
-                      />
+                      <NumberDisplay value={originalSizeFormatted} />
                       <span className="ml-1">{baseTokenName}</span>
+                      <span className="mx-1">→</span>
+                      {/* Target Size and Direction - Conditionally render badge based on target size being non-zero */}
+                      {marketClassification ===
+                        MarketGroupClassification.NUMERIC &&
+                        sizeChangeBigInt !== BigInt(0) && (
+                          <Badge
+                            variant="outline"
+                            className={`px-1.5 py-0.5 text-xs font-medium ${
+                              direction === 'Long'
+                                ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                                : 'border-red-500/40 bg-red-500/10 text-red-600'
+                            }`}
+                          >
+                            {direction}
+                          </Badge>
+                        )}
+                      <NumberDisplay value={targetSizeFormatted} />
+                      {marketClassification ===
+                      MarketGroupClassification.NUMERIC ? (
+                        <span className="ml-1">{baseTokenName}</span>
+                      ) : (
+                        <span className="ml-1">
+                          {direction === 'Long' ? 'Yes' : 'No'}
+                        </span>
+                      )}
                     </span>
                   </div>
 

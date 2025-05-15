@@ -24,7 +24,6 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import type { MarketGroupType, MarketType } from '@foil/ui/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -44,10 +43,7 @@ import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import { useTradeForm } from '~/hooks/forms/useTradeForm';
 import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
-import {
-  getMarketGroupClassification,
-  getMarketPresentationLabels,
-} from '~/lib/utils/marketUtils';
+import { MarketGroupClassification } from '~/lib/types';
 
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
 
@@ -79,8 +75,12 @@ export function CreateTradeForm({
   isPermitLoadingPermit = false,
 }: TradeFormProps) {
   const { toast } = useToast();
-  const { baseTokenName, marketContractData, quoteTokenName, marketData } =
-    useForecast();
+  const {
+    baseTokenName,
+    marketContractData,
+    quoteTokenName,
+    marketClassification,
+  } = useForecast();
   const { address: accountAddress } = useAccount();
   const currentChainId = useChainId();
   const {
@@ -97,32 +97,6 @@ export function CreateTradeForm({
     collateralAssetAddress,
     numericMarketId,
   } = marketDetails;
-
-  const classification = React.useMemo(() => {
-    let inputForClassifier: Partial<Pick<MarketGroupType, 'markets'>> | null =
-      null;
-
-    if (
-      marketData?.marketGroup?.markets &&
-      marketData.marketGroup.markets.length > 0
-    ) {
-      // Case 1: marketData has a marketGroup with a populated markets array (typical for MULTIPLE_CHOICE or grouped numerics)
-      inputForClassifier = marketData.marketGroup;
-    } else if (marketData && typeof marketData.optionName !== 'undefined') {
-      // Case 2: marketData itself looks like a single market (e.g., has optionName, for YES_NO)
-      inputForClassifier = { markets: [marketData as MarketType] }; // Cast needed if MarketType is more specific
-    }
-
-    if (inputForClassifier) {
-      return getMarketGroupClassification(inputForClassifier);
-    }
-    return null;
-  }, [marketData]);
-
-  const { longLabel, shortLabel } = React.useMemo(
-    () => getMarketPresentationLabels(classification),
-    [classification]
-  );
 
   const isChainMismatch = isConnected && currentChainId !== chainId;
 
@@ -344,11 +318,11 @@ export function CreateTradeForm({
     }
     if (needsApproval) {
       return {
-        text: `Approve & Open ${baseTokenName} Position`,
+        text: `Approve & Open Position`,
         loading: false,
       };
     }
-    return { text: `Open ${baseTokenName} Position`, loading: false };
+    return { text: `Open Position`, loading: false };
   };
 
   const calculateIsSubmitDisabled = () => {
@@ -385,8 +359,16 @@ export function CreateTradeForm({
             className="mb-4"
           >
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="Long">{longLabel}</TabsTrigger>
-              <TabsTrigger value="Short">{shortLabel}</TabsTrigger>
+              <TabsTrigger value="Long">
+                {marketClassification === MarketGroupClassification.NUMERIC
+                  ? 'Long'
+                  : 'Yes'}
+              </TabsTrigger>
+              <TabsTrigger value="Short">
+                {marketClassification === MarketGroupClassification.NUMERIC
+                  ? 'Short'
+                  : 'No'}
+              </TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -403,10 +385,16 @@ export function CreateTradeForm({
                         placeholder="0.0"
                         type="number"
                         step="any"
-                        className={longLabel === 'Yes' ? '' : 'rounded-r-none'}
+                        className={
+                          marketClassification ===
+                          MarketGroupClassification.NUMERIC
+                            ? 'rounded-r-none'
+                            : ''
+                        }
                         {...field}
                       />
-                      {longLabel !== 'Yes' && (
+                      {marketClassification ===
+                        MarketGroupClassification.NUMERIC && (
                         <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
                           {baseTokenName}
                         </div>
@@ -493,18 +481,28 @@ export function CreateTradeForm({
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Size</span>
                       <span className="flex items-center">
-                        <Badge
-                          variant="outline"
-                          className={`mr-2 px-1.5 py-0.5 text-xs font-medium ${
-                            direction === 'Long'
-                              ? 'border-green-500/40 bg-green-500/10 text-green-600'
-                              : 'border-red-500/40 bg-red-500/10 text-red-600'
-                          }`}
-                        >
-                          {direction === 'Long' ? longLabel : shortLabel}
-                        </Badge>
+                        {marketClassification ===
+                          MarketGroupClassification.NUMERIC && (
+                          <Badge
+                            variant="outline"
+                            className={`mr-2 px-1.5 py-0.5 text-xs font-medium ${
+                              direction === 'Long'
+                                ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                                : 'border-red-500/40 bg-red-500/10 text-red-600'
+                            }`}
+                          >
+                            {direction}
+                          </Badge>
+                        )}
                         <NumberDisplay value={sizeInput || '0'} />{' '}
-                        <span className="ml-1">{baseTokenName}</span>
+                        {marketClassification ===
+                        MarketGroupClassification.NUMERIC ? (
+                          <span className="ml-1">{baseTokenName}</span>
+                        ) : (
+                          <span className="ml-1">
+                            {direction === 'Long' ? 'Yes' : 'No'}
+                          </span>
+                        )}
                       </span>
                     </div>
 
