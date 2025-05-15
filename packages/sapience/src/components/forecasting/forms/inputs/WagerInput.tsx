@@ -29,7 +29,6 @@ export const wagerAmountSchema = z
     message: 'Amount must be greater than 0',
   });
 
-// New component for sUSDS specific help text and popover
 function SUsdsHelp() {
   return (
     <Popover>

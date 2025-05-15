@@ -184,14 +184,13 @@ const MarketGroupPageContent = () => {
   const paramString = params.chainShortName as string;
   const { marketAddress } = parseUrlParameter(paramString);
 
-  // Consume data from MarketGroupPageProvider
   const {
     marketGroupData,
     isLoading,
     isSuccess,
     activeMarkets,
     marketClassification,
-    chainId, // Get chainId from context
+    chainId,
   } = useMarketGroupPage();
 
   const { isLoading: isUserPositionsLoading } = usePositions({
@@ -258,7 +257,7 @@ const MarketGroupPageContent = () => {
               <div className="border border-border rounded flex flex-col flex-1">
                 <div className="flex-1 min-h-0">
                   <MarketGroupChart
-                    chainShortName={params.chainShortName as string} // Pass original chainShortName
+                    chainShortName={params.chainShortName as string}
                     marketAddress={marketAddress}
                     marketIds={activeMarkets.map((market) =>
                       Number(market.marketId)
@@ -340,7 +339,7 @@ const MarketGroupPageContent = () => {
                 <UserPositionsTable
                   account={address}
                   marketAddress={marketAddress}
-                  chainId={chainId} // Use chainId from context
+                  chainId={chainId}
                   refetchUserPositions={refetchUserPositions}
                 />
               </div>
@@ -377,7 +376,6 @@ const MarketGroupPageContent = () => {
   );
 };
 
-// Wrapper component that provides the MarketGroupPage context
 const MarketGroupPage = () => {
   const params = useParams();
   const paramString = params.chainShortName as string;
