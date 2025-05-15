@@ -180,14 +180,11 @@ export class CandleCacheRetriever {
       return { data: [], lastUpdateTimestamp: 0 };
     }
 
-    console.log(`LLL 01: ${candles[0].timestamp}, ${candles[candles.length - 1].timestamp}, ${candles[0].interval}, ${candles.length} ${JSON.stringify(candles[0])}`);
-    console.log(`LLL 02: cummulative: ${isCumulative}, fillMissingCandles: ${fillMissingCandles}, fillInitialCandlesWithZeroes: ${fillInitialCandlesWithZeroes}`);
     const timeWindow = getTimeWindow(
       candles[0].timestamp,
       candles[candles.length - 1].timestamp,
       candles[0].interval
     );
-    console.log(`LLL 03: ${timeWindow.from}, ${timeWindow.to}`);
 
     // First, create entries only for the candles we have
     const outputEntries: ResponseCandleData[] = candles.map(candle => ({
@@ -198,7 +195,6 @@ export class CandleCacheRetriever {
       close: isCumulative ? candle.sumUsed : candle.close,
     }));
 
-    console.log(`LLL 04: ${outputEntries.length}`);
 
     // If we need to fill missing candles or initial zeroes
     if (fillMissingCandles || fillInitialCandlesWithZeroes) {

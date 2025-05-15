@@ -230,7 +230,6 @@ export async function getCandles({
   marketIdx?: number;
   trailingAvgTime?: number;
 }) {
-  console.log(`LLL AA 01: ${from}, ${to}, ${interval}, ${candleType}, ${resourceId}, ${marketIdx}, ${trailingAvgTime}`);
   const where: FindOptionsWhere<CacheCandle> = {
     candleType,
     interval,
