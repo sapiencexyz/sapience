@@ -42,7 +42,7 @@ interface MarketGroupParams {
   claimStatement: `0x${string}`;
 }
 
-interface ForecastContextType {
+interface MarketPageContextType {
   // Market data from GraphQL
   marketData: MarketType | null | undefined;
   isLoadingMarket: boolean;
@@ -80,11 +80,11 @@ interface ForecastContextType {
   refetchPositions: UsePositionsResult['refetch'];
 }
 
-const ForecastContext = createContext<ForecastContextType | undefined>(
+const MarketPageContext = createContext<MarketPageContextType | undefined>(
   undefined
 );
 
-interface ForecastProviderProps {
+interface MarketPageProviderProps {
   children: ReactNode;
   pageDetails: {
     marketAddress: string;
@@ -93,10 +93,10 @@ interface ForecastProviderProps {
   };
 }
 
-export function ForecastProvider({
+export function MarketPageProvider({
   children,
   pageDetails,
-}: ForecastProviderProps) {
+}: MarketPageProviderProps) {
   const { marketId, chainId, marketAddress } = pageDetails;
   // Call the custom hook to get market data from GraphQL
   const {
@@ -159,7 +159,7 @@ export function ForecastProvider({
   const marketClassification = useMemo(() => {
     if (!marketData) {
       console.log(
-        '[ForecastProvider] marketData is null, returning null for marketClassification.'
+        '[MarketPageProvider] marketData is null, returning null for marketClassification.'
       );
       return null;
     }
@@ -209,17 +209,17 @@ export function ForecastProvider({
   };
 
   return (
-    <ForecastContext.Provider value={value}>
+    <MarketPageContext.Provider value={value}>
       {children}
-    </ForecastContext.Provider>
+    </MarketPageContext.Provider>
   );
 }
 
-export function useForecast() {
-  const context = useContext(ForecastContext);
+export function useMarketPage() {
+  const context = useContext(MarketPageContext);
 
   if (context === undefined) {
-    throw new Error('useForecast must be used within a ForecastProvider');
+    throw new Error('useMarketPage must be used within a MarketPageProvider');
   }
 
   return context;

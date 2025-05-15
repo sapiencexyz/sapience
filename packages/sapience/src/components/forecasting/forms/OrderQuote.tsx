@@ -231,8 +231,10 @@ const OrderQuote: React.FC<OrderQuoteProps> = ({
                     Estimated Fill Price
                   </span>
                   <span className="flex items-baseline">
-                  <span><NumberDisplay value={displayFillPrice || '0'} />{' '}
-                    {quoteTokenName}</span>
+                    <span>
+                      <NumberDisplay value={displayFillPrice || '0'} />{' '}
+                      {quoteTokenName}
+                    </span>
                     {priceImpact > 0 && (
                       <TooltipProvider>
                         <Tooltip>

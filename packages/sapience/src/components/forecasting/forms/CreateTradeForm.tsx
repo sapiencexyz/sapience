@@ -33,7 +33,7 @@ import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import { useTradeForm } from '~/hooks/forms/useTradeForm';
 import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
-import { useForecast } from '~/lib/context/ForecastProvider';
+import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
 
 import OrderQuote from './OrderQuote';
@@ -72,7 +72,7 @@ export function CreateTradeForm({
     marketContractData,
     quoteTokenName,
     marketClassification,
-  } = useForecast();
+  } = useMarketPage();
   const { address: accountAddress } = useAccount();
   const currentChainId = useChainId();
   const {

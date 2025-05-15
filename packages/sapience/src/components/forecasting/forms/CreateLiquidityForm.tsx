@@ -27,7 +27,7 @@ import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateLP, useCreateLiquidityQuoter } from '~/hooks/contract';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
-import { useForecast } from '~/lib/context/ForecastProvider';
+import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { priceToTick, tickToPrice } from '~/lib/utils/tickUtils';
 
 import type { WalletData } from './ModifyLiquidityForm';
@@ -65,8 +65,8 @@ export function CreateLiquidityForm({
   const { isConnected, walletBalance, onConnectWallet } = walletData;
   const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false);
   const successHandled = useRef(false);
-  // Get the tickSpacing from the ForecastProvider context
-  const { tickSpacing: marketTickSpacing } = useForecast();
+  // Get the tickSpacing from the MarketPageProvider context
+  const { tickSpacing: marketTickSpacing } = useMarketPage();
 
   const {
     marketAddress,

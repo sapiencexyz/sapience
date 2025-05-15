@@ -34,7 +34,7 @@ import {
   MIN_BIG_INT_SIZE,
   TOKEN_DECIMALS,
 } from '~/lib/constants/numbers';
-import { useForecast } from '~/lib/context/ForecastProvider';
+import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types'; // Added import
 
 import type { TradeFormMarketDetails } from './CreateTradeForm';
@@ -280,7 +280,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     quoteTokenName,
     marketContractData,
     marketClassification,
-  } = useForecast();
+  } = useMarketPage();
   const successHandled = useRef(false);
 
   const {
@@ -752,7 +752,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         {marketClassification !== null && (
           <OrderQuote
             formType="modify"
-            marketClassification={marketClassification} 
+            marketClassification={marketClassification}
             baseTokenName={baseTokenName}
             quoteTokenName={quoteTokenName}
             collateralAssetTicker={collateralAssetTicker}
@@ -761,7 +761,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
             showPriceImpactWarning={showPriceImpactWarning}
             walletBalance={walletBalance}
             estimatedResultingBalance={estimatedResultingBalance}
-            isLoading={isQuoteLoading} 
+            isLoading={isQuoteLoading}
             showQuote={shouldShowQuote}
             originalSizeFormatted={originalSizeFormatted}
             targetSizeFormatted={targetSizeFormatted}
@@ -772,9 +772,9 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
               COLLATERAL_DECIMALS
             )}
             resultingPositionCollateral={resultingPositionCollateral}
-            quotedFillPrice_modify={quotedFillPrice} 
-            quotedFillPriceBI_modify={quotedFillPriceBI} 
-            isClosing={targetSizeForHook === BigInt(0)} 
+            quotedFillPrice_modify={quotedFillPrice}
+            quotedFillPriceBI_modify={quotedFillPriceBI}
+            isClosing={targetSizeForHook === BigInt(0)}
           />
         )}
       </form>
