@@ -143,6 +143,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     endTimestamp?: number,
     overwriteExisting: boolean = false
   ): Promise<boolean> {
+    overwriteExisting = true;
     const nonNullEndTimestamp = endTimestamp || Math.floor(Date.now() / 1000);
     for (
       let timestamp = startTimestamp;
@@ -491,7 +492,11 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         );
 
         // Calculate metrics using exact target date
-        const metrics = this.calculateMetrics(blocks, hashrate, targetDate);
+        const metrics = this.calculateMetrics(
+          blocks,
+          hashrate,
+          new Date(endTimestamp * 1000)
+        );
 
         console.log(`[BtcIndexer] Calculated metrics:
           - Average fee per block (* 10^12): ${metrics.averagedFeePerBlock.toString()}
