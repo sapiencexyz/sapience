@@ -98,11 +98,6 @@ export function CreateTradeForm({
     numericMarketId,
   } = marketDetails;
 
-  console.log(
-    '[CreateTradeForm] marketData from useForecast:',
-    JSON.parse(JSON.stringify(marketData))
-  );
-
   const classification = React.useMemo(() => {
     let inputForClassifier: Partial<Pick<MarketGroupType, 'markets'>> | null =
       null;
@@ -112,45 +107,21 @@ export function CreateTradeForm({
       marketData.marketGroup.markets.length > 0
     ) {
       // Case 1: marketData has a marketGroup with a populated markets array (typical for MULTIPLE_CHOICE or grouped numerics)
-      console.log(
-        '[CreateTradeForm] Using marketData.marketGroup for classification.'
-      );
       inputForClassifier = marketData.marketGroup;
     } else if (marketData && typeof marketData.optionName !== 'undefined') {
       // Case 2: marketData itself looks like a single market (e.g., has optionName, for YES_NO)
-      console.log(
-        '[CreateTradeForm] Wrapping marketData for classification (likely YES_NO or single numeric).'
-      );
       inputForClassifier = { markets: [marketData as MarketType] }; // Cast needed if MarketType is more specific
-    } else {
-      console.log(
-        '[CreateTradeForm] marketData structure not recognized for classification.'
-      );
     }
 
     if (inputForClassifier) {
-      const calculatedClassification =
-        getMarketGroupClassification(inputForClassifier);
-      console.log(
-        '[CreateTradeForm] Calculated classification:',
-        calculatedClassification
-      );
-      return calculatedClassification;
+      return getMarketGroupClassification(inputForClassifier);
     }
-
-    console.log(
-      '[CreateTradeForm] No valid input for classifier, classification set to null'
-    );
     return null;
   }, [marketData]);
 
   const { longLabel, shortLabel } = React.useMemo(
-    () =>
-      getMarketPresentationLabels(
-        classification,
-        marketData?.marketGroup?.baseTokenName
-      ),
-    [classification, marketData?.marketGroup?.baseTokenName]
+    () => getMarketPresentationLabels(classification),
+    [classification]
   );
 
   const isChainMismatch = isConnected && currentChainId !== chainId;
