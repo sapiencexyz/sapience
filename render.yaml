@@ -24,7 +24,7 @@ services:
     env: node
     plan: standard
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
-    startCommand: pnpm --filter @foil/api start:worker
+    startCommand: pnpm --filter @foil/api start:worker && pnpm --filter @foil/api start:candle-cache
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
