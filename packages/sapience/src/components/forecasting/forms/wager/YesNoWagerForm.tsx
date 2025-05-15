@@ -173,9 +173,7 @@ export default function YesNoWagerForm({
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         <YesNoPredict />
         <div>
-          <WagerInput
-            collateralSymbol={marketGroupData.collateralSymbol || 'Tokens'}
-          />
+          <WagerInput />
 
           {quoteError && (
             <p className="text-destructive text-sm">{quoteError}</p>

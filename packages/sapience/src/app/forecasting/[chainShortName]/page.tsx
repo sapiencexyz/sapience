@@ -19,8 +19,11 @@ import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
-import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
 import { usePositions } from '~/hooks/graphql/usePositions';
+import {
+  MarketGroupPageProvider,
+  useMarketGroupPage,
+} from '~/lib/context/MarketGroupPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 
@@ -160,7 +163,7 @@ const ForecastingForm = ({
   );
 };
 
-const MarketGroupPage = () => {
+const MarketGroupPageContent = () => {
   const { address } = useAccount();
   const params = useParams();
   const pathname = usePathname();
@@ -179,21 +182,22 @@ const MarketGroupPage = () => {
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
-  const { chainShortName, marketAddress } = parseUrlParameter(paramString);
+  const { marketAddress } = parseUrlParameter(paramString);
 
-  const { isLoading: isUserPositionsLoading } = usePositions({
-    address: address || '',
-    marketAddress,
-  });
-
-  // Fetch market data using the hook with correct variable names
+  // Consume data from MarketGroupPageProvider
   const {
     marketGroupData,
     isLoading,
     isSuccess,
     activeMarkets,
     marketClassification,
-  } = useMarketGroup({ chainShortName, marketAddress });
+    chainId, // Get chainId from context
+  } = useMarketGroupPage();
+
+  const { isLoading: isUserPositionsLoading } = usePositions({
+    address: address || '',
+    marketAddress,
+  });
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -254,7 +258,7 @@ const MarketGroupPage = () => {
               <div className="border border-border rounded flex flex-col flex-1">
                 <div className="flex-1 min-h-0">
                   <MarketGroupChart
-                    chainShortName={chainShortName}
+                    chainShortName={params.chainShortName as string} // Pass original chainShortName
                     marketAddress={marketAddress}
                     marketIds={activeMarkets.map((market) =>
                       Number(market.marketId)
@@ -336,7 +340,7 @@ const MarketGroupPage = () => {
                 <UserPositionsTable
                   account={address}
                   marketAddress={marketAddress}
-                  chainId={marketGroupData.chainId}
+                  chainId={chainId} // Use chainId from context
                   refetchUserPositions={refetchUserPositions}
                 />
               </div>
@@ -370,6 +374,19 @@ const MarketGroupPage = () => {
         </DialogContent>
       </Dialog>
     </div>
+  );
+};
+
+// Wrapper component that provides the MarketGroupPage context
+const MarketGroupPage = () => {
+  const params = useParams();
+  const paramString = params.chainShortName as string;
+  const { chainShortName, marketAddress } = parseUrlParameter(paramString);
+
+  return (
+    <MarketGroupPageProvider pageDetails={{ chainShortName, marketAddress }}>
+      <MarketGroupPageContent />
+    </MarketGroupPageProvider>
   );
 };
 
