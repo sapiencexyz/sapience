@@ -15,7 +15,7 @@ const SHARED_MARGIN_LEFT_CLASS = 'ml-1';
 const LONG_BADGE_CLASS = 'border-green-500/40 bg-green-500/10 text-green-600';
 const SHORT_BADGE_CLASS = 'border-red-500/40 bg-red-500/10 text-red-600';
 
-interface OrderQuoteProps {
+interface TradeOrderQuoteProps {
   marketClassification: MarketGroupClassification;
   baseTokenName?: string;
   quoteTokenName?: string;
@@ -49,7 +49,7 @@ interface OrderQuoteProps {
   formType: 'create' | 'modify';
 }
 
-const OrderQuote: React.FC<OrderQuoteProps> = ({
+const TradeOrderQuote: React.FC<TradeOrderQuoteProps> = ({
   marketClassification,
   baseTokenName,
   quoteTokenName,
@@ -284,4 +284,4 @@ const OrderQuote: React.FC<OrderQuoteProps> = ({
   );
 };
 
-export default OrderQuote;
+export default TradeOrderQuote;

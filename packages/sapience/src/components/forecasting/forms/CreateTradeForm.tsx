@@ -36,7 +36,7 @@ import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
 
-import OrderQuote from './OrderQuote';
+import TradeOrderQuote from './TradeOrderQuote';
 
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
 
@@ -462,7 +462,7 @@ export function CreateTradeForm({
         </div>
 
         {marketClassification !== null && (
-          <OrderQuote
+          <TradeOrderQuote
             formType="create"
             marketClassification={marketClassification}
             baseTokenName={baseTokenName}

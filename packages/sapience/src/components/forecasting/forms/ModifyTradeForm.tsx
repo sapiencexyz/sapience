@@ -38,7 +38,7 @@ import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types'; // Added import
 
 import type { TradeFormMarketDetails } from './CreateTradeForm';
-import OrderQuote from './OrderQuote'; // Import the new component
+import TradeOrderQuote from './TradeOrderQuote';
 
 // Action type constants
 const NOUN_POSITION = 'Position';
@@ -750,7 +750,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
         {/* Preview Section - Show if quote is expected, dim if loading new one */}
         {marketClassification !== null && (
-          <OrderQuote
+          <TradeOrderQuote
             formType="modify"
             marketClassification={marketClassification}
             baseTokenName={baseTokenName}
