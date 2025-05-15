@@ -80,9 +80,10 @@ export abstract class BaseCandleCacheBuilder {
       message: `step 1: process resource prices from ${correctedInitialTimestamp} (${initialTimestamp})`,
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
+    initialTimestamp = correctedInitialTimestamp;
 
     const totalResourcePrices = await this.getResourcePricesCountFn({
-      initialTimestamp: correctedInitialTimestamp,
+      initialTimestamp,
       quantity: 0,
     });
     const totalBatches = Math.ceil(
