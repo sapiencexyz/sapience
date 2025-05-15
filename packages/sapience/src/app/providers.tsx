@@ -1,10 +1,11 @@
 'use client';
 
 import { PrivyProvider } from '@privy-io/react-auth';
+import { WagmiProvider, createConfig } from '@privy-io/wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
 import { sepolia, base, cannon, type Chain } from 'viem/chains';
-import { createConfig, http, WagmiProvider } from 'wagmi';
+import { http } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
@@ -67,11 +68,11 @@ const Providers = ({ children }: { children: JSX.Element }) => {
         enableSystem={false}
         disableTransitionOnChange
       >
-        <WagmiProvider config={config}>
-          <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <WagmiProvider config={config}>
             <SapienceProvider>{children}</SapienceProvider>
-          </QueryClientProvider>
-        </WagmiProvider>
+          </WagmiProvider>
+        </QueryClientProvider>
       </ThemeProvider>
     </PrivyProvider>
   );

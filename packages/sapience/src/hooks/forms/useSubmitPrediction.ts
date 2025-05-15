@@ -1,7 +1,12 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
 import { useCallback, useEffect, useState } from 'react';
 import { encodeAbiParameters, parseAbiParameters } from 'viem';
-import { useAccount, useTransaction, useWriteContract } from 'wagmi';
+import {
+  useAccount,
+  useTransaction,
+  useWriteContract,
+  useSwitchChain,
+} from 'wagmi';
 
 import { MarketGroupClassification } from '../../lib/types';
 import { EAS_CONTRACT_ADDRESS, SCHEMA_UID } from '~/lib/constants/eas';
@@ -14,6 +19,7 @@ interface UseSubmitPredictionProps {
   marketClassification: MarketGroupClassification;
   submissionValue: string; // Value from the form (e.g. "1.23" for numeric, "marketId" for MCQ, pre-calc sqrtPriceX96 for Yes/No)
   marketId: number; // Specific market ID for the attestation (for MCQ, this is the ID of the chosen option)
+  targetChainId: number; // Added targetChainId prop
 }
 
 export function useSubmitPrediction({
@@ -21,8 +27,9 @@ export function useSubmitPrediction({
   marketClassification,
   submissionValue,
   marketId,
+  targetChainId,
 }: UseSubmitPredictionProps) {
-  const { address } = useAccount();
+  const { address, chainId: currentChainId } = useAccount();
   const { toast } = useToast();
 
   const [attestationError, setAttestationError] = useState<string | null>(null);
@@ -42,6 +49,8 @@ export function useSubmitPrediction({
   const { data: txReceipt, isSuccess: txSuccess } = useTransaction({
     hash: attestData,
   });
+
+  const { switchChainAsync } = useSwitchChain();
 
   const encodeSchemaData = useCallback(
     (
@@ -116,9 +125,42 @@ export function useSubmitPrediction({
     try {
       setIsLoading(true);
       if (!address) {
-        throw new Error('Wallet not connected');
+        throw new Error('Wallet not connected. Please connect your wallet.');
       }
 
+      if (currentChainId === undefined) {
+        throw new Error(
+          'Could not determine the current network. Please ensure your wallet is connected properly and the network is recognized.'
+        );
+      }
+
+      if (currentChainId !== targetChainId) {
+        if (!switchChainAsync) {
+          throw new Error(
+            'Chain switching functionality is not available. Please switch manually in your wallet.'
+          );
+        }
+        try {
+          await switchChainAsync({ chainId: targetChainId });
+        } catch (switchError) {
+          setIsLoading(false);
+          console.error('Failed to switch chain:', switchError);
+          const message =
+            switchError instanceof Error &&
+            switchError.message.includes('User rejected the request')
+              ? 'Network switch rejected by user.'
+              : 'Failed to switch network. Please try again.';
+          setAttestationError(message);
+          toast({
+            title: 'Network Switch Failed',
+            description: message,
+            variant: 'destructive',
+          });
+          return; // Stop execution
+        }
+      }
+
+      // If we are here, the chain is correct.
       const encodedData = encodeSchemaData(
         marketAddress,
         marketId.toString(),
@@ -192,6 +234,11 @@ export function useSubmitPrediction({
     reset,
     setAttestationError,
     setAttestationSuccess,
+    toast,
+    setIsLoading,
+    currentChainId,
+    targetChainId,
+    switchChainAsync,
   ]);
 
   useEffect(() => {

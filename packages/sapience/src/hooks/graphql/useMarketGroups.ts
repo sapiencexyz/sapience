@@ -156,6 +156,7 @@ const MARKETS_QUERY = gql`
         poolAddress
         settlementPriceD18
         optionName
+        currentPrice
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
         startingSqrtPriceX96
