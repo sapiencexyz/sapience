@@ -246,7 +246,8 @@ const getResourceUnit = (resourceName: string): string => {
   }
   if (resourceName === RESOURCE_BITCOIN) {
     return 'sats';
-  } else if (resourceName === RESOURCE_BITCOIN_HASH) {
+  }
+  if (resourceName === RESOURCE_BITCOIN_HASH) {
     return 'sats/EH';
   }
   return 'gwei';

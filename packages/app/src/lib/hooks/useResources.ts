@@ -44,13 +44,13 @@ export interface Resource {
 const RESOURCE_BITCOIN_HASH_SLUG = 'bitcoin-hashrate';
 
 const LATEST_RESOURCE_PRICE_QUERY = gql`
-  query GetLatestResourcePrice($slug: String!, $from: Int!, $to: Int!, $interval: Int!) {
-    resourceCandles(
-      slug: $slug
-      from: $from
-      to: $to 
-      interval: $interval
-    ) {
+  query GetLatestResourcePrice(
+    $slug: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
       timestamp
       close
     }
@@ -161,12 +161,13 @@ export const useLatestResourcePrice = (slug: string) => {
   return useQuery({
     queryKey: ['resourcePrice', slug],
     queryFn: async () => {
-      console.log(slug === RESOURCE_BITCOIN_HASH_SLUG ? 24 * 60 * 60 : 5 * 60)
       const { data } = await foilApi.post('/graphql', {
         query: print(LATEST_RESOURCE_PRICE_QUERY),
         variables: {
           slug,
-          from: Math.floor(Date.now() / 1000) - (slug === RESOURCE_BITCOIN_HASH_SLUG ? 24 * 60 * 60 : 5 * 60), // last 24 hours vs last 5 minutes
+          from:
+            Math.floor(Date.now() / 1000) -
+            (slug === RESOURCE_BITCOIN_HASH_SLUG ? 2 * 60 * 60 : 5 * 60), // last 24 hours vs last 5 minutes
           to: Math.floor(Date.now() / 1000),
           interval: 60, // 1 minute intervals
         },
