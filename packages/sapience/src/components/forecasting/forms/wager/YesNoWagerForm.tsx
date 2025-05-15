@@ -10,7 +10,6 @@ import { z } from 'zod';
 
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import YesNoPredict from '../inputs/YesNoPredict';
-import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 
@@ -21,6 +20,10 @@ interface YesNoWagerFormProps {
   isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
+
+// Define constants for sqrtPriceX96 values
+const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
+const NO_SQRT_PRICE_X96 = '0';
 
 export default function YesNoWagerForm({
   marketGroupData,
@@ -33,7 +36,7 @@ export default function YesNoWagerForm({
   // Form validation schema
   const formSchema = useMemo(() => {
     return z.object({
-      predictionValue: z.enum(['1', '0'], {
+      predictionValue: z.enum([YES_SQRT_PRICE_X96, NO_SQRT_PRICE_X96], {
         required_error: 'Please select Yes or No',
       }),
       wagerAmount: wagerAmountSchema,
@@ -44,7 +47,7 @@ export default function YesNoWagerForm({
   const methods = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      predictionValue: '1', // Default to YES
+      predictionValue: YES_SQRT_PRICE_X96, // Default to YES
       wagerAmount: '',
     },
     mode: 'onChange', // Validate on change for immediate feedback
@@ -58,7 +61,7 @@ export default function YesNoWagerForm({
   const { quoteData, isQuoteLoading, quoteError } = useQuoter({
     marketData: marketGroupData,
     marketId: marketGroupData.markets[0].marketId, // first market in the array
-    expectedPrice: predictionValue === '1' ? 1 : 0.0000009,
+    expectedPrice: predictionValue === YES_SQRT_PRICE_X96 ? 1 : 0.0000009,
     wagerAmount,
   });
 
@@ -134,15 +137,12 @@ export default function YesNoWagerForm({
     if (isApproving)
       return `Approving ${marketGroupData.collateralSymbol || 'tokens'}...`;
     if (isCreatingTrade) return 'Submitting Wager...';
-    if (needsApproval) return `Approve & Submit Wager`;
+    if (needsApproval) return `Submit Wager`;
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 
     return 'Submit Wager';
   };
-
-  // Determine if button should show loading state
-  const isButtonLoading = isQuoteLoading || isApproving || isCreatingTrade;
 
   // Render quote data if available
   const renderQuoteData = () => {
@@ -153,11 +153,14 @@ export default function YesNoWagerForm({
         <p>
           If this market resolves to{' '}
           <span className="font-medium">
-            {predictionValue === '1' ? 'Yes' : 'No'}
+            {predictionValue === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'}
           </span>
           , you will receive approximately{' '}
           <span className="font-medium">
-            <NumberDisplay value={BigInt(quoteData.maxSize)} precision={4} />{' '}
+            <NumberDisplay
+              value={BigInt(Math.abs(Number(quoteData.maxSize)))}
+              precision={4}
+            />{' '}
             {marketGroupData?.collateralSymbol || 'tokens'}
           </span>
         </p>
@@ -187,9 +190,6 @@ export default function YesNoWagerForm({
           disabled={isButtonDisabled}
           className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isButtonLoading && (
-            <LottieLoader className="mr-2 invert" width={20} height={20} />
-          )}
           {getButtonText()}
         </Button>
       </form>

@@ -1,0 +1,667 @@
+{
+  "address": "0x198c97aa2c45dD27CB4CD2E7cf3C550e589cebea",
+  "abi": [
+    {
+      "type": "function",
+      "name": "acceptOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "createEpoch",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "startingSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "baseAssetMinPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "baseAssetMaxPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "salt",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "claimStatement",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "initializeMarket",
+      "inputs": [
+        {
+          "name": "initialOwner",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "feeCollectors",
+          "type": "address[]",
+          "internalType": "address[]"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "minTradeSize",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "owner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "pendingOwner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "transferOwnership",
+      "inputs": [
+        {
+          "name": "newOwner",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "updateMarket",
+      "inputs": [
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "EpochCreated",
+      "inputs": [
+        {
+          "name": "epochId",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "startingSqrtPriceX96",
+          "type": "uint160",
+          "indexed": false,
+          "internalType": "uint160"
+        },
+        {
+          "name": "claimStatement",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "Initialized",
+      "inputs": [
+        {
+          "name": "version",
+          "type": "uint64",
+          "indexed": false,
+          "internalType": "uint64"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MarketInitialized",
+      "inputs": [
+        {
+          "name": "initialOwner",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "collateralAsset",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "feeCollectorNFT",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "minTradeSize",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "MarketUpdated",
+      "inputs": [
+        {
+          "name": "marketParams",
+          "type": "tuple",
+          "indexed": false,
+          "internalType": "struct IFoilStructs.MarketParams",
+          "components": [
+            {
+              "name": "feeRate",
+              "type": "uint24",
+              "internalType": "uint24"
+            },
+            {
+              "name": "assertionLiveness",
+              "type": "uint64",
+              "internalType": "uint64"
+            },
+            {
+              "name": "bondAmount",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "bondCurrency",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapPositionManager",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapSwapRouter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "uniswapQuoter",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "optimisticOracleV3",
+              "type": "address",
+              "internalType": "address"
+            }
+          ]
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferStarted",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferred",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "EndTimeTooEarly",
+      "inputs": [
+        {
+          "name": "startTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "EpochAlreadyStarted",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidBaseAssetMaxPriceTick",
+      "inputs": [
+        {
+          "name": "maxPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidBaseAssetMinPriceTick",
+      "inputs": [
+        {
+          "name": "minPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidBondAmount",
+      "inputs": [
+        {
+          "name": "bondAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minBond",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidCallbackResolutionInterface",
+      "inputs": [
+        {
+          "name": "callbackRecipient",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidFeeRate",
+      "inputs": [
+        {
+          "name": "feeRate",
+          "type": "uint24",
+          "internalType": "uint24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidInitialization",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidMarket",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "InvalidPriceTickRange",
+      "inputs": [
+        {
+          "name": "minPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        },
+        {
+          "name": "maxPriceTick",
+          "type": "int24",
+          "internalType": "int24"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidStartingPrice",
+      "inputs": [
+        {
+          "name": "startingSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "minSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "maxSqrtPriceX96",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "MarketAlreadyCreated",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MarketNotInitialized",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MathOverflowedMulDiv",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "NotInitializing",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OnlyOwner",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OwnableUnauthorizedAccount",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "ReentrancyGuardReentrantCall",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "StartTimeCannotBeZero",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "T",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TokensAlreadyCreated",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x14489c60753cb9506949547ec50f3572556e349028b28a6e5b8262fc4d652b5e",
+  "deployTxnBlockNumber": "29972292",
+  "deployTimestamp": "1746733931",
+  "sourceName": "src/market/modules/ConfigurationModule.sol",
+  "contractName": "ConfigurationModule",
+  "deployedOn": "deploy.ConfigurationModule",
+  "gasUsed": 4019226,
+  "gasCost": "3298944"
+}

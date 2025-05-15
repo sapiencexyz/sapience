@@ -1,9 +1,15 @@
-import { Loader2 } from 'lucide-react'; // For loading state
+import dynamic from 'next/dynamic'; // For dynamic importing
 import type React from 'react';
 
 import NumberDisplay from '../shared/NumberDisplay'; // Import NumberDisplay
-import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
-import { useUniswapPool } from '~/hooks/charts/useUniswapPool'; // Import from UI package
+import type { OrderBookLevel } from '~/hooks/charts/useOrderBookData'; // Keep type import
+
+// Dynamically import LottieLoader
+const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+  ssr: false,
+  // Use a simple div as placeholder during load
+  loading: () => <div className="w-8 h-8" />,
+});
 
 interface OrderBookRowProps {
   price: number;
@@ -54,65 +60,46 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
 
 // --- Component Props ---
 interface OrderBookChartProps {
-  // Required props to fetch pool data
-  chainId: number | undefined;
-  poolAddress: `0x${string}` | undefined;
-  baseAssetMinPriceTick: number | undefined;
-  baseAssetMaxPriceTick: number | undefined;
   quoteTokenName?: string;
-  // Add className for styling from parent
   className?: string;
-  // Explicitly pass the desired base token name for display
   baseTokenName?: string;
+
+  // Data passed from parent
+  asks: OrderBookLevel[];
+  bids: OrderBookLevel[];
+  lastPrice: string | null;
+  isLoadingPool: boolean;
+  isErrorPool: boolean;
+  isLoadingBook: boolean;
+  isErrorBook: boolean;
+  // Removed bookError as specific errors are combined now
 }
 
 const OrderBookChart: React.FC<OrderBookChartProps> = ({
-  chainId,
-  poolAddress,
-  baseAssetMinPriceTick,
-  baseAssetMaxPriceTick,
-  quoteTokenName, // Optional
+  quoteTokenName,
   className,
-  baseTokenName, // Destructure the new prop
+  baseTokenName,
+  asks,
+  bids,
+  lastPrice,
+  isLoadingPool,
+  isErrorPool,
+  isLoadingBook,
+  isErrorBook,
 }) => {
-  // 1. Fetch base pool info
-  const {
-    pool,
-    isLoading: isLoadingPool,
-    isError: isErrorPool,
-  } = useUniswapPool(
-    chainId ?? 0, // Provide a default chainId if undefined initially
-    poolAddress ?? '0x' // Provide a default address if undefined initially
-  );
-
-  // 2. Fetch and process order book data
-  const {
-    asks,
-    bids,
-    lastPrice,
-    isLoading: isLoadingBook,
-    isError: isErrorBook,
-  } = useOrderBookData({
-    pool,
-    chainId,
-    poolAddress: poolAddress || undefined,
-    baseAssetMinPriceTick,
-    baseAssetMaxPriceTick,
-    tickSpacing: pool?.tickSpacing,
-    quoteTokenName,
-    baseTokenName,
-  });
-
   const isLoading = isLoadingPool || isLoadingBook;
   const isError = isErrorPool || isErrorBook;
+  // Determine if there's truly no liquidity data available (not just loading)
+  const hasNoLiquidity =
+    !isLoading && !isError && asks.length === 0 && bids.length === 0;
 
   // Display Loading State
   if (isLoading) {
     return (
       <div
-        className={`w-full border rounded-md bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
+        className={`w-full border rounded bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
       >
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground opacity-50" />
+        <LottieLoader width={32} height={32} />
       </div>
     );
   }
@@ -121,21 +108,21 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   if (isError) {
     return (
       <div
-        className={`w-full border rounded-md bg-destructive/10 text-destructive-foreground flex items-center justify-center min-h-[200px] p-4 ${className}`}
+        className={`w-full border rounded bg-destructive/10 text-destructive-foreground flex items-center justify-center min-h-[200px] p-4 ${className}`}
       >
         <p className="text-sm text-center">
           Error loading order book data.
-          {/* Optionally display error message: {bookError?.message} */}
+          {/* Optionally display error message: {isErrorPool ? "Pool Error" : "Book Error"} */}
         </p>
       </div>
     );
   }
 
   // Display Empty State (if no asks or bids found after loading)
-  if (asks.length === 0 && bids.length === 0 && !isLoading) {
+  if (hasNoLiquidity) {
     return (
       <div
-        className={`w-full border rounded-md bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
+        className={`w-full border rounded bg-background text-foreground flex items-center justify-center min-h-[200px] ${className}`}
       >
         <p className="text-sm text-muted-foreground">
           No liquidity data available for this range.
@@ -161,7 +148,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 
   return (
     <div
-      className={`w-full border rounded-md bg-background text-foreground ${className} h-full flex flex-col`}
+      className={`w-full border rounded bg-background text-foreground ${className} h-full flex flex-col`}
     >
       {/* Header */}
       <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground/70 tracking-widest transition-all duration-300 font-semibold flex-shrink-0 py-2 px-2 border-b">

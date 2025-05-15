@@ -119,6 +119,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   optionName: market.optionName,
   startingSqrtPriceX96: market.startingSqrtPriceX96,
   marketParams: mapMarketParamsToType(market.marketParams),
+  currentPrice: null,
 });
 
 export const mapPositionToType = (position: Position): PositionType => ({

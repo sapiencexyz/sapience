@@ -56,7 +56,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch data using the data hook
-  const { chartData, isLoading, isError, isFetching } = usePriceChartData({
+  const { chartData, isLoading, isError } = usePriceChartData({
     marketAddress: market.address,
     chainId: market.chainId,
     marketId: market.marketId.toString(), // Convert marketId to string for the hook
@@ -89,18 +89,12 @@ const PriceChart: React.FC<PriceChartProps> = ({
 
       {/* Loading & error overlays */}
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-muted/10 rounded-md z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/10 rounded z-10">
           <LottieLoader width={32} height={32} />
         </div>
       )}
-      {/* Subtle fetching indicator */}
-      {isFetching && !isLoading && (
-        <div className="absolute top-2 right-2 p-1 bg-background/80 rounded-full z-10 flex items-center justify-center">
-          <LottieLoader width={16} height={16} />
-        </div>
-      )}
       {isError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 rounded-md z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 rounded z-10">
           <p className="text-destructive-foreground text-sm">
             Error loading chart data.
             {/* Optionally display error message: {error?.message} */}
@@ -116,7 +110,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
               type="button"
               onClick={() => setIsLogarithmic(!isLogarithmic)}
               className={cn(
-                'absolute bottom-1 right-1 w-8 h-6 rounded-sm bg-background border border-border text-muted-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-10 text-xs font-mono',
+                'absolute bottom-1 right-1 w-8 h-6 rounded bg-background border border-border text-muted-foreground flex items-center justify-center hover:bg-accent hover:border-accent transition-all duration-100 opacity-0 group-hover:opacity-100 z-10 text-xs font-mono',
                 isLogarithmic &&
                   'bg-primary text-primary-foreground border-primary hover:bg-primary/90 hover:border-primary/90'
               )}

@@ -56,12 +56,13 @@ const DEFAULT_UNISWAP_SWAP_ROUTER =
   '0xAf5ead464aFFB12dD4CDFB98c9D2C490194FE5d0';
 const DEFAULT_UNISWAP_QUOTER = '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a';
 const DEFAULT_FEE_RATE = '10000'; // 1%
-const DEFAULT_ASSERTION_LIVENESS = '21600';
+const DEFAULT_ASSERTION_LIVENESS = '7200';
 const DEFAULT_BOND_AMOUNT = '500000000';
 const DEFAULT_MIN_TRADE_SIZE = '10000';
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
 const DEFAULT_MAX_PRICE_TICK = '0';
+const DEFAULT_FACTORY_ADDRESS = '0x5d9aAECe6Af4FfFC5Dca37a753339Ef440B6Be37';
 
 // Type definitions
 interface MarketParamsInput {
@@ -249,7 +250,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   // Market group state
   const [chainId, setChainId] = useState<string>('8453');
   const [factoryAddress, setFactoryAddress] = useState<string>(
-    '0xA61BF5F56a6a035408d5d76EbE58F8204891FB40'
+    DEFAULT_FACTORY_ADDRESS
   );
   const [owner, setOwner] = useState<string>(
     currentChainId === BASE_CHAIN_ID
@@ -755,7 +756,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             <button
               key={index}
               type="button"
-              className={`px-3 py-1 text-sm rounded-md flex items-center ${
+              className={`px-3 py-1 text-sm rounded flex items-center ${
                 activeMarketIndex === index
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-secondary'

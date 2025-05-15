@@ -6,21 +6,27 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
-import { MarketGroupCategory } from '~/hooks/graphql/useMarketGroup';
+import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
+import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
-import SingleChoicePredict from './inputs/SingleChoicePredict';
 import YesNoPredict from './inputs/YesNoPredict';
+
+// Define sqrtPriceX96 constants to match those in YesNoPredict
+const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
+const NO_SQRT_PRICE_X96 = '0';
 
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
-  marketCategory: MarketGroupCategory;
+  marketClassification: MarketGroupClassification;
+  chainId: number;
 }
 
 export default function PredictForm({
   marketGroupData,
-  marketCategory,
+  marketClassification,
+  chainId,
 }: PredictFormProps) {
   const lowerBound = tickToPrice(
     marketGroupData.markets[0].baseAssetMinPriceTick!
@@ -30,19 +36,19 @@ export default function PredictForm({
   );
   // Create schema based on market category
   const formSchema = useMemo(() => {
-    switch (marketCategory) {
-      case MarketGroupCategory.SINGLE_CHOICE:
+    switch (marketClassification) {
+      case MarketGroupClassification.MULTIPLE_CHOICE:
         return z.object({
           predictionValue: z.string().min(1, 'Please select an option'),
         });
-      case MarketGroupCategory.YES_NO:
+      case MarketGroupClassification.YES_NO:
         return z.object({
-          predictionValue: z.enum(['0', '1'], {
+          predictionValue: z.enum([NO_SQRT_PRICE_X96, YES_SQRT_PRICE_X96], {
             required_error: 'Please select Yes or No',
             invalid_type_error: 'Please select Yes or No',
           }),
         });
-      case MarketGroupCategory.NUMERIC:
+      case MarketGroupClassification.NUMERIC:
         return z.object({
           predictionValue: z
             .string()
@@ -62,20 +68,20 @@ export default function PredictForm({
           predictionValue: z.string().min(1, 'Please enter a prediction'),
         });
     }
-  }, [marketCategory, lowerBound, upperBound]);
+  }, [marketClassification, lowerBound, upperBound]);
 
   const defaultPredictionValue: string = useMemo(() => {
-    switch (marketCategory) {
-      case MarketGroupCategory.YES_NO:
-        return '1';
-      case MarketGroupCategory.SINGLE_CHOICE:
+    switch (marketClassification) {
+      case MarketGroupClassification.YES_NO:
+        return YES_SQRT_PRICE_X96;
+      case MarketGroupClassification.MULTIPLE_CHOICE:
         return marketGroupData.markets[0].marketId.toString();
-      case MarketGroupCategory.NUMERIC:
+      case MarketGroupClassification.NUMERIC:
         return String(Math.round((lowerBound + upperBound) / 2));
       default:
         return '';
     }
-  }, [marketCategory, marketGroupData, lowerBound, upperBound]);
+  }, [marketClassification, marketGroupData, lowerBound, upperBound]);
 
   // Set up form with dynamic schema
   const methods = useForm({
@@ -88,36 +94,37 @@ export default function PredictForm({
 
   useEffect(() => {
     methods.setValue('predictionValue', defaultPredictionValue);
-  }, [marketCategory, defaultPredictionValue, methods]);
+  }, [marketClassification, defaultPredictionValue, methods]);
 
   // Get the current prediction value
   const predictionValue = methods.watch('predictionValue');
 
   const marketId = useMemo(() => {
-    if (marketCategory === MarketGroupCategory.SINGLE_CHOICE) {
+    if (marketClassification === MarketGroupClassification.MULTIPLE_CHOICE) {
       return Number(predictionValue);
     }
     return marketGroupData.markets[0].marketId;
-  }, [marketCategory, predictionValue, marketGroupData.markets]);
+  }, [marketClassification, predictionValue, marketGroupData.markets]);
 
   const submissionValue = useMemo(() => {
-    switch (marketCategory) {
-      case MarketGroupCategory.SINGLE_CHOICE:
+    switch (marketClassification) {
+      case MarketGroupClassification.MULTIPLE_CHOICE:
         return '1';
-      case MarketGroupCategory.YES_NO:
+      case MarketGroupClassification.YES_NO:
         return predictionValue;
-      case MarketGroupCategory.NUMERIC:
+      case MarketGroupClassification.NUMERIC:
         return predictionValue;
       default:
         return predictionValue;
     }
-  }, [marketCategory, predictionValue]);
+  }, [marketClassification, predictionValue]);
   // Use the submit prediction hook
   const { submitPrediction, isAttesting } = useSubmitPrediction({
     marketAddress: marketGroupData.address!,
-    marketCategory,
+    marketClassification,
     marketId,
     submissionValue,
+    targetChainId: chainId,
   });
 
   const handleSubmit = async () => {
@@ -126,19 +133,19 @@ export default function PredictForm({
 
   // Render the appropriate prediction input based on market category
   const renderCategoryInput = () => {
-    switch (marketCategory) {
-      case MarketGroupCategory.YES_NO:
+    switch (marketClassification) {
+      case MarketGroupClassification.YES_NO:
         return <YesNoPredict />;
-      case MarketGroupCategory.SINGLE_CHOICE:
+      case MarketGroupClassification.MULTIPLE_CHOICE:
         return (
-          <SingleChoicePredict
+          <MultipleChoicePredict
             options={marketGroupData.markets.map((market) => ({
               name: market.optionName || '',
               marketId: market.marketId,
             }))}
           />
         );
-      case MarketGroupCategory.NUMERIC:
+      case MarketGroupClassification.NUMERIC:
         return (
           <NumericPredict
             bounds={{

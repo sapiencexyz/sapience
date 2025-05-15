@@ -1,0 +1,463 @@
+# Smart Contract Reference
+
+The following functions are available on the each smart contract for a Sapience market group.
+
+## Read Functions
+
+### getMarket
+
+Get information for a market group.
+
+```solidity
+function getMarket()
+    view
+    returns (
+        address owner,
+        address collateralAsset,
+        address feeCollectorNFT,
+        address callbackRecipient,
+        IFoilStructs.MarketParams memory marketParams
+    );
+```
+
+### getEpoch
+
+Get information for a market.
+
+```solidity
+function getEpoch(uint256 id)
+    view
+    returns (IFoilStructs.EpochData memory epochData, IFoilStructs.MarketParams memory params);
+```
+
+### getLatestEpoch
+
+Get information for the latest market.
+
+```solidity
+function getLatestEpoch()
+    view
+    returns (IFoilStructs.EpochData memory epochData, IFoilStructs.MarketParams memory params);
+```
+
+### getPosition
+
+Get all information for a specific trader or liquidity position.
+
+```solidity
+function getPosition(uint256 positionId) pure returns (Position.Data memory);
+```
+
+### getPositionSize
+
+Get the size of a specified position. Positive numbers represent long/"yes" positions and negative numbers represent short/"no" position.
+
+```solidity
+function getPositionSize(uint256 positionId) view returns (int256);
+```
+
+### getSqrtPriceX96
+
+Gets the current market price in Uniswap V3's sqrtPriceX96 format.
+
+```solidity
+function getSqrtPriceX96(uint256 epochId) view returns (uint160 sqrtPriceX96);
+```
+
+### getReferencePrice
+
+Gets the current market price with 18 decimal places.
+
+```solidity
+function getReferencePrice(uint256 epochId) view returns (uint256 price18Digits);
+```
+
+### getPositionPnl
+
+Get the current PnL of a specified position. This must be called as simulated write function.
+
+```solidity
+function getPositionPnl(uint256 positionId) view returns (int256 pnl);
+```
+
+### getPositionCollateralValue
+
+Gets the current value of a position, denominated in the collateral token.
+
+```solidity
+function getPositionCollateralValue(uint256 positionId) view returns (uint256 collateralValue);
+```
+
+### getMarketTickSpacing
+
+Gets the tick spacing value from the underlying Uniswap V3 pool.
+
+```solidity
+function getMarketTickSpacing() view returns (int24);
+```
+
+### getDecimalPriceFromSqrtPriceX96
+
+A utility function that converts a price represented with 18 decimal places to Uniswap V3's sqrtPriceX96 format.
+
+```solidity
+function getDecimalPriceFromSqrtPriceX96(uint160 sqrtPriceX96) view returns (uint256);
+```
+
+### quoteCreateTraderPosition
+
+Quotes the required collateral to create a new trader position. This must be called as simulated write function.
+
+```solidity
+function quoteCreateTraderPosition(uint256 epochId, int256 size)
+    returns (uint256 requiredCollateral, uint256 fillPrice, uint256 price18DigitsAfter);
+```
+
+### quoteModifyTraderPosition
+
+Quotes the required collateral to modify an existing trader position.  This must be called as simulated write function.
+
+```solidity
+function quoteModifyTraderPosition(uint256 positionId, int256 size)
+    returns (int256 expectedCollateralDelta, int256 closePnL, uint256 fillPrice, uint256 price18DigitsAfter);
+```
+
+### settlePosition
+
+Settles a position in the market after the market has been settled.
+
+```solidity
+function settlePosition(uint256 positionId) nonReentrant returns (uint256 withdrawnCollateral);
+```
+
+### balanceOf
+
+The number of positions for this market group owned by the specified address.
+
+```solidity
+function balanceOf(address holder) view returns (uint256 balance);
+```
+
+### ownerOf
+
+The owner's address of the NFT with the specified ID.
+
+```solidity
+function ownerOf(uint256 tokenId) view returns (address);
+```
+
+### getApproved
+
+
+```solidity
+function getApproved(uint256 tokenId) view returns (address operator);
+```
+
+### isApprovedForAll
+
+
+```solidity
+function isApprovedForAll(address holder, address operator) view returns (bool);
+```
+
+### tokenOfOwnerByIndex
+
+
+```solidity
+function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256);
+```
+
+### totalSupply
+
+Returns the total amount of positions created on the market group.
+
+```solidity
+function totalSupply() view returns (uint256);
+```
+
+### tokenByIndex
+
+index is offset by +1 at creation time
+
+*Returns the token identifier for the `_index`th NFT*
+
+
+```solidity
+function tokenByIndex(uint256 index) view returns (uint256);
+```
+
+### quoteRequiredCollateral
+
+
+```solidity
+function quoteRequiredCollateral(uint256 positionId, uint128 liquidity)
+    view
+    returns (uint256 requiredCollateral);
+```
+
+### quoteLiquidityPositionTokens
+
+
+```solidity
+function quoteLiquidityPositionTokens(
+    uint256 epochId,
+    uint256 depositedCollateralAmount,
+    uint160 sqrtPriceX96,
+    uint160 sqrtPriceAX96,
+    uint160 sqrtPriceBX96
+) view returns (uint256 amount0, uint256 amount1, uint128 liquidity);
+```
+
+### getTokensFromLiquidity
+
+
+```solidity
+function getTokensFromLiquidity(uint128 liquidity, uint160 sqrtPriceX96, uint160 sqrtPriceAX96, uint160 sqrtPriceBX96)
+    pure
+    returns (uint256 amount0, uint256 amount1);
+```
+
+## Write Functions
+
+### createTraderPosition
+
+*Create a new trader position.*
+
+
+```solidity
+function createTraderPosition(uint256 epochId, int256 size, uint256 deltaCollateralLimit, uint256 deadline)
+    nonReentrant
+    returns (uint256 positionId);
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`epochId`|`uint256`|The epoch id.|
+|`size`|`int256`|The position size.|
+|`deltaCollateralLimit`|`uint256`||
+|`deadline`|`uint256`|The deadline for the transaction.|
+
+**Returns**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The position id.|
+
+
+### modifyTraderPosition
+
+*Modify an existing trader position.*
+
+
+```solidity
+function modifyTraderPosition(uint256 positionId, int256 size, int256 deltaCollateralLimit, uint256 deadline)
+    nonReentrant;
+```
+**Parameters**
+
+|Name|Type|Description|
+|----|----|-----------|
+|`positionId`|`uint256`|The position id.|
+|`size`|`int256`|The new position size.|
+|`deltaCollateralLimit`|`int256`|The change in the collateral limit. Positive for adding collateral, negative for reomving (closing a position means minimum profit to withdraw). If 0, no limit.|
+|`deadline`|`uint256`|The deadline for the transaction.|
+
+
+### approve
+
+
+```solidity
+function approve(address to, uint256 tokenId);
+```
+
+### setApprovalForAll
+
+
+```solidity
+function setApprovalForAll(address operator, bool approved);
+```
+
+### transferFrom
+
+
+```solidity
+function transferFrom(address from, address to, uint256 tokenId);
+```
+
+### safeTransferFrom
+
+
+```solidity
+function safeTransferFrom(address from, address to, uint256 tokenId);
+```
+
+### safeTransferFrom
+
+
+```solidity
+function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data);
+```
+
+### createLiquidityPosition
+
+
+```solidity
+function createLiquidityPosition(IFoilStructs.LiquidityMintParams calldata params)
+    nonReentrant
+    returns (
+        uint256 id,
+        uint256 requiredCollateralAmount,
+        uint256 totalDepositedCollateralAmount,
+        uint256 uniswapNftId,
+        uint128 liquidity,
+        uint256 addedAmount0,
+        uint256 addedAmount1
+    );
+```
+
+### decreaseLiquidityPosition
+
+
+```solidity
+function decreaseLiquidityPosition(IFoilStructs.LiquidityDecreaseParams memory params)
+    nonReentrant
+    returns (uint256 decreasedAmount0, uint256 decreasedAmount1, uint256 collateralAmount);
+```
+
+### increaseLiquidityPosition
+
+
+```solidity
+function increaseLiquidityPosition(IFoilStructs.LiquidityIncreaseParams memory params)
+    nonReentrant
+    returns (
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1,
+        uint256 requiredCollateralAmount,
+        uint256 totalDepositedCollateralAmount
+    );
+```
+
+### depositCollateral
+
+
+```solidity
+function depositCollateral(uint256 positionId, uint256 collateralAmount);
+```
+
+## Structs
+
+### PositionKind
+
+```solidity
+enum PositionKind {
+    Unknown,
+    Liquidity,
+    Trade
+}
+```
+
+### LiquidityMintParams
+
+```solidity
+struct LiquidityMintParams {
+    uint256 epochId;
+    uint256 amountTokenA;
+    uint256 amountTokenB;
+    uint256 collateralAmount;
+    int24 lowerTick;
+    int24 upperTick;
+    uint256 minAmountTokenA;
+    uint256 minAmountTokenB;
+    uint256 deadline;
+}
+```
+
+### LiquidityIncreaseParams
+
+```solidity
+struct LiquidityIncreaseParams {
+    uint256 positionId;
+    uint256 collateralAmount;
+    uint256 gasTokenAmount;
+    uint256 ethTokenAmount;
+    uint256 minGasAmount;
+    uint256 minEthAmount;
+    uint256 deadline;
+}
+```
+
+### LiquidityDecreaseParams
+
+```solidity
+struct LiquidityDecreaseParams {
+    uint256 positionId;
+    uint128 liquidity;
+    uint256 minGasAmount;
+    uint256 minEthAmount;
+    uint256 deadline;
+}
+```
+
+### MarketParams
+
+```solidity
+struct MarketParams {
+    uint24 feeRate;
+    uint64 assertionLiveness;
+    uint256 bondAmount;
+    address bondCurrency;
+    address uniswapPositionManager;
+    address uniswapSwapRouter;
+    address uniswapQuoter;
+    address optimisticOracleV3;
+}
+```
+
+### EpochData
+
+```solidity
+struct EpochData {
+    uint256 epochId;
+    uint256 startTime;
+    uint256 endTime;
+    address pool;
+    address ethToken;
+    address gasToken;
+    uint256 minPriceD18;
+    uint256 maxPriceD18;
+    int24 baseAssetMinPriceTick;
+    int24 baseAssetMaxPriceTick;
+    bool settled;
+    uint256 settlementPriceD18;
+    bytes32 assertionId;
+    bytes claimStatement;
+}
+```
+
+### QuoteOrTradeInputParams
+
+```solidity
+struct QuoteOrTradeInputParams {
+    Position.Data oldPosition;
+    int256 initialSize;
+    int256 targetSize;
+    int256 deltaSize;
+    bool isQuote;
+}
+```
+
+### QuoteOrTradeOutputParams
+
+```solidity
+struct QuoteOrTradeOutputParams {
+    Position.Data position;
+    uint256 tradeRatioD18;
+    uint256 requiredCollateral;
+    int256 expectedDeltaCollateral;
+    int256 closePnL;
+    uint160 sqrtPriceX96After;
+}
+```

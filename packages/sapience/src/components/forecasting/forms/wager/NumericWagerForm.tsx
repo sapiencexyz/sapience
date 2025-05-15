@@ -10,7 +10,6 @@ import { z } from 'zod';
 
 import NumericPredict from '../inputs/NumericPredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
-import LottieLoader from '~/components/shared/LottieLoader';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
@@ -151,15 +150,12 @@ export default function NumericWagerForm({
     if (isApproving)
       return `Approving ${marketGroupData.collateralSymbol || 'tokens'}...`;
     if (isCreatingTrade) return 'Submitting Wager...';
-    if (needsApproval) return `Approve & Submit Wager`;
+    if (needsApproval) return `Submit Wager`;
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 
     return 'Submit Wager';
   };
-
-  // Determine if button should show loading state
-  const isButtonLoading = isQuoteLoading || isApproving || isCreatingTrade;
 
   // Render quote data if available
   const renderQuoteData = () => {
@@ -174,7 +170,10 @@ export default function NumericWagerForm({
           </span>
           , you will receive approximately{' '}
           <span className="font-medium">
-            <NumberDisplay value={BigInt(quoteData.maxSize)} precision={4} />{' '}
+            <NumberDisplay
+              value={BigInt(Math.abs(Number(quoteData.maxSize)))}
+              precision={4}
+            />{' '}
             {marketGroupData?.collateralSymbol || 'tokens'}
           </span>
         </p>
@@ -211,9 +210,6 @@ export default function NumericWagerForm({
           disabled={isButtonDisabled}
           className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isButtonLoading && (
-            <LottieLoader className="mr-2 invert" width={20} height={20} />
-          )}
           {getButtonText()}
         </Button>
       </form>

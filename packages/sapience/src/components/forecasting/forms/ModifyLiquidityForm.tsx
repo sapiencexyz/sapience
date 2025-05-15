@@ -21,6 +21,7 @@ import { Skeleton } from '@foil/ui/components/ui/skeleton';
 import Slider from '@foil/ui/components/ui/slider';
 import { useToast } from '@foil/ui/index';
 import { motion } from 'framer-motion';
+import { HelpCircle } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -267,7 +268,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
     }
     if (needsApproval) {
       return {
-        text: `Approve & Add Liquidity`,
+        text: `Add Liquidity`,
         loading: false,
       };
     }
@@ -324,31 +325,37 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
               <FormItem>
                 <FormControl>
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={100}
-                      className="w-full"
-                      {...field}
-                    />
-                    <span className="text-sm font-medium">%</span>
+                    <div className="relative w-full">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={100}
+                        className="w-full pr-6 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        {...field}
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                        %
+                      </span>
+                    </div>
                   </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Slider
-            value={[Number.isNaN(percentage) ? 0 : percentage]}
-            min={1}
-            max={100}
-            step={1}
-            onValueChange={(values: number[]) => {
-              setValue('percentage', values[0].toString());
-            }}
-            className="w-full mt-2"
-          />
-          <div className="flex gap-2 mt-1">
+          <div className="py-2">
+            <Slider
+              value={[Number.isNaN(percentage) ? 0 : percentage]}
+              min={1}
+              max={100}
+              step={1}
+              onValueChange={(values: number[]) => {
+                setValue('percentage', values[0].toString());
+              }}
+              className="w-full"
+            />
+          </div>
+          <div className="flex gap-2 pb-2">
             {percentagePresets.map((preset) => {
               // Check if this button is for closing position (100% removal)
               const isClosePositionButton = mode === 'remove' && preset === 100;
@@ -358,7 +365,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
                   key={preset}
                   type="button"
                   variant="outline"
-                  size="sm"
+                  size="xs"
                   onClick={() => setValue('percentage', preset.toString())}
                   className={`
                     ${percentage === preset ? 'bg-primary/10' : ''}
@@ -373,30 +380,25 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
         </div>
 
         <div className="space-y-2">
-          <FormLabel className="block mb-2">Position Range</FormLabel>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FormLabel className="text-xs text-muted-foreground">
-                Low Price
-              </FormLabel>
-              <div className="border rounded-md p-2.5 bg-muted/30 text-sm">
-                <NumberDisplay
-                  value={tickToPrice(Number(marketDetails.lowPriceTick))}
-                  precision={6}
-                />
-              </div>
-            </div>
-            <div>
-              <FormLabel className="text-xs text-muted-foreground">
-                High Price
-              </FormLabel>
-              <div className="border rounded-md p-2.5 bg-muted/30 text-sm">
-                <NumberDisplay
-                  value={tickToPrice(Number(marketDetails.highPriceTick))}
-                  precision={6}
-                />
-              </div>
-            </div>
+          <FormLabel className="block mb-2 flex items-center">
+            Position Range
+          </FormLabel>
+          <div className="text-base flex items-center">
+            <NumberDisplay
+              value={tickToPrice(Number(marketDetails.lowPriceTick))}
+              precision={6}
+            />
+            {' - '}
+            <NumberDisplay
+              value={tickToPrice(Number(marketDetails.highPriceTick))}
+              precision={6}
+            />
+            <span
+              className="ml-1"
+              title="You must close this position and open a new one to adjust your position range."
+            >
+              <HelpCircle className="h-4 w-4 text-muted-foreground" />
+            </span>
           </div>
         </div>
 
@@ -406,7 +408,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
         {!isPermitLoadingPermit && permitData?.permitted === false && (
           <Alert
             variant="destructive"
-            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
+            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
           >
             <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
             <AlertDescription>
@@ -457,7 +459,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
                 : 'Transaction Preview'}
             </h4>
             <div
-              className={`space-y-4 transition-opacity duration-150 ${quoteLoading ? 'opacity-30' : 'opacity-100'}`}
+              className={`space-y-2.5 transition-opacity duration-150 ${quoteLoading ? 'opacity-30' : 'opacity-100'}`}
             >
               <div className="space-y-2.5 text-sm">
                 <div className="flex justify-between">
@@ -497,7 +499,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
               </div>
 
               {!quoteLoading ? (
-                <div className="space-y-2.5 text-sm pt-2.5 border-t">
+                <div className="space-y-2.5 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">
                       Virtual {baseTokenName}
@@ -554,7 +556,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
                     </div>
                   )}
 
-                  <div className="flex justify-between pt-2.5 mt-1 border-t font-medium">
+                  <div className="flex justify-between font-medium">
                     <span>Final Collateral</span>
                     <span className="flex items-center">
                       <NumberDisplay
@@ -568,7 +570,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2.5 text-sm pt-2.5 border-t">
+                <div className="space-y-2.5 text-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">
                       Virtual {baseTokenName}
@@ -591,7 +593,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
                     </span>
                     <Skeleton className="h-4 w-20" />
                   </div>
-                  <div className="flex justify-between pt-2.5 mt-1 border-t font-medium">
+                  <div className="flex justify-between">
                     <span>Final Collateral</span>
                     <Skeleton className="h-4 w-20" />
                   </div>
@@ -599,7 +601,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
               )}
 
               {isConnected && (
-                <div className="flex justify-between text-sm pt-2.5 border-t">
+                <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Wallet Balance</span>
                   <span>
                     <NumberDisplay value={walletBalance} precision={4} />{' '}

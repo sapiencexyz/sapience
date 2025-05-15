@@ -15,7 +15,7 @@ export default function ProfileHeader({ address }: ProfileHeaderProps) {
       <Image
         alt={address}
         src={blo(address as `0x${string}`)}
-        className="w-16 h-16 rounded-md"
+        className="w-16 h-16 rounded"
         width={64}
         height={64}
       />

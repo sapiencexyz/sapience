@@ -56,11 +56,6 @@ export default function NumericPredict({
     }
   };
 
-  // Format bounds with proper decimal places (no units)
-  const formatBoundValue = (val: number) => {
-    return val.toFixed(decimalPlaces);
-  };
-
   // Helper function to compare floating point numbers with some tolerance
   const isInRange = (_value: number, min: number, max: number): boolean => {
     // Add a small epsilon for floating point comparison
@@ -89,15 +84,7 @@ export default function NumericPredict({
     <div className="space-y-4">
       <div>
         <Label htmlFor={`${name}-input`}>Your Prediction</Label>
-
-        {/* Range indicator - removed units */}
-        <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-          <span>{formatBoundValue(bounds.lowerBound)}</span>
-          <span className="text-xs font-medium">Acceptable Range</span>
-          <span>{formatBoundValue(bounds.upperBound)}</span>
-        </div>
-
-        <div className="mt-2 mb-6 px-2">
+        <div className="mt-4 mb-6">
           <Slider
             value={sliderValue}
             min={bounds.lowerBound}

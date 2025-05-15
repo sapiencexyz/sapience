@@ -59,6 +59,7 @@ type MarketParamsType {
 type MarketType {
   baseAssetMaxPriceTick: Int
   baseAssetMinPriceTick: Int
+  currentPrice: String
   endTimestamp: Int
   id: ID!
   marketGroup: MarketGroupType

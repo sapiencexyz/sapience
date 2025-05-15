@@ -1,0 +1,19 @@
+![Sapience](/header.png)
+
+[**Sapience**](https://sapience.xyz) is a decentralized forecasting community which aims to create the most accurate prediction markets on the planet. It leverages the [Foil](https://foil.xyz) protocol to create prediction markets using [Uniswap](https://uniswap.org) and [UMA](https://uma.xyz).
+
+Sapience and its dependencies are completely open source. The API is free to use with rate limiting. Paid keys will be made available in the future.
+
+The Foil protocol is immutable. Once a market has been deployed onchain, no one can modify its logic. Anyone can permissionlessly interact with the markets onchain, regardless of API usage.
+
+*The API is in alpha and subject to change without notice.*
+
+## Overview
+
+Each market group lives at a unique smart contract address on a blockchain. They consist of one or many markets, each with a sequential Market ID and a question. Markets can resolve to a numeric value (e.g. the average temperature in New York City in January of 2026) or binary value (with 1 representing "yes", 0 for "no".)
+
+Market groups may consist of just one market, multiple binary markets with the same ending time (for multiple-choice questions), or a series (e.g. for average temperature in January, February, etc.)
+
+Every market accepts collateral and allows base and quote tokens to be traded in a Uniswap pool (which is effectively an onchain orderbook) prior to an end time. Once the market is settled via UMA, individual positions can be settled.
+
+For a binary (yes/no) market, the base tokens represent a prediction that the market will resolve to "yes". If the market resolves to "yes", everyone holding a base token can redeem a pro-rata share of the collateral. Otherwise, those holding a quote token redeems pro-rata.

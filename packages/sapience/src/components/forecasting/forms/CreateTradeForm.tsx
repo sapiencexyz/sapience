@@ -389,6 +389,55 @@ export function CreateTradeForm({
             <SlippageTolerance />
           </div>
 
+          <div className="mt-6 space-y-2">
+            {!isPermitLoadingPermit && permitData?.permitted === false && (
+              <Alert
+                variant="destructive"
+                className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
+              >
+                <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
+                <AlertDescription>
+                  You cannot trade using this app.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="mt-0">
+              {isConnected ? (
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={isSubmitDisabled}
+                >
+                  {buttonState.loading && (
+                    <LottieLoader className="invert" width={20} height={20} />
+                  )}
+                  {buttonState.text}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="w-full"
+                  size="lg"
+                  onClick={onConnectWallet}
+                >
+                  Connect Wallet
+                </Button>
+              )}
+              {isConnected &&
+                !isChainMismatch &&
+                quoteError &&
+                sizeBigInt > BigInt(0) && (
+                  <p className="text-red-500 text-sm text-center mt-2 font-medium">
+                    <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
+                    Insufficient liquidity or error fetching quote. Try a
+                    smaller size.
+                  </p>
+                )}
+            </div>
+          </div>
+
           <AnimatePresence>
             {sizeBigInt > BigInt(0) && !quoteError && (
               <motion.div
@@ -483,55 +532,6 @@ export function CreateTradeForm({
               </motion.div>
             )}
           </AnimatePresence>
-
-          <div className="mt-6 space-y-2">
-            {!isPermitLoadingPermit && permitData?.permitted === false && (
-              <Alert
-                variant="destructive"
-                className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded-sm"
-              >
-                <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
-                <AlertDescription>
-                  You cannot trade using this app.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="mt-0">
-              {isConnected ? (
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  disabled={isSubmitDisabled}
-                >
-                  {buttonState.loading && (
-                    <LottieLoader className="invert" width={20} height={20} />
-                  )}
-                  {buttonState.text}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  className="w-full"
-                  size="lg"
-                  onClick={onConnectWallet}
-                >
-                  Connect Wallet
-                </Button>
-              )}
-              {isConnected &&
-                !isChainMismatch &&
-                quoteError &&
-                sizeBigInt > BigInt(0) && (
-                  <p className="text-red-500 text-sm text-center mt-2 font-medium">
-                    <AlertTriangle className="inline-block align-top w-4 h-4 mr-1 mt-0.5" />
-                    Insufficient liquidity or error fetching quote. Try a
-                    smaller size.
-                  </p>
-                )}
-            </div>
-          </div>
         </form>
       </Form>
     </TooltipProvider>
