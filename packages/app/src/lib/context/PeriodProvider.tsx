@@ -10,6 +10,8 @@ import { useReadContract } from 'wagmi';
 import useFoilDeployment from '../../components/useFoilDeployment';
 import { BLANK_MARKET } from '../constants';
 import erc20ABI from '../erc20abi.json';
+import FoilLegacyABIFile from '../FoilLegacy.json';
+import { useGetEpochWithLegacyFallback } from '../hooks/useGetEpochWithLegacyFallback';
 import type { Resource } from '../hooks/useResources';
 import { useResources } from '../hooks/useResources';
 import { useUniswapPool } from '../hooks/useUniswapPool';
@@ -118,14 +120,15 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
     functionName: 'getMarket',
   }) as any;
 
-  const epochViewFunctionResult = useReadContract({
-    chainId,
-    abi: foilData.abi,
-    address: state.address as `0x${string}`,
-    functionName: 'getEpoch',
-    args: [market ?? 0],
-    query: { enabled: market !== undefined },
-  }) as any;
+  const { data: epochDataResult, error: epochCombinedError } =
+    useGetEpochWithLegacyFallback({
+      chainId,
+      contractAddress: state.address as `0x${string}`,
+      marketId: market,
+      primaryAbi: foilData?.abi,
+      legacyAbi: FoilLegacyABIFile.abi,
+      enabled: market !== undefined && !!state.address && !!foilData?.abi,
+    });
 
   const collateralTickerFunctionResult = useReadContract({
     chainId,
@@ -219,8 +222,25 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
   }, [marketViewFunctionResult.data]);
 
   useEffect(() => {
-    if (epochViewFunctionResult.data !== undefined) {
-      const marketData: MarketData = epochViewFunctionResult.data[0];
+    if (epochCombinedError) {
+      toast({
+        variant: 'destructive',
+        title: 'Error Fetching Epoch Data',
+        description: epochCombinedError.message || 'Unable to get epoch data',
+      });
+      setState((prev) => ({
+        ...prev,
+        error: epochCombinedError.message || 'Unable to get epoch data',
+        startTime: 0,
+        endTime: 0,
+        poolAddress: '0x' as `0x${string}`,
+        marketSettled: false,
+        settlementPrice: undefined,
+        baseAssetMaxPriceTick: 0,
+        baseAssetMinPriceTick: 0,
+      }));
+    } else if (epochDataResult) {
+      const marketData: MarketData = epochDataResult[0];
       setState((currentState) => ({
         ...currentState,
         startTime: Number(marketData.startTime),
@@ -231,9 +251,10 @@ export const PeriodProvider: React.FC<PeriodProviderProps> = ({
         baseAssetMaxPriceTick: marketData.baseAssetMaxPriceTick,
         baseAssetMinPriceTick: marketData.baseAssetMinPriceTick,
         question: currentMarketData?.question,
+        error: undefined,
       }));
     }
-  }, [epochViewFunctionResult.data, currentMarketData]);
+  }, [epochDataResult, epochCombinedError, currentMarketData, toast]);
 
   useEffect(() => {
     if (pool) {
