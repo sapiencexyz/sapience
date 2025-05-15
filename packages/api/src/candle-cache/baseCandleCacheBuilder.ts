@@ -71,15 +71,16 @@ export abstract class BaseCandleCacheBuilder {
   }
 
   protected async processResourcePrices(initialTimestamp: number = 0) {
+    let getNextBatch = true;
+
+    const correctedInitialTimestamp = this.trailingAvgHistory.isEmpty() ? Math.max(initialTimestamp - CANDLE_CACHE_CONFIG.preTrailingAvgTime, 0) : initialTimestamp;
     log({
-      message: 'step 1: process resource prices',
+      message: `step 1: process resource prices from ${correctedInitialTimestamp} (${initialTimestamp})}`,
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
 
-    let getNextBatch = true;
-
     const totalResourcePrices = await this.getResourcePricesCountFn({
-      initialTimestamp,
+      initialTimestamp: correctedInitialTimestamp,
       quantity: 0,
     });
     const totalBatches = Math.ceil(

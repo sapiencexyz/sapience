@@ -24,13 +24,13 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
     });
     await this.getUpdatedMarketsAndMarketGroups();
 
+    const lastProcessedResourcePrice = await getParam(
+      CANDLE_CACHE_CONFIG.lastProcessedResourcePrice
+    );
     log({
       message: 'step 2: process resource prices',
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
-    const lastProcessedResourcePrice = await getParam(
-      CANDLE_CACHE_CONFIG.lastProcessedResourcePrice
-    );
     await this.processResourcePrices(lastProcessedResourcePrice);
 
     log({
