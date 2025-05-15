@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
+import type { MarketGroupType, MarketType } from '@foil/ui/types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -43,6 +44,8 @@ import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
 import { useTradeForm } from '~/hooks/forms/useTradeForm';
 import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
+import { MarketGroupClassification } from '~/lib/types';
+import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
 
@@ -74,7 +77,8 @@ export function CreateTradeForm({
   isPermitLoadingPermit = false,
 }: TradeFormProps) {
   const { toast } = useToast();
-  const { baseTokenName, marketContractData, quoteTokenName } = useForecast();
+  const { baseTokenName, marketContractData, quoteTokenName, marketData } =
+    useForecast();
   const { address: accountAddress } = useAccount();
   const currentChainId = useChainId();
   const {
@@ -91,6 +95,84 @@ export function CreateTradeForm({
     collateralAssetAddress,
     numericMarketId,
   } = marketDetails;
+
+  console.log(
+    '[CreateTradeForm] marketData from useForecast:',
+    JSON.parse(JSON.stringify(marketData))
+  );
+
+  const classification = React.useMemo(() => {
+    let inputForClassifier: Partial<Pick<MarketGroupType, 'markets'>> | null =
+      null;
+
+    if (
+      marketData?.marketGroup?.markets &&
+      marketData.marketGroup.markets.length > 0
+    ) {
+      // Case 1: marketData has a marketGroup with a populated markets array (typical for MULTIPLE_CHOICE or grouped numerics)
+      console.log(
+        '[CreateTradeForm] Using marketData.marketGroup for classification.'
+      );
+      inputForClassifier = marketData.marketGroup;
+    } else if (marketData && typeof marketData.optionName !== 'undefined') {
+      // Case 2: marketData itself looks like a single market (e.g., has optionName, for YES_NO)
+      console.log(
+        '[CreateTradeForm] Wrapping marketData for classification (likely YES_NO or single numeric).'
+      );
+      inputForClassifier = { markets: [marketData as MarketType] }; // Cast needed if MarketType is more specific
+    } else {
+      console.log(
+        '[CreateTradeForm] marketData structure not recognized for classification.'
+      );
+    }
+
+    if (inputForClassifier) {
+      const calculatedClassification =
+        getMarketGroupClassification(inputForClassifier);
+      console.log(
+        '[CreateTradeForm] Calculated classification:',
+        calculatedClassification
+      );
+      return calculatedClassification;
+    }
+
+    console.log(
+      '[CreateTradeForm] No valid input for classifier, classification set to null'
+    );
+    return null;
+  }, [marketData]);
+
+  const { longLabel, shortLabel } = React.useMemo(() => {
+    let useYesNoLabels =
+      classification === MarketGroupClassification.YES_NO ||
+      classification === MarketGroupClassification.MULTIPLE_CHOICE;
+
+    // If classification is NUMERIC, but the group's baseTokenName suggests Yes/No style
+    if (
+      classification === MarketGroupClassification.NUMERIC &&
+      (marketData?.marketGroup?.baseTokenName === 'Yes' ||
+        marketData?.marketGroup?.baseTokenName === 'No')
+    ) {
+      console.log(
+        '[CreateTradeForm] Overriding to Yes/No labels based on marketGroup.baseTokenName despite NUMERIC classification.'
+      );
+      useYesNoLabels = true;
+    }
+
+    const labels = {
+      longLabel: useYesNoLabels ? 'Yes' : 'Long',
+      shortLabel: useYesNoLabels ? 'No' : 'Short',
+    };
+    console.log(
+      '[CreateTradeForm] Derived labels:',
+      labels,
+      'based on classification:',
+      classification,
+      'and marketGroup.baseTokenName:',
+      marketData?.marketGroup?.baseTokenName
+    );
+    return labels;
+  }, [classification, marketData?.marketGroup?.baseTokenName]);
 
   const isChainMismatch = isConnected && currentChainId !== chainId;
 
@@ -353,8 +435,8 @@ export function CreateTradeForm({
             className="mb-4"
           >
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="Long">Long</TabsTrigger>
-              <TabsTrigger value="Short">Short</TabsTrigger>
+              <TabsTrigger value="Long">{longLabel}</TabsTrigger>
+              <TabsTrigger value="Short">{shortLabel}</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -371,12 +453,14 @@ export function CreateTradeForm({
                         placeholder="0.0"
                         type="number"
                         step="any"
-                        className="rounded-r-none"
+                        className={longLabel === 'Yes' ? '' : 'rounded-r-none'}
                         {...field}
                       />
-                      <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
-                        {baseTokenName}
-                      </div>
+                      {longLabel !== 'Yes' && (
+                        <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
+                          {baseTokenName}
+                        </div>
+                      )}
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -467,7 +551,7 @@ export function CreateTradeForm({
                               : 'border-red-500/40 bg-red-500/10 text-red-600'
                           }`}
                         >
-                          {direction}
+                          {direction === 'Long' ? longLabel : shortLabel}
                         </Badge>
                         <NumberDisplay value={sizeInput || '0'} />{' '}
                         <span className="ml-1">{baseTokenName}</span>

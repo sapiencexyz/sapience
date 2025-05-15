@@ -24,6 +24,11 @@ const getEndTimeCounts = (
 export const getMarketGroupClassification = (
   marketGroup: Partial<Pick<MarketGroupType, 'markets'>> // Changed to use imported MarketGroupType
 ): MarketGroupClassification => {
+  console.log(
+    '[getMarketGroupClassification] Input marketGroup:',
+    JSON.parse(JSON.stringify(marketGroup))
+  );
+
   if (
     !marketGroup?.markets?.length // Simplified guard clause
   ) {
@@ -34,13 +39,21 @@ export const getMarketGroupClassification = (
   }
 
   const { markets } = marketGroup;
+  console.log(
+    '[getMarketGroupClassification] markets object:',
+    JSON.parse(JSON.stringify(markets))
+  );
 
   // Check for MULTIPLE_CHOICE if multiple markets share the same endTime
   if (markets.length > 1) {
     const endTimeCounts = getEndTimeCounts(markets);
+    console.log('[getMarketGroupClassification] endTimeCounts:', endTimeCounts);
     for (const count of Array.from(endTimeCounts.values())) {
       // Convert back to array to fix iterator issue
       if (count > 1) {
+        console.log(
+          '[getMarketGroupClassification] Classified as MULTIPLE_CHOICE due to shared endTime.'
+        );
         return MarketGroupClassification.MULTIPLE_CHOICE;
       }
     }
@@ -51,12 +64,22 @@ export const getMarketGroupClassification = (
   // Logic for single market classification (YES_NO or NUMERIC),
   // or fallback if MULTIPLE_CHOICE condition (shared endTime) was not met for multiple markets.
   if (markets.length === 1) {
+    console.log(
+      '[getMarketGroupClassification] Single market detected. market[0]:',
+      JSON.parse(JSON.stringify(markets[0]))
+    );
     // markets[0] is guaranteed to exist here due to the length check and the initial guard clause
     // Ensure markets[0] is not undefined before accessing optionName
     if (markets[0] && markets[0]?.optionName === null) {
+      console.log(
+        '[getMarketGroupClassification] Classified as YES_NO because optionName is null.'
+      );
       return MarketGroupClassification.YES_NO;
     }
     // Single market, optionName is not null (i.e., it has a name or is undefined)
+    console.log(
+      '[getMarketGroupClassification] Classified as NUMERIC (single market, optionName not null).'
+    );
     return MarketGroupClassification.NUMERIC;
   }
 
@@ -65,5 +88,8 @@ export const getMarketGroupClassification = (
   // 1. markets.length > 1, BUT no shared endTime was found (so not MULTIPLE_CHOICE).
   //    In this case, it defaults to NUMERIC.
   // 2. markets.length === 0 (already handled by the guard clause, but as a theoretical fallback path)
+  console.log(
+    '[getMarketGroupClassification] Fallback: Classified as NUMERIC.'
+  );
   return MarketGroupClassification.NUMERIC;
 };

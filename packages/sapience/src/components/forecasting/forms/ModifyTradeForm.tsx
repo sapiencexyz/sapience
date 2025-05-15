@@ -24,6 +24,7 @@ import {
   TooltipTrigger,
 } from '@foil/ui/components/ui/tooltip';
 import { useToast } from '@foil/ui/hooks/use-toast';
+import type { MarketGroupType, MarketType } from '@foil/ui/types'; // Added import
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
@@ -45,6 +46,8 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/numbers';
 import { useForecast } from '~/lib/context/ForecastProvider';
+import { MarketGroupClassification } from '~/lib/types'; // Added import
+import { getMarketGroupClassification } from '~/lib/utils/marketUtils'; // Added import
 
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 
@@ -286,7 +289,8 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   isPermitLoadingPermit, // Destructure props
 }) => {
   const { toast } = useToast();
-  const { baseTokenName, quoteTokenName, marketContractData } = useForecast(); // Get marketContractData
+  const { baseTokenName, quoteTokenName, marketContractData, marketData } =
+    useForecast(); // Get marketContractData and marketData
   const successHandled = useRef(false);
 
   const {
@@ -296,6 +300,51 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     collateralAssetTicker,
     collateralAssetAddress,
   } = marketDetails;
+
+  // Determine market classification
+  const classification = useMemo(() => {
+    let inputForClassifier: Partial<Pick<MarketGroupType, 'markets'>> | null =
+      null;
+
+    if (
+      marketData?.marketGroup?.markets &&
+      marketData.marketGroup.markets.length > 0
+    ) {
+      // Case 1: marketData has a marketGroup with a populated markets array
+      inputForClassifier = marketData.marketGroup;
+    } else if (marketData && typeof marketData.optionName !== 'undefined') {
+      // Case 2: marketData itself looks like a single market (e.g., has optionName)
+      inputForClassifier = { markets: [marketData as MarketType] };
+    }
+
+    if (inputForClassifier) {
+      return getMarketGroupClassification(inputForClassifier);
+    }
+
+    return null;
+  }, [marketData]);
+
+  const { longLabel, shortLabel } = useMemo(() => {
+    let useYesNoLabels =
+      classification === MarketGroupClassification.YES_NO ||
+      classification === MarketGroupClassification.MULTIPLE_CHOICE;
+
+    // If classification is NUMERIC, but the group's baseTokenName suggests Yes/No style
+    if (
+      classification === MarketGroupClassification.NUMERIC &&
+      (marketData?.marketGroup?.baseTokenName === 'Yes' ||
+        marketData?.marketGroup?.baseTokenName === 'No')
+    ) {
+      // Add a console log here if desired for ModifyTradeForm as well
+      useYesNoLabels = true;
+    }
+
+    // Add a console log here if desired for ModifyTradeForm as well
+    return {
+      longLabel: useYesNoLabels ? 'Yes' : 'Long',
+      shortLabel: useYesNoLabels ? 'No' : 'Short',
+    };
+  }, [classification, marketData?.marketGroup?.baseTokenName]); // Add marketData?.marketGroup?.baseTokenName as dependency
 
   // Fetch position data using positionId
   const { data: positionData, refetch: refetchPositionData } = useReadContract({
@@ -671,8 +720,8 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
           className="mb-4"
         >
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="Long">Long</TabsTrigger>
-            <TabsTrigger value="Short">Short</TabsTrigger>
+            <TabsTrigger value="Long">{longLabel}</TabsTrigger>
+            <TabsTrigger value="Short">{shortLabel}</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -690,12 +739,14 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                       placeholder={originalSizeFormatted} // Show current abs size as placeholder
                       type="number"
                       step="any"
-                      className="rounded-r-none"
+                      className={longLabel === 'Yes' ? '' : 'rounded-r-none'} // Conditionally apply rounded-r-none
                       {...field}
                     />
-                    <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
-                      {baseTokenName}
-                    </div>
+                    {longLabel !== 'Yes' && (
+                      <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
+                        {baseTokenName}
+                      </div>
+                    )}
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -776,7 +827,9 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                             : 'border-red-500/40 bg-red-500/10 text-red-600'
                         }`}
                       >
-                        {originalPositionDirection}
+                        {originalPositionDirection === 'Long'
+                          ? longLabel
+                          : shortLabel}
                       </Badge>
                       <NumberDisplay value={originalSizeFormatted} />
                       <span className="ml-1">{baseTokenName}</span>
@@ -791,7 +844,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                               : 'border-red-500/40 bg-red-500/10 text-red-600'
                           }`}
                         >
-                          {direction}
+                          {direction === 'Long' ? longLabel : shortLabel}
                         </Badge>
                       )}
                       <NumberDisplay
