@@ -9,11 +9,8 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
   private startTimestamp?: number;
   private endTimestamp?: number;
 
-  private constructor(resourceSlug?: string, startTimestamp?: number, endTimestamp?: number) {
+  private constructor() {
     super();
-    this.resourceSlug = resourceSlug;
-    this.startTimestamp = startTimestamp;
-    this.endTimestamp = endTimestamp;
 
     // Override the resource price fetching functions to include filtering
     const originalGetResourcePricesCountFn = this.getResourcePricesCountFn;
@@ -45,6 +42,27 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
   }
 
   public async rebuildAllCandles() {
+    this.resourceSlug = undefined;
+    this.startTimestamp = undefined;
+    this.endTimestamp = undefined;
+    await this.commonRebuildCandles();
+  }
+
+  public async rebuildCandlesForResource(resourceSlug: string) {
+    this.resourceSlug = resourceSlug;
+    this.startTimestamp = undefined;
+    this.endTimestamp = undefined;
+    await this.commonRebuildCandles();
+  }
+
+  public async rebuildCandlesForRange(startTimestamp: number, endTimestamp: number) {
+    this.resourceSlug = undefined;
+    this.startTimestamp = startTimestamp;
+    this.endTimestamp = endTimestamp;
+    await this.commonRebuildCandles();
+  }
+
+  private async commonRebuildCandles() {
     log({ message: 'Starting candle rebuild', prefix: CANDLE_CACHE_CONFIG.logPrefix });
 
     // Get updated market groups
@@ -62,17 +80,5 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
     log({ message: 'Finished candle rebuild', prefix: CANDLE_CACHE_CONFIG.logPrefix });
   }
 
-  public async rebuildCandlesForResource(resourceSlug: string) {
-    this.resourceSlug = resourceSlug;
-    await this.rebuildAllCandles();
-  }
 
-  public async rebuildCandlesForMarketGroup(marketGroup: MarketGroup) {
-  }
-
-  public async rebuildCandlesForRange(startTimestamp: number, endTimestamp: number) {
-    this.startTimestamp = startTimestamp;
-    this.endTimestamp = endTimestamp;
-    await this.rebuildAllCandles();
-  }
 }

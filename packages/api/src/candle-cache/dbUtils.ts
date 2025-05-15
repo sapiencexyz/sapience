@@ -12,7 +12,6 @@ import { ReducedMarketPrice } from './types';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES } from './config';
 import { MarketGroup } from 'src/models/MarketGroup';
-// import { CANDLE_CACHE_CONFIG } from './config';
 
 export interface ResourcePriceParams {
   initialTimestamp: number;
