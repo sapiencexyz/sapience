@@ -33,6 +33,7 @@ const GWEI_PER_ETH = 1000000000;
 const RESOURCE_CELESTIA = 'Celestia Blobspace';
 const RESOURCE_SOLANA = 'Solana Fees';
 const RESOURCE_BITCOIN = 'Bitcoin Fees';
+const RESOURCE_BITCOIN_HASH = 'Bitcoin Hashrate';
 const RESOURCE_ETHEREUM = 'Ethereum Gas';
 const RESOURCE_ARBITRUM = 'Arbitrum Gas';
 const RESOURCE_BASE = 'Base Gas';
@@ -154,6 +155,10 @@ const renderPriceDisplay = (
     showTransfer = true;
     // 250 vbytes * sats per vbyte
     transferMultiplier = 250;
+  } else if (resourceName === RESOURCE_BITCOIN_HASH) {
+    unit = 'sats/EH';
+    precision = 4;
+    cryptoKey = CRYPTO_BTC;
   } else if ([RESOURCE_ARBITRUM, RESOURCE_BASE].includes(resourceName)) {
     unit = 'gwei';
     precision = 4;
@@ -241,6 +246,9 @@ const getResourceUnit = (resourceName: string): string => {
   }
   if (resourceName === RESOURCE_BITCOIN) {
     return 'sats';
+  }
+  if (resourceName === RESOURCE_BITCOIN_HASH) {
+    return 'sats/EH';
   }
   return 'gwei';
 };
@@ -358,6 +366,10 @@ const ResourceContent = ({ id }: ResourceContentProps) => {
                           cryptoKey = CRYPTO_BTC;
                           showTransfer = true;
                           transferMultiplier = 250; // 250 vbytes * sats per vbyte
+                        } else if (resourceName === RESOURCE_BITCOIN_HASH) {
+                          cryptoKey = CRYPTO_BTC;
+                          transferMultiplier = 1; // 1 sats per EH
+                          decimalPlaces = 4;
                         } else if (
                           [RESOURCE_ARBITRUM, RESOURCE_BASE].includes(
                             resourceName

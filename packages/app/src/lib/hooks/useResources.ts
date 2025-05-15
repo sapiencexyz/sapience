@@ -41,14 +41,16 @@ export interface Resource {
   category: Category;
 }
 
+const RESOURCE_BITCOIN_HASH_SLUG = 'bitcoin-hashrate';
+
 const LATEST_RESOURCE_PRICE_QUERY = gql`
-  query GetLatestResourcePrice($slug: String!) {
-    resourceCandles(
-      slug: $slug
-      from: ${Math.floor(Date.now() / 1000) - 300}  # Last 5 minutes
-      to: ${Math.floor(Date.now() / 1000)}
-      interval: 60  # 1 minute intervals
-    ) {
+  query GetLatestResourcePrice(
+    $slug: String!
+    $from: Int!
+    $to: Int!
+    $interval: Int!
+  ) {
+    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
       timestamp
       close
     }
@@ -163,7 +165,9 @@ export const useLatestResourcePrice = (slug: string) => {
         query: print(LATEST_RESOURCE_PRICE_QUERY),
         variables: {
           slug,
-          from: Math.floor(Date.now() / 1000) - 300, // Last 5 minutes
+          from:
+            Math.floor(Date.now() / 1000) -
+            (slug === RESOURCE_BITCOIN_HASH_SLUG ? 60 * 60 : 5 * 60), // last 24 hours vs last 5 minutes
           to: Math.floor(Date.now() / 1000),
           interval: 60, // 1 minute intervals
         },
