@@ -8,7 +8,7 @@ import { MarketGroup } from '../../models/MarketGroup';
 import { Market } from '../../models/Market';
 import { CandleType } from '../types';
 import { ResourcePerformanceManager } from 'src/performance';
-import { CandleCacheRetrieve } from 'src/candle-cache/candleCacheRetrieve';
+import { CandleCacheRetriever } from 'src/candle-cache/candleCacheRetriever';
 import { CandleAndTimestampType } from '../types/CandleAndTimestampType';
 
 interface PricePoint {
@@ -409,7 +409,7 @@ export class CandleResolver {
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleAndTimestampType> {
-    const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
+    const candleCacheRetrieve = CandleCacheRetriever.getInstance();
     const { data, lastUpdateTimestamp } =
       await candleCacheRetrieve.getResourcePrices(slug, from, to, interval);
     return { data, lastUpdateTimestamp };
@@ -423,7 +423,7 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number,
     @Arg('trailingAvgTime', () => Int) trailingAvgTime: number
   ): Promise<CandleAndTimestampType> {
-    const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
+    const candleCacheRetrieve = CandleCacheRetriever.getInstance();
     const { data, lastUpdateTimestamp } =
       await candleCacheRetrieve.getTrailingAvgPrices(
         slug,
@@ -444,7 +444,7 @@ export class CandleResolver {
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleAndTimestampType> {
-    const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
+    const candleCacheRetrieve = CandleCacheRetriever.getInstance();
     const { data, lastUpdateTimestamp } =
       await candleCacheRetrieve.getIndexPrices(
         from,
@@ -466,7 +466,7 @@ export class CandleResolver {
     @Arg('to', () => Int) to: number,
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleAndTimestampType> {
-    const candleCacheRetrieve = CandleCacheRetrieve.getInstance();
+    const candleCacheRetrieve = CandleCacheRetriever.getInstance();
     const { data, lastUpdateTimestamp } =
       await candleCacheRetrieve.getMarketPrices(
         from,

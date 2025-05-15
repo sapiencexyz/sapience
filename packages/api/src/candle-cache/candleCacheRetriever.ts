@@ -5,8 +5,8 @@ import { getCandles, getMarketGroups } from './dbUtils';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { MarketInfoStore } from './marketInfoStore';
 
-export class CandleCacheRetrieve {
-  private static instance: CandleCacheRetrieve;
+export class CandleCacheRetriever {
+  private static instance: CandleCacheRetriever;
   private marketInfoStore: MarketInfoStore;
   private lastUpdateTimestamp: number;
 
@@ -17,7 +17,7 @@ export class CandleCacheRetrieve {
 
   public static getInstance() {
     if (!this.instance) {
-      this.instance = new CandleCacheRetrieve();
+      this.instance = new CandleCacheRetriever();
     }
     return this.instance;
   }
@@ -47,6 +47,7 @@ export class CandleCacheRetrieve {
       candles,
       isCumulative: false,
       fillMissingCandles: false,
+      fillInitialCandlesWithZeroes: true,
     });
   }
 
@@ -89,6 +90,7 @@ export class CandleCacheRetrieve {
       candles,
       isCumulative: marketInfo.isCumulative,
       fillMissingCandles: false,
+      fillInitialCandlesWithZeroes: false,
     });
   }
 
@@ -114,6 +116,7 @@ export class CandleCacheRetrieve {
       candles,
       isCumulative: false,
       fillMissingCandles: false,
+      fillInitialCandlesWithZeroes: true,
     });
   }
 
@@ -150,6 +153,7 @@ export class CandleCacheRetrieve {
       candles,
       isCumulative: marketInfo.isCumulative,
       fillMissingCandles: true,
+      fillInitialCandlesWithZeroes: false,
     });
   }
 
@@ -165,113 +169,88 @@ export class CandleCacheRetrieve {
     candles,
     isCumulative,
     fillMissingCandles,
+    fillInitialCandlesWithZeroes
   }: {
     candles: CacheCandle[];
     isCumulative: boolean;
     fillMissingCandles: boolean;
+    fillInitialCandlesWithZeroes: boolean;
   }): Promise<{ data: ResponseCandleData[]; lastUpdateTimestamp: number }> {
     if (!candles || candles.length === 0) {
       return { data: [], lastUpdateTimestamp: 0 };
     }
 
+    console.log(`LLL 01: ${candles[0].timestamp}, ${candles[candles.length - 1].timestamp}, ${candles[0].interval}, ${candles.length} ${JSON.stringify(candles[0])}`);
+    console.log(`LLL 02: cummulative: ${isCumulative}, fillMissingCandles: ${fillMissingCandles}, fillInitialCandlesWithZeroes: ${fillInitialCandlesWithZeroes}`);
     const timeWindow = getTimeWindow(
       candles[0].timestamp,
       candles[candles.length - 1].timestamp,
       candles[0].interval
     );
-    const outputEntries: ResponseCandleData[] = [];
+    console.log(`LLL 03: ${timeWindow.from}, ${timeWindow.to}`);
 
-    // Create empty entries for the entire time window
-    for (let t = timeWindow.from; t < timeWindow.to; t += candles[0].interval) {
-      outputEntries.push({
-        timestamp: t,
-        open: '0',
-        high: '0',
-        low: '0',
-        close: '0',
-      });
-    }
+    // First, create entries only for the candles we have
+    const outputEntries: ResponseCandleData[] = candles.map(candle => ({
+      timestamp: candle.timestamp,
+      open: isCumulative ? candle.sumUsed : candle.open,
+      high: isCumulative ? candle.sumUsed : candle.high,
+      low: isCumulative ? candle.sumUsed : candle.low,
+      close: isCumulative ? candle.sumUsed : candle.close,
+    }));
 
-    let outputIdx = 0;
-    let candlesIdx = 0;
-    let lastClose = '0';
-    let lastKnownPrice = '0';
-    const candlesLength = candles.length;
+    console.log(`LLL 04: ${outputEntries.length}`);
 
-    if (candlesLength === 0) {
-      return { data: outputEntries, lastUpdateTimestamp: 0 };
-    }
+    // If we need to fill missing candles or initial zeroes
+    if (fillMissingCandles || fillInitialCandlesWithZeroes) {
+      const filledEntries: ResponseCandleData[] = [];
+      let lastKnownPrice = '0';
+      let outputEntriesIdx = 0;
 
-    let nextCandleTimestamp = candles[candlesIdx].timestamp;
-
-    while (outputIdx < outputEntries.length) {
-      if (outputEntries[outputIdx].timestamp < nextCandleTimestamp) {
-        // Fill with last known price if fillMissingCandles is true, otherwise keep zeros
-        if (fillMissingCandles) {
-          outputEntries[outputIdx].close = lastClose;
-          outputEntries[outputIdx].high = lastClose;
-          outputEntries[outputIdx].low = lastClose;
-          outputEntries[outputIdx].open = lastClose;
+      // Add initial zero entries if needed
+      if (fillInitialCandlesWithZeroes) {
+        for (let t = timeWindow.from; t < candles[0].timestamp; t += candles[0].interval) {
+          filledEntries.push({
+            timestamp: t,
+            open: '0',
+            high: '0',
+            low: '0',
+            close: '0',
+          });
         }
-
-        outputIdx++;
-        continue;
       }
 
-      if (outputEntries[outputIdx].timestamp === nextCandleTimestamp) {
-        // Use the actual candle data
-        const candle = candles[candlesIdx];
-        lastKnownPrice = isCumulative ? candle.sumUsed : candle.close;
-        outputEntries[outputIdx] = {
-          timestamp: candle.timestamp,
-          open: isCumulative ? candle.sumUsed : candle.open,
-          high: isCumulative ? candle.sumUsed : candle.high,
-          low: isCumulative ? candle.sumUsed : candle.low,
-          close: isCumulative ? candle.sumUsed : candle.close,
-        };
-        lastClose = isCumulative ? candle.sumUsed : candle.close;
-        candlesIdx++;
-        nextCandleTimestamp =
-          candlesIdx < candlesLength
-            ? candles[candlesIdx].timestamp
-            : timeWindow.to + 1; // Set to future if no more candles
-
-        outputIdx++;
-        continue;
-      }
-
-      if (outputEntries[outputIdx].timestamp > nextCandleTimestamp) {
-        // Move through candles until we find one that matches or is after the current output timestamp
-        while (
-          nextCandleTimestamp < outputEntries[outputIdx].timestamp &&
-          candlesIdx < candlesLength
-        ) {
-          nextCandleTimestamp = candles[candlesIdx].timestamp;
-          lastKnownPrice = isCumulative
-            ? candles[candlesIdx].sumUsed
-            : candles[candlesIdx].close;
-          candlesIdx++;
+      // Process all timestamps in the window
+      for (let t = fillInitialCandlesWithZeroes ? timeWindow.from : candles[0].timestamp; 
+           t < timeWindow.to; 
+           t += candles[0].interval) {
+        
+        // Move pointer forward until we find a matching or later timestamp
+        while (outputEntriesIdx < outputEntries.length && 
+               outputEntries[outputEntriesIdx].timestamp < t) {
+          outputEntriesIdx++;
         }
 
-        if (nextCandleTimestamp === outputEntries[outputIdx].timestamp) {
-          // Found a matching candle
-          const candle = candles[candlesIdx - 1];
-          outputEntries[outputIdx] = {
-            timestamp: candle.timestamp,
-            open: isCumulative ? candle.sumUsed : candle.open,
-            high: isCumulative ? candle.sumUsed : candle.high,
-            low: isCumulative ? candle.sumUsed : candle.low,
-            close: isCumulative ? candle.sumUsed : candle.close,
-          };
+        if (outputEntriesIdx < outputEntries.length && 
+            outputEntries[outputEntriesIdx].timestamp === t) {
+          // Use the actual candle data
+          filledEntries.push(outputEntries[outputEntriesIdx]);
+          lastKnownPrice = outputEntries[outputEntriesIdx].close;
         } else if (fillMissingCandles) {
           // Fill with last known price if fillMissingCandles is true
-          outputEntries[outputIdx].close = lastKnownPrice;
-          outputEntries[outputIdx].high = lastKnownPrice;
-          outputEntries[outputIdx].low = lastKnownPrice;
-          outputEntries[outputIdx].open = lastKnownPrice;
+          filledEntries.push({
+            timestamp: t,
+            open: lastKnownPrice,
+            high: lastKnownPrice,
+            low: lastKnownPrice,
+            close: lastKnownPrice,
+          });
         }
-        outputIdx++;
       }
+
+      return {
+        data: filledEntries,
+        lastUpdateTimestamp: candles[candles.length - 1].lastUpdatedTimestamp,
+      };
     }
 
     return {
