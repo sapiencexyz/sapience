@@ -19,7 +19,10 @@ import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { usePositions } from '~/hooks/graphql/usePositions';
-import { ForecastProvider, useForecast } from '~/lib/context/ForecastProvider';
+import {
+  MarketPageProvider,
+  useMarketPage,
+} from '~/lib/context/MarketPageProvider';
 import { parseUrlParameter } from '~/lib/utils/util';
 
 // Import hooks for OrderBook data fetching
@@ -112,7 +115,7 @@ const ForecastContent = () => {
     tickSpacing,
     baseTokenName,
     quoteTokenName,
-  } = useForecast();
+  } = useMarketPage();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
     TimeInterval.I4H
@@ -460,7 +463,7 @@ const ForecastContent = () => {
 };
 
 // Wrapper component that provides the forecast context
-const ForecastingDetailPage = () => {
+const MarketPage = () => {
   const params = useParams();
   const marketId = params.marketId as string;
   const chainParam = params.chainShortName as string;
@@ -468,10 +471,10 @@ const ForecastingDetailPage = () => {
   const { chainId, marketAddress } = parseUrlParameter(chainParam);
 
   return (
-    <ForecastProvider pageDetails={{ chainId, marketAddress, marketId }}>
+    <MarketPageProvider pageDetails={{ chainId, marketAddress, marketId }}>
       <ForecastContent />
-    </ForecastProvider>
+    </MarketPageProvider>
   );
 };
 
-export default ForecastingDetailPage;
+export default MarketPage;

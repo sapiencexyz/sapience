@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useTokenBalance } from '~/hooks/contract';
-import { useForecast } from '~/lib/context/ForecastProvider';
+import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { useSapience } from '~/lib/context/SapienceProvider';
 
 import { CreateLiquidityForm, ModifyLiquidityForm } from './forms';
@@ -41,7 +41,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
     marketGroupParams,
     getPositionById,
     refetchPositions,
-  } = useForecast();
+  } = useMarketPage();
 
   // Move useTokenBalance hook here
   const { balance: walletBalance } = useTokenBalance({
