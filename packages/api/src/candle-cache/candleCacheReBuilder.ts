@@ -1,12 +1,40 @@
+import { MarketGroup } from "src/models/MarketGroup";
 import { CANDLE_CACHE_CONFIG } from "./config";
+import { log } from 'src/utils/logs';
+import { BaseCandleCacheBuilder, ResourcePriceParams } from './baseCandleCacheBuilder';
 
-export class CandleCacheReBuilder {
+export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
   private static instance: CandleCacheReBuilder;
+  private resourceSlug?: string;
+  private startTimestamp?: number;
+  private endTimestamp?: number;
 
-  private config: typeof CANDLE_CACHE_CONFIG;
+  private constructor(resourceSlug?: string, startTimestamp?: number, endTimestamp?: number) {
+    super();
+    this.resourceSlug = resourceSlug;
+    this.startTimestamp = startTimestamp;
+    this.endTimestamp = endTimestamp;
 
-  private constructor() {
-    this.config = CANDLE_CACHE_CONFIG;
+    // Override the resource price fetching functions to include filtering
+    const originalGetResourcePricesCountFn = this.getResourcePricesCountFn;
+    this.getResourcePricesCountFn = async (params: ResourcePriceParams) => {
+      return originalGetResourcePricesCountFn({
+        ...params,
+        resourceSlug: this.resourceSlug || params.resourceSlug,
+        startTimestamp: this.startTimestamp || params.startTimestamp,
+        endTimestamp: this.endTimestamp || params.endTimestamp,
+      });
+    };
+
+    const originalGetResourcePricesFn = this.getResourcePricesFn;
+    this.getResourcePricesFn = async (params: ResourcePriceParams) => {
+      return originalGetResourcePricesFn({
+        ...params,
+        resourceSlug: this.resourceSlug || params.resourceSlug,
+        startTimestamp: this.startTimestamp || params.startTimestamp,
+        endTimestamp: this.endTimestamp || params.endTimestamp,
+      });
+    };
   }
 
   public static getInstance() {
@@ -16,30 +44,35 @@ export class CandleCacheReBuilder {
     return this.instance;
   }
 
-  public async updateCandlesFromMissing() {
+  public async rebuildAllCandles() {
+    log({ message: 'Starting candle rebuild', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+
+    // Get updated market groups
     await this.getUpdatedMarketsAndMarketGroups();
-    await this.processResourcePrices();
-    await this.processMarketPrices();
+
+    // Process all resource prices
+    await this.processResourcePrices(0);
+
+    // Process all market prices
+    await this.processMarketPrices(0);
+
+    // Save all runtime candles
+    await this.saveAllRuntimeCandles();
+
+    log({ message: 'Finished candle rebuild', prefix: CANDLE_CACHE_CONFIG.logPrefix });
   }
 
-  private async getUpdatedMarketsAndMarketGroups() {
-    // 1. get all market groups
-    // 2. check if there are new market groups and prepare them for processing
-    // 3. get all markets
-    // 4. check if there are new markets and prepare them for processing
+  public async rebuildCandlesForResource(resourceSlug: string) {
+    this.resourceSlug = resourceSlug;
+    await this.rebuildAllCandles();
   }
 
-  private async processResourcePrices() {
-    // 1. get the last processed resource price
-    // 2. process by batches from last processed resource price to the latest resource price
-    // 3. save the candles to the database
-    // 4. update the last processed resource price
+  public async rebuildCandlesForMarketGroup(marketGroup: MarketGroup) {
   }
 
-  private async processMarketPrices() {
-    // 1. get the last processed market price
-    // 2. process by batches from last processed market price to the latest market price
-    // 3. save the candles to the database
-    // 4. update the last processed market price
+  public async rebuildCandlesForRange(startTimestamp: number, endTimestamp: number) {
+    this.startTimestamp = startTimestamp;
+    this.endTimestamp = endTimestamp;
+    await this.rebuildAllCandles();
   }
 }

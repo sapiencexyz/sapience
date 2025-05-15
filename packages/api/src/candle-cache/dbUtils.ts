@@ -11,8 +11,16 @@ import { FindOptionsWhere, MoreThan, Between } from 'typeorm';
 import { ReducedMarketPrice } from './types';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES } from './config';
-// import { log } from 'src/utils/logs';
+import { MarketGroup } from 'src/models/MarketGroup';
 // import { CANDLE_CACHE_CONFIG } from './config';
+
+export interface ResourcePriceParams {
+  initialTimestamp: number;
+  quantity: number;
+  resourceSlug?: string;
+  startTimestamp?: number;
+  endTimestamp?: number;
+}
 
 export async function getParam(paramName: string) {
   const config = await cacheParamRepository.findOne({
@@ -35,27 +43,59 @@ export async function setParam(paramName: string, paramValue: number) {
   await cacheParamRepository.save(config);
 }
 
-export async function getResourcePrices({
-  initialTimestamp,
-  quantity,
-}: {
-  initialTimestamp?: number;
-  quantity: number;
-}): Promise<{ prices: ResourcePrice[]; hasMore: boolean }> {
-  const resourcePrices = await resourcePriceRepository.find({
-    where: {
-      timestamp: MoreThan(initialTimestamp || 0),
-    },
-    order: {
-      timestamp: 'ASC',
-    },
-    relations: ['resource'],
-    take: quantity,
-  });
-  return {
-    prices: resourcePrices,
-    hasMore: resourcePrices.length === quantity,
+export async function getResourcePricesCount(params: ResourcePriceParams): Promise<number> {
+  const where: FindOptionsWhere<ResourcePrice> = {
+    timestamp: MoreThan(params.initialTimestamp),
   };
+
+  if (params.resourceSlug) {
+    where.resource = { slug: params.resourceSlug };
+  }
+
+  if (params.startTimestamp && params.endTimestamp) {
+    where.timestamp = Between(params.startTimestamp, params.endTimestamp);
+  } else if (params.startTimestamp) {
+    where.timestamp = MoreThan(params.startTimestamp);
+  } else if (params.endTimestamp) {
+    where.timestamp = Between(params.initialTimestamp, params.endTimestamp);
+  }
+
+  return resourcePriceRepository.count({
+    where,
+    relations: ['resource'],
+  });
+}
+
+export async function getResourcePrices(params: ResourcePriceParams): Promise<{ prices: ResourcePrice[]; hasMore: boolean }> {
+  const where: FindOptionsWhere<ResourcePrice> = {
+    timestamp: MoreThan(params.initialTimestamp),
+  };
+
+  if (params.resourceSlug) {
+    where.resource = { slug: params.resourceSlug };
+  }
+
+  if (params.startTimestamp && params.endTimestamp) {
+    where.timestamp = Between(params.startTimestamp, params.endTimestamp);
+  } else if (params.startTimestamp) {
+    where.timestamp = MoreThan(params.startTimestamp);
+  } else if (params.endTimestamp) {
+    where.timestamp = Between(params.initialTimestamp, params.endTimestamp);
+  }
+
+  const prices = await resourcePriceRepository.find({
+    where,
+    order: { timestamp: 'ASC' },
+    relations: ['resource'],
+    take: params.quantity + 1,
+  });
+
+  const hasMore = prices.length > params.quantity;
+  if (hasMore) {
+    prices.pop();
+  }
+
+  return { prices, hasMore };
 }
 
 export async function getMarketPrices({
@@ -75,9 +115,6 @@ export async function getMarketPrices({
     take: quantity,
     relations: [
       'transaction',
-      // 'transaction.event',
-      // 'transaction.event.marketGroup',
-      // 'transaction.event.marketGroup.resource',
       'transaction.position',
       'transaction.position.market',
     ],
@@ -128,12 +165,10 @@ export async function getLatestCandle({
   return candle;
 }
 
-export async function getMarketGroups() {
-  return await marketGroupRepository.find(
-    {
-      relations: ['resource', 'markets'],
-    }
-  );
+export async function getMarketGroups(): Promise<MarketGroup[]> {
+  return marketGroupRepository.find({
+    relations: ['markets', 'markets.resource'],
+  });
 }
 
 export async function getLastCandleFromDb({
@@ -149,10 +184,6 @@ export async function getLastCandleFromDb({
   resourceSlug?: string;
   trailingAvgTime?: number;
 }) {
-  // log({
-  //   message: `Getting last candle for ${candleType} ${interval} ${marketIdx} ${resourceSlug} ${trailingAvgTime}`,
-  //   prefix: 'getLatestCandleFromDb',
-  // });
   const where: FindOptionsWhere<CacheCandle> = { candleType, interval };
   if (marketIdx) {
     where.marketIdx = marketIdx;
@@ -172,12 +203,6 @@ export async function getLastCandleFromDb({
 }
 
 export async function saveCandle(candle: CacheCandle) {
-  // if( candle.interval >= 1800) {
-  //   log({
-  //     message: `Saving candle ${candle.candleType} ${candle.interval} ${candle.timestamp} ${candle.trailingAvgTime} ${candle.resourceSlug} ${candle.marketIdx}`,
-  //     prefix: CANDLE_CACHE_CONFIG.logPrefix,
-  //   });
-  // }
   await cacheCandleRepository.save(candle);
 }
 
@@ -208,31 +233,17 @@ export async function getCandles({
   } else if(candleType == CANDLE_TYPES.MARKET) {
     where.marketIdx = marketIdx;
   } else if(candleType == CANDLE_TYPES.TRAILING_AVG) {
-    where.trailingAvgTime = trailingAvgTime;
     where.resourceSlug = resourceId;
-  } else if(candleType == CANDLE_TYPES.INDEX) {
-    where.marketIdx = marketIdx;
-  } else {
-    throw new Error(`Invalid candle type: ${candleType}`);
+    where.trailingAvgTime = trailingAvgTime;
   }
-
-  const candles = await cacheCandleRepository.find({
+  return cacheCandleRepository.find({
     where,
     order: { timestamp: 'ASC' },
   });
-  return candles;
 }
 
-export async function getResourcePricesCount(initialTimestamp?: number): Promise<number> {
-  return await resourcePriceRepository.count({
-    where: {
-      timestamp: MoreThan(initialTimestamp || 0),
-    },
-  });
-}
-
-export async function getMarketPricesCount(initialTimestamp?: number): Promise<number> {
-  return await marketPriceRepository.count({
+export async function getMarketPricesCount(initialTimestamp: number): Promise<number> {
+  return marketPriceRepository.count({
     where: {
       timestamp: MoreThan(initialTimestamp?.toString() ?? '0'),
     },
