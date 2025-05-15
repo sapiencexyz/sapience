@@ -97,11 +97,6 @@ export class TrailingAvgHistoryStore {
     return sums;
   }
 
-  // Get all resource slugs that have history
-  getAllResourceSlugs(): string[] {
-    return Array.from(this.history.keys());
-  }
-
   private cleanupOldPrices(resourceSlug: string): void {
     const resourceHistory = this.history.get(resourceSlug);
     if (!resourceHistory) {
@@ -114,8 +109,8 @@ export class TrailingAvgHistoryStore {
       earliestPointer = Math.min(earliestPointer, pointer);
     }
 
-    // Only clean up if we have more than 10000 unused items
-    if (earliestPointer > 10000) {
+    // Only clean up if we have more than 100_000 unused items
+    if (earliestPointer > 100_000) {
       resourceHistory.prices = resourceHistory.prices.slice(earliestPointer);
 
       // Adjust all pointers
