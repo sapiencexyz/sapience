@@ -167,7 +167,7 @@ export const useLatestResourcePrice = (slug: string) => {
           slug,
           from:
             Math.floor(Date.now() / 1000) -
-            (slug === RESOURCE_BITCOIN_HASH_SLUG ? 2 * 60 * 60 : 5 * 60), // last 24 hours vs last 5 minutes
+            (slug === RESOURCE_BITCOIN_HASH_SLUG ? 60 * 60 : 5 * 60), // last 24 hours vs last 5 minutes
           to: Math.floor(Date.now() / 1000),
           interval: 60, // 1 minute intervals
         },
