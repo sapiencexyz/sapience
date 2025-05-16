@@ -193,7 +193,11 @@ export default function NumericWagerForm({
           quoteTokenName={marketGroupData.quoteTokenName || ''}
         />
         <div>
-          <WagerInput />
+          <WagerInput
+            collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
+            collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
+            chainId={marketGroupData.chainId}
+          />
 
           {quoteError && (
             <p className="text-destructive text-sm">{quoteError}</p>

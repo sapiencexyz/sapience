@@ -10,12 +10,15 @@ import { useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 
-import { useMarketGroupPage } from '~/lib/context/MarketGroupPageProvider';
+import { getChainShortName } from '~/lib/utils/util';
 
 import CollateralBalance from './CollateralBalance';
 
 interface WagerInputProps {
   name?: string;
+  collateralSymbol: string;
+  collateralAddress: `0x${string}`;
+  chainId: number;
 }
 
 // Define the wager schema that will be used across all forms
@@ -67,7 +70,12 @@ function SUsdsHelp() {
   );
 }
 
-export function WagerInput({ name = 'wagerAmount' }: WagerInputProps) {
+export function WagerInput({
+  name = 'wagerAmount',
+  collateralSymbol,
+  collateralAddress,
+  chainId,
+}: WagerInputProps) {
   const {
     register,
     formState: { errors },
@@ -77,12 +85,7 @@ export function WagerInput({ name = 'wagerAmount' }: WagerInputProps) {
     trigger,
     setValue,
   } = useFormContext();
-  const { chainShortName, marketGroupData, chainId } = useMarketGroupPage();
-
-  const collateralSymbol = marketGroupData?.collateralSymbol || '';
-  const collateralAddress = marketGroupData?.collateralAsset as
-    | `0x${string}`
-    | undefined;
+  const chainShortName = getChainShortName(chainId);
 
   // Validate the wager amount independently using the schema
   useEffect(() => {
