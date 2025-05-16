@@ -1,4 +1,4 @@
-import { getParam, setParam } from './dbUtils';
+import { getParam } from './dbUtils';
 import { CANDLE_CACHE_CONFIG } from './config';
 import { log } from 'src/utils/logs';
 import { BaseCandleCacheBuilder } from './baseCandleCacheBuilder';
@@ -22,9 +22,7 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
       message: 'step 0: hard refresh if needed',
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
-    const hardRefresh = await getParam(
-      CANDLE_CACHE_CONFIG.hardRefresh
-    );
+    const hardRefresh = await getParam(CANDLE_CACHE_CONFIG.hardRefresh);
 
     if (hardRefresh && hardRefresh > 0) {
       log({
@@ -33,7 +31,6 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
         indent: 2,
       });
       await this.hardRefresh();
-      await setParam(CANDLE_CACHE_CONFIG.hardRefresh, 0);
       log({
         message: 'hard refresh done',
         prefix: CANDLE_CACHE_CONFIG.logPrefix,

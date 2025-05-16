@@ -283,6 +283,9 @@ export abstract class BaseCandleCacheBuilder {
 
   protected async hardRefresh() {
     await truncateCandlesTable();
+    await setParam(CANDLE_CACHE_CONFIG.hardRefresh, 0);
+    await setParam(CANDLE_CACHE_CONFIG.lastProcessedResourcePrice, 0);
+    await setParam(CANDLE_CACHE_CONFIG.lastProcessedMarketPrice, 0);
 
     this.runtimeCandles = new RuntimeCandleStore();
     this.trailingAvgHistory = new TrailingAvgHistoryStore();
