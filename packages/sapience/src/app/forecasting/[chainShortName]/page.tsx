@@ -81,7 +81,7 @@ const ForecastingForm = ({
   permitData: { permitted: boolean };
   onWagerSuccess: (txnHash: string) => void;
 }) => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('predict');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('wager');
 
   // Check if market is active (not expired or settled)
   const isActive = useMemo(() => {
@@ -119,17 +119,6 @@ const ForecastingForm = ({
           <button
             type="button"
             className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-              activeTab === 'predict'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground'
-            }`}
-            onClick={() => setActiveTab('predict')}
-          >
-            Predict
-          </button>
-          <button
-            type="button"
-            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
               activeTab === 'wager'
                 ? 'border-b-2 border-primary text-primary'
                 : 'text-muted-foreground'
@@ -137,6 +126,17 @@ const ForecastingForm = ({
             onClick={() => setActiveTab('wager')}
           >
             Wager
+          </button>
+          <button
+            type="button"
+            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+              activeTab === 'predict'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => setActiveTab('predict')}
+          >
+            Predict
           </button>
         </div>
 
