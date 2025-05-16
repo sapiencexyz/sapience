@@ -2,6 +2,7 @@
 
 import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
 import { Button } from '@foil/ui/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
 import type { MarketType as GqlMarketType } from '@foil/ui/types/graphql';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,9 +24,8 @@ import {
   MarketPageProvider,
   useMarketPage,
 } from '~/lib/context/MarketPageProvider';
+import { MarketGroupClassification } from '~/lib/types';
 import { parseUrlParameter } from '~/lib/utils/util';
-
-// Import hooks for OrderBook data fetching
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -115,6 +115,7 @@ const ForecastContent = () => {
     tickSpacing,
     baseTokenName,
     quoteTokenName,
+    marketClassification,
   } = useMarketPage();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
@@ -219,6 +220,51 @@ const ForecastContent = () => {
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-32">
       <div className="container mx-auto max-w-6xl flex flex-col">
         <div className="flex flex-col px-4 md:px-3 flex-1">
+          <div>
+            {marketClassification ===
+              MarketGroupClassification.MULTIPLE_CHOICE &&
+              marketData?.marketGroup?.markets &&
+              marketData.marketGroup.markets.length > 1 && (
+                <div className="mb-6">
+                  <Tabs
+                    defaultValue={
+                      numericMarketId !== null
+                        ? String(numericMarketId)
+                        : undefined
+                    }
+                    onValueChange={(value) => {
+                      router.push(`/forecasting/${chainShortName}/${value}`);
+                    }}
+                  >
+                    <TabsList className="gap-1 py-6">
+                      {marketData.marketGroup.markets
+                        .filter(
+                          (
+                            market // market.id is string, numericMarketId is number | null, market.marketId is number
+                          ) =>
+                            market.endTimestamp &&
+                            market.endTimestamp * 1000 > Date.now()
+                        )
+                        .map((market) => {
+                          const buttonText =
+                            market.optionName ||
+                            market.question ||
+                            `Market ${market.marketId}`;
+                          return (
+                            <TabsTrigger
+                              key={market.id}
+                              value={String(market.marketId)}
+                              className="py-2.5 px-4 whitespace-nowrap flex-shrink-0 data-[state=active]:shadow-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                            >
+                              {buttonText}
+                            </TabsTrigger>
+                          );
+                        })}
+                    </TabsList>
+                  </Tabs>
+                </div>
+              )}
+          </div>
           {displayQuestion && (
             <h1 className="text-2xl md:text-4xl font-normal mb-2 leading-tight">
               {displayQuestion}
@@ -360,7 +406,7 @@ const ForecastContent = () => {
                           className={`flex-1 px-4 py-2 text-base font-medium text-center ${
                             activeFormTab === 'trade'
                               ? 'border-b-2 border-primary text-primary'
-                              : 'text-muted-foreground'
+                              : 'text-muted-foreground hover:bg-muted/40'
                           }`}
                           onClick={() => setActiveFormTab('trade')}
                         >
@@ -371,7 +417,7 @@ const ForecastContent = () => {
                           className={`flex-1 px-4 py-2 text-base font-medium text-center ${
                             activeFormTab === 'liquidity'
                               ? 'border-b-2 border-primary text-primary'
-                              : 'text-muted-foreground'
+                              : 'text-muted-foreground hover:bg-muted/40'
                           }`}
                           onClick={() => setActiveFormTab('liquidity')}
                         >

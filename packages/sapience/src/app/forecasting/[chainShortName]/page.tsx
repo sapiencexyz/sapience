@@ -24,7 +24,7 @@ import {
   MarketGroupPageProvider,
   useMarketGroupPage,
 } from '~/lib/context/MarketGroupPageProvider';
-import { MarketGroupClassification } from '~/lib/types';
+import type { MarketGroupClassification } from '~/lib/types';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 
 export type ActiveTab = 'predict' | 'wager';
@@ -294,26 +294,13 @@ const MarketGroupPageContent = () => {
             <div>{/* placeholder */}</div>
             {/* Advanced View button (Right Aligned) */}
             <div>
-              {activeMarkets.length > 0 &&
-                (marketClassification ===
-                MarketGroupClassification.MULTIPLE_CHOICE ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowMarketSelector(true)}
-                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
-                  >
-                    ADVANCED VIEW
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                ) : (
-                  <Link
-                    href={`${pathname}/${activeMarkets[0].marketId}`}
-                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
-                  >
-                    ADVANCED VIEW
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                ))}
+              <Link
+                href={`${pathname}/${activeMarkets[0]?.marketId}`}
+                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
+              >
+                ADVANCED VIEW
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
 
