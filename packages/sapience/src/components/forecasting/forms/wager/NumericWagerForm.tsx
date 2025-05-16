@@ -194,7 +194,9 @@ export default function NumericWagerForm({
         />
         <div>
           <WagerInput
-            collateralSymbol={marketGroupData?.collateralSymbol || 'Tokens'}
+            collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
+            collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
+            chainId={marketGroupData.chainId}
           />
 
           {quoteError && (
