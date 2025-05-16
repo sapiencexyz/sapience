@@ -14,7 +14,7 @@ import { ChevronDown } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';
 
-import { useForecast } from '~/lib/context/ForecastProvider';
+import { useMarketPage } from '~/lib/context/MarketPageProvider';
 
 interface PositionSelectorProps {}
 
@@ -23,7 +23,7 @@ const PositionSelector: React.FC<PositionSelectorProps> = () => {
   const params = useParams();
   const searchParams = useSearchParams();
   const { lpPositionsArray, traderPositionsArray, getPositionById } =
-    useForecast();
+    useMarketPage();
 
   const currentPositionId = searchParams.get('positionId');
   const selectedPosition = currentPositionId

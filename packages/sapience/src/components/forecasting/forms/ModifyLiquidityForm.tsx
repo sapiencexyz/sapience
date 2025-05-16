@@ -33,7 +33,7 @@ import {
   usePositionLiquidity,
 } from '~/hooks/contract';
 import { useModifyLP } from '~/hooks/contract/useModifyLP';
-import { useForecast } from '~/lib/context/ForecastProvider';
+import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
 import type { LiquidityFormMarketDetails } from './CreateLiquidityForm';
@@ -71,7 +71,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
 }) => {
   const { toast } = useToast();
   const { isConnected, walletBalance, onConnectWallet } = walletData;
-  const { getPositionById, baseTokenName, quoteTokenName } = useForecast();
+  const { getPositionById, baseTokenName, quoteTokenName } = useMarketPage();
   const position = getPositionById(positionId);
   const [hasInsufficientFunds, setHasInsufficientFunds] = useState(false);
   const successHandled = useRef(false);

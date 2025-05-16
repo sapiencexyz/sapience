@@ -46,8 +46,6 @@ export const getMarketGroupClassification = (
     }
   }
 
-  console.log('markets', markets);
-
   // Logic for single market classification (YES_NO or NUMERIC),
   // or fallback if MULTIPLE_CHOICE condition (shared endTime) was not met for multiple markets.
   if (markets.length === 1) {

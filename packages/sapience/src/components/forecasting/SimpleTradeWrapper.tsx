@@ -2,7 +2,7 @@ import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import type React from 'react';
 import { useAccount } from 'wagmi';
 
-import { useForecast } from '~/lib/context/ForecastProvider';
+import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { useSapience } from '~/lib/context/SapienceProvider';
 
 import { CreateTradeForm, ModifyTradeForm } from './forms';
@@ -29,7 +29,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
     collateralAssetAddress,
     getPositionById,
     refetchPositions,
-  } = useForecast();
+  } = useMarketPage();
 
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
 
