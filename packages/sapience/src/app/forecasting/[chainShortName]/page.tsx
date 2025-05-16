@@ -19,8 +19,11 @@ import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
-import { useMarketGroup } from '~/hooks/graphql/useMarketGroup';
 import { usePositions } from '~/hooks/graphql/usePositions';
+import {
+  MarketGroupPageProvider,
+  useMarketGroupPage,
+} from '~/lib/context/MarketGroupPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 
@@ -78,7 +81,7 @@ const ForecastingForm = ({
   permitData: { permitted: boolean };
   onWagerSuccess: (txnHash: string) => void;
 }) => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('predict');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('wager');
 
   // Check if market is active (not expired or settled)
   const isActive = useMemo(() => {
@@ -116,17 +119,6 @@ const ForecastingForm = ({
           <button
             type="button"
             className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-              activeTab === 'predict'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground'
-            }`}
-            onClick={() => setActiveTab('predict')}
-          >
-            Predict
-          </button>
-          <button
-            type="button"
-            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
               activeTab === 'wager'
                 ? 'border-b-2 border-primary text-primary'
                 : 'text-muted-foreground'
@@ -134,6 +126,17 @@ const ForecastingForm = ({
             onClick={() => setActiveTab('wager')}
           >
             Wager
+          </button>
+          <button
+            type="button"
+            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+              activeTab === 'predict'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => setActiveTab('predict')}
+          >
+            Predict
           </button>
         </div>
 
@@ -160,7 +163,7 @@ const ForecastingForm = ({
   );
 };
 
-const ForecastingDetailPage = () => {
+const MarketGroupPageContent = () => {
   const { address } = useAccount();
   const params = useParams();
   const pathname = usePathname();
@@ -179,21 +182,21 @@ const ForecastingDetailPage = () => {
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
-  const { chainShortName, marketAddress } = parseUrlParameter(paramString);
+  const { marketAddress } = parseUrlParameter(paramString);
 
-  const { isLoading: isUserPositionsLoading } = usePositions({
-    address: address || '',
-    marketAddress,
-  });
-
-  // Fetch market data using the hook with correct variable names
   const {
     marketGroupData,
     isLoading,
     isSuccess,
     activeMarkets,
     marketClassification,
-  } = useMarketGroup({ chainShortName, marketAddress });
+    chainId,
+  } = useMarketGroupPage();
+
+  const { isLoading: isUserPositionsLoading } = usePositions({
+    address: address || '',
+    marketAddress,
+  });
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -254,7 +257,7 @@ const ForecastingDetailPage = () => {
               <div className="border border-border rounded flex flex-col flex-1">
                 <div className="flex-1 min-h-0">
                   <MarketGroupChart
-                    chainShortName={chainShortName}
+                    chainShortName={params.chainShortName as string}
                     marketAddress={marketAddress}
                     marketIds={activeMarkets.map((market) =>
                       Number(market.marketId)
@@ -336,7 +339,7 @@ const ForecastingDetailPage = () => {
                 <UserPositionsTable
                   account={address}
                   marketAddress={marketAddress}
-                  chainId={marketGroupData.chainId}
+                  chainId={chainId}
                   refetchUserPositions={refetchUserPositions}
                 />
               </div>
@@ -373,4 +376,16 @@ const ForecastingDetailPage = () => {
   );
 };
 
-export default ForecastingDetailPage;
+const MarketGroupPage = () => {
+  const params = useParams();
+  const paramString = params.chainShortName as string;
+  const { chainShortName, marketAddress } = parseUrlParameter(paramString);
+
+  return (
+    <MarketGroupPageProvider pageDetails={{ chainShortName, marketAddress }}>
+      <MarketGroupPageContent />
+    </MarketGroupPageProvider>
+  );
+};
+
+export default MarketGroupPage;

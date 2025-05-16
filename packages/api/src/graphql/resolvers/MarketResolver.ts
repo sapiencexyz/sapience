@@ -18,6 +18,7 @@ export class MarketResolver {
         .getRepository(Market)
         .createQueryBuilder('market')
         .leftJoinAndSelect('market.marketGroup', 'marketGroup')
+        .leftJoinAndSelect('marketGroup.markets', 'groupMarkets')
         .leftJoinAndSelect('marketGroup.resource', 'resource');
 
       queryBuilder.andWhere('market.marketId = :marketId', { marketId });

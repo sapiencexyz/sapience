@@ -30,6 +30,13 @@ const MARKET_QUERY = gql`
         resource {
           slug
         }
+        markets {
+          id
+          marketId
+          question
+          endTimestamp
+          optionName
+        }
       }
     }
   }
