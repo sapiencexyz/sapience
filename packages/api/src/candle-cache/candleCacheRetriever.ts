@@ -151,7 +151,7 @@ export class CandleCacheRetriever {
 
     return this.getAndFillResponseCandles({
       candles,
-      isCumulative: marketInfo.isCumulative,
+      isCumulative: false,
       fillMissingCandles: true,
       fillInitialCandlesWithZeroes: false,
     });
