@@ -26,7 +26,7 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
       CANDLE_CACHE_CONFIG.hardRefresh
     );
 
-    if (hardRefresh) {
+    if (hardRefresh && hardRefresh > 0) {
       log({
         message: 'hard refresh needed',
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
