@@ -7,6 +7,7 @@ import {
   saveCandle,
   getResourcePricesCount,
   getMarketPricesCount,
+  truncateCandlesTable,
 } from './dbUtils';
 import { log } from 'src/utils/logs';
 import { RuntimeCandleStore } from './runtimeCandleStore';
@@ -278,5 +279,28 @@ export abstract class BaseCandleCacheBuilder {
         }
       }
     }
+  }
+
+  protected async hardRefresh() {
+    await truncateCandlesTable();
+
+    this.runtimeCandles = new RuntimeCandleStore();
+    this.trailingAvgHistory = new TrailingAvgHistoryStore();
+    this.marketInfoStore = MarketInfoStore.getInstance();
+    this.resourceCandleProcessor = new ResourceCandleProcessor(
+      this.runtimeCandles
+    );
+    this.indexCandleProcessor = new IndexCandleProcessor(
+      this.runtimeCandles,
+      this.marketInfoStore
+    );
+    this.trailingAvgCandleProcessor = new TrailingAvgCandleProcessor(
+      this.runtimeCandles,
+      this.trailingAvgHistory
+    );
+    this.marketCandleProcessor = new MarketCandleProcessor(
+      this.runtimeCandles,
+      this.marketInfoStore
+    );
   }
 }

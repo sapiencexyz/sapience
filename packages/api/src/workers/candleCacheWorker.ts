@@ -13,7 +13,7 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
   while (true) {
     try {
       console.log(`Running candle cache update at ${new Date().toISOString()}`);
-      await candleCacheBuilder.builCandles();
+      await candleCacheBuilder.buildCandles();
       console.log(
         `Candle cache update completed at ${new Date().toISOString()}`
       );
