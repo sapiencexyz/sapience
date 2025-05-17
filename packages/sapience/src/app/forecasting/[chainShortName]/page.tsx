@@ -24,7 +24,7 @@ import {
   MarketGroupPageProvider,
   useMarketGroupPage,
 } from '~/lib/context/MarketGroupPageProvider';
-import { MarketGroupClassification } from '~/lib/types';
+import type { MarketGroupClassification } from '~/lib/types';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 
 export type ActiveTab = 'predict' | 'wager';
@@ -81,7 +81,7 @@ const ForecastingForm = ({
   permitData: { permitted: boolean };
   onWagerSuccess: (txnHash: string) => void;
 }) => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('predict');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('wager');
 
   // Check if market is active (not expired or settled)
   const isActive = useMemo(() => {
@@ -119,17 +119,6 @@ const ForecastingForm = ({
           <button
             type="button"
             className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-              activeTab === 'predict'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground'
-            }`}
-            onClick={() => setActiveTab('predict')}
-          >
-            Predict
-          </button>
-          <button
-            type="button"
-            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
               activeTab === 'wager'
                 ? 'border-b-2 border-primary text-primary'
                 : 'text-muted-foreground'
@@ -137,6 +126,17 @@ const ForecastingForm = ({
             onClick={() => setActiveTab('wager')}
           >
             Wager
+          </button>
+          <button
+            type="button"
+            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
+              activeTab === 'predict'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground'
+            }`}
+            onClick={() => setActiveTab('predict')}
+          >
+            Predict
           </button>
         </div>
 
@@ -294,26 +294,13 @@ const MarketGroupPageContent = () => {
             <div>{/* placeholder */}</div>
             {/* Advanced View button (Right Aligned) */}
             <div>
-              {activeMarkets.length > 0 &&
-                (marketClassification ===
-                MarketGroupClassification.MULTIPLE_CHOICE ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowMarketSelector(true)}
-                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold bg-transparent border-none p-0"
-                  >
-                    ADVANCED VIEW
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                ) : (
-                  <Link
-                    href={`${pathname}/${activeMarkets[0].marketId}`}
-                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
-                  >
-                    ADVANCED VIEW
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                ))}
+              <Link
+                href={`${pathname}/${activeMarkets[0]?.marketId}`}
+                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
+              >
+                ADVANCED VIEW
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
 
