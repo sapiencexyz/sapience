@@ -16,6 +16,10 @@ export default defineConfig({
       link: '/faq',
     },
     {
+      text: 'Use Cursor',
+      link: '/cursor',
+    },
+    {
       text: 'Protocol',
       items: [
         {
