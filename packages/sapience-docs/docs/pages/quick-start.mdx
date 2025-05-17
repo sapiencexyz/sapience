@@ -23,7 +23,7 @@ Open a terminal and initialize the project in a new folder.
 mkdir sapience-bot && cd sapience-bot
 pnpm init
 pnpm add viem graphql-request dotenv node-fetch
-pnpm add -D typescript ts-node @types/node
+pnpm add -D typescript tsx @types/node
 pnpm exec tsc --init --strict --module esnext --moduleResolution node --outDir dist
 ```
 
@@ -33,7 +33,6 @@ Update`tsconfig.json` (if necessary) so TypeScript understands ESM:
 {
   "compilerOptions": {
     // ... existing options ...
-    "module": "esnext",
     "target": "es2020",
     "resolveJsonModule": true,
   }
@@ -44,13 +43,23 @@ Update`tsconfig.json` (if necessary) so TypeScript understands ESM:
 
 This file gives your code all the information it needs to interact with the Sapience markets onchain.
 
-Download the artifact straight from GitHub:
+Download the file from GitHub:
 
 ```bash
 curl -L https://raw.githubusercontent.com/foilxyz/foil/main/packages/protocol/deployments/Foil.json -o Foil.json
 ```
 
-## 3. Configure environment variables
+## 3. Get the latest GraphQL Type
+
+This file gives your code information about the type of information you can retrieve from the [GraphQL API](/api/graphql).
+
+Download the file from GitHub:
+
+```bash
+curl -L https://raw.githubusercontent.com/foilxyz/foil/refs/heads/main/packages/ui/types/graphql.ts -o graphql.ts
+```
+
+## 4. Configure environment variables
 
 Create a `.env` file. **Make sure this file is in your `.gitignore` file if you use this with git or GitHub.**
 
@@ -58,54 +67,65 @@ This will store your private key for the Open AI API. It submits the trades onch
 
 ```ini
 OPENAI_API_KEY=xxx # Retrieve from https://platform.openai.com/api-keys
-PRIVATE_KEY=0xETHEREUM_PRIVATE_KEY_HERE # OPTIONAL: For a wallet with some sUSDS and ETH on Base.
+ETHEREUM_PRIVATE_KEY=0x... # OPTIONAL: For a wallet with some sUSDS and ETH on Base.
 ```
 
-## 4. Write the Bot
+## 5. Write the Bot
 
 Create an `index.ts` with the minimal logic.
 
 ```typescript title="index.ts"{5}
 import 'dotenv/config'
-import { createWalletClient, type Address, erc20Abi, encodeFunctionData, parseEther, http } from 'viem'
+import { createWalletClient, type Address, erc20Abi, encodeFunctionData, parseEther, http, formatUnits } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts';
 import { base } from 'viem/chains';
 import Foil from './Foil.json' assert { type: 'json' }
 import { request, gql } from 'graphql-request'
+import { type MarketGroupType, type MarketType, type Maybe } from './graphql'
 import fetch from 'node-fetch'
 
-const SUSDS_ADDRESS: Address = "0x5875eee11cf8398102fdad704c9e96607675467a";
+const SUSDS_ADDRESS: Address = "0x5875eEE11Cf8398102FdAd704C9E96607675467a";
 const WAGER_AMOUNT = parseEther("1"); // 1 sUSDS
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const ETHEREUM_PRIVATE_KEY = process.env.ETHEREUM_PRIVATE_KEY;
 
-async function fetchNextClosingMarket(): Promise<Market> {
+async function fetchNextClosingMarket(): Promise<MarketType> {
   const query = gql`
-    query GetMarkets($collateralAsset: String!, $chainId: Int!, $currentTime: String!) {
+    query GetNextMarkets($collateralAsset: String!, $chainId: Int!, $currentTime: String!) {
       marketGroups(
-        collateralAsset: $collateralAsset,
-        chainId: $chainId
+        chainId: $chainId,
+        collateralAsset: $collateralAsset
       ) {
         markets(
           filter: { 
             endTimestamp_gt: $currentTime, # Market ends in the future
           },
-          orderBy: { field: "endTimestamp", direction: ASC } # Order by end time, soonest first
+          orderBy: { field: "endTimestamp", direction: "ASC" } # Order by end time, soonest first
         ) {
           question
           marketId
           endTimestamp
+          marketGroup {
+            address
+          }
         }
       }
     }
   `
 
-  const data: JSON = await request("https://api.foil.xyz/graphql", query, {
+  const responseData = await request<{ marketGroups: Array<MarketGroupType>; }>( "https://api.foil.xyz/graphql", query, {
     chainId: base.id,
     collateralAsset: SUSDS_ADDRESS,
     currentTime: Math.floor(Date.now() / 1000).toString(),
   })
 
-  return data.markets[0]
+  if (responseData && responseData.marketGroups) {
+    for (const group of responseData.marketGroups) {
+      if (group && group.markets && group.markets.length > 0) {
+        return group.markets[0];
+      }
+    }
+  }
+  throw new Error("No suitable market found in any market group or market data is incomplete.");
 }
 
 // Ask ChatGPT what the answer is
@@ -132,8 +152,20 @@ async function getPrediction(question: string): Promise<bigint> {
     })
   });
   
-  const data = await response.json();
-  const answer = data.choices[0].message.content.trim().toLowerCase();
+  const data = await response.json() as {
+    choices: Array<{
+      message: {
+        content: string;
+      };
+    }>;
+  };
+
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content !== 'string') {
+    console.error("Invalid response structure from OpenAI API:", data);
+    throw new Error("Failed to get a valid response from OpenAI API.");
+  }
+  const answer = content.trim().toLowerCase();
 
   console.log(`ChatGPT response:\n${answer}`);
   
@@ -162,25 +194,38 @@ async function getPrediction(question: string): Promise<bigint> {
   }
 }
 
-// Get the position size given the answer for a $1 wager
-async function getQuote(marketAddress: Address, marketId: bigint, prediction: bigint) {
-  const quoterUrl = `https://api.foil.xyz/quoter/${base.id}/${marketAddress}/${marketId}?collateralAvailable=${WAGER_AMOUNT}&expectedPrice=${Number(prediction)}`
-  
-  const response = await fetch(quoterUrl)
-  const quote = await response.json()
+// Get the desired position size given the answer for a $1 wager
+async function getQuote(marketAddress: Address, marketId: bigint, prediction: bigint): Promise<{ positionSize: bigint }> {
+  let expectedPriceDecimalString: string;
+  if (prediction === 0n) {
+    expectedPriceDecimalString = "0.0000009"; // API expects expectedPrice > 0. Use a very small number for "No" (e.g., similar to frontend's 0.0000009).
+  } else {
+    expectedPriceDecimalString = formatUnits(prediction, 18); // Convert prediction (scaled by 1e18) to a decimal string (e.g., 10n**18n -> "1.0")
+  }
 
-  const requiredCollateral = BigInt(quote.collateralAvailable)
-
-  // The API might return a different position size than expected, so we use the one from the quote
-  const actualPositionSize = BigInt(quote.positionSize) 
+  const quoterUrl = `https://api.foil.xyz/quoter/${base.id}/${marketAddress}/${marketId}?collateralAvailable=${WAGER_AMOUNT.toString()}&expectedPrice=${expectedPriceDecimalString}`;
   
-  return { positionSize: actualPositionSize, requiredCollateral };
+  const response = await fetch(quoterUrl);
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`Quoter API request failed with status ${response.status}: ${errorBody}`);
+    throw new Error(`Quoter API request failed with status ${response.status}: ${errorBody}`);
+  }
+  
+  const quote = await response.json() as { maxSize: string; };
+
+  const positionSize = BigInt(quote.maxSize); 
+  
+  return { positionSize };
 }
 
-// Quote, approve and trade
+// Approve token transfer and trade
 async function trade(marketAddress: Address, marketId: bigint, positionSize: bigint) {
 
-  const account = privateKeyToAccount(PRIVATE_KEY as `0x${string}`);
+  if (!ETHEREUM_PRIVATE_KEY) {
+    throw new Error("Ethereum private key is not set in environment variables.");
+  }
+  const account = privateKeyToAccount(ETHEREUM_PRIVATE_KEY as `0x${string}`);
 
   const walletClient = createWalletClient({
     account,
@@ -226,29 +271,35 @@ async function trade(marketAddress: Address, marketId: bigint, positionSize: big
 (async () => {
   const market = await fetchNextClosingMarket()
 
+  // market.question is now guaranteed to be a string due to checks in fetchNextClosingMarket
   console.log(`Found an active market for ${market.question}.`);
 
   console.log(`Querying ChatGPT for an answer...`);
-  const prediction = await getPrediction(market.question)
+  const prediction = await getPrediction(market.question!) // Non-null assertion as it's checked
 
   console.log('Retrieving a quote for a $1 wager...');
-  const { positionSize } = await getQuote(market.marketGroup.address, market.marketId, prediction)
+  // market.marketGroup.address is now guaranteed by fetchNextClosingMarket
+  // market.marketId is expected to be a number from GraphQL, getQuote expects bigint
+  const marketIdBigInt = BigInt(market.marketId);
+  const marketGroupAddress = market.marketGroup!.address! as Address; // Non-null assertions
 
-  if(PRIVATE_KEY){
+  const { positionSize } = await getQuote(marketGroupAddress, marketIdBigInt, prediction)
+
+  if(ETHEREUM_PRIVATE_KEY){
     console.log(`Submitting trade...`);
-    await trade(market.marketGroup.address,market.marketId, positionSize);
+    await trade(marketGroupAddress, marketIdBigInt, positionSize);
   } else {
     console.log('Add a private key to the .env file to create a position onchain.');
   }
 })().catch(console.error)
 ```
 
-## 5. Run it
+## 6. Run it
 
 ```bash
-node --loader ts-node/esm index.ts
+pnpm tsx index.ts
 ```
 
-From here, you can add error handling, position modification logic, liquidity provisioning strategies, and scaling of position size based on confidence.
+From here, you can add automated position settlement, better error handling, liquidity provisioning strategies, position modification logic, and scaling of position size based on confidence.
 
 Join the Sapience Discord server to chat with other bot builders.
