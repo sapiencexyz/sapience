@@ -1,3 +1,5 @@
+/* eslint-disable sonarjs/cognitive-complexity */
+
 import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
 import {
@@ -28,13 +30,14 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useRef } from 'react';
-import type { FormState } from 'react-hook-form';
 import { formatUnits, parseUnits } from 'viem';
+import { useAccount, useReadContract } from 'wagmi';
 
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useModifyTrade } from '~/hooks/contract/useModifyTrade';
+import { useModifyTradeQuoter } from '~/hooks/contract/useModifyTradeQuoter';
 import { useTokenBalance } from '~/hooks/contract/useTokenBalance';
-import { type TradeFormValues, useTradeForm } from '~/hooks/forms/useTradeForm'; // Assuming TradeFormValues is the correct type
+import { useTradeForm } from '~/hooks/forms/useTradeForm'; // Assuming TradeFormValues is the correct type
 import {
   HIGH_PRICE_IMPACT,
   MIN_BIG_INT_SIZE,
@@ -42,10 +45,8 @@ import {
 } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types'; // Added import
-
-import { useAccount, useReadContract } from 'wagmi';
-import { useModifyTradeQuoter } from '~/hooks/contract/useModifyTradeQuoter';
 import { bigIntAbs } from '~/lib/utils/util';
+
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 
 // Define Props including marketDetails
@@ -58,42 +59,8 @@ interface ModifyTradeFormProps {
   permitData: PermitDataType | null | undefined; // Add permitData prop
   isPermitLoadingPermit: boolean; // Add isPermitLoadingPermit prop
 }
-
 interface PermitDataType {
   permitted?: boolean;
-}
-
-// Define interface for the expected structure of position data
-interface PositionData {
-  vGasAmount: bigint;
-  borrowedVGas: bigint;
-  depositedCollateralAmount: bigint;
-}
-
-interface ButtonState {
-  text: string;
-  loading: boolean;
-}
-
-interface ButtonStateBaseParams {
-  isConnected: boolean;
-  positionData: unknown;
-  isLoading: boolean;
-  needsApproval: boolean;
-  modifyTrade: (() => Promise<void>) | undefined;
-  isError: boolean;
-}
-
-interface UpdateButtonStateParams extends ButtonStateBaseParams {
-  isApproving: boolean;
-  isModifying: boolean;
-  isConfirming: boolean;
-  collateralAssetTicker: string | undefined;
-  targetSizeForHook: bigint;
-  originalPositionSizeInContractUnit: bigint;
-  formState: FormState<TradeFormValues>;
-  permitData: PermitDataType | null | undefined;
-  isPermitLoadingPermit: boolean;
 }
 
 function getButtonState({
@@ -157,8 +124,6 @@ function getButtonState({
   };
 }
 
-// --- Main Component (Internal Implementation) ---
-// Rename to avoid conflict if needed, or keep as is if ModifyTradePreview is internal
 const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   marketDetails,
   isConnected,
@@ -244,7 +209,10 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         : parseUnits(sizeInput, TOKEN_DECIMALS),
     [direction, sizeInput]
   );
-  const isClosing = sizeInputBigInt === BigInt(0);
+  const isClosing = useMemo(
+    () => sizeInputBigInt === BigInt(0),
+    [sizeInputBigInt]
+  );
 
   const { quotedCollateralDelta, quotedFillPrice, isQuoting, quoteError } =
     useModifyTradeQuoter({
@@ -298,10 +266,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     const currentPrice = Number(formatUnits(currentPriceD18 as bigint, 18));
     const fillPrice = Number(formatUnits(quotedFillPrice, 18));
 
-    // Calculate absolute price impact as percentage
-    const impact = Math.abs((fillPrice - currentPrice) / currentPrice) * 100;
-
-    return impact;
+    return Math.abs((fillPrice - currentPrice) / currentPrice) * 100;
   }, [quotedFillPrice, currentPriceD18]);
 
   const showPriceImpactWarning = priceImpact > HIGH_PRICE_IMPACT;
@@ -311,7 +276,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     if (isSuccess && txHash && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
-      const isClosing = sizeInputBigInt === BigInt(0);
       toast({
         title: isClosing ? 'Position Closed' : 'Trade Position Updated',
         description: isClosing
@@ -324,7 +288,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
       form.reset(
         {
           size: newSize,
-          direction: direction,
+          direction,
           slippage: '0.5',
         },
         {
@@ -337,7 +301,16 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
       onSuccess(txHash);
     }
-  }, [isSuccess, txHash, onSuccess, toast, sizeInputBigInt, direction, form]);
+  }, [
+    isSuccess,
+    isClosing,
+    txHash,
+    onSuccess,
+    toast,
+    sizeInputBigInt,
+    direction,
+    form,
+  ]);
 
   // Reset the success handler when transaction state changes
   useEffect(() => {

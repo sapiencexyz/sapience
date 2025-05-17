@@ -4,6 +4,7 @@ import { formatUnits, type Abi } from 'viem';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
+
 import { useTokenApproval } from './useTokenApproval';
 
 interface UseModifyTradeProps {
