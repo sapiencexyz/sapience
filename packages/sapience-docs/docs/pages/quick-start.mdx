@@ -2,18 +2,19 @@
 
 This guide walks you through a tiny TypeScript bot that:
 
-* Connects to the Sapience GraphQL API and discovers new markets.
-* Uses a large language model (like ChatGPT or Claude) to research the question and pick an answer.
+* Connects to the Sapience GraphQL API and finds latest market.
+* Uses ChatGPT to research the question and pick an answer.
 * Retrieves a quote to open a $1 position with this answer.
 * Approves the transfer of funds to the smart contract.
 * Opens a position in the market onchain.
 
-#### Then get creative
+---
+Then you can get creative:
 * Deploy it somewhere to run on a recurring basis.
 * Add a social media integration to have the bot share information about its research and predictions.
 * Make the research logic, prompts, and tools more sophisticated.
 
-> We recommend using [Cursor](https://www.cursor.com/) and [adding the Sapience docs](/api/mcp) to its context.
+We recommend using [Cursor](https://www.cursor.com/) and [adding the Sapience docs](/api/mcp) to its context.
 
 ## 1. Initialize a TypeScript project
 
@@ -49,23 +50,20 @@ curl -L https://raw.githubusercontent.com/foilxyz/foil/main/packages/protocol/de
 
 ## 3. Configure environment variables
 
-Create a **.env** file (never commit this!):
+Create a `.env` file. (Never commit this to git!)
+
+This will store your private key for the Open AI API. It attempts to execute trades onchain using the account for the private key if provided.
 
 ```ini
-PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE        # Wallet that has gas + collateral
-RPC_ENDPOINT=https://rpc.<your_chosen_chain>.org
-GRAPHQL_ENDPOINT=https://api.sapience.xyz/graphql
-MARKET_GROUP_ADDRESS=0x...                 # Foil market group you want to trade
-MARKET_GROUP_CHAIN_ID=8453                 # e.g. Base chain id
+OPENAI_API_KEY=xxx # Retrieve from https://platform.openai.com/api-keys
+PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE # OPTIONAL: Wallet with some sUSDS and ETH on Base.
 ```
 
-Load them via **dotenv** at runtime.
+## 4. Write the Bot
 
-## 4. Write the bot
+Create an `index.ts` with the minimal logic.
 
-Create **index.ts**:
-
-```typescript
+```typescript title="index.ts"{5}
 import 'dotenv/config'
 import { createWalletClient, http, type Address, erc20Abi } from 'viem'
 import { parseAbi } from 'abitype'
@@ -73,23 +71,9 @@ import FoilABI from './Foil.json' assert { type: 'json' }
 import { request, gql } from 'graphql-request'
 import fetch from 'node-fetch'
 
-const {
-  PRIVATE_KEY,
-  RPC_ENDPOINT,
-  GRAPHQL_ENDPOINT,
-  MARKET_GROUP_ADDRESS,
-  MARKET_GROUP_CHAIN_ID
-} = process.env
-
-if (!PRIVATE_KEY || !RPC_ENDPOINT || !GRAPHQL_ENDPOINT || !MARKET_GROUP_ADDRESS || !MARKET_GROUP_CHAIN_ID) {
-  throw new Error('Please fill out .env')
-}
-
 // Setup wallet client
 const client = createWalletClient({
-  account: PRIVATE_KEY as `0x${string}`,
-  chain: { id: Number(MARKET_GROUP_CHAIN_ID) },
-  transport: http(RPC_ENDPOINT)
+  account: PRIVATE_KEY as `0x${string}`
 })
 
 const foil = {
@@ -112,7 +96,7 @@ async function fetchOpenMarkets(owner: Address) {
       }
     }
   `
-  const data = await request(GRAPHQL_ENDPOINT, query, {
+  const data = await request("https://api.sapience.xyz/graphql", query, {
     address: MARKET_GROUP_ADDRESS,
     chainId: Number(MARKET_GROUP_CHAIN_ID),
     owner
@@ -195,15 +179,10 @@ async function trade(marketId: bigint, positionSize: bigint) {
     args: [marketId]
   }) as bigint
   
-  const balance = await client.readContract({
-    address: collateralAsset as Address,
-    abi: erc20Abi,
-    functionName: 'balanceOf',
-    args: [account]
-  }) as bigint
+  const wagerAmount = parseEthers(1n);
   
   // Use the quoter API to determine the optimal position size
-  const quoterUrl = `${process.env.API_BASE_URL || 'https://api.sapience.xyz'}/quoter/${chainId}/${marketAddress}/${marketId}?expectedPrice=${Number(currentPrice) * 1.05}&collateralAvailable=${balance}`
+  const quoterUrl = `https://api.sapience.xyz/quoter/${chainId}/${marketAddress}/${marketId}?expectedPrice=${Number(currentPrice) * 1.05}&collateralAvailable=${wagerAmount}`
   
   const response = await fetch(quoterUrl)
   const quote = await response.json()
@@ -246,6 +225,7 @@ async function trade(marketId: bigint, positionSize: bigint) {
     await trade(BigInt(id), positionSize)
   }
 })().catch(console.error)
+```
 
 ## 5. Run it
 
@@ -253,6 +233,6 @@ async function trade(marketId: bigint, positionSize: bigint) {
 node --loader ts-node/esm index.ts
 ```
 
-From here, you can consider adding position modification logic, liquidity provisioning strategies, and scaling of position size based on confidence.
+From here, you can add error handling, position modification logic, liquidity provisioning strategies, and scaling of position size based on confidence.
 
 Join the Sapience Discord server to chat with other bots builders.
