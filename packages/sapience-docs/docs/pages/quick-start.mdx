@@ -1,15 +1,19 @@
 # Quick Start
 
-Welcome to the Sapience developer quick-start! This guide walks you through writing a tiny TypeScript bot that:
+This guide walks you through a tiny TypeScript bot that:
 
-1. Connects to the Sapience GraphQL API to discover open markets.
-2. Lets ChatGPT pick an answer 🤖.
-3. Gets a quote for the new position.
-4. Approves collateral and opens a trader position.
+* Connects to the Sapience GraphQL API and discovers new markets.
+* Uses a large language model (like ChatGPT or Claude) to research the question and pick an answer.
+* Retrieves a quote to open a $1 position with this answer.
+* Approves the transfer of funds to the smart contract.
+* Opens a position in the market onchain.
 
-**Prerequisites**
-• Node ≥ 18, Git, and a funded EVM account (gas + collateral token).  
-• Basic command-line knowledge—no prior Ethereum experience required.
+#### Then get creative
+* Deploy it somewhere to run on a recurring basis.
+* Add a social media integration to have the bot share information about its research and predictions.
+* Make the research logic, prompts, and tools more sophisticated.
+
+> We recommend using [Cursor](https://www.cursor.com/) and [adding the Sapience docs](/api/mcp) to its context.
 
 ## 1. Initialize a TypeScript project
 
@@ -34,6 +38,8 @@ Add a minimal **tsconfig.json** tweak so TypeScript understands ESM:
 ```
 
 ## 2. Get the latest Foil ABI
+
+This file gives your code all the information it needs to interact with the Sapience markets onchain.
 
 Download the artifact straight from GitHub:
 
@@ -79,7 +85,7 @@ if (!PRIVATE_KEY || !RPC_ENDPOINT || !GRAPHQL_ENDPOINT || !MARKET_GROUP_ADDRESS 
   throw new Error('Please fill out .env')
 }
 
-// 1️⃣  Setup wallet client
+// Setup wallet client
 const client = createWalletClient({
   account: PRIVATE_KEY as `0x${string}`,
   chain: { id: Number(MARKET_GROUP_CHAIN_ID) },
@@ -91,7 +97,7 @@ const foil = {
   abi: parseAbi(FoilABI as any)
 } as const
 
-// 2️⃣  Helper – fetch markets without a position yet
+// Helper – fetch markets without a position yet
 async function fetchOpenMarkets(owner: Address) {
   const query = gql`
     query ($address: String!, $chainId: Int!, $owner: String!) {
@@ -119,7 +125,7 @@ async function fetchOpenMarkets(owner: Address) {
   return allMarketIds.filter((id: number) => !ownedMarketIds.has(id))
 }
 
-// 3️⃣  Ask ChatGPT what the answer is
+// Ask ChatGPT what the answer is
 async function getPrediction(question: string): Promise<bigint> {
   // Call the OpenAI API
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -167,7 +173,7 @@ async function getPrediction(question: string): Promise<bigint> {
   }
 }
 
-// 4️⃣  Quote, approve and trade
+// Quote, approve and trade
 async function trade(marketId: bigint, positionSize: bigint) {
   const size = positionSize
   
@@ -247,6 +253,6 @@ async function trade(marketId: bigint, positionSize: bigint) {
 node --loader ts-node/esm index.ts
 ```
 
-Feel free to expand on it—add risk controls, position modification logic, liquidity provisioning strategies, smarter AI logic, a beautiful UI, or social media integrations to share trades.
+From here, you can consider adding position modification logic, liquidity provisioning strategies, and scaling of position size based on confidence.
 
 Join the Sapience Discord server to chat with other bots builders.
