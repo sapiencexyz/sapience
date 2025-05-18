@@ -9,11 +9,12 @@ This guide walks you through a tiny TypeScript bot that:
 
 ### Ideas for next steps
 
-* Deploy it somewhere to run on a recurring basis. (Cursor agents can help you find a good hosting solution based on your needs, as well as set up instructions.)
+* Deploy it somewhere to run on a recurring basis.
+  * ChatGPT and other LLMs can help you find a good hosting solution based on your needs, including set up instructions. You may be looking for somewhere to run your script at an interval (as a "cron job") or to have it loop with pauses in a constantly running service.
 * Have the bot share information about its research and predictions with a messaging/social media integration.
 * Make the research logic, prompts, and tools more creative and sophisticated.
 
-We recommend using [Cursor](https://www.cursor.com/) and [adding the Sapience docs](/cursor) for this project. You can also skip the steps below by cloning this repo in Cursor: `https://github.com/foilxyz/sapience-bot`
+We recommend using [Cursor](https://www.cursor.com/) and [adding the Sapience docs](/cursor) for this project. You can also skip the steps below by cloning this repo directly in Cursor: [https://github.com/foilxyz/sapience-bot](https://github.com/foilxyz/sapience-bot)
 
 ## 1. Initialize a TypeScript project
 
@@ -27,7 +28,7 @@ pnpm add -D typescript tsx @types/node
 pnpm exec tsc --init --strict --module esnext --moduleResolution node --outDir dist
 ```
 
-Update`tsconfig.json` (if necessary) so TypeScript understands ESM:
+Update`tsconfig.json` if necessary:
 
 ```json title="tsconfig.json"{5}
 {
@@ -101,8 +102,7 @@ async function fetchNextClosingMarket(): Promise<MarketType> {
         markets(
           filter: { 
             endTimestamp_gt: $currentTime, # Market ends in the future
-          },
-          orderBy: { field: "endTimestamp", direction: "ASC" } # Order by end time, soonest first
+          }
         ) {
           question
           marketId
@@ -112,22 +112,34 @@ async function fetchNextClosingMarket(): Promise<MarketType> {
     }
   `;
 
-  const responseData = await request<{ marketGroups: Array<MarketGroupType>; }>( 'https://api.foil.xyz/graphql', query, {
+  const responseData = await request<{ marketGroups: Array<MarketGroupType>; }>( 'https://api.sapience.xyz/graphql', query, {
     chainId: base.id,
     collateralAsset: SUSDS_ADDRESS,
     currentTime: Math.floor(Date.now() / 1000).toString(),
   });
 
-  const firstGroupWithMarkets = responseData?.marketGroups?.find(
-    (group) => group?.markets?.length > 0
-  );
+  // Find the market with the earliest endTimestamp
+  const nextMarket = responseData?.marketGroups
+    ?.flatMap(group => 
+      group.markets?.map(market => ({
+        ...market,
+        marketGroup: { address: group.address } as MarketGroupType
+      })) || []
+    )
+    ?.reduce((earliest, market) => {
+      if (!earliest) return market;
+      
+      const earliestTime = earliest.endTimestamp ? parseInt(earliest.endTimestamp.toString()) : Infinity;
+      const marketTime = market.endTimestamp ? parseInt(market.endTimestamp.toString()) : Infinity;
+      
+      return marketTime < earliestTime ? market : earliest;
+    }, null as MarketType | null);
 
-  if (firstGroupWithMarkets) {
-    const nextMarket = firstGroupWithMarkets.markets[0];
-    nextMarket.marketGroup = { address: firstGroupWithMarkets.address } as MarketGroupType;
-    return nextMarket;
+  if (!nextMarket) {
+    throw new Error('No active markets found.');
   }
-  throw new Error('No active market found.');
+
+  return nextMarket;
 }
 
 // Ask ChatGPT to answer the question
@@ -185,7 +197,7 @@ async function getPrediction(question: string): Promise<bigint> {
   }
 }
 
-// Get the desired position size given the answer for a $1 wager
+// Get the desired position size given the answer and a maximum $1 wager
 async function getQuote(marketAddress: Address, marketId: bigint, prediction: bigint): Promise<{ positionSize: bigint }> {
   let expectedPriceDecimalString: string;
   if (prediction === 0n) {
@@ -194,7 +206,7 @@ async function getQuote(marketAddress: Address, marketId: bigint, prediction: bi
     expectedPriceDecimalString = formatEther(prediction); // Convert prediction (scaled by 1e18) to a decimal string (e.g., 10n**18n -> "1.0")
   }
 
-  const quoterUrl = `https://api.foil.xyz/quoter/${base.id}/${marketAddress}/${marketId}?collateralAvailable=${WAGER_AMOUNT.toString()}&expectedPrice=${expectedPriceDecimalString}`;
+  const quoterUrl = `https://api.sapience.xyz/quoter/${base.id}/${marketAddress}/${marketId}?collateralAvailable=${WAGER_AMOUNT.toString()}&expectedPrice=${expectedPriceDecimalString}`;
   
   const response = await fetch(quoterUrl);
   if (!response.ok) {
@@ -282,7 +294,8 @@ async function trade(marketAddress: Address, marketId: bigint, positionSize: big
     console.groupEnd();
     console.log();
   } else {
-    console.log(`Add a private key in your .env file to submit a trade with a size of ${formatEther(positionSize)}`);
+    console.log(`Trade Size: ${formatEther(positionSize)}`);
+    console.log('Add an Ethereum private key to your .env file to submit trades.');
     console.log();
   }
 
@@ -293,7 +306,7 @@ async function trade(marketAddress: Address, marketId: bigint, positionSize: big
 ## 6. Run it
 
 ```bash
-pnpm tsx index.ts
+pnpm start
 ```
 
 From here, you can add automated position settlement, better error handling, liquidity provisioning strategies, position modification logic, risk controls, and scaling of position size based on confidence.
