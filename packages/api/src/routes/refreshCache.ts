@@ -105,10 +105,9 @@ router.get(
 router.get(
   '/refresh-candle-cache',
   handleAsyncErrors(async (req: Request, res: Response) => {
-    const { signature, signatureTimestamp, hardInitialize } = req.query as {
+    const { signature, signatureTimestamp } = req.query as {
       signature: string;
       signatureTimestamp: string;
-      hardInitialize: string;
     };
     const isProduction =
       process.env.NODE_ENV === 'production' ||
@@ -147,10 +146,9 @@ router.get(
 router.get(
   '/refresh-candle-cache/:resourceSlug',
   handleAsyncErrors(async (req: Request, res: Response) => {
-    const { signature, signatureTimestamp, hardInitialize } = req.query as {
+    const { signature, signatureTimestamp } = req.query as {
       signature: string;
       signatureTimestamp: string;
-      hardInitialize: string;
     };
     const resourceSlug = req.params.resourceSlug.toLowerCase();
     const isProduction =
