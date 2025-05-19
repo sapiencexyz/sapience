@@ -1,9 +1,10 @@
-import { CANDLE_CACHE_CONFIG } from './config';
+import { CANDLE_CACHE_CONFIG, CANDLE_CACHE_IPC_KEYS } from './config';
 import { log } from 'src/utils/logs';
 import {
   BaseCandleCacheBuilder,
   ResourcePriceParams,
 } from './baseCandleCacheBuilder';
+import { setParam } from './dbUtils';
 
 export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
   private static instance: CandleCacheReBuilder;
@@ -73,6 +74,9 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
 
+    // Clean all trailing avg history
+    await this.trailingAvgHistory.cleanAll(); // start fresh
+
     // Get updated market groups
     await this.getUpdatedMarketsAndMarketGroups();
 
@@ -84,6 +88,9 @@ export class CandleCacheReBuilder extends BaseCandleCacheBuilder {
 
     // Save all runtime candles
     await this.saveAllRuntimeCandles();
+
+    // Use IPC to notify the candle cache builder that it needs to refresh the trailing avg history
+    await setParam(CANDLE_CACHE_IPC_KEYS.rebuildTrailingAvgHistory, 1);
 
     log({
       message: 'Finished candle rebuild',
