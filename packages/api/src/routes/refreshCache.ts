@@ -101,7 +101,6 @@ router.get(
   })
 );
 
-
 router.get(
   '/refresh-candle-cache',
   handleAsyncErrors(async (req: Request, res: Response) => {
@@ -183,6 +182,5 @@ router.get(
     }
   })
 );
-
 
 export { router };
