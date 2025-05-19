@@ -14,12 +14,19 @@ const defaultValues: TradeFormValues = {
   slippage: '0.5', // Default slippage 0.5%
 };
 
+interface UseTradeFormOptions {
+  defaultValues?: Partial<TradeFormValues>;
+}
+
 /**
  * Hook for managing the trade form state and validation using react-hook-form.
  */
-export function useTradeForm() {
+export function useTradeForm(options?: UseTradeFormOptions) {
   const form = useForm<TradeFormValues>({
-    defaultValues,
+    defaultValues: {
+      ...defaultValues,
+      ...options?.defaultValues,
+    },
     mode: 'onChange', // Validate on change for better UX
   });
 
@@ -46,14 +53,5 @@ export function useTradeForm() {
         'Slippage must be between 0% and 100%',
     },
   });
-
-  // The default handleSubmit provided by react-hook-form can be used directly
-  // in the component's form onSubmit prop.
-  // No custom handleSubmit wrapper is needed unless there's specific logic
-  // to run before the component's submit handler.
-
-  return {
-    ...form,
-    // Expose the form object containing control, handleSubmit, watch, etc.
-  };
+  return form;
 }
