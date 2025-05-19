@@ -8,12 +8,16 @@ export default defineConfig({
       link: '/',
     },
     {
-      text: 'Quick Start',
+      text: 'Build a Bot',
       link: '/quick-start',
     },
     {
       text: 'FAQ',
       link: '/faq',
+    },
+    {
+      text: 'Use Cursor',
+      link: '/cursor',
     },
     {
       text: 'Protocol',
