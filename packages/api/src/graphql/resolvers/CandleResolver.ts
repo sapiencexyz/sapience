@@ -8,6 +8,8 @@ import { MarketGroup } from '../../models/MarketGroup';
 import { Market } from '../../models/Market';
 import { CandleType } from '../types';
 import { ResourcePerformanceManager } from 'src/performance';
+import { CandleCacheRetriever } from 'src/candle-cache/candleCacheRetriever';
+import { CandleAndTimestampType } from '../types/CandleAndTimestampType';
 
 interface PricePoint {
   timestamp: number;
@@ -397,5 +399,83 @@ export class CandleResolver {
       console.error('Error fetching market candles:', error);
       throw new Error('Failed to fetch market candles');
     }
+  }
+
+  // Same endpoints but using the candle cache
+  @Query(() => CandleAndTimestampType)
+  async resourceCandlesFromCache(
+    @Arg('slug', () => String) slug: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number
+  ): Promise<CandleAndTimestampType> {
+    const candleCacheRetrieve = CandleCacheRetriever.getInstance();
+    const { data, lastUpdateTimestamp } =
+      await candleCacheRetrieve.getResourcePrices(slug, from, to, interval);
+    return { data, lastUpdateTimestamp };
+  }
+
+  @Query(() => CandleAndTimestampType)
+  async resourceTrailingAverageCandlesFromCache(
+    @Arg('slug', () => String) slug: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number,
+    @Arg('trailingAvgTime', () => Int) trailingAvgTime: number
+  ): Promise<CandleAndTimestampType> {
+    const candleCacheRetrieve = CandleCacheRetriever.getInstance();
+    const { data, lastUpdateTimestamp } =
+      await candleCacheRetrieve.getTrailingAvgPrices(
+        slug,
+        from,
+        to,
+        interval,
+        trailingAvgTime
+      );
+    return { data, lastUpdateTimestamp };
+  }
+
+  @Query(() => CandleAndTimestampType)
+  async indexCandlesFromCache(
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('address', () => String) address: string,
+    @Arg('marketId', () => String) marketId: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number
+  ): Promise<CandleAndTimestampType> {
+    const candleCacheRetrieve = CandleCacheRetriever.getInstance();
+    const { data, lastUpdateTimestamp } =
+      await candleCacheRetrieve.getIndexPrices(
+        from,
+        to,
+        interval,
+        chainId,
+        address,
+        marketId
+      );
+    return { data, lastUpdateTimestamp };
+  }
+
+  @Query(() => CandleAndTimestampType)
+  async marketCandlesFromCache(
+    @Arg('chainId', () => Int) chainId: number,
+    @Arg('address', () => String) address: string,
+    @Arg('marketId', () => String) marketId: string,
+    @Arg('from', () => Int) from: number,
+    @Arg('to', () => Int) to: number,
+    @Arg('interval', () => Int) interval: number
+  ): Promise<CandleAndTimestampType> {
+    const candleCacheRetrieve = CandleCacheRetriever.getInstance();
+    const { data, lastUpdateTimestamp } =
+      await candleCacheRetrieve.getMarketPrices(
+        from,
+        to,
+        interval,
+        chainId,
+        address,
+        marketId
+      );
+    return { data, lastUpdateTimestamp };
   }
 }
