@@ -1,5 +1,5 @@
-import { getParam } from './dbUtils';
-import { CANDLE_CACHE_CONFIG } from './config';
+import { getParam, setParam } from './dbUtils';
+import { CANDLE_CACHE_CONFIG, CANDLE_CACHE_IPC_KEYS } from './config';
 import { log } from 'src/utils/logs';
 import { BaseCandleCacheBuilder } from './baseCandleCacheBuilder';
 
@@ -19,24 +19,10 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
 
   public async buildCandles() {
     log({
-      message: 'step 0: hard refresh if needed',
+      message: 'step 0: ipc: check and perform pre-required actions',
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
-    const hardRefresh = await getParam(CANDLE_CACHE_CONFIG.hardRefresh);
-
-    if (hardRefresh && hardRefresh > 0) {
-      log({
-        message: 'hard refresh needed',
-        prefix: CANDLE_CACHE_CONFIG.logPrefix,
-        indent: 2,
-      });
-      await this.hardRefresh();
-      log({
-        message: 'hard refresh done',
-        prefix: CANDLE_CACHE_CONFIG.logPrefix,
-        indent: 2,
-      });
-    }
+    await this.checkAndPerformIPCPreRequiredActions();
 
     log({
       message: 'step 1: get updated markets and market groups',
@@ -45,7 +31,7 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
     await this.getUpdatedMarketsAndMarketGroups();
 
     const lastProcessedResourcePrice = await getParam(
-      CANDLE_CACHE_CONFIG.lastProcessedResourcePrice
+      CANDLE_CACHE_IPC_KEYS.lastProcessedResourcePrice
     );
     log({
       message: 'step 2: process resource prices',
@@ -58,7 +44,7 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
     const lastProcessedMarketPrice = await getParam(
-      CANDLE_CACHE_CONFIG.lastProcessedMarketPrice
+      CANDLE_CACHE_IPC_KEYS.lastProcessedMarketPrice
     );
     await this.processMarketPrices(lastProcessedMarketPrice);
 
@@ -69,5 +55,51 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
     await this.saveAllRuntimeCandles();
 
     log({ message: 'step 5: done', prefix: CANDLE_CACHE_CONFIG.logPrefix });
+  }
+
+  private async checkAndPerformIPCPreRequiredActions() {
+    log({
+      message: 'step 0.1: check and perform hard refresh',
+      prefix: CANDLE_CACHE_CONFIG.logPrefix,
+      indent: 2,
+    });
+    const hardRefresh = await getParam(CANDLE_CACHE_IPC_KEYS.hardRefresh);
+
+    if (hardRefresh && hardRefresh > 0) {
+      log({
+        message: ' ->   hard refresh needed',
+        prefix: CANDLE_CACHE_CONFIG.logPrefix,
+        indent: 2,
+      });
+      await this.hardRefresh();
+      log({
+        message: ' -> hard refresh done',
+        prefix: CANDLE_CACHE_CONFIG.logPrefix,
+        indent: 2,
+      });
+    }
+
+    log({
+      message: 'step 0.2: check and perform rebuild trailing avg history',
+      prefix: CANDLE_CACHE_CONFIG.logPrefix,
+      indent: 2,
+    });
+    const rebuildTrailingAvgHistory = await getParam(
+      CANDLE_CACHE_IPC_KEYS.rebuildTrailingAvgHistory
+    );
+    if (rebuildTrailingAvgHistory && rebuildTrailingAvgHistory > 0) {
+      log({
+        message: ' -> rebuild trailing avg history needed',
+        prefix: CANDLE_CACHE_CONFIG.logPrefix,
+        indent: 2,
+      });
+      await this.trailingAvgHistory.cleanAll();
+      await setParam(CANDLE_CACHE_IPC_KEYS.rebuildTrailingAvgHistory, 0);
+      log({
+        message: ' -> rebuild trailing avg history done',
+        prefix: CANDLE_CACHE_CONFIG.logPrefix,
+        indent: 2,
+      });
+    }
   }
 }
