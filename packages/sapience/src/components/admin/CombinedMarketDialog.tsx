@@ -86,6 +86,7 @@ interface MarketInput {
   baseAssetMinPriceTick: string;
   baseAssetMaxPriceTick: string;
   claimStatement: string;
+  rules?: string;
 }
 
 interface CreateCombinedPayload {
@@ -843,6 +844,24 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                   <p className="text-sm text-muted-foreground mt-1">
                     This will be followed by the settlement value in UMA.
                   </p>
+                </div>
+
+                {/* Rules */}
+                <div>
+                  <Label htmlFor={`rules-${index}`}>Rules</Label>
+                  <textarea
+                    id={`rules-${index}`}
+                    className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={market.rules || ''}
+                    onChange={(e) =>
+                      handleMarketChange(
+                        index,
+                        'rules',
+                        e.target.value
+                      )
+                    }
+                    placeholder="Enter any specific rules or conditions for this market..."
+                  />
                 </div>
 
                 {/* Start Time & End Time */}
