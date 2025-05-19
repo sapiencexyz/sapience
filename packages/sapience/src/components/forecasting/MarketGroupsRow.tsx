@@ -168,9 +168,9 @@ const MarketGroupsRow = ({
         />
 
         {/* Content Container (stacks Question & Prediction on mobile, row on desktop) */}
-        <div className="flex-grow flex flex-col lg:flex-row lg:items-center px-4 py-3">
+        <div className="flex-grow flex flex-col lg:flex-row lg:items-center px-5 py-3">
           {/* Question Section */}
-          <div className="pb-3 lg:pb-0 lg:pr-4">
+          <div className="pb-3 lg:pb-0 lg:pr-5">
             <h3 className="text-xl font-heading font-normal">
               {displayQuestion}
             </h3>
@@ -179,15 +179,15 @@ const MarketGroupsRow = ({
           {/* Prediction Section (conditionally rendered) */}
           {canShowPredictionElement && (
             // This div handles the responsive line *within* the prediction block
-            <div className="text-sm text-muted-foreground w-full lg:w-auto flex flex-col lg:flex-row lg:items-center lg:ml-auto lg:min-w-[240px]">
+            <div className="text-sm text-muted-foreground w-full lg:w-auto flex flex-col lg:flex-row lg:items-center lg:ml-auto lg:min-w-[280px]">
               {/* Responsive Gray Line (internal to prediction block) */}
-              <div className="bg-border w-full h-px mb-1 lg:w-px lg:h-auto lg:self-stretch lg:mr-4 lg:mb-0" />
+              <div className="bg-border w-full h-px mb-1 lg:w-px lg:h-auto lg:self-stretch lg:mr-5 lg:mb-0" />
               {/* Prediction Text Content */}
-              <div className="mt-3 lg:mt-0">
+              <div className="mt-2 lg:mt-0">
                 <div className="whitespace-nowrap">
                   Current Market Prediction
                 </div>
-                <div className="pt-1 text-lg font-medium text-foreground">
+                <div className="text-lg font-medium text-foreground">
                   {predictionContent}
                 </div>
               </div>
