@@ -1,39 +1,52 @@
+<div style={{ position: 'relative', width: '100%', paddingBottom: '75%' }}>
+  <iframe 
+    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+    src="https://www.youtube.com/embed/6P7EPCnndUQ?rel=0&modestbranding=1&showinfo=0" 
+    title="YouTube video player" 
+    frameBorder="0" 
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+    allowFullScreen
+  ></iframe>
+</div>
+
 # Quick Start
 
 This guide walks you through a tiny TypeScript bot that:
 
-* Connects to the Sapience GraphQL API and finds latest market.
+* Connects to the Sapience GraphQL API and finds the latest market.
 * Uses ChatGPT to research the question and pick an answer.
 * Retrieves a quote to open a $1 position with this answer.
-* Approves the transfer of funds to the smart contract.
-* Opens a position in the market onchain.
+* Opens a position in the market onchain (if an Ethereum private key is provided).
 
----
-Then you can get creative:
+### Ideas for next steps
+
 * Deploy it somewhere to run on a recurring basis.
-* Add a social media integration to have the bot share information about its research and predictions.
-* Make the research logic, prompts, and tools more sophisticated.
+  * ChatGPT and other LLMs can help you find a good hosting solution based on your needs, including set up instructions. You may be looking for somewhere to run your script at an interval (as a "cron job") or to have it loop with pauses in a constantly running service.
+* Have the bot share information about its research and predictions with a messaging/social media integration.
+* Make the research logic, prompts, and tools more creative and sophisticated.
 
-We recommend using [Cursor](https://www.cursor.com/) and [adding the Sapience docs](/api/mcp) to its context.
+We recommend using [Cursor](https://www.cursor.com/) and [adding the Sapience docs](/cursor) for this project. You can also skip the steps below by cloning this repo directly in Cursor: [https://github.com/foilxyz/sapience-bot](https://github.com/foilxyz/sapience-bot)
 
 ## 1. Initialize a TypeScript project
+
+Open a terminal and initialize the project in a new folder.
 
 ```bash
 mkdir sapience-bot && cd sapience-bot
 pnpm init
-pnpm add viem abitype graphql-request dotenv node-fetch
-pnpm add -D typescript ts-node @types/node
-pnpm exec tsc --init --strict --esnext --moduleResolution node --outDir dist
+pnpm add viem graphql-request openai dotenv node-fetch
+pnpm add -D typescript tsx @types/node
+pnpm exec tsc --init --strict --module esnext --moduleResolution node --outDir dist
 ```
 
-Add a minimal **tsconfig.json** tweak so TypeScript understands ESM:
+Update`tsconfig.json` if necessary:
 
 ```json title="tsconfig.json"{5}
 {
   "compilerOptions": {
     // ... existing options ...
-    "module": "esnext",
-    "target": "es2020"
+    "target": "es2020",
+    "resolveJsonModule": true,
   }
 }
 ```
@@ -42,197 +55,271 @@ Add a minimal **tsconfig.json** tweak so TypeScript understands ESM:
 
 This file gives your code all the information it needs to interact with the Sapience markets onchain.
 
-Download the artifact straight from GitHub:
+Download the file from GitHub:
 
 ```bash
 curl -L https://raw.githubusercontent.com/foilxyz/foil/main/packages/protocol/deployments/Foil.json -o Foil.json
 ```
 
-## 3. Configure environment variables
+## 3. Get the latest GraphQL Type
 
-Create a `.env` file. (Never commit this to git!)
+This file gives your code information about the type of information you can retrieve from the [GraphQL API](/api/graphql).
 
-This will store your private key for the Open AI API. It attempts to execute trades onchain using the account for the private key if provided.
+Download the file from GitHub:
 
-```ini
-OPENAI_API_KEY=xxx # Retrieve from https://platform.openai.com/api-keys
-PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE # OPTIONAL: Wallet with some sUSDS and ETH on Base.
+```bash
+curl -L https://raw.githubusercontent.com/foilxyz/foil/refs/heads/main/packages/ui/types/graphql.ts -o graphql.ts
 ```
 
-## 4. Write the Bot
+## 4. Configure environment variables
+
+Create a `.env` file. **Make sure this file is in your `.gitignore` file if you use this with git or GitHub.**
+
+This will store your private key for the Open AI API. It submits the trades onchain using the account for the Ethereum private key if provided.
+
+```ini
+OPENAI_API_KEY=xxx # Retrieve from https://platform.openai.com/account/api-keys
+ETHEREUM_PRIVATE_KEY=0x... # OPTIONAL: For a wallet with some sUSDS and ETH on Base
+```
+
+## 5. Write the Bot
 
 Create an `index.ts` with the minimal logic.
 
 ```typescript title="index.ts"{5}
-import 'dotenv/config'
-import { createWalletClient, http, type Address, erc20Abi } from 'viem'
-import { parseAbi } from 'abitype'
-import FoilABI from './Foil.json' assert { type: 'json' }
-import { request, gql } from 'graphql-request'
-import fetch from 'node-fetch'
+import 'dotenv/config';
+import { createWalletClient, type Address, erc20Abi, parseEther, http, formatEther, createPublicClient } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { base } from 'viem/chains';
+import Foil from './Foil.json' assert { type: 'json' };
+import { request, gql } from 'graphql-request';
+import { type MarketGroupType, type MarketType } from './graphql';
+import fetch from 'node-fetch';
+import OpenAI from 'openai';
 
-// Setup wallet client
-const client = createWalletClient({
-  account: PRIVATE_KEY as `0x${string}`
-})
+const SUSDS_ADDRESS: Address = '0x5875eEE11Cf8398102FdAd704C9E96607675467a';
+const WAGER_AMOUNT = parseEther('1'); // 1 sUSDS
+const ETHEREUM_PRIVATE_KEY = process.env.ETHEREUM_PRIVATE_KEY;
 
-const foil = {
-  address: MARKET_GROUP_ADDRESS as Address,
-  abi: parseAbi(FoilABI as any)
-} as const
-
-// Helper – fetch markets without a position yet
-async function fetchOpenMarkets(owner: Address) {
+// Find the prediction market closing next
+async function fetchNextClosingMarket(): Promise<MarketType> {
   const query = gql`
-    query ($address: String!, $chainId: Int!, $owner: String!) {
-      marketGroups(chainId: $chainId, address: $address) {
-        markets {
+    query GetNextMarkets($collateralAsset: String!, $chainId: Int!, $currentTime: String!) {
+      marketGroups(
+        chainId: $chainId,
+        collateralAsset: $collateralAsset
+      ) {
+        address
+        markets(
+          filter: { 
+            endTimestamp_gt: $currentTime, # Market ends in the future
+          }
+        ) {
+          question
           marketId
-          settled
+          endTimestamp
         }
-      }
-      positions(chainId: $chainId, marketAddress: $address, owner: $owner) {
-        market { marketId }
       }
     }
-  `
-  const data = await request("https://api.sapience.xyz/graphql", query, {
-    address: MARKET_GROUP_ADDRESS,
-    chainId: Number(MARKET_GROUP_CHAIN_ID),
-    owner
-  })
+  `;
 
-  const allMarketIds = data.marketGroups[0].markets.map((m: any) => m.marketId)
-  const ownedMarketIds = new Set(
-    data.positions.map((p: any) => p.market.marketId)
-  )
-  return allMarketIds.filter((id: number) => !ownedMarketIds.has(id))
+  const responseData = await request<{ marketGroups: Array<MarketGroupType>; }>( 'https://api.sapience.xyz/graphql', query, {
+    chainId: base.id,
+    collateralAsset: SUSDS_ADDRESS,
+    currentTime: Math.floor(Date.now() / 1000).toString(),
+  });
+
+  // Find the market with the earliest endTimestamp
+  const nextMarket = responseData?.marketGroups
+    ?.flatMap(group => 
+      group.markets?.map(market => ({
+        ...market,
+        marketGroup: { address: group.address } as MarketGroupType
+      })) || []
+    )
+    ?.reduce((earliest, market) => {
+      if (!earliest) return market;
+      
+      const earliestTime = earliest.endTimestamp ? parseInt(earliest.endTimestamp.toString()) : Infinity;
+      const marketTime = market.endTimestamp ? parseInt(market.endTimestamp.toString()) : Infinity;
+      
+      return marketTime < earliestTime ? market : earliest;
+    }, null as MarketType | null);
+
+  if (!nextMarket) {
+    throw new Error('No active markets found.');
+  }
+
+  return nextMarket;
 }
 
-// Ask ChatGPT what the answer is
+// Ask ChatGPT to answer the question
 async function getPrediction(question: string): Promise<bigint> {
-  // Call the OpenAI API
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  const res = await openai.chat.completions.create({
+    model: 'gpt-4o-search-preview',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a helpful research assistant that answers questions. You MUST ALWAYS, regardless of your confidence, reply to the question with just "Yes", "No", or a specific number on the final line.'
+      },
+      {
+        role: 'user',
+        content: question
+      }
+    ],
+    web_search_options: {
+      search_context_size: 'medium'
     },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a helpful assistant that answers questions about markets. Reply with "Yes", "No", or a specific number.'
-        },
-        {
-          role: 'user',
-          content: question
-        }
-      ],
-      temperature: 0.7
-    })
   });
-  
-  const data = await response.json();
-  const answer = data.choices[0].message.content.trim().toLowerCase();
-  
-  // Parse the response:
+
+  const content = res.choices[0].message.content;
+  if (typeof content !== 'string') {
+    console.error('Invalid response structure from OpenAI API:', res);
+    throw new Error('Failed to get a valid response from OpenAI API.');
+  }
+  console.log(content);
+
+  const answer = content.trim().toLowerCase();
+
   // If the answer is "yes", return 1e18
   if (answer.includes('yes')) {
-    return 10n ** 18n;
+    return parseEther('1');
   }
+
   // If the answer is "no", return 0
   else if (answer.includes('no')) {
     return 0n;
   }
+
   // Try to parse as a number
   else {
-    const numberMatch = answer.match(/\d+(\.\d+)?/);
-    if (numberMatch) {
-      const num = parseFloat(numberMatch[0]);
+    let lastMatch: RegExpMatchArray | null = null;
+    for (const match of answer.matchAll(/\d+(\.\d+)?/g)) {
+      lastMatch = match;
+    }
+
+    if (lastMatch) {
+      const num = parseFloat(lastMatch[0]);
       return BigInt(Math.floor(num * 10**18));
     }
     return 0n; // Default to 0 if no number found
   }
 }
 
-// Quote, approve and trade
-async function trade(marketId: bigint, positionSize: bigint) {
-  const size = positionSize
+// Get the desired position size given the answer and a maximum $1 wager
+async function getQuote(marketAddress: Address, marketId: bigint, prediction: bigint): Promise<{ positionSize: bigint }> {
+  let expectedPriceDecimalString: string;
+  if (prediction === 0n) {
+    expectedPriceDecimalString = '0.0000009'; // API expects expectedPrice > 0. Use a very small number for "No".
+  } else {
+    expectedPriceDecimalString = formatEther(prediction); // Convert prediction (scaled by 1e18) to a decimal string (e.g., 10n**18n -> "1.0")
+  }
+
+  const quoterUrl = `https://api.sapience.xyz/quoter/${base.id}/${marketAddress}/${marketId}?collateralAvailable=${WAGER_AMOUNT.toString()}&expectedPrice=${expectedPriceDecimalString}`;
   
-  // Get the collateral required using the quoter API
-  const chainId = MARKET_GROUP_CHAIN_ID as string
-  const marketAddress = MARKET_GROUP_ADDRESS as string
-  const account = (await client.getAddresses())[0]
-  
-  // Get the current price and collateral availability
-  const { collateralAsset } = await client.readContract({
-    ...foil,
-    functionName: 'getMarket',
-    args: [marketId]
-  })
-  
-  const currentPrice = await client.readContract({
-    ...foil,
-    functionName: 'getReferencePrice',
-    args: [marketId]
-  }) as bigint
-  
-  const wagerAmount = parseEthers(1n);
-  
-  // Use the quoter API to determine the optimal position size
-  const quoterUrl = `https://api.sapience.xyz/quoter/${chainId}/${marketAddress}/${marketId}?expectedPrice=${Number(currentPrice) * 1.05}&collateralAvailable=${wagerAmount}`
-  
-  const response = await fetch(quoterUrl)
-  const quote = await response.json()
-  
+  const response = await fetch(quoterUrl);
   if (!response.ok) {
-    throw new Error(`Quoter API error: ${quote.error || 'Unknown error'}`)
+    const errorBody = await response.text();
+    console.error(`Quoter API request failed with status ${response.status}: ${errorBody}`);
+    throw new Error(`Quoter API request failed with status ${response.status}: ${errorBody}`);
   }
   
-  const requiredCollateral = BigInt(quote.collateralAvailable)
-  const positionSize = positionSize
+  const quote = await response.json() as { maxSize: string; };
+
+  const positionSize = BigInt(quote.maxSize); 
   
-  // Approve collateral once per session
-  const allowanceTx = await client.writeContract({
-    address: collateralAsset as Address,
+  return { positionSize };
+}
+
+// Approve token transfer and trade
+async function trade(marketAddress: Address, marketId: bigint, positionSize: bigint) {
+  if (!ETHEREUM_PRIVATE_KEY) {
+    throw new Error('Ethereum private key is not set in environment variables.');
+  }
+  const account = privateKeyToAccount(ETHEREUM_PRIVATE_KEY as `0x${string}`);
+
+  const walletClient = createWalletClient({
+    account,
+    chain: base,
+    transport: http(),
+  });
+
+  const publicClient = createPublicClient({
+    chain: base,
+    transport: http(),
+  });
+
+  // Approve the token spend
+  console.log('Approving token spend...');
+  const approveHash = await walletClient.writeContract({
+    address: SUSDS_ADDRESS,
     abi: erc20Abi,
     functionName: 'approve',
-    args: [foil.address, requiredCollateral]
-  })
-  await client.waitForTransactionReceipt({ hash: allowanceTx })
+    args: [marketAddress, WAGER_AMOUNT],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: approveHash });
 
-  // Create position with size from quoter API
-  const tx = await client.writeContract({
-    ...foil,
+  // Define deadline for createTraderPosition (1 hour from now)
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 60);
+
+  // Create the trader position
+  console.log('Creating trader position...');
+  const tradeHash = await walletClient.writeContract({
+    address: marketAddress,
+    abi: Foil.abi,
     functionName: 'createTraderPosition',
-    args: [marketId, positionSize, requiredCollateral, BigInt(Date.now() / 1000 + 60 * 60)]
-  })
-  console.log(`Opened position on market ${marketId}. Tx: ${tx}`)
-  await client.waitForTransactionReceipt({ hash: tx })
+    args: [marketId, positionSize, WAGER_AMOUNT, deadline],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: tradeHash });
+  console.log();
+  
+  console.log('Success!');
+  console.log(`${base.blockExplorers.default.url}/tx/${tradeHash}`);
 }
 
 (async () => {
-  const owner = (await client.getAddresses())[0]
-  const openMarkets = await fetchOpenMarkets(owner)
-  console.log('Open markets:', openMarkets)
+  const market = await fetchNextClosingMarket();
+  console.group('Found an active market...');
+  console.log();
+  console.log(market.question);
+  console.groupEnd();
+  console.log();
 
-  for (const id of openMarkets) {
-    const positionSize = await getPrediction(`What position should I take on market #${id}? Answer with "yes" for long, "no" for short, or a specific number.`)
-    const isLong = positionSize > 0n;
-    console.log(`ChatGPT says ${positionSize === 10n ** 18n ? 'YES' : positionSize === 0n ? 'NO' : positionSize.toString()} – placing trade with size ${positionSize}...`)
-    await trade(BigInt(id), positionSize)
+  console.group('Asking ChatGPT for an answer...');
+  console.log();
+  const prediction = await getPrediction(market.question!);
+  console.groupEnd();
+  console.log();
+
+  console.log(`Retrieving a quote for a $1 wager on market outcome "${prediction}"...`);
+  console.log();
+  const marketGroupAddress = market.marketGroup!.address! as Address;
+  const { positionSize } = await getQuote(marketGroupAddress, BigInt(market.marketId), prediction);
+
+  if(ETHEREUM_PRIVATE_KEY){
+    console.group(`Submitting trade with a size of ${formatEther(positionSize)}...`);
+    console.log();
+    await trade(marketGroupAddress, BigInt(market.marketId), positionSize);
+    console.groupEnd();
+    console.log();
+  } else {
+    console.log(`Trade Size: ${formatEther(positionSize)}`);
+    console.log('Add an Ethereum private key to your .env file to submit trades.');
+    console.log();
   }
-})().catch(console.error)
+
+  console.log('Done!');
+})().catch(console.error);
 ```
 
-## 5. Run it
+## 6. Run it
 
 ```bash
-node --loader ts-node/esm index.ts
+pnpm start
 ```
 
-From here, you can add error handling, position modification logic, liquidity provisioning strategies, and scaling of position size based on confidence.
+From here, you can add automated position settlement, better error handling, liquidity provisioning strategies, position modification logic, risk controls, and scaling of position size based on confidence.
 
-Join the Sapience Discord server to chat with other bots builders.
+Join the [Sapience Discord server](https://discord.gg/Hn2vzMDCSs) to chat with other bot builders.

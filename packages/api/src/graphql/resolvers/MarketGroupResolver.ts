@@ -1,18 +1,62 @@
-import { Resolver, Query, Arg, Int, FieldResolver, Root } from 'type-graphql';
+import {
+  Resolver,
+  Query,
+  Arg,
+  Int,
+  FieldResolver,
+  Root,
+  InputType,
+  Field,
+} from 'type-graphql';
 import dataSource from '../../db';
 import { MarketGroup } from '../../models/MarketGroup';
 import { Market } from '../../models/Market';
 import { MarketType, MarketGroupType } from '../types';
 import { mapMarketGroupToType, mapMarketToType } from './mappers';
 
+@InputType()
+export class MarketFilterInput {
+  @Field(() => String, { nullable: true })
+  endTimestamp_gt?: string;
+}
+
+@InputType()
+export class MarketOrderInput {
+  @Field(() => String)
+  field: 'endTimestamp';
+
+  @Field(() => String)
+  direction: 'ASC' | 'DESC';
+}
+
 @Resolver(() => MarketGroupType)
 export class MarketGroupResolver {
   @Query(() => [MarketGroupType])
-  async marketGroups(): Promise<MarketGroupType[]> {
+  async marketGroups(
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
+    @Arg('collateralAsset', () => String, { nullable: true })
+    collateralAsset?: string
+  ): Promise<MarketGroupType[]> {
     try {
-      const marketGroups = await dataSource.getRepository(MarketGroup).find({
-        relations: ['markets', 'category', 'resource'],
-      });
+      const queryBuilder = dataSource
+        .getRepository(MarketGroup)
+        .createQueryBuilder('marketGroup')
+        .leftJoinAndSelect('marketGroup.markets', 'markets')
+        .leftJoinAndSelect('marketGroup.category', 'category')
+        .leftJoinAndSelect('marketGroup.resource', 'resource');
+
+      if (chainId !== undefined) {
+        queryBuilder.andWhere('marketGroup.chainId = :chainId', { chainId });
+      }
+
+      if (collateralAsset !== undefined) {
+        queryBuilder.andWhere(
+          'marketGroup.collateralAsset = :collateralAsset',
+          { collateralAsset }
+        );
+      }
+
+      const marketGroups = await queryBuilder.getMany();
       return marketGroups.map(mapMarketGroupToType);
     } catch (error) {
       console.error('Error fetching market groups:', error);
@@ -41,15 +85,58 @@ export class MarketGroupResolver {
   }
 
   @FieldResolver(() => [MarketType])
-  async markets(@Root() marketGroup: MarketGroup): Promise<MarketType[]> {
+  async markets(
+    @Root() marketGroup: MarketGroup,
+    @Arg('filter', () => MarketFilterInput, { nullable: true })
+    filter?: MarketFilterInput,
+    @Arg('orderBy', () => MarketOrderInput, { nullable: true })
+    orderBy?: MarketOrderInput
+  ): Promise<MarketType[]> {
     try {
-      if (marketGroup.markets) {
-        return marketGroup.markets.map(mapMarketToType);
-      }
+      let markets = marketGroup.markets;
 
-      const markets = await dataSource.getRepository(Market).find({
-        where: { marketGroup: { id: marketGroup.id } },
-      });
+      if (!markets) {
+        const marketRepo = dataSource.getRepository(Market);
+        const queryBuilder = marketRepo
+          .createQueryBuilder('market')
+          .where('market.marketGroupId = :marketGroupId', {
+            marketGroupId: marketGroup.id,
+          });
+
+        if (filter?.endTimestamp_gt) {
+          queryBuilder.andWhere('market.endTimestamp > :endTimestamp', {
+            endTimestamp: parseInt(filter.endTimestamp_gt, 10),
+          });
+        }
+
+        if (orderBy?.field === 'endTimestamp') {
+          queryBuilder.orderBy('market.endTimestamp', orderBy.direction);
+        } else {
+          queryBuilder.orderBy('market.endTimestamp', 'ASC');
+        }
+        markets = await queryBuilder.getMany();
+      } else {
+        if (filter?.endTimestamp_gt) {
+          const endTimestampGt = parseInt(filter.endTimestamp_gt, 10);
+          markets = markets.filter(
+            (m) => m.endTimestamp && m.endTimestamp > endTimestampGt
+          );
+        }
+
+        if (orderBy?.field === 'endTimestamp') {
+          markets.sort((a, b) => {
+            const timeA = a.endTimestamp || 0;
+            const timeB = b.endTimestamp || 0;
+            if (orderBy.direction === 'ASC') {
+              return timeA - timeB;
+            } else {
+              return timeB - timeA;
+            }
+          });
+        } else {
+          markets.sort((a, b) => (a.endTimestamp || 0) - (b.endTimestamp || 0));
+        }
+      }
 
       return markets.map(mapMarketToType);
     } catch (error) {
