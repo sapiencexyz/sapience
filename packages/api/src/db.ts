@@ -21,6 +21,10 @@ const __dirname = dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+const renderServiceName = process.env.RENDER_SERVICE_NAME;
+const shouldLogInLive =
+  renderServiceName === 'candle-cache-builder' ? false : true;
+
 const isLive =
   process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
 
@@ -54,7 +58,7 @@ const postgresDataSource: DataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   synchronize: false,
-  logging: true,
+  logging: shouldLogInLive,
   logger: 'advanced-console',
   migrations: ['src/migrations/*.ts'],
   entities: [
