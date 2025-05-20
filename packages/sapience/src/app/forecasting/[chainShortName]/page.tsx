@@ -182,7 +182,7 @@ const MarketGroupPageContent = () => {
 
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
-  const { marketAddress } = parseUrlParameter(paramString);
+  const { chainShortName, marketAddress } = parseUrlParameter(paramString);
 
   const {
     marketGroupData,
@@ -257,7 +257,7 @@ const MarketGroupPageContent = () => {
               <div className="border border-border rounded flex flex-col flex-1">
                 <div className="flex-1 min-h-0">
                   <MarketGroupChart
-                    chainShortName={params.chainShortName as string}
+                    chainShortName={chainShortName as string}
                     marketAddress={marketAddress}
                     marketIds={activeMarkets.map((market) =>
                       Number(market.marketId)
