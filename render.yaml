@@ -7,9 +7,9 @@ services:
   - name: web-service
     type: web
     env: node
-    plan: pro
+    plan: pro-plus
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
-    startCommand: pnpm --filter @foil/api start:service
+    startCommand: NODE_OPTIONS='--max-old-space-size=8192' pnpm --filter @foil/api start:service
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
