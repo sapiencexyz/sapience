@@ -17,7 +17,6 @@
     "dev:codegen": "graphql-codegen --config codegen.ts --watch",
     "start": "pnpm migration:run && concurrently \"pnpm run start:service\" \"pnpm run start:worker\"",
     "start:service": "pnpm migration:run && tsx src/server.ts",
-    "start:all-workers": "pnpm migration:run && concurrently \"pnpm run start:worker\" \"pnpm run start:candle-cache\"",
     "start:worker": "pnpm migration:run && tsx src/workers/worker.ts",
     "start:worker:markets": "pnpm migration:run && tsx src/workers/worker.ts markets-only",
     "start:worker:resources": "pnpm migration:run && tsx src/workers/worker.ts resources-only",
