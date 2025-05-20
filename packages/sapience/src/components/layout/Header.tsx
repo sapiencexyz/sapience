@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable sonarjs/no-duplicate-string */
 import { Button } from '@foil/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -151,23 +150,28 @@ const Header = () => {
       {/* Top Header Bar */}
       <header className="w-full py-5 md:py-6 z-[50] fixed top-0 left-0">
         <div className="mx-auto px-4 md:px-6 flex items-center justify-between">
-          <div className="flex items-center bg-background/30 p-2 pr-4 md:pr-1 backdrop-blur-sm rounded-full">
-            <Link href="/" className="inline-block">
-              <div className="flex items-center gap-2">
-                <LottieIcon
-                  animationPath="/lottie/logomark.json"
-                  width={32}
-                  height={32}
-                  className="opacity-80"
-                />
-                <span className="text-2xl font-normal">Sapience</span>
-              </div>
-            </Link>
-            {/* Desktop Sidebar Trigger (inside header) */}
-            <SidebarTrigger
-              id="nav-sidebar"
-              className="hidden md:flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6"
-            />
+          <div className="flex flex-col">
+            <div className="flex items-center bg-background/30 p-2 pr-4 md:pr-1 backdrop-blur-sm rounded-full">
+              <Link href="/" className="inline-block">
+                <div className="flex items-center gap-2">
+                  <LottieIcon
+                    animationPath="/lottie/logomark.json"
+                    width={32}
+                    height={32}
+                    className="opacity-80"
+                  />
+                  <span className="text-2xl font-normal">Sapience</span>
+                </div>
+              </Link>
+              {/* Desktop Sidebar Trigger (inside header) */}
+              <SidebarTrigger
+                id="nav-sidebar"
+                className="hidden md:flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6"
+              />
+            </div>
+            <div className="-mt-3.5 ml-[124px] text-xs tracking-wider text-muted-foreground scale-75 origin-left font-medium">
+              BETA
+            </div>
           </div>
 
           {/* Mobile Sidebar Trigger Button (fixed left, with border, hover effect) */}
