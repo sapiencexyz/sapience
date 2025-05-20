@@ -7,7 +7,7 @@ services:
   - name: web-service
     type: web
     env: node
-    plan: pro-plus
+    plan: pro plus
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: NODE_OPTIONS='--max-old-space-size=8192' pnpm --filter @foil/api start:service
     autoDeploy: true
