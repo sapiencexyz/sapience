@@ -11,7 +11,7 @@ import { MarketParams } from '../models/MarketParams';
 import { Event } from '../models/Event';
 import { MarketGroup } from '../models/MarketGroup';
 import { Transaction } from '../models/Transaction';
-import { decodeEventLog, Log, formatUnits } from 'viem';
+import { decodeEventLog, Log, formatUnits, Abi } from 'viem';
 import {
   EpochCreatedEventLog,
   EventType,
@@ -38,6 +38,7 @@ import {
   updateTransactionFromPositionSettledEvent,
   insertCollateralTransfer,
   createOrUpdateEpochFromContract,
+  createOrUpdateMarketFromContract,
   updateCollateralData,
 } from './marketHelpers';
 import { Client, TextChannel, EmbedBuilder } from 'discord.js';
@@ -183,6 +184,10 @@ export const indexMarketEvents = async (
     );
     for (const log of logs) {
       try {
+        // Additional debug log to correlate received event block with watcher start block
+        console.log(
+          `[MarketEventWatcher] -> Received '${(log as any).eventName ?? 'unknown'}' at block ${log.blockNumber?.toString() ?? 'unknown'} for ${descriptiveName}`
+        );
         const serializedLog = JSON.stringify(log, bigintReplacer);
         const blockNumber = log.blockNumber || 0n;
         const block = await client.getBlock({
@@ -232,7 +237,7 @@ export const indexMarketEvents = async (
     }
   };
 
-  const startMarketWatcher = () => {
+  const startMarketWatcher = async () => {
     if (!isActive) {
       console.log(
         `[MarketEventWatcher] Watcher for ${descriptiveName} is permanently stopped. Not restarting.`
@@ -244,10 +249,62 @@ export const indexMarketEvents = async (
       `[MarketEventWatcher] Setting up contract event watcher for ${descriptiveName}`
     );
 
+    let chainHead: bigint = 0n;
     try {
+      chainHead = await client.getBlockNumber();
+      console.log(
+        `[MarketEventWatcher] Current chain head for ${descriptiveName} at watcher start: ${chainHead}`
+      );
+    } catch (err) {
+      console.error(
+        `[MarketEventWatcher] Failed to fetch current block number for ${descriptiveName} during watcher start:`,
+        err
+      );
+    }
+
+    try {
+      let historicalFromBlock: bigint | undefined;
+      try {
+        if (
+          market.deployTxnBlockNumber !== null &&
+          market.deployTxnBlockNumber !== undefined &&
+          market.deployTxnBlockNumber !== 0
+        ) {
+          historicalFromBlock = BigInt(market.deployTxnBlockNumber);
+        } else {
+          historicalFromBlock = chainHead > 5n ? chainHead - 5n : 0n;
+        }
+      } catch (blkErr) {
+        console.error(
+          `[MarketEventWatcher] Could not determine fromBlock for ${descriptiveName}:`,
+          blkErr
+        );
+      }
+
+      if (!market.deployTxnBlockNumber || market.deployTxnBlockNumber === 0) {
+        try {
+          const creation = await getContractCreationBlock(
+            client,
+            market.address as `0x${string}`
+          );
+          market.deployTxnBlockNumber = Number(creation.block.number);
+          market.deployTimestamp = Number(creation.block.timestamp);
+          await marketGroupRepository.save(market);
+          console.log(
+            `[MarketEventWatcher] Recorded deploy block ${market.deployTxnBlockNumber} for ${descriptiveName}`
+          );
+        } catch (err) {
+          console.error(
+            `[MarketEventWatcher] Failed to fetch creation block for ${descriptiveName}:`,
+            err
+          );
+        }
+      }
+
       currentUnwatch = client.watchContractEvent({
         address: market.address as `0x${string}`,
-        abi: Foil.abi, // Assuming Foil.abi is the correct ABI for market events
+        abi: Foil.abi,
+        fromBlock: historicalFromBlock,
         onLogs: processLogs,
         onError: (error) => {
           console.error(
@@ -331,6 +388,30 @@ export const indexMarketEvents = async (
   };
 
   startMarketWatcher();
+
+  try {
+    await createOrUpdateMarketFromContract(
+      client,
+      {
+        address: market.address.toLowerCase(),
+        abi: Foil.abi as Abi,
+        deployTimestamp: String(market.deployTimestamp ?? 0),
+        deployTxnBlockNumber: String(market.deployTxnBlockNumber ?? 0),
+      },
+      chainId,
+      market
+    );
+  } catch (populateErr) {
+    console.error(
+      `[MarketEventWatcher] Failed to populate market group ${market.address} from on-chain state:`,
+      populateErr
+    );
+    Sentry.withScope((scope) => {
+      scope.setExtra('marketAddress', market.address);
+      scope.setExtra('chainId', chainId);
+      Sentry.captureException(populateErr);
+    });
+  }
 
   return () => {
     console.log(
