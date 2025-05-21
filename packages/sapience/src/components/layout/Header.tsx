@@ -15,8 +15,9 @@ import {
   useSidebar,
 } from '@foil/ui/components/ui/sidebar';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { ExternalLink, Menu, User, LogOut } from 'lucide-react';
+import { Menu, User, LogOut } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -62,7 +63,7 @@ const NavLinks = ({
   };
 
   return (
-    <nav className="flex flex-col gap-3 w-full my-48 pl-4">
+    <nav className="flex flex-col gap-3 w-full my-60 pl-4">
       <Link href="/forecasting" passHref className="flex w-fit">
         <Button
           variant="ghost"
@@ -100,39 +101,14 @@ const NavLinks = ({
         </Button>
       </Link>
       <Link
-        href="https://x.com/sapiencexyz"
+        href="https://docs.sapience.xyz"
         passHref
         className="flex w-fit"
         target="_blank"
         rel="noopener noreferrer"
       >
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/news', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          <span className="flex items-center">
-            News
-            <ExternalLink className="h-4 w-4 ml-1.5 opacity-70" />
-          </span>
-        </Button>
-      </Link>
-      <Link
-        href="https://discord.gg/Hn2vzMDCSs"
-        passHref
-        className="flex w-fit"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/community', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          <span className="flex items-center">
-            Community
-            <ExternalLink className="h-4 w-4 ml-1.5 opacity-70" />
-          </span>
+        <Button variant="ghost" className={linkClass} onClick={handleLinkClick}>
+          Docs
         </Button>
       </Link>
     </nav>
@@ -240,6 +216,41 @@ const Header = () => {
           <NavLinks />
         </SidebarContent>
         <SidebarFooter>
+          <div className="flex items-center gap-2 pl-2">
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://github.com/foilxyz/foil"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image src="/github.svg" alt="GitHub" width={14} height={14} />
+              </a>
+            </Button>
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://twitter.com/sapiencexyz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image src="/x.svg" alt="Twitter" width={12} height={12} />
+              </a>
+            </Button>
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://discord.gg/Hn2vzMDCSs"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image
+                  src="/discord.svg"
+                  alt="Discord"
+                  width={12}
+                  height={12}
+                />
+              </a>
+            </Button>
+          </div>
+
           <div className="flex items-start gap-2 text-xs w-full p-2 rounded-lg max-w-[180px]">
             <span>🏗️</span>
             <div>

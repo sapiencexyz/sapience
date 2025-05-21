@@ -1,5 +1,6 @@
 import dynamic from 'next/dynamic'; // For dynamic importing
 import type React from 'react';
+import { useRef, useEffect } from 'react'; // Add useRef and useEffect
 
 import NumberDisplay from '../shared/NumberDisplay'; // Import NumberDisplay
 import type { OrderBookLevel } from '~/hooks/charts/useOrderBookData'; // Keep type import
@@ -87,8 +88,34 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   isLoadingBook,
   isErrorBook,
 }) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isLoading = isLoadingPool || isLoadingBook;
   const isError = isErrorPool || isErrorBook;
+
+  // Add effect to scroll spread to middle
+  useEffect(() => {
+    if (!isLoading && !isError && scrollContainerRef.current) {
+      const animationFrameId = requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          // Re-check ref inside rAF
+          const container = scrollContainerRef.current;
+          const lastPriceElement = container.querySelector('.last-price-row');
+
+          if (lastPriceElement && lastPriceElement instanceof HTMLElement) {
+            const containerHeight = container.clientHeight;
+            const elementHeight = lastPriceElement.clientHeight;
+            const elementOffsetTop = lastPriceElement.offsetTop;
+
+            const scrollTo =
+              elementOffsetTop - containerHeight / 2 + elementHeight / 2;
+            container.scrollTop = scrollTo;
+          }
+        }
+      });
+      return () => cancelAnimationFrame(animationFrameId); // Cleanup animation frame
+    }
+  }, [isLoading, isError, asks.length, bids.length]); // Re-run when data changes
+
   // Determine if there's truly no liquidity data available (not just loading)
   const hasNoLiquidity =
     !isLoading && !isError && asks.length === 0 && bids.length === 0;
@@ -158,7 +185,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
       </div>
 
       {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative">
         {/* Asks (Sell Orders) - Rendered bottom-up */}
         <div className="flex flex-col-reverse">
           {cumulativeAsks.map((ask, index) => {
@@ -183,7 +210,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
         </div>
 
         {/* Last Price */}
-        <div className="flex font-medium py-2 px-2 border-y  bg-muted/30 flex-shrink-0">
+        <div className="flex font-medium py-2 px-2 border-y bg-muted/30 flex-shrink-0 last-price-row">
           <span className="text-sm">Last Price: {lastPrice ?? '-'}</span>
         </div>
 
