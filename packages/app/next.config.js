@@ -32,6 +32,30 @@ const nextConfig = withPWA({
           },
         ],
       },
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: `
+              default-src 'self';
+              script-src 'self' https://app.foil.xyz https://challenges.cloudflare.com${process.env.NODE_ENV === 'development' ? " http://localhost:* https://localhost:*" : ""}${process.env.VERCEL_ENV === 'preview' ? " https://*.vercel.app" : ""};
+              style-src 'self' 'unsafe-inline';
+              img-src 'self' data: blob:;
+              font-src 'self';
+              object-src 'none';
+              base-uri 'self';
+              form-action 'self';
+              frame-ancestors 'none';
+              child-src https://verify.walletconnect.com https://verify.walletconnect.org;
+              frame-src https://verify.walletconnect.com https://verify.walletconnect.org https://challenges.cloudflare.com;
+              connect-src 'self' https://app.foil.xyz wss://relay.walletconnect.com wss://relay.walletconnect.org wss://www.walletlink.org https://explorer-api.walletconnect.com${process.env.NODE_ENV === 'development' ? " http://localhost:* https://localhost:* ws://localhost:* wss://localhost:*" : ""}${process.env.VERCEL_ENV === 'preview' ? " https://*.vercel.app wss://*.vercel.app" : ""};
+              worker-src 'self' blob:;
+              manifest-src 'self'
+            `,
+          },
+        ],
+      },
     ]
   }
 });
