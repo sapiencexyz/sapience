@@ -1,24 +1,26 @@
 # Model Context Protocol Server
 
-Streamable HTTP Endpoint
+Use Sapience's API with any [MCP client](https://modelcontextprotocol.io/clients) via the HTTP endpoint:
 
 ```
 https://api.sapience.xyz/mcp
 ```
 
-Use Sapience's API with any [MCP client](https://modelcontextprotocol.io/clients).
+## Use with Claude
 
-### Use with Claude
+Integrate Sapience with Claude to provide it with tools that query the Sapience GraphQL API for live data, prepare transaction data for prediction markets, and more.
 
-Add to [Claude Desktop](https://claude.ai/download) with [mcp-remote](https://github.com/geelen/mcp-remote?tab=readme-ov-file#usage).
+* Navigate to Settings > Integrations
+* Locate the “Integrations” section
+* Click “Add custom integration” at the bottom of the section
+* Add your integration’s remote MCP server URL
+* Finish configuring your integration by clicking “Add”
 
-Web app integration [coming soon](https://www.anthropic.com/news/integrations)? 
+You can connect it to [Claude Desktop](https://claude.ai/download) with [`mcp-remote`](https://github.com/geelen/mcp-remote?tab=readme-ov-file#usage).
 
-### Use with Cursor
+## Use with Cursor
 
 Allow agents in [Cursor](https://www.cursor.com/) to query the Sapience API directly, helping it better assist with software development.
-
-To integrate your MCP server with Cursor:
 
 - Open Cursor IDE
 - Navigate to Settings (⚙️) > AI > Advanced Settings
@@ -26,13 +28,9 @@ To integrate your MCP server with Cursor:
 - Add your MCP server URL: `https://api.sapience.xyz/mcp`
 - Save your settings
 
-For the most current information on Cursor's integrations and MCP support, refer to the [official Cursor documentation](https://cursor.sh/docs).
+## Use with LangChain
 
-### Use with LangChain
-
-LangChain is a popular framework for building applications with large language models (LLMs). You can integrate your Model Context Protocol (MCP) server with LangChain to extend its capabilities with custom tools.
-
-Here's how to connect your MCP server to LangChain:
+LangChain is a popular framework for building applications with large language models (LLMs).
 
 1. **Install Required Dependencies**:
    ```bash
@@ -107,7 +105,5 @@ Here's how to connect your MCP server to LangChain:
        # Implement specific functionality
        pass
    ```
-
-LangChain's flexible architecture allows for various integration patterns with MCP servers. The approach you choose will depend on your specific use case and how your MCP server is structured.
 
 For more information on LangChain's tool and agent capabilities, refer to the [LangChain documentation](https://python.langchain.com/docs/how_to/do_tool_calling).
