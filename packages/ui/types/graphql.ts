@@ -86,6 +86,7 @@ export type MarketType = {
   positions: Array<PositionType>;
   public: Scalars['Boolean']['output'];
   question?: Maybe<Scalars['String']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['String']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;

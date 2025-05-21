@@ -501,6 +501,16 @@ const ForecastContent = () => {
                 );
               })()}
             </div>
+
+            {/* Market Rules */}
+            {marketData?.rules && (
+              <div className="w-full mt-8 mb-4">
+                <h3 className="text-lg font-normal mb-2">Rules</h3>
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {marketData.rules}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
