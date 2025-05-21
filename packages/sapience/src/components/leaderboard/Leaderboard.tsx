@@ -82,10 +82,23 @@ const Leaderboard = () => {
 
   return (
     <div className="container max-w-[440px] mx-auto py-32">
-      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-10">
+      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-5">
         Leaderboard
       </h1>
 
+      <p className="text-xl font-heading font-normal mb-10 text-muted-foreground leading-relaxed">
+        Sapience&apos;s{' '}
+        <a
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://github.com/foilxyz/foil/tree/main/packages/api"
+          className="border-b border-current pb-px hover:opacity-80 hover:text-foreground"
+        >
+          open source blockchain indexer
+        </a>{' '}
+        tracks the realized P&L of Ethereum wallets active in prediction
+        markets.
+      </p>
       <div className="grid grid-cols-1 gap-8">
         <div>
           <div className="border border-border rounded-lg overflow-hidden">
