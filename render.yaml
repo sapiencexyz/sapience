@@ -13,6 +13,9 @@ services:
     autoDeploy: true
     repo: https://github.com/foilxyz/foil
     branch: main
+    envVars:
+      - key: DATABASE_URL
+        sync: false
 
   - name: background-worker
     type: worker
@@ -22,6 +25,9 @@ services:
     startCommand: pnpm --filter @foil/api start:worker
     autoDeploy: true
     branch: main
+    envVars:
+      - key: DATABASE_URL
+        sync: false
 
   - name: candle-cache-builder
     type: worker
@@ -32,3 +38,6 @@ services:
     autoDeploy: true
     repo: https://github.com/foilxyz/foil
     branch: main
+    envVars:
+      - key: DATABASE_URL
+        sync: false
