@@ -21,6 +21,19 @@ module.exports = withPWA({
     });
     return config;
   },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN'
+          },
+        ],
+      },
+    ]
+  }
 });
 
 
