@@ -13,6 +13,15 @@ router.get(
       serviceId: string;
     };
 
+    const idRegex = /^[a-zA-Z0-9-_]+$/;
+    if (!idRegex.test(jobId) || !idRegex.test(serviceId)) {
+      res.status(400).json({ 
+        success: false,
+        error: 'Invalid jobId or serviceId format'
+      });
+      return;
+    }
+
     const RENDER_API_KEY = process.env.RENDER_API_KEY;
     if (!RENDER_API_KEY) {
       throw new Error('RENDER_API_KEY not set');
