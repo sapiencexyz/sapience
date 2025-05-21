@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport, StreamableHTTPServerTransportOptions } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomBytes } from 'crypto';
@@ -20,7 +20,7 @@ registerAllMcpTools(mcpServer);
 
 const activeTransports: Record<string, StreamableHTTPServerTransport> = {};
 
-router.all('*', async (req: Request, res: Response, next: NextFunction) => {
+router.all('*', async (req: Request, res: Response) => {
   try {
     // The MCP spec for Streamable HTTP often involves a session ID in the path or query.
     // For this example, we'll derive a simplistic session ID from the request path.
