@@ -1,6 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport, StreamableHTTPServerTransportOptions } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import {
+  StreamableHTTPServerTransport,
+  StreamableHTTPServerTransportOptions,
+} from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomBytes } from 'crypto';
 import { registerAllMcpTools } from '../mcp/index.js'; // Import the new aggregator function
 
@@ -41,8 +44,10 @@ router.all('*', async (req: Request, res: Response) => {
       // Connect the server to this new transport instance.
       // This establishes the link between the McpServer logic and this specific transport.
       await mcpServer.connect(transport);
-      
-      console.log(`New StreamableHTTPServerTransport created and connected for session: ${sessionId}`);
+
+      console.log(
+        `New StreamableHTTPServerTransport created and connected for session: ${sessionId}`
+      );
 
       res.on('close', () => {
         transport.close(); // Properly close the transport on client disconnect
@@ -53,7 +58,6 @@ router.all('*', async (req: Request, res: Response) => {
 
     // The transport's handle method expects the raw request and response objects.
     await transport.handleRequest(req, res);
-
   } catch (error) {
     console.error('[MCP] Error handling request:', error);
     if (!res.headersSent) {
@@ -62,4 +66,4 @@ router.all('*', async (req: Request, res: Response) => {
   }
 });
 
-export { router as mcpRoutes }; 
+export { router as mcpRoutes };

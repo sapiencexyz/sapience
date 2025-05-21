@@ -15,7 +15,7 @@ async function initializeSchema() {
 initializeSchema();
 
 interface GraphQLResponse {
-  data?: any;
+  data?: Record<string, unknown>;
   errors?: Array<{
     message: string;
     locations?: Array<{
@@ -26,11 +26,15 @@ interface GraphQLResponse {
   }>;
 }
 
-async function executeGraphQLQuery(query: string, variables?: Record<string, any>): Promise<GraphQLResponse> {
+async function executeGraphQLQuery(
+  query: string,
+  variables?: Record<string, unknown>
+): Promise<GraphQLResponse> {
   if (!schema) {
     await initializeSchema(); // Ensure schema is initialized
-    if(!schema) { // Check again, and throw if still not initialized.
-        throw new Error('GraphQL schema is not initialized.');
+    if (!schema) {
+      // Check again, and throw if still not initialized.
+      throw new Error('GraphQL schema is not initialized.');
     }
   }
   // Directly use the graphql execution engine
@@ -44,15 +48,16 @@ async function executeGraphQLQuery(query: string, variables?: Record<string, any
 
   // Adapt the result to the existing GraphQLResponse structure
   return {
-    data: result.data,
+    data: result.data || undefined,
     errors: result.errors as GraphQLResponse['errors'], // Cast to expected type
   };
 }
 
 // Market Tools
 const getMarketGroup = {
-  name: "get_sapience_market_group",
-  description: "Gets detailed information about a specific market group by its address and chain ID",
+  name: 'get_sapience_market_group',
+  description:
+    'Gets detailed information about a specific market group by its address and chain ID',
   parameters: {
     properties: {
       address: {
@@ -66,7 +71,13 @@ const getMarketGroup = {
     },
     required: ['address', 'chainId'],
   },
-  function: async ({ address, chainId }: { address: string; chainId: string }) => {
+  function: async ({
+    address,
+    chainId,
+  }: {
+    address: string;
+    chainId: string;
+  }) => {
     const query = `
       query GetMarketGroup($address: String!, $chainId: Int!) {
         marketGroup(address: $address, chainId: $chainId) {
@@ -118,19 +129,25 @@ const getMarketGroup = {
       }
     `;
 
-    const result = await executeGraphQLQuery(query, { address, chainId: parseInt(chainId) });
+    const result = await executeGraphQLQuery(query, {
+      address,
+      chainId: parseInt(chainId),
+    });
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.marketGroup, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.marketGroup, null, 2),
+        },
+      ],
     };
   },
 };
 
 const getMarket = {
-  name: "get_sapience_market",
-  description: "Gets detailed information about a specific market by its chain ID, market address, and market ID.",
+  name: 'get_sapience_market',
+  description:
+    'Gets detailed information about a specific market by its chain ID, market address, and market ID.',
   parameters: {
     properties: {
       chainId: {
@@ -148,7 +165,15 @@ const getMarket = {
     },
     required: ['chainId', 'marketAddress', 'marketId'],
   },
-  function: async ({ chainId, marketAddress, marketId }: { chainId: string; marketAddress: string; marketId: string }) => {
+  function: async ({
+    chainId,
+    marketAddress,
+    marketId,
+  }: {
+    chainId: string;
+    marketAddress: string;
+    marketId: string;
+  }) => {
     // The schema has markets(chainId: Int!, marketAddress: String!, marketId: Int!): [MarketType!]!
     // It returns an array, so we'll query for that and typically expect one result for a specific marketId.
     const query = `
@@ -175,21 +200,28 @@ const getMarket = {
         }
       }
     `;
-    const result = await executeGraphQLQuery(query, { chainId: parseInt(chainId), marketAddress, marketId: parseInt(marketId) });
+    const result = await executeGraphQLQuery(query, {
+      chainId: parseInt(chainId),
+      marketAddress,
+      marketId: parseInt(marketId),
+    });
     // Since the schema returns an array, we send back the array.
     // If a single market is always expected, the consumer can take the first element.
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.markets, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.markets, null, 2),
+        },
+      ],
     };
   },
 };
 
 const getMarketGroups = {
-  name: "get_sapience_market_groups",
-  description: "Lists all market groups available in the Foil system, optionally filtering by chain ID or collateral asset.",
+  name: 'get_sapience_market_groups',
+  description:
+    'Lists all market groups available in the Foil system, optionally filtering by chain ID or collateral asset.',
   parameters: {
     properties: {
       chainId: {
@@ -199,11 +231,17 @@ const getMarketGroups = {
       collateralAsset: {
         type: 'string',
         description: 'Optional collateral asset to filter market groups by.',
-      }
+      },
     },
     required: [], // All parameters are optional
   },
-  function: async ({ chainId, collateralAsset }: { chainId?: string, collateralAsset?: string }) => {
+  function: async ({
+    chainId,
+    collateralAsset,
+  }: {
+    chainId?: string;
+    collateralAsset?: string;
+  }) => {
     const query = `
       query GetMarketGroups($chainId: Int, $collateralAsset: String) {
         marketGroups(chainId: $chainId, collateralAsset: $collateralAsset) {
@@ -260,59 +298,92 @@ const getMarketGroups = {
         }
       }
     `;
-    
-    const variables: Record<string, any> = {};
+
+    const variables: Record<string, string | number> = {};
     if (chainId) variables.chainId = parseInt(chainId);
     if (collateralAsset) variables.collateralAsset = collateralAsset;
 
     const result = await executeGraphQLQuery(query, variables);
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.marketGroups, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.marketGroups, null, 2),
+        },
+      ],
     };
   },
 };
 
 // New tool to list markets with more specific market filters
 const getMarkets = {
-  name: "get_sapience_markets",
-  description: "Lists all markets, optionally filtering by a specific market group (using marketGroupAddress and chainId), or by chain ID (for all market groups on that chain), and/or active status.",
+  name: 'get_sapience_markets',
+  description:
+    'Lists all markets, optionally filtering by a specific market group (using marketGroupAddress and chainId), or by chain ID (for all market groups on that chain), and/or active status.',
   parameters: {
     properties: {
-      marketGroupAddress: { // Added to specify a single market group
+      marketGroupAddress: {
+        // Added to specify a single market group
         type: 'string',
-        description: 'Optional address of a specific market group to fetch markets from. If provided, chainId is also required.',
+        description:
+          'Optional address of a specific market group to fetch markets from. If provided, chainId is also required.',
       },
       chainId: {
         type: 'string',
-        description: 'Optional chain ID. Required if marketGroupAddress is provided. Otherwise, filters market groups by this chain ID.',
+        description:
+          'Optional chain ID. Required if marketGroupAddress is provided. Otherwise, filters market groups by this chain ID.',
       },
       isActive: {
         type: 'boolean',
-        description: 'Optional boolean to filter for markets that are currently active (end time in the future). Defaults to false (include all markets).',
+        description:
+          'Optional boolean to filter for markets that are currently active (end time in the future). Defaults to false (include all markets).',
       },
     },
     required: [],
   },
-  function: async ({ marketGroupAddress, chainId, isActive }: { marketGroupAddress?: string; chainId?: string; isActive?: boolean }) => {
-    let marketFilterInput = {};
+  function: async ({
+    marketGroupAddress,
+    chainId,
+    isActive,
+  }: {
+    marketGroupAddress?: string;
+    chainId?: string;
+    isActive?: boolean;
+  }) => {
+    interface MarketFilterInput {
+      endTimestamp_gt?: string;
+    }
+
+    interface Market {
+      id: string;
+      marketId: string;
+      // Add other properties as needed
+      [key: string]: unknown;
+    }
+
+    interface MarketGroup {
+      markets?: Market[];
+      [key: string]: unknown;
+    }
+
+    const marketFilterInput: MarketFilterInput = {};
     if (isActive) {
       const nowInSeconds = Math.floor(Date.now() / 1000).toString();
-      marketFilterInput = { endTimestamp_gt: nowInSeconds };
+      marketFilterInput.endTimestamp_gt = nowInSeconds;
     }
 
     let query;
-    const variables: Record<string, any> = {
-      marketFilter: marketFilterInput
+    const variables: Record<string, string | number | MarketFilterInput> = {
+      marketFilter: marketFilterInput,
     };
 
-    let allMarkets: any[] = [];
+    let allMarkets: Market[] = [];
 
     if (marketGroupAddress) {
       if (!chainId) {
-        throw new Error("chainId is required when marketGroupAddress is provided.");
+        throw new Error(
+          'chainId is required when marketGroupAddress is provided.'
+        );
       }
       query = `
         query GetMarketsFromGroup($address: String!, $chainId: Int!, $marketFilter: MarketFilterInput) {
@@ -345,8 +416,10 @@ const getMarkets = {
       variables.address = marketGroupAddress;
       variables.chainId = parseInt(chainId);
       const result = await executeGraphQLQuery(query, variables);
-      if (result.data?.marketGroup?.markets) {
-        allMarkets = result.data.marketGroup.markets;
+
+      const marketGroup = result.data?.marketGroup as MarketGroup | undefined;
+      if (marketGroup?.markets && Array.isArray(marketGroup.markets)) {
+        allMarkets = marketGroup.markets;
       }
     } else {
       // Query across multiple market groups, optionally filtered by chainId
@@ -382,35 +455,43 @@ const getMarkets = {
         variables.chainId = parseInt(chainId);
       }
       const result = await executeGraphQLQuery(query, variables);
-      if (result.data?.marketGroups) {
-        for (const group of result.data.marketGroups) {
-          if (group.markets) {
-            allMarkets = allMarkets.concat(group.markets);
+
+      const marketGroups = result.data?.marketGroups as
+        | MarketGroup[]
+        | undefined;
+      if (marketGroups && Array.isArray(marketGroups)) {
+        for (const group of marketGroups) {
+          if (group.markets && Array.isArray(group.markets)) {
+            allMarkets = [...allMarkets, ...group.markets];
           }
         }
       }
     }
 
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(allMarkets, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(allMarkets, null, 2),
+        },
+      ],
     };
   },
 };
 
 // Position Tools
 const getPositions = {
-  name: "get_sapience_positions",
-  description: "Gets information about positions, optionally filtered by chain ID, market address (of market group), or owner",
+  name: 'get_sapience_positions',
+  description:
+    'Gets information about positions, optionally filtered by chain ID, market address (of market group), or owner',
   parameters: {
     properties: {
       chainId: {
         type: 'string',
         description: 'Optional chain ID to filter positions by',
       },
-      marketAddress: { // This refers to the MarketGroup address in the positions query
+      marketAddress: {
+        // This refers to the MarketGroup address in the positions query
         type: 'string',
         description: 'Optional market group address to filter positions by',
       },
@@ -421,7 +502,15 @@ const getPositions = {
     },
     required: [],
   },
-  function: async ({ chainId, marketAddress, owner }: { chainId?: string; marketAddress?: string; owner?: string }) => {
+  function: async ({
+    chainId,
+    marketAddress,
+    owner,
+  }: {
+    chainId?: string;
+    marketAddress?: string;
+    owner?: string;
+  }) => {
     const query = `
       query GetPositions($chainId: Int, $marketAddress: String, $owner: String) {
         positions(chainId: $chainId, marketAddress: $marketAddress, owner: $owner) {
@@ -463,25 +552,28 @@ const getPositions = {
       }
     `;
 
-    const variables: Record<string, any> = {};
+    const variables: Record<string, string | number> = {};
     if (chainId) variables.chainId = parseInt(chainId);
-    if (marketAddress) variables.marketAddress = marketAddress; // This is marketAddress for the MarketGroup
+    if (marketAddress) variables.marketAddress = marketAddress;
     if (owner) variables.owner = owner;
 
     const result = await executeGraphQLQuery(query, variables);
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.positions, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.positions, null, 2),
+        },
+      ],
     };
   },
 };
 
 // Resource Tools
 const getResource = {
-  name: "get_sapience_resource",
-  description: "Gets detailed information about a specific resource by its slug",
+  name: 'get_sapience_resource',
+  description:
+    'Gets detailed information about a specific resource by its slug',
   parameters: {
     properties: {
       slug: {
@@ -529,17 +621,19 @@ const getResource = {
 
     const result = await executeGraphQLQuery(query, { slug });
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.resource, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.resource, null, 2),
+        },
+      ],
     };
   },
 };
 
 const getResources = {
-  name: "get_sapience_resources",
-  description: "Lists all resources available in the Foil system",
+  name: 'get_sapience_resources',
+  description: 'Lists all resources available in the Foil system',
   parameters: {
     properties: {}, // No parameters for listResources as per schema
     required: [],
@@ -582,21 +676,24 @@ const getResources = {
 
     const result = await executeGraphQLQuery(query);
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.resources, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.resources, null, 2),
+        },
+      ],
     };
   },
 };
 
 // Transaction Tools
 const getTransactions = {
-  name: "get_sapience_transactions",
-  description: "Gets transaction history, optionally filtered by position ID",
+  name: 'get_sapience_transactions',
+  description: 'Gets transaction history, optionally filtered by position ID',
   parameters: {
     properties: {
-      positionId: { // positionId is Int in schema
+      positionId: {
+        // positionId is Int in schema
         type: 'string', // Keep as string for tool input, parse to Int
         description: 'Optional position ID to filter transactions by',
       },
@@ -639,15 +736,17 @@ const getTransactions = {
       }
     `;
 
-    const variables: Record<string, any> = {};
+    const variables: Record<string, number> = {};
     if (positionId) variables.positionId = parseInt(positionId);
 
     const result = await executeGraphQLQuery(query, variables);
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.transactions, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.transactions, null, 2),
+        },
+      ],
     };
   },
 };
@@ -660,29 +759,33 @@ function intervalToSeconds(interval: string): number {
 
   const match = interval.match(/^(\d+)(s|m|h|d|w)$/);
   if (!match) {
-    throw new Error('Invalid interval format. Use a number for seconds or format like "1d", "4h", "30m", "45s", "1w"');
+    throw new Error(
+      'Invalid interval format. Use a number for seconds or format like "1d", "4h", "30m", "45s", "1w"'
+    );
   }
 
   const value = parseInt(match[1]);
   const unit = match[2];
 
   const multipliers: Record<string, number> = {
-    's': 1,
-    'm': 60,
-    'h': 3600,
-    'd': 86400,
-    'w': 604800
+    s: 1,
+    m: 60,
+    h: 3600,
+    d: 86400,
+    w: 604800,
   };
 
   return value * multipliers[unit];
 }
 
 const getMarketCandles = {
-  name: "get_sapience_market_candles",
-  description: "Gets price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.",
+  name: 'get_sapience_market_candles',
+  description:
+    'Gets price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.',
   parameters: {
     properties: {
-      address: { // This is market group address
+      address: {
+        // This is market group address
         type: 'string',
         description: 'The address of the market group',
       },
@@ -690,7 +793,8 @@ const getMarketCandles = {
         type: 'string',
         description: 'The chain ID where the market group exists',
       },
-      marketId: { // Changed from epochId to marketId
+      marketId: {
+        // Changed from epochId to marketId
         type: 'string',
         description: 'The market ID (epoch ID) to get candles for',
       },
@@ -709,7 +813,14 @@ const getMarketCandles = {
     },
     required: ['address', 'chainId', 'marketId', 'from', 'to', 'interval'],
   },
-  function: async ({ address, chainId, marketId, from, to, interval }: {
+  function: async ({
+    address,
+    chainId,
+    marketId,
+    from,
+    to,
+    interval,
+  }: {
     address: string;
     chainId: string;
     marketId: string; // Changed from epochId
@@ -740,17 +851,20 @@ const getMarketCandles = {
       interval: intervalSeconds,
     });
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.marketCandles, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.marketCandles, null, 2),
+        },
+      ],
     };
   },
 };
 
 const getResourceCandles = {
-  name: "get_sapience_resource_candles",
-  description: "Gets price candle data (OHLC) for a specific resource over a time period. To, from, and interval should be specified in seconds.",
+  name: 'get_sapience_resource_candles',
+  description:
+    'Gets price candle data (OHLC) for a specific resource over a time period. To, from, and interval should be specified in seconds.',
   parameters: {
     properties: {
       slug: {
@@ -772,7 +886,12 @@ const getResourceCandles = {
     },
     required: ['slug', 'from', 'to', 'interval'],
   },
-  function: async ({ slug, from, to, interval }: {
+  function: async ({
+    slug,
+    from,
+    to,
+    interval,
+  }: {
     slug: string;
     from: string;
     to: string;
@@ -799,17 +918,20 @@ const getResourceCandles = {
       interval: intervalSeconds,
     });
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.resourceCandles, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.resourceCandles, null, 2),
+        },
+      ],
     };
   },
 };
 
 const getResourceTrailingAverageCandles = {
-  name: "get_sapience_resource_trailing_average_candles",
-  description: "Gets trailing average price candle data (OHLC) for a specific resource over a time period. To, from, interval, and trailingAvgTime should be specified in seconds.",
+  name: 'get_sapience_resource_trailing_average_candles',
+  description:
+    'Gets trailing average price candle data (OHLC) for a specific resource over a time period. To, from, interval, and trailingAvgTime should be specified in seconds.',
   parameters: {
     properties: {
       slug: {
@@ -835,7 +957,13 @@ const getResourceTrailingAverageCandles = {
     },
     required: ['slug', 'from', 'to', 'interval', 'trailingAvgTime'],
   },
-  function: async ({ slug, from, to, interval, trailingAvgTime }: {
+  function: async ({
+    slug,
+    from,
+    to,
+    interval,
+    trailingAvgTime,
+  }: {
     slug: string;
     from: string;
     to: string;
@@ -865,20 +993,28 @@ const getResourceTrailingAverageCandles = {
       trailingAvgTime: trailingAvgSeconds,
     });
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.resourceTrailingAverageCandles, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(
+            result.data?.resourceTrailingAverageCandles,
+            null,
+            2
+          ),
+        },
+      ],
     };
   },
 };
 
 const getIndexCandles = {
-  name: "get_sapience_index_candles",
-  description: "Gets index price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.",
+  name: 'get_sapience_index_candles',
+  description:
+    'Gets index price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.',
   parameters: {
     properties: {
-      address: { // This is market group address
+      address: {
+        // This is market group address
         type: 'string',
         description: 'The address of the market group',
       },
@@ -886,7 +1022,8 @@ const getIndexCandles = {
         type: 'string',
         description: 'The chain ID where the market group exists',
       },
-      marketId: { // Changed from epochId to marketId
+      marketId: {
+        // Changed from epochId to marketId
         type: 'string',
         description: 'The market ID (epoch ID) to get candles for',
       },
@@ -905,7 +1042,14 @@ const getIndexCandles = {
     },
     required: ['address', 'chainId', 'marketId', 'from', 'to', 'interval'],
   },
-  function: async ({ address, chainId, marketId, from, to, interval }: {
+  function: async ({
+    address,
+    chainId,
+    marketId,
+    from,
+    to,
+    interval,
+  }: {
     address: string;
     chainId: string;
     marketId: string; // Changed from epochId
@@ -936,10 +1080,12 @@ const getIndexCandles = {
       interval: intervalSeconds,
     });
     return {
-      content: [{
-        type: "text" as const,
-        text: JSON.stringify(result.data?.indexCandles, null, 2)
-      }]
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(result.data?.indexCandles, null, 2),
+        },
+      ],
     };
   },
 };
@@ -956,5 +1102,5 @@ export {
   getMarketCandles,
   getResourceCandles,
   getResourceTrailingAverageCandles,
-  getIndexCandles
+  getIndexCandles,
 };
