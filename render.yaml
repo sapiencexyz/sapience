@@ -15,7 +15,9 @@ services:
     branch: main
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: database
+          property: connectionString
 
   - name: background-worker
     type: worker
@@ -27,7 +29,9 @@ services:
     branch: main
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: database
+          property: connectionString
 
   - name: candle-cache-builder
     type: worker
@@ -40,4 +44,6 @@ services:
     branch: main
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: database
+          property: connectionString
