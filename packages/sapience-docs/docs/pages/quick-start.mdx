@@ -13,7 +13,7 @@
 
 This guide walks you through a tiny TypeScript bot that:
 
-* Connects to the Sapience GraphQL API and finds the latest market.
+* Connects to the Sapience GraphQL API and finds the next closing prediction market.
 * Uses ChatGPT to research the question and pick an answer.
 * Retrieves a quote to open a $1 position with this answer.
 * Opens a position in the market onchain (if an Ethereum private key is provided).
@@ -61,7 +61,7 @@ Download the file from GitHub:
 curl -L https://raw.githubusercontent.com/foilxyz/foil/main/packages/protocol/deployments/Foil.json -o Foil.json
 ```
 
-## 3. Get the latest GraphQL Type
+## 3. Get the latest GraphQL Types
 
 This file gives your code information about the type of information you can retrieve from the [GraphQL API](/api/graphql).
 

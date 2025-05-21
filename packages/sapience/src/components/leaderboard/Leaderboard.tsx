@@ -91,7 +91,7 @@ const Leaderboard = () => {
         <a
           target="_blank"
           rel="noopener noreferrer"
-          href="https://github.com/foilxyz/foil/tree/main/packages/api"
+          href="https://api.sapience.xyz/graphql"
           className="border-b border-current pb-px hover:opacity-80 hover:text-foreground"
         >
           open source blockchain indexer
