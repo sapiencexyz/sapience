@@ -16,6 +16,8 @@ import { useAccount } from 'wagmi';
 import SettlePositionButton from '../forecasting/SettlePositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
+import { MarketGroupClassification } from '~/lib/types';
+import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 import {
   calculateEffectiveEntryPrice,
   getChainShortName,
@@ -35,8 +37,20 @@ function PositionCell({ position }: { position: PositionType }) {
   const value = Number(formatEther(netPositionBI));
   const absValue = Math.abs(value);
   const baseTokenName = position.market.marketGroup?.baseTokenName;
+  const marketClassification = position.market.marketGroup
+    ? getMarketGroupClassification(position.market.marketGroup)
+    : MarketGroupClassification.NUMERIC;
 
-  // Determine direction and styling based on net position value
+  // For non-numeric markets, show just the number and Yes/No without badge
+  if (marketClassification !== MarketGroupClassification.NUMERIC) {
+    return (
+      <span className="flex items-center space-x-1.5">
+        <NumberDisplay value={absValue} />
+        <span>{value >= 0 ? 'Yes' : 'No'}</span>
+      </span>
+    );
+  }
+
   if (value >= 0) {
     // Long Position
     return (

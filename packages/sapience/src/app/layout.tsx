@@ -28,7 +28,10 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   metadataBase: new URL(APP_URL),
   icons: {
-    icon: LARGE_ICON_PATH,
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', type: 'image/x-icon', sizes: 'any' },
+    ],
     apple: [
       {
         url: LARGE_ICON_PATH,
@@ -36,7 +39,7 @@ export const metadata: Metadata = {
         type: 'image/png',
       },
     ],
-    shortcut: LARGE_ICON_PATH,
+    shortcut: '/favicon.ico',
   },
   appleWebApp: {
     capable: true,

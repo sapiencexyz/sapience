@@ -1,6 +1,5 @@
 'use client';
 
-/* eslint-disable sonarjs/no-duplicate-string */
 import { Button } from '@foil/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -16,8 +15,9 @@ import {
   useSidebar,
 } from '@foil/ui/components/ui/sidebar';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { ExternalLink, Menu, User, LogOut } from 'lucide-react';
+import { Menu, User, LogOut } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -63,7 +63,7 @@ const NavLinks = ({
   };
 
   return (
-    <nav className="flex flex-col gap-3 w-full my-48 pl-4">
+    <nav className="flex flex-col gap-3 w-full my-60 pl-4">
       <Link href="/forecasting" passHref className="flex w-fit">
         <Button
           variant="ghost"
@@ -101,39 +101,14 @@ const NavLinks = ({
         </Button>
       </Link>
       <Link
-        href="https://x.com/sapiencexyz"
+        href="https://docs.sapience.xyz"
         passHref
         className="flex w-fit"
         target="_blank"
         rel="noopener noreferrer"
       >
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/news', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          <span className="flex items-center">
-            News
-            <ExternalLink className="h-4 w-4 ml-1.5 opacity-70" />
-          </span>
-        </Button>
-      </Link>
-      <Link
-        href="https://discord.gg/Hn2vzMDCSs"
-        passHref
-        className="flex w-fit"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/community', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          <span className="flex items-center">
-            Community
-            <ExternalLink className="h-4 w-4 ml-1.5 opacity-70" />
-          </span>
+        <Button variant="ghost" className={linkClass} onClick={handleLinkClick}>
+          Docs
         </Button>
       </Link>
     </nav>
@@ -151,23 +126,28 @@ const Header = () => {
       {/* Top Header Bar */}
       <header className="w-full py-5 md:py-6 z-[50] fixed top-0 left-0">
         <div className="mx-auto px-4 md:px-6 flex items-center justify-between">
-          <div className="flex items-center bg-background/30 p-2 pr-4 md:pr-1 backdrop-blur-sm rounded-full">
-            <Link href="/" className="inline-block">
-              <div className="flex items-center gap-2">
-                <LottieIcon
-                  animationPath="/lottie/logomark.json"
-                  width={32}
-                  height={32}
-                  className="opacity-80"
-                />
-                <span className="text-2xl font-normal">Sapience</span>
-              </div>
-            </Link>
-            {/* Desktop Sidebar Trigger (inside header) */}
-            <SidebarTrigger
-              id="nav-sidebar"
-              className="hidden md:flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6"
-            />
+          <div className="flex flex-col">
+            <div className="flex items-center bg-background/30 p-2 pr-4 md:pr-1 backdrop-blur-sm rounded-full">
+              <Link href="/" className="inline-block">
+                <div className="flex items-center gap-2">
+                  <LottieIcon
+                    animationPath="/lottie/logomark.json"
+                    width={32}
+                    height={32}
+                    className="opacity-80"
+                  />
+                  <span className="text-2xl font-normal">Sapience</span>
+                </div>
+              </Link>
+              {/* Desktop Sidebar Trigger (inside header) */}
+              <SidebarTrigger
+                id="nav-sidebar"
+                className="hidden md:flex items-center justify-center opacity-40 hover:opacity-90 ml-4 lg:ml-6"
+              />
+            </div>
+            <div className="-mt-3.5 ml-[124px] text-xs tracking-wider text-muted-foreground scale-75 origin-left font-medium">
+              BETA
+            </div>
           </div>
 
           {/* Mobile Sidebar Trigger Button (fixed left, with border, hover effect) */}
@@ -236,6 +216,41 @@ const Header = () => {
           <NavLinks />
         </SidebarContent>
         <SidebarFooter>
+          <div className="flex items-center gap-2 pl-2">
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://github.com/foilxyz/foil"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image src="/github.svg" alt="GitHub" width={14} height={14} />
+              </a>
+            </Button>
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://twitter.com/sapiencexyz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image src="/x.svg" alt="Twitter" width={12} height={12} />
+              </a>
+            </Button>
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://discord.gg/Hn2vzMDCSs"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image
+                  src="/discord.svg"
+                  alt="Discord"
+                  width={12}
+                  height={12}
+                />
+              </a>
+            </Button>
+          </div>
+
           <div className="flex items-start gap-2 text-xs w-full p-2 rounded-lg max-w-[180px]">
             <span>🏗️</span>
             <div>

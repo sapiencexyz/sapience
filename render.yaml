@@ -7,9 +7,9 @@ services:
   - name: web-service
     type: web
     env: node
-    plan: pro
+    plan: pro plus
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
-    startCommand: pnpm --filter @foil/api start:service
+    startCommand: NODE_OPTIONS='--max-old-space-size=8192' pnpm --filter @foil/api start:service
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
@@ -24,7 +24,22 @@ services:
     env: node
     plan: standard
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
-    startCommand: pnpm --filter @foil/api start:all-workers
+    startCommand: pnpm --filter @foil/api start:worker
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: database
+          property: connectionString
+    repo: https://github.com/foilxyz/foil
+    branch: main
+
+  - name: candle-cache-builder
+    type: worker
+    env: node
+    plan: pro
+    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
+    startCommand: pnpm --filter @foil/api start:candle-cache
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
