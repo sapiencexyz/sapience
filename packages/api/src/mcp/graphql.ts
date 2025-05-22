@@ -1,5 +1,6 @@
 import { graphql, GraphQLSchema } from 'graphql';
 import { initializeApolloServer } from '../graphql/startApolloServer';
+import { ToolResponse } from '.';
 
 let schema: GraphQLSchema;
 
@@ -77,7 +78,7 @@ const getMarketGroup = {
   }: {
     address: string;
     chainId: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     const query = `
       query GetMarketGroup($address: String!, $chainId: Int!) {
         marketGroup(address: $address, chainId: $chainId) {
@@ -173,7 +174,7 @@ const getMarket = {
     chainId: string;
     marketAddress: string;
     marketId: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     // The schema has markets(chainId: Int!, marketAddress: String!, marketId: Int!): [MarketType!]!
     // It returns an array, so we'll query for that and typically expect one result for a specific marketId.
     const query = `
@@ -241,7 +242,7 @@ const getMarketGroups = {
   }: {
     chainId?: string;
     collateralAsset?: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     const query = `
       query GetMarketGroups($chainId: Int, $collateralAsset: String) {
         marketGroups(chainId: $chainId, collateralAsset: $collateralAsset) {
@@ -349,7 +350,7 @@ const getMarkets = {
     marketGroupAddress?: string;
     chainId?: string;
     isActive?: boolean;
-  }) => {
+  }): Promise<ToolResponse> => {
     interface MarketFilterInput {
       endTimestamp_gt?: string;
     }
@@ -510,7 +511,7 @@ const getPositions = {
     chainId?: string;
     marketAddress?: string;
     owner?: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     const query = `
       query GetPositions($chainId: Int, $marketAddress: String, $owner: String) {
         positions(chainId: $chainId, marketAddress: $marketAddress, owner: $owner) {
@@ -583,7 +584,7 @@ const getResource = {
     },
     required: ['slug'],
   },
-  function: async ({ slug }: { slug: string }) => {
+  function: async ({ slug }: { slug: string }): Promise<ToolResponse> => {
     const query = `
       query GetResource($slug: String!) {
         resource(slug: $slug) {
@@ -638,7 +639,7 @@ const getResources = {
     properties: {}, // No parameters for listResources as per schema
     required: [],
   },
-  function: async () => {
+  function: async (): Promise<ToolResponse> => {
     const query = `
       query ListResources {
         resources {
@@ -700,7 +701,7 @@ const getTransactions = {
     },
     required: [],
   },
-  function: async ({ positionId }: { positionId?: string }) => {
+  function: async ({ positionId }: { positionId?: string }): Promise<ToolResponse> => {
     const query = `
       query GetTransactions($positionId: Int) {
         transactions(positionId: $positionId) {
@@ -827,7 +828,7 @@ const getMarketCandles = {
     from: string;
     to: string;
     interval: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     const intervalSeconds = intervalToSeconds(interval);
 
     const query = `
@@ -896,7 +897,7 @@ const getResourceCandles = {
     from: string;
     to: string;
     interval: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     const intervalSeconds = intervalToSeconds(interval);
 
     const query = `
@@ -969,7 +970,7 @@ const getResourceTrailingAverageCandles = {
     to: string;
     interval: string;
     trailingAvgTime: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     const intervalSeconds = intervalToSeconds(interval);
     const trailingAvgSeconds = intervalToSeconds(trailingAvgTime);
 
@@ -1056,7 +1057,7 @@ const getIndexCandles = {
     from: string;
     to: string;
     interval: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     const intervalSeconds = intervalToSeconds(interval);
 
     const query = `

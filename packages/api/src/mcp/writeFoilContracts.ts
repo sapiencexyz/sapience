@@ -1,6 +1,7 @@
 import { createPublicClient, http, encodeFunctionData } from 'viem';
 import { base } from 'viem/chains';
 import FoilABI from '@foil/protocol/deployments/Foil.json';
+import { ToolResponse } from '.';
 
 // Create a public client for interacting with the blockchain
 const client = createPublicClient({
@@ -52,7 +53,7 @@ export const quoteCreateTraderPosition = {
     marketId: string;
     collateralAmount: string;
     size: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const result = await client.simulateContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -133,7 +134,7 @@ export const createTraderPosition = {
     collateralAmount: string;
     size: string;
     deadline: string;
-  }) => {
+  }): Promise<ToolResponse>  => {
     try {
       const calldata = encodeFunction('createTraderPosition', [
         BigInt(args.marketId),
@@ -205,7 +206,7 @@ export const quoteModifyTraderPosition = {
     positionId: string;
     newCollateralAmount: string;
     newSize: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const result = await client.simulateContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -291,7 +292,7 @@ export const modifyTraderPosition = {
     newSize: string;
     deltaCollateralLimit: string;
     deadline: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const calldata = encodeFunction('modifyTraderPosition', [
         BigInt(args.positionId),
@@ -359,7 +360,7 @@ export const quoteLiquidityPosition = {
     marketId: string;
     collateralAmount: string;
     size: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const result = await client.simulateContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -433,7 +434,7 @@ export const createLiquidityPosition = {
     marketGroupAddress: string;
     collateralAmount: string;
     size: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const calldata = encodeFunction('createLiquidityPosition', [
         BigInt(args.collateralAmount),
@@ -503,7 +504,7 @@ export const quoteModifyLiquidityPosition = {
     positionId: string;
     newCollateralAmount: string;
     newSize: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const result = await client.simulateContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -576,7 +577,7 @@ export const modifyLiquidityPosition = {
     positionId: string;
     newCollateralAmount: string;
     newSize: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const calldata = encodeFunction('modifyLiquidityPosition', [
         BigInt(args.positionId),
@@ -632,7 +633,7 @@ export const settlePosition = {
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const calldata = encodeFunction('settlePosition', [
         BigInt(args.positionId),

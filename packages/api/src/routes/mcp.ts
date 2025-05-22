@@ -16,7 +16,14 @@ const server = new McpServer(
     capabilities: {
       logging: {},
       tools: {
-        listChanged: false,
+        list: true,
+        listChanged: true,
+      },
+      resources: {
+        list: false,
+      },
+      prompts: {
+        list: false,
       },
     },
   }

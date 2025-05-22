@@ -5,7 +5,7 @@ import * as graphqlTools from './graphql';
 import * as miscTools from './misc';
 
 // Define the shared type for tool function responses
-interface ToolResponse {
+export interface ToolResponse {
   content: Array<{
     type: 'text';
     text: string;
@@ -24,11 +24,28 @@ function wrapToolFunction(toolFn: (args: any) => Promise<ToolResponse>) {
     // Our tool functions don't use the extra parameter, so just pass the args
     const response = await toolFn(args);
 
+    // Parse the text content to get structured data if it's JSON
+    let structuredContent = {};
+    try {
+      const firstContent = response.content[0];
+      if (firstContent?.type === 'text') {
+        // Try to parse the JSON string
+        const parsed = JSON.parse(firstContent.text);
+        // If the parsed data is an object, use it as structuredContent
+        if (typeof parsed === 'object' && parsed !== null) {
+          structuredContent = parsed;
+        }
+      }
+    } catch (e) {
+      // If parsing fails or the result isn't an object, keep structuredContent as empty object
+      console.warn('Failed to parse tool response as JSON or result is not an object:', e);
+    }
+
     // Transform our ToolResponse to match the CallToolResult format
     return {
-      structuredContent: {}, // Required by CallToolResult
+      // structuredContent,
       content: response.content,
-      isError: response.isError,
+      isError: response.isError
     };
   };
 }

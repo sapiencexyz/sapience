@@ -6,6 +6,8 @@ import {
 } from 'viem';
 import * as allChains from 'viem/chains';
 import { erc20Abi } from 'viem';
+import { ToolResponse } from '.';
+
 
 // Function to get chain object by ID
 const getChainById = (chainId: string) => {
@@ -48,7 +50,7 @@ export const approveToken = {
     tokenAddress: string;
     spender: string;
     amount: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const calldata = encodeFunctionData({
         abi: erc20Abi,
@@ -109,7 +111,7 @@ export const balanceOfToken = {
     tokenAddress: string;
     ownerAddress: string;
     chainId: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const chain = getChainById(args.chainId);
 

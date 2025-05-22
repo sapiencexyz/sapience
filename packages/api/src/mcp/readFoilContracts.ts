@@ -1,6 +1,7 @@
 import { basePublicClient } from '../utils/utils';
 import FoilABI from '@foil/protocol/deployments/Foil.json';
 import type { Abi } from 'abitype';
+import { ToolResponse } from '.';
 
 const FOIL_ABI = FoilABI.abi as unknown as Abi;
 
@@ -102,7 +103,7 @@ export const getMarketGroupInfo = {
     },
     required: ['marketGroupAddress'],
   },
-  function: async (args: { marketGroupAddress: string }) => {
+  function: async (args: { marketGroupAddress: string }): Promise<ToolResponse> => {
     try {
       const marketGroupInfo = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -162,7 +163,7 @@ export const getMarketDetails = {
     },
     required: ['marketGroupAddress', 'marketId'],
   },
-  function: async (args: { marketGroupAddress: string; marketId: string }) => {
+  function: async (args: { marketGroupAddress: string; marketId: string }): Promise<ToolResponse> => {
     try {
       const marketDetailsResult = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -235,7 +236,7 @@ export const getLatestMarketDetails = {
     },
     required: ['marketGroupAddress'],
   },
-  function: async (args: { marketGroupAddress: string }) => {
+  function: async (args: { marketGroupAddress: string }): Promise<ToolResponse> => {
     try {
       const marketDetailsResult = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -307,7 +308,7 @@ export const getTokenOwner = {
     },
     required: ['tokenId'],
   },
-  function: async (args: { tokenId: string }) => {
+  function: async (args: { tokenId: string }): Promise<ToolResponse> => {
     try {
       const owner = (await client.readContract({
         address: args.tokenId as `0x${string}`,
@@ -397,7 +398,7 @@ export const getMarketReferencePrice = {
     },
     required: ['marketGroupAddress', 'marketId'],
   },
-  function: async (args: { marketGroupAddress: string; marketId: string }) => {
+  function: async (args: { marketGroupAddress: string; marketId: string }): Promise<ToolResponse> => {
     try {
       const referencePrice = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -451,7 +452,7 @@ export const getPosition = {
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const position = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -517,7 +518,7 @@ export const getPositionCollateralValue = {
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const collateralValue = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -571,7 +572,7 @@ export const getPositionPnl = {
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const pnl = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -621,7 +622,7 @@ export const getPositionSize = {
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const size = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -668,7 +669,7 @@ export const getMarketSqrtPrice = {
     },
     required: ['marketGroupAddress', 'marketId'],
   },
-  function: async (args: { marketGroupAddress: string; marketId: string }) => {
+  function: async (args: { marketGroupAddress: string; marketId: string }): Promise<ToolResponse> => {
     try {
       const sqrtPriceX96 = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -722,7 +723,7 @@ export const getDecimalPriceFromSqrtPriceX96 = {
   function: async (args: {
     marketGroupAddress: string;
     sqrtPriceX96: string;
-  }) => {
+  }): Promise<ToolResponse> => {
     try {
       const decimalPrice = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -769,7 +770,7 @@ export const getMarketGroupTickSpacing = {
     },
     required: ['marketGroupAddress'],
   },
-  function: async (args: { marketGroupAddress: string }) => {
+  function: async (args: { marketGroupAddress: string }): Promise<ToolResponse> => {
     try {
       const tickSpacing = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -815,7 +816,7 @@ export const getTotalSupply = {
     },
     required: ['marketGroupAddress'],
   },
-  function: async (args: { marketGroupAddress: string }) => {
+  function: async (args: { marketGroupAddress: string }): Promise<ToolResponse> => {
     try {
       const totalSupply = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -865,7 +866,7 @@ export const getBalanceOf = {
     },
     required: ['marketGroupAddress', 'holder'],
   },
-  function: async (args: { marketGroupAddress: string; holder: string }) => {
+  function: async (args: { marketGroupAddress: string; holder: string }): Promise<ToolResponse> => {
     try {
       const balance = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
