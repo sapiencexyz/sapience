@@ -11,13 +11,13 @@ services:
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: NODE_OPTIONS='--max-old-space-size=8192' pnpm --filter @foil/api start:service
     autoDeploy: true
+    repo: https://github.com/foilxyz/foil
+    branch: main
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: database
           property: connectionString
-    repo: https://github.com/foilxyz/foil
-    branch: main
 
   - name: background-worker
     type: worker
@@ -26,13 +26,12 @@ services:
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: pnpm --filter @foil/api start:worker
     autoDeploy: true
+    branch: main
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: database
           property: connectionString
-    repo: https://github.com/foilxyz/foil
-    branch: main
 
   - name: candle-cache-builder
     type: worker
@@ -41,10 +40,10 @@ services:
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: pnpm --filter @foil/api start:candle-cache
     autoDeploy: true
+    repo: https://github.com/foilxyz/foil
+    branch: main
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: database
           property: connectionString
-    repo: https://github.com/foilxyz/foil
-    branch: main
