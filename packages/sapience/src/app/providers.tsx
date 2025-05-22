@@ -1,15 +1,15 @@
 'use client';
 
-import { PrivyProvider } from '@privy-io/react-auth';
-import { WagmiProvider, createConfig } from '@privy-io/wagmi';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { PrivyProvider, usePrivy } from '@privy-io/react-auth';
+import { WagmiProvider } from '@privy-io/wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
-import { sepolia, base, cannon, type Chain } from 'viem/chains';
-import { http } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { base, cannon, sepolia, type Chain } from 'viem/chains';
+import { http, useAccount, useSwitchChain } from 'wagmi';
 
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
+import { createPaymasterConfig } from '~/lib/paymaster';
 
 const queryClient = new QueryClient();
 
@@ -43,13 +43,57 @@ if (process.env.NODE_ENV !== 'production') {
   chains.push(sepolia);
 }
 
-// Create the configuration
-const config = createConfig({
-  ssr: true,
-  chains: chains as unknown as readonly [Chain, ...Chain[]],
-  connectors: [injected()],
-  transports,
-});
+// Create the configuration with paymaster support
+const config = createPaymasterConfig([
+  base,
+  ...(process.env.NODE_ENV !== 'production'
+    ? [cannonAtLocalhost, sepolia]
+    : []),
+] as const);
+
+// NetworkSwitcher component to handle automatic network switching
+const NetworkSwitcher = () => {
+  const { chain } = useAccount();
+  const { switchChain } = useSwitchChain();
+  const { ready, authenticated } = usePrivy();
+  console.log('chain', chain);
+
+  // Only attempt to switch chains if Privy is ready and user is authenticated
+  if (ready && authenticated) {
+    // Switch to Base network when connected to a different network
+    if (chain && chain.id !== base.id) {
+      const switchToBase = async () => {
+        try {
+          await switchChain({ chainId: base.id });
+        } catch (error: unknown) {
+          // If the chain hasn't been added to MetaMask, add it
+          if ((error as { code: number }).code === 4902) {
+            try {
+              await window.ethereum?.request({
+                method: 'wallet_addEthereumChain',
+                params: [
+                  {
+                    chainId: `0x${base.id.toString(16)}`,
+                    chainName: base.name,
+                    nativeCurrency: base.nativeCurrency,
+                    rpcUrls: [base.rpcUrls.default.http[0]],
+                    blockExplorerUrls: [base.blockExplorers?.default.url],
+                  },
+                ],
+              });
+            } catch (addError) {
+              console.error('Error adding Base network:', addError);
+            }
+          }
+        }
+      };
+
+      void switchToBase();
+    }
+  }
+
+  return null;
+};
 
 const Providers = ({ children }: { children: JSX.Element }) => {
   return (
@@ -60,6 +104,8 @@ const Providers = ({ children }: { children: JSX.Element }) => {
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
+        defaultChain: base,
+        supportedChains: [base],
       }}
     >
       <ThemeProvider
@@ -70,6 +116,7 @@ const Providers = ({ children }: { children: JSX.Element }) => {
       >
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={config}>
+            {/* <NetworkSwitcher /> */}
             <SapienceProvider>{children}</SapienceProvider>
           </WagmiProvider>
         </QueryClientProvider>
