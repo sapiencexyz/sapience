@@ -2,7 +2,7 @@ import { MarketGroup } from '../../models/MarketGroup';
 import { marketGroupRepository } from '../../db';
 import { getProviderForChain } from '../../utils/utils';
 import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
-import { indexMarketEvents } from '../../controllers/market';
+import { indexMarketGroupEvents } from '../../controllers/market';
 import { updateCollateralData } from '../../controllers/marketHelpers';
 import marketGroupFactoryData from '@foil/protocol/deployments/FoilFactory.json';
 import Sentry from '../../instrument';
@@ -20,7 +20,7 @@ async function startIndexingForMarketGroup(
     `Starting event indexing for Market Group: ${marketGroup.chainId}:${marketGroup.address}`
   );
   try {
-    const unwatch = await indexMarketEvents(marketGroup, client);
+    const unwatch = await indexMarketGroupEvents(marketGroup, client);
     if (typeof unwatch === 'function') {
       return unwatch;
     } else {
