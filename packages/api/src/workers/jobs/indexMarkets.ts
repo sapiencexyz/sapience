@@ -3,6 +3,7 @@ import { marketGroupRepository } from '../../db';
 import { getProviderForChain } from '../../utils/utils';
 import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
 import { indexMarketEvents } from '../../controllers/market';
+import { updateCollateralData } from '../../controllers/marketHelpers';
 import marketGroupFactoryData from '@foil/protocol/deployments/FoilFactory.json';
 import Sentry from '../../instrument';
 
@@ -82,6 +83,15 @@ export async function handleMarketGroupInitialized(
       // Update the address and owner of the existing record
       existingMarketGroup.address = newMarketGroupAddress;
       existingMarketGroup.owner = sender; // Also update owner if it can change or wasn't set initially
+
+      try {
+        await updateCollateralData(client, existingMarketGroup);
+      } catch (err) {
+        console.error(
+          `Failed to update collateral data for market group ${existingMarketGroup.address}:`,
+          err
+        );
+      }
 
       await marketGroupRepository.save(existingMarketGroup);
 

@@ -169,6 +169,17 @@ export const indexMarketEvents = async (
   await initializeDataSource();
   const chainId = await client.getChainId();
 
+  // Ensure collateral data (decimals & symbol) is stored for the market group
+  try {
+    await updateCollateralData(client, market);
+    await marketGroupRepository.save(market);
+  } catch (err) {
+    console.error(
+      `Failed to update collateral data for market ${market.address}:`,
+      err
+    );
+  }
+
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY_MS = 5000;
   let reconnectAttempts = 0;
