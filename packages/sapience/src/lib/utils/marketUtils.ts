@@ -24,12 +24,7 @@ const getEndTimeCounts = (
 export const getMarketGroupClassification = (
   marketGroup: Partial<Pick<MarketGroupType, 'markets'>> // Changed to use imported MarketGroupType
 ): MarketGroupClassification => {
-  if (
-    !marketGroup?.markets?.length // Simplified guard clause
-  ) {
-    console.warn(
-      '[getMarketGroupClassification] Invalid or empty market group data, defaulting to NUMERIC.'
-    );
+  if (!marketGroup.markets) {
     return MarketGroupClassification.NUMERIC;
   }
 

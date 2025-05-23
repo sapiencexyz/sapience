@@ -71,6 +71,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   };
 
   const handleSuccess = () => {
+    console.log('REFETCHING POS');
     refetchPositions();
     onActionComplete?.();
   };

@@ -54,7 +54,7 @@ interface ModifyTradeFormProps {
   marketDetails: TradeFormMarketDetails;
   isConnected: boolean;
   onConnectWallet: () => void;
-  onSuccess: (txHash: `0x${string}`) => void;
+  onSuccess: (txHash?: `0x${string}`) => void;
   positionId: string; // Keep positionId
   permitData: PermitDataType | null | undefined; // Add permitData prop
   isPermitLoadingPermit: boolean; // Add isPermitLoadingPermit prop
@@ -68,20 +68,14 @@ function getButtonState({
   isPermitLoadingPermit,
   permitData,
   isQuoting,
-  isApproving,
   isCreatingLP,
-  needsApproval,
-  collateralAssetTicker,
   isClosing,
 }: {
   isConnected: boolean;
   isPermitLoadingPermit: boolean;
   permitData?: { permitted?: boolean } | null;
   isQuoting: boolean;
-  isApproving: boolean;
   isCreatingLP: boolean;
-  needsApproval: boolean;
-  collateralAssetTicker: string;
   isClosing: boolean;
 }): { text: string; loading: boolean; disabled: boolean } {
   if (!isConnected) {
@@ -96,25 +90,11 @@ function getButtonState({
   if (isQuoting) {
     return { text: 'Calculating...', loading: true, disabled: true };
   }
-  if (isApproving) {
-    return {
-      text: `Approving ${collateralAssetTicker}...`,
-      loading: true,
-      disabled: true,
-    };
-  }
   if (isCreatingLP) {
     return {
       text: isClosing ? 'Closing Position...' : 'Modifying Position...',
       loading: true,
       disabled: true,
-    };
-  }
-  if (needsApproval) {
-    return {
-      text: `Approve & ${isClosing ? 'Close' : 'Modify'} Position`,
-      loading: false,
-      disabled: false,
     };
   }
   return {
@@ -227,8 +207,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
   const {
     modifyTrade,
-    needsApproval,
-    isApproving,
     isSuccess,
     txHash,
     isLoading,
@@ -273,7 +251,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
   // Handle successful modification
   useEffect(() => {
-    if (isSuccess && txHash && onSuccess && !successHandled.current) {
+    if (isSuccess && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
       toast({
@@ -312,13 +290,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     form,
   ]);
 
-  // Reset the success handler when transaction state changes
-  useEffect(() => {
-    if (!isSuccess) {
-      successHandled.current = false;
-    }
-  }, [isSuccess]);
-
   useEffect(() => {
     if (isModifyTradeError && error) {
       toast({
@@ -339,10 +310,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     isPermitLoadingPermit,
     permitData,
     isQuoting,
-    isApproving,
     isCreatingLP: isLoading,
-    needsApproval,
-    collateralAssetTicker,
     isClosing,
   });
 

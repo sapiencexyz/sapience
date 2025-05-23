@@ -144,6 +144,8 @@ export function MarketPageProvider({
     foilAbi: abi,
     marketId,
   });
+  console.log('lpPositions', lpPositions);
+  console.log('traderPositions', traderPositions);
 
   // Derived values for convenience
   const collateralAssetTicker =

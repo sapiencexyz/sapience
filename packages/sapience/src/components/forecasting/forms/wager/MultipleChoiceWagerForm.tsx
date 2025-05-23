@@ -18,7 +18,7 @@ import PermittedAlert from './PermittedAlert';
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
   isPermitted?: boolean;
-  onSuccess?: (txHash: `0x${string}`) => void;
+  onSuccess?: (txHash?: `0x${string}`) => void;
 }
 
 export default function MultipleChoiceWagerForm({
@@ -65,8 +65,6 @@ export default function MultipleChoiceWagerForm({
     isLoading: isCreatingTrade,
     isSuccess: isTradeCreated,
     txHash,
-    isApproving,
-    needsApproval,
     reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
@@ -78,7 +76,6 @@ export default function MultipleChoiceWagerForm({
     slippagePercent: 0.5, // Default slippage percentage
     enabled: !!quoteData && !!wagerAmount && Number(wagerAmount) > 0,
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
-    collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
 
   // Handle form submission
@@ -94,7 +91,7 @@ export default function MultipleChoiceWagerForm({
 
   // Handle successful trade creation
   useEffect(() => {
-    if (isTradeCreated && txHash && onSuccess && !successHandled.current) {
+    if (isTradeCreated && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
       toast({
@@ -122,16 +119,12 @@ export default function MultipleChoiceWagerForm({
     !isPermitted ||
     isQuoteLoading ||
     !!quoteError ||
-    isCreatingTrade ||
-    isApproving;
+    isCreatingTrade;
 
   // Determine button text
   const getButtonText = () => {
     if (isQuoteLoading) return 'Loading...';
-    if (isApproving)
-      return `Approving ${marketGroupData.collateralSymbol || 'tokens'}...`;
     if (isCreatingTrade) return 'Submitting Wager...';
-    if (needsApproval) return `Submit Wager`;
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 

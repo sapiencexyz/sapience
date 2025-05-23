@@ -18,7 +18,7 @@ import PermittedAlert from './PermittedAlert';
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
   isPermitted?: boolean;
-  onSuccess?: (txHash: `0x${string}`) => void;
+  onSuccess?: (txHash?: `0x${string}`) => void;
 }
 
 // Define constants for sqrtPriceX96 values
@@ -71,8 +71,6 @@ export default function YesNoWagerForm({
     isLoading: isCreatingTrade,
     isSuccess: isTradeCreated,
     txHash,
-    isApproving,
-    needsApproval,
     reset: resetTrade,
   } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
@@ -84,7 +82,6 @@ export default function YesNoWagerForm({
     slippagePercent: 0.5, // Default slippage percentage
     enabled: !!quoteData && !!wagerAmount && Number(wagerAmount) > 0,
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
-    collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
 
   // Handle form submission
@@ -100,7 +97,7 @@ export default function YesNoWagerForm({
 
   // Handle successful trade creation
   useEffect(() => {
-    if (isTradeCreated && txHash && onSuccess && !successHandled.current) {
+    if (isTradeCreated && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
       toast({
@@ -108,7 +105,7 @@ export default function YesNoWagerForm({
         description: 'Your wager has been successfully submitted.',
       });
 
-      onSuccess(txHash);
+      onSuccess();
 
       // Reset the form after success
       methods.reset();
@@ -128,16 +125,12 @@ export default function YesNoWagerForm({
     !isPermitted ||
     isQuoteLoading ||
     !!quoteError ||
-    isCreatingTrade ||
-    isApproving;
+    isCreatingTrade;
 
   // Determine button text
   const getButtonText = () => {
     if (isQuoteLoading) return 'Loading...';
-    if (isApproving)
-      return `Approving ${marketGroupData.collateralSymbol || 'tokens'}...`;
     if (isCreatingTrade) return 'Submitting Wager...';
-    if (needsApproval) return `Submit Wager`;
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 
@@ -146,7 +139,8 @@ export default function YesNoWagerForm({
 
   // Render quote data if available
   const renderQuoteData = () => {
-    if (!quoteData || quoteError) return null;
+    if (!quoteData || quoteError || !wagerAmount || Number(wagerAmount) <= 0)
+      return null;
 
     return (
       <div className="mt-2 text-sm text-muted-foreground">
