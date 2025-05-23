@@ -6,8 +6,8 @@ import {
 } from 'viem';
 import * as allChains from 'viem/chains';
 import { erc20Abi } from 'viem';
-import { ToolResponse } from '.';
-
+import { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import { z } from 'zod';
 
 // Function to get chain object by ID
 const getChainById = (chainId: string) => {
@@ -31,26 +31,20 @@ export const approveToken = {
   description: 'Returns the calldata for an ERC-20 approval',
   parameters: {
     properties: {
-      tokenAddress: {
-        type: 'string',
-        description: 'The address of the ERC-20 token to approve',
-      },
-      spender: {
-        type: 'string',
-        description: 'The address to approve to spend the tokens',
-      },
-      amount: {
-        type: 'string',
-        description: 'The amount of tokens to approve',
-      },
+      tokenAddress: z
+        .string()
+        .describe('The address of the ERC-20 token to approve'),
+      spender: z
+        .string()
+        .describe('The address to approve to spend the tokens'),
+      amount: z.string().describe('The amount of tokens to approve'),
     },
-    required: ['tokenAddress', 'spender', 'amount'],
   },
   function: async (args: {
     tokenAddress: string;
     spender: string;
     amount: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const calldata = encodeFunctionData({
         abi: erc20Abi,
@@ -58,18 +52,16 @@ export const approveToken = {
         args: [args.spender as `0x${string}`, BigInt(args.amount)],
       });
 
+      const result = {
+        to: args.tokenAddress,
+        data: calldata,
+      };
+
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(
-              {
-                to: args.tokenAddress,
-                data: calldata,
-              },
-              null,
-              2
-            ),
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };
@@ -92,28 +84,20 @@ export const balanceOfToken = {
   description: 'Reads the ERC-20 token balance of an owner',
   parameters: {
     properties: {
-      tokenAddress: {
-        type: 'string',
-        description: 'The address of the ERC-20 token',
-      },
-      ownerAddress: {
-        type: 'string',
-        description: 'The address of the owner',
-      },
-      chainId: {
-        type: 'string',
-        description: 'The chain ID to read the balance from',
-      },
+      tokenAddress: z.string().describe('The address of the ERC-20 token'),
+      ownerAddress: z.string().describe('The address of the owner'),
+      chainId: z.string().describe('The chain ID to read the balance from'),
     },
-    required: ['tokenAddress', 'ownerAddress', 'chainId'],
   },
   function: async (args: {
     tokenAddress: string;
     ownerAddress: string;
     chainId: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
+    console.log('LLL (balanceOfToken):', args);
+    const { tokenAddress, ownerAddress, chainId } = args;
     try {
-      const chain = getChainById(args.chainId);
+      const chain = getChainById(chainId);
 
       const publicClient = createPublicClient({
         chain: chain,
@@ -123,17 +107,19 @@ export const balanceOfToken = {
       });
 
       const balance = await publicClient.readContract({
-        address: args.tokenAddress as `0x${string}`,
+        address: tokenAddress as `0x${string}`,
         abi: erc20Abi,
         functionName: 'balanceOf',
-        args: [args.ownerAddress as `0x${string}`],
+        args: [ownerAddress as `0x${string}`],
       });
+
+      const result = { balance: balance.toString() };
 
       return {
         content: [
           {
-            type: 'text' as const,
-            text: JSON.stringify({ balance: balance.toString() }, null, 2),
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };
@@ -141,7 +127,7 @@ export const balanceOfToken = {
       return {
         content: [
           {
-            type: 'text' as const,
+            type: 'text',
             text: `Error reading token balance: ${error instanceof Error ? error.message : 'Unknown error'}`,
           },
         ],

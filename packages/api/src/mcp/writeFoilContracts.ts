@@ -1,7 +1,8 @@
 import { createPublicClient, http, encodeFunctionData } from 'viem';
 import { base } from 'viem/chains';
 import FoilABI from '@foil/protocol/deployments/Foil.json';
-import { ToolResponse } from '.';
+import { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import { z } from 'zod';
 
 // Create a public client for interacting with the blockchain
 const client = createPublicClient({
@@ -28,32 +29,20 @@ export const quoteCreateTraderPosition = {
   description: 'Gets a quote for creating a new trader position',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description:
-          'The address of the market group to create the position in',
-      },
-      marketId: {
-        type: 'string',
-        description: 'The market ID to create the position in',
-      },
-      collateralAmount: {
-        type: 'string',
-        description: 'The amount of collateral to use',
-      },
-      size: {
-        type: 'string',
-        description: 'The size of the position',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group to create the position in'),
+      marketId: z.string().describe('The market ID to create the position in'),
+      collateralAmount: z.string().describe('The amount of collateral to use'),
+      size: z.string().describe('The size of the position'),
     },
-    required: ['marketGroupAddress', 'marketId', 'collateralAmount', 'size'],
   },
   function: async (args: {
     marketGroupAddress: string;
     marketId: string;
     collateralAmount: string;
     size: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const result = await client.simulateContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -98,35 +87,16 @@ export const createTraderPosition = {
   description: 'Creates a new trader position with specified parameters',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description:
-          'The address of the market group to create the position in',
-      },
-      marketId: {
-        type: 'string',
-        description: 'The market ID to create the position in',
-      },
-      collateralAmount: {
-        type: 'string',
-        description: 'The amount of collateral to use',
-      },
-      size: {
-        type: 'string',
-        description: 'The size of the position',
-      },
-      deadline: {
-        type: 'string',
-        description: 'The deadline for the transaction (timestamp in seconds)',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group to create the position in'),
+      marketId: z.string().describe('The market ID to create the position in'),
+      collateralAmount: z.string().describe('The amount of collateral to use'),
+      size: z.string().describe('The size of the position'),
+      deadline: z
+        .string()
+        .describe('The deadline for the transaction (timestamp in seconds)'),
     },
-    required: [
-      'marketGroupAddress',
-      'marketId',
-      'collateralAmount',
-      'size',
-      'deadline',
-    ],
   },
   function: async (args: {
     marketGroupAddress: string;
@@ -134,7 +104,7 @@ export const createTraderPosition = {
     collateralAmount: string;
     size: string;
     deadline: string;
-  }): Promise<ToolResponse>  => {
+  }): Promise<CallToolResult> => {
     try {
       const calldata = encodeFunction('createTraderPosition', [
         BigInt(args.marketId),
@@ -177,36 +147,22 @@ export const quoteModifyTraderPosition = {
   description: 'Gets a quote for modifying an existing trader position',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to modify',
-      },
-      newCollateralAmount: {
-        type: 'string',
-        description: 'The new amount of collateral to use',
-      },
-      newSize: {
-        type: 'string',
-        description: 'The new size of the position',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z.string().describe('The ID of the position to modify'),
+      newCollateralAmount: z
+        .string()
+        .describe('The new amount of collateral to use'),
+      newSize: z.string().describe('The new size of the position'),
     },
-    required: [
-      'marketGroupAddress',
-      'positionId',
-      'newCollateralAmount',
-      'newSize',
-    ],
   },
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
     newCollateralAmount: string;
     newSize: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const result = await client.simulateContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -256,35 +212,20 @@ export const modifyTraderPosition = {
   description: 'Modifies an existing trader position with new parameters',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to modify',
-      },
-      newSize: {
-        type: 'string',
-        description: 'The new size of the position',
-      },
-      deltaCollateralLimit: {
-        type: 'string',
-        description:
-          'The change in the collateral limit. Positive for adding collateral, negative for removing. If 0, no limit.',
-      },
-      deadline: {
-        type: 'string',
-        description: 'The deadline for the transaction (timestamp in seconds)',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z.string().describe('The ID of the position to modify'),
+      newSize: z.string().describe('The new size of the position'),
+      deltaCollateralLimit: z
+        .string()
+        .describe(
+          'The change in the collateral limit. Positive for adding collateral, negative for removing. If 0, no limit.'
+        ),
+      deadline: z
+        .string()
+        .describe('The deadline for the transaction (timestamp in seconds)'),
     },
-    required: [
-      'marketGroupAddress',
-      'positionId',
-      'newSize',
-      'deltaCollateralLimit',
-      'deadline',
-    ],
   },
   function: async (args: {
     marketGroupAddress: string;
@@ -292,7 +233,7 @@ export const modifyTraderPosition = {
     newSize: string;
     deltaCollateralLimit: string;
     deadline: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const calldata = encodeFunction('modifyTraderPosition', [
         BigInt(args.positionId),
@@ -335,32 +276,20 @@ export const quoteLiquidityPosition = {
   description: 'Gets a quote for creating a new liquidity position',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description:
-          'The address of the market group to create the position in',
-      },
-      marketId: {
-        type: 'string',
-        description: 'The market ID to create the position in',
-      },
-      collateralAmount: {
-        type: 'string',
-        description: 'The amount of collateral to use',
-      },
-      size: {
-        type: 'string',
-        description: 'The size of the position',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group to create the position in'),
+      marketId: z.string().describe('The market ID to create the position in'),
+      collateralAmount: z.string().describe('The amount of collateral to use'),
+      size: z.string().describe('The size of the position'),
     },
-    required: ['marketGroupAddress', 'marketId', 'collateralAmount', 'size'],
   },
   function: async (args: {
     marketGroupAddress: string;
     marketId: string;
     collateralAmount: string;
     size: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const result = await client.simulateContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -414,27 +343,18 @@ export const createLiquidityPosition = {
   description: 'Creates a new liquidity position with specified parameters',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description:
-          'The address of the market group to create the position in',
-      },
-      collateralAmount: {
-        type: 'string',
-        description: 'The amount of collateral to use',
-      },
-      size: {
-        type: 'string',
-        description: 'The size of the position',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group to create the position in'),
+      collateralAmount: z.string().describe('The amount of collateral to use'),
+      size: z.string().describe('The size of the position'),
     },
-    required: ['marketGroupAddress', 'collateralAmount', 'size'],
   },
   function: async (args: {
     marketGroupAddress: string;
     collateralAmount: string;
     size: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const calldata = encodeFunction('createLiquidityPosition', [
         BigInt(args.collateralAmount),
@@ -475,36 +395,22 @@ export const quoteModifyLiquidityPosition = {
   description: 'Gets a quote for modifying an existing liquidity position',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to modify',
-      },
-      newCollateralAmount: {
-        type: 'string',
-        description: 'The new amount of collateral to use',
-      },
-      newSize: {
-        type: 'string',
-        description: 'The new size of the position',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z.string().describe('The ID of the position to modify'),
+      newCollateralAmount: z
+        .string()
+        .describe('The new amount of collateral to use'),
+      newSize: z.string().describe('The new size of the position'),
     },
-    required: [
-      'marketGroupAddress',
-      'positionId',
-      'newCollateralAmount',
-      'newSize',
-    ],
   },
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
     newCollateralAmount: string;
     newSize: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const result = await client.simulateContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -548,36 +454,22 @@ export const modifyLiquidityPosition = {
   description: 'Modifies an existing liquidity position with new parameters',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to modify',
-      },
-      newCollateralAmount: {
-        type: 'string',
-        description: 'The new amount of collateral to use',
-      },
-      newSize: {
-        type: 'string',
-        description: 'The new size of the position',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z.string().describe('The ID of the position to modify'),
+      newCollateralAmount: z
+        .string()
+        .describe('The new amount of collateral to use'),
+      newSize: z.string().describe('The new size of the position'),
     },
-    required: [
-      'marketGroupAddress',
-      'positionId',
-      'newCollateralAmount',
-      'newSize',
-    ],
   },
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
     newCollateralAmount: string;
     newSize: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const calldata = encodeFunction('modifyLiquidityPosition', [
         BigInt(args.positionId),
@@ -619,21 +511,16 @@ export const settlePosition = {
     'Settles a position, closing it and returning any remaining collateral, after the market has ended and settled',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to settle',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z.string().describe('The ID of the position to settle'),
     },
-    required: ['marketGroupAddress', 'positionId'],
   },
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const calldata = encodeFunction('settlePosition', [
         BigInt(args.positionId),

@@ -1,7 +1,8 @@
 import { basePublicClient } from '../utils/utils';
 import FoilABI from '@foil/protocol/deployments/Foil.json';
 import type { Abi } from 'abitype';
-import { ToolResponse } from '.';
+import { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import { z } from 'zod';
 
 const FOIL_ABI = FoilABI.abi as unknown as Abi;
 
@@ -96,14 +97,14 @@ export const getMarketGroupInfo = {
   description: "Gets detailed information about a market group's configuration",
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group to get information about',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group to get information about'),
     },
-    required: ['marketGroupAddress'],
   },
-  function: async (args: { marketGroupAddress: string }): Promise<ToolResponse> => {
+  function: async (args: {
+    marketGroupAddress: string;
+  }): Promise<CallToolResult> => {
     try {
       const marketGroupInfo = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -152,18 +153,18 @@ export const getMarketDetails = {
   description: 'Gets detailed information about a specific market',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      marketId: {
-        type: 'string',
-        description: 'The ID of the market to get information about',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      marketId: z
+        .string()
+        .describe('The ID of the market to get information about'),
     },
-    required: ['marketGroupAddress', 'marketId'],
   },
-  function: async (args: { marketGroupAddress: string; marketId: string }): Promise<ToolResponse> => {
+  function: async (args: {
+    marketGroupAddress: string;
+    marketId: string;
+  }): Promise<CallToolResult> => {
     try {
       const marketDetailsResult = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -229,14 +230,14 @@ export const getLatestMarketDetails = {
   description: 'Gets information about the most recent market',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
     },
-    required: ['marketGroupAddress'],
   },
-  function: async (args: { marketGroupAddress: string }): Promise<ToolResponse> => {
+  function: async (args: {
+    marketGroupAddress: string;
+  }): Promise<CallToolResult> => {
     try {
       const marketDetailsResult = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -301,14 +302,10 @@ export const getTokenOwner = {
   description: 'Gets the owner address of a specific position token',
   parameters: {
     properties: {
-      tokenId: {
-        type: 'string',
-        description: 'The ID of the position token',
-      },
+      tokenId: z.string().describe('The ID of the position token'),
     },
-    required: ['tokenId'],
   },
-  function: async (args: { tokenId: string }): Promise<ToolResponse> => {
+  function: async (args: { tokenId: string }): Promise<CallToolResult> => {
     try {
       const owner = (await client.readContract({
         address: args.tokenId as `0x${string}`,
@@ -344,14 +341,10 @@ export const getTokenByIndex = {
   description: 'Gets a position token ID by its index',
   parameters: {
     properties: {
-      index: {
-        type: 'string',
-        description: 'The index of the token to get',
-      },
+      index: z.string().describe('The index of the token to get'),
     },
-    required: ['index'],
   },
-  function: async (args: { index: string }) => {
+  function: async (args: { index: string }): Promise<CallToolResult> => {
     try {
       const tokenId = (await client.readContract({
         address: args.index as `0x${string}`,
@@ -387,18 +380,18 @@ export const getMarketReferencePrice = {
   description: 'Gets the reference price for a market',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      marketId: {
-        type: 'string',
-        description: 'The ID of the market to get the reference price for',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      marketId: z
+        .string()
+        .describe('The ID of the market to get the reference price for'),
     },
-    required: ['marketGroupAddress', 'marketId'],
   },
-  function: async (args: { marketGroupAddress: string; marketId: string }): Promise<ToolResponse> => {
+  function: async (args: {
+    marketGroupAddress: string;
+    marketId: string;
+  }): Promise<CallToolResult> => {
     try {
       const referencePrice = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -438,21 +431,18 @@ export const getPosition = {
   description: 'Gets detailed information about a specific position',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to get information about',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z
+        .string()
+        .describe('The ID of the position to get information about'),
     },
-    required: ['marketGroupAddress', 'positionId'],
   },
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const position = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -504,21 +494,18 @@ export const getPositionCollateralValue = {
   description: 'Gets the collateral value of a specific position',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to get collateral value for',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z
+        .string()
+        .describe('The ID of the position to get collateral value for'),
     },
-    required: ['marketGroupAddress', 'positionId'],
   },
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const collateralValue = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -558,21 +545,16 @@ export const getPositionPnl = {
   description: 'Gets the profit and loss (PnL) of a specific position',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to get PnL for',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z.string().describe('The ID of the position to get PnL for'),
     },
-    required: ['marketGroupAddress', 'positionId'],
   },
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const pnl = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -608,21 +590,16 @@ export const getPositionSize = {
   description: 'Gets the size of a specific position',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      positionId: {
-        type: 'string',
-        description: 'The ID of the position to get size for',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      positionId: z.string().describe('The ID of the position to get size for'),
     },
-    required: ['marketGroupAddress', 'positionId'],
   },
   function: async (args: {
     marketGroupAddress: string;
     positionId: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const size = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -658,18 +635,18 @@ export const getMarketSqrtPrice = {
   description: 'Gets the sqrt price for a specific market',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      marketId: {
-        type: 'string',
-        description: 'The ID of the market to get sqrt price for',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      marketId: z
+        .string()
+        .describe('The ID of the market to get sqrt price for'),
     },
-    required: ['marketGroupAddress', 'marketId'],
   },
-  function: async (args: { marketGroupAddress: string; marketId: string }): Promise<ToolResponse> => {
+  function: async (args: {
+    marketGroupAddress: string;
+    marketId: string;
+  }): Promise<CallToolResult> => {
     try {
       const sqrtPriceX96 = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -709,21 +686,16 @@ export const getDecimalPriceFromSqrtPriceX96 = {
   description: 'Converts a sqrt price to a decimal price',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      sqrtPriceX96: {
-        type: 'string',
-        description: 'The sqrt price to convert',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      sqrtPriceX96: z.string().describe('The sqrt price to convert'),
     },
-    required: ['marketGroupAddress', 'sqrtPriceX96'],
   },
   function: async (args: {
     marketGroupAddress: string;
     sqrtPriceX96: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     try {
       const decimalPrice = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -763,14 +735,14 @@ export const getMarketGroupTickSpacing = {
   description: 'Gets the tick spacing for a market group',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
     },
-    required: ['marketGroupAddress'],
   },
-  function: async (args: { marketGroupAddress: string }): Promise<ToolResponse> => {
+  function: async (args: {
+    marketGroupAddress: string;
+  }): Promise<CallToolResult> => {
     try {
       const tickSpacing = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -809,14 +781,14 @@ export const getTotalSupply = {
   description: 'Gets the total supply of Foil tokens',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
     },
-    required: ['marketGroupAddress'],
   },
-  function: async (args: { marketGroupAddress: string }): Promise<ToolResponse> => {
+  function: async (args: {
+    marketGroupAddress: string;
+  }): Promise<CallToolResult> => {
     try {
       const totalSupply = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,
@@ -855,18 +827,16 @@ export const getBalanceOf = {
   description: 'Gets the balance of Foil tokens for a specific holder',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      holder: {
-        type: 'string',
-        description: 'The address to query balance for',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      holder: z.string().describe('The address to query balance for'),
     },
-    required: ['marketGroupAddress', 'holder'],
   },
-  function: async (args: { marketGroupAddress: string; holder: string }): Promise<ToolResponse> => {
+  function: async (args: {
+    marketGroupAddress: string;
+    holder: string;
+  }): Promise<CallToolResult> => {
     try {
       const balance = (await client.readContract({
         address: args.marketGroupAddress as `0x${string}`,

@@ -1,6 +1,7 @@
 import { graphql, GraphQLSchema } from 'graphql';
 import { initializeApolloServer } from '../graphql/startApolloServer';
-import { ToolResponse } from '.';
+import { CallToolResult } from '@modelcontextprotocol/sdk/types';
+import { z } from 'zod';
 
 let schema: GraphQLSchema;
 
@@ -61,16 +62,11 @@ const getMarketGroup = {
     'Gets detailed information about a specific market group by its address and chain ID',
   parameters: {
     properties: {
-      address: {
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      chainId: {
-        type: 'string',
-        description: 'The chain ID where the market group exists',
-      },
+      address: z.string().describe('The address of the market group'),
+      chainId: z
+        .string()
+        .describe('The chain ID where the market group exists'),
     },
-    required: ['address', 'chainId'],
   },
   function: async ({
     address,
@@ -78,7 +74,7 @@ const getMarketGroup = {
   }: {
     address: string;
     chainId: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     const query = `
       query GetMarketGroup($address: String!, $chainId: Int!) {
         marketGroup(address: $address, chainId: $chainId) {
@@ -151,20 +147,10 @@ const getMarket = {
     'Gets detailed information about a specific market by its chain ID, market address, and market ID.',
   parameters: {
     properties: {
-      chainId: {
-        type: 'string',
-        description: 'The chain ID where the market exists.',
-      },
-      marketAddress: {
-        type: 'string',
-        description: 'The address of the market group.',
-      },
-      marketId: {
-        type: 'string',
-        description: 'The ID of the market.',
-      },
+      chainId: z.string().describe('The chain ID where the market exists.'),
+      marketAddress: z.string().describe('The address of the market group.'),
+      marketId: z.string().describe('The ID of the market.'),
     },
-    required: ['chainId', 'marketAddress', 'marketId'],
   },
   function: async ({
     chainId,
@@ -174,7 +160,7 @@ const getMarket = {
     chainId: string;
     marketAddress: string;
     marketId: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     // The schema has markets(chainId: Int!, marketAddress: String!, marketId: Int!): [MarketType!]!
     // It returns an array, so we'll query for that and typically expect one result for a specific marketId.
     const query = `
@@ -225,16 +211,13 @@ const getMarketGroups = {
     'Lists all market groups available in the Foil system, optionally filtering by chain ID or collateral asset.',
   parameters: {
     properties: {
-      chainId: {
-        type: 'string',
-        description: 'Optional chain ID to filter market groups by.',
-      },
-      collateralAsset: {
-        type: 'string',
-        description: 'Optional collateral asset to filter market groups by.',
-      },
+      chainId: z
+        .string()
+        .describe('Optional chain ID to filter market groups by.'),
+      collateralAsset: z
+        .string()
+        .describe('Optional collateral asset to filter market groups by.'),
     },
-    required: [], // All parameters are optional
   },
   function: async ({
     chainId,
@@ -242,7 +225,7 @@ const getMarketGroups = {
   }: {
     chainId?: string;
     collateralAsset?: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     const query = `
       query GetMarketGroups($chainId: Int, $collateralAsset: String) {
         marketGroups(chainId: $chainId, collateralAsset: $collateralAsset) {
@@ -323,24 +306,25 @@ const getMarkets = {
     'Lists all markets, optionally filtering by a specific market group (using marketGroupAddress and chainId), or by chain ID (for all market groups on that chain), and/or active status.',
   parameters: {
     properties: {
-      marketGroupAddress: {
-        // Added to specify a single market group
-        type: 'string',
-        description:
-          'Optional address of a specific market group to fetch markets from. If provided, chainId is also required.',
-      },
-      chainId: {
-        type: 'string',
-        description:
-          'Optional chain ID. Required if marketGroupAddress is provided. Otherwise, filters market groups by this chain ID.',
-      },
-      isActive: {
-        type: 'boolean',
-        description:
-          'Optional boolean to filter for markets that are currently active (end time in the future). Defaults to false (include all markets).',
-      },
+      marketGroupAddress: z
+        .string()
+        .describe(
+          'Optional address of a specific market group to fetch markets from. If provided, chainId is also required.'
+        )
+        .optional(),
+      chainId: z
+        .string()
+        .describe(
+          'Optional chain ID. Required if marketGroupAddress is provided. Otherwise, filters market groups by this chain ID.'
+        )
+        .optional(),
+      isActive: z
+        .boolean()
+        .describe(
+          'Optional boolean to filter for markets that are currently active (end time in the future). Defaults to false (include all markets).'
+        )
+        .optional(),
     },
-    required: [],
   },
   function: async ({
     marketGroupAddress,
@@ -350,7 +334,7 @@ const getMarkets = {
     marketGroupAddress?: string;
     chainId?: string;
     isActive?: boolean;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     interface MarketFilterInput {
       endTimestamp_gt?: string;
     }
@@ -487,21 +471,19 @@ const getPositions = {
     'Gets information about positions, optionally filtered by chain ID, market address (of market group), or owner',
   parameters: {
     properties: {
-      chainId: {
-        type: 'string',
-        description: 'Optional chain ID to filter positions by',
-      },
-      marketAddress: {
-        // This refers to the MarketGroup address in the positions query
-        type: 'string',
-        description: 'Optional market group address to filter positions by',
-      },
-      owner: {
-        type: 'string',
-        description: 'Optional owner address to filter positions by',
-      },
+      chainId: z
+        .string()
+        .describe('Optional chain ID to filter positions by')
+        .optional(),
+      marketAddress: z
+        .string()
+        .describe('Optional market group address to filter positions by')
+        .optional(),
+      owner: z
+        .string()
+        .describe('Optional owner address to filter positions by')
+        .optional(),
     },
-    required: [],
   },
   function: async ({
     chainId,
@@ -511,7 +493,7 @@ const getPositions = {
     chainId?: string;
     marketAddress?: string;
     owner?: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     const query = `
       query GetPositions($chainId: Int, $marketAddress: String, $owner: String) {
         positions(chainId: $chainId, marketAddress: $marketAddress, owner: $owner) {
@@ -577,14 +559,12 @@ const getResource = {
     'Gets detailed information about a specific resource by its slug',
   parameters: {
     properties: {
-      slug: {
-        type: 'string',
-        description: 'The slug of the resource to get information about',
-      },
+      slug: z
+        .string()
+        .describe('The slug of the resource to get information about'),
     },
-    required: ['slug'],
   },
-  function: async ({ slug }: { slug: string }): Promise<ToolResponse> => {
+  function: async ({ slug }: { slug: string }): Promise<CallToolResult> => {
     const query = `
       query GetResource($slug: String!) {
         resource(slug: $slug) {
@@ -636,10 +616,9 @@ const getResources = {
   name: 'get_sapience_resources',
   description: 'Lists all resources available in the Foil system',
   parameters: {
-    properties: {}, // No parameters for listResources as per schema
-    required: [],
+    properties: {},
   },
-  function: async (): Promise<ToolResponse> => {
+  function: async (): Promise<CallToolResult> => {
     const query = `
       query ListResources {
         resources {
@@ -693,15 +672,17 @@ const getTransactions = {
   description: 'Gets transaction history, optionally filtered by position ID',
   parameters: {
     properties: {
-      positionId: {
-        // positionId is Int in schema
-        type: 'string', // Keep as string for tool input, parse to Int
-        description: 'Optional position ID to filter transactions by',
-      },
+      positionId: z
+        .string()
+        .describe('Optional position ID to filter transactions by')
+        .optional(),
     },
-    required: [],
   },
-  function: async ({ positionId }: { positionId?: string }): Promise<ToolResponse> => {
+  function: async ({
+    positionId,
+  }: {
+    positionId?: string;
+  }): Promise<CallToolResult> => {
     const query = `
       query GetTransactions($positionId: Int) {
         transactions(positionId: $positionId) {
@@ -785,34 +766,17 @@ const getMarketCandles = {
     'Gets price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.',
   parameters: {
     properties: {
-      address: {
-        // This is market group address
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      chainId: {
-        type: 'string',
-        description: 'The chain ID where the market group exists',
-      },
-      marketId: {
-        // Changed from epochId to marketId
-        type: 'string',
-        description: 'The market ID (epoch ID) to get candles for',
-      },
-      from: {
-        type: 'string',
-        description: 'Start timestamp in seconds',
-      },
-      to: {
-        type: 'string',
-        description: 'End timestamp in seconds',
-      },
-      interval: {
-        type: 'string',
-        description: 'Interval between candles in seconds',
-      },
+      address: z.string().describe('The address of the market group'),
+      chainId: z
+        .string()
+        .describe('The chain ID where the market group exists'),
+      marketId: z
+        .string()
+        .describe('The market ID (epoch ID) to get candles for'),
+      from: z.string().describe('Start timestamp in seconds'),
+      to: z.string().describe('End timestamp in seconds'),
+      interval: z.string().describe('Interval between candles in seconds'),
     },
-    required: ['address', 'chainId', 'marketId', 'from', 'to', 'interval'],
   },
   function: async ({
     address,
@@ -828,7 +792,7 @@ const getMarketCandles = {
     from: string;
     to: string;
     interval: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     const intervalSeconds = intervalToSeconds(interval);
 
     const query = `
@@ -868,24 +832,11 @@ const getResourceCandles = {
     'Gets price candle data (OHLC) for a specific resource over a time period. To, from, and interval should be specified in seconds.',
   parameters: {
     properties: {
-      slug: {
-        type: 'string',
-        description: 'The slug of the resource',
-      },
-      from: {
-        type: 'string',
-        description: 'Start timestamp in seconds',
-      },
-      to: {
-        type: 'string',
-        description: 'End timestamp in seconds',
-      },
-      interval: {
-        type: 'string',
-        description: 'Interval between candles in seconds',
-      },
+      slug: z.string().describe('The slug of the resource'),
+      from: z.string().describe('Start timestamp in seconds'),
+      to: z.string().describe('End timestamp in seconds'),
+      interval: z.string().describe('Interval between candles in seconds'),
     },
-    required: ['slug', 'from', 'to', 'interval'],
   },
   function: async ({
     slug,
@@ -897,7 +848,7 @@ const getResourceCandles = {
     from: string;
     to: string;
     interval: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     const intervalSeconds = intervalToSeconds(interval);
 
     const query = `
@@ -935,28 +886,14 @@ const getResourceTrailingAverageCandles = {
     'Gets trailing average price candle data (OHLC) for a specific resource over a time period. To, from, interval, and trailingAvgTime should be specified in seconds.',
   parameters: {
     properties: {
-      slug: {
-        type: 'string',
-        description: 'The slug of the resource',
-      },
-      from: {
-        type: 'string',
-        description: 'Start timestamp in seconds',
-      },
-      to: {
-        type: 'string',
-        description: 'End timestamp in seconds',
-      },
-      interval: {
-        type: 'string',
-        description: 'Interval between candles in seconds',
-      },
-      trailingAvgTime: {
-        type: 'string',
-        description: 'Time window for trailing average in seconds',
-      },
+      slug: z.string().describe('The slug of the resource'),
+      from: z.string().describe('Start timestamp in seconds'),
+      to: z.string().describe('End timestamp in seconds'),
+      interval: z.string().describe('Interval between candles in seconds'),
+      trailingAvgTime: z
+        .string()
+        .describe('Time window for trailing average in seconds'),
     },
-    required: ['slug', 'from', 'to', 'interval', 'trailingAvgTime'],
   },
   function: async ({
     slug,
@@ -970,7 +907,7 @@ const getResourceTrailingAverageCandles = {
     to: string;
     interval: string;
     trailingAvgTime: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     const intervalSeconds = intervalToSeconds(interval);
     const trailingAvgSeconds = intervalToSeconds(trailingAvgTime);
 
@@ -1014,34 +951,17 @@ const getIndexCandles = {
     'Gets index price candle data (OHLC) for a specific market over a time period. To, from, and interval should be specified in seconds.',
   parameters: {
     properties: {
-      address: {
-        // This is market group address
-        type: 'string',
-        description: 'The address of the market group',
-      },
-      chainId: {
-        type: 'string',
-        description: 'The chain ID where the market group exists',
-      },
-      marketId: {
-        // Changed from epochId to marketId
-        type: 'string',
-        description: 'The market ID (epoch ID) to get candles for',
-      },
-      from: {
-        type: 'string',
-        description: 'Start timestamp in seconds',
-      },
-      to: {
-        type: 'string',
-        description: 'End timestamp in seconds',
-      },
-      interval: {
-        type: 'string',
-        description: 'Interval between candles in seconds',
-      },
+      address: z.string().describe('The address of the market group'),
+      chainId: z
+        .string()
+        .describe('The chain ID where the market group exists'),
+      marketId: z
+        .string()
+        .describe('The market ID (epoch ID) to get candles for'),
+      from: z.string().describe('Start timestamp in seconds'),
+      to: z.string().describe('End timestamp in seconds'),
+      interval: z.string().describe('Interval between candles in seconds'),
     },
-    required: ['address', 'chainId', 'marketId', 'from', 'to', 'interval'],
   },
   function: async ({
     address,
@@ -1057,7 +977,7 @@ const getIndexCandles = {
     from: string;
     to: string;
     interval: string;
-  }): Promise<ToolResponse> => {
+  }): Promise<CallToolResult> => {
     const intervalSeconds = intervalToSeconds(interval);
 
     const query = `
