@@ -1,15 +1,14 @@
 import { graphql, GraphQLSchema } from 'graphql';
-import { initializeApolloServer } from '../graphql/startApolloServer';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
+import { SharedSchema } from '../graphql/sharedSchema';
 
 let schema: GraphQLSchema;
 
 async function initializeSchema() {
   if (!schema) {
-    const apolloServer = await initializeApolloServer();
-    // @ts-expect-error - HACK: accessing private variable for now
-    schema = apolloServer.schema;
+    const sharedSchema = SharedSchema.getInstance();
+    schema = sharedSchema.schema!;
   }
 }
 
