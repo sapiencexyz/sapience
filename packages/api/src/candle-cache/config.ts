@@ -3,6 +3,7 @@ import { TIME_INTERVALS } from 'src/fixtures';
 export const CANDLE_CACHE_CONFIG = {
   logPrefix: '[CANDLE_CACHE]',
   batchSize: 500_000,
+  batchLogInterval: 10_000, // 10 seconds
   intervals: [
     TIME_INTERVALS.intervals.INTERVAL_1_MINUTE,
     TIME_INTERVALS.intervals.INTERVAL_5_MINUTES,

@@ -19,6 +19,7 @@ const MARKET_QUERY = gql`
       baseAssetMinPriceTick
       baseAssetMaxPriceTick
       optionName
+      rules
       marketGroup {
         id
         address

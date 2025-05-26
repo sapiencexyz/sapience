@@ -84,6 +84,7 @@ type MarketType {
   positions: [PositionType!]!
   public: Boolean!
   question: String
+  rules: String
   settled: Boolean
   settlementPriceD18: String
   startTimestamp: Int

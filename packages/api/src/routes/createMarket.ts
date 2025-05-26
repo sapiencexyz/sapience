@@ -188,6 +188,7 @@ router.post('/', async (req: Request, res: Response) => {
         baseAssetMinPriceTick,
         baseAssetMaxPriceTick,
         claimStatement,
+        rules,
       } = market;
 
       // Validate required market fields
@@ -211,6 +212,7 @@ router.post('/', async (req: Request, res: Response) => {
       newMarket.marketId = i + 1;
       newMarket.question = marketQuestion;
       newMarket.optionName = optionName || null;
+      newMarket.rules = rules || null;
 
       // Initialize marketParams if it doesn't exist
       if (!newMarket.marketParams) {

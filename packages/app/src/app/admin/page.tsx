@@ -25,19 +25,14 @@ import { useSignMessage } from 'wagmi';
 import AdminTable from '~/components/admin/AdminTable';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useResourcesAdmin } from '~/lib/hooks/useResources';
-import type { RenderJob } from '~/lib/interfaces/interfaces';
 import { foilApi } from '~/lib/utils/util';
 
 const DEFAULT_ERROR_MESSAGE = 'An error occurred. Please try again.';
 
 const Admin = () => {
-  const [job, setJob] = useState<RenderJob | undefined>();
   const [loadingAction, setLoadingAction] = useState<{
     [actionName: string]: boolean;
   }>({});
-  const [statusOpen, setStatusOpen] = useState(false);
-  const [manualServiceId, setManualServiceId] = useState('');
-  const [manualJobId, setManualJobId] = useState('');
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState('');
@@ -47,23 +42,6 @@ const Admin = () => {
   const { signMessageAsync } = useSignMessage();
   const { toast } = useToast();
   const { data: resourcesData } = useResourcesAdmin();
-
-  const handleGetStatus = async () => {
-    const serviceId = manualServiceId || job?.serviceId;
-    const jobId = manualJobId || job?.id;
-
-    if (!serviceId || !jobId) return;
-
-    setLoadingAction((prev) => ({ ...prev, getStatus: true }));
-    const response = await foilApi.get(
-      `/reindexStatus?jobId=${jobId}&serviceId=${serviceId}`
-    );
-
-    if (response.success && response.job) {
-      setJob(response.job);
-    }
-    setLoadingAction((prev) => ({ ...prev, getStatus: false }));
-  };
 
   const handleIndexResource = async () => {
     try {
@@ -163,9 +141,6 @@ const Admin = () => {
 
   const toolButtons = (
     <>
-      <Button size="xs" onClick={() => setStatusOpen(true)}>
-        Check Job Status
-      </Button>
       <Button size="xs" onClick={() => setIndexResourceOpen(true)}>
         Index Resource
       </Button>
@@ -178,54 +153,6 @@ const Admin = () => {
   return (
     <div className="w-full h-full pb-20">
       <AdminTable toolButtons={toolButtons} />
-
-      <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Check Job Status</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="block">
-                <span className="text-sm font-medium">Service ID</span>
-                <Input
-                  id="serviceId"
-                  value={manualServiceId || job?.serviceId || ''}
-                  onChange={(e) => setManualServiceId(e.target.value)}
-                />
-              </label>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block">
-                <span className="text-sm font-medium">Job ID</span>
-                <Input
-                  id="jobId"
-                  value={manualJobId || job?.id || ''}
-                  onChange={(e) => setManualJobId(e.target.value)}
-                />
-              </label>
-            </div>
-
-            <Button
-              onClick={handleGetStatus}
-              disabled={
-                (!manualServiceId && !job?.serviceId) ||
-                (!manualJobId && !job?.id) ||
-                loadingAction.getStatus
-              }
-              className="w-full"
-            >
-              {loadingAction.getStatus ? (
-                <div className="animate-spin">⌛</div>
-              ) : (
-                'Submit'
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={indexResourceOpen} onOpenChange={setIndexResourceOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>

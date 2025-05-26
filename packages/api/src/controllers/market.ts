@@ -162,12 +162,22 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 };
 
 // Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
-export const indexMarketEvents = async (
+export const indexMarketGroupEvents = async (
   market: MarketGroup,
   client: PublicClient
 ): Promise<() => void> => {
   await initializeDataSource();
   const chainId = await client.getChainId();
+
+  try {
+    await updateCollateralData(client, market);
+    await marketGroupRepository.save(market);
+  } catch (err) {
+    console.error(
+      `Failed to update collateral data for market ${market.address}:`,
+      err
+    );
+  }
 
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY_MS = 5000;
