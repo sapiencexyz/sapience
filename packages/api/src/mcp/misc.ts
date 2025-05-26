@@ -9,6 +9,8 @@ import { erc20Abi } from 'viem';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
 
+const API_URL = process.env.API_URL || 'http://localhost:3001';
+
 // Function to get chain object by ID
 const getChainById = (chainId: string) => {
   const numericChainId = parseInt(chainId, 10);
@@ -134,5 +136,69 @@ export const balanceOfToken = {
         isError: true,
       };
     }
+  },
+};
+
+export const quoteViaQuoter = {
+  name: 'get_sapience_quote',
+  description: 'Gets a quote for a transaction via the Quoter API',
+  parameters: {
+    properties: {
+      chainId: z.string().describe('The chain ID to quote the transaction from'),
+      marketGroupAddress: z.string().describe('The address of the market group to quote the transaction for'),
+      marketId: z.string().describe('The ID of the market to quote the transaction for'),
+      expectedPrice: z.string().transform(Number),
+      collateralAvailable: z.string().transform(BigInt),
+      maxIterations: z.string().transform(Number).optional(),
+      priceLimit: z.string().transform(Number).optional(),
+      }
+  },
+  function: async (args: {
+    chainId: string;
+    marketGroupAddress: string;
+    marketId: string;
+    expectedPrice: number;
+    collateralAvailable: bigint;
+    maxIterations: number| undefined;
+    priceLimit: number| undefined;
+  }): Promise<CallToolResult> => {
+
+    try {
+    const { chainId, marketGroupAddress, marketId, expectedPrice, collateralAvailable, maxIterations, priceLimit } = args;
+
+    const params = new URLSearchParams();
+    params.append('expectedPrice', expectedPrice.toString());
+    params.append('collateralAvailable', collateralAvailable.toString());
+    if (maxIterations) {
+      params.append('maxIterations', maxIterations.toString());
+    }
+    if (priceLimit) {
+      params.append('priceLimit', priceLimit.toString());
+    }
+
+    const url = `${API_URL}/quoter/${chainId}/${marketGroupAddress}/${marketId}/?${params.toString()}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(data, null, 2),
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `Error getting quote: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        },
+      ],
+      isError: true,
+    };
+  }
   },
 };
