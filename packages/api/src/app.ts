@@ -1,31 +1,17 @@
-import express, { Request } from 'express';
+import express from 'express';
 import cors from 'cors';
+import { rateLimit } from 'express-rate-limit';
 import { router } from './routes';
 
 const corsOptions: cors.CorsOptions = {
   origin: (
     origin: string | undefined,
-    callback: (error: Error | null, allow?: boolean) => void,
-    request?: Request
+    callback: (error: Error | null, allow?: boolean) => void
   ) => {
     // Allow all requests unless in production or staging
     if (
       process.env.NODE_ENV !== 'production' &&
       process.env.NODE_ENV !== 'staging'
-    ) {
-      callback(null, true);
-      return;
-    }
-
-    // Check for API token in production/staging
-    const authHeader = request?.headers?.authorization;
-    const apiToken = process.env.API_ACCESS_TOKEN;
-
-    // If API token is provided and matches, allow the request regardless of origin
-    if (
-      apiToken &&
-      authHeader?.startsWith('Bearer ') &&
-      authHeader.slice(7) === apiToken
     ) {
       callback(null, true);
       return;
@@ -51,11 +37,21 @@ const corsOptions: cors.CorsOptions = {
   allowedHeaders: ['Authorization', 'Content-Type'],
 };
 
+// Configure rate limiting
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  limit: 60, // Limit each IP to 60 requests per window
+  standardHeaders: 'draft-8', // Use the draft standard Rate-Limit headers
+  legacyHeaders: false, // Disable the X-RateLimit-* headers
+  message: { error: 'Too many requests, please try again later.' },
+});
+
 const app = express();
 
 // Middleware
 app.use(express.json());
 app.use(cors(corsOptions));
+app.use(limiter);
 
 app.use('/', router);
 
