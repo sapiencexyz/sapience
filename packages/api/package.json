@@ -39,9 +39,11 @@
     "@apollo/server": "^4.11.3",
     "@apollo/server-plugin-response-cache": "^4.1.4",
     "@foil/protocol": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.11.4",
     "@msgpack/msgpack": "^3.1.1",
     "@sentry/cli": "^2.39.0",
     "@sentry/node": "^8.40.0",
+    "abitype": "^1.0.8",
     "axios": "^1.7.7",
     "class-validator": "^0.14.1",
     "concurrently": "^8.2.2",
@@ -60,7 +62,7 @@
     "typeorm": "^0.3.20",
     "typescript": "^5.7.2",
     "viem": "^2.21.49",
-    "zod": "^3.22.4"
+    "zod": "3.23.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

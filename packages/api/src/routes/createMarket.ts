@@ -15,7 +15,7 @@ import { isValidWalletSignature } from '../middleware';
 const router = Router();
 
 // Handler for POST /create-market-group
-router.post('/create-market-group', async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const {
       nonce,

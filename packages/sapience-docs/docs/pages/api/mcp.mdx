@@ -1,11 +1,113 @@
 # Model Context Protocol Server
 
-## Streamable HTTP Endpoint
+Use Sapience's API with any [MCP client](https://modelcontextprotocol.io/clients) via the HTTP endpoint:
 
-### Use with Claude Desktop
+```
+https://api.sapience.xyz/mcp
+```
 
-*Coming soon.*
+## Use with Claude
 
-### Use with LangChain
+Integrate Sapience with Claude to provide it with tools that query the Sapience GraphQL API for live data, prepare transaction data for prediction markets, and more.
 
-*Coming soon.*
+* Navigate to Settings > Integrations
+* Locate the “Integrations” section
+* Click “Add custom integration” at the bottom of the section
+* Add your integration’s remote MCP server URL
+* Finish configuring your integration by clicking “Add”
+
+You can connect it to [Claude Desktop](https://claude.ai/download) with [`mcp-remote`](https://github.com/geelen/mcp-remote?tab=readme-ov-file#usage).
+
+## Use with Cursor
+
+Allow agents in [Cursor](https://www.cursor.com/) to query the Sapience API directly, helping it better assist with software development.
+
+- Open Cursor IDE
+- Navigate to Settings (⚙️) > AI > Advanced Settings
+- Look for the "Model Context Protocol" or "External Tools" section
+- Add your MCP server URL: `https://api.sapience.xyz/mcp`
+- Save your settings
+
+## Use with LangChain
+
+LangChain is a popular framework for building applications with large language models (LLMs).
+
+1. **Install Required Dependencies**:
+   ```bash
+   pip install langchain langchain-anthropic
+   ```
+
+2. **Configure LangChain with MCP**:
+   ```python
+   from langchain_anthropic import ChatAnthropic
+   from langchain.tools import tool
+   from langchain.agents import AgentExecutor, create_structured_chat_agent
+   from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+   # Initialize the Claude model
+   model = ChatAnthropic(model="claude-3-sonnet-20240229")
+
+   # Define a function to connect to your MCP server
+   @tool
+   def connect_to_mcp_server(query: str) -> str:
+       """
+       Connects to the MCP server at https://api.sapience.xyz/mcp and processes the query.
+       Args:
+           query: The query to process through the MCP server
+       Returns:
+           The response from the MCP server
+       """
+       # Implement connection to your MCP server
+       # This is a simplified example - you'll need to implement the actual HTTP request
+       import requests
+       response = requests.post(
+           "https://api.sapience.xyz/mcp",
+           json={"query": query}
+       )
+       return response.json()
+   
+   # Create a list of tools
+   tools = [connect_to_mcp_server]
+   
+   # Define the prompt for the agent
+   prompt = ChatPromptTemplate.from_messages([
+       ("system", "You are a helpful assistant."),
+       ("human", "{input}"),
+       MessagesPlaceholder(variable_name="agent_scratchpad")
+   ])
+   
+   # Create an agent with the tools and prompt
+   agent = create_structured_chat_agent(model, tools, prompt)
+   
+   # Create an agent executor
+   agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+   
+   # Execute the agent
+   result = agent_executor.invoke({"input": "Process this data using the MCP server tools"})
+   print(result["output"])
+   ```
+
+3. **Advanced Integration**:
+   For more advanced integration, you can create custom Tool classes that specifically target different functionalities provided by your MCP server.
+   
+   ```python
+   from langchain.pydantic_v1 import BaseModel, Field
+   
+   class MCPToolInput(BaseModel):
+       parameter1: str = Field(..., description="Description of parameter1")
+       parameter2: int = Field(..., description="Description of parameter2")
+   
+   @tool(args_schema=MCPToolInput)
+   def mcp_specific_tool(parameter1: str, parameter2: int) -> str:
+       """
+       A specific tool that uses the MCP server for a particular function.
+       """
+       # Implement specific functionality
+       pass
+   ```
+
+For more information on LangChain's tool and agent capabilities, refer to the [LangChain documentation](https://python.langchain.com/docs/how_to/do_tool_calling).
+
+## Use with Google ADK
+
+The Google Agent Development Kit can be used with the Sapience MCP server. Check out the [Time Series Forecasting example](https://github.com/google/adk-samples/tree/main/java/agents/time-series-forecasting).
