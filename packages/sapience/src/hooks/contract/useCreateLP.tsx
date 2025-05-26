@@ -1,12 +1,15 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useEffect, useState, useCallback } from 'react';
-import type { Abi } from 'viem';
-import { parseUnits } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useEffect, useMemo, useState } from 'react';
+import { erc20Abi, parseUnits, type Abi } from 'viem';
+import { useSendCalls } from 'wagmi';
 
 import { CREATE_LIQUIDITY_REDUCTION_PERCENT } from '~/lib/constants/numbers';
 
 import { useTokenApproval } from './useTokenApproval';
+import {
+  useWaitForSendCalls,
+  type SendCallsResult,
+} from './useWaitForSendCalls';
 
 /**
  * Parameters for creating a liquidity position
@@ -37,10 +40,11 @@ export interface CreateLPResult {
   error: Error | null;
   txHash: `0x${string}` | undefined;
   data?: `0x${string}` | undefined;
-  isApproving: boolean;
   hasAllowance: boolean;
-  needsApproval: boolean;
+  allTxHashes: `0x${string}`[];
 }
+
+type PotentialRpcError = Error & { shortMessage?: string };
 
 /**
  * Hook for creating a liquidity position with automatic token approval
@@ -58,20 +62,16 @@ export function useCreateLP({
   slippagePercent,
   enabled = true,
   collateralTokenAddress,
-}: CreateLPParams): CreateLPResult {
+}: CreateLPParams): CreateLPResult & { reset: () => void } {
   const { toast } = useToast();
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
+  const [sendCallsResult, setSendCallsResult] =
+    useState<SendCallsResult | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [processingTx, setProcessingTx] = useState(false);
+  const [callsCount, setCallsCount] = useState(0);
 
-  // Use token approval hook
-  const {
-    hasAllowance,
-    isApproving,
-    isApproveSuccess,
-    approve,
-    error: approvalError,
-  } = useTokenApproval({
+  // Check token allowance
+  const { hasAllowance } = useTokenApproval({
     tokenAddress: collateralTokenAddress,
     spenderAddress: marketAddress,
     amount: collateralAmount,
@@ -80,56 +80,55 @@ export function useCreateLP({
   });
 
   // Check if approval is needed
-  const needsApproval =
-    !hasAllowance &&
-    collateralTokenAddress !== undefined &&
-    parseFloat(collateralAmount || '0') > 0;
+  const needsApproval = useMemo(
+    () =>
+      !hasAllowance &&
+      collateralTokenAddress !== undefined &&
+      parseFloat(collateralAmount || '0') > 0,
+    [hasAllowance, collateralTokenAddress, collateralAmount]
+  );
 
   // Parse collateral amount
   const parsedCollateralAmount = parseUnits(collateralAmount || '0', 18);
 
-  // Write contract hook for creating the liquidity position
-  const {
-    writeContractAsync,
-    isPending,
-    data,
-    error: writeError,
-  } = useWriteContract();
+  // Calculate minimum amounts based on slippage tolerance
+  const calculateMinAmount = (amount: bigint, slippage: number): bigint => {
+    if (amount === BigInt(0)) return BigInt(0);
+    const slippageBasisPoints = BigInt(Math.floor(slippage * 100));
+    return amount - (amount * slippageBasisPoints) / BigInt(10000);
+  };
 
-  // Watch for transaction completion
+  // Use sendCalls hook for handling LP creation
+  const { sendCallsAsync } = useSendCalls();
+
+  // Use the new hook to wait for send calls
   const {
+    txHash,
     isLoading: isConfirming,
     isSuccess,
+    isError: isTxError,
     error: txError,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
+    allTxHashes,
+  } = useWaitForSendCalls({
+    result: sendCallsResult,
+    callsCount,
+    enabled: !!sendCallsResult,
   });
 
   // Set error if any occur during the process
   useEffect(() => {
-    if (writeError) {
-      setError(writeError);
-      setProcessingTx(false); // Reset processing state on write error
-    }
-    if (txError) {
-      setError(txError);
-      setProcessingTx(false); // Reset processing state on transaction error
-    }
-    if (approvalError) {
-      setError(approvalError);
-      setProcessingTx(false); // Reset processing state on approval error
-    }
-  }, [writeError, txError, approvalError]);
+    if (txError) setError(txError);
+  }, [txError]);
 
-  // Function to actually create the liquidity position
-  const performCreateLP = useCallback(async (): Promise<void> => {
-    // Define calculateMinAmount inside the useCallback scope
-    const calculateMinAmount = (amount: bigint, slippage: number): bigint => {
-      if (amount === BigInt(0)) return BigInt(0);
-      const slippageBasisPoints = BigInt(Math.floor(slippage * 100));
-      return amount - (amount * slippageBasisPoints) / BigInt(10000);
-    };
+  // Reset processing state on final success or error
+  useEffect(() => {
+    if (isSuccess || error) {
+      setProcessingTx(false);
+    }
+  }, [isSuccess, error]);
 
+  // Main function that creates the liquidity position
+  const createLP = async (): Promise<void> => {
     if (
       !enabled ||
       !marketAddress ||
@@ -137,19 +136,29 @@ export function useCreateLP({
       lowPriceTick === null ||
       highPriceTick === null
     ) {
-      setProcessingTx(false);
-      console.error(
-        'Missing required parameters for creating liquidity position or invalid ticks'
-      );
       setError(new Error('Invalid parameters for LP creation'));
       return;
     }
 
-    try {
-      setError(null);
+    setProcessingTx(true);
+    setError(null);
+    setSendCallsResult(null);
 
-      // 30 minutes from now
+    try {
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      const calls = [];
+
+      // Add approval call if needed
+      if (needsApproval && collateralTokenAddress) {
+        calls.push({
+          to: collateralTokenAddress,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [marketAddress, parsedCollateralAmount],
+        });
+      }
+
+      // Calculate adjusted amounts
       const adjustedBaseToken = BigInt(
         Math.floor(Number(amount0) * (1 - CREATE_LIQUIDITY_REDUCTION_PERCENT))
       );
@@ -177,118 +186,73 @@ export function useCreateLP({
         deadline,
       };
 
-      setProcessingTx(true);
-      const hash = await writeContractAsync({
-        address: marketAddress,
+      calls.push({
+        to: marketAddress,
         abi: marketAbi,
         functionName: 'createLiquidityPosition',
         args: [liquidityParams],
-        chainId,
       });
-      setTxHash(hash);
-    } catch (err) {
-      console.error('Error in performCreateLP:', err);
-      setError(
-        err instanceof Error ? err : new Error('Failed to send transaction')
-      );
-      setProcessingTx(false);
-    }
-  }, [
-    enabled,
-    marketAddress,
-    amount0,
-    amount1,
-    lowPriceTick,
-    highPriceTick,
-    slippagePercent,
-    marketId,
-    parsedCollateralAmount,
-    writeContractAsync,
-    marketAbi,
-    chainId,
-    setProcessingTx,
-    setError,
-    setTxHash,
-  ]);
 
-  // When approval is successful, proceed with creating the LP
-  useEffect(() => {
-    const handleApprovalSuccess = async () => {
-      // Only proceed if we have a successful approval and we're in the middle of processing
-      if (isApproveSuccess && processingTx) {
-        toast({
-          title: 'Token Approved',
-          description: 'Creating liquidity position...',
-        });
+      setCallsCount(calls.length);
 
-        // Now proceed with LP creation
-        try {
-          await performCreateLP();
-        } catch (err) {
-          setProcessingTx(false);
-          console.error('Error creating LP after approval:', err);
-          setError(
-            err instanceof Error
-              ? err
-              : new Error('LP creation failed after approval')
-          );
-        }
+      const result = await sendCallsAsync({
+        calls,
+        chainId,
+        experimental_fallback: true,
+        experimental_fallbackDelay: 1000,
+      });
+
+      if (!result?.id) {
+        throw new Error('No call ID returned from sendCallsAsync');
       }
-    };
 
-    handleApprovalSuccess();
-  }, [isApproveSuccess, processingTx, performCreateLP, toast]);
+      setSendCallsResult(result);
 
-  // Main function that checks approval and handles the flow
-  const createLP = async (): Promise<void> => {
-    setProcessingTx(true);
-    setError(null);
-
-    try {
-      // First check if we need approval
-      if (needsApproval) {
-        toast({
-          title: 'Approval Required',
-          description: 'Approving tokens before creating position...',
-        });
-        await approve();
-        // The createLP call will be triggered by the useEffect when approval succeeds
+      toast({
+        title: 'Transaction Submitted',
+        description: 'Your liquidity position creation has been submitted.',
+      });
+    } catch (err) {
+      let errorMessage: string;
+      if (err instanceof Error && 'shortMessage' in err) {
+        errorMessage = (err as PotentialRpcError).shortMessage!;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       } else {
-        // If we already have allowance, create LP directly
-        await performCreateLP();
-        setProcessingTx(false);
+        errorMessage = 'Failed to submit liquidity position creation.';
       }
-    } catch (err) {
+
+      setError(err instanceof Error ? err : new Error(errorMessage));
+      toast({
+        title: 'Transaction Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
       setProcessingTx(false);
-      console.error('Error in LP creation flow:', err);
-      throw err;
     }
   };
 
-  // Reset processing state on success
-  useEffect(() => {
-    if (isSuccess) {
-      setProcessingTx(false);
-    }
-  }, [isSuccess]);
+  // Add a reset function to clear all state
+  const reset = () => {
+    setSendCallsResult(null);
+    setError(null);
+    setProcessingTx(false);
+    setCallsCount(0);
+  };
 
-  // Reset processing state on error from transaction
-  useEffect(() => {
-    if (error) {
-      setProcessingTx(false);
-    }
-  }, [error]);
+  const isLoading = isConfirming || processingTx;
+  const isError = !!error || isTxError;
 
   return {
     createLP,
-    isLoading: isPending || isConfirming || processingTx,
+    isLoading,
     isSuccess,
-    isError: !!error,
-    error,
+    isError,
+    error: error || txError,
     txHash,
-    data,
-    isApproving,
+    data: txHash,
     hasAllowance,
-    needsApproval,
+    allTxHashes,
+    reset,
   };
 }

@@ -49,7 +49,7 @@ export type LiquidityFormMarketDetails = {
 export interface LiquidityFormProps {
   marketDetails: LiquidityFormMarketDetails;
   walletData: WalletData;
-  onSuccess?: (txHash: `0x${string}`) => void;
+  onSuccess?: (txHash?: `0x${string}`) => void;
   permitData?: { permitted?: boolean } | null | undefined;
   isPermitLoadingPermit?: boolean;
 }
@@ -156,9 +156,6 @@ export function CreateLiquidityForm({
     isSuccess: isLPCreated,
     isError: isLPError,
     error: lpError,
-    txHash,
-    isApproving,
-    needsApproval,
   } = useCreateLP({
     marketAddress,
     marketAbi,
@@ -193,19 +190,20 @@ export function CreateLiquidityForm({
 
   // Handle successful LP creation
   useEffect(() => {
-    if (isLPCreated && txHash && onSuccess && !successHandled.current) {
+    if (isLPCreated && onSuccess && !successHandled.current) {
+      console.log('YAYSUCCESS');
       successHandled.current = true;
 
       toast({
         title: 'Liquidity Position Created',
         description: 'Your position has been successfully created.',
       });
-      onSuccess(txHash);
+      onSuccess();
 
       // Reset the form after success
       form.reset();
     }
-  }, [isLPCreated, txHash, onSuccess, form, toast]);
+  }, [isLPCreated, onSuccess, form, toast]);
 
   // Only reset the success handler when the form is being filled out again
   // This prevents the double toast when the component rerenders
@@ -247,14 +245,8 @@ export function CreateLiquidityForm({
     if (quoteLoading) {
       return { text: 'Calculating...', loading: true };
     }
-    if (isApproving) {
-      return { text: `Approving ${collateralAssetTicker}...`, loading: true };
-    }
     if (isCreatingLP) {
       return { text: 'Creating Position...', loading: true };
-    }
-    if (needsApproval) {
-      return { text: `Approve & Add Liquidity`, loading: false };
     }
     return { text: 'Add Liquidity', loading: false };
   };
@@ -266,7 +258,6 @@ export function CreateLiquidityForm({
     isPermitLoadingPermit ||
     permitData?.permitted === false ||
     quoteLoading ||
-    isApproving ||
     isCreatingLP;
 
   return (

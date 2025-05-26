@@ -53,7 +53,7 @@ export interface TradeFormProps {
   marketDetails: TradeFormMarketDetails;
   isConnected?: boolean;
   onConnectWallet?: () => void;
-  onSuccess?: (txHash: `0x${string}`) => void;
+  onSuccess?: () => void;
   permitData?: { permitted?: boolean } | null | undefined;
   isPermitLoadingPermit?: boolean;
 }
@@ -197,8 +197,6 @@ export function CreateTradeForm({
     isError: isTradeError,
     error: tradeError,
     txHash,
-    isApproving,
-    needsApproval,
   } = useCreateTrade({
     marketAddress,
     marketAbi,
@@ -209,7 +207,6 @@ export function CreateTradeForm({
     slippagePercent: slippageAsNumber,
     enabled: isConnected && !isChainMismatch && !!marketAddress,
     collateralTokenAddress: collateralAssetAddress,
-    collateralTokenSymbol: collateralAssetTicker,
   });
 
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
@@ -231,14 +228,14 @@ export function CreateTradeForm({
   }, [estimatedCollateral, walletBalance]);
 
   useEffect(() => {
-    if (isTradeCreated && txHash && onSuccess && !successHandled.current) {
+    if (isTradeCreated && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
       toast({
         title: 'Trade Position Opened',
         description: 'Your trade position has been successfully opened!',
       });
-      onSuccess(txHash);
+      onSuccess();
       form.reset();
     }
   }, [isTradeCreated, txHash, onSuccess, toast, form]);
@@ -302,17 +299,8 @@ export function CreateTradeForm({
     if (isChainMismatch) {
       return { text: 'Switch Network', loading: isSwitchingChain };
     }
-    if (isApproving) {
-      return { text: `Approving ${collateralAssetTicker}...`, loading: true };
-    }
     if (isCreatingTrade) {
       return { text: 'Opening Position...', loading: true };
-    }
-    if (needsApproval) {
-      return {
-        text: `Approve & Open Position`,
-        loading: false,
-      };
     }
     return { text: `Open Position`, loading: false };
   };
@@ -323,7 +311,6 @@ export function CreateTradeForm({
       isPermitLoadingPermit ||
       permitData?.permitted === false ||
       isSwitchingChain ||
-      isApproving ||
       isCreatingTrade ||
       quoteLoading ||
       !sizeBigInt ||

@@ -52,7 +52,7 @@ export interface WalletData {
 type ModifyLiquidityFormProps = {
   marketDetails: LiquidityFormMarketDetails;
   walletData: WalletData;
-  onSuccess: (txHash: `0x${string}`) => void;
+  onSuccess: (txHash?: `0x${string}`) => void;
   positionId: string;
   mode: 'add' | 'remove';
   permitData?: { permitted?: boolean } | null | undefined;
@@ -155,8 +155,6 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
     isSuccess: isModified,
     error: modifyError,
     txHash,
-    isApproving,
-    needsApproval,
   } = useModifyLP({
     marketAddress: marketDetails.marketAddress,
     positionId,
@@ -187,7 +185,7 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
 
   // Refetch position data when transaction is successful
   useEffect(() => {
-    if (isModified && txHash && onSuccess && !successHandled.current) {
+    if (isModified && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
       // Refetch position data to update UI
@@ -247,12 +245,6 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
     if (quoteLoading) {
       return { text: 'Generating Quote...', loading: true };
     }
-    if (isApproving) {
-      return {
-        text: `Approving ${marketDetails.collateralAssetTicker}...`,
-        loading: true,
-      };
-    }
     if (isModifying) {
       // Show different text when closing position
       if (isClosePosition) {
@@ -264,12 +256,6 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
       return {
         text: mode === 'add' ? 'Adding Liquidity...' : 'Removing Liquidity...',
         loading: true,
-      };
-    }
-    if (needsApproval) {
-      return {
-        text: `Add Liquidity`,
-        loading: false,
       };
     }
 
@@ -294,7 +280,6 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
       permitData?.permitted === false ||
       quoteLoading ||
       isModifying ||
-      isApproving ||
       (mode === 'add' && hasInsufficientFunds) ||
       percentage === 0
     );

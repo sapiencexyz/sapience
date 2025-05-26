@@ -1,11 +1,15 @@
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { useCallback, useEffect, useState } from 'react';
-import { formatUnits, type Abi } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { erc20Abi, formatUnits, type Abi } from 'viem';
+import { useSendCalls } from 'wagmi';
 
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
 
 import { useTokenApproval } from './useTokenApproval';
+import {
+  useWaitForSendCalls,
+  type SendCallsResult,
+} from './useWaitForSendCalls';
 
 interface UseModifyTradeProps {
   marketAddress?: `0x${string}`;
@@ -18,6 +22,20 @@ interface UseModifyTradeProps {
   collateralTokenAddress?: `0x${string}`;
   collateralAmount?: bigint;
 }
+
+export interface ModifyTradeResult {
+  modifyTrade: () => Promise<void>;
+  isLoading: boolean;
+  isSuccess: boolean;
+  isError: boolean;
+  error: Error | null;
+  txHash: `0x${string}` | undefined;
+  data?: `0x${string}` | undefined;
+  hasAllowance: boolean;
+  allTxHashes: `0x${string}`[];
+}
+
+type PotentialRpcError = Error & { shortMessage?: string };
 
 /**
  * Hook to modify an existing trader position (increase, decrease, or close).
@@ -32,20 +50,16 @@ export function useModifyTrade({
   enabled = true,
   collateralTokenAddress,
   collateralAmount,
-}: UseModifyTradeProps) {
+}: UseModifyTradeProps): ModifyTradeResult & { reset: () => void } {
   const { toast } = useToast();
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
+  const [sendCallsResult, setSendCallsResult] =
+    useState<SendCallsResult | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [processingTx, setProcessingTx] = useState(false);
+  const [callsCount, setCallsCount] = useState(0);
 
-  // Use token approval hook
-  const {
-    hasAllowance,
-    isApproving,
-    isApproveSuccess,
-    approve,
-    error: approvalError,
-  } = useTokenApproval({
+  // Check token allowance
+  const { hasAllowance } = useTokenApproval({
     tokenAddress: collateralTokenAddress,
     spenderAddress: marketAddress,
     amount: formatUnits(collateralAmount || BigInt(0), TOKEN_DECIMALS),
@@ -53,12 +67,14 @@ export function useModifyTrade({
     enabled: enabled && !!collateralTokenAddress,
   });
 
-  // Check if approval is needed
-  const needsApproval =
-    !hasAllowance &&
-    collateralTokenAddress !== undefined &&
-    collateralAmount !== undefined &&
-    collateralAmount > BigInt(0);
+  const needsApproval = useMemo(
+    () =>
+      !hasAllowance &&
+      collateralTokenAddress !== undefined &&
+      collateralAmount !== undefined &&
+      collateralAmount > BigInt(0),
+    [hasAllowance, collateralTokenAddress, collateralAmount]
+  );
 
   // Calculate collateral delta limit with slippage
   const collateralDeltaLimit = useCallback(() => {
@@ -77,151 +93,128 @@ export function useModifyTrade({
     );
   }, [collateralAmount, slippagePercent]);
 
-  // Write contract hook for modifying the position
-  const {
-    writeContractAsync,
-    isPending,
-    data,
-    error: writeError,
-  } = useWriteContract();
+  // Use sendCalls hook for handling modification
+  const { sendCallsAsync } = useSendCalls();
 
-  // Watch for transaction completion
+  // Use the new hook to wait for send calls
   const {
+    txHash,
     isLoading: isConfirming,
     isSuccess,
+    isError: isTxError,
     error: txError,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
+    allTxHashes,
+  } = useWaitForSendCalls({
+    result: sendCallsResult,
+    callsCount,
+    enabled: !!sendCallsResult,
   });
 
   // Set error if any occur during the process
   useEffect(() => {
-    if (writeError) {
-      setError(writeError);
-      setProcessingTx(false);
-    }
-    if (txError) {
-      setError(txError);
-      setProcessingTx(false);
-    }
-    if (approvalError) {
-      setError(approvalError);
-      setProcessingTx(false);
-    }
-  }, [writeError, txError, approvalError]);
+    if (txError) setError(txError);
+  }, [txError]);
 
-  // Function to actually modify the position
-  const performModification = useCallback(async (): Promise<void> => {
-    if (!enabled || !marketAddress || !marketAbi) {
+  // Reset processing state on final success or error
+  useEffect(() => {
+    if (isSuccess || error) {
       setProcessingTx(false);
-      console.error('Missing required parameters for modifying position');
+    }
+  }, [isSuccess, error]);
+
+  // Main function that modifies the trade position
+  const modifyTrade = async (): Promise<void> => {
+    if (!enabled || !marketAddress || !marketAbi) {
       setError(new Error('Invalid parameters for position modification'));
       return;
     }
 
-    try {
-      setError(null);
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60); // 30 minutes deadline
+    setProcessingTx(true);
+    setError(null);
+    setSendCallsResult(null);
 
-      const hash = await writeContractAsync({
-        address: marketAddress,
+    try {
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+      const calls = [];
+
+      // Add approval call if needed
+      if (needsApproval && collateralTokenAddress) {
+        calls.push({
+          to: collateralTokenAddress,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [marketAddress, collateralAmount],
+        });
+      }
+
+      // Add modify position call
+      calls.push({
+        to: marketAddress,
         abi: marketAbi,
         functionName: 'modifyTraderPosition',
         args: [positionId, newSize, collateralDeltaLimit(), deadline],
-        chainId,
       });
-      setTxHash(hash);
-    } catch (err) {
-      console.error('Error in performModification:', err);
-      setError(
-        err instanceof Error ? err : new Error('Failed to send transaction')
-      );
-      setProcessingTx(false);
-    }
-  }, [
-    enabled,
-    marketAddress,
-    marketAbi,
-    newSize,
-    positionId,
-    collateralDeltaLimit,
-    chainId,
-    writeContractAsync,
-  ]);
 
-  // When approval is successful, proceed with modification
-  useEffect(() => {
-    const handleApprovalSuccess = async () => {
-      if (isApproveSuccess && processingTx && needsApproval) {
-        toast({
-          title: 'Token Approved',
-          description: 'Modifying position...',
-        });
+      setCallsCount(calls.length);
 
-        try {
-          await performModification();
-        } catch (err) {
-          setProcessingTx(false);
-          console.error('Error modifying position after approval:', err);
-          setError(
-            err instanceof Error
-              ? err
-              : new Error('Position modification failed after approval')
-          );
-        }
+      const result = await sendCallsAsync({
+        calls,
+        chainId,
+        experimental_fallback: true,
+        experimental_fallbackDelay: 1000,
+      });
+
+      if (!result?.id) {
+        throw new Error('No call ID returned from sendCallsAsync');
       }
-    };
 
-    handleApprovalSuccess();
-  }, [
-    isApproveSuccess,
-    processingTx,
-    performModification,
-    toast,
-    needsApproval,
-  ]);
+      setSendCallsResult(result);
 
-  // Main function that checks approval and handles the flow
-  const modifyTrade = async (): Promise<void> => {
-    if (processingTx) return;
-    setProcessingTx(true);
-    setError(null);
-
-    try {
-      if (needsApproval) {
-        toast({
-          title: 'Approval Required',
-          description: 'Approving tokens before modifying position...',
-        });
-        await approve();
+      toast({
+        title: 'Transaction Submitted',
+        description: 'Your position modification has been submitted.',
+      });
+    } catch (err) {
+      let errorMessage: string;
+      if (err instanceof Error && 'shortMessage' in err) {
+        errorMessage = (err as PotentialRpcError).shortMessage!;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       } else {
-        await performModification();
-        setProcessingTx(false);
+        errorMessage = 'Failed to submit position modification.';
       }
-    } catch (err) {
+
+      setError(err instanceof Error ? err : new Error(errorMessage));
+      toast({
+        title: 'Transaction Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
       setProcessingTx(false);
-      console.error('Error in modification flow:', err);
-      throw err;
     }
   };
 
-  // Reset processing state on success
-  useEffect(() => {
-    if (isSuccess) {
-      setProcessingTx(false);
-    }
-  }, [isSuccess]);
+  // Add a reset function to clear all state
+  const reset = () => {
+    setSendCallsResult(null);
+    setError(null);
+    setProcessingTx(false);
+    setCallsCount(0);
+  };
+
+  const isLoading = isConfirming || processingTx;
+  const isError = !!error || isTxError;
 
   return {
     modifyTrade,
-    isLoading: isPending || isConfirming || processingTx,
+    isLoading,
     isSuccess,
-    isError: !!error,
-    error,
+    isError,
+    error: error || txError,
     txHash,
-    data,
-    isApproving,
+    data: txHash,
     hasAllowance,
-    needsApproval,
+    allTxHashes,
+    reset,
   };
 }

@@ -11,7 +11,7 @@ import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
@@ -79,7 +79,7 @@ const ForecastingForm = ({
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
   permitData: { permitted: boolean };
-  onWagerSuccess: (txnHash: string) => void;
+  onWagerSuccess: (txnHash?: `0x${string}`) => void;
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('wager');
 
@@ -170,16 +170,6 @@ const MarketGroupPageContent = () => {
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
 
-  // Local trigger that will be bumped whenever the user submits a new wager
-  const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
-
-  const handleUserPositionsRefetch = useCallback(() => {
-    setUserPositionsTrigger((prev) => prev + 1);
-  }, []);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const refetchUserPositions = useCallback(() => {}, [userPositionsTrigger]);
-
   // Parse chain and market address from URL parameter
   const paramString = params.chainShortName as string;
   const { chainShortName, marketAddress } = parseUrlParameter(paramString);
@@ -193,10 +183,11 @@ const MarketGroupPageContent = () => {
     chainId,
   } = useMarketGroupPage();
 
-  const { isLoading: isUserPositionsLoading } = usePositions({
-    address: address || '',
-    marketAddress,
-  });
+  const { isLoading: isUserPositionsLoading, refetch: refetchUserPositions } =
+    usePositions({
+      address: address || '',
+      marketAddress,
+    });
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -284,7 +275,7 @@ const MarketGroupPageContent = () => {
                 marketGroupData={marketGroupData!}
                 marketClassification={marketClassification!}
                 permitData={permitData!}
-                onWagerSuccess={handleUserPositionsRefetch}
+                onWagerSuccess={() => refetchUserPositions()}
               />
             </div>
           </div>

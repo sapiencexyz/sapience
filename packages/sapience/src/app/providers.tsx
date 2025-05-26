@@ -2,10 +2,11 @@
 
 import { PrivyProvider } from '@privy-io/react-auth';
 import { WagmiProvider, createConfig } from '@privy-io/wagmi';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import type { HttpTransport } from 'viem';
-import { sepolia, base, cannon, type Chain } from 'viem/chains';
-import { http } from 'wagmi';
+import { base, cannon, sepolia, type Chain } from 'viem/chains';
+import { http, useAccount, useSwitchChain } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
@@ -51,6 +52,29 @@ const config = createConfig({
   transports,
 });
 
+// NetworkSwitcher component to automatically switch to base chain
+const NetworkSwitcher = () => {
+  const { chainId, isConnected } = useAccount();
+  const { switchChain } = useSwitchChain();
+
+  useEffect(() => {
+    // Only attempt to switch if user is connected and not already on base
+    if (isConnected && chainId && chainId !== base.id) {
+      console.log(
+        `Current chain: ${chainId}, switching to base chain: ${base.id}`
+      );
+
+      try {
+        switchChain({ chainId: base.id });
+      } catch (error) {
+        console.warn('Failed to automatically switch to base chain:', error);
+      }
+    }
+  }, [chainId, isConnected, switchChain]);
+
+  return null; // This component doesn't render anything
+};
+
 const Providers = ({ children }: { children: JSX.Element }) => {
   return (
     <PrivyProvider
@@ -70,6 +94,7 @@ const Providers = ({ children }: { children: JSX.Element }) => {
       >
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={config}>
+            <NetworkSwitcher />
             <SapienceProvider>{children}</SapienceProvider>
           </WagmiProvider>
         </QueryClientProvider>
