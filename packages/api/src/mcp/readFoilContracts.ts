@@ -21,76 +21,76 @@ interface PositionData {
   isSettled: boolean;
 }
 
-interface MarketParams {
-  feeRate: bigint;
-  assertionLiveness: bigint;
-  bondAmount: bigint;
-  bondCurrency: `0x${string}`;
-  uniswapPositionManager: `0x${string}`;
-  uniswapSwapRouter: `0x${string}`;
-  uniswapQuoter: `0x${string}`;
-  optimisticOracleV3: `0x${string}`;
-}
+// interface MarketParams {
+//   feeRate: bigint;
+//   assertionLiveness: bigint;
+//   bondAmount: bigint;
+//   bondCurrency: `0x${string}`;
+//   uniswapPositionManager: `0x${string}`;
+//   uniswapSwapRouter: `0x${string}`;
+//   uniswapQuoter: `0x${string}`;
+//   optimisticOracleV3: `0x${string}`;
+// }
 
-interface MarketGroupData {
-  owner: `0x${string}`;
-  collateralAsset: `0x${string}`;
-  feeCollectorNFT: `0x${string}`;
-  callbackRecipient: `0x${string}`;
-  marketParams: MarketParams;
-}
+// interface MarketGroupData {
+//   owner: `0x${string}`;
+//   collateralAsset: `0x${string}`;
+//   feeCollectorNFT: `0x${string}`;
+//   callbackRecipient: `0x${string}`;
+//   marketParams: MarketParams;
+// }
 
-interface MarketData {
-  id: bigint;
-  startTime: bigint;
-  endTime: bigint;
-  pool: `0x${string}`;
-  ethToken: `0x${string}`;
-  gasToken: `0x${string}`;
-  minPriceD18: bigint;
-  maxPriceD18: bigint;
-  baseAssetMinPriceTick: number;
-  baseAssetMaxPriceTick: number;
-  settled: boolean;
-  settlementPriceD18: bigint;
-  assertionId: `0x${string}`;
-  claimStatement: `0x${string}`;
-}
+// interface MarketData {
+//   id: bigint;
+//   startTime: bigint;
+//   endTime: bigint;
+//   pool: `0x${string}`;
+//   ethToken: `0x${string}`;
+//   gasToken: `0x${string}`;
+//   minPriceD18: bigint;
+//   maxPriceD18: bigint;
+//   baseAssetMinPriceTick: number;
+//   baseAssetMaxPriceTick: number;
+//   settled: boolean;
+//   settlementPriceD18: bigint;
+//   assertionId: `0x${string}`;
+//   claimStatement: `0x${string}`;
+// }
 
-interface RawEpochData {
-  epochId: bigint;
-  startTime: bigint;
-  endTime: bigint;
-  pool: `0x${string}`;
-  ethToken: `0x${string}`;
-  gasToken: `0x${string}`;
-  minPriceD18: bigint;
-  maxPriceD18: bigint;
-  baseAssetMinPriceTick: number;
-  baseAssetMaxPriceTick: number;
-  settled: boolean;
-  settlementPriceD18: bigint;
-  assertionId: `0x${string}`;
-  claimStatement: `0x${string}`;
-}
+// interface RawEpochData {
+//   epochId: bigint;
+//   startTime: bigint;
+//   endTime: bigint;
+//   pool: `0x${string}`;
+//   ethToken: `0x${string}`;
+//   gasToken: `0x${string}`;
+//   minPriceD18: bigint;
+//   maxPriceD18: bigint;
+//   baseAssetMinPriceTick: number;
+//   baseAssetMaxPriceTick: number;
+//   settled: boolean;
+//   settlementPriceD18: bigint;
+//   assertionId: `0x${string}`;
+//   claimStatement: `0x${string}`;
+// }
 
-interface MarketDetailsData {
-  marketData: MarketData | null;
-  marketGroupParams: MarketParams | null;
-}
+// interface MarketDetailsData {
+//   marketData: MarketData | null;
+//   marketGroupParams: MarketParams | null;
+// }
 
-const formatMarketParams = (params: Partial<MarketParams>): MarketParams => {
-  return {
-    feeRate: params.feeRate!,
-    assertionLiveness: params.assertionLiveness!,
-    bondAmount: params.bondAmount!,
-    bondCurrency: params.bondCurrency!,
-    uniswapPositionManager: params.uniswapPositionManager!,
-    uniswapSwapRouter: params.uniswapSwapRouter!,
-    uniswapQuoter: params.uniswapQuoter!,
-    optimisticOracleV3: params.optimisticOracleV3!,
-  };
-};
+// const formatMarketParams = (params: Partial<MarketParams>): MarketParams => {
+//   return {
+//     feeRate: params.feeRate!,
+//     assertionLiveness: params.assertionLiveness!,
+//     bondAmount: params.bondAmount!,
+//     bondCurrency: params.bondCurrency!,
+//     uniswapPositionManager: params.uniswapPositionManager!,
+//     uniswapSwapRouter: params.uniswapSwapRouter!,
+//     uniswapQuoter: params.uniswapQuoter!,
+//     optimisticOracleV3: params.optimisticOracleV3!,
+//   };
+// };
 
 // export const getMarketGroupInfo = {
 //   name: 'get_sapience_market_group_info',
@@ -297,83 +297,95 @@ const formatMarketParams = (params: Partial<MarketParams>): MarketParams => {
 //   },
 // };
 
-// export const getTokenOwner = {
-//   name: 'get_sapience_token_owner',
-//   description: 'Gets the owner address of a specific position token',
-//   parameters: {
-//     properties: {
-//       tokenId: z.string().describe('The ID of the position token'),
-//     },
-//   },
-//   function: async (args: { tokenId: string }): Promise<CallToolResult> => {
-//     try {
-//       const owner = (await client.readContract({
-//         address: args.tokenId as `0x${string}`,
-//         abi: FOIL_ABI,
-//         functionName: 'ownerOf',
-//         args: [BigInt(args.tokenId)],
-//       })) as `0x${string}`;
+export const getTokenOwner = {
+  name: 'get_sapience_token_owner',
+  description: 'Gets the owner address of a specific position token',
+  parameters: {
+    properties: {
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      tokenId: z.string().describe('The ID of the position token'),
+    },
+  },
+  function: async (args: {
+    marketGroupAddress: string;
+    tokenId: string;
+  }): Promise<CallToolResult> => {
+    try {
+      const owner = (await client.readContract({
+        address: args.marketGroupAddress as `0x${string}`,
+        abi: FOIL_ABI,
+        functionName: 'ownerOf',
+        args: [BigInt(args.tokenId)],
+      })) as `0x${string}`;
 
-//       return {
-//         content: [
-//           {
-//             type: 'text' as const,
-//             text: JSON.stringify({ owner }, null, 2),
-//           },
-//         ],
-//       };
-//     } catch (error) {
-//       return {
-//         content: [
-//           {
-//             type: 'text' as const,
-//             text: `Error fetching token owner: ${error instanceof Error ? error.message : 'Unknown error'}`,
-//           },
-//         ],
-//         isError: true,
-//       };
-//     }
-//   },
-// };
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ owner }, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error fetching token owner: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  },
+};
 
-// export const getTokenByIndex = {
-//   name: 'get_sapience_token_by_index',
-//   description: 'Gets a position token ID by its index',
-//   parameters: {
-//     properties: {
-//       index: z.string().describe('The index of the token to get'),
-//     },
-//   },
-//   function: async (args: { index: string }): Promise<CallToolResult> => {
-//     try {
-//       const tokenId = (await client.readContract({
-//         address: args.index as `0x${string}`,
-//         abi: FOIL_ABI,
-//         functionName: 'tokenByIndex',
-//         args: [BigInt(args.index)],
-//       })) as bigint;
+export const getTokenByIndex = {
+  name: 'get_sapience_token_by_index',
+  description: 'Gets a position token ID by its index',
+  parameters: {
+    properties: {
+      marketGroupAddress: z
+        .string()
+        .describe('The address of the market group'),
+      index: z.string().describe('The index of the token to get'),
+    },
+  },
+  function: async (args: {
+    marketGroupAddress: string;
+    index: string;
+  }): Promise<CallToolResult> => {
+    try {
+      const tokenId = (await client.readContract({
+        address: args.marketGroupAddress as `0x${string}`,
+        abi: FOIL_ABI,
+        functionName: 'tokenByIndex',
+        args: [BigInt(args.index)],
+      })) as bigint;
 
-//       return {
-//         content: [
-//           {
-//             type: 'text' as const,
-//             text: JSON.stringify({ tokenId: tokenId.toString() }, null, 2),
-//           },
-//         ],
-//       };
-//     } catch (error) {
-//       return {
-//         content: [
-//           {
-//             type: 'text' as const,
-//             text: `Error fetching token by index: ${error instanceof Error ? error.message : 'Unknown error'}`,
-//           },
-//         ],
-//         isError: true,
-//       };
-//     }
-//   },
-// };
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({ tokenId: tokenId.toString() }, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Error fetching token by index: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
+      };
+    }
+  },
+};
 
 export const getMarketReferencePrice = {
   name: 'get_sapience_market_reference_price',

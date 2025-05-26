@@ -144,14 +144,22 @@ export const quoteViaQuoter = {
   description: 'Gets a quote for a transaction via the Quoter API',
   parameters: {
     properties: {
-      chainId: z.string().describe('The chain ID to quote the transaction from'),
-      marketGroupAddress: z.string().describe('The address of the market group to quote the transaction for'),
-      marketId: z.string().describe('The ID of the market to quote the transaction for'),
+      chainId: z
+        .string()
+        .describe('The chain ID to quote the transaction from'),
+      marketGroupAddress: z
+        .string()
+        .describe(
+          'The address of the market group to quote the transaction for'
+        ),
+      marketId: z
+        .string()
+        .describe('The ID of the market to quote the transaction for'),
       expectedPrice: z.string().transform(Number),
       collateralAvailable: z.string().transform(BigInt),
       maxIterations: z.string().transform(Number).optional(),
       priceLimit: z.string().transform(Number).optional(),
-      }
+    },
   },
   function: async (args: {
     chainId: string;
@@ -159,46 +167,53 @@ export const quoteViaQuoter = {
     marketId: string;
     expectedPrice: number;
     collateralAvailable: bigint;
-    maxIterations: number| undefined;
-    priceLimit: number| undefined;
+    maxIterations: number | undefined;
+    priceLimit: number | undefined;
   }): Promise<CallToolResult> => {
-
     try {
-    const { chainId, marketGroupAddress, marketId, expectedPrice, collateralAvailable, maxIterations, priceLimit } = args;
+      const {
+        chainId,
+        marketGroupAddress,
+        marketId,
+        expectedPrice,
+        collateralAvailable,
+        maxIterations,
+        priceLimit,
+      } = args;
 
-    const params = new URLSearchParams();
-    params.append('expectedPrice', expectedPrice.toString());
-    params.append('collateralAvailable', collateralAvailable.toString());
-    if (maxIterations) {
-      params.append('maxIterations', maxIterations.toString());
+      const params = new URLSearchParams();
+      params.append('expectedPrice', expectedPrice.toString());
+      params.append('collateralAvailable', collateralAvailable.toString());
+      if (maxIterations) {
+        params.append('maxIterations', maxIterations.toString());
+      }
+      if (priceLimit) {
+        params.append('priceLimit', priceLimit.toString());
+      }
+
+      const url = `${API_URL}/quoter/${chainId}/${marketGroupAddress}/${marketId}/?${params.toString()}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(data, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error getting quote: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+        isError: true,
+      };
     }
-    if (priceLimit) {
-      params.append('priceLimit', priceLimit.toString());
-    }
-
-    const url = `${API_URL}/quoter/${chainId}/${marketGroupAddress}/${marketId}/?${params.toString()}`;
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(data, null, 2),
-        },
-      ],
-    };
-  } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `Error getting quote: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        },
-      ],
-      isError: true,
-    };
-  }
   },
 };
