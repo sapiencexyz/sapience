@@ -11,7 +11,7 @@ const client = basePublicClient;
 interface PositionData {
   id: bigint;
   kind: number;
-  marketId: bigint;
+  epochId: bigint;
   depositedCollateralAmount: bigint;
   borrowedVEth: bigint;
   borrowedVGas: bigint;
@@ -92,288 +92,288 @@ const formatMarketParams = (params: Partial<MarketParams>): MarketParams => {
   };
 };
 
-export const getMarketGroupInfo = {
-  name: 'get_sapience_market_group_info',
-  description: "Gets detailed information about a market group's configuration",
-  parameters: {
-    properties: {
-      marketGroupAddress: z
-        .string()
-        .describe('The address of the market group to get information about'),
-    },
-  },
-  function: async (args: {
-    marketGroupAddress: string;
-  }): Promise<CallToolResult> => {
-    try {
-      const marketGroupInfo = (await client.readContract({
-        address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
-        functionName: 'getMarket',
-      })) as readonly [
-        `0x${string}`,
-        `0x${string}`,
-        `0x${string}`,
-        `0x${string}`,
-        MarketParams,
-      ];
+// export const getMarketGroupInfo = {
+//   name: 'get_sapience_market_group_info',
+//   description: "Gets detailed information about a market group's configuration",
+//   parameters: {
+//     properties: {
+//       marketGroupAddress: z
+//         .string()
+//         .describe('The address of the market group to get information about'),
+//     },
+//   },
+//   function: async (args: {
+//     marketGroupAddress: string;
+//   }): Promise<CallToolResult> => {
+//     try {
+//       const marketGroupInfo = (await client.readContract({
+//         address: args.marketGroupAddress as `0x${string}`,
+//         abi: FOIL_ABI,
+//         functionName: 'getMarket',
+//       })) as readonly [
+//         `0x${string}`,
+//         `0x${string}`,
+//         `0x${string}`,
+//         `0x${string}`,
+//         MarketParams,
+//       ];
 
-      const formattedInfo: MarketGroupData = {
-        owner: marketGroupInfo[0],
-        collateralAsset: marketGroupInfo[1],
-        feeCollectorNFT: marketGroupInfo[2],
-        callbackRecipient: marketGroupInfo[3],
-        marketParams: formatMarketParams(marketGroupInfo[4]),
-      };
+//       const formattedInfo: MarketGroupData = {
+//         owner: marketGroupInfo[0],
+//         collateralAsset: marketGroupInfo[1],
+//         feeCollectorNFT: marketGroupInfo[2],
+//         callbackRecipient: marketGroupInfo[3],
+//         marketParams: formatMarketParams(marketGroupInfo[4]),
+//       };
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(formattedInfo, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error fetching market group info: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-};
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: JSON.stringify(formattedInfo, null, 2),
+//           },
+//         ],
+//       };
+//     } catch (error) {
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: `Error fetching market group info: ${error instanceof Error ? error.message : 'Unknown error'}`,
+//           },
+//         ],
+//         isError: true,
+//       };
+//     }
+//   },
+// };
 
-export const getMarketDetails = {
-  name: 'get_sapience_market_details',
-  description: 'Gets detailed information about a specific market',
-  parameters: {
-    properties: {
-      marketGroupAddress: z
-        .string()
-        .describe('The address of the market group'),
-      marketId: z
-        .string()
-        .describe('The ID of the market to get information about'),
-    },
-  },
-  function: async (args: {
-    marketGroupAddress: string;
-    marketId: string;
-  }): Promise<CallToolResult> => {
-    try {
-      const marketDetailsResult = (await client.readContract({
-        address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
-        functionName: 'getEpoch',
-        args: [BigInt(args.marketId)],
-      })) as readonly [RawEpochData, MarketParams];
+// export const getMarketDetails = {
+//   name: 'get_sapience_market_details',
+//   description: 'Gets detailed information about a specific market',
+//   parameters: {
+//     properties: {
+//       marketGroupAddress: z
+//         .string()
+//         .describe('The address of the market group'),
+//       marketId: z
+//         .string()
+//         .describe('The ID of the market to get information about'),
+//     },
+//   },
+//   function: async (args: {
+//     marketGroupAddress: string;
+//     marketId: string;
+//   }): Promise<CallToolResult> => {
+//     try {
+//       const marketDetailsResult = (await client.readContract({
+//         address: args.marketGroupAddress as `0x${string}`,
+//         abi: FOIL_ABI,
+//         functionName: 'getEpoch',
+//         args: [BigInt(args.marketId)],
+//       })) as readonly [RawEpochData, MarketParams];
 
-      if (!marketDetailsResult) {
-        throw new Error('No market details returned');
-      }
+//       if (!marketDetailsResult) {
+//         throw new Error('No market details returned');
+//       }
 
-      const formattedInfo: MarketDetailsData = {
-        marketData: marketDetailsResult[0]
-          ? {
-              id: marketDetailsResult[0].epochId,
-              startTime: marketDetailsResult[0].startTime,
-              endTime: marketDetailsResult[0].endTime,
-              pool: marketDetailsResult[0].pool,
-              ethToken: marketDetailsResult[0].ethToken,
-              gasToken: marketDetailsResult[0].gasToken,
-              minPriceD18: marketDetailsResult[0].minPriceD18,
-              maxPriceD18: marketDetailsResult[0].maxPriceD18,
-              baseAssetMinPriceTick:
-                marketDetailsResult[0].baseAssetMinPriceTick,
-              baseAssetMaxPriceTick:
-                marketDetailsResult[0].baseAssetMaxPriceTick,
-              settled: marketDetailsResult[0].settled,
-              settlementPriceD18: marketDetailsResult[0].settlementPriceD18,
-              assertionId: marketDetailsResult[0].assertionId,
-              claimStatement: marketDetailsResult[0].claimStatement,
-            }
-          : null,
-        marketGroupParams: marketDetailsResult[1]
-          ? formatMarketParams(marketDetailsResult[1])
-          : null,
-      };
+//       const formattedInfo: MarketDetailsData = {
+//         marketData: marketDetailsResult[0]
+//           ? {
+//               id: marketDetailsResult[0].epochId,
+//               startTime: marketDetailsResult[0].startTime,
+//               endTime: marketDetailsResult[0].endTime,
+//               pool: marketDetailsResult[0].pool,
+//               ethToken: marketDetailsResult[0].ethToken,
+//               gasToken: marketDetailsResult[0].gasToken,
+//               minPriceD18: marketDetailsResult[0].minPriceD18,
+//               maxPriceD18: marketDetailsResult[0].maxPriceD18,
+//               baseAssetMinPriceTick:
+//                 marketDetailsResult[0].baseAssetMinPriceTick,
+//               baseAssetMaxPriceTick:
+//                 marketDetailsResult[0].baseAssetMaxPriceTick,
+//               settled: marketDetailsResult[0].settled,
+//               settlementPriceD18: marketDetailsResult[0].settlementPriceD18,
+//               assertionId: marketDetailsResult[0].assertionId,
+//               claimStatement: marketDetailsResult[0].claimStatement,
+//             }
+//           : null,
+//         marketGroupParams: marketDetailsResult[1]
+//           ? formatMarketParams(marketDetailsResult[1])
+//           : null,
+//       };
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(formattedInfo, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error fetching market details: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-};
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: JSON.stringify(formattedInfo, null, 2),
+//           },
+//         ],
+//       };
+//     } catch (error) {
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: `Error fetching market details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+//           },
+//         ],
+//         isError: true,
+//       };
+//     }
+//   },
+// };
 
-export const getLatestMarketDetails = {
-  name: 'get_sapience_latest_market_details',
-  description: 'Gets information about the most recent market',
-  parameters: {
-    properties: {
-      marketGroupAddress: z
-        .string()
-        .describe('The address of the market group'),
-    },
-  },
-  function: async (args: {
-    marketGroupAddress: string;
-  }): Promise<CallToolResult> => {
-    try {
-      const marketDetailsResult = (await client.readContract({
-        address: args.marketGroupAddress as `0x${string}`,
-        abi: FOIL_ABI,
-        functionName: 'getLatestEpoch',
-      })) as readonly [RawEpochData, MarketParams];
+// export const getLatestMarketDetails = {
+//   name: 'get_sapience_latest_market_details',
+//   description: 'Gets information about the most recent market',
+//   parameters: {
+//     properties: {
+//       marketGroupAddress: z
+//         .string()
+//         .describe('The address of the market group'),
+//     },
+//   },
+//   function: async (args: {
+//     marketGroupAddress: string;
+//   }): Promise<CallToolResult> => {
+//     try {
+//       const marketDetailsResult = (await client.readContract({
+//         address: args.marketGroupAddress as `0x${string}`,
+//         abi: FOIL_ABI,
+//         functionName: 'getLatestEpoch',
+//       })) as readonly [RawEpochData, MarketParams];
 
-      if (!marketDetailsResult) {
-        throw new Error('No market details returned');
-      }
+//       if (!marketDetailsResult) {
+//         throw new Error('No market details returned');
+//       }
 
-      const formattedInfo: MarketDetailsData = {
-        marketData: marketDetailsResult[0]
-          ? {
-              id: marketDetailsResult[0].epochId,
-              startTime: marketDetailsResult[0].startTime,
-              endTime: marketDetailsResult[0].endTime,
-              pool: marketDetailsResult[0].pool,
-              ethToken: marketDetailsResult[0].ethToken,
-              gasToken: marketDetailsResult[0].gasToken,
-              minPriceD18: marketDetailsResult[0].minPriceD18,
-              maxPriceD18: marketDetailsResult[0].maxPriceD18,
-              baseAssetMinPriceTick:
-                marketDetailsResult[0].baseAssetMinPriceTick,
-              baseAssetMaxPriceTick:
-                marketDetailsResult[0].baseAssetMaxPriceTick,
-              settled: marketDetailsResult[0].settled,
-              settlementPriceD18: marketDetailsResult[0].settlementPriceD18,
-              assertionId: marketDetailsResult[0].assertionId,
-              claimStatement: marketDetailsResult[0].claimStatement,
-            }
-          : null,
-        marketGroupParams: marketDetailsResult[1]
-          ? formatMarketParams(marketDetailsResult[1])
-          : null,
-      };
+//       const formattedInfo: MarketDetailsData = {
+//         marketData: marketDetailsResult[0]
+//           ? {
+//               id: marketDetailsResult[0].epochId,
+//               startTime: marketDetailsResult[0].startTime,
+//               endTime: marketDetailsResult[0].endTime,
+//               pool: marketDetailsResult[0].pool,
+//               ethToken: marketDetailsResult[0].ethToken,
+//               gasToken: marketDetailsResult[0].gasToken,
+//               minPriceD18: marketDetailsResult[0].minPriceD18,
+//               maxPriceD18: marketDetailsResult[0].maxPriceD18,
+//               baseAssetMinPriceTick:
+//                 marketDetailsResult[0].baseAssetMinPriceTick,
+//               baseAssetMaxPriceTick:
+//                 marketDetailsResult[0].baseAssetMaxPriceTick,
+//               settled: marketDetailsResult[0].settled,
+//               settlementPriceD18: marketDetailsResult[0].settlementPriceD18,
+//               assertionId: marketDetailsResult[0].assertionId,
+//               claimStatement: marketDetailsResult[0].claimStatement,
+//             }
+//           : null,
+//         marketGroupParams: marketDetailsResult[1]
+//           ? formatMarketParams(marketDetailsResult[1])
+//           : null,
+//       };
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(formattedInfo, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error fetching latest market details: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-};
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: JSON.stringify(formattedInfo, null, 2),
+//           },
+//         ],
+//       };
+//     } catch (error) {
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: `Error fetching latest market details: ${error instanceof Error ? error.message : 'Unknown error'}`,
+//           },
+//         ],
+//         isError: true,
+//       };
+//     }
+//   },
+// };
 
-export const getTokenOwner = {
-  name: 'get_sapience_token_owner',
-  description: 'Gets the owner address of a specific position token',
-  parameters: {
-    properties: {
-      tokenId: z.string().describe('The ID of the position token'),
-    },
-  },
-  function: async (args: { tokenId: string }): Promise<CallToolResult> => {
-    try {
-      const owner = (await client.readContract({
-        address: args.tokenId as `0x${string}`,
-        abi: FOIL_ABI,
-        functionName: 'ownerOf',
-        args: [BigInt(args.tokenId)],
-      })) as `0x${string}`;
+// export const getTokenOwner = {
+//   name: 'get_sapience_token_owner',
+//   description: 'Gets the owner address of a specific position token',
+//   parameters: {
+//     properties: {
+//       tokenId: z.string().describe('The ID of the position token'),
+//     },
+//   },
+//   function: async (args: { tokenId: string }): Promise<CallToolResult> => {
+//     try {
+//       const owner = (await client.readContract({
+//         address: args.tokenId as `0x${string}`,
+//         abi: FOIL_ABI,
+//         functionName: 'ownerOf',
+//         args: [BigInt(args.tokenId)],
+//       })) as `0x${string}`;
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({ owner }, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error fetching token owner: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-};
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: JSON.stringify({ owner }, null, 2),
+//           },
+//         ],
+//       };
+//     } catch (error) {
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: `Error fetching token owner: ${error instanceof Error ? error.message : 'Unknown error'}`,
+//           },
+//         ],
+//         isError: true,
+//       };
+//     }
+//   },
+// };
 
-export const getTokenByIndex = {
-  name: 'get_sapience_token_by_index',
-  description: 'Gets a position token ID by its index',
-  parameters: {
-    properties: {
-      index: z.string().describe('The index of the token to get'),
-    },
-  },
-  function: async (args: { index: string }): Promise<CallToolResult> => {
-    try {
-      const tokenId = (await client.readContract({
-        address: args.index as `0x${string}`,
-        abi: FOIL_ABI,
-        functionName: 'tokenByIndex',
-        args: [BigInt(args.index)],
-      })) as bigint;
+// export const getTokenByIndex = {
+//   name: 'get_sapience_token_by_index',
+//   description: 'Gets a position token ID by its index',
+//   parameters: {
+//     properties: {
+//       index: z.string().describe('The index of the token to get'),
+//     },
+//   },
+//   function: async (args: { index: string }): Promise<CallToolResult> => {
+//     try {
+//       const tokenId = (await client.readContract({
+//         address: args.index as `0x${string}`,
+//         abi: FOIL_ABI,
+//         functionName: 'tokenByIndex',
+//         args: [BigInt(args.index)],
+//       })) as bigint;
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({ tokenId: tokenId.toString() }, null, 2),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error fetching token by index: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-};
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: JSON.stringify({ tokenId: tokenId.toString() }, null, 2),
+//           },
+//         ],
+//       };
+//     } catch (error) {
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: `Error fetching token by index: ${error instanceof Error ? error.message : 'Unknown error'}`,
+//           },
+//         ],
+//         isError: true,
+//       };
+//     }
+//   },
+// };
 
 export const getMarketReferencePrice = {
   name: 'get_sapience_market_reference_price',
@@ -459,7 +459,7 @@ export const getPosition = {
               {
                 id: position.id.toString(),
                 kind: position.kind,
-                marketId: position.marketId.toString(),
+                marketId: position.epochId.toString(),
                 depositedCollateralAmount:
                   position.depositedCollateralAmount.toString(),
                 borrowedVEth: position.borrowedVEth.toString(),
