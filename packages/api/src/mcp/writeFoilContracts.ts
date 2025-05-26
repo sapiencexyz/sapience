@@ -149,113 +149,116 @@ export const modifyTraderPosition = {
   },
 };
 
-export const createLiquidityPosition = {
-  name: 'create_sapience_liquidity_position',
-  description: 'Creates a new liquidity position with specified parameters',
-  parameters: {
-    properties: {
-      marketGroupAddress: z
-        .string()
-        .describe('The address of the market group to create the position in'),
-      collateralAmount: z.string().describe('The amount of collateral to use'),
-      size: z.string().describe('The size of the position'),
-    },
-  },
-  function: async (args: {
-    marketGroupAddress: string;
-    collateralAmount: string;
-    size: string;
-  }): Promise<CallToolResult> => {
-    try {
-      const calldata = encodeFunction('createLiquidityPosition', [
-        BigInt(args.collateralAmount),
-        Number(args.size),
-      ]);
+// TODO: add liquidity position
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(
-              {
-                to: args.marketGroupAddress,
-                data: calldata,
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error encoding createLiquidityPosition: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-};
+// export const createLiquidityPosition = {
+//   name: 'create_sapience_liquidity_position',
+//   description: 'Creates a new liquidity position with specified parameters',
+//   parameters: {
+//     properties: {
+//       marketGroupAddress: z
+//         .string()
+//         .describe('The address of the market group to create the position in'),
+//       collateralAmount: z.string().describe('The amount of collateral to use'),
+//       size: z.string().describe('The size of the position'),
+//     },
+//   },
+//   function: async (args: {
+//     marketGroupAddress: string;
+//     collateralAmount: string;
+//     size: string;
+//   }): Promise<CallToolResult> => {
+//     try {
+//       const calldata = encodeFunction('createLiquidityPosition', [
+//         BigInt(args.collateralAmount),
+//         Number(args.size),
+//       ]);
 
-export const modifyLiquidityPosition = {
-  name: 'modify_sapience_liquidity_position',
-  description: 'Modifies an existing liquidity position with new parameters',
-  parameters: {
-    properties: {
-      marketGroupAddress: z
-        .string()
-        .describe('The address of the market group'),
-      positionId: z.string().describe('The ID of the position to modify'),
-      newCollateralAmount: z
-        .string()
-        .describe('The new amount of collateral to use'),
-      newSize: z.string().describe('The new size of the position'),
-    },
-  },
-  function: async (args: {
-    marketGroupAddress: string;
-    positionId: string;
-    newCollateralAmount: string;
-    newSize: string;
-  }): Promise<CallToolResult> => {
-    try {
-      const calldata = encodeFunction('modifyLiquidityPosition', [
-        BigInt(args.positionId),
-        BigInt(args.newCollateralAmount),
-      ]);
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: JSON.stringify(
+//               {
+//                 to: args.marketGroupAddress,
+//                 data: calldata,
+//               },
+//               null,
+//               2
+//             ),
+//           },
+//         ],
+//       };
+//     } catch (error) {
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: `Error encoding createLiquidityPosition: ${error instanceof Error ? error.message : 'Unknown error'}`,
+//           },
+//         ],
+//         isError: true,
+//       };
+//     }
+//   },
+// };
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(
-              {
-                to: args.marketGroupAddress,
-                data: calldata,
-              },
-              null,
-              2
-            ),
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Error encoding modifyLiquidityPosition: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-};
+// TODO: modify liquidity position should be increase or decrease
+// export const modifyLiquidityPosition = {
+//   name: 'modify_sapience_liquidity_position',
+//   description: 'Modifies an existing liquidity position with new parameters',
+//   parameters: {
+//     properties: {
+//       marketGroupAddress: z
+//         .string()
+//         .describe('The address of the market group'),
+//       positionId: z.string().describe('The ID of the position to modify'),
+//       newCollateralAmount: z
+//         .string()
+//         .describe('The new amount of collateral to use'),
+//       newSize: z.string().describe('The new size of the position'),
+//     },
+//   },
+//   function: async (args: {
+//     marketGroupAddress: string;
+//     positionId: string;
+//     newCollateralAmount: string;
+//     newSize: string;
+//   }): Promise<CallToolResult> => {
+//     try {
+//       const calldata = encodeFunction('modifyLiquidityPosition', [
+//         BigInt(args.positionId),
+//         BigInt(args.newCollateralAmount),
+//       ]);
+
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: JSON.stringify(
+//               {
+//                 to: args.marketGroupAddress,
+//                 data: calldata,
+//               },
+//               null,
+//               2
+//             ),
+//           },
+//         ],
+//       };
+//     } catch (error) {
+//       return {
+//         content: [
+//           {
+//             type: 'text' as const,
+//             text: `Error encoding modifyLiquidityPosition: ${error instanceof Error ? error.message : 'Unknown error'}`,
+//           },
+//         ],
+//         isError: true,
+//       };
+//     }
+//   },
+// };
 
 export const settlePosition = {
   name: 'settle_sapience_position',

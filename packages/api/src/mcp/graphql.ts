@@ -589,12 +589,6 @@ const getResource = {
             name
             slug
           }
-          resourcePrices { # Added from ResourceType
-            id
-            timestamp
-            value
-            blockNumber
-          }
         }
       }
     `;
