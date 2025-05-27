@@ -213,6 +213,46 @@ export async function saveCandles(candles: CacheCandle[]) {
   await cacheCandleRepository.save(candles);
 }
 
+export async function getOrCreateCandle({
+  candleType,
+  interval,
+  marketIdx,
+  resourceSlug,
+  trailingAvgTime,
+  timestamp,
+}: {
+  candleType: string;
+  interval: number;
+  marketIdx: number;
+  resourceSlug: string;
+  trailingAvgTime: number;
+  timestamp: number;
+}) {
+  const existingCandle = await cacheCandleRepository.findOne({
+    where: {
+      candleType: candleType,
+      interval: interval,
+      timestamp: timestamp,
+      marketIdx: marketIdx,
+      resourceSlug: resourceSlug,
+      trailingAvgTime: trailingAvgTime,
+    },
+  });
+
+  if (existingCandle) {
+    return existingCandle;
+  }
+
+  const newCandle = new CacheCandle();
+  newCandle.candleType = candleType;
+  newCandle.interval = interval;
+  newCandle.timestamp = timestamp;
+  newCandle.marketIdx = marketIdx;
+  newCandle.resourceSlug = resourceSlug;
+  newCandle.trailingAvgTime = trailingAvgTime;
+  return newCandle;
+}
+
 export async function getCandles({
   from,
   to,
