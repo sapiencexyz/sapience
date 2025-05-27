@@ -6,13 +6,23 @@ import { marketGroupRepository } from '../db';
 import { truncateAddress } from '../utils/utils';
 import * as Chains from 'viem/chains';
 
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+const DISCORD_WEBHOOK_URLS = process.env.DISCORD_WEBHOOK_URLS; // Comma-separated list
 
-const webhookClient = DISCORD_WEBHOOK_URL
-  ? new WebhookClient({
-      url: DISCORD_WEBHOOK_URL,
-    })
-  : null;
+const webhookClients: WebhookClient[] = [];
+
+if (DISCORD_WEBHOOK_URLS) {
+  const urls = DISCORD_WEBHOOK_URLS.split(',')
+    .map((url) => url.trim())
+    .filter((url) => url);
+
+  for (const url of urls) {
+    try {
+      webhookClients.push(new WebhookClient({ url }));
+    } catch (error) {
+      console.error(`Failed to create webhook client for URL ${url}:`, error);
+    }
+  }
+}
 
 export const alertEvent = async (
   chainId: number,
@@ -20,8 +30,8 @@ export const alertEvent = async (
   logData: LogData
 ) => {
   try {
-    if (!webhookClient) {
-      console.warn('Discord webhook not configured, skipping alert');
+    if (webhookClients.length === 0) {
+      console.warn('No Discord webhooks configured, skipping alert');
       return;
     }
 
@@ -73,12 +83,6 @@ export const alertEvent = async (
       case EventType.LiquidityPositionIncreased:
       case EventType.LiquidityPositionDecreased:
       case EventType.LiquidityPositionClosed: {
-        const action =
-          logData.eventName === EventType.LiquidityPositionDecreased ||
-          logData.eventName === EventType.LiquidityPositionClosed
-            ? 'Removed'
-            : 'Provided';
-
         let questionName = 'Unknown Market';
         let collateralSymbol = 'token';
         try {
@@ -95,12 +99,8 @@ export const alertEvent = async (
           console.error('Failed to fetch market info:', error);
         }
 
-        const rawCollateralAmount = logData.args.deltaCollateral || '0';
-        const collateralAmount = Math.abs(
-          Number(rawCollateralAmount)
-        ).toString();
         const formattedCollateral = formatUnits(
-          BigInt(String(collateralAmount)),
+          BigInt(String(logData.args.deltaCollateral || '0')),
           18
         );
         const collateralDisplay = Number(formattedCollateral).toLocaleString(
@@ -114,7 +114,7 @@ export const alertEvent = async (
         const senderAddress = truncateAddress(
           String(logData.args.sender || '')
         );
-        title = `${senderAddress} ${action} ${collateralDisplay} ${collateralSymbol} in liquidity for "${questionName}?"`;
+        title = `${senderAddress} LPed ${collateralDisplay} ${collateralSymbol} in "${questionName}?"`;
         break;
       }
       default:
@@ -137,11 +137,14 @@ export const alertEvent = async (
       })
       .setTimestamp();
 
-    await webhookClient.send({
-      content: title,
-      embeds: [embed],
-      username: 'Market Alerts',
-    });
+    for (const webhookClient of webhookClients) {
+      await webhookClient.send({
+        content: title,
+        embeds: [embed],
+        username: 'Sapience Alerts',
+        avatarURL: 'https://www.sapience.xyz/icons/icon-512x512.png',
+      });
+    }
   } catch (error) {
     console.error('Failed to send Discord webhook alert:', error);
   }
