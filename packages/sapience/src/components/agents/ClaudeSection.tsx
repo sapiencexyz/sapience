@@ -9,28 +9,18 @@ import ClaudeVideoPlayer from './ClaudeVideoPlayer';
 // MCP Section with more details
 export default function MCPSection() {
   return (
-    <section className="pt-16 pb-32 px-4 sm:px-6 w-full">
+    <section className="pt-16 pb-32 px-4 sm:px-6 w-full relative z-10">
       <div className="max-w-6xl mx-auto w-full">
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8 lg:gap-12">
           {/* Left column with text content */}
-          <div className="w-full md:w-1/2 mb-8 md:mb-0">
-            <div className="md:max-w-[490px] space-y-6 md:mx-auto">
-              <h2 className="font-sans text-2xl md:text-3xl font-normal">
+          <div className="w-full lg:w-1/2 mb-8 lg:mb-0 order-2 lg:order-1">
+            <div className="lg:max-w-[490px] lg:mx-auto space-y-4 lg:space-y-6">
+              <h2 className="font-sans text-2xl lg:text-3xl font-normal">
                 Use Sapience with Claude
               </h2>
 
               <p className="text-lg text-muted-foreground">
-                Add Sapience&apos;s Model Context Protocol server to use large
-                language models with predictions markets. Connect to any{' '}
-                <Link
-                  href="https://modelcontextprotocol.io/clients"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  MCP client
-                </Link>
-                , including{' '}
+                Give{' '}
                 <Link
                   href="https://claude.ai"
                   target="_blank"
@@ -38,17 +28,18 @@ export default function MCPSection() {
                   className="underline"
                 >
                   Claude
-                </Link>
-                .
+                </Link>{' '}
+                tools to query the Sapience API for live data, prepare
+                transaction data for prediction markets, and more.
               </p>
 
               <div className="pt-2">
                 <Link
-                  href="https://docs.sapience.xyz/api/mcp"
+                  href="https://docs.sapience.xyz/mcp/use-with-claude"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Button className="w-full sm:w-auto">
+                  <Button className="sm:w-auto">
                     <Plus className="h-4 w-4" />
                     Add to Claude
                   </Button>
@@ -58,7 +49,7 @@ export default function MCPSection() {
           </div>
 
           {/* Right column for image/video */}
-          <div className="w-full md:w-1/2 flex items-center justify-center">
+          <div className="w-full lg:w-1/2 flex items-center justify-center order-1 lg:order-2">
             <ClaudeVideoPlayer />
           </div>
         </div>
