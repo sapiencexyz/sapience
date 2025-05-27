@@ -1,0 +1,21 @@
+# Use with Claude
+
+Integrate Sapience with Claude to provide it with tools that query the Sapience GraphQL API for live data, prepare transaction data for prediction markets, and more.
+
+* [**Claude AI**](https://claude.ai) - If you have an account on the Claude Max, Team, and Enterprise plans, [follow these instructions](https://support.anthropic.com/en/articles/11175166-about-custom-integrations-using-remote-mcp).
+* [**Claude Desktop**](https://claude.ai/download) - Add with [`mcp-remote`](https://github.com/geelen/mcp-remote?tab=readme-ov-file#claude-desktop) using the following configuration:
+
+
+```
+{
+  "mcpServers": {
+    "sapience": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://api.sapience.xyz/mcp"
+      ]
+    }
+  }
+}
+```

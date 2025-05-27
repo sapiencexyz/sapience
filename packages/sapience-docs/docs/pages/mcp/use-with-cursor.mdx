@@ -1,0 +1,23 @@
+# Use with Cursor
+
+Allow agents in [Cursor](https://www.cursor.com/) to query the Sapience API directly, helping it better assist with software development.
+
+* Open Cursor IDE
+* Navigate to Settings > Cursor Settings
+* Locate the MCP section
+* Click “Add new global MCP server" button at the top right of the section
+* Update your `mcp.json` file to include `"sapience"` as follows
+
+```
+{
+  "mcpServers": {
+    "sapience": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://api.sapience.xyz/mcp"
+      ]
+    }
+  }
+}
+```
