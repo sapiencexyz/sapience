@@ -65,7 +65,7 @@ export const alertEvent = async (
         const senderAddress = truncateAddress(
           String(logData.args.sender || '')
         );
-        title = `${senderAddress} traded ${collateralDisplay} ${collateralSymbol} in "${questionName}"`;
+        title = `${senderAddress} traded ${collateralDisplay} ${collateralSymbol} in "${questionName}?"`;
         break;
       }
 
@@ -73,6 +73,12 @@ export const alertEvent = async (
       case EventType.LiquidityPositionIncreased:
       case EventType.LiquidityPositionDecreased:
       case EventType.LiquidityPositionClosed: {
+        const action =
+          logData.eventName === EventType.LiquidityPositionDecreased ||
+          logData.eventName === EventType.LiquidityPositionClosed
+            ? 'Removed'
+            : 'Provided';
+
         let questionName = 'Unknown Market';
         let collateralSymbol = 'token';
         try {
@@ -89,8 +95,10 @@ export const alertEvent = async (
           console.error('Failed to fetch market info:', error);
         }
 
-        // Format collateral amount
-        const collateralAmount = logData.args.deltaCollateral || '0';
+        const rawCollateralAmount = logData.args.deltaCollateral || '0';
+        const collateralAmount = Math.abs(
+          Number(rawCollateralAmount)
+        ).toString();
         const formattedCollateral = formatUnits(
           BigInt(String(collateralAmount)),
           18
@@ -106,7 +114,7 @@ export const alertEvent = async (
         const senderAddress = truncateAddress(
           String(logData.args.sender || '')
         );
-        title = `${senderAddress} Provided ${collateralDisplay} ${collateralSymbol} in liquidity for "${questionName}?"`;
+        title = `${senderAddress} ${action} ${collateralDisplay} ${collateralSymbol} in liquidity for "${questionName}?"`;
         break;
       }
       default:
