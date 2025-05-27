@@ -35,7 +35,7 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
     const lastProcessedMarketPrice = await getParam(
-      CANDLE_CACHE_CONFIG.lastProcessedMarketPrice
+      CANDLE_CACHE_IPC_KEYS.lastProcessedMarketPrice
     );
     await this.processMarketPrices(lastProcessedMarketPrice);
 
@@ -44,7 +44,7 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
     const lastProcessedResourcePrice = await getParam(
-      CANDLE_CACHE_CONFIG.lastProcessedResourcePrice
+      CANDLE_CACHE_IPC_KEYS.lastProcessedResourcePrice
     );
     await this.processResourcePrices(lastProcessedResourcePrice);
 
