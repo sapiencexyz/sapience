@@ -20,7 +20,7 @@ export default function MCPSection() {
               </h2>
 
               <p className="text-lg text-muted-foreground">
-                Use Sapience&apos;s Model Context Protocol server to use large
+                Add Sapience&apos;s Model Context Protocol server to use large
                 language models with predictions markets. Connect to any{' '}
                 <Link
                   href="https://modelcontextprotocol.io/clients"
@@ -32,12 +32,12 @@ export default function MCPSection() {
                 </Link>
                 , including{' '}
                 <Link
-                  href="https://claude.ai/download"
+                  href="https://claude.ai"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline"
                 >
-                  Claude Desktop
+                  Claude
                 </Link>
                 .
               </p>
@@ -50,7 +50,7 @@ export default function MCPSection() {
                 >
                   <Button className="w-full sm:w-auto">
                     <Plus className="h-4 w-4" />
-                    Add to Claude Desktop
+                    Add to Claude
                   </Button>
                 </Link>
               </div>

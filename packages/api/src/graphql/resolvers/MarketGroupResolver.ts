@@ -35,7 +35,9 @@ export class MarketGroupResolver {
   async marketGroups(
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('collateralAsset', () => String, { nullable: true })
-    collateralAsset?: string
+    collateralAsset?: string,
+    @Arg('baseTokenName', () => String, { nullable: true })
+    baseTokenName?: string
   ): Promise<MarketGroupType[]> {
     try {
       const queryBuilder = dataSource
@@ -54,6 +56,12 @@ export class MarketGroupResolver {
           'marketGroup.collateralAsset = :collateralAsset',
           { collateralAsset }
         );
+      }
+
+      if (baseTokenName !== undefined) {
+        queryBuilder.andWhere('marketGroup.baseTokenName = :baseTokenName', {
+          baseTokenName,
+        });
       }
 
       const marketGroups = await queryBuilder.getMany();

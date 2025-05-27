@@ -29,6 +29,6 @@ router.use('/permit', permitRoutes);
 router.use('/crypto-prices', cryptoPricesRoutes);
 router.use('/cache', refreshCacheRoutes);
 router.use('/quoter', quoterRoutes);
-router.use('/', createMarketRoutes);
+router.use('/create-market-group', createMarketRoutes);
 
 export { router };

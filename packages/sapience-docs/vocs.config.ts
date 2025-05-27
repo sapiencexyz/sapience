@@ -16,19 +16,27 @@ export default defineConfig({
       link: '/faq',
     },
     {
-      text: 'Use Cursor',
-      link: '/cursor',
+      text: 'Add Docs to Cursor',
+      link: '/docs-for-cursor',
     },
     {
-      text: 'Protocol',
+      text: 'MCP',
       items: [
         {
-          text: 'Technical Reference',
-          link: '/technical-reference',
+          text: 'Use with Claude',
+          link: '/mcp/use-with-claude',
         },
         {
-          text: 'Smart Contract Reference',
-          link: '/protocol-reference',
+          text: 'Use with Cursor',
+          link: '/mcp/use-with-cursor',
+        },
+        {
+          text: 'Use with Langchain',
+          link: '/mcp/use-with-langchain',
+        },
+        {
+          text: 'Use with Google ADK',
+          link: '/mcp/use-with-google-adk',
         },
       ],
     },
@@ -46,6 +54,19 @@ export default defineConfig({
         {
           text: 'MCP',
           link: '/api/mcp',
+        },
+      ],
+    },
+    {
+      text: 'Protocol',
+      items: [
+        {
+          text: 'Technical Reference',
+          link: '/technical-reference',
+        },
+        {
+          text: 'Smart Contract Reference',
+          link: '/protocol-reference',
         },
       ],
     },

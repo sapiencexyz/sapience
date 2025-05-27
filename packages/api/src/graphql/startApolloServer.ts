@@ -13,6 +13,7 @@ import {
   CategoryResolver,
   MarketResolver,
 } from './resolvers';
+import { SharedSchema } from './sharedSchema';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ApolloContext {}
@@ -54,6 +55,12 @@ export const initializeApolloServer = async () => {
 
   // Start Apollo Server
   await apolloServer.start();
+
+  // Get the singleton instance
+  const sharedSchema = SharedSchema.getInstance();
+
+  // Set the schema
+  sharedSchema.setSchema(schema);
 
   return apolloServer;
 };

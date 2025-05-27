@@ -33,12 +33,7 @@ export class ResourceResolver {
     try {
       const resource = await dataSource.getRepository(Resource).findOne({
         where: { slug },
-        relations: [
-          'marketGroups',
-          'resourcePrices',
-          'marketGroups.category',
-          'category',
-        ],
+        relations: ['marketGroups', 'marketGroups.category', 'category'],
       });
 
       if (!resource) return null;
