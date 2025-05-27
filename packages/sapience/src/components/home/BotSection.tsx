@@ -1,10 +1,10 @@
 'use client';
 
-import TemplateSection from '../bots/TemplateSection';
+import TemplateSection from '../bots/BuildAgentSection';
 
 export default function BotSection() {
   return (
-    <section className="pt-48 pb-24 px-8 bg-secondary/10">
+    <section className="pt-48 pb-24">
       <TemplateSection />
     </section>
   );

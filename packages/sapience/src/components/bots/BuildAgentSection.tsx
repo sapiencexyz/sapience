@@ -10,8 +10,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// Template section renamed to Research Bot Boilerplate
-export default function TemplateSection() {
+export default function BuildAgentSection() {
   return (
     <section id="templates" className="py-16 lg:py-24 px-4 sm:px-6 w-full">
       <div className="max-w-6xl mx-auto w-full">

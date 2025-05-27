@@ -7,7 +7,7 @@ const BotsHero = dynamic(() => import('~/components/bots/BotsHero'), {
 });
 
 const TemplateSection = dynamic(
-  () => import('~/components/bots/TemplateSection'),
+  () => import('~/components/bots/BuildAgentSection'),
   { ssr: false }
 );
 
