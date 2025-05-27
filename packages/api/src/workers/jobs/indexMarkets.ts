@@ -55,7 +55,7 @@ export async function handleMarketGroupInitialized(
   const newMarketGroupAddress = eventArgs.marketGroup.toLowerCase();
 
   // Check if sender is in the approved list
-  const approvedAddresses = ['8453:0xe29E04ecC05e226488429995a3f9e9ff7a09dDe8'];
+  const approvedAddresses = ['8453:0xdb5Af497A73620d881561eDb508012A5f84e9BA2'];
   const senderWithChain = `${chainId}:${sender}`;
   const normalizedApprovedAddresses = approvedAddresses.map((addr) =>
     addr.toLowerCase()
