@@ -6,12 +6,13 @@ const BotsHero = dynamic(() => import('~/components/bots/BotsHero'), {
   ssr: false,
 });
 
-const MCPSection = dynamic(() => import('~/components/bots/MCPSection'), {
-  ssr: false,
-});
-
 const TemplateSection = dynamic(
-  () => import('~/components/bots/TemplateSection'),
+  () => import('~/components/bots/BuildAgentSection'),
+  { ssr: false }
+);
+
+const BotsQuickStart = dynamic(
+  () => import('~/components/bots/BotsQuickStart'),
   { ssr: false }
 );
 
@@ -21,7 +22,7 @@ export default function BotsPage() {
     <main className="min-h-screen w-full">
       <BotsHero />
       <TemplateSection />
-      <MCPSection />
+      <BotsQuickStart />
     </main>
   );
 }

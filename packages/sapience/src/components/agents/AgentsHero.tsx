@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-export default function FutarchyClientContent() {
+export default function AgentsHeroClientContent() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Force light mode rendering for the iframe
@@ -35,29 +35,28 @@ export default function FutarchyClientContent() {
   }, []); // Empty dependency array ensures this runs once client-side
 
   return (
-    <div
-      className="fixed inset-0 z-50 light w-[100dwv] pointer-events-none"
-      style={{
-        colorScheme: 'light',
-        filter: 'none',
-      }}
-    >
-      {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
-      <iframe
-        ref={iframeRef}
-        src="https://my.spline.design/particlesfutarchy-SDhuN0OYiCRHRPt2fFec4bCm/"
-        style={{
-          opacity: 0.5,
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          colorScheme: 'light',
-          filter: 'none',
-        }}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        sandbox="allow-same-origin allow-scripts allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
-      />
+    <div>
+      <h1 className="text-5xl font-normal py-40 text-center">
+        Use AI Agents with Forecasting Tools
+      </h1>
+      <div className="absolute inset-0 pointer-events-none top-0 left-0 w-full h-100dvh -scale-y-100 -translate-y-1/4 opacity-50 dark:opacity-75">
+        {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
+        <iframe
+          ref={iframeRef}
+          src="https://my.spline.design/particlesfutarchy-SDhuN0OYiCRHRPt2fFec4bCm/"
+          className="w-full h-full"
+          style={{
+            opacity: 0.5,
+            border: 'none',
+            colorScheme: 'light',
+            filter: 'none',
+          }}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          sandbox="allow-same-origin allow-scripts allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
+        />
+        <div className="absolute top-0 left-0 h-full w-[100px] bg-gradient-to-r from-background to-transparent hidden md:block" />
+      </div>
     </div>
   );
 }

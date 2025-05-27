@@ -91,13 +91,13 @@ const NavLinks = ({
           Build Bots
         </Button>
       </Link>
-      <Link href="/futarchy" passHref className="flex w-fit">
+      <Link href="/agents" passHref className="flex w-fit">
         <Button
           variant="ghost"
-          className={`${linkClass} ${isActive('/futarchy', pathname) ? activeClass : ''}`}
+          className={`${linkClass} ${isActive('/agents', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
-          Futarchy
+          Use Agents
         </Button>
       </Link>
       <Link
@@ -216,7 +216,31 @@ const Header = () => {
           <NavLinks />
         </SidebarContent>
         <SidebarFooter>
-          <div className="flex items-center gap-2 pl-2">
+          <div className="flex items-start gap-2 text-xs w-full ml-2 rounded-lg max-w-[160px]">
+            <span>🏗️</span>
+            <div>
+              We&apos;re{' '}
+              <a
+                href="https://github.com/foilxyz/foil/tree/main/packages/sapience"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline-offset-2 underline"
+              >
+                building in public
+              </a>{' '}
+              and{' '}
+              <a
+                href="https://discord.gg/Hn2vzMDCSs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline-offset-2 underline"
+              >
+                want your feedback
+              </a>
+              .
+            </div>
+          </div>
+          <div className="flex items-center gap-2 p-2">
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
                 href="https://github.com/foilxyz/foil"
@@ -249,31 +273,6 @@ const Header = () => {
                 />
               </a>
             </Button>
-          </div>
-
-          <div className="flex items-start gap-2 text-xs w-full p-2 rounded-lg max-w-[180px]">
-            <span>🏗️</span>
-            <div>
-              We&apos;re{' '}
-              <a
-                href="https://github.com/foilxyz/foil/tree/main/packages/sapience"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline-offset-2 underline"
-              >
-                building in public
-              </a>{' '}
-              and{' '}
-              <a
-                href="https://discord.gg/Hn2vzMDCSs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline-offset-2 underline"
-              >
-                want your feedback
-              </a>
-              .
-            </div>
           </div>
         </SidebarFooter>
       </Sidebar>
