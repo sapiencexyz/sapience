@@ -19,9 +19,13 @@ export const CANDLE_CACHE_CONFIG = {
     TIME_INTERVALS.intervals.INTERVAL_28_DAYS,
   ],
   preTrailingAvgTime: TIME_INTERVALS.intervals.INTERVAL_28_DAYS,
+};
+
+export const CANDLE_CACHE_IPC_KEYS = {
   lastProcessedResourcePrice: 'lastProcessedResourcePrice',
   lastProcessedMarketPrice: 'lastProcessedMarketPrice',
   hardRefresh: 'hardRefresh',
+  rebuildTrailingAvgHistory: 'rebuildTrailingAvgHistory',
 };
 
 export const CANDLE_TYPES = {

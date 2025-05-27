@@ -3,7 +3,7 @@ import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getTimtestampCandleInterval } from '../candleUtils';
-import { saveCandle } from '../dbUtils';
+import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { MarketInfo, MarketInfoStore } from '../marketInfoStore';
 
 export class IndexCandleProcessor {
@@ -24,25 +24,29 @@ export class IndexCandleProcessor {
     return { feePaid, used, avg };
   };
 
-  private getNewCandle = (
+  private async getNewCandle(
     interval: number,
     candleTimestamp: number,
     candleEndTimestamp: number,
     price: ResourcePrice,
     marketInfo: MarketInfo,
     prevCandle: CacheCandle | undefined
-  ) => {
+  ): Promise<CacheCandle> {
     const { feePaid, used, avg } = this.getNewAvgPaidAndFee(prevCandle, price);
 
-    const candle = new CacheCandle();
-    candle.candleType = CANDLE_TYPES.INDEX;
-    candle.interval = interval;
-    candle.marketIdx = marketInfo.marketIdx;
-    candle.resourceSlug = price.resource.slug;
+    const candle = await getOrCreateCandle({
+      candleType: CANDLE_TYPES.INDEX,
+      interval: interval,
+      marketIdx: marketInfo.marketIdx,
+      resourceSlug: price.resource.slug,
+      trailingAvgTime: 0,
+      timestamp: candleTimestamp,
+    });
+
+    // CANDLE VALUES
     candle.marketId = marketInfo.marketId;
     candle.address = marketInfo.marketGroupAddress;
     candle.chainId = marketInfo.marketGroupChainId;
-    candle.timestamp = candleTimestamp;
     candle.endTimestamp = candleEndTimestamp;
     candle.lastUpdatedTimestamp = price.timestamp;
     candle.open = String(avg);
@@ -52,7 +56,7 @@ export class IndexCandleProcessor {
     candle.sumFeePaid = String(feePaid);
     candle.sumUsed = String(used);
     return candle;
-  };
+  }
 
   public async processResourcePrice(price: ResourcePrice) {
     // For each market, check if the price timestamp is within the market's active period
@@ -82,7 +86,7 @@ export class IndexCandleProcessor {
         if (candle && candle.timestamp < candleTimestamp) {
           await saveCandle(candle);
           if (isMarketActive) {
-            candle = this.getNewCandle(
+            candle = await this.getNewCandle(
               interval,
               candleTimestamp,
               candleEndTimestamp,
@@ -94,7 +98,7 @@ export class IndexCandleProcessor {
           }
         } else if (!candle && isMarketActive) {
           // Create new candle if none exists and market is active
-          candle = this.getNewCandle(
+          candle = await this.getNewCandle(
             interval,
             candleTimestamp,
             candleEndTimestamp,

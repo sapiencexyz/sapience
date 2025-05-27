@@ -2,7 +2,7 @@ import { ResourcePrice } from 'src/models/ResourcePrice';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
-import { saveCandle } from '../dbUtils';
+import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { TrailingAvgHistoryStore } from '../trailingAvgHistoryStore';
 import { startOfInterval, startOfNextInterval } from '../candleUtils';
 
@@ -12,7 +12,7 @@ export class TrailingAvgCandleProcessor {
     private trailingAvgHistory: TrailingAvgHistoryStore
   ) {}
 
-  private getNewCandle(
+  private async getNewCandle(
     interval: number,
     candleTimestamp: number,
     candleEndTimestamp: number,
@@ -21,14 +21,19 @@ export class TrailingAvgCandleProcessor {
     sumUsed: bigint,
     sumFeePaid: bigint,
     startOfTrailingWindow: number
-  ): CacheCandle {
-    const candle = new CacheCandle();
+  ): Promise<CacheCandle> {
+    const candle = await getOrCreateCandle({
+      candleType: CANDLE_TYPES.TRAILING_AVG,
+      interval: interval,
+      marketIdx: 0,
+      resourceSlug: price.resource.slug,
+      trailingAvgTime: trailingAvgTime,
+      timestamp: candleTimestamp,
+    });
+
     const avg = sumUsed > 0n ? sumFeePaid / sumUsed : 0n;
 
-    candle.candleType = CANDLE_TYPES.TRAILING_AVG;
-    candle.interval = interval;
-    candle.resourceSlug = price.resource.slug;
-    candle.timestamp = candleTimestamp;
+    // CANDLE VALUES
     candle.endTimestamp = candleEndTimestamp;
     candle.lastUpdatedTimestamp = price.timestamp;
     candle.open = avg.toString();
@@ -38,7 +43,6 @@ export class TrailingAvgCandleProcessor {
     candle.sumUsed = sumUsed.toString();
     candle.sumFeePaid = sumFeePaid.toString();
     candle.trailingStartTimestamp = startOfTrailingWindow;
-    candle.trailingAvgTime = trailingAvgTime;
     return candle;
   }
 
@@ -69,7 +73,7 @@ export class TrailingAvgCandleProcessor {
         }
 
         // Create new candle
-        candle = this.getNewCandle(
+        candle = await this.getNewCandle(
           interval,
           candleTimestamp,
           candleEndTimestamp,
