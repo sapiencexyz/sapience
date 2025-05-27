@@ -1,36 +1,48 @@
-import { EmbedBuilder, WebhookClient } from 'discord.js';
+import { EmbedBuilder, Client, TextChannel } from 'discord.js';
 import { LogData } from '../interfaces';
 import { EventType } from '../interfaces';
 import { formatUnits } from 'viem';
 import { marketGroupRepository } from '../db';
+import { truncateAddress } from '../utils/utils';
 import * as Chains from 'viem/chains';
 
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
+const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
+const discordClient = new Client({ intents: [] });
 
-const webhookClient = DISCORD_WEBHOOK_URL ? new WebhookClient({
-  url: DISCORD_WEBHOOK_URL,
-}) : null;
+if (DISCORD_TOKEN) {
+  discordClient.login(DISCORD_TOKEN).catch((error) => {
+    console.error('Failed to login to Discord:', error);
+  });
+}
 
 export const alertEvent = async (
   chainId: number,
   address: string,
-  epochId: number,
-  blockNumber: bigint,
-  timestamp: bigint,
   logData: LogData
 ) => {
   try {
-    if (!webhookClient) {
-      console.warn('Discord webhook not configured, skipping alert');
+    if (!DISCORD_TOKEN) {
+      console.warn('Discord credentials not configured, skipping alert');
       return;
     }
 
-    if (logData.eventName === EventType.Transfer) {
-      return; // Skip transfer events
+    // Add check for client readiness
+    if (!discordClient.isReady()) {
+      console.warn('Discord client not ready, skipping alert');
+      return;
     }
 
-    let title = '';
+    if (!DISCORD_PUBLIC_CHANNEL_ID || logData.eventName === EventType.Transfer) {
+      return; // Skip if no channel configured or transfer events
+    }
 
+    const publicChannel = (await discordClient.channels.fetch(
+      DISCORD_PUBLIC_CHANNEL_ID
+    )) as TextChannel;
+
+    let title = '';
     switch (logData.eventName) {
       case EventType.TraderPositionCreated:
       case EventType.TraderPositionModified: {
@@ -50,7 +62,6 @@ export const alertEvent = async (
           console.error('Failed to fetch market info:', error);
         }
 
-       
         const collateralAmount = logData.args.collateralAmount || logData.args.positionCollateralAmount || '0';
         const formattedCollateral = formatUnits(BigInt(String(collateralAmount)), 18);
         const collateralDisplay = Number(formattedCollateral).toLocaleString('en-US', {
@@ -58,8 +69,8 @@ export const alertEvent = async (
           maximumFractionDigits: 4,
         });
 
-        const action = logData.eventName === EventType.TraderPositionCreated ? 'created' : 'modified';
-        title = `📈 **Trade position ${action}** in market'${questionName}?' with ${collateralDisplay} ${collateralSymbol} traded`;
+        const senderAddress = truncateAddress(String(logData.args.sender || ''));
+        title = `${senderAddress} traded ${collateralDisplay} ${collateralSymbol} in "${questionName}"`;
         break;
       }
 
@@ -98,7 +109,8 @@ export const alertEvent = async (
           maximumFractionDigits: 4,
         });
 
-        title = `💧 **Liquidity ${action}** for '${questionName}' with ${collateralDisplay} ${collateralSymbol} collateral`;
+        const senderAddress = truncateAddress(String(logData.args.sender || ''));
+        title = `${senderAddress} Provided ${collateralDisplay} ${collateralSymbol} in liquidity for "${questionName}"`;
         break;
       }
       default:
@@ -123,14 +135,12 @@ export const alertEvent = async (
       )
       .setTimestamp();
 
-    await webhookClient.send({
+    await publicChannel.send({
       content: title,
-      embeds: [embed],
-      username: 'Foil Bot',
-      avatarURL: 'https://i.imgur.com/AfFp7pu.png'
+      embeds: [embed]
     });
 
   } catch (error) {
-    console.error('Failed to send Discord webhook alert:', error);
+    console.error('Error sending Discord alert:', error);
   }
 };

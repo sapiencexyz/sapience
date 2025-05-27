@@ -160,9 +160,6 @@ export const indexMarketGroupEvents = async (
         await alertEvent(
           chainId,
           market.address,
-          epochId,
-          blockNumber,
-          block.timestamp,
           logData
         );
 
