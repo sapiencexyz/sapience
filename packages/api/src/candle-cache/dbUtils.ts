@@ -1,4 +1,4 @@
-import {
+import dataSource, {
   cacheParamRepository,
   marketPriceRepository,
   resourcePriceRepository,
@@ -302,5 +302,9 @@ export async function getMarketPricesCount(
 }
 
 export async function truncateCandlesTable() {
-  await cacheCandleRepository.clear();
+  await dataSource.query(`TRUNCATE TABLE "cache_candle" RESTART IDENTITY`);
+}
+
+export async function truncateParamsTable() {
+  await dataSource.query(`TRUNCATE TABLE "cache_param" RESTART IDENTITY`);
 }
