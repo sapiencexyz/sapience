@@ -14,6 +14,12 @@ export type Scalars = {
   Float: { input: number; output: number; }
 };
 
+export type CandleAndTimestampType = {
+  __typename?: 'CandleAndTimestampType';
+  data: Array<CandleType>;
+  lastUpdateTimestamp: Scalars['Int']['output'];
+};
+
 export type CandleType = {
   __typename?: 'CandleType';
   close: Scalars['String']['output'];
@@ -29,6 +35,10 @@ export type CategoryType = {
   marketGroups: Array<MarketGroupType>;
   name: Scalars['String']['output'];
   slug: Scalars['String']['output'];
+};
+
+export type MarketFilterInput = {
+  endTimestamp_gt?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type MarketGroupType = {
@@ -56,6 +66,17 @@ export type MarketGroupType = {
   quoteTokenName?: Maybe<Scalars['String']['output']>;
   resource?: Maybe<ResourceType>;
   vaultAddress?: Maybe<Scalars['String']['output']>;
+};
+
+
+export type MarketGroupTypeMarketsArgs = {
+  filter?: InputMaybe<MarketFilterInput>;
+  orderBy?: InputMaybe<MarketOrderInput>;
+};
+
+export type MarketOrderInput = {
+  direction: Scalars['String']['input'];
+  field: Scalars['String']['input'];
 };
 
 export type MarketParamsType = {
@@ -86,6 +107,7 @@ export type MarketType = {
   positions: Array<PositionType>;
   public: Scalars['Boolean']['output'];
   question?: Maybe<Scalars['String']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['String']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
@@ -129,9 +151,11 @@ export type Query = {
   categories: Array<CategoryType>;
   getMarketLeaderboard: Array<PnLType>;
   indexCandles: Array<CandleType>;
+  indexCandlesFromCache: CandleAndTimestampType;
   indexPriceAtTime?: Maybe<CandleType>;
   legacyMarketCandles: Array<CandleType>;
   marketCandles: Array<CandleType>;
+  marketCandlesFromCache: CandleAndTimestampType;
   marketGroup?: Maybe<MarketGroupType>;
   marketGroups: Array<MarketGroupType>;
   marketGroupsByCategory: Array<MarketGroupType>;
@@ -139,8 +163,10 @@ export type Query = {
   positions: Array<PositionType>;
   resource?: Maybe<ResourceType>;
   resourceCandles: Array<CandleType>;
+  resourceCandlesFromCache: CandleAndTimestampType;
   resourcePrices: Array<ResourcePriceType>;
   resourceTrailingAverageCandles: Array<CandleType>;
+  resourceTrailingAverageCandlesFromCache: CandleAndTimestampType;
   resources: Array<ResourceType>;
   totalVolumeByMarket: Scalars['Float']['output'];
   transactions: Array<TransactionType>;
@@ -155,6 +181,16 @@ export type QueryGetMarketLeaderboardArgs = {
 
 
 export type QueryIndexCandlesArgs = {
+  address: Scalars['String']['input'];
+  chainId: Scalars['Int']['input'];
+  from: Scalars['Int']['input'];
+  interval: Scalars['Int']['input'];
+  marketId: Scalars['String']['input'];
+  to: Scalars['Int']['input'];
+};
+
+
+export type QueryIndexCandlesFromCacheArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   from: Scalars['Int']['input'];
@@ -192,9 +228,25 @@ export type QueryMarketCandlesArgs = {
 };
 
 
+export type QueryMarketCandlesFromCacheArgs = {
+  address: Scalars['String']['input'];
+  chainId: Scalars['Int']['input'];
+  from: Scalars['Int']['input'];
+  interval: Scalars['Int']['input'];
+  marketId: Scalars['String']['input'];
+  to: Scalars['Int']['input'];
+};
+
+
 export type QueryMarketGroupArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
+};
+
+
+export type QueryMarketGroupsArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  collateralAsset?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -230,7 +282,24 @@ export type QueryResourceCandlesArgs = {
 };
 
 
+export type QueryResourceCandlesFromCacheArgs = {
+  from: Scalars['Int']['input'];
+  interval: Scalars['Int']['input'];
+  slug: Scalars['String']['input'];
+  to: Scalars['Int']['input'];
+};
+
+
 export type QueryResourceTrailingAverageCandlesArgs = {
+  from: Scalars['Int']['input'];
+  interval: Scalars['Int']['input'];
+  slug: Scalars['String']['input'];
+  to: Scalars['Int']['input'];
+  trailingAvgTime: Scalars['Int']['input'];
+};
+
+
+export type QueryResourceTrailingAverageCandlesFromCacheArgs = {
   from: Scalars['Int']['input'];
   interval: Scalars['Int']['input'];
   slug: Scalars['String']['input'];

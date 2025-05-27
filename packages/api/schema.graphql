@@ -84,6 +84,7 @@ type MarketType {
   positions: [PositionType!]!
   public: Boolean!
   question: String
+  rules: String
   settled: Boolean
   settlementPriceD18: String
   startTimestamp: Int
@@ -130,7 +131,7 @@ type Query {
   marketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
   marketCandlesFromCache(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
   marketGroup(address: String!, chainId: Int!): MarketGroupType
-  marketGroups(chainId: Int, collateralAsset: String): [MarketGroupType!]!
+  marketGroups(baseTokenName: String, chainId: Int, collateralAsset: String): [MarketGroupType!]!
   marketGroupsByCategory(slug: String!): [MarketGroupType!]!
   markets(chainId: Int!, marketAddress: String!, marketId: Int!): [MarketType!]!
   positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!

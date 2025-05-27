@@ -118,6 +118,7 @@ export const mapMarketToType = (market: Market): MarketType => ({
   poolAddress: market.poolAddress,
   optionName: market.optionName,
   startingSqrtPriceX96: market.startingSqrtPriceX96,
+  rules: market.rules,
   marketParams: mapMarketParamsToType(market.marketParams),
   currentPrice: null,
 });

@@ -30,23 +30,23 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
     });
     await this.getUpdatedMarketsAndMarketGroups();
 
-    const lastProcessedResourcePrice = await getParam(
-      CANDLE_CACHE_IPC_KEYS.lastProcessedResourcePrice
-    );
     log({
-      message: 'step 2: process resource prices',
-      prefix: CANDLE_CACHE_CONFIG.logPrefix,
-    });
-    await this.processResourcePrices(lastProcessedResourcePrice);
-
-    log({
-      message: 'step 3: process market prices',
+      message: 'step 2: process market prices',
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
     const lastProcessedMarketPrice = await getParam(
-      CANDLE_CACHE_IPC_KEYS.lastProcessedMarketPrice
+      CANDLE_CACHE_CONFIG.lastProcessedMarketPrice
     );
     await this.processMarketPrices(lastProcessedMarketPrice);
+
+    log({
+      message: 'step 3: process resource prices',
+      prefix: CANDLE_CACHE_CONFIG.logPrefix,
+    });
+    const lastProcessedResourcePrice = await getParam(
+      CANDLE_CACHE_CONFIG.lastProcessedResourcePrice
+    );
+    await this.processResourcePrices(lastProcessedResourcePrice);
 
     log({
       message: 'step 4: save all runtime candles',

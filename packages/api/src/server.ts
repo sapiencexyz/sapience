@@ -11,6 +11,7 @@ import Sentry from './instrument';
 import { NextFunction, Request, Response } from 'express';
 import { ResourcePerformanceManager } from './performance';
 import { initializeFixtures } from './fixtures';
+import { handleMcpAppRequests } from './routes/mcp';
 
 const PORT = 3001;
 
@@ -47,6 +48,8 @@ const startServer = async () => {
       }),
     })
   );
+
+  handleMcpAppRequests(app, '/mcp');
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

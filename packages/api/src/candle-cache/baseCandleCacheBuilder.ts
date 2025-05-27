@@ -123,7 +123,16 @@ export abstract class BaseCandleCacheBuilder {
       const batchStartTime = Date.now();
 
       let batchIdx = 0;
+      let lastLogTime = Date.now();
       while (batchIdx < prices.length) {
+        if (Date.now() - lastLogTime > CANDLE_CACHE_CONFIG.batchLogInterval) {
+          log({
+            message: `batch: ${iter}/${totalBatches} - step 2: processing the batch of size: ${prices.length} - ${batchIdx}/${prices.length}`,
+            prefix: CANDLE_CACHE_CONFIG.logPrefix,
+            indent: 4,
+          });
+          lastLogTime = Date.now();
+        }
         const price = prices[batchIdx];
 
         // Add it to the trailing avg history
@@ -214,7 +223,16 @@ export abstract class BaseCandleCacheBuilder {
 
       const batchStartTime = Date.now();
       let batchIdx = 0;
+      let lastLogTime = Date.now();
       while (batchIdx < prices.length) {
+        if (Date.now() - lastLogTime > CANDLE_CACHE_CONFIG.batchLogInterval) {
+          log({
+            message: `batch: ${iter}/${totalBatches} - step 2: processing the batch of size: ${prices.length} - ${batchIdx}/${prices.length}`,
+            prefix: CANDLE_CACHE_CONFIG.logPrefix,
+            indent: 4,
+          });
+          lastLogTime = Date.now();
+        }
         const price = prices[batchIdx];
         await this.marketCandleProcessor.processMarketPrice(price);
         batchIdx++;
