@@ -157,11 +157,7 @@ export const indexMarketGroupEvents = async (
         const logData = JSON.parse(serializedLog);
         const epochId = logData.args?.epochId || 0;
 
-        await alertEvent(
-          chainId,
-          market.address,
-          logData
-        );
+        await alertEvent(chainId, market.address, logData);
 
         await upsertEvent(
           chainId,

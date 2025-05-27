@@ -1,4 +1,4 @@
-import { EmbedBuilder, Client, TextChannel } from 'discord.js';
+import { EmbedBuilder, WebhookClient } from 'discord.js';
 import { LogData } from '../interfaces';
 import { EventType } from '../interfaces';
 import { formatUnits } from 'viem';
@@ -6,16 +6,13 @@ import { marketGroupRepository } from '../db';
 import { truncateAddress } from '../utils/utils';
 import * as Chains from 'viem/chains';
 
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const DISCORD_PRIVATE_CHANNEL_ID = process.env.DISCORD_PRIVATE_CHANNEL_ID;
-const DISCORD_PUBLIC_CHANNEL_ID = process.env.DISCORD_PUBLIC_CHANNEL_ID;
-const discordClient = new Client({ intents: [] });
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
-if (DISCORD_TOKEN) {
-  discordClient.login(DISCORD_TOKEN).catch((error) => {
-    console.error('Failed to login to Discord:', error);
-  });
-}
+const webhookClient = DISCORD_WEBHOOK_URL
+  ? new WebhookClient({
+      url: DISCORD_WEBHOOK_URL,
+    })
+  : null;
 
 export const alertEvent = async (
   chainId: number,
@@ -23,24 +20,14 @@ export const alertEvent = async (
   logData: LogData
 ) => {
   try {
-    if (!DISCORD_TOKEN) {
-      console.warn('Discord credentials not configured, skipping alert');
+    if (!webhookClient) {
+      console.warn('Discord webhook not configured, skipping alert');
       return;
     }
 
-    // Add check for client readiness
-    if (!discordClient.isReady()) {
-      console.warn('Discord client not ready, skipping alert');
+    if (logData.eventName === EventType.Transfer) {
       return;
     }
-
-    if (!DISCORD_PUBLIC_CHANNEL_ID || logData.eventName === EventType.Transfer) {
-      return; // Skip if no channel configured or transfer events
-    }
-
-    const publicChannel = (await discordClient.channels.fetch(
-      DISCORD_PUBLIC_CHANNEL_ID
-    )) as TextChannel;
 
     let title = '';
     switch (logData.eventName) {
@@ -55,21 +42,35 @@ export const alertEvent = async (
           });
 
           if (marketObj) {
-            questionName = marketObj.question || marketObj.resource?.name || 'Unknown Market';
-            collateralSymbol = marketObj.quoteTokenName || marketObj.collateralSymbol || 'tokens';
+            questionName =
+              marketObj.question ||
+              marketObj.resource?.name ||
+              'Unknown Market';
+            collateralSymbol =
+              marketObj.quoteTokenName ||
+              marketObj.collateralSymbol ||
+              'tokens';
           }
         } catch (error) {
           console.error('Failed to fetch market info:', error);
         }
 
-        const collateralAmount = logData.args.collateralAmount || logData.args.positionCollateralAmount || '0';
-        const formattedCollateral = formatUnits(BigInt(String(collateralAmount)), 18);
-        const collateralDisplay = Number(formattedCollateral).toLocaleString('en-US', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 4,
-        });
+        const collateralAmount = logData.args.positionCollateralAmount || '0';
+        const formattedCollateral = formatUnits(
+          BigInt(String(collateralAmount)),
+          18
+        );
+        const collateralDisplay = Number(formattedCollateral).toLocaleString(
+          'en-US',
+          {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 4,
+          }
+        );
 
-        const senderAddress = truncateAddress(String(logData.args.sender || ''));
+        const senderAddress = truncateAddress(
+          String(logData.args.sender || '')
+        );
         title = `${senderAddress} traded ${collateralDisplay} ${collateralSymbol} in "${questionName}"`;
         break;
       }
@@ -78,13 +79,6 @@ export const alertEvent = async (
       case EventType.LiquidityPositionIncreased:
       case EventType.LiquidityPositionDecreased:
       case EventType.LiquidityPositionClosed: {
-        const action =
-          logData.eventName === EventType.LiquidityPositionDecreased ||
-          logData.eventName === EventType.LiquidityPositionClosed
-            ? 'removed'
-            : 'added';
-
-        // Get question name and collateral info
         let questionName = 'Unknown Market';
         let collateralSymbol = 'tokens';
         try {
@@ -94,23 +88,37 @@ export const alertEvent = async (
           });
 
           if (marketObj) {
-            questionName = marketObj.question || marketObj.resource?.name || 'Unknown Market';
-            collateralSymbol = marketObj.quoteTokenName || marketObj.collateralSymbol || 'tokens';
+            questionName =
+              marketObj.question ||
+              marketObj.resource?.name ||
+              'Unknown Market';
+            collateralSymbol =
+              marketObj.quoteTokenName ||
+              marketObj.collateralSymbol ||
+              'tokens';
           }
         } catch (error) {
           console.error('Failed to fetch market info:', error);
         }
 
         // Format collateral amount
-        const collateralAmount = logData.args.collateralAmount || logData.args.deltaCollateral || '0';
-        const formattedCollateral = formatUnits(BigInt(String(collateralAmount)), 18);
-        const collateralDisplay = Number(formattedCollateral).toLocaleString('en-US', {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 4,
-        });
+        const collateralAmount = logData.args.deltaCollateral || '0';
+        const formattedCollateral = formatUnits(
+          BigInt(String(collateralAmount)),
+          18
+        );
+        const collateralDisplay = Number(formattedCollateral).toLocaleString(
+          'en-US',
+          {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 4,
+          }
+        );
 
-        const senderAddress = truncateAddress(String(logData.args.sender || ''));
-        title = `${senderAddress} Provided ${collateralDisplay} ${collateralSymbol} in liquidity for "${questionName}"`;
+        const senderAddress = truncateAddress(
+          String(logData.args.sender || '')
+        );
+        title = `${senderAddress} Provided ${collateralDisplay} ${collateralSymbol} in lqiu"${questionName}"`;
         break;
       }
       default:
@@ -127,20 +135,18 @@ export const alertEvent = async (
 
     const embed = new EmbedBuilder()
       .setColor('#2b2b2e')
-      .addFields(
-        {
-          name: 'Transaction',
-          value: getBlockExplorerUrl(chainId, logData.transactionHash),
-        }
-      )
+      .addFields({
+        name: 'Transaction',
+        value: getBlockExplorerUrl(chainId, logData.transactionHash),
+      })
       .setTimestamp();
 
-    await publicChannel.send({
+    await webhookClient.send({
       content: title,
-      embeds: [embed]
+      embeds: [embed],
+      username: 'Market Alerts',
     });
-
   } catch (error) {
-    console.error('Error sending Discord alert:', error);
+    console.error('Failed to send Discord webhook alert:', error);
   }
 };

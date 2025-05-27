@@ -9,19 +9,34 @@ import { ResourcePrice } from '../../models/ResourcePrice';
 import { ApolloContext } from '../startApolloServer';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
-export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
-export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
-export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
-export type MakeEmpty<T extends { [key: string]: unknown }, K extends keyof T> = { [_ in K]?: never };
-export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
-export type RequireFields<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
+export type Exact<T extends { [key: string]: unknown }> = {
+  [K in keyof T]: T[K];
+};
+export type MakeOptional<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]?: Maybe<T[SubKey]>;
+};
+export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & {
+  [SubKey in K]: Maybe<T[SubKey]>;
+};
+export type MakeEmpty<
+  T extends { [key: string]: unknown },
+  K extends keyof T,
+> = { [_ in K]?: never };
+export type Incremental<T> =
+  | T
+  | {
+      [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never;
+    };
+export type RequireFields<T, K extends keyof T> = Omit<T, K> & {
+  [P in K]-?: NonNullable<T[P]>;
+};
 /** All built-in and custom scalars, mapped to their actual values */
 export type Scalars = {
-  ID: { input: string; output: string; }
-  String: { input: string; output: string; }
-  Boolean: { input: boolean; output: boolean; }
-  Int: { input: number; output: number; }
-  Float: { input: number; output: number; }
+  ID: { input: string; output: string };
+  String: { input: string; output: string };
+  Boolean: { input: boolean; output: boolean };
+  Int: { input: number; output: number };
+  Float: { input: number; output: number };
 };
 
 export type CandleAndTimestampType = {
@@ -77,7 +92,6 @@ export type MarketGroupType = {
   resource?: Maybe<ResourceType>;
   vaultAddress?: Maybe<Scalars['String']['output']>;
 };
-
 
 export type MarketGroupTypeMarketsArgs = {
   filter?: InputMaybe<MarketFilterInput>;
@@ -182,13 +196,11 @@ export type Query = {
   transactions: Array<TransactionType>;
 };
 
-
 export type QueryGetMarketLeaderboardArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   marketId: Scalars['String']['input'];
 };
-
 
 export type QueryIndexCandlesArgs = {
   address: Scalars['String']['input'];
@@ -199,7 +211,6 @@ export type QueryIndexCandlesArgs = {
   to: Scalars['Int']['input'];
 };
 
-
 export type QueryIndexCandlesFromCacheArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
@@ -209,14 +220,12 @@ export type QueryIndexCandlesFromCacheArgs = {
   to: Scalars['Int']['input'];
 };
 
-
 export type QueryIndexPriceAtTimeArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   marketId: Scalars['String']['input'];
   timestamp: Scalars['Int']['input'];
 };
-
 
 export type QueryLegacyMarketCandlesArgs = {
   address: Scalars['String']['input'];
@@ -227,7 +236,6 @@ export type QueryLegacyMarketCandlesArgs = {
   to: Scalars['Int']['input'];
 };
 
-
 export type QueryMarketCandlesArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
@@ -236,7 +244,6 @@ export type QueryMarketCandlesArgs = {
   marketId: Scalars['String']['input'];
   to: Scalars['Int']['input'];
 };
-
 
 export type QueryMarketCandlesFromCacheArgs = {
   address: Scalars['String']['input'];
@@ -247,23 +254,19 @@ export type QueryMarketCandlesFromCacheArgs = {
   to: Scalars['Int']['input'];
 };
 
-
 export type QueryMarketGroupArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
 };
-
 
 export type QueryMarketGroupsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralAsset?: InputMaybe<Scalars['String']['input']>;
 };
 
-
 export type QueryMarketGroupsByCategoryArgs = {
   slug: Scalars['String']['input'];
 };
-
 
 export type QueryMarketsArgs = {
   chainId: Scalars['Int']['input'];
@@ -271,18 +274,15 @@ export type QueryMarketsArgs = {
   marketId: Scalars['Int']['input'];
 };
 
-
 export type QueryPositionsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   marketAddress?: InputMaybe<Scalars['String']['input']>;
   owner?: InputMaybe<Scalars['String']['input']>;
 };
 
-
 export type QueryResourceArgs = {
   slug: Scalars['String']['input'];
 };
-
 
 export type QueryResourceCandlesArgs = {
   from: Scalars['Int']['input'];
@@ -291,14 +291,12 @@ export type QueryResourceCandlesArgs = {
   to: Scalars['Int']['input'];
 };
 
-
 export type QueryResourceCandlesFromCacheArgs = {
   from: Scalars['Int']['input'];
   interval: Scalars['Int']['input'];
   slug: Scalars['String']['input'];
   to: Scalars['Int']['input'];
 };
-
 
 export type QueryResourceTrailingAverageCandlesArgs = {
   from: Scalars['Int']['input'];
@@ -308,7 +306,6 @@ export type QueryResourceTrailingAverageCandlesArgs = {
   trailingAvgTime: Scalars['Int']['input'];
 };
 
-
 export type QueryResourceTrailingAverageCandlesFromCacheArgs = {
   from: Scalars['Int']['input'];
   interval: Scalars['Int']['input'];
@@ -317,13 +314,11 @@ export type QueryResourceTrailingAverageCandlesFromCacheArgs = {
   trailingAvgTime: Scalars['Int']['input'];
 };
 
-
 export type QueryTotalVolumeByMarketArgs = {
   chainId: Scalars['Int']['input'];
   marketAddress: Scalars['String']['input'];
   marketId: Scalars['Int']['input'];
 };
-
 
 export type QueryTransactionsArgs = {
   positionId?: InputMaybe<Scalars['Int']['input']>;
@@ -371,11 +366,12 @@ export type ResolversObject<TObject> = WithIndex<TObject>;
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
 
-
 export type ResolverWithResolve<TResult, TParent, TContext, TArgs> = {
   resolve: ResolverFn<TResult, TParent, TContext, TArgs>;
 };
-export type Resolver<TResult, TParent = {}, TContext = {}, TArgs = {}> = ResolverFn<TResult, TParent, TContext, TArgs> | ResolverWithResolve<TResult, TParent, TContext, TArgs>;
+export type Resolver<TResult, TParent = {}, TContext = {}, TArgs = {}> =
+  | ResolverFn<TResult, TParent, TContext, TArgs>
+  | ResolverWithResolve<TResult, TParent, TContext, TArgs>;
 
 export type ResolverFn<TResult, TParent, TContext, TArgs> = (
   parent: TParent,
@@ -398,9 +394,25 @@ export type SubscriptionResolveFn<TResult, TParent, TContext, TArgs> = (
   info: GraphQLResolveInfo
 ) => TResult | Promise<TResult>;
 
-export interface SubscriptionSubscriberObject<TResult, TKey extends string, TParent, TContext, TArgs> {
-  subscribe: SubscriptionSubscribeFn<{ [key in TKey]: TResult }, TParent, TContext, TArgs>;
-  resolve?: SubscriptionResolveFn<TResult, { [key in TKey]: TResult }, TContext, TArgs>;
+export interface SubscriptionSubscriberObject<
+  TResult,
+  TKey extends string,
+  TParent,
+  TContext,
+  TArgs,
+> {
+  subscribe: SubscriptionSubscribeFn<
+    { [key in TKey]: TResult },
+    TParent,
+    TContext,
+    TArgs
+  >;
+  resolve?: SubscriptionResolveFn<
+    TResult,
+    { [key in TKey]: TResult },
+    TContext,
+    TArgs
+  >;
 }
 
 export interface SubscriptionResolverObject<TResult, TParent, TContext, TArgs> {
@@ -408,12 +420,26 @@ export interface SubscriptionResolverObject<TResult, TParent, TContext, TArgs> {
   resolve: SubscriptionResolveFn<TResult, any, TContext, TArgs>;
 }
 
-export type SubscriptionObject<TResult, TKey extends string, TParent, TContext, TArgs> =
+export type SubscriptionObject<
+  TResult,
+  TKey extends string,
+  TParent,
+  TContext,
+  TArgs,
+> =
   | SubscriptionSubscriberObject<TResult, TKey, TParent, TContext, TArgs>
   | SubscriptionResolverObject<TResult, TParent, TContext, TArgs>;
 
-export type SubscriptionResolver<TResult, TKey extends string, TParent = {}, TContext = {}, TArgs = {}> =
-  | ((...args: any[]) => SubscriptionObject<TResult, TKey, TParent, TContext, TArgs>)
+export type SubscriptionResolver<
+  TResult,
+  TKey extends string,
+  TParent = {},
+  TContext = {},
+  TArgs = {},
+> =
+  | ((
+      ...args: any[]
+    ) => SubscriptionObject<TResult, TKey, TParent, TContext, TArgs>)
   | SubscriptionObject<TResult, TKey, TParent, TContext, TArgs>;
 
 export type TypeResolveFn<TTypes, TParent = {}, TContext = {}> = (
@@ -422,19 +448,26 @@ export type TypeResolveFn<TTypes, TParent = {}, TContext = {}> = (
   info: GraphQLResolveInfo
 ) => Maybe<TTypes> | Promise<Maybe<TTypes>>;
 
-export type IsTypeOfResolverFn<T = {}, TContext = {}> = (obj: T, context: TContext, info: GraphQLResolveInfo) => boolean | Promise<boolean>;
+export type IsTypeOfResolverFn<T = {}, TContext = {}> = (
+  obj: T,
+  context: TContext,
+  info: GraphQLResolveInfo
+) => boolean | Promise<boolean>;
 
 export type NextResolverFn<T> = () => Promise<T>;
 
-export type DirectiveResolverFn<TResult = {}, TParent = {}, TContext = {}, TArgs = {}> = (
+export type DirectiveResolverFn<
+  TResult = {},
+  TParent = {},
+  TContext = {},
+  TArgs = {},
+> = (
   next: NextResolverFn<TResult>,
   parent: TParent,
   args: TArgs,
   context: TContext,
   info: GraphQLResolveInfo
 ) => TResult | Promise<TResult>;
-
-
 
 /** Mapping between all available schema types and the resolvers types */
 export type ResolversTypes = ResolversObject<{
@@ -482,13 +515,25 @@ export type ResolversParentTypes = ResolversObject<{
   TransactionType: Transaction;
 }>;
 
-export type CandleAndTimestampTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['CandleAndTimestampType'] = ResolversParentTypes['CandleAndTimestampType']> = ResolversObject<{
+export type CandleAndTimestampTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['CandleAndTimestampType'] = ResolversParentTypes['CandleAndTimestampType'],
+> = ResolversObject<{
   data?: Resolver<Array<ResolversTypes['CandleType']>, ParentType, ContextType>;
-  lastUpdateTimestamp?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  lastUpdateTimestamp?: Resolver<
+    ResolversTypes['Int'],
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type CandleTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['CandleType'] = ResolversParentTypes['CandleType']> = ResolversObject<{
+export type CandleTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['CandleType'] = ResolversParentTypes['CandleType'],
+> = ResolversObject<{
   close?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   high?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   low?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -497,166 +542,595 @@ export type CandleTypeResolvers<ContextType = ApolloContext, ParentType extends 
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type CategoryTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['CategoryType'] = ResolversParentTypes['CategoryType']> = ResolversObject<{
+export type CategoryTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['CategoryType'] = ResolversParentTypes['CategoryType'],
+> = ResolversObject<{
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  marketGroups?: Resolver<Array<ResolversTypes['MarketGroupType']>, ParentType, ContextType>;
+  marketGroups?: Resolver<
+    Array<ResolversTypes['MarketGroupType']>,
+    ParentType,
+    ContextType
+  >;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type MarketGroupTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['MarketGroupType'] = ResolversParentTypes['MarketGroupType']> = ResolversObject<{
+export type MarketGroupTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['MarketGroupType'] = ResolversParentTypes['MarketGroupType'],
+> = ResolversObject<{
   address?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  baseTokenName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  category?: Resolver<Maybe<ResolversTypes['CategoryType']>, ParentType, ContextType>;
+  baseTokenName?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  category?: Resolver<
+    Maybe<ResolversTypes['CategoryType']>,
+    ParentType,
+    ContextType
+  >;
   chainId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  claimStatement?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  collateralAsset?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  collateralDecimals?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  collateralSymbol?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  deployTimestamp?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  deployTxnBlockNumber?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  factoryAddress?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  claimStatement?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  collateralAsset?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  collateralDecimals?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  collateralSymbol?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  deployTimestamp?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  deployTxnBlockNumber?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  factoryAddress?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  initializationNonce?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  initializationNonce?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   isCumulative?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   isYin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  marketParams?: Resolver<Maybe<ResolversTypes['MarketParamsType']>, ParentType, ContextType>;
-  markets?: Resolver<Array<ResolversTypes['MarketType']>, ParentType, ContextType, Partial<MarketGroupTypeMarketsArgs>>;
-  minTradeSize?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  marketParams?: Resolver<
+    Maybe<ResolversTypes['MarketParamsType']>,
+    ParentType,
+    ContextType
+  >;
+  markets?: Resolver<
+    Array<ResolversTypes['MarketType']>,
+    ParentType,
+    ContextType,
+    Partial<MarketGroupTypeMarketsArgs>
+  >;
+  minTradeSize?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   owner?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   question?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  quoteTokenName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  resource?: Resolver<Maybe<ResolversTypes['ResourceType']>, ParentType, ContextType>;
-  vaultAddress?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  quoteTokenName?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  resource?: Resolver<
+    Maybe<ResolversTypes['ResourceType']>,
+    ParentType,
+    ContextType
+  >;
+  vaultAddress?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type MarketParamsTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['MarketParamsType'] = ResolversParentTypes['MarketParamsType']> = ResolversObject<{
-  assertionLiveness?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  bondAmount?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  bondCurrency?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  claimStatement?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+export type MarketParamsTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['MarketParamsType'] = ResolversParentTypes['MarketParamsType'],
+> = ResolversObject<{
+  assertionLiveness?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  bondAmount?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  bondCurrency?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  claimStatement?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   feeRate?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  optimisticOracleV3?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  uniswapPositionManager?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  uniswapQuoter?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  uniswapSwapRouter?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  optimisticOracleV3?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  uniswapPositionManager?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  uniswapQuoter?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  uniswapSwapRouter?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type MarketTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['MarketType'] = ResolversParentTypes['MarketType']> = ResolversObject<{
-  baseAssetMaxPriceTick?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  baseAssetMinPriceTick?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  currentPrice?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  endTimestamp?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+export type MarketTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['MarketType'] = ResolversParentTypes['MarketType'],
+> = ResolversObject<{
+  baseAssetMaxPriceTick?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  baseAssetMinPriceTick?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  currentPrice?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  endTimestamp?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  marketGroup?: Resolver<Maybe<ResolversTypes['MarketGroupType']>, ParentType, ContextType>;
+  marketGroup?: Resolver<
+    Maybe<ResolversTypes['MarketGroupType']>,
+    ParentType,
+    ContextType
+  >;
   marketId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  marketParams?: Resolver<Maybe<ResolversTypes['MarketParamsType']>, ParentType, ContextType>;
-  optionName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  poolAddress?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  positions?: Resolver<Array<ResolversTypes['PositionType']>, ParentType, ContextType>;
+  marketParams?: Resolver<
+    Maybe<ResolversTypes['MarketParamsType']>,
+    ParentType,
+    ContextType
+  >;
+  optionName?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  poolAddress?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  positions?: Resolver<
+    Array<ResolversTypes['PositionType']>,
+    ParentType,
+    ContextType
+  >;
   public?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   question?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   rules?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   settled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
-  settlementPriceD18?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  startTimestamp?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
-  startingSqrtPriceX96?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  settlementPriceD18?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  startTimestamp?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  startingSqrtPriceX96?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type PnLTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['PnLType'] = ResolversParentTypes['PnLType']> = ResolversObject<{
+export type PnLTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['PnLType'] = ResolversParentTypes['PnLType'],
+> = ResolversObject<{
   marketId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  openPositionsPnL?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  openPositionsPnL?: Resolver<
+    ResolversTypes['String'],
+    ParentType,
+    ContextType
+  >;
   owner?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   positionCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   positions?: Resolver<Array<ResolversTypes['Int']>, ParentType, ContextType>;
   totalDeposits?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   totalPnL?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  totalWithdrawals?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  totalWithdrawals?: Resolver<
+    ResolversTypes['String'],
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type PositionTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['PositionType'] = ResolversParentTypes['PositionType']> = ResolversObject<{
+export type PositionTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['PositionType'] = ResolversParentTypes['PositionType'],
+> = ResolversObject<{
   baseToken?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  borrowedBaseToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  borrowedQuoteToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  borrowedBaseToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  borrowedQuoteToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   collateral?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  highPriceTick?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  highPriceTick?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   isLP?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
-  isSettled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
-  lowPriceTick?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  lpBaseToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  lpQuoteToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  isSettled?: Resolver<
+    Maybe<ResolversTypes['Boolean']>,
+    ParentType,
+    ContextType
+  >;
+  lowPriceTick?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  lpBaseToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  lpQuoteToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   market?: Resolver<ResolversTypes['MarketType'], ParentType, ContextType>;
   owner?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   positionId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   quoteToken?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  transactions?: Resolver<Array<ResolversTypes['TransactionType']>, ParentType, ContextType>;
+  transactions?: Resolver<
+    Array<ResolversTypes['TransactionType']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type QueryResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = ResolversObject<{
-  categories?: Resolver<Array<ResolversTypes['CategoryType']>, ParentType, ContextType>;
-  getMarketLeaderboard?: Resolver<Array<ResolversTypes['PnLType']>, ParentType, ContextType, RequireFields<QueryGetMarketLeaderboardArgs, 'address' | 'chainId' | 'marketId'>>;
-  indexCandles?: Resolver<Array<ResolversTypes['CandleType']>, ParentType, ContextType, RequireFields<QueryIndexCandlesArgs, 'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'>>;
-  indexCandlesFromCache?: Resolver<ResolversTypes['CandleAndTimestampType'], ParentType, ContextType, RequireFields<QueryIndexCandlesFromCacheArgs, 'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'>>;
-  indexPriceAtTime?: Resolver<Maybe<ResolversTypes['CandleType']>, ParentType, ContextType, RequireFields<QueryIndexPriceAtTimeArgs, 'address' | 'chainId' | 'marketId' | 'timestamp'>>;
-  legacyMarketCandles?: Resolver<Array<ResolversTypes['CandleType']>, ParentType, ContextType, RequireFields<QueryLegacyMarketCandlesArgs, 'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'>>;
-  marketCandles?: Resolver<Array<ResolversTypes['CandleType']>, ParentType, ContextType, RequireFields<QueryMarketCandlesArgs, 'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'>>;
-  marketCandlesFromCache?: Resolver<ResolversTypes['CandleAndTimestampType'], ParentType, ContextType, RequireFields<QueryMarketCandlesFromCacheArgs, 'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'>>;
-  marketGroup?: Resolver<Maybe<ResolversTypes['MarketGroupType']>, ParentType, ContextType, RequireFields<QueryMarketGroupArgs, 'address' | 'chainId'>>;
-  marketGroups?: Resolver<Array<ResolversTypes['MarketGroupType']>, ParentType, ContextType, Partial<QueryMarketGroupsArgs>>;
-  marketGroupsByCategory?: Resolver<Array<ResolversTypes['MarketGroupType']>, ParentType, ContextType, RequireFields<QueryMarketGroupsByCategoryArgs, 'slug'>>;
-  markets?: Resolver<Array<ResolversTypes['MarketType']>, ParentType, ContextType, RequireFields<QueryMarketsArgs, 'chainId' | 'marketAddress' | 'marketId'>>;
-  positions?: Resolver<Array<ResolversTypes['PositionType']>, ParentType, ContextType, Partial<QueryPositionsArgs>>;
-  resource?: Resolver<Maybe<ResolversTypes['ResourceType']>, ParentType, ContextType, RequireFields<QueryResourceArgs, 'slug'>>;
-  resourceCandles?: Resolver<Array<ResolversTypes['CandleType']>, ParentType, ContextType, RequireFields<QueryResourceCandlesArgs, 'from' | 'interval' | 'slug' | 'to'>>;
-  resourceCandlesFromCache?: Resolver<ResolversTypes['CandleAndTimestampType'], ParentType, ContextType, RequireFields<QueryResourceCandlesFromCacheArgs, 'from' | 'interval' | 'slug' | 'to'>>;
-  resourcePrices?: Resolver<Array<ResolversTypes['ResourcePriceType']>, ParentType, ContextType>;
-  resourceTrailingAverageCandles?: Resolver<Array<ResolversTypes['CandleType']>, ParentType, ContextType, RequireFields<QueryResourceTrailingAverageCandlesArgs, 'from' | 'interval' | 'slug' | 'to' | 'trailingAvgTime'>>;
-  resourceTrailingAverageCandlesFromCache?: Resolver<ResolversTypes['CandleAndTimestampType'], ParentType, ContextType, RequireFields<QueryResourceTrailingAverageCandlesFromCacheArgs, 'from' | 'interval' | 'slug' | 'to' | 'trailingAvgTime'>>;
-  resources?: Resolver<Array<ResolversTypes['ResourceType']>, ParentType, ContextType>;
-  totalVolumeByMarket?: Resolver<ResolversTypes['Float'], ParentType, ContextType, RequireFields<QueryTotalVolumeByMarketArgs, 'chainId' | 'marketAddress' | 'marketId'>>;
-  transactions?: Resolver<Array<ResolversTypes['TransactionType']>, ParentType, ContextType, Partial<QueryTransactionsArgs>>;
+export type QueryResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['Query'] = ResolversParentTypes['Query'],
+> = ResolversObject<{
+  categories?: Resolver<
+    Array<ResolversTypes['CategoryType']>,
+    ParentType,
+    ContextType
+  >;
+  getMarketLeaderboard?: Resolver<
+    Array<ResolversTypes['PnLType']>,
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryGetMarketLeaderboardArgs,
+      'address' | 'chainId' | 'marketId'
+    >
+  >;
+  indexCandles?: Resolver<
+    Array<ResolversTypes['CandleType']>,
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryIndexCandlesArgs,
+      'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
+    >
+  >;
+  indexCandlesFromCache?: Resolver<
+    ResolversTypes['CandleAndTimestampType'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryIndexCandlesFromCacheArgs,
+      'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
+    >
+  >;
+  indexPriceAtTime?: Resolver<
+    Maybe<ResolversTypes['CandleType']>,
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryIndexPriceAtTimeArgs,
+      'address' | 'chainId' | 'marketId' | 'timestamp'
+    >
+  >;
+  legacyMarketCandles?: Resolver<
+    Array<ResolversTypes['CandleType']>,
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryLegacyMarketCandlesArgs,
+      'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
+    >
+  >;
+  marketCandles?: Resolver<
+    Array<ResolversTypes['CandleType']>,
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryMarketCandlesArgs,
+      'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
+    >
+  >;
+  marketCandlesFromCache?: Resolver<
+    ResolversTypes['CandleAndTimestampType'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryMarketCandlesFromCacheArgs,
+      'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
+    >
+  >;
+  marketGroup?: Resolver<
+    Maybe<ResolversTypes['MarketGroupType']>,
+    ParentType,
+    ContextType,
+    RequireFields<QueryMarketGroupArgs, 'address' | 'chainId'>
+  >;
+  marketGroups?: Resolver<
+    Array<ResolversTypes['MarketGroupType']>,
+    ParentType,
+    ContextType,
+    Partial<QueryMarketGroupsArgs>
+  >;
+  marketGroupsByCategory?: Resolver<
+    Array<ResolversTypes['MarketGroupType']>,
+    ParentType,
+    ContextType,
+    RequireFields<QueryMarketGroupsByCategoryArgs, 'slug'>
+  >;
+  markets?: Resolver<
+    Array<ResolversTypes['MarketType']>,
+    ParentType,
+    ContextType,
+    RequireFields<QueryMarketsArgs, 'chainId' | 'marketAddress' | 'marketId'>
+  >;
+  positions?: Resolver<
+    Array<ResolversTypes['PositionType']>,
+    ParentType,
+    ContextType,
+    Partial<QueryPositionsArgs>
+  >;
+  resource?: Resolver<
+    Maybe<ResolversTypes['ResourceType']>,
+    ParentType,
+    ContextType,
+    RequireFields<QueryResourceArgs, 'slug'>
+  >;
+  resourceCandles?: Resolver<
+    Array<ResolversTypes['CandleType']>,
+    ParentType,
+    ContextType,
+    RequireFields<QueryResourceCandlesArgs, 'from' | 'interval' | 'slug' | 'to'>
+  >;
+  resourceCandlesFromCache?: Resolver<
+    ResolversTypes['CandleAndTimestampType'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryResourceCandlesFromCacheArgs,
+      'from' | 'interval' | 'slug' | 'to'
+    >
+  >;
+  resourcePrices?: Resolver<
+    Array<ResolversTypes['ResourcePriceType']>,
+    ParentType,
+    ContextType
+  >;
+  resourceTrailingAverageCandles?: Resolver<
+    Array<ResolversTypes['CandleType']>,
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryResourceTrailingAverageCandlesArgs,
+      'from' | 'interval' | 'slug' | 'to' | 'trailingAvgTime'
+    >
+  >;
+  resourceTrailingAverageCandlesFromCache?: Resolver<
+    ResolversTypes['CandleAndTimestampType'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryResourceTrailingAverageCandlesFromCacheArgs,
+      'from' | 'interval' | 'slug' | 'to' | 'trailingAvgTime'
+    >
+  >;
+  resources?: Resolver<
+    Array<ResolversTypes['ResourceType']>,
+    ParentType,
+    ContextType
+  >;
+  totalVolumeByMarket?: Resolver<
+    ResolversTypes['Float'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      QueryTotalVolumeByMarketArgs,
+      'chainId' | 'marketAddress' | 'marketId'
+    >
+  >;
+  transactions?: Resolver<
+    Array<ResolversTypes['TransactionType']>,
+    ParentType,
+    ContextType,
+    Partial<QueryTransactionsArgs>
+  >;
 }>;
 
-export type ResourcePriceTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['ResourcePriceType'] = ResolversParentTypes['ResourcePriceType']> = ResolversObject<{
+export type ResourcePriceTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['ResourcePriceType'] = ResolversParentTypes['ResourcePriceType'],
+> = ResolversObject<{
   blockNumber?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  resource?: Resolver<Maybe<ResolversTypes['ResourceType']>, ParentType, ContextType>;
+  resource?: Resolver<
+    Maybe<ResolversTypes['ResourceType']>,
+    ParentType,
+    ContextType
+  >;
   timestamp?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   value?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type ResourceTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['ResourceType'] = ResolversParentTypes['ResourceType']> = ResolversObject<{
-  category?: Resolver<Maybe<ResolversTypes['CategoryType']>, ParentType, ContextType>;
+export type ResourceTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['ResourceType'] = ResolversParentTypes['ResourceType'],
+> = ResolversObject<{
+  category?: Resolver<
+    Maybe<ResolversTypes['CategoryType']>,
+    ParentType,
+    ContextType
+  >;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  marketGroups?: Resolver<Array<ResolversTypes['MarketGroupType']>, ParentType, ContextType>;
+  marketGroups?: Resolver<
+    Array<ResolversTypes['MarketGroupType']>,
+    ParentType,
+    ContextType
+  >;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
-  resourcePrices?: Resolver<Array<ResolversTypes['ResourcePriceType']>, ParentType, ContextType>;
+  resourcePrices?: Resolver<
+    Array<ResolversTypes['ResourcePriceType']>,
+    ParentType,
+    ContextType
+  >;
   slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
-export type TransactionTypeResolvers<ContextType = ApolloContext, ParentType extends ResolversParentTypes['TransactionType'] = ResolversParentTypes['TransactionType']> = ResolversObject<{
-  baseToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  baseTokenDelta?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  collateral?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  collateralDelta?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+export type TransactionTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['TransactionType'] = ResolversParentTypes['TransactionType'],
+> = ResolversObject<{
+  baseToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  baseTokenDelta?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  collateral?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  collateralDelta?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
-  lpBaseDeltaToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  lpQuoteDeltaToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  position?: Resolver<Maybe<ResolversTypes['PositionType']>, ParentType, ContextType>;
-  quoteToken?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  quoteTokenDelta?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  lpBaseDeltaToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  lpQuoteDeltaToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  position?: Resolver<
+    Maybe<ResolversTypes['PositionType']>,
+    ParentType,
+    ContextType
+  >;
+  quoteToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  quoteTokenDelta?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   timestamp?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  tradeRatioD18?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
-  transactionHash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  tradeRatioD18?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  transactionHash?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   type?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
@@ -675,4 +1149,3 @@ export type Resolvers<ContextType = ApolloContext> = ResolversObject<{
   ResourceType?: ResourceTypeResolvers<ContextType>;
   TransactionType?: TransactionTypeResolvers<ContextType>;
 }>;
-
