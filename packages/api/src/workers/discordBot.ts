@@ -34,7 +34,7 @@ export const alertEvent = async (
       case EventType.TraderPositionCreated:
       case EventType.TraderPositionModified: {
         let questionName = 'Unknown Market';
-        let collateralSymbol = 'tokens';
+        let collateralSymbol = 'token';
         try {
           const marketObj = await marketGroupRepository.findOne({
             where: { address: address.toLowerCase(), chainId },
@@ -42,14 +42,8 @@ export const alertEvent = async (
           });
 
           if (marketObj) {
-            questionName =
-              marketObj.question ||
-              marketObj.resource?.name ||
-              'Unknown Market';
-            collateralSymbol =
-              marketObj.quoteTokenName ||
-              marketObj.collateralSymbol ||
-              'tokens';
+            questionName = marketObj.question || 'Unknown Market';
+            collateralSymbol = marketObj.collateralSymbol || 'token';
           }
         } catch (error) {
           console.error('Failed to fetch market info:', error);
@@ -80,7 +74,7 @@ export const alertEvent = async (
       case EventType.LiquidityPositionDecreased:
       case EventType.LiquidityPositionClosed: {
         let questionName = 'Unknown Market';
-        let collateralSymbol = 'tokens';
+        let collateralSymbol = 'token';
         try {
           const marketObj = await marketGroupRepository.findOne({
             where: { address: address.toLowerCase(), chainId },
@@ -88,14 +82,8 @@ export const alertEvent = async (
           });
 
           if (marketObj) {
-            questionName =
-              marketObj.question ||
-              marketObj.resource?.name ||
-              'Unknown Market';
-            collateralSymbol =
-              marketObj.quoteTokenName ||
-              marketObj.collateralSymbol ||
-              'tokens';
+            questionName = marketObj.question || 'Unknown Market';
+            collateralSymbol = marketObj.collateralSymbol || 'token';
           }
         } catch (error) {
           console.error('Failed to fetch market info:', error);
@@ -118,11 +106,11 @@ export const alertEvent = async (
         const senderAddress = truncateAddress(
           String(logData.args.sender || '')
         );
-        title = `${senderAddress} Provided ${collateralDisplay} ${collateralSymbol} in lqiu"${questionName}"`;
+        title = `${senderAddress} Provided ${collateralDisplay} ${collateralSymbol} in liquidity for "${questionName}?"`;
         break;
       }
       default:
-        return; // Skip other events
+        return;
     }
 
     // Get block explorer URL based on chain ID
