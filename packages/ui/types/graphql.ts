@@ -245,6 +245,7 @@ export type QueryMarketGroupArgs = {
 
 
 export type QueryMarketGroupsArgs = {
+  baseTokenName?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralAsset?: InputMaybe<Scalars['String']['input']>;
 };

@@ -157,3 +157,40 @@ export interface IResourcePriceIndexer {
   indexBlocks(resource: Resource, blocks: number[]): Promise<boolean>;
   watchBlocksForResource(resource: Resource): Promise<void>;
 }
+
+export interface LogData {
+  eventName: string;
+  args: Record<string, unknown>;
+  transactionHash: string;
+  blockHash: string;
+  blockNumber: string;
+  data: string;
+  logIndex: number;
+  removed: boolean;
+  topics: string[];
+  transactionIndex: number;
+}
+
+export interface MarketInfo {
+  marketChainId: number;
+  deployment: {
+    address: string;
+    deployTxnBlockNumber?: string | number | null;
+    deployTimestamp?: string | number | null;
+  };
+  resource: {
+    id?: number | string;
+    slug?: string;
+    priceIndexer: {
+      client?: PublicClient;
+      indexBlocks: (
+        resource: Resource,
+        blockNumbers: number[]
+      ) => Promise<boolean>;
+    } | null;
+    [key: string]: unknown;
+  };
+  vaultAddress?: string;
+  isYin?: boolean;
+  isCumulative?: boolean;
+}
