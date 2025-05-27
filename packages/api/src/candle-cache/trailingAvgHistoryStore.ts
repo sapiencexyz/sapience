@@ -125,4 +125,8 @@ export class TrailingAvgHistoryStore {
       }
     }
   }
+
+  public async cleanAll() {
+    this.history.clear();
+  }
 }

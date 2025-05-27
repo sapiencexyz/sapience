@@ -1,4 +1,4 @@
-import { CANDLE_CACHE_CONFIG } from './config';
+import { CANDLE_CACHE_CONFIG, CANDLE_CACHE_IPC_KEYS } from './config';
 import {
   getMarketGroups,
   getMarketPrices,
@@ -8,6 +8,7 @@ import {
   getResourcePricesCount,
   getMarketPricesCount,
   truncateCandlesTable,
+  truncateParamsTable,
 } from './dbUtils';
 import { log } from 'src/utils/logs';
 import { RuntimeCandleStore } from './runtimeCandleStore';
@@ -172,7 +173,7 @@ export abstract class BaseCandleCacheBuilder {
       // Update timestamp for next batch
       initialTimestamp = prices[prices.length - 1].timestamp;
       await setParam(
-        CANDLE_CACHE_CONFIG.lastProcessedResourcePrice,
+        CANDLE_CACHE_IPC_KEYS.lastProcessedResourcePrice,
         initialTimestamp
       );
     }
@@ -250,7 +251,7 @@ export abstract class BaseCandleCacheBuilder {
       if (prices.length > 0) {
         initialTimestamp = prices[prices.length - 1].timestamp;
         await setParam(
-          CANDLE_CACHE_CONFIG.lastProcessedMarketPrice,
+          CANDLE_CACHE_IPC_KEYS.lastProcessedMarketPrice,
           initialTimestamp
         );
       }
@@ -301,9 +302,7 @@ export abstract class BaseCandleCacheBuilder {
 
   protected async hardRefresh() {
     await truncateCandlesTable();
-    await setParam(CANDLE_CACHE_CONFIG.hardRefresh, 0);
-    await setParam(CANDLE_CACHE_CONFIG.lastProcessedResourcePrice, 0);
-    await setParam(CANDLE_CACHE_CONFIG.lastProcessedMarketPrice, 0);
+    await truncateParamsTable();
 
     this.runtimeCandles = new RuntimeCandleStore();
     this.trailingAvgHistory = new TrailingAvgHistoryStore();
