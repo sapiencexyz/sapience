@@ -41,6 +41,8 @@ import {
 } from '../../lib/constants/focusAreas';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
+import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
+
 // Use environment variable for API base URL, fallback to /api
 const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 
@@ -64,7 +66,7 @@ const DEFAULT_MIN_PRICE_TICK = '-92200';
 const DEFAULT_MAX_PRICE_TICK = '0';
 const DEFAULT_FACTORY_ADDRESS = '0x5d9aAECe6Af4FfFC5Dca37a753339Ef440B6Be37';
 
-// Type definitions
+// Type definitions (MarketInput is now imported)
 interface MarketParamsInput {
   feeRate: string;
   assertionLiveness: string;
@@ -76,18 +78,8 @@ interface MarketParamsInput {
   optimisticOracleV3: string;
 }
 
-interface MarketInput {
-  id: number;
-  marketQuestion: string;
-  optionName: string;
-  startTime: string;
-  endTime: string;
-  startingSqrtPriceX96: string;
-  baseAssetMinPriceTick: string;
-  baseAssetMaxPriceTick: string;
-  claimStatement: string;
-  rules?: string;
-}
+// MarketInput is imported, remove local definition
+// interface MarketInput { ... }
 
 interface CreateCombinedPayload {
   chainId: string;
@@ -103,7 +95,7 @@ interface CreateCombinedPayload {
   factoryAddress: string;
   resourceId?: number;
   isCumulative?: boolean;
-  markets: MarketInput[];
+  markets: Omit<MarketInput, 'id'>[]; // Send markets without client-side id
   signature: `0x${string}` | undefined;
   signatureTimestamp: number;
 }
@@ -140,10 +132,13 @@ const marketParamsSchema = z.object({
     .refine(isAddress, 'Invalid Optimistic Oracle V3 Address'),
 });
 
+// Updated marketSchema to align with imported MarketInput for validation
+// This schema is for individual market objects within the form.
 const marketSchema = z
   .object({
+    // id is client-side, not validated here for API payload
     marketQuestion: z.string().trim().min(1, 'Market Question is required'),
-    optionName: z.string().trim().optional(),
+    optionName: z.string().trim().optional(), // Align with MarketInput type
     claimStatement: z.string().trim().min(1, 'Claim Statement is required'),
     startTime: z.coerce
       .number()
@@ -171,6 +166,7 @@ const marketSchema = z
     baseAssetMaxPriceTick: z.coerce
       .number()
       .int('Valid Max Price Tick is required'),
+    rules: z.string().optional(), // Align with MarketInput type
   })
   .refine((data) => data.endTime > data.startTime, {
     message: 'End Time must be after Start Time',
@@ -217,14 +213,14 @@ const combinedSchema = baseSchema.extend({
   factoryAddress: z.string().refine(isAddress, 'Invalid Factory Address'),
   resourceId: z.number().optional(),
   isCumulative: z.boolean().optional(),
-  markets: z.array(marketSchema).min(1, 'At least one market is required'),
+  markets: z.array(marketSchema).min(1, 'At least one market is required'), // Validates array of market objects
 });
 
-// Create empty market template
+// Create empty market template using imported MarketInput type
 const createEmptyMarket = (id: number): MarketInput => {
   const now = Math.floor(Date.now() / 1000);
   return {
-    id,
+    id, // For client-side list key and management
     marketQuestion: '',
     optionName: '',
     startTime: now.toString(),
@@ -233,6 +229,7 @@ const createEmptyMarket = (id: number): MarketInput => {
     baseAssetMinPriceTick: DEFAULT_MIN_PRICE_TICK,
     baseAssetMaxPriceTick: DEFAULT_MAX_PRICE_TICK,
     claimStatement: '',
+    rules: '', // Initialize optional field
   };
 };
 
@@ -286,19 +283,17 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   );
   const [isCumulative, setIsCumulative] = useState<boolean>(false);
 
-  // Markets state
+  // Markets state (uses imported MarketInput)
   const [markets, setMarkets] = useState<MarketInput[]>([createEmptyMarket(1)]);
 
   // Form state
   const [formError, setFormError] = useState<string | null>(null);
   const [activeMarketIndex, setActiveMarketIndex] = useState<number>(0);
 
-  // Initialize nonce on component mount
   useEffect(() => {
     setNonce(Math.floor(Math.random() * 1e18).toString());
   }, []);
 
-  // Update owner if network changes
   useEffect(() => {
     const isOwnerDefaultForCurrentChain =
       owner ===
@@ -320,13 +315,11 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
     }
   }, [currentChainId, connectedAddress, owner]);
 
-  // Handle market params changes
   const handleMarketParamsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setMarketParams((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle market changes
   const handleMarketChange = (
     index: number,
     field: keyof MarketInput,
@@ -334,40 +327,54 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   ) => {
     setMarkets((prevMarkets) => {
       const newMarkets = [...prevMarkets];
-      newMarkets[index] = {
-        ...newMarkets[index],
-        [field]: value,
-      };
+      // Ensure the market object exists at the index
+      if (newMarkets[index]) {
+        newMarkets[index] = {
+          ...newMarkets[index],
+          [field]: value,
+        };
+      } else {
+        // This case should ideally not happen if IDs are managed correctly
+        console.warn(`Market at index ${index} not found during update.`);
+      }
       return newMarkets;
     });
   };
 
-  // Add a new market
   const addMarket = () => {
+    // Use a unique ID, e.g., timestamp or incrementing number if more robust generation is needed
+    const newMarketId =
+      markets.length > 0 ? Math.max(...markets.map((m) => m.id)) + 1 : 1;
     setMarkets((prevMarkets) => [
       ...prevMarkets,
-      createEmptyMarket(prevMarkets.length + 1),
+      createEmptyMarket(newMarketId),
     ]);
-    setActiveMarketIndex(markets.length);
+    setActiveMarketIndex(markets.length); // Set active to the new market
   };
 
-  // Remove a market
   const removeMarket = (index: number) => {
     if (markets.length <= 1) return;
 
     setMarkets((prevMarkets) => {
-      const newMarkets = prevMarkets.filter((_, i) => i !== index);
-      // Reassign IDs
-      return newMarkets.map((market, i) => ({ ...market, id: i + 1 }));
+      // Reassign sequential IDs if necessary or keep original unique IDs
+      // For now, keeping original unique IDs is simpler after filtering.
+      // If sequential IDs (1, 2, 3...) are strictly needed after removal, map them:
+      // return newMarkets.map((market, i) => ({ ...market, id: i + 1 }));
+      return prevMarkets.filter((_, i) => i !== index);
     });
 
-    if (activeMarketIndex >= index && activeMarketIndex > 0) {
-      setActiveMarketIndex(activeMarketIndex - 1);
+    // Adjust activeMarketIndex
+    if (activeMarketIndex >= index) {
+      setActiveMarketIndex(Math.max(0, activeMarketIndex - 1));
     }
   };
 
-  // Validate form data
   const validateFormData = (): string | null => {
+    // Prepare markets for validation by removing client-side 'id'
+    const marketsToValidate = markets.map(
+      ({ id, ...marketData }) => marketData
+    );
+
     const formData = {
       owner,
       collateralAsset,
@@ -380,13 +387,11 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       category: selectedCategory,
       baseTokenName,
       quoteTokenName,
-      ...(selectedResourceId
-        ? {
-            resourceId: selectedResourceId,
-            isCumulative,
-          }
-        : {}),
-      markets,
+      ...(selectedResourceId && {
+        resourceId: selectedResourceId,
+        isCumulative,
+      }),
+      markets: marketsToValidate, // Use the version without 'id'
     };
 
     try {
@@ -402,23 +407,17 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   };
 
   const createCombinedMarketGroup = async (payload: CreateCombinedPayload) => {
-    // Call the API endpoint
     const response = await fetch(`${API_BASE_URL}/create-market-group`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-
     const data = await response.json();
-
     if (!response.ok) {
       throw new Error(
         data.message || 'Failed to create market group and markets'
       );
     }
-
     return data;
   };
 
@@ -432,18 +431,16 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       toast({
         title: 'Success',
         description: 'Market Group and Markets created successfully.',
-        variant: 'default',
       });
       queryClient.invalidateQueries({ queryKey: ['marketGroups'] });
-      onClose?.(); // Close the dialog on success
+      onClose?.();
     },
     onError: (error: Error) => {
       console.error('Error creating market group:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'An unknown error occurred',
+        description: error.message,
       });
     },
   });
@@ -463,7 +460,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       return;
     }
 
-    // Generate signature
     const timestamp = Date.now();
     let signature: `0x${string}` | undefined;
     try {
@@ -478,7 +474,8 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       return;
     }
 
-    // Prepare payload
+    const marketsForApi = markets.map(({ id, ...marketData }) => marketData);
+
     const payload: CreateCombinedPayload = {
       chainId,
       owner,
@@ -491,13 +488,11 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       baseTokenName,
       quoteTokenName,
       factoryAddress,
-      ...(selectedResourceId
-        ? {
-            resourceId: selectedResourceId,
-            isCumulative,
-          }
-        : {}),
-      markets: markets.map((m, index) => ({ ...m, id: index + 1 })), // Ensure market ID is set correctly
+      ...(selectedResourceId && {
+        resourceId: selectedResourceId,
+        isCumulative,
+      }),
+      markets: marketsForApi, // Use markets without id
       signature,
       signatureTimestamp: timestamp,
     };
@@ -510,9 +505,9 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       onSubmit={handleSubmit}
       className="space-y-6 overflow-y-auto max-h-[85vh] p-1"
     >
+      {/* Market Group Details Section - remains largely the same */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Market Group Details</h3>
-
         {/* Market Group Question */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -526,7 +521,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               required
             />
           </div>
-
           {/* Category */}
           <div className="space-y-2">
             <Label htmlFor="category">Category</Label>
@@ -546,7 +540,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               </SelectContent>
             </Select>
           </div>
-
           {/* Base Token Name Input */}
           <div className="space-y-2">
             <Label htmlFor="baseTokenName">Base Token Name</Label>
@@ -559,7 +552,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               required
             />
           </div>
-
           {/* Quote Token Name Input */}
           <div className="space-y-2">
             <Label htmlFor="quoteTokenName">Quote Token Name</Label>
@@ -573,8 +565,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             />
           </div>
         </div>
-
-        {/* Resource Selection - Full width, under token names */}
+        {/* Resource Selection */}
         <div className="space-y-2">
           <Label htmlFor="resource">Index</Label>
           <Select
@@ -598,8 +589,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             </SelectContent>
           </Select>
         </div>
-
-        {/* isCumulative toggle - only shown when a resource is selected */}
+        {/* isCumulative toggle */}
         {selectedResourceId && (
           <div className="flex items-center gap-2 py-2">
             <Label htmlFor="isCumulative" className="font-medium">
@@ -612,8 +602,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             />
           </div>
         )}
-
-        {/* Market Group Configuration */}
+        {/* Advanced Market Group Configuration Accordion - remains the same */}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="details">
             <AccordionTrigger>
@@ -645,7 +634,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                   />
                 </div>
               </div>
-
               {/* Owner, Nonce, Collateral Asset, Min Trade Size */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -695,7 +683,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                   />
                 </div>
               </div>
-
               {/* Market Parameters */}
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
@@ -706,15 +693,11 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                       key === 'bondAmount';
                     const inputType = isNumericInput ? 'number' : 'text';
                     const inputModeType = isNumericInput ? 'numeric' : 'text';
-
-                    // Replace nested ternary with more readable code
                     let placeholderText = '0x...';
-                    if (key.includes('Amount') || key.includes('Liveness')) {
+                    if (key.includes('Amount') || key.includes('Liveness'))
                       placeholderText = 'e.g., 100...';
-                    } else if (key.includes('Rate')) {
+                    else if (key.includes('Rate'))
                       placeholderText = 'e.g., 3000';
-                    }
-
                     return (
                       <div key={key} className="space-y-2">
                         <Label htmlFor={key} className="capitalize">
@@ -741,21 +724,19 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
         </Accordion>
       </div>
 
-      {/* Markets Section */}
+      {/* Markets Section - Refactored to use MarketFormFields */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-medium">Markets</h3>
           <Button type="button" variant="outline" size="sm" onClick={addMarket}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Market
+            <Plus className="h-4 w-4 mr-2" /> Add Market
           </Button>
         </div>
 
-        {/* Market Tabs */}
         <div className="flex flex-wrap gap-2 mb-4">
           {markets.map((market, index) => (
             <button
-              key={index}
+              key={market.id} // Use market.id for key
               type="button"
               className={`px-3 py-1 text-sm rounded flex items-center ${
                 activeMarketIndex === index
@@ -764,7 +745,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               }`}
               onClick={() => setActiveMarketIndex(index)}
             >
-              Market {market.id}
+              Market {index + 1} {/* Display 1-based index for user */}
               {markets.length > 1 && (
                 <Trash
                   className="h-3.5 w-3.5 ml-2 cursor-pointer"
@@ -778,187 +759,23 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
           ))}
         </div>
 
-        {/* Active Market Form */}
         {markets.map((market, index) => (
           <div
-            key={index}
-            className={`space-y-4 ${activeMarketIndex === index ? 'block' : 'hidden'}`}
+            key={market.id}
+            className={activeMarketIndex === index ? 'block' : 'hidden'}
           >
             <Card>
               <CardHeader>
-                <CardTitle>Market {market.id} Details</CardTitle>
+                <CardTitle>Market {index + 1} Details</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Market Question & Option Name */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`marketQuestion-${index}`}>
-                      Market Question
-                    </Label>
-                    <Input
-                      id={`marketQuestion-${index}`}
-                      type="text"
-                      value={market.marketQuestion}
-                      onChange={(e) =>
-                        handleMarketChange(
-                          index,
-                          'marketQuestion',
-                          e.target.value
-                        )
-                      }
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`optionName-${index}`}>Option Name</Label>
-                    <Input
-                      id={`optionName-${index}`}
-                      type="text"
-                      value={market.optionName}
-                      onChange={(e) =>
-                        handleMarketChange(index, 'optionName', e.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* Claim Statement */}
-                <div>
-                  <Label htmlFor={`claimStatement-${index}`}>
-                    Claim Statement
-                  </Label>
-                  <Input
-                    id={`claimStatement-${index}`}
-                    type="text"
-                    value={market.claimStatement}
-                    onChange={(e) =>
-                      handleMarketChange(
-                        index,
-                        'claimStatement',
-                        e.target.value
-                      )
-                    }
-                    placeholder="e.g. The average cost of gas in June 2025 (represented in gwei with 18 decimals) is "
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    This will be followed by the settlement value in UMA.
-                  </p>
-                </div>
-
-                {/* Rules */}
-                <div>
-                  <Label htmlFor={`rules-${index}`}>Rules</Label>
-                  <textarea
-                    id={`rules-${index}`}
-                    className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={market.rules || ''}
-                    onChange={(e) =>
-                      handleMarketChange(index, 'rules', e.target.value)
-                    }
-                    placeholder="Enter any specific rules or conditions for this market..."
-                  />
-                </div>
-
-                {/* Start Time & End Time */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor={`startTime-${index}`}>
-                      Start Time (Unix Timestamp)
-                    </Label>
-                    <Input
-                      id={`startTime-${index}`}
-                      type="number"
-                      value={market.startTime}
-                      onChange={(e) =>
-                        handleMarketChange(index, 'startTime', e.target.value)
-                      }
-                      required
-                      min="0"
-                      inputMode="numeric"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`endTime-${index}`}>
-                      End Time (Unix Timestamp)
-                    </Label>
-                    <Input
-                      id={`endTime-${index}`}
-                      type="number"
-                      value={market.endTime}
-                      onChange={(e) =>
-                        handleMarketChange(index, 'endTime', e.target.value)
-                      }
-                      required
-                      min="0"
-                      inputMode="numeric"
-                    />
-                  </div>
-                </div>
-
-                {/* Pricing Params */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor={`startingSqrtPriceX96-${index}`}>
-                      Starting Sqrt Price X96
-                    </Label>
-                    <Input
-                      id={`startingSqrtPriceX96-${index}`}
-                      type="text"
-                      value={market.startingSqrtPriceX96}
-                      onChange={(e) =>
-                        handleMarketChange(
-                          index,
-                          'startingSqrtPriceX96',
-                          e.target.value
-                        )
-                      }
-                      placeholder="e.g., 79228162514..."
-                      required
-                      inputMode="numeric"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`baseAssetMinPriceTick-${index}`}>
-                      Min Price Tick
-                    </Label>
-                    <Input
-                      id={`baseAssetMinPriceTick-${index}`}
-                      type="number"
-                      value={market.baseAssetMinPriceTick}
-                      onChange={(e) =>
-                        handleMarketChange(
-                          index,
-                          'baseAssetMinPriceTick',
-                          e.target.value
-                        )
-                      }
-                      placeholder="e.g., -887220"
-                      required
-                      inputMode="numeric"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor={`baseAssetMaxPriceTick-${index}`}>
-                      Max Price Tick
-                    </Label>
-                    <Input
-                      id={`baseAssetMaxPriceTick-${index}`}
-                      type="number"
-                      value={market.baseAssetMaxPriceTick}
-                      onChange={(e) =>
-                        handleMarketChange(
-                          index,
-                          'baseAssetMaxPriceTick',
-                          e.target.value
-                        )
-                      }
-                      placeholder="e.g., 887220"
-                      required
-                      inputMode="numeric"
-                    />
-                  </div>
-                </div>
+              <CardContent>
+                <MarketFormFields
+                  market={market}
+                  onMarketChange={(field, value) =>
+                    handleMarketChange(index, field, value)
+                  }
+                  marketIndex={index} // Pass index for unique field IDs
+                />
               </CardContent>
               <CardFooter className="flex justify-end space-x-2">
                 {index !== 0 && (
@@ -984,24 +801,20 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
         ))}
       </div>
 
-      {/* Submit Button */}
       <div className="mt-6">
         <Button type="submit" disabled={isPending} className="w-full">
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{' '}
           Submit Market Group & Markets
         </Button>
       </div>
 
-      {/* Status Messages */}
-      <div className="space-y-4 mt-4">
-        {formError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{formError}</AlertDescription>
-          </Alert>
-        )}
-      </div>
+      {formError && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
+      )}
     </form>
   );
 };

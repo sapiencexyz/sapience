@@ -32,6 +32,7 @@ import {
 } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
+import AddMarketDialog from './AddMarketDialog';
 import CombinedMarketDialog from './CombinedMarketDialog';
 import MarketDeployButton from './MarketDeployButton';
 import MarketGroupDeployButton from './MarketGroupDeployButton';
@@ -209,7 +210,10 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
                 marketGroupAddress={group.address as Address}
                 currentOwner={group.owner ?? undefined}
               />
-              {/* Existing buttons */}
+              <AddMarketDialog
+                marketGroupAddress={group.address as Address}
+                chainId={group.chainId}
+              />
               <Button variant="outline" size="sm" asChild>
                 <a
                   href={`/forecasting/${getChainShortName(group.chainId)}:${group.address}`}
