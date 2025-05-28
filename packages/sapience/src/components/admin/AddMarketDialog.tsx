@@ -117,7 +117,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
 
   const addMarketApiCall = async (payload: AddMarketApiPayload) => {
     // marketGroupAddress is now part of the URL
-    const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL || ''}/market-groups/${marketGroupAddress}/markets`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL || ''}/create-market-group/${marketGroupAddress}/markets`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

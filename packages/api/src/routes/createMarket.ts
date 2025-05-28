@@ -295,7 +295,7 @@ router.post('/', async (req: Request, res: Response) => {
 
 // Handler for POST /market-groups/:marketGroupAddressParam/markets
 router.post(
-  '/market-groups/:marketGroupAddressParam/markets',
+  '/:marketGroupAddressParam/markets',
   async (req: Request, res: Response) => {
     try {
       const { marketGroupAddressParam } = req.params;
@@ -343,13 +343,10 @@ router.post(
       // Find existing market group
       const marketGroup = await marketGroupRepository.findOne({
         where: {
-          // Assuming marketGroupAddressParam from URL is the factoryAddress
-          // If it's the DB ID, this needs to change.
-          // Based on AddMarketDialog, marketGroupAddress is the factory address.
-          factoryAddress: marketGroupAddressParam.toLowerCase(),
+          address: marketGroupAddressParam.toLowerCase(),
           chainId: chainId,
         },
-        relations: ['markets'], // Load existing markets to determine next marketId
+        relations: ['markets'], 
       });
 
       if (!marketGroup) {
@@ -358,10 +355,6 @@ router.post(
         });
       }
 
-      // Determine the next marketId
-      // This simple increment might not be robust if markets can be deleted
-      // or if marketId is not strictly sequential.
-      // For now, assuming marketId is sequential based on the number of existing markets.
       const nextMarketIndex = marketGroup.markets
         ? marketGroup.markets.length
         : 0;
