@@ -247,7 +247,13 @@ const Header = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Image src="/github.svg" alt="GitHub" width={14} height={14} />
+                <Image
+                  className="dark:invert"
+                  src="/github.svg"
+                  alt="GitHub"
+                  width={14}
+                  height={14}
+                />
               </a>
             </Button>
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
@@ -256,7 +262,13 @@ const Header = () => {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <Image src="/x.svg" alt="Twitter" width={12} height={12} />
+                <Image
+                  className="dark:invert"
+                  src="/x.svg"
+                  alt="Twitter"
+                  width={12}
+                  height={12}
+                />
               </a>
             </Button>
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
@@ -267,6 +279,7 @@ const Header = () => {
               >
                 <Image
                   src="/discord.svg"
+                  className="dark:invert"
                   alt="Discord"
                   width={12}
                   height={12}

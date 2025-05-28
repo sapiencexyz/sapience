@@ -187,13 +187,13 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
 
   return (
     <div className="border rounded-lg shadow-sm">
-      <header className="flex items-center justify-between p-4 border-b bg-gray-50 rounded-t-lg">
-        <h2 className="text-lg font-semibold">
-          {group.question ||
-            (group.address
-              ? `Group: ${group.address}`
-              : `Group: Draft ID ${group.id}`)}
-        </h2>
+      <header className="flex items-center justify-between p-4 border-b bg-secondary rounded-t-lg">
+        <div>
+          <h2 className="text-lg font-semibold">{group.question}</h2>
+          <div className="text-xs mt-1">
+            {group.chainId}:{group.address}
+          </div>
+        </div>
         {!group.address && (
           <MarketGroupHeaderDetails
             group={group}
@@ -210,7 +210,7 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
                 currentOwner={group.owner ?? undefined}
               />
               {/* Existing buttons */}
-              <Button variant="secondary" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild>
                 <a
                   href={`/forecasting/${getChainShortName(group.chainId)}:${group.address}`}
                   target="_blank"
