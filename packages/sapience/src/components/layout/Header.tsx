@@ -63,7 +63,7 @@ const NavLinks = ({
   };
 
   return (
-    <nav className="flex flex-col gap-3 w-full my-60 pl-4">
+    <nav className="flex flex-col gap-3 w-full my-32 lg:my-60 pl-4">
       <Link href="/forecasting" passHref className="flex w-fit">
         <Button
           variant="ghost"

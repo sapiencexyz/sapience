@@ -36,7 +36,7 @@ export default function AgentsHeroClientContent() {
 
   return (
     <div>
-      <h1 className="text-5xl font-normal py-40 text-center">
+      <h1 className="text-3xl lg:text-5xl font-normal py-40 text-center">
         Use Agents with Forecasting Tools
       </h1>
       <div className="absolute inset-0 pointer-events-none top-0 left-0 w-full h-100dvh -scale-y-100 -translate-y-1/4 opacity-50 dark:opacity-75">
