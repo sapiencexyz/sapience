@@ -346,7 +346,7 @@ router.post(
           address: marketGroupAddressParam.toLowerCase(),
           chainId: chainId,
         },
-        relations: ['markets'], 
+        relations: ['markets'],
       });
 
       if (!marketGroup) {
