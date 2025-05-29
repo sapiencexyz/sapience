@@ -71,7 +71,12 @@ const GET_RESOURCE_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandlesFromCache(slug: $slug, from: $from, to: $to, interval: $interval) {
+    resourceCandlesFromCache(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
       data {
         timestamp
         close # Assuming we only need close for the line
@@ -283,11 +288,10 @@ const parseCandleResponses = (
   // Parse optional responses
   const resourceCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[] =
     resourceSlug && resourceResponse
-      ? (parseCandleResponse<ResourceCandlesQueryResponse, 'resourceCandlesFromCache'>(
-          resourceResponse,
-          'resourceCandlesFromCache',
-          'resource'
-        )?.data ?? [])
+      ? (parseCandleResponse<
+          ResourceCandlesQueryResponse,
+          'resourceCandlesFromCache'
+        >(resourceResponse, 'resourceCandlesFromCache', 'resource')?.data ?? [])
       : [];
 
   const trailingAvgCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[] =
