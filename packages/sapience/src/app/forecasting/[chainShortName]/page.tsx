@@ -11,7 +11,7 @@ import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
@@ -47,7 +47,7 @@ const DynamicPredictForm = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+      <div className="flex justify-center items-center py-24 w-full">
         <LottieLoader width={32} height={32} />
       </div>
     ),
@@ -111,7 +111,7 @@ const ForecastingForm = ({
   }
 
   return (
-    <div className="bg-card p-6 rounded shadow-sm border flex-1">
+    <div className="bg-card p-6 rounded shadow-sm border">
       <h2 className="text-3xl font-normal mb-4">Forecast</h2>
       {/* Tabs Section */}
       <div className="space-y-2 mt-4">
@@ -170,6 +170,10 @@ const MarketGroupPageContent = () => {
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
 
+  // Refs for height synchronization
+  const leftColumnRef = useRef<HTMLDivElement>(null);
+  const rightColumnRef = useRef<HTMLDivElement>(null);
+
   // Local trigger that will be bumped whenever the user submits a new wager
   const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
 
@@ -197,6 +201,44 @@ const MarketGroupPageContent = () => {
     address: address || '',
     marketAddress,
   });
+
+  // Set up ResizeObserver to sync column heights
+  useEffect(() => {
+    if (!leftColumnRef.current || !rightColumnRef.current) return;
+
+    const leftColumn = leftColumnRef.current;
+    const rightColumn = rightColumnRef.current;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === rightColumn) {
+          const rightHeight = entry.contentRect.height;
+          leftColumn.style.height = `${rightHeight}px`;
+        }
+      }
+    });
+
+    resizeObserver.observe(rightColumn);
+
+    // Initial height sync with a small delay to account for content loading
+    const syncHeight = () => {
+      const rightHeight = rightColumn.offsetHeight;
+      if (rightHeight > 0) {
+        leftColumn.style.height = `${rightHeight}px`;
+      }
+    };
+
+    // Immediate sync
+    syncHeight();
+
+    // Delayed sync for dynamic content
+    const timeoutId = setTimeout(syncHeight, 100);
+
+    return () => {
+      resizeObserver.disconnect();
+      clearTimeout(timeoutId);
+    };
+  }, []);
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -251,11 +293,11 @@ const MarketGroupPageContent = () => {
         {/* Main content layout: Apply gap-6 and px-3 from user example */}
         <div className="flex flex-col gap-6 px-3">
           {/* Row 1: Chart/List + Form */}
-          <div className="flex flex-col md:flex-row gap-12">
+          <div className="flex flex-col lg:flex-row gap-12">
             {/* Left Column (Chart/List) */}
-            <div className="flex flex-col w-full md:flex-1">
-              <div className="border border-border rounded flex flex-col flex-1">
-                <div className="flex-1 min-h-0">
+            <div ref={leftColumnRef} className="flex flex-col w-full md:flex-1">
+              <div className="border border-border rounded flex flex-col flex-1 shadow-sm">
+                <div className="flex-1 min-h-[400px]">
                   <MarketGroupChart
                     chainShortName={chainShortName as string}
                     marketAddress={marketAddress}
@@ -279,7 +321,7 @@ const MarketGroupPageContent = () => {
             </div>
 
             {/* Form (Right Column) */}
-            <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
+            <div ref={rightColumnRef} className="w-full lg:w-[340px]">
               <ForecastingForm
                 marketGroupData={marketGroupData!}
                 marketClassification={marketClassification!}
