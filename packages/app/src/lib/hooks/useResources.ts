@@ -50,7 +50,12 @@ const LATEST_RESOURCE_PRICE_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandlesFromCache(slug: $slug, from: $from, to: $to, interval: $interval) {
+    resourceCandlesFromCache(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
       data {
         timestamp
         close

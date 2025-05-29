@@ -146,7 +146,12 @@ const RESOURCE_CANDLES_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandlesFromCache(slug: $slug, from: $from, to: $to, interval: $interval) {
+    resourceCandlesFromCache(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
       data {
         timestamp
         close
@@ -450,10 +455,12 @@ export const useChart = ({
           },
         });
 
-        return data.resourceTrailingAverageCandlesFromCache.data.map((candle: any) => ({
-          timestamp: timeToLocal(candle.timestamp * 1000),
-          price: Number(formatUnits(BigInt(candle.close), 9)),
-        }));
+        return data.resourceTrailingAverageCandlesFromCache.data.map(
+          (candle: any) => ({
+            timestamp: timeToLocal(candle.timestamp * 1000),
+            price: Number(formatUnits(BigInt(candle.close), 9)),
+          })
+        );
       },
       enabled: !!resourceSlug && !contextMarket?.isCumulative,
     });
