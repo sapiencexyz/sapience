@@ -137,17 +137,15 @@ export abstract class BaseCandleCacheBuilder {
         const price = prices[batchIdx];
 
         // Add it to the trailing avg history
-        for (const trailingAvgTime of CANDLE_CACHE_CONFIG.trailingAvgTime) {
-          this.trailingAvgHistory.addPriceAndGetSums(
-            price.resource.slug,
-            trailingAvgTime,
-            {
-              timestamp: price.timestamp,
-              used: price.used,
-              fee: price.feePaid,
-            }
-          );
-        }
+        this.trailingAvgHistory.addPrice(
+          price.resource.slug,
+          {
+            timestamp: price.timestamp,
+            used: price.used,
+            fee: price.feePaid,
+          },
+          CANDLE_CACHE_CONFIG.trailingAvgTime
+        );
 
         // Process the item for all candle types
         await this.resourceCandleProcessor.processResourcePrice(price);

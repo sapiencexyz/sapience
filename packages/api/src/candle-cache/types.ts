@@ -17,3 +17,12 @@ export type PriceDatapoint = {
   used: string;
   fee: string;
 };
+
+export interface ResourceHistory {
+  prices: PriceDatapoint[];
+  pointers: Map<number, number>; // trailingAvgWindowTime -> index in prices array
+  sums: Map<
+    number,
+    { sumUsed: bigint; sumFeePaid: bigint; startOfTrailingWindow: number }
+  >; // trailingAvgWindowTime -> sums
+}
