@@ -37,6 +37,7 @@ export function useModifyTrade({
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [processingTx, setProcessingTx] = useState(false);
+  const [isClosingPosition, setIsClosingPosition] = useState(false);
 
   // Use token approval hook
   const {
@@ -205,16 +206,62 @@ export function useModifyTrade({
     }
   };
 
+  // Function to close position (sets size to 0)
+  const closePosition = useCallback(async (): Promise<void> => {
+    if (processingTx) return;
+    if (!enabled || !marketAddress || !marketAbi) {
+      console.error('Missing required parameters for closing position');
+      setError(new Error('Invalid parameters for position closure'));
+      return;
+    }
+
+    setProcessingTx(true);
+    setIsClosingPosition(true);
+    setError(null);
+
+    try {
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60); // 30 minutes deadline
+
+      // Close position by setting size to 0
+      const hash = await writeContractAsync({
+        address: marketAddress,
+        abi: marketAbi,
+        functionName: 'modifyTraderPosition',
+        args: [positionId, BigInt(0), BigInt(0), deadline], // size = 0, no collateral delta needed for closing
+        chainId,
+      });
+      setTxHash(hash);
+    } catch (err) {
+      console.error('Error in closePosition:', err);
+      setError(
+        err instanceof Error ? err : new Error('Failed to close position')
+      );
+      setProcessingTx(false);
+      setIsClosingPosition(false);
+    }
+  }, [
+    enabled,
+    marketAddress,
+    marketAbi,
+    positionId,
+    chainId,
+    writeContractAsync,
+    processingTx,
+  ]);
+
   // Reset processing state on success
   useEffect(() => {
     if (isSuccess) {
       setProcessingTx(false);
+      setIsClosingPosition(false);
     }
   }, [isSuccess]);
 
   return {
     modifyTrade,
+    closePosition,
     isLoading: isPending || isConfirming || processingTx,
+    isClosingPosition,
     isSuccess,
     isError: !!error,
     error,
