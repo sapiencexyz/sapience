@@ -11,7 +11,7 @@ import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
@@ -170,10 +170,6 @@ const MarketGroupPageContent = () => {
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
 
-  // Refs for height synchronization
-  const leftColumnRef = useRef<HTMLDivElement>(null);
-  const rightColumnRef = useRef<HTMLDivElement>(null);
-
   // Local trigger that will be bumped whenever the user submits a new wager
   const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
 
@@ -201,44 +197,6 @@ const MarketGroupPageContent = () => {
     address: address || '',
     marketAddress,
   });
-
-  // Set up ResizeObserver to sync column heights
-  useEffect(() => {
-    if (!leftColumnRef.current || !rightColumnRef.current) return;
-
-    const leftColumn = leftColumnRef.current;
-    const rightColumn = rightColumnRef.current;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        if (entry.target === rightColumn) {
-          const rightHeight = entry.contentRect.height;
-          leftColumn.style.height = `${rightHeight}px`;
-        }
-      }
-    });
-
-    resizeObserver.observe(rightColumn);
-
-    // Initial height sync with a small delay to account for content loading
-    const syncHeight = () => {
-      const rightHeight = rightColumn.offsetHeight;
-      if (rightHeight > 0) {
-        leftColumn.style.height = `${rightHeight}px`;
-      }
-    };
-
-    // Immediate sync
-    syncHeight();
-
-    // Delayed sync for dynamic content
-    const timeoutId = setTimeout(syncHeight, 100);
-
-    return () => {
-      resizeObserver.disconnect();
-      clearTimeout(timeoutId);
-    };
-  }, []);
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -295,7 +253,7 @@ const MarketGroupPageContent = () => {
           {/* Row 1: Chart/List + Form */}
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Left Column (Chart/List) */}
-            <div ref={leftColumnRef} className="flex flex-col w-full md:flex-1">
+            <div className="flex flex-col w-full md:flex-1">
               <div className="border border-border rounded flex flex-col flex-1 shadow-sm">
                 <div className="flex-1 min-h-[400px]">
                   <MarketGroupChart
@@ -321,7 +279,7 @@ const MarketGroupPageContent = () => {
             </div>
 
             {/* Form (Right Column) */}
-            <div ref={rightColumnRef} className="w-full lg:w-[340px]">
+            <div className="w-full lg:w-[340px]">
               <ForecastingForm
                 marketGroupData={marketGroupData!}
                 marketClassification={marketClassification!}
