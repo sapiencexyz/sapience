@@ -192,7 +192,10 @@ const MarketGroupContainer: React.FC<{ group: EnrichedMarketGroup }> = ({
         <div>
           <h2 className="text-lg font-semibold">{group.question}</h2>
           <div className="text-xs mt-1">
-            {group.chainId}:{group.address}
+            <div>
+              {group.chainId}:{group.address}
+            </div>
+            {group.owner && <div>Owner: {group.owner}</div>}
           </div>
         </div>
         {!group.address && (
