@@ -6,14 +6,14 @@ import type React from 'react';
 import { useEffect } from 'react';
 import type { Address } from 'viem';
 
-import { usePositions } from '~/hooks/graphql/usePositions';
-import { usePredictions } from '~/hooks/graphql/usePredictions';
-import { SCHEMA_UID } from '~/lib/constants/eas';
 import ErrorState from '../profile/ErrorState'; // Assuming similar loading/error components
 import LoadingState from '../profile/LoadingState'; // Assuming similar loading/error components
 import LpPositionsTable from '../profile/LpPositionsTable';
 import PredictionPositionsTable from '../profile/PredictionPositionsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
+import { usePositions } from '~/hooks/graphql/usePositions';
+import { usePredictions } from '~/hooks/graphql/usePredictions';
+import { SCHEMA_UID } from '~/lib/constants/eas';
 
 interface UserPositionsTableProps {
   account: Address;
