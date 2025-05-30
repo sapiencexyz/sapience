@@ -47,7 +47,7 @@ const DynamicPredictForm = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex justify-center items-center min-h-[100dvh] w-full">
+      <div className="flex justify-center items-center py-24 w-full">
         <LottieLoader width={32} height={32} />
       </div>
     ),
@@ -111,7 +111,7 @@ const ForecastingForm = ({
   }
 
   return (
-    <div className="bg-card p-6 rounded shadow-sm border flex-1">
+    <div className="bg-card p-6 rounded shadow-sm border">
       <h2 className="text-3xl font-normal mb-4">Forecast</h2>
       {/* Tabs Section */}
       <div className="space-y-2 mt-4">
@@ -251,11 +251,11 @@ const MarketGroupPageContent = () => {
         {/* Main content layout: Apply gap-6 and px-3 from user example */}
         <div className="flex flex-col gap-6 px-3">
           {/* Row 1: Chart/List + Form */}
-          <div className="flex flex-col md:flex-row gap-12">
+          <div className="flex flex-col lg:flex-row gap-12">
             {/* Left Column (Chart/List) */}
             <div className="flex flex-col w-full md:flex-1">
-              <div className="border border-border rounded flex flex-col flex-1">
-                <div className="flex-1 min-h-0">
+              <div className="border border-border rounded flex flex-col flex-1 shadow-sm">
+                <div className="flex-1 min-h-[400px]">
                   <MarketGroupChart
                     chainShortName={chainShortName as string}
                     marketAddress={marketAddress}
@@ -279,7 +279,7 @@ const MarketGroupPageContent = () => {
             </div>
 
             {/* Form (Right Column) */}
-            <div className="w-full md:w-[340px] mt-8 md:mt-0 flex flex-col">
+            <div className="w-full lg:w-[340px]">
               <ForecastingForm
                 marketGroupData={marketGroupData!}
                 marketClassification={marketClassification!}

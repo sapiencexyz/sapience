@@ -41,16 +41,16 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
 
   if (isExpired && !isSettled) {
     return (
-      <div className="rounded-lg bg-secondary p-6 text-center">
-        <div className="flex flex-col items-center justify-center space-y-4">
+      <div className="rounded-lg bg-secondary p-6 text-center h-full">
+        <div className="flex flex-col items-center justify-center space-y-2 h-full">
           <div className="py-2">
             <LottieLoader width={60} height={60} />
           </div>
           <h3 className="text-xl font-medium">Market Awaiting Settlement</h3>
-          <p className="text-muted-foreground">
-            This market has expired and is currently awaiting settlement by the
-            oracle. Once settled, you will be able to view the results and claim
-            any winnings.
+          <p className="text-muted-foreground text-sm">
+            This market has closed and is currently awaiting settlement by the
+            oracle. Once settled, you will be able to view the results and
+            settle your positions.
           </p>
         </div>
       </div>
