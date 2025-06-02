@@ -3,12 +3,16 @@ import { LogData } from '../interfaces';
 import { EventType } from '../interfaces';
 import { formatUnits } from 'viem';
 import { marketGroupRepository } from '../db';
-import { truncateAddress } from '../utils/utils';
+import {
+  truncateAddress,
+  formatToFirstSignificantDecimal,
+} from '../utils/utils';
 import * as Chains from 'viem/chains';
 
 const DISCORD_WEBHOOK_URLS = process.env.DISCORD_WEBHOOK_URLS; // Comma-separated list
 
 const webhookClients: WebhookClient[] = [];
+const sapienceProfileURL = 'https://www.sapience.xyz/profile/';
 
 if (DISCORD_WEBHOOK_URLS) {
   const urls = DISCORD_WEBHOOK_URLS.split(',')
@@ -64,18 +68,15 @@ export const alertEvent = async (
           BigInt(String(collateralAmount)),
           18
         );
-        const collateralDisplay = Number(formattedCollateral).toLocaleString(
-          'en-US',
-          {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 4,
-          }
+        const collateralDisplay = formatToFirstSignificantDecimal(
+          Number(formattedCollateral)
         );
 
         const senderAddress = truncateAddress(
           String(logData.args.sender || '')
         );
-        title = `${senderAddress} traded ${collateralDisplay} ${collateralSymbol} in "${questionName}?"`;
+        const fullSenderAddress = String(logData.args.sender || '');
+        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) traded ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${logData.topics[3]})`;
         break;
       }
 
@@ -103,18 +104,15 @@ export const alertEvent = async (
           BigInt(String(logData.args.deltaCollateral || '0')),
           18
         );
-        const collateralDisplay = Number(formattedCollateral).toLocaleString(
-          'en-US',
-          {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 4,
-          }
+        const collateralDisplay = formatToFirstSignificantDecimal(
+          Number(formattedCollateral)
         );
 
         const senderAddress = truncateAddress(
           String(logData.args.sender || '')
         );
-        title = `${senderAddress} LPed ${collateralDisplay} ${collateralSymbol} in "${questionName}?"`;
+        const fullSenderAddress = String(logData.args.sender || '');
+        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) LPed ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${logData.topics[3]})`;
         break;
       }
       default:

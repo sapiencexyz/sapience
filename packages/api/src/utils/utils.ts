@@ -557,3 +557,21 @@ export function createResilientProcess<T>(
 export const truncateAddress = (address: string) => {
   return address.slice(0, 6) + '...' + address.slice(-4);
 };
+
+export const formatToFirstSignificantDecimal = (value: number): string => {
+  if (value === 0) return '0';
+  if (Math.abs(value) >= 1) {
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  const absValue = Math.abs(value);
+  const decimalPlaces = Math.max(1, Math.ceil(-Math.log10(absValue)) + 1);
+
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: Math.min(decimalPlaces, 18),
+  });
+};
