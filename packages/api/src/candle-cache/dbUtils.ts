@@ -42,7 +42,9 @@ export async function setParam(paramName: string, paramValue: number) {
   await cacheParamRepository.save(config);
 }
 
-export async function getStringParam(paramName: string): Promise<string | null> {
+export async function getStringParam(
+  paramName: string
+): Promise<string | null> {
   const config = await cacheParamRepository.findOne({
     where: { paramName },
   });
@@ -52,7 +54,10 @@ export async function getStringParam(paramName: string): Promise<string | null> 
   return config.paramValueString;
 }
 
-export async function setStringParam(paramName: string, paramValue: string | null) {
+export async function setStringParam(
+  paramName: string,
+  paramValue: string | null
+) {
   let config = await cacheParamRepository.findOne({ where: { paramName } });
   if (!config) {
     config = new CacheParam();

@@ -34,13 +34,13 @@ export class CandleCacheStatusManager {
   private async getBuilderStatus(ipcKey: string): Promise<ProcessStatus> {
     try {
       const statusString = await getStringParam(ipcKey);
-      
+
       if (!statusString) {
         return { isActive: false };
       }
 
       const storedStatus = JSON.parse(statusString);
-      
+
       return {
         isActive: storedStatus.isActive || false,
         processType: storedStatus.processType,
@@ -58,11 +58,15 @@ export class CandleCacheStatusManager {
   }
 
   public async getCandleCacheBuilderStatus(): Promise<ProcessStatus> {
-    return this.getBuilderStatus(CANDLE_CACHE_IPC_KEYS.candleCacheBuilderStatus);
+    return this.getBuilderStatus(
+      CANDLE_CACHE_IPC_KEYS.candleCacheBuilderStatus
+    );
   }
 
   public async getCandleCacheReBuilderStatus(): Promise<ProcessStatus> {
-    return this.getBuilderStatus(CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus);
+    return this.getBuilderStatus(
+      CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus
+    );
   }
 
   public async getAllBuildersStatus(): Promise<AllBuildersStatus> {
@@ -81,4 +85,4 @@ export class CandleCacheStatusManager {
   public async getStatus(): Promise<ProcessStatus> {
     return this.getCandleCacheReBuilderStatus();
   }
-} 
+}

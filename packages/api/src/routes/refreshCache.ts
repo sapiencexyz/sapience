@@ -131,7 +131,7 @@ router.get(
 
       const processManager = CandleCacheProcessManager.getInstance();
       const result = await processManager.startRebuildAllCandles();
-      
+
       if (result.success) {
         console.log('Candle Cache Refresh Process Started');
         res.json({ success: true, message: result.message });
@@ -175,10 +175,11 @@ router.get(
 
     try {
       console.log(`Starting Candle Cache Refresh for ${resourceSlug}`);
-      
+
       const processManager = CandleCacheProcessManager.getInstance();
-      const result = await processManager.startRebuildResourceCandles(resourceSlug);
-      
+      const result =
+        await processManager.startRebuildResourceCandles(resourceSlug);
+
       if (result.success) {
         console.log(`Candle Cache Refresh Process Started for ${resourceSlug}`);
         res.json({ success: true, message: result.message });

@@ -35,6 +35,18 @@ export enum CandleCacheReBuilderStatus {
   PROCESSING = 'processing',
 }
 
+export interface ProcessStatus {
+  isActive: boolean;
+  processType?: string;
+  resourceSlug?: string;
+  startTime?: number;
+  builderStatus?: {
+    status: string;
+    description: string;
+    timestamp: number;
+  };
+}
+
 export abstract class BaseCandleCacheBuilder {
   protected runtimeCandles: RuntimeCandleStore;
   protected trailingAvgHistory: TrailingAvgHistoryStore;
@@ -84,7 +96,7 @@ export abstract class BaseCandleCacheBuilder {
       // Get existing process status to preserve process information
       const statusKey = this.getStatusIPCKey();
       const existingStatusString = await getStringParam(statusKey);
-      let processStatus: any = {
+      let processStatus: ProcessStatus = {
         isActive: false,
         builderStatus: {
           status: this.status,
@@ -109,7 +121,7 @@ export abstract class BaseCandleCacheBuilder {
           });
         }
       }
-      
+
       await setStringParam(statusKey, JSON.stringify(processStatus));
     } catch (error) {
       log({
@@ -119,7 +131,10 @@ export abstract class BaseCandleCacheBuilder {
     }
   }
 
-  private async setStatus(status: CandleCacheReBuilderStatus, description: string): Promise<void> {
+  private async setStatus(
+    status: CandleCacheReBuilderStatus,
+    description: string
+  ): Promise<void> {
     this.status = status;
     this.description = description;
     await this.updateStatusInIPC();
@@ -140,12 +155,12 @@ export abstract class BaseCandleCacheBuilder {
       message: `step 1: process resource prices from ${correctedInitialTimestamp} (${initialTimestamp})`,
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
-    
+
     await this.setStatus(
       CandleCacheReBuilderStatus.PROCESSING,
       `process resource prices from ${correctedInitialTimestamp} (${initialTimestamp})`
     );
-    
+
     initialTimestamp = correctedInitialTimestamp;
 
     const totalResourcePrices = await this.getResourcePricesCountFn({
@@ -164,7 +179,7 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
-      
+
       await this.setStatus(
         CandleCacheReBuilderStatus.PROCESSING,
         `resource prices batch: ${iter}/${totalBatches} - step 1`
@@ -182,7 +197,7 @@ export abstract class BaseCandleCacheBuilder {
           prefix: CANDLE_CACHE_CONFIG.logPrefix,
           indent: 2,
         });
-        
+
         await this.setStatus(
           CandleCacheReBuilderStatus.PROCESSING,
           `resource prices batch is empty: ${iter}/${totalBatches} - step 2`
@@ -195,7 +210,7 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
-      
+
       await this.setStatus(
         CandleCacheReBuilderStatus.PROCESSING,
         `resource prices batch: ${iter}/${totalBatches} - step 2, process the batch of size: ${prices.length}`
@@ -212,7 +227,7 @@ export abstract class BaseCandleCacheBuilder {
             prefix: CANDLE_CACHE_CONFIG.logPrefix,
             indent: 4,
           });
-          
+
           await this.setStatus(
             CandleCacheReBuilderStatus.PROCESSING,
             `resource prices batch: ${iter}/${totalBatches} - step 2: processing the batch of size: ${prices.length} - ${batchIdx}/${prices.length}`
@@ -252,7 +267,7 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
-      
+
       await this.setStatus(
         CandleCacheReBuilderStatus.PROCESSING,
         `resource prices batch: ${iter}/${totalBatches} - step 3: done processing the batch in ${batchDuration} seconds`
@@ -265,7 +280,7 @@ export abstract class BaseCandleCacheBuilder {
         initialTimestamp
       );
     }
-    
+
     await this.setStatus(
       CandleCacheReBuilderStatus.IDLE,
       'resource prices processing completed'
@@ -277,7 +292,7 @@ export abstract class BaseCandleCacheBuilder {
       message: 'step 1: process market prices',
       prefix: CANDLE_CACHE_CONFIG.logPrefix,
     });
-    
+
     await this.setStatus(
       CandleCacheReBuilderStatus.PROCESSING,
       `process market prices`
@@ -297,7 +312,7 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
-      
+
       await this.setStatus(
         CandleCacheReBuilderStatus.PROCESSING,
         `market prices batch: ${iter}/${totalBatches} - step 1`
@@ -315,7 +330,7 @@ export abstract class BaseCandleCacheBuilder {
           prefix: CANDLE_CACHE_CONFIG.logPrefix,
           indent: 2,
         });
-        
+
         await this.setStatus(
           CandleCacheReBuilderStatus.PROCESSING,
           `market prices batch is empty: ${iter}/${totalBatches} - step 2`
@@ -328,7 +343,7 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
-      
+
       await this.setStatus(
         CandleCacheReBuilderStatus.PROCESSING,
         `market prices batch: ${iter}/${totalBatches} - step 2, process the batch of size: ${prices.length}`
@@ -344,7 +359,7 @@ export abstract class BaseCandleCacheBuilder {
             prefix: CANDLE_CACHE_CONFIG.logPrefix,
             indent: 4,
           });
-          
+
           await this.setStatus(
             CandleCacheReBuilderStatus.PROCESSING,
             `market prices batch: ${iter}/${totalBatches} - step 2: processing the batch of size: ${prices.length} - ${batchIdx}/${prices.length}`
@@ -363,7 +378,7 @@ export abstract class BaseCandleCacheBuilder {
         prefix: CANDLE_CACHE_CONFIG.logPrefix,
         indent: 2,
       });
-      
+
       await this.setStatus(
         CandleCacheReBuilderStatus.PROCESSING,
         `market prices batch: ${iter}/${totalBatches} - step 3: done processing the batch in ${batchDuration} seconds`
@@ -378,7 +393,7 @@ export abstract class BaseCandleCacheBuilder {
         );
       }
     }
-    
+
     await this.setStatus(
       CandleCacheReBuilderStatus.IDLE,
       'market prices processing completed'
@@ -390,7 +405,7 @@ export abstract class BaseCandleCacheBuilder {
       CandleCacheReBuilderStatus.PROCESSING,
       'save all runtime candles'
     );
-    
+
     // Save all market candles
     const marketIndices = this.runtimeCandles.getAllMarketIndices();
     for (const marketIdx of marketIndices) {
@@ -430,7 +445,7 @@ export abstract class BaseCandleCacheBuilder {
         }
       }
     }
-    
+
     await this.setStatus(
       CandleCacheReBuilderStatus.IDLE,
       'save all runtime candles completed'

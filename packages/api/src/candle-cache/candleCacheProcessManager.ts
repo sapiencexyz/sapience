@@ -1,4 +1,3 @@
-import { spawn, ChildProcess } from 'child_process';
 import { CANDLE_CACHE_IPC_KEYS, REBUILD_PROCESS_TYPES } from './config';
 import { getStringParam, setStringParam } from './dbUtils';
 import { CandleCacheReBuilder } from './candleCacheReBuilder';
@@ -29,7 +28,6 @@ interface StoredProcessStatus {
 
 export class CandleCacheProcessManager {
   private static instance: CandleCacheProcessManager;
-  private activeProcess: ChildProcess | null = null;
   private candleCacheReBuilder: CandleCacheReBuilder;
   private initialized = false;
 
@@ -48,14 +46,20 @@ export class CandleCacheProcessManager {
     if (!this.initialized) {
       try {
         // Check if there's a stale process state and clean it up
-        const statusString = await getStringParam(CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus);
-        
+        const statusString = await getStringParam(
+          CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus
+        );
+
         if (statusString) {
           try {
             const storedStatus: StoredProcessStatus = JSON.parse(statusString);
-            
+
             // If a process was marked active for more than 1 hour, consider it stale
-            if (storedStatus.isActive && storedStatus.startTime && (Date.now() - storedStatus.startTime > 3600000)) {
+            if (
+              storedStatus.isActive &&
+              storedStatus.startTime &&
+              Date.now() - storedStatus.startTime > 3600000
+            ) {
               log({
                 message: 'Cleaning up stale process state',
                 prefix: '[PROCESS_MANAGER]',
@@ -70,7 +74,7 @@ export class CandleCacheProcessManager {
             await this.clearProcessParams();
           }
         }
-        
+
         this.initialized = true;
       } catch (error) {
         log({
@@ -84,21 +88,25 @@ export class CandleCacheProcessManager {
 
   public async getStatus(): Promise<ProcessStatus> {
     await this.ensureInitialized();
-    
-    const statusString = await getStringParam(CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus);
-    
+
+    const statusString = await getStringParam(
+      CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus
+    );
+
     if (!statusString) {
       return { isActive: false };
     }
 
     try {
       const storedStatus: StoredProcessStatus = JSON.parse(statusString);
-      
+
       // Get the most recent builder status from IPC (this is updated by BaseCandleCacheBuilder)
-      const builderStatus = storedStatus.builderStatus ? {
-        status: storedStatus.builderStatus.status,
-        description: storedStatus.builderStatus.description,
-      } : undefined;
+      const builderStatus = storedStatus.builderStatus
+        ? {
+            status: storedStatus.builderStatus.status,
+            description: storedStatus.builderStatus.description,
+          }
+        : undefined;
 
       return {
         isActive: storedStatus.isActive || false,
@@ -112,16 +120,19 @@ export class CandleCacheProcessManager {
         message: `Failed to parse process status: ${parseError}`,
         prefix: '[PROCESS_MANAGER]',
       });
-      
+
       // Clear invalid status and return inactive
       await this.clearProcessParams();
       return { isActive: false };
     }
   }
 
-  public async startRebuildAllCandles(): Promise<{ success: boolean; message: string }> {
+  public async startRebuildAllCandles(): Promise<{
+    success: boolean;
+    message: string;
+  }> {
     await this.ensureInitialized();
-    
+
     const status = await this.getStatus();
     if (status.isActive) {
       return {
@@ -132,7 +143,7 @@ export class CandleCacheProcessManager {
 
     try {
       await this.setProcessParams(REBUILD_PROCESS_TYPES.ALL_CANDLES);
-      
+
       // Start the process in the background
       this.runRebuildProcess(async () => {
         await this.candleCacheReBuilder.rebuildAllCandles();
@@ -156,9 +167,11 @@ export class CandleCacheProcessManager {
     }
   }
 
-  public async startRebuildResourceCandles(resourceSlug: string): Promise<{ success: boolean; message: string }> {
+  public async startRebuildResourceCandles(
+    resourceSlug: string
+  ): Promise<{ success: boolean; message: string }> {
     await this.ensureInitialized();
-    
+
     const status = await this.getStatus();
     if (status.isActive) {
       return {
@@ -168,8 +181,11 @@ export class CandleCacheProcessManager {
     }
 
     try {
-      await this.setProcessParams(REBUILD_PROCESS_TYPES.RESOURCE_CANDLES, resourceSlug);
-      
+      await this.setProcessParams(
+        REBUILD_PROCESS_TYPES.RESOURCE_CANDLES,
+        resourceSlug
+      );
+
       // Start the process in the background
       this.runRebuildProcess(async () => {
         await this.candleCacheReBuilder.rebuildCandlesForResource(resourceSlug);
@@ -193,7 +209,10 @@ export class CandleCacheProcessManager {
     }
   }
 
-  private async setProcessParams(processType: string, resourceSlug?: string): Promise<void> {
+  private async setProcessParams(
+    processType: string,
+    resourceSlug?: string
+  ): Promise<void> {
     const processStatus: StoredProcessStatus = {
       isActive: true,
       processType,
@@ -206,7 +225,10 @@ export class CandleCacheProcessManager {
       },
     };
 
-    await setStringParam(CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus, JSON.stringify(processStatus));
+    await setStringParam(
+      CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus,
+      JSON.stringify(processStatus)
+    );
   }
 
   private async clearProcessParams(): Promise<void> {
@@ -219,7 +241,10 @@ export class CandleCacheProcessManager {
       },
     };
 
-    await setStringParam(CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus, JSON.stringify(processStatus));
+    await setStringParam(
+      CANDLE_CACHE_IPC_KEYS.candleCacheReBuilderStatus,
+      JSON.stringify(processStatus)
+    );
   }
 
   private runRebuildProcess(rebuildFn: () => Promise<void>): void {
@@ -230,9 +255,9 @@ export class CandleCacheProcessManager {
           message: 'Starting independent candle cache rebuild process',
           prefix: '[PROCESS_MANAGER]',
         });
-        
+
         await rebuildFn();
-        
+
         log({
           message: 'Candle cache rebuild process completed successfully',
           prefix: '[PROCESS_MANAGER]',
@@ -255,4 +280,4 @@ export class CandleCacheProcessManager {
       }
     });
   }
-} 
+}
