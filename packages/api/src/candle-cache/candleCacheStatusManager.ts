@@ -1,20 +1,7 @@
+import { ProcessStatus } from './baseCandleCacheBuilder';
 import { CANDLE_CACHE_IPC_KEYS } from './config';
 import { getStringParam } from './dbUtils';
 import { log } from 'src/utils/logs';
-
-export interface BuilderStatus {
-  status: string;
-  description: string;
-  timestamp: number;
-}
-
-export interface ProcessStatus {
-  isActive: boolean;
-  processType?: string;
-  resourceSlug?: string;
-  startTime?: number;
-  builderStatus?: BuilderStatus;
-}
 
 export interface AllBuildersStatus {
   candleCacheBuilder: ProcessStatus;

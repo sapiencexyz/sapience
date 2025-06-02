@@ -2,17 +2,7 @@ import { CANDLE_CACHE_IPC_KEYS, REBUILD_PROCESS_TYPES } from './config';
 import { getStringParam, setStringParam } from './dbUtils';
 import { CandleCacheReBuilder } from './candleCacheReBuilder';
 import { log } from 'src/utils/logs';
-
-export interface ProcessStatus {
-  isActive: boolean;
-  processType?: string;
-  resourceSlug?: string;
-  startTime?: number;
-  builderStatus?: {
-    status: string;
-    description: string;
-  };
-}
+import { ProcessStatus } from './baseCandleCacheBuilder';
 
 interface StoredProcessStatus {
   isActive: boolean;
@@ -57,8 +47,9 @@ export class CandleCacheProcessManager {
             // If a process was marked active for more than 1 hour, consider it stale
             if (
               storedStatus.isActive &&
-              storedStatus.startTime &&
-              Date.now() - storedStatus.startTime > 3600000
+              storedStatus.builderStatus &&
+              storedStatus.builderStatus.timestamp &&
+              Date.now() - storedStatus.builderStatus.timestamp > 3600000
             ) {
               log({
                 message: 'Cleaning up stale process state',
@@ -105,6 +96,7 @@ export class CandleCacheProcessManager {
         ? {
             status: storedStatus.builderStatus.status,
             description: storedStatus.builderStatus.description,
+            timestamp: storedStatus.builderStatus.timestamp,
           }
         : undefined;
 
