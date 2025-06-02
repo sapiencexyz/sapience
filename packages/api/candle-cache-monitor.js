@@ -3,7 +3,7 @@
 // Candle Cache Process Monitor (Separated IPC Keys)
 // Usage: node candle-cache-monitor.js [--interval=2000] [--format=json|table] [--builder=all|builder|rebuilder]
 
-const baseUrl = process.env.API_BASE_URL || 'http://localhost:8008';
+const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -19,14 +19,14 @@ async function getStatus() {
     let endpoint;
     switch (builder) {
       case 'builder':
-        endpoint = `${baseUrl}/refresh-cache/candle-cache-status/builder`;
+        endpoint = `${baseUrl}/cache/candle-cache-status/builder`;
         break;
       case 'rebuilder':
-        endpoint = `${baseUrl}/refresh-cache/candle-cache-status/rebuilder`;
+        endpoint = `${baseUrl}/cache/candle-cache-status/rebuilder`;
         break;
       case 'all':
       default:
-        endpoint = `${baseUrl}/refresh-cache/candle-cache-status/all`;
+        endpoint = `${baseUrl}/cache/candle-cache-status/all`;
         break;
     }
     
@@ -53,7 +53,7 @@ function formatDuration(ms) {
 }
 
 function formatTableOutput(status) {
-  const now = new Date().toLocaleTimeString();
+  const now = new Date().toLocaleTimeString().slice(0, 8);
   
   if (!status) {
     console.log(`${now} | ERROR    | Failed to fetch status`);
@@ -102,7 +102,7 @@ function formatTableOutput(status) {
 }
 
 function formatJsonOutput(status) {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().toISOString().slice(0, 19) + 'Z'; // Fixed length YYYY-MM-DDTHH:mm:ssZ
   console.log(JSON.stringify({ timestamp, builder, ...status }, null, 2));
 }
 
@@ -119,7 +119,6 @@ async function monitor() {
   
   while (true) {
     const status = await getStatus();
-    
     if (format === 'json') {
       formatJsonOutput(status);
     } else {
