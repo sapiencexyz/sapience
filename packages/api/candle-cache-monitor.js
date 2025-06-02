@@ -7,7 +7,7 @@ const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-const interval = parseInt(args.find(arg => arg.startsWith('--interval='))?.split('=')[1]) || 2000;
+const interval = parseInt(args.find(arg => arg.startsWith('--interval='))?.split('=')[1]) || 10000;
 const format = args.find(arg => arg.startsWith('--format='))?.split('=')[1] || 'table';
 const builder = args.find(arg => arg.startsWith('--builder='))?.split('=')[1] || 'all';
 
