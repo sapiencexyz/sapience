@@ -2,14 +2,16 @@
 
 import { PrivyProvider } from '@privy-io/react-auth';
 import { WagmiProvider, createConfig } from '@privy-io/wagmi';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
-import { sepolia, base, cannon, type Chain } from 'viem/chains';
+import { base, cannon, sepolia, type Chain } from 'viem/chains';
 import { http } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
+
+import NetworkSwitcher from './network-switcher';
 
 const queryClient = new QueryClient();
 
@@ -70,6 +72,7 @@ const Providers = ({ children }: { children: JSX.Element }) => {
       >
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={config}>
+            <NetworkSwitcher />
             <SapienceProvider>{children}</SapienceProvider>
           </WagmiProvider>
         </QueryClientProvider>
