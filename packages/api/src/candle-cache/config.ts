@@ -26,6 +26,9 @@ export const CANDLE_CACHE_IPC_KEYS = {
   lastProcessedMarketPrice: 'lastProcessedMarketPrice',
   hardRefresh: 'hardRefresh',
   rebuildTrailingAvgHistory: 'rebuildTrailingAvgHistory',
+  // String-based keys for process management - separated by builder type
+  candleCacheBuilderStatus: 'candleCacheBuilderStatus', // For CandleCacheBuilder
+  candleCacheReBuilderStatus: 'candleCacheReBuilderStatus', // For CandleCacheReBuilder
 };
 
 export const CANDLE_TYPES = {
@@ -33,4 +36,9 @@ export const CANDLE_TYPES = {
   MARKET: 'market',
   TRAILING_AVG: 'trailingAvg',
   INDEX: 'index',
+};
+
+export const REBUILD_PROCESS_TYPES = {
+  ALL_CANDLES: 'all_candles',
+  RESOURCE_CANDLES: 'resource_candles',
 };

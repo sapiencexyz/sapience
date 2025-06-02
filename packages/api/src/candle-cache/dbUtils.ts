@@ -42,6 +42,29 @@ export async function setParam(paramName: string, paramValue: number) {
   await cacheParamRepository.save(config);
 }
 
+export async function getStringParam(paramName: string): Promise<string | null> {
+  const config = await cacheParamRepository.findOne({
+    where: { paramName },
+  });
+  if (!config) {
+    return null;
+  }
+  return config.paramValueString;
+}
+
+export async function setStringParam(paramName: string, paramValue: string | null) {
+  let config = await cacheParamRepository.findOne({ where: { paramName } });
+  if (!config) {
+    config = new CacheParam();
+    config.paramName = paramName;
+    config.paramValueNumber = 0;
+    config.paramValueString = paramValue;
+  } else {
+    config.paramValueString = paramValue;
+  }
+  await cacheParamRepository.save(config);
+}
+
 export async function getResourcePricesCount(
   params: ResourcePriceParams
 ): Promise<number> {
