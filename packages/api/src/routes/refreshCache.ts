@@ -3,7 +3,8 @@ import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
 import { ResourcePerformanceManager } from 'src/performance/resourcePerformanceManager';
 import { resourceRepository } from 'src/db';
-import { CandleCacheReBuilder } from 'src/candle-cache/candleCacheReBuilder';
+import { CandleCacheProcessManager } from 'src/candle-cache/candleCacheProcessManager';
+import { CandleCacheStatusManager } from 'src/candle-cache/candleCacheStatusManager';
 
 const router = Router();
 
@@ -128,10 +129,15 @@ router.get(
     try {
       console.log('Starting Candle Cache Refresh');
 
-      const candleCacheReBuilder = CandleCacheReBuilder.getInstance();
-      await candleCacheReBuilder.rebuildAllCandles();
-      console.log('Candle Cache Refresh Completed');
-      res.json({ success: true });
+      const processManager = CandleCacheProcessManager.getInstance();
+      const result = await processManager.startRebuildAllCandles();
+      
+      if (result.success) {
+        console.log('Candle Cache Refresh Process Started');
+        res.json({ success: true, message: result.message });
+      } else {
+        res.status(400).json({ success: false, error: result.message });
+      }
     } catch (error: unknown) {
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
@@ -169,10 +175,84 @@ router.get(
 
     try {
       console.log(`Starting Candle Cache Refresh for ${resourceSlug}`);
-      const candleCacheReBuilder = CandleCacheReBuilder.getInstance();
-      await candleCacheReBuilder.rebuildCandlesForResource(resourceSlug);
-      console.log(`Candle Cache Refresh Completed for ${resourceSlug}`);
-      res.json({ success: true });
+      
+      const processManager = CandleCacheProcessManager.getInstance();
+      const result = await processManager.startRebuildResourceCandles(resourceSlug);
+      
+      if (result.success) {
+        console.log(`Candle Cache Refresh Process Started for ${resourceSlug}`);
+        res.json({ success: true, message: result.message });
+      } else {
+        res.status(400).json({ success: false, error: result.message });
+      }
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
+router.get(
+  '/candle-cache-status',
+  handleAsyncErrors(async (req: Request, res: Response) => {
+    try {
+      const statusManager = CandleCacheStatusManager.getInstance();
+      const status = await statusManager.getCandleCacheReBuilderStatus();
+      res.json(status);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
+router.get(
+  '/candle-cache-status/all',
+  handleAsyncErrors(async (req: Request, res: Response) => {
+    try {
+      const statusManager = CandleCacheStatusManager.getInstance();
+      const allStatus = await statusManager.getAllBuildersStatus();
+      res.json(allStatus);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
+router.get(
+  '/candle-cache-status/builder',
+  handleAsyncErrors(async (req: Request, res: Response) => {
+    try {
+      const statusManager = CandleCacheStatusManager.getInstance();
+      const status = await statusManager.getCandleCacheBuilderStatus();
+      res.json(status);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
+router.get(
+  '/candle-cache-status/rebuilder',
+  handleAsyncErrors(async (req: Request, res: Response) => {
+    try {
+      const statusManager = CandleCacheStatusManager.getInstance();
+      const status = await statusManager.getCandleCacheReBuilderStatus();
+      res.json(status);
     } catch (error: unknown) {
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
