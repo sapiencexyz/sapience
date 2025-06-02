@@ -1,7 +1,7 @@
 // Simple test script for candle cache process manager with separated IPC keys
 // Run with: node test-candle-cache-process.js
 
-const baseUrl = process.env.API_BASE_URL || 'http://localhost:8008';
+const baseUrl = process.env.API_BASE_URL || 'http://localhost:3001';
 
 async function testCandleCacheProcess() {
   console.log('Testing Candle Cache Process Manager (Separated IPC Keys)...\n');
@@ -9,24 +9,24 @@ async function testCandleCacheProcess() {
   try {
     // Test 1: Check initial status for all builders
     console.log('1. Checking initial status for all builders...');
-    const allStatusResponse = await fetch(`${baseUrl}/refresh-cache/candle-cache-status/all`);
+    const allStatusResponse = await fetch(`${baseUrl}/cache/candle-cache-status/all`);
     const allStatus = await allStatusResponse.json();
     console.log('All builders status:', JSON.stringify(allStatus, null, 2));
     
     // Test 2: Check individual builder statuses
     console.log('\n2. Checking individual builder statuses...');
     
-    const builderStatusResponse = await fetch(`${baseUrl}/refresh-cache/candle-cache-status/builder`);
+    const builderStatusResponse = await fetch(`${baseUrl}/cache/candle-cache-status/builder`);
     const builderStatus = await builderStatusResponse.json();
     console.log('CandleCacheBuilder status:', JSON.stringify(builderStatus, null, 2));
     
-    const rebuilderStatusResponse = await fetch(`${baseUrl}/refresh-cache/candle-cache-status/rebuilder`);
+    const rebuilderStatusResponse = await fetch(`${baseUrl}/cache/candle-cache-status/rebuilder`);
     const rebuilderStatus = await rebuilderStatusResponse.json();
     console.log('CandleCacheReBuilder status:', JSON.stringify(rebuilderStatus, null, 2));
     
     // Test 3: Check backward compatibility endpoint
     console.log('\n3. Checking backward compatibility endpoint...');
-    const compatStatusResponse = await fetch(`${baseUrl}/refresh-cache/candle-cache-status`);
+    const compatStatusResponse = await fetch(`${baseUrl}/cache/candle-cache-status`);
     const compatStatus = await compatStatusResponse.json();
     console.log('Backward compatibility status (should match rebuilder):', JSON.stringify(compatStatus, null, 2));
     
@@ -37,7 +37,7 @@ async function testCandleCacheProcess() {
     
     // Test 4: Start rebuild all candles
     console.log('4. Starting rebuild all candles...');
-    const rebuildResponse = await fetch(`${baseUrl}/refresh-cache/refresh-candle-cache`);
+    const rebuildResponse = await fetch(`${baseUrl}/cache/refresh-candle-cache`);
     const rebuildResult = await rebuildResponse.json();
     console.log('Rebuild result:', JSON.stringify(rebuildResult, null, 2));
     
@@ -46,13 +46,13 @@ async function testCandleCacheProcess() {
       console.log('\n5. Checking all statuses while process is running...');
       await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
       
-      const runningAllStatusResponse = await fetch(`${baseUrl}/refresh-cache/candle-cache-status/all`);
+      const runningAllStatusResponse = await fetch(`${baseUrl}/cache/candle-cache-status/all`);
       const runningAllStatus = await runningAllStatusResponse.json();
       console.log('All builders status (while running):', JSON.stringify(runningAllStatus, null, 2));
       
       // Test 6: Try to start another process (should fail)
       console.log('\n6. Trying to start another process (should fail)...');
-      const conflictResponse = await fetch(`${baseUrl}/refresh-cache/refresh-candle-cache`);
+      const conflictResponse = await fetch(`${baseUrl}/cache/refresh-candle-cache`);
       const conflictResult = await conflictResponse.json();
       console.log('Conflict result:', JSON.stringify(conflictResult, null, 2));
       
@@ -73,7 +73,7 @@ async function waitForProcessCompletion() {
   const startTime = Date.now();
   
   while (Date.now() - startTime < maxWaitTime) {
-    const statusResponse = await fetch(`${baseUrl}/refresh-cache/candle-cache-status/rebuilder`);
+    const statusResponse = await fetch(`${baseUrl}/cache/candle-cache-status/rebuilder`);
     const status = await statusResponse.json();
     
     if (!status.isActive) {
@@ -94,7 +94,7 @@ async function monitorProgress(duration) {
   
   while (Date.now() < endTime) {
     try {
-      const statusResponse = await fetch(`${baseUrl}/refresh-cache/candle-cache-status/rebuilder`);
+      const statusResponse = await fetch(`${baseUrl}/cache/candle-cache-status/rebuilder`);
       const status = await statusResponse.json();
       
       if (!status.isActive) {
