@@ -230,7 +230,7 @@ const Header = () => {
               </a>{' '}
               and{' '}
               <a
-                href="https://discord.gg/Hn2vzMDCSs"
+                href="https://discord.gg/HRWFwXHM7x"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline-offset-2 underline"
@@ -273,7 +273,7 @@ const Header = () => {
             </Button>
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
-                href="https://discord.gg/Hn2vzMDCSs"
+                href="https://discord.gg/HRWFwXHM7x"
                 target="_blank"
                 rel="noopener noreferrer"
               >
