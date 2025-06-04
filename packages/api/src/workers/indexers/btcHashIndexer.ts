@@ -21,6 +21,11 @@ interface BlockData {
   difficulty: bigint;
 }
 
+interface HashrateData {
+  timestamp: number;
+  avgHashrate: string;
+}
+
 class BlockDeque {
   private blocks: BlockData[] = [];
   private readonly maxAge: number; // Maximum age of blocks in seconds
@@ -73,10 +78,11 @@ class BtcHashIndexer implements IResourcePriceIndexer {
   private readonly CHUNK_SIZE = 15; // Number of blocks to fetch in one request
   private readonly EXA_MULTIPLIER = 10n ** 18n; // Multiplier for exa hashrate
   private blockDeque: BlockDeque;
+  private historicalHashrates: HashrateData[] = [];
 
   constructor() {
-    // Initialize deque with 7 days capacity (7 days)
-    this.blockDeque = new BlockDeque(7);
+    // Initialize deque with 1 day capacity
+    this.blockDeque = new BlockDeque(1);
   }
 
   private async sleep(ms: number) {
@@ -148,7 +154,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     for (
       let timestamp = startTimestamp;
       timestamp <= nonNullEndTimestamp;
-      timestamp += 60 * 60 // hourly intervals in seconds
+      timestamp += 24 * 60 * 60 // daily intervals in seconds
     ) {
       await this.calcAndStoreMetrics(
         resource,
@@ -382,23 +388,53 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     };
   }
 
+  private async fetchHistoricalHashrates(): Promise<void> {
+    try {
+      const response = await axios.get(`${this.apiUrl}/mining/hashrate/3y`);
+      if (response.status === 200 && Array.isArray(response.data.hashrates)) {
+        this.historicalHashrates = response.data.hashrates;
+        console.log(`[BtcIndexer] Fetched ${this.historicalHashrates.length} historical hashrates`);
+      } else {
+        throw new Error('Invalid response format from hashrate API');
+      }
+    } catch (error) {
+      console.error('[BtcIndexer] Error fetching historical hashrates:', error);
+      Sentry.captureException(error);
+      throw error;
+    }
+  }
+
+  private getHashrateForTimestamp(timestamp: number): bigint {
+    // Find the closest hashrate entry for the given timestamp
+    const targetTimestamp = Math.floor(timestamp / 1000); // Convert to seconds
+    const hashrateEntry = this.historicalHashrates.find(entry => entry.timestamp === targetTimestamp);
+    
+    if (!hashrateEntry) {
+      throw new Error(`No hashrate found for timestamp ${targetTimestamp}`);
+    }
+    
+    return BigInt(hashrateEntry.avgHashrate);
+  }
+
   private async calcAndStoreMetrics(
     resource: Resource,
     targetDate: Date,
     overwriteExisting: boolean = false
   ): Promise<void> {
     try {
-      // Set endTimestamp to start of the hour
-      const endTimestamp =
-        new Date(
-          targetDate.getFullYear(),
-          targetDate.getMonth(),
-          targetDate.getDate(),
-          targetDate.getHours(),
-          0,
-          0
-        ).getTime() / 1000;
-      const startTimestamp = endTimestamp - 7 * 24 * 60 * 60; // 7 days before target date
+      // Convert target date to UTC timestamp
+      const targetUTCTimestamp = Date.UTC(
+        targetDate.getUTCFullYear(),
+        targetDate.getUTCMonth(),
+        targetDate.getUTCDate(),
+        0,
+        0,
+        0
+      );
+      
+      // Set endTimestamp to start of the day in UTC
+      const endTimestamp = Math.floor(targetUTCTimestamp / 1000);
+      const startTimestamp = endTimestamp - 24 * 60 * 60; // 1 day before target date
 
       const existingPrice = await resourcePriceRepository.findOne({
         where: {
@@ -411,11 +447,13 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         console.log('[BtcIndexer] Skipping existing price');
       } else {
         console.log(
-          `[BtcIndexer] Processing metrics for hour: ${new Date(endTimestamp * 1000).toISOString()}`
+          `[BtcIndexer] Processing metrics for: ${new Date(endTimestamp * 1000).toISOString()}`
         );
         console.log(
           `[BtcIndexer] Time window: ${new Date(startTimestamp * 1000).toISOString()} to ${new Date(endTimestamp * 1000).toISOString()}`
         );
+
+        await this.fetchHistoricalHashrates();
 
         // Get blocks for the time window from deque
         let blocks = this.blockDeque.getAllBlocks();
@@ -479,17 +517,9 @@ class BtcHashIndexer implements IResourcePriceIndexer {
           return;
         }
 
-        // Calculate weighted average difficulty for hashrate
-        const weightedDifficulty =
-          await this.calculateWeightedAverageDifficulty(blocks);
-        const hashrate = this.calculateHashrate(weightedDifficulty);
-
-        console.log(
-          `[BtcIndexer] Calculated weighted difficulty: ${weightedDifficulty.toString()}`
-        );
-        console.log(
-          `[BtcIndexer] Calculated hashrate: ${hashrate.toString()} H/s`
-        );
+        // Get hashrate from historical data
+        const hashrate = this.getHashrateForTimestamp(endTimestamp * 1000);
+        console.log(`[BtcIndexer] Using historical hashrate: ${hashrate.toString()} H/s`);
 
         // Calculate metrics using exact target date
         const metrics = this.calculateMetrics(
@@ -509,7 +539,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
           fee_per_exahash: metrics.averageFeePerExahash,
           hashrate: metrics.hashrateInEH,
           average_fee: metrics.averagedFeePerBlock,
-          difficulty: weightedDifficulty,
+          difficulty: 0n, // We don't need difficulty anymore since we're using historical hashrates
         };
 
         console.log('priceData', priceData);
@@ -544,19 +574,30 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     );
     this.isWatching = true;
 
-    // Initial processing
-    await this.calcAndStoreMetrics(resource, new Date(), true);
+    // Initial processing with current UTC time
+    const now = new Date();
+    const utcNow = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      now.getUTCHours(),
+      now.getUTCMinutes(),
+      now.getUTCSeconds()
+    ));
+    await this.calcAndStoreMetrics(resource, utcNow, true);
 
     // Set up hourly processing
     const scheduleNextRun = () => {
       const now = new Date();
       const nextRun = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        now.getHours() + 1, // Schedule for next hour..
-        5, // ..and 5 minutes to make sure we process new data
-        0
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate() + 1,
+          1,
+          0,
+          0
+        )
       );
 
       const timeUntilNextRun = nextRun.getTime() - now.getTime();
@@ -565,7 +606,15 @@ class BtcHashIndexer implements IResourcePriceIndexer {
       );
 
       this.pollInterval = setTimeout(async () => {
-        await this.calcAndStoreMetrics(resource, new Date(), true);
+        const currentUTC = new Date(Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate(),
+          now.getUTCHours(),
+          now.getUTCMinutes(),
+          now.getUTCSeconds()
+        ));
+        await this.calcAndStoreMetrics(resource, currentUTC, true);
         scheduleNextRun(); // Schedule the next run
       }, timeUntilNextRun);
     };
