@@ -154,6 +154,7 @@ export default function PredictForm({
             }}
             baseTokenName={marketGroupData.baseTokenName || ''}
             quoteTokenName={marketGroupData.quoteTokenName || ''}
+            decimalPlaces={6}
           />
         );
       default:
