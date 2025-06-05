@@ -606,15 +606,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
       );
 
       this.pollInterval = setTimeout(async () => {
-        const currentUTC = new Date(Date.UTC(
-          now.getUTCFullYear(),
-          now.getUTCMonth(),
-          now.getUTCDate(),
-          now.getUTCHours(),
-          now.getUTCMinutes(),
-          now.getUTCSeconds()
-        ));
-        await this.calcAndStoreMetrics(resource, currentUTC, true);
+        await this.calcAndStoreMetrics(resource, nextRun, true);
         scheduleNextRun(); // Schedule the next run
       }, timeUntilNextRun);
     };
