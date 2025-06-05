@@ -61,8 +61,8 @@ export default function NumericWagerForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       predictionValue: String(
-        -1 < ((lowerBound + upperBound) / 2) && ((lowerBound + upperBound) / 2) < 1 
-          ? (lowerBound + upperBound) / 2
+        (lowerBound + upperBound) / 2 > -1 && (lowerBound + upperBound) / 2 < 1
+          ? ((lowerBound + upperBound) / 2).toFixed(6)
           : Math.round((lowerBound + upperBound) / 2)
       ),
       wagerAmount: '',

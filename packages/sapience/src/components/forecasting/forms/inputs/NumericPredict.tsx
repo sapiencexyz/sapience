@@ -39,13 +39,16 @@ export default function NumericPredict({
   const stepSize = 1 / 10 ** decimalPlaces;
 
   // Parse current value for slider
-  const numericValue = value && !isNaN(parseFloat(value))
-    ? parseFloat(value)
-    : (bounds.lowerBound + bounds.upperBound) / 2;
-
+  const numericValue =
+    value && !Number.isNaN(parseFloat(value))
+      ? parseFloat(value)
+      : (bounds.lowerBound + bounds.upperBound) / 2;
 
   // Calculate slider values, ensuring they're within bounds
-  const sliderValue = Math.max(bounds.lowerBound, Math.min(bounds.upperBound, numericValue));
+  const sliderValue = Math.max(
+    bounds.lowerBound,
+    Math.min(bounds.upperBound, numericValue)
+  );
 
   const handleSliderChange = (newValues: number[]) => {
     if (newValues.length > 0) {
