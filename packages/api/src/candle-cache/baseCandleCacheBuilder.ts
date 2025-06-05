@@ -114,7 +114,8 @@ export abstract class BaseCandleCacheBuilder {
             description: this.description,
             timestamp: Date.now(),
           };
-          processStatus.isActive = this.status === CandleCacheReBuilderStatus.PROCESSING;
+          processStatus.isActive =
+            this.status === CandleCacheReBuilderStatus.PROCESSING;
         } catch (parseError) {
           log({
             message: `Failed to parse existing status, creating new: ${parseError}`,

@@ -95,21 +95,6 @@ const GET_RESOURCE_TRAILING_AVG_CANDLES = gql`
   }
 `;
 
-// Interfaces for API responses - Can be removed or simplified if direct type usage is preferred
-// interface MarketCandlesResponse {
-//   marketCandles: CandleType[] | null;
-// }
-// interface IndexCandlesResponse {
-//   indexCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
-// }
-// interface ResourceCandlesResponse {
-//   resourceCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
-// }
-// interface TrailingAvgCandlesResponse {
-//   resourceTrailingAverageCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
-// }
-// Use Pick<Query, 'marketCandles'> etc. inline or define simpler interfaces if needed
-
 // Type for individual data points in the returned chartData array
 export interface PriceChartDataPoint {
   timestamp: number;

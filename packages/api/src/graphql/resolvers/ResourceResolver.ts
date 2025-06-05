@@ -1,4 +1,5 @@
 import { Resolver, Query, Arg } from 'type-graphql';
+import { FindManyOptions } from 'typeorm';
 import dataSource from '../../db';
 import { Resource } from '../../models/Resource';
 import { ResourceType } from '../types';
@@ -9,16 +10,30 @@ import { ResourcePriceType } from '../types';
 @Resolver(() => ResourceType)
 export class ResourceResolver {
   @Query(() => [ResourceType])
-  async resources(): Promise<ResourceType[]> {
+  async resources(
+    @Arg('categorySlug', () => String, { nullable: true }) categorySlug?: string
+  ): Promise<ResourceType[]> {
     try {
-      const resources = await dataSource.getRepository(Resource).find({
+      const findOptions: FindManyOptions<Resource> = {
         relations: [
           'marketGroups',
           'marketGroups.markets',
           'marketGroups.category',
           'category',
         ],
-      });
+      };
+
+      if (categorySlug) {
+        findOptions.where = {
+          category: {
+            slug: categorySlug,
+          },
+        };
+      }
+
+      const resources = await dataSource
+        .getRepository(Resource)
+        .find(findOptions);
       return resources.map(mapResourceToType);
     } catch (error) {
       console.error('Error fetching resources:', error);

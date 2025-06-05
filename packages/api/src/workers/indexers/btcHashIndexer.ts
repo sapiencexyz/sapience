@@ -393,7 +393,9 @@ class BtcHashIndexer implements IResourcePriceIndexer {
       const response = await axios.get(`${this.apiUrl}/mining/hashrate/3y`);
       if (response.status === 200 && Array.isArray(response.data.hashrates)) {
         this.historicalHashrates = response.data.hashrates;
-        console.log(`[BtcIndexer] Fetched ${this.historicalHashrates.length} historical hashrates`);
+        console.log(
+          `[BtcIndexer] Fetched ${this.historicalHashrates.length} historical hashrates`
+        );
       } else {
         throw new Error('Invalid response format from hashrate API');
       }
@@ -407,12 +409,14 @@ class BtcHashIndexer implements IResourcePriceIndexer {
   private getHashrateForTimestamp(timestamp: number): bigint {
     // Find the closest hashrate entry for the given timestamp
     const targetTimestamp = Math.floor(timestamp / 1000); // Convert to seconds
-    const hashrateEntry = this.historicalHashrates.find(entry => entry.timestamp === targetTimestamp);
-    
+    const hashrateEntry = this.historicalHashrates.find(
+      (entry) => entry.timestamp === targetTimestamp
+    );
+
     if (!hashrateEntry) {
       throw new Error(`No hashrate found for timestamp ${targetTimestamp}`);
     }
-    
+
     return BigInt(hashrateEntry.avgHashrate);
   }
 
@@ -431,7 +435,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         0,
         0
       );
-      
+
       // Set endTimestamp to start of the day in UTC
       const endTimestamp = Math.floor(targetUTCTimestamp / 1000);
       const startTimestamp = endTimestamp - 24 * 60 * 60; // 1 day before target date
@@ -519,7 +523,9 @@ class BtcHashIndexer implements IResourcePriceIndexer {
 
         // Get hashrate from historical data
         const hashrate = this.getHashrateForTimestamp(endTimestamp * 1000);
-        console.log(`[BtcIndexer] Using historical hashrate: ${hashrate.toString()} H/s`);
+        console.log(
+          `[BtcIndexer] Using historical hashrate: ${hashrate.toString()} H/s`
+        );
 
         // Calculate metrics using exact target date
         const metrics = this.calculateMetrics(
@@ -576,14 +582,16 @@ class BtcHashIndexer implements IResourcePriceIndexer {
 
     // Initial processing with current UTC time
     const now = new Date();
-    const utcNow = new Date(Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      now.getUTCHours(),
-      now.getUTCMinutes(),
-      now.getUTCSeconds()
-    ));
+    const utcNow = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        now.getUTCHours(),
+        now.getUTCMinutes(),
+        now.getUTCSeconds()
+      )
+    );
     await this.calcAndStoreMetrics(resource, utcNow, true);
 
     // Set up hourly processing
