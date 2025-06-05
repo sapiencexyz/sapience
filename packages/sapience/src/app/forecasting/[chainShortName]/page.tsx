@@ -75,31 +75,28 @@ const ForecastingForm = ({
   marketClassification,
   permitData,
   onWagerSuccess,
+  activeMarket,
 }: {
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
   permitData: { permitted: boolean };
   onWagerSuccess: (txnHash: string) => void;
+  activeMarket?: MarketType;
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('wager');
 
   // Check if market is active (not expired or settled)
   const isActive = useMemo(() => {
-    if (
-      !marketGroupData ||
-      !marketGroupData.markets ||
-      marketGroupData.markets.length === 0
-    ) {
+    if (!activeMarket) {
       return false;
     }
 
-    const firstMarket = marketGroupData.markets[0];
     const isExpired =
-      firstMarket.endTimestamp &&
-      Date.now() > Number(firstMarket.endTimestamp) * 1000;
+      activeMarket.endTimestamp &&
+      Date.now() > Number(activeMarket.endTimestamp) * 1000;
 
     return !isExpired;
-  }, [marketGroupData]);
+  }, [activeMarket]);
 
   if (!isActive) {
     return (
@@ -285,6 +282,7 @@ const MarketGroupPageContent = () => {
                 marketClassification={marketClassification!}
                 permitData={permitData!}
                 onWagerSuccess={handleUserPositionsRefetch}
+                activeMarket={activeMarket}
               />
             </div>
           </div>
