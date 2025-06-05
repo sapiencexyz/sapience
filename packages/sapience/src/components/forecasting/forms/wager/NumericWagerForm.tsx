@@ -178,7 +178,7 @@ export default function NumericWagerForm({
               value={BigInt(Math.abs(Number(quoteData.maxSize)))}
               precision={4}
             />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
+            {marketGroupData?.collateralSymbol || 'tokens'}.
           </span>
         </p>
       </div>
