@@ -101,10 +101,10 @@ const PasswordScrim = () => {
         <motion.div
           key="password-scrim"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: 1, transition: { ease: 'easeInOut' } }}
           exit={{
             opacity: 0,
-            transition: { duration: 1.33 },
+            transition: { duration: 1.33, ease: 'easeInOut' },
           }}
           transition={{
             duration: 0.33, // Fast fade in
