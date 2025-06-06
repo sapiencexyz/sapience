@@ -37,8 +37,8 @@ interface PriceChartProps {
     chainId: number;
     marketId: number; // Assuming numeric ID here, adjust if string
     quoteTokenName?: string; // Pass from parent if available
-    startTimestamp?: number; // Add start timestamp
-    endTimestamp?: number; // Add end timestamp
+    startTimestamp?: number | null | undefined; // Add start timestamp
+    endTimestamp?: number | null | undefined; // Add end timestamp
   };
   selectedInterval: TimeInterval;
   selectedPrices: Record<LineType, boolean>;
@@ -65,8 +65,8 @@ const PriceChart: React.FC<PriceChartProps> = ({
     interval: intervalToSecondsMap[selectedInterval],
     quoteTokenName: market.quoteTokenName,
     resourceSlug, // Pass resourceSlug to the hook
-    startTimestamp: market.startTimestamp, // Pass start timestamp
-    endTimestamp: market.endTimestamp, // Pass end timestamp
+    startTimestamp: market.startTimestamp ?? undefined, // Pass start timestamp
+    endTimestamp: market.endTimestamp ?? undefined, // Pass end timestamp
     // trailingAvgTimeSeconds: 604800, // Pass the 7-day average time (in seconds)
     // Add fromTimestamp/toTimestamp based on selectedWindow if needed in the future
   });
