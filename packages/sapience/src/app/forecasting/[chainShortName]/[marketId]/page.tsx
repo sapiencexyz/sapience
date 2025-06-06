@@ -295,6 +295,8 @@ const ForecastContent = () => {
                             quoteTokenName:
                               marketData?.marketGroup?.quoteTokenName ||
                               undefined,
+                            startTimestamp: marketData?.startTimestamp ?? undefined,
+                            endTimestamp: marketData?.endTimestamp ?? undefined,
                           }}
                           selectedInterval={selectedInterval}
                           selectedPrices={selectedPrices}

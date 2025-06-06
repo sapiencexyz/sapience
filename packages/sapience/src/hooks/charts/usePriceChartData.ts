@@ -72,8 +72,10 @@ const GET_RESOURCE_CANDLES = gql`
   }
 `;
 
-// TODO: Make this dynamic?
-const TRAILING_AVG_TIME_SECONDS = 604800; // 7 day trailing average
+
+const TRAILING_AVG_TIME_SECONDS_7_DAYS = 604800; // 7 day trailing average
+const TRAILING_AVG_TIME_SECONDS_28_DAYS = 2419200; // 28 day trailing average
+
 const GET_RESOURCE_TRAILING_AVG_CANDLES = gql`
   query ResourceTrailingAverageCandles(
     $slug: String!
@@ -117,6 +119,8 @@ interface UsePriceChartDataProps {
   quoteTokenName?: string; // Needed for correct index price scaling
   fromTimestamp?: number; // Optional start time (Unix seconds)
   toTimestamp?: number; // Optional end time (Unix seconds)
+  startTimestamp?: number; // Market start time
+  endTimestamp?: number; // Market end time
 }
 
 // Hook Return Interface
@@ -275,11 +279,13 @@ export const usePriceChartData = ({
   marketAddress,
   chainId,
   marketId,
-  resourceSlug, // Destructure resourceSlug
+  resourceSlug,
   interval,
   quoteTokenName,
   fromTimestamp: propFromTimestamp,
   toTimestamp: propToTimestamp,
+  startTimestamp: marketStartTimestamp,
+  endTimestamp: marketEndTimestamp,
 }: UsePriceChartDataProps): UsePriceChartDataReturn => {
   const { stEthPerToken } = useSapience(); // Still needed for index scaling
 
@@ -289,7 +295,6 @@ export const usePriceChartData = ({
     const defaultLookbackSeconds = 30 * 24 * 60 * 60; // 30 days default
     const from = propFromTimestamp ?? now - defaultLookbackSeconds;
     const to = propToTimestamp ?? now;
-
     // Base queries
     const marketQuery = foilApi.post('/graphql', {
       query: print(GET_MARKET_CANDLES),
@@ -322,6 +327,17 @@ export const usePriceChartData = ({
         })
       : Promise.resolve(null); // Resolve null if no slug
 
+    // Determine trailing average period based on market duration
+    let trailingAvgTime = TRAILING_AVG_TIME_SECONDS_7_DAYS; // Default to 7 days
+    
+    if (marketStartTimestamp && marketEndTimestamp) {
+      const marketDuration = marketEndTimestamp - marketStartTimestamp;
+      // If market duration is longer than 7 days, use 28-day trailing average
+      if (marketDuration > TRAILING_AVG_TIME_SECONDS_7_DAYS) {
+        trailingAvgTime = TRAILING_AVG_TIME_SECONDS_28_DAYS;
+      }
+    }
+    
     const trailingAvgQuery = resourceSlug
       ? foilApi.post('/graphql', {
           query: print(GET_RESOURCE_TRAILING_AVG_CANDLES),
@@ -330,7 +346,7 @@ export const usePriceChartData = ({
             from,
             to,
             interval,
-            trailingAvgTime: TRAILING_AVG_TIME_SECONDS,
+            trailingAvgTime
           },
         })
       : Promise.resolve(null); // Resolve null if no slug
