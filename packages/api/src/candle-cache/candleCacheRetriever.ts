@@ -44,9 +44,12 @@ export class CandleCacheRetriever {
     });
 
     return this.getAndFillResponseCandles({
+      initialTimestamp: from,
+      finalTimestamp: to,
+      interval,
       candles,
       isCumulative: false,
-      fillMissingCandles: false,
+      fillMissingCandles: true,
       fillInitialCandlesWithZeroes: true,
     });
   }
@@ -87,6 +90,9 @@ export class CandleCacheRetriever {
     });
 
     return this.getAndFillResponseCandles({
+      initialTimestamp: from,
+      finalTimestamp: to,
+      interval,
       candles,
       isCumulative: marketInfo.isCumulative,
       fillMissingCandles: false,
@@ -113,6 +119,9 @@ export class CandleCacheRetriever {
     });
 
     return this.getAndFillResponseCandles({
+      initialTimestamp: from,
+      finalTimestamp: to,
+      interval,
       candles,
       isCumulative: false,
       fillMissingCandles: false,
@@ -150,10 +159,13 @@ export class CandleCacheRetriever {
     });
 
     return this.getAndFillResponseCandles({
+      initialTimestamp: from,
+      finalTimestamp: to,
+      interval,
       candles,
       isCumulative: false,
       fillMissingCandles: true,
-      fillInitialCandlesWithZeroes: false,
+      fillInitialCandlesWithZeroes: true,
     });
   }
 
@@ -166,11 +178,17 @@ export class CandleCacheRetriever {
   }
 
   private async getAndFillResponseCandles({
+    initialTimestamp,
+    finalTimestamp,
+    interval,
     candles,
     isCumulative,
     fillMissingCandles,
     fillInitialCandlesWithZeroes,
   }: {
+    initialTimestamp: number;
+    finalTimestamp: number;
+    interval: number;
     candles: CacheCandle[];
     isCumulative: boolean;
     fillMissingCandles: boolean;
@@ -181,9 +199,9 @@ export class CandleCacheRetriever {
     }
 
     const timeWindow = getTimeWindow(
-      candles[0].timestamp,
-      candles[candles.length - 1].timestamp,
-      candles[0].interval
+      initialTimestamp,
+      finalTimestamp,
+      interval
     );
 
     // First, create entries only for the candles we have
@@ -203,10 +221,11 @@ export class CandleCacheRetriever {
 
       // Add initial zero entries if needed
       if (fillInitialCandlesWithZeroes) {
+        const firstCandleTimestamp = candles[0].timestamp;
         for (
           let t = timeWindow.from;
-          t < candles[0].timestamp;
-          t += candles[0].interval
+          t < firstCandleTimestamp;
+          t += interval
         ) {
           filledEntries.push({
             timestamp: t,
@@ -224,7 +243,7 @@ export class CandleCacheRetriever {
           ? timeWindow.from
           : candles[0].timestamp;
         t < timeWindow.to;
-        t += candles[0].interval
+        t += interval
       ) {
         // Move pointer forward until we find a matching or later timestamp
         while (

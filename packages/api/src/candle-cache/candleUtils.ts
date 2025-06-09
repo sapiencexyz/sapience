@@ -28,3 +28,11 @@ export function getTimeWindow(from: number, to: number, interval: number) {
     to: startOfNextInterval(to, interval),
   };
 }
+
+export function BNMax(a: string, b: string) {
+  return BigInt(a) > BigInt(b) ? a : b;
+}
+
+export function BNMin(a: string, b: string) {
+  return BigInt(a) < BigInt(b) ? a : b;
+}
