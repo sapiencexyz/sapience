@@ -1,5 +1,6 @@
 'use client';
 
+import MarketDialogOverlay from '~/components/MarketDialogOverlay';
 import TradePoolLayout from '~/components/TradePoolLayout';
 import { PeriodProvider } from '~/lib/context/PeriodProvider';
 
@@ -13,6 +14,11 @@ const Market = ({ params }: { params: { id: string; market: string } }) => {
       market={Number(params.market)}
     >
       <TradePoolLayout params={params} isTrade />
+      <MarketDialogOverlay
+        chainId={Number(chainId)}
+        address={marketAddress}
+        market={Number(params.market)}
+      />
     </PeriodProvider>
   );
 };

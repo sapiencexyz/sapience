@@ -165,7 +165,7 @@ export function WagerInput({
         </div>
       </div>
       {errors[name] && (
-        <p className="text-destructive text-sm">
+        <p className="text-destructive text-sm mt-1">
           {errors[name]?.message?.toString()}
         </p>
       )}

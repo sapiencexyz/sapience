@@ -22,7 +22,7 @@ const getEndTimeCounts = (
 };
 
 export const getMarketGroupClassification = (
-  marketGroup: Partial<Pick<MarketGroupType, 'markets'>> // Changed to use imported MarketGroupType
+  marketGroup: Partial<Pick<MarketGroupType, 'markets' | 'baseTokenName'>> // Changed to use imported MarketGroupType
 ): MarketGroupClassification => {
   if (
     !marketGroup?.markets?.length // Simplified guard clause
@@ -33,7 +33,7 @@ export const getMarketGroupClassification = (
     return MarketGroupClassification.NUMERIC;
   }
 
-  const { markets } = marketGroup;
+  const { markets, baseTokenName } = marketGroup;
 
   // Check for MULTIPLE_CHOICE if multiple markets share the same endTime
   if (markets.length > 1) {
@@ -46,22 +46,9 @@ export const getMarketGroupClassification = (
     }
   }
 
-  // Logic for single market classification (YES_NO or NUMERIC),
-  // or fallback if MULTIPLE_CHOICE condition (shared endTime) was not met for multiple markets.
-  if (markets.length === 1) {
-    // markets[0] is guaranteed to exist here due to the length check and the initial guard clause
-    // Ensure markets[0] is not undefined before accessing optionName
-    if (markets[0] && markets[0]?.optionName === null) {
-      return MarketGroupClassification.YES_NO;
-    }
-    // Single market, optionName is not null (i.e., it has a name or is undefined)
-    return MarketGroupClassification.NUMERIC;
+  if (baseTokenName === 'Yes') {
+    return MarketGroupClassification.YES_NO;
   }
 
-  // Fallback:
-  // This point is reached if:
-  // 1. markets.length > 1, BUT no shared endTime was found (so not MULTIPLE_CHOICE).
-  //    In this case, it defaults to NUMERIC.
-  // 2. markets.length === 0 (already handled by the guard clause, but as a theoretical fallback path)
   return MarketGroupClassification.NUMERIC;
 };
