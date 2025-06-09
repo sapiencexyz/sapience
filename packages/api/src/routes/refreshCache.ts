@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
 import { CandleCacheProcessManager } from 'src/candle-cache/candleCacheProcessManager';
+import { CandleCacheStatusManager } from 'src/candle-cache/candleCacheStatusManager';
 
 const router = Router();
 
