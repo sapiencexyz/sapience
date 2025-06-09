@@ -15,7 +15,7 @@ import {
   useSidebar,
 } from '@foil/ui/components/ui/sidebar';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { Menu, User, LogOut } from 'lucide-react';
+import { LogOut, Menu, User } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -230,7 +230,7 @@ const Header = () => {
               </a>{' '}
               and{' '}
               <a
-                href="https://discord.gg/HRWFwXHM7x"
+                href="https://discord.gg/sapience"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline-offset-2 underline"
@@ -273,7 +273,7 @@ const Header = () => {
             </Button>
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
-                href="https://discord.gg/HRWFwXHM7x"
+                href="https://discord.gg/sapience"
                 target="_blank"
                 rel="noopener noreferrer"
               >

@@ -90,7 +90,7 @@ const SettlePositionButton = ({
       {isSettling || loadingSimulation ? (
         <>
           <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          {isSettling ? 'Settling...' : 'Simulating...'}
+          {isSettling ? 'Settling...' : 'Loading...'}
         </>
       ) : (
         'Settle'

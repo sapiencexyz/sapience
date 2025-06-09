@@ -30,6 +30,16 @@ const PasswordScrim = () => {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryPassword = params.get('password');
+    if (queryPassword?.toLowerCase() === 'nostradamus') {
+      localStorage.setItem('isAuthenticated', 'true');
+      setIsAuthenticated(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
     const OVERFLOW_HIDDEN_CLASS = 'overflow-hidden';
     if (!isAuthenticated) {
       document.body.classList.add(OVERFLOW_HIDDEN_CLASS);
@@ -101,10 +111,10 @@ const PasswordScrim = () => {
         <motion.div
           key="password-scrim"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: 1, transition: { ease: 'easeInOut' } }}
           exit={{
             opacity: 0,
-            transition: { duration: 1.33 },
+            transition: { duration: 1.33, ease: 'easeInOut' },
           }}
           transition={{
             duration: 0.33, // Fast fade in

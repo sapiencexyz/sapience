@@ -43,6 +43,8 @@ export interface Resource {
 
 const RESOURCE_BITCOIN_HASH_SLUG = 'bitcoin-hashrate';
 
+const DECENTRALIZED_COMPUTE_CATEGORY_SLUG = 'decentralized-compute';
+
 const LATEST_RESOURCE_PRICE_QUERY = gql`
   query GetLatestResourcePrice(
     $slug: String!
@@ -74,8 +76,8 @@ const LATEST_INDEX_PRICE_QUERY = gql`
 `;
 
 const RESOURCES_QUERY = gql`
-  query GetResources {
-    resources {
+  query GetResources($categorySlug: String) {
+    resources(categorySlug: $categorySlug) {
       id
       name
       slug
@@ -111,26 +113,25 @@ const RESOURCES_QUERY = gql`
 
 export const useResources = () => {
   return useQuery<Resource[]>({
-    queryKey: ['resources'],
+    queryKey: ['resources', { category: DECENTRALIZED_COMPUTE_CATEGORY_SLUG }],
     queryFn: async () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
+        variables: {
+          categorySlug: DECENTRALIZED_COMPUTE_CATEGORY_SLUG,
+        },
       });
       const resources = data.resources.sort((a: Resource, b: Resource) => {
         const indexA = RESOURCE_ORDER.indexOf(a.slug);
         const indexB = RESOURCE_ORDER.indexOf(b.slug);
         return indexA - indexB;
       });
-      const filteredResources = resources.filter(
-        (resource: Resource) =>
-          resource.category?.slug === 'decentralized-compute'
-      );
-      return filteredResources.map((resource: Resource) => ({
+      return resources.map((resource: Resource) => ({
         ...resource,
         iconPath: `/resources/${resource.slug}.svg`,
         marketGroups: resource.marketGroups.filter(
           (marketGroup: MarketGroup) =>
-            marketGroup.category?.slug === 'decentralized-compute'
+            marketGroup.category?.slug === DECENTRALIZED_COMPUTE_CATEGORY_SLUG
         ),
       }));
     },
@@ -139,7 +140,7 @@ export const useResources = () => {
 
 export const useResourcesAdmin = () => {
   return useQuery<Resource[]>({
-    queryKey: ['resources'],
+    queryKey: ['resources', 'admin'],
     queryFn: async () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),

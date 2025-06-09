@@ -60,7 +60,11 @@ export default function NumericWagerForm({
   const methods = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      predictionValue: String(Math.round((lowerBound + upperBound) / 2)),
+      predictionValue: String(
+        (lowerBound + upperBound) / 2 > -1 && (lowerBound + upperBound) / 2 < 1
+          ? ((lowerBound + upperBound) / 2).toFixed(6)
+          : Math.round((lowerBound + upperBound) / 2)
+      ),
       wagerAmount: '',
     },
     mode: 'onChange', // Validate on change for immediate feedback
@@ -174,7 +178,7 @@ export default function NumericWagerForm({
               value={BigInt(Math.abs(Number(quoteData.maxSize)))}
               precision={4}
             />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
+            {marketGroupData?.collateralSymbol || 'tokens'}.
           </span>
         </p>
       </div>
@@ -191,6 +195,7 @@ export default function NumericWagerForm({
           }}
           baseTokenName={marketGroupData.baseTokenName || ''}
           quoteTokenName={marketGroupData.quoteTokenName || ''}
+          decimalPlaces={6}
         />
         <div>
           <WagerInput

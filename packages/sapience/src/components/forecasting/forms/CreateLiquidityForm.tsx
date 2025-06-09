@@ -29,7 +29,9 @@ import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { priceToTick, tickToPrice } from '~/lib/utils/tickUtils';
+import { getChainShortName } from '~/lib/utils/util';
 
+import CollateralBalance from './inputs/CollateralBalance';
 import type { WalletData } from './ModifyLiquidityForm';
 
 export type LiquidityFormMarketDetails = {
@@ -273,7 +275,22 @@ export function CreateLiquidityForm({
     <Form {...form}>
       <form onSubmit={handleSubmit(submitForm)} className="space-y-4">
         <div className="mb-6">
-          <FormLabel className="block mb-2">Collateral</FormLabel>
+          <div className="flex justify-between items-center mb-2">
+            <FormLabel className="block">Collateral</FormLabel>
+            <CollateralBalance
+              collateralSymbol={collateralAssetTicker}
+              collateralAddress={collateralAssetAddress}
+              chainId={chainId}
+              chainShortName={getChainShortName(chainId)}
+              onSetWagerAmount={(amount) =>
+                form.setValue('depositAmount', amount, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                  shouldTouch: true,
+                })
+              }
+            />
+          </div>
           <FormField
             control={control}
             name="depositAmount"
@@ -308,7 +325,10 @@ export function CreateLiquidityForm({
           <div className="flex items-center justify-between mb-2">
             <FormLabel className="block">Low Price</FormLabel>
             <div className="text-sm text-muted-foreground">
-              Min: {tickToPrice(lowPriceTick || 0, tickSpacing).toFixed(6)}
+              Min:{' '}
+              <NumberDisplay
+                value={tickToPrice(lowPriceTick || 0, tickSpacing)}
+              />
             </div>
           </div>
           <FormField
@@ -340,7 +360,10 @@ export function CreateLiquidityForm({
           <div className="flex items-center justify-between mb-2">
             <FormLabel className="block">High Price</FormLabel>
             <div className="text-sm text-muted-foreground">
-              Max: {tickToPrice(highPriceTick || 0, tickSpacing).toFixed(6)}
+              Max:{' '}
+              <NumberDisplay
+                value={tickToPrice(highPriceTick || 0, tickSpacing)}
+              />
             </div>
           </div>
           <FormField

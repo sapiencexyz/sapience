@@ -62,7 +62,7 @@ export class TrailingAvgHistoryStore {
         deducted = true;
         pointer++;
       }
-      if (pointer > 0 ) {
+      if (pointer > 0) {
         // return the pointer to the previous price since we moved it forward inside the loop before the condition
         pointer--;
       }
@@ -72,7 +72,7 @@ export class TrailingAvgHistoryStore {
 
       // Update pointer
       if (deducted) {
-        resourceHistory.pointers.set(trailingAvgWindowTime, pointer+1);
+        resourceHistory.pointers.set(trailingAvgWindowTime, pointer + 1);
       }
     }
 

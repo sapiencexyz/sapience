@@ -405,10 +405,10 @@ const NavLinks = ({
   if (isMobile) {
     return (
       <div className="flex flex-col space-y-4 font-medium py-4">
+        {/*
         <Link href="/subscribe" onClick={() => onClose?.()}>
           Subscribe
         </Link>
-        {/*
         <Link href="/earn/ethereum-gas" onClick={() => onClose?.()}>
           Earn
         </Link>
@@ -421,19 +421,19 @@ const NavLinks = ({
   }
 
   return (
-    <div className="flex justify-between items-center w-[50dvw] max-w-[800px] mx-auto">
+    <div className="flex justify-between items-center w-[50dvw] max-w-[600px] mx-auto">
       <Link href="/" className="hover:no-underline">
         <Button variant="ghost" className={getButtonClasses('/')}>
           Explore
         </Button>
       </Link>
 
+      {/*
       <Link href="/subscribe" className="hover:no-underline">
         <Button variant="ghost" className={getButtonClasses('/subscribe')}>
           Subscribe
         </Button>
       </Link>
-      {/*
       <Link href="/earn/ethereum-gas" className="hover:no-underline mx-0.5">
         <Button variant="ghost" className={getButtonClasses('/earn')}>
           Earn

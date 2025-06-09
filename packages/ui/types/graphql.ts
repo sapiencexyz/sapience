@@ -309,6 +309,11 @@ export type QueryResourceTrailingAverageCandlesFromCacheArgs = {
 };
 
 
+export type QueryResourcesArgs = {
+  categorySlug?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryTotalVolumeByMarketArgs = {
   chainId: Scalars['Int']['input'];
   marketAddress: Scalars['String']['input'];
