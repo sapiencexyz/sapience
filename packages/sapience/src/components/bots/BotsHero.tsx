@@ -54,7 +54,7 @@ export default function BotsHero() {
 
           {/* Inner Content card overlaid on top */}
           <div className="relative z-10 w-100 text-center bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm p-8 lg:p-16">
-            <h1 className="font-sans text-2xl lg:text-3xl font-normal mb-2 lg:mb-4">
+            <h1 className="font-sans text-2xl lg:text-4xl font-normal mb-2 lg:mb-4">
               Trade with Machine Intelligence
             </h1>
 

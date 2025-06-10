@@ -73,6 +73,7 @@ function getButtonState({
   needsApproval,
   collateralAssetTicker,
   isClosing,
+  isClosingPosition,
 }: {
   isConnected: boolean;
   isPermitLoadingPermit: boolean;
@@ -83,6 +84,7 @@ function getButtonState({
   needsApproval: boolean;
   collateralAssetTicker: string;
   isClosing: boolean;
+  isClosingPosition: boolean;
 }): { text: string; loading: boolean; disabled: boolean } {
   if (!isConnected) {
     return { text: 'Connect Wallet', loading: false, disabled: false };
@@ -99,6 +101,13 @@ function getButtonState({
   if (isApproving) {
     return {
       text: `Approving ${collateralAssetTicker}...`,
+      loading: true,
+      disabled: true,
+    };
+  }
+  if (isClosingPosition) {
+    return {
+      text: 'Closing Position...',
       loading: true,
       disabled: true,
     };
@@ -227,11 +236,13 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
   const {
     modifyTrade,
+    closePosition,
     needsApproval,
     isApproving,
     isSuccess,
     txHash,
     isLoading,
+    isClosingPosition,
     isError: isModifyTradeError,
     error,
   } = useModifyTrade({
@@ -276,15 +287,23 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     if (isSuccess && txHash && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
+      // Determine if this was a close operation (either via form or close button)
+      const wasClosingOperation = isClosing || isClosingPosition;
+
       toast({
-        title: isClosing ? 'Position Closed' : 'Trade Position Updated',
-        description: isClosing
+        title: wasClosingOperation
+          ? 'Position Closed'
+          : 'Trade Position Updated',
+        description: wasClosingOperation
           ? 'Your trade position has been successfully closed!'
           : 'Your trade position has been successfully updated!',
       });
 
       // Reset form with new position size
-      const newSize = formatUnits(bigIntAbs(sizeInputBigInt), TOKEN_DECIMALS);
+      const newSize = wasClosingOperation
+        ? '0'
+        : formatUnits(bigIntAbs(sizeInputBigInt), TOKEN_DECIMALS);
+
       form.reset(
         {
           size: newSize,
@@ -304,6 +323,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   }, [
     isSuccess,
     isClosing,
+    isClosingPosition,
     txHash,
     onSuccess,
     toast,
@@ -344,6 +364,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     needsApproval,
     collateralAssetTicker,
     isClosing,
+    isClosingPosition,
   });
 
   // Handle disconnected state first
@@ -477,13 +498,31 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
               !!quoteError ||
               !formState.isValid ||
               !formState.isDirty ||
-              buttonState.disabled
+              buttonState.disabled ||
+              isClosingPosition
             }
             className="w-full"
           >
-            {buttonState.loading && LOADING_SPINNER}
+            {buttonState.loading && !isClosingPosition && LOADING_SPINNER}
             {buttonState.text}
           </Button>
+
+          {/* Close Position Button */}
+          {!isClosing && originalPositionSize !== BigInt(0) && (
+            <Button
+              size="lg"
+              variant="destructive"
+              disabled={buttonState.disabled || isQuoting || isClosingPosition}
+              className="w-full"
+              onClick={async (e) => {
+                e.preventDefault();
+                await closePosition();
+              }}
+            >
+              {isClosingPosition && LOADING_SPINNER}
+              Close Position
+            </Button>
+          )}
 
           {/* Error Display */}
           {quoteError && (

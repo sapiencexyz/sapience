@@ -1,4 +1,5 @@
 import { Button } from '@foil/ui/components/ui/button';
+import { AnimatePresence, motion } from 'framer-motion';
 import { User } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';
@@ -31,6 +32,30 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
   refetchUserPositions,
   showProfileButton = true,
 }) => {
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.3,
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: [0.25, 0.25, 0, 1],
+      },
+    },
+  };
+
   const positionVars: {
     address: Address;
     marketAddress?: string;
@@ -104,45 +129,88 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
   }
 
   return (
-    <div className="space-y-8">
-      {hasAnyData && (
-        <h3 className="text-2xl font-medium mb-4">Your Positions</h3>
-      )}
-      {hasTraderPositions && (
-        <TraderPositionsTable
-          positions={traderPositions}
-          parentMarketAddress={marketAddress}
-          parentChainId={chainId}
-          parentMarketId={marketId}
-        />
-      )}
-      {hasLpPositions && (
-        <LpPositionsTable
-          positions={lpPositions}
-          parentMarketAddress={marketAddress}
-          parentChainId={chainId}
-          parentMarketId={marketId}
-        />
-      )}
-      {hasAttestations && (
-        <PredictionPositionsTable
-          attestations={safeAttestations}
-          parentMarketAddress={marketAddress}
-          parentChainId={chainId}
-          parentMarketId={marketId}
-        />
-      )}
-      {showProfileButton && (
-        <div>
-          <Link href={`/profile/${account}`}>
-            <Button>
-              <User className="h-4 w-4" />
-              View Your Profile
-            </Button>
-          </Link>
-        </div>
-      )}
-    </div>
+    <motion.div
+      className="space-y-8"
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+    >
+      <AnimatePresence mode="wait">
+        {hasAnyData && (
+          <motion.h3
+            className="text-2xl font-medium mb-4"
+            variants={itemVariants}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            Your Positions
+          </motion.h3>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {hasTraderPositions && (
+          <motion.div
+            variants={itemVariants}
+            exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+          >
+            <TraderPositionsTable
+              positions={traderPositions}
+              parentMarketAddress={marketAddress}
+              parentChainId={chainId}
+              parentMarketId={marketId}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {hasLpPositions && (
+          <motion.div
+            variants={itemVariants}
+            exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+          >
+            <LpPositionsTable
+              positions={lpPositions}
+              parentMarketAddress={marketAddress}
+              parentChainId={chainId}
+              parentMarketId={marketId}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {hasAttestations && (
+          <motion.div
+            variants={itemVariants}
+            exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+          >
+            <PredictionPositionsTable
+              attestations={safeAttestations}
+              parentMarketAddress={marketAddress}
+              parentChainId={chainId}
+              parentMarketId={marketId}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showProfileButton && (
+          <motion.div
+            variants={itemVariants}
+            exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
+          >
+            <Link href={`/profile/${account}`}>
+              <Button>
+                <User className="h-4 w-4" />
+                View Your Profile
+              </Button>
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 

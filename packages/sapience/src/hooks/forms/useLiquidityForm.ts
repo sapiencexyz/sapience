@@ -25,8 +25,6 @@ export function useLiquidityForm({
   tickSpacing = 200,
   priceDecimals = 6,
 }: UseLiquidityFormProps = {}) {
-  const DEFAULT_LOW_PRICE = 0.01;
-
   const initialLowPrice = formatPrice(
     tickToPrice(lowPriceTick, tickSpacing),
     priceDecimals
@@ -39,10 +37,7 @@ export function useLiquidityForm({
   const form = useForm<LiquidityFormValues>({
     defaultValues: {
       depositAmount: '0',
-      lowPriceInput: formatPrice(
-        Math.max(DEFAULT_LOW_PRICE, parseFloat(initialLowPrice)),
-        priceDecimals
-      ),
+      lowPriceInput: initialLowPrice,
       highPriceInput: initialHighPrice,
       slippage: '0.5',
     },

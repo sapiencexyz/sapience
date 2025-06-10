@@ -319,6 +319,11 @@ export type QueryResourceTrailingAverageCandlesFromCacheArgs = {
 };
 
 
+export type QueryResourcesArgs = {
+  categorySlug?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryTotalVolumeByMarketArgs = {
   chainId: Scalars['Int']['input'];
   marketAddress: Scalars['String']['input'];
@@ -620,7 +625,7 @@ export type QueryResolvers<ContextType = ApolloContext, ParentType extends Resol
   resourcePrices?: Resolver<Array<ResolversTypes['ResourcePriceType']>, ParentType, ContextType>;
   resourceTrailingAverageCandles?: Resolver<Array<ResolversTypes['CandleType']>, ParentType, ContextType, RequireFields<QueryResourceTrailingAverageCandlesArgs, 'from' | 'interval' | 'slug' | 'to' | 'trailingAvgTime'>>;
   resourceTrailingAverageCandlesFromCache?: Resolver<ResolversTypes['CandleAndTimestampType'], ParentType, ContextType, RequireFields<QueryResourceTrailingAverageCandlesFromCacheArgs, 'from' | 'interval' | 'slug' | 'to' | 'trailingAvgTime'>>;
-  resources?: Resolver<Array<ResolversTypes['ResourceType']>, ParentType, ContextType>;
+  resources?: Resolver<Array<ResolversTypes['ResourceType']>, ParentType, ContextType, Partial<QueryResourcesArgs>>;
   totalVolumeByMarket?: Resolver<ResolversTypes['Float'], ParentType, ContextType, RequireFields<QueryTotalVolumeByMarketArgs, 'chainId' | 'marketAddress' | 'marketId'>>;
   transactions?: Resolver<Array<ResolversTypes['TransactionType']>, ParentType, ContextType, Partial<QueryTransactionsArgs>>;
 }>;

@@ -7,7 +7,7 @@ import dataSource, {
 } from 'src/db';
 import { CacheParam } from 'src/models/CacheParam';
 import { ResourcePrice } from 'src/models/ResourcePrice';
-import { FindOptionsWhere, MoreThan, Between } from 'typeorm';
+import { FindOptionsWhere, MoreThan, Between, LessThan } from 'typeorm';
 import { ReducedMarketPrice } from './types';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES } from './config';
@@ -39,6 +39,34 @@ export async function setParam(paramName: string, paramValue: number) {
     config.paramValueNumber = paramValue;
   }
   config.paramValueNumber = paramValue;
+  await cacheParamRepository.save(config);
+}
+
+export async function getStringParam(
+  paramName: string
+): Promise<string | null> {
+  const config = await cacheParamRepository.findOne({
+    where: { paramName },
+  });
+  if (!config) {
+    return null;
+  }
+  return config.paramValueString;
+}
+
+export async function setStringParam(
+  paramName: string,
+  paramValue: string | null
+) {
+  let config = await cacheParamRepository.findOne({ where: { paramName } });
+  if (!config) {
+    config = new CacheParam();
+    config.paramName = paramName;
+    config.paramValueNumber = 0;
+    config.paramValueString = paramValue;
+  } else {
+    config.paramValueString = paramValue;
+  }
   await cacheParamRepository.save(config);
 }
 
@@ -101,6 +129,27 @@ export async function getResourcePrices(
   return { prices, hasMore };
 }
 
+export async function getLatestResourcePrice(
+  initialTimestamp: number,
+  resourceSlug: string
+): Promise<ResourcePrice | null> {
+  const resourcePrice = await resourcePriceRepository.findOne({
+    where: {
+      timestamp: LessThan(initialTimestamp),
+      resource: { slug: resourceSlug },
+    },
+    order: {
+      timestamp: 'DESC',
+    },
+  });
+
+  if (!resourcePrice) {
+    return null;
+  }
+
+  return resourcePrice;
+}
+
 export async function getMarketPrices({
   initialTimestamp,
   quantity,
@@ -140,6 +189,40 @@ export async function getMarketPrices({
   return {
     prices: reducedMarketPrices,
     hasMore: marketPrices.length === quantity,
+  };
+}
+
+export async function getLatestMarketPrice(
+  initialTimestamp: number,
+  marketIdx: number
+): Promise<ReducedMarketPrice | null> {
+  const marketPrice = await marketPriceRepository.findOne({
+    where: {
+      timestamp: LessThan(initialTimestamp.toString()),
+      transaction: {
+        position: {
+          market: { id: marketIdx },
+        },
+      },
+    },
+    order: {
+      timestamp: 'DESC',
+    },
+    relations: [
+      'transaction',
+      'transaction.position',
+      'transaction.position.market',
+    ],
+  });
+
+  if (!marketPrice || !marketPrice.transaction?.position?.market) {
+    return null;
+  }
+
+  return {
+    value: marketPrice.value,
+    timestamp: Number(marketPrice.timestamp), 
+    market: marketPrice.transaction.position.market.id,
   };
 }
 

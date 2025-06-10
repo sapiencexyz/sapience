@@ -165,8 +165,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
   );
   if (!hasMarketData) {
     return (
-      <div className="w-full md:flex-1 h-full flex items-center justify-center text-muted-foreground border border-muted rounded bg-background/50">
-        No trades yet.
+      <div className="w-full md:flex-1 h-full flex items-center justify-center text-muted-foreground border border-muted rounded bg-secondary/20">
+        No trades yet
       </div>
     );
   }

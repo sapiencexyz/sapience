@@ -8,6 +8,7 @@ import '@rainbow-me/rainbowkit/styles.css';
 import Providers from '~/app/providers';
 import Layout from '~/components/layout';
 import GlobalLoader from '~/components/shared/GlobalLoader';
+import PasswordScrim from '~/components/shared/PasswordScrim';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import '../styles/globals.css';
 
@@ -108,6 +109,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       <body>
         <Providers>
           <LoadingProvider>
+            <PasswordScrim />
             <GlobalLoader />
             <Layout>{children}</Layout>
             <Toaster />
