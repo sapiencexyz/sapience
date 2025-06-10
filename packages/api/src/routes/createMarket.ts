@@ -1,9 +1,6 @@
 import prisma from '../db';
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { MarketGroup } from '../models/MarketGroup';
-import { Market } from '../models/Market';
-import { MarketParams } from '../models/MarketParams';
 import { watchFactoryAddress } from '../workers/jobs/indexMarkets';
 import { isValidWalletSignature } from '../middleware';
 
