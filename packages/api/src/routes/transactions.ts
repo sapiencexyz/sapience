@@ -3,12 +3,9 @@ import { validateRequestParams } from '../helpers/validateRequestParams';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { parseContractId } from '../helpers/parseContractId';
 import dataSource from '../db';
-import { Transaction } from '../models/Transaction';
-import { hydrateTransactions } from 'src/helpers';
+import { hydrateTransactions } from '../helpers/hydrateTransactions';
 
 const router = Router();
-
-const transactionRepository = dataSource.getRepository(Transaction);
 
 router.get(
   '/',
@@ -22,29 +19,54 @@ router.get(
 
     const { chainId, address } = parseContractId(contractId);
 
-    const queryBuilder = transactionRepository
-      .createQueryBuilder('transaction')
-      .innerJoinAndSelect('transaction.position', 'position')
-      .innerJoinAndSelect('position.epoch', 'epoch')
-      .innerJoinAndSelect('epoch.market', 'market')
-      .innerJoinAndSelect('market.resource', 'resource')
-      .innerJoinAndSelect('transaction.event', 'event')
-      .where('market.chainId = :chainId', { chainId })
-      .andWhere('market.address = :address', { address: address.toLowerCase() })
-      .orderBy('position.positionId', 'ASC')
-      .addOrderBy('event.blockNumber', 'ASC');
+    // Build the where clause
+    const whereClause: any = {
+      position: {
+        market: {
+          market_group: {
+            chainId: chainId,
+            address: address.toLowerCase(),
+          },
+        },
+      },
+    };
 
+    // Add optional filters
     if (epochId) {
-      queryBuilder.andWhere('epoch.epochId = :epochId', { epochId });
+      // Note: In the new schema, there's no direct epoch relationship
+      // This might need to be adjusted based on your business logic
+      // For now, we'll use marketId as a substitute if that's what epochId represents
+      whereClause.position.market.marketId = parseInt(epochId);
     }
 
     if (positionId) {
-      queryBuilder.andWhere('position.positionId = :positionId', {
-        positionId,
-      });
+      whereClause.position.positionId = parseInt(positionId);
     }
 
-    const transactions = await queryBuilder.getMany();
+    const transactions = await dataSource.transaction.findMany({
+      where: whereClause,
+      include: {
+        position: {
+          include: {
+            market: {
+              include: {
+                market_group: {
+                  include: {
+                    resource: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        event: true,
+      },
+      orderBy: [
+        { position: { positionId: 'asc' } },
+        { event: { blockNumber: 'asc' } },
+      ],
+    });
+
     const hydratedPositions = hydrateTransactions(transactions);
 
     res.json(hydratedPositions);

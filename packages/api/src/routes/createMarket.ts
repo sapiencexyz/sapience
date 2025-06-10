@@ -1,9 +1,4 @@
-import {
-  marketGroupRepository,
-  categoryRepository,
-  marketRepository,
-  resourceRepository,
-} from '../db';
+import prisma from '../db';
 import { Router } from 'express';
 import { Request, Response } from 'express';
 import { MarketGroup } from '../models/MarketGroup';
@@ -30,9 +25,9 @@ interface MarketDataPayload {
 // Helper function to create a single market
 async function createSingleMarket(
   marketData: MarketDataPayload,
-  marketGroup: MarketGroup,
+  marketGroupId: number,
   marketIndex: number
-): Promise<Market> {
+) {
   const {
     marketQuestion,
     optionName,
@@ -58,34 +53,29 @@ async function createSingleMarket(
     throw new Error(`Missing required fields for market ${marketIndex + 1}`);
   }
 
-  // Create market
-  const newMarket = new Market();
-  newMarket.marketGroup = marketGroup;
-  newMarket.marketId = marketIndex + 1; // This might need adjustment if adding to existing markets
-  newMarket.question = marketQuestion;
-  newMarket.optionName = optionName || null;
-  newMarket.rules = rules || null;
+  // Create market using Prisma
+  const newMarket = await prisma.market.create({
+    data: {
+      marketId: marketIndex + 1,
+      question: marketQuestion,
+      optionName: optionName || null,
+      rules: rules || null,
+      marketParamsClaimstatement: claimStatement,
+      startTimestamp: parseInt(String(startTime), 10),
+      endTimestamp: parseInt(String(endTime), 10),
+      startingSqrtPriceX96: startingSqrtPriceX96,
+      baseAssetMinPriceTick: parseInt(String(baseAssetMinPriceTick), 10),
+      baseAssetMaxPriceTick: parseInt(String(baseAssetMaxPriceTick), 10),
+      poolAddress: null,
+      settlementPriceD18: null,
+      settled: null,
+      minPriceD18: null,
+      maxPriceD18: null,
+      marketGroupId: marketGroupId,
+    },
+  });
 
-  // Initialize marketParams if it doesn't exist
-  if (!newMarket.marketParams) {
-    newMarket.marketParams = new MarketParams();
-  }
-  newMarket.marketParams.claimStatement = claimStatement;
-
-  newMarket.startTimestamp = parseInt(String(startTime), 10);
-  newMarket.endTimestamp = parseInt(String(endTime), 10);
-  newMarket.startingSqrtPriceX96 = startingSqrtPriceX96;
-  newMarket.baseAssetMinPriceTick = parseInt(String(baseAssetMinPriceTick), 10);
-  newMarket.baseAssetMaxPriceTick = parseInt(String(baseAssetMaxPriceTick), 10);
-
-  // Initialize other fields
-  newMarket.poolAddress = null;
-  newMarket.settlementPriceD18 = null;
-  newMarket.settled = null;
-  newMarket.minPriceD18 = null;
-  newMarket.maxPriceD18 = null;
-
-  return marketRepository.save(newMarket);
+  return newMarket;
 }
 
 // Handler for POST /create-market-group
@@ -157,7 +147,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Check if market group already exists
-    const existingMarketGroup = await marketGroupRepository.findOne({
+    const existingMarketGroup = await prisma.market_group.findFirst({
       where: {
         chainId: parseInt(chainId, 10),
         factoryAddress: factoryAddress.toLowerCase(),
@@ -173,7 +163,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // Find category
-    const category = await categoryRepository.findOne({
+    const category = await prisma.category.findFirst({
       where: { slug: categorySlug },
     });
     if (!category) {
@@ -185,7 +175,7 @@ router.post('/', async (req: Request, res: Response) => {
     // Find resource if resourceId is provided
     let resource = null;
     if (resourceId) {
-      resource = await resourceRepository.findOne({
+      resource = await prisma.resource.findFirst({
         where: { id: resourceId },
       });
       if (!resource) {
@@ -195,44 +185,44 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    // Create market group
-    const newMarketGroup = new MarketGroup();
-    newMarketGroup.chainId = parseInt(chainId, 10);
-    newMarketGroup.question = question;
-    newMarketGroup.baseTokenName = baseTokenName;
-    newMarketGroup.quoteTokenName = quoteTokenName;
-    newMarketGroup.initializationNonce = nonce;
-    newMarketGroup.category = category;
-    newMarketGroup.factoryAddress = factoryAddress.toLowerCase();
-    newMarketGroup.owner = owner;
-    newMarketGroup.collateralAsset = collateralAsset;
-    newMarketGroup.minTradeSize = minTradeSize;
-    newMarketGroup.marketParams = marketParams;
-
-    // Set resource if provided
-    if (resource) {
-      newMarketGroup.resource = resource;
-
-      // Set isCumulative if provided with a resource
-      if (isCumulative !== undefined) {
-        newMarketGroup.isCumulative = isCumulative;
-      }
-    }
-
-    const savedMarketGroup = await marketGroupRepository.save(newMarketGroup);
+    // Create market group using Prisma
+    const savedMarketGroup = await prisma.market_group.create({
+      data: {
+        chainId: parseInt(chainId, 10),
+        question: question,
+        baseTokenName: baseTokenName,
+        quoteTokenName: quoteTokenName,
+        initializationNonce: nonce,
+        categoryId: category.id,
+        factoryAddress: factoryAddress.toLowerCase(),
+        owner: owner,
+        collateralAsset: collateralAsset,
+        minTradeSize: minTradeSize,
+        marketParamsFeerate: marketParams.feerate,
+        marketParamsAssertionliveness: marketParams.assertionliveness,
+        marketParamsBondcurrency: marketParams.bondcurrency,
+        marketParamsBondamount: marketParams.bondamount,
+        marketParamsClaimstatement: marketParams.claimstatement,
+        marketParamsUniswappositionmanager: marketParams.uniswappositionmanager,
+        marketParamsUniswapswaprouter: marketParams.uniswapswaprouter,
+        marketParamsUniswapquoter: marketParams.uniswapquoter,
+        marketParamsOptimisticoraclev3: marketParams.optimisticoraclev3,
+        resourceId: resource ? resource.id : null,
+        isCumulative: isCumulative !== undefined ? isCumulative : false,
+      },
+    });
 
     // Check for new factory address
-    const existingFactoryAddresses = await marketGroupRepository
-      .createQueryBuilder('marketGroup')
-      .select('DISTINCT "factoryAddress"')
-      .where(
-        '"marketGroup"."chainId" = :chainId AND "marketGroup"."factoryAddress" = :factoryAddress',
-        {
-          chainId: parseInt(chainId, 10),
-          factoryAddress: factoryAddress.toLowerCase(),
-        }
-      )
-      .getRawMany();
+    const existingFactoryAddresses = await prisma.market_group.findMany({
+      where: {
+        chainId: parseInt(chainId, 10),
+        factoryAddress: factoryAddress.toLowerCase(),
+      },
+      select: {
+        factoryAddress: true,
+      },
+      distinct: ['factoryAddress'],
+    });
 
     // Set up watcher for new factory address
     if (existingFactoryAddresses.length === 1) {
@@ -259,7 +249,7 @@ router.post('/', async (req: Request, res: Response) => {
       try {
         const savedMarket = await createSingleMarket(
           market,
-          savedMarketGroup,
+          savedMarketGroup.id,
           i
         );
         savedMarkets.push(savedMarket);
@@ -341,12 +331,14 @@ router.post(
       const chainId = parseInt(bodyChainId, 10);
 
       // Find existing market group
-      const marketGroup = await marketGroupRepository.findOne({
+      const marketGroup = await prisma.market_group.findFirst({
         where: {
           address: marketGroupAddressParam.toLowerCase(),
           chainId: chainId,
         },
-        relations: ['markets'],
+        include: {
+          market: true,
+        },
       });
 
       if (!marketGroup) {
@@ -355,14 +347,12 @@ router.post(
         });
       }
 
-      const nextMarketIndex = marketGroup.markets
-        ? marketGroup.markets.length
-        : 0;
+      const nextMarketIndex = marketGroup.market ? marketGroup.market.length : 0;
 
       try {
         const savedMarket = await createSingleMarket(
           marketData,
-          marketGroup,
+          marketGroup.id,
           nextMarketIndex // Use nextMarketIndex to determine the new market's ID
         );
         return res.status(201).json(savedMarket);
