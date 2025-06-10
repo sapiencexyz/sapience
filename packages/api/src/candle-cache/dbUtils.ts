@@ -221,7 +221,7 @@ export async function getLatestMarketPrice(
 
   return {
     value: marketPrice.value,
-    timestamp: Number(marketPrice.timestamp), 
+    timestamp: Number(marketPrice.timestamp),
     market: marketPrice.transaction.position.market.id,
   };
 }
