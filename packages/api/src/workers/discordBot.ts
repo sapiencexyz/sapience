@@ -44,6 +44,7 @@ export const alertEvent = async (
     }
 
     let title = '';
+    const positionId = parseInt(logData.topics[3], 16);
     switch (logData.eventName) {
       case EventType.TraderPositionCreated:
       case EventType.TraderPositionModified: {
@@ -76,7 +77,7 @@ export const alertEvent = async (
           String(logData.args.sender || '')
         );
         const fullSenderAddress = String(logData.args.sender || '');
-        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) traded ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${parseInt(logData.topics[3], 16)})`;
+        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) traded ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${positionId})`;
         break;
       }
 
@@ -112,7 +113,7 @@ export const alertEvent = async (
           String(logData.args.sender || '')
         );
         const fullSenderAddress = String(logData.args.sender || '');
-        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) LPed ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${parseInt(logData.topics[3], 16)})`;
+        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) LPed ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${positionId})`;
         break;
       }
       default:
