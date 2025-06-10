@@ -76,7 +76,7 @@ export const alertEvent = async (
           String(logData.args.sender || '')
         );
         const fullSenderAddress = String(logData.args.sender || '');
-        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) traded ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${logData.topics[3]})`;
+        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) traded ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${parseInt(logData.topics[3], 16)})`;
         break;
       }
 
@@ -112,7 +112,7 @@ export const alertEvent = async (
           String(logData.args.sender || '')
         );
         const fullSenderAddress = String(logData.args.sender || '');
-        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) LPed ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${logData.topics[3]})`;
+        title = `[${senderAddress}](${sapienceProfileURL}${fullSenderAddress}) LPed ${collateralDisplay} ${collateralSymbol} in "${questionName}" (Position ID: #${parseInt(logData.topics[3], 16)})`;
         break;
       }
       default:
