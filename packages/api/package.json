@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "compile": "tsc",
-    "build": "tsc && npm run sentry:sourcemaps",
+    "build": "pnpm lint && tsc && npm run sentry:sourcemaps",
     "dev": "pnpm migration:run && concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\" \"pnpm run dev:codegen\"",
     "dev:service": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/workers/worker.ts",
@@ -28,7 +28,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate-types": "graphql-codegen --config codegen.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",
-    "lint": "eslint src",
+    "lint": "eslint src --max-warnings 0",
     "lint:fix": "eslint src --fix && pnpm format",
     "format": "prettier --write src",
     "migration:generate": "tsx ./node_modules/typeorm/cli.js migration:generate ./src/migrations/migration -d ./src/db.ts",
