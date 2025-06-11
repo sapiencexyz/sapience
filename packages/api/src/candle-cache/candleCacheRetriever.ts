@@ -222,11 +222,7 @@ export class CandleCacheRetriever {
       // Add initial zero entries if needed
       if (fillInitialCandlesWithZeroes) {
         const firstCandleTimestamp = candles[0].timestamp;
-        for (
-          let t = timeWindow.from;
-          t < firstCandleTimestamp;
-          t += interval
-        ) {
+        for (let t = timeWindow.from; t < firstCandleTimestamp; t += interval) {
           filledEntries.push({
             timestamp: t,
             open: '0',
