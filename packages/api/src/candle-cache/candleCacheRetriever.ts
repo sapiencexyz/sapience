@@ -194,7 +194,7 @@ export class CandleCacheRetriever {
     fillMissingCandles: boolean;
     fillInitialCandlesWithZeroes: boolean;
   }): Promise<{ data: ResponseCandleData[]; lastUpdateTimestamp: number }> {
-    if (!candles || candles.length === 0) {
+    if ((!candles || candles.length === 0) && (!fillMissingCandles || !fillInitialCandlesWithZeroes)) {
       return { data: [], lastUpdateTimestamp: 0 };
     }
 
