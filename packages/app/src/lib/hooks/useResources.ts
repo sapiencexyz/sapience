@@ -52,16 +52,24 @@ const LATEST_RESOURCE_PRICE_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
-      timestamp
-      close
+    resourceCandlesFromCache(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 const LATEST_INDEX_PRICE_QUERY = gql`
   query GetLatestIndexPrice($address: String!, $chainId: Int!, $marketId: String!) {
-    indexCandles(
+    indexCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -69,8 +77,11 @@ const LATEST_INDEX_PRICE_QUERY = gql`
       to: ${Math.floor(Date.now() / 1000)}
       interval: 60  # 1 minute intervals
     ) {
-      timestamp
-      close
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -174,7 +185,7 @@ export const useLatestResourcePrice = (slug: string) => {
         },
       });
 
-      const candles = data.resourceCandles;
+      const candles = data.resourceCandlesFromCache.data;
       if (!candles || candles.length === 0) {
         throw new Error('No price data found');
       }
@@ -225,7 +236,7 @@ export const useLatestIndexPrice = (market: {
         },
       });
 
-      const candles = data.indexCandles;
+      const candles = data.indexCandlesFromCache.data;
       if (!candles || candles.length === 0) {
         throw new Error('No index price data found');
       }

@@ -9,7 +9,7 @@ import { foilApi } from '../../lib/utils/util'; // Adjust path as needed
 
 // GraphQL Queries
 const GET_MARKET_CANDLES = gql`
-  query MarketCandles(
+  query MarketCandlesFromCache(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -17,7 +17,7 @@ const GET_MARKET_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandles(
+    marketCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -25,17 +25,20 @@ const GET_MARKET_CANDLES = gql`
       to: $to
       interval: $interval
     ) {
-      timestamp
-      open
-      high
-      low
-      close
+      data {
+        timestamp
+        open
+        high
+        low
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 const GET_INDEX_CANDLES = gql`
-  query IndexCandles(
+  query IndexCandlesFromCache(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -43,7 +46,7 @@ const GET_INDEX_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    indexCandles(
+    indexCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -51,23 +54,34 @@ const GET_INDEX_CANDLES = gql`
       to: $to
       interval: $interval
     ) {
-      timestamp
-      close # Only need close for the index line
+      data {
+        timestamp
+        close # Only need close for the index line
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 // Add Resource Candles Query
 const GET_RESOURCE_CANDLES = gql`
-  query ResourceCandles(
+  query ResourceCandlesFromCache(
     $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
-      timestamp
-      close # Assuming we only need close for the line
+    resourceCandlesFromCache(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
+      data {
+        timestamp
+        close # Assuming we only need close for the line
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -75,22 +89,25 @@ const GET_RESOURCE_CANDLES = gql`
 // TODO: Make this dynamic?
 const TRAILING_AVG_TIME_SECONDS = 604800; // 7 day trailing average
 const GET_RESOURCE_TRAILING_AVG_CANDLES = gql`
-  query ResourceTrailingAverageCandles(
+  query ResourceTrailingAverageCandlesFromCache(
     $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
     $trailingAvgTime: Int!
   ) {
-    resourceTrailingAverageCandles(
+    resourceTrailingAverageCandlesFromCache(
       slug: $slug
       from: $from
       to: $to
       interval: $interval
       trailingAvgTime: $trailingAvgTime
     ) {
-      timestamp
-      close # Assuming we only need close for the line
+      data {
+        timestamp
+        close # Assuming we only need close for the line
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -197,17 +214,29 @@ const parseCandleResponse = <
 };
 
 // Define expected shapes for parseCandleResponses arguments, referencing Query type keys
-type MarketCandlesQueryResponse = { marketCandles: CandleType[] | null };
+type MarketCandlesQueryResponse = {
+  marketCandlesFromCache: {
+    data: CandleType[] | null;
+    lastUpdateTimestamp: number;
+  } | null;
+};
 type IndexCandlesQueryResponse = {
-  indexCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+  indexCandlesFromCache: {
+    data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+    lastUpdateTimestamp: number;
+  } | null;
 };
 type ResourceCandlesQueryResponse = {
-  resourceCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+  resourceCandlesFromCache: {
+    data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+    lastUpdateTimestamp: number;
+  } | null;
 };
 type TrailingAvgCandlesQueryResponse = {
-  resourceTrailingAverageCandles:
-    | Pick<CandleType, 'timestamp' | 'close'>[]
-    | null;
+  resourceTrailingAverageCandlesFromCache: {
+    data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+    lastUpdateTimestamp: number;
+  } | null;
 };
 
 // Helper function to parse multiple candle responses
@@ -225,17 +254,17 @@ const parseCandleResponses = (
   try {
     // Use the specific response types for better type checking
     marketCandles =
-      parseCandleResponse<MarketCandlesQueryResponse, 'marketCandles'>(
+      parseCandleResponse<MarketCandlesQueryResponse, 'marketCandlesFromCache'>(
         marketResponse,
-        'marketCandles',
+        'marketCandlesFromCache',
         'market'
-      ) ?? [];
+      )?.data ?? [];
     indexCandlesRaw =
-      parseCandleResponse<IndexCandlesQueryResponse, 'indexCandles'>(
+      parseCandleResponse<IndexCandlesQueryResponse, 'indexCandlesFromCache'>(
         indexResponse,
-        'indexCandles',
+        'indexCandlesFromCache',
         'index'
-      ) ?? [];
+      )?.data ?? [];
   } catch (error) {
     console.error('Error parsing required candle data:', error);
     throw error;
@@ -244,23 +273,22 @@ const parseCandleResponses = (
   // Parse optional responses
   const resourceCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[] =
     resourceSlug && resourceResponse
-      ? (parseCandleResponse<ResourceCandlesQueryResponse, 'resourceCandles'>(
-          resourceResponse,
-          'resourceCandles',
-          'resource'
-        ) ?? [])
+      ? (parseCandleResponse<
+          ResourceCandlesQueryResponse,
+          'resourceCandlesFromCache'
+        >(resourceResponse, 'resourceCandlesFromCache', 'resource')?.data ?? [])
       : [];
 
   const trailingAvgCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[] =
     resourceSlug && trailingAvgResponse
       ? (parseCandleResponse<
           TrailingAvgCandlesQueryResponse,
-          'resourceTrailingAverageCandles'
+          'resourceTrailingAverageCandlesFromCache'
         >(
           trailingAvgResponse,
-          'resourceTrailingAverageCandles',
+          'resourceTrailingAverageCandlesFromCache',
           'trailing average'
-        ) ?? [])
+        )?.data ?? [])
       : [];
 
   return {
