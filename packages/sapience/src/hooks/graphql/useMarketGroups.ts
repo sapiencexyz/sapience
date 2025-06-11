@@ -336,7 +336,7 @@ export const useLatestIndexPrice = (market: {
         });
 
         const indexCandlesData = indexPriceApiResponse.indexCandlesFromCache;
-        if (!indexCandlesData || indexCandlesData.data.length === 0) {
+        if (!indexCandlesData || !indexCandlesData.data || indexCandlesData.data.length === 0) {
           return { timestamp: null, value: null };
         }
 

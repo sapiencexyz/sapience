@@ -217,7 +217,8 @@ export class CandleCacheRetriever {
     }));
 
     const firstCandleTimestamp = candles[0]?.timestamp ?? timeWindow.to;
-    const lastCandleTimestampUpdate = candles.length > 0 ? candles[candles.length - 1].lastUpdatedTimestamp : 0;
+    const lastCandleTimestampUpdate =
+      candles.length > 0 ? candles[candles.length - 1].lastUpdatedTimestamp : 0;
     // If we need to fill missing candles or initial zeroes
     if (fillMissingCandles || fillInitialCandlesWithZeroes) {
       const filledEntries: ResponseCandleData[] = [];
