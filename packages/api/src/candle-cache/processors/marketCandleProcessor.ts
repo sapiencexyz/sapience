@@ -3,12 +3,19 @@ import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { BNMax, BNMin, getTimtestampCandleInterval } from '../candleUtils';
-import { getLatestMarketPrice, getOrCreateCandle, saveCandle } from '../dbUtils';
+import {
+  getLatestMarketPrice,
+  getOrCreateCandle,
+  saveCandle,
+} from '../dbUtils';
 import { MarketInfo, MarketInfoStore } from '../marketInfoStore';
 
 export class MarketCandleProcessor {
-  private lastClosePricesByMarketAndInterval: Record<number, Record<number, string>> = {};
-  
+  private lastClosePricesByMarketAndInterval: Record<
+    number,
+    Record<number, string>
+  > = {};
+
   constructor(
     private runtimeCandles: RuntimeCandleStore,
     private marketInfoStore: MarketInfoStore
@@ -30,7 +37,9 @@ export class MarketCandleProcessor {
       timestamp: candleTimestamp,
     });
 
-    const open = this.lastClosePricesByMarketAndInterval[price.market][interval] ?? price.value;
+    const open =
+      this.lastClosePricesByMarketAndInterval[price.market][interval] ??
+      price.value;
 
     // CANDLE VALUES
     candle.marketId = price.market;
@@ -53,7 +62,6 @@ export class MarketCandleProcessor {
       throw Error(`Market ${price.market} not found`);
     }
 
-
     // For each interval add the price to the candle
     for (const interval of CANDLE_CACHE_CONFIG.intervals) {
       if (!this.lastClosePricesByMarketAndInterval[price.market]) {
@@ -61,14 +69,19 @@ export class MarketCandleProcessor {
       }
       if (!this.lastClosePricesByMarketAndInterval[price.market][interval]) {
         // Get the last known price to use as initial price
-        const lastPrice = await getLatestMarketPrice(price.timestamp, price.market);
+        const lastPrice = await getLatestMarketPrice(
+          price.timestamp,
+          price.market
+        );
         if (lastPrice) {
-          this.lastClosePricesByMarketAndInterval[price.market][interval] = lastPrice.value;
+          this.lastClosePricesByMarketAndInterval[price.market][interval] =
+            lastPrice.value;
         } else {
-          this.lastClosePricesByMarketAndInterval[price.market][interval] = price.value;
+          this.lastClosePricesByMarketAndInterval[price.market][interval] =
+            price.value;
         }
       }
-  
+
       // Calculate the start and end of the candle
       const { start: candleTimestamp, end: candleEndTimestamp } =
         getTimtestampCandleInterval(price.timestamp, interval);
@@ -82,7 +95,8 @@ export class MarketCandleProcessor {
 
       // If we have a candle but it's from a different period, save it and create a new one
       if (candle && candle.timestamp < candleTimestamp) {
-        this.lastClosePricesByMarketAndInterval[price.market][interval] = candle.close;
+        this.lastClosePricesByMarketAndInterval[price.market][interval] =
+          candle.close;
         await saveCandle(candle);
         candle = await this.getNewCandle(
           interval,

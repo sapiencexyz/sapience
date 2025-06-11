@@ -3,10 +3,17 @@ import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { BNMax, BNMin, getTimtestampCandleInterval } from '../candleUtils';
-import { getLatestResourcePrice, getOrCreateCandle, saveCandle } from '../dbUtils';
+import {
+  getLatestResourcePrice,
+  getOrCreateCandle,
+  saveCandle,
+} from '../dbUtils';
 
 export class ResourceCandleProcessor {
-  private lastClosePricesByResourceAndInterval: Record<string, Record<number, string>> = {};
+  private lastClosePricesByResourceAndInterval: Record<
+    string,
+    Record<number, string>
+  > = {};
 
   constructor(private runtimeCandles: RuntimeCandleStore) {}
 
@@ -26,7 +33,9 @@ export class ResourceCandleProcessor {
       timestamp: candleTimestamp,
     });
 
-    const open = this.lastClosePricesByResourceAndInterval[resourceSlug][interval] ?? price.value;
+    const open =
+      this.lastClosePricesByResourceAndInterval[resourceSlug][interval] ??
+      price.value;
 
     // CANDLE VALUES
     candle.endTimestamp = candleEndTimestamp;
@@ -44,13 +53,24 @@ export class ResourceCandleProcessor {
       if (!this.lastClosePricesByResourceAndInterval[price.resource.slug]) {
         this.lastClosePricesByResourceAndInterval[price.resource.slug] = {};
       }
-      if (!this.lastClosePricesByResourceAndInterval[price.resource.slug][interval]) {
+      if (
+        !this.lastClosePricesByResourceAndInterval[price.resource.slug][
+          interval
+        ]
+      ) {
         // Get the last known price to use as initial price
-        const lastPrice = await getLatestResourcePrice(price.timestamp, price.resource.slug);
+        const lastPrice = await getLatestResourcePrice(
+          price.timestamp,
+          price.resource.slug
+        );
         if (lastPrice) {
-          this.lastClosePricesByResourceAndInterval[price.resource.slug][interval] = lastPrice.value;
+          this.lastClosePricesByResourceAndInterval[price.resource.slug][
+            interval
+          ] = lastPrice.value;
         } else {
-          this.lastClosePricesByResourceAndInterval[price.resource.slug][interval] = price.value;
+          this.lastClosePricesByResourceAndInterval[price.resource.slug][
+            interval
+          ] = price.value;
         }
       }
 
@@ -71,7 +91,9 @@ export class ResourceCandleProcessor {
 
       // If we have a candle but it's from a different period, save it and create a new one
       if (candle && candle.timestamp < candleTimestamp) {
-        this.lastClosePricesByResourceAndInterval[price.resource.slug][interval] = candle.close;
+        this.lastClosePricesByResourceAndInterval[price.resource.slug][
+          interval
+        ] = candle.close;
         await saveCandle(candle);
         candle = await this.getNewCandle(
           interval,
