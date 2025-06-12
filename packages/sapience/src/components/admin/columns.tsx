@@ -230,7 +230,18 @@ const columns: ColumnDef<EnrichedMarketGroup>[] = [
     header: 'Question',
     cell: ({ row }) => {
       const group = row.original;
-      return <div className="font-medium">{group.question}</div>;
+      return (
+        <div className="font-medium flex items-center gap-2">
+          {group.category && (
+            <div
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: group.category.color }}
+              title={group.category.name}
+            />
+          )}
+          <span>{group.question}</span>
+        </div>
+      );
     },
   },
   {

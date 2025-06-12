@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "NODE_ENV=development next dev --port 3000",
-    "build": "pnpm lint && next build",
+    "build": "pnpm lint:fix && next build",
     "build:turbo": "turbo run build",
     "postbuild": "next-sitemap --config next-sitemap.config.js",
     "start": "next start",

@@ -25,6 +25,7 @@ import { useSignMessage } from 'wagmi';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
+import CategoryFilter from './CategoryFilter';
 import columns from './columns';
 import CombinedMarketDialog from './CombinedMarketDialog';
 import DataTable from './data-table';
@@ -164,6 +165,7 @@ const Admin = () => {
   const { data: marketGroups, isLoading, error } = useEnrichedMarketGroups();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Sort market groups with most recent (highest ID) first
   const sortedMarketGroups = marketGroups
@@ -218,7 +220,18 @@ const Admin = () => {
           <p className="text-red-500">Error loading markets: {error.message}</p>
         )}
         {sortedMarketGroups && sortedMarketGroups.length > 0 ? (
-          <DataTable columns={columns} data={sortedMarketGroups} />
+          <>
+            <CategoryFilter
+              marketGroups={sortedMarketGroups}
+              selectedCategory={selectedCategory}
+              onCategoryChange={setSelectedCategory}
+            />
+            <DataTable
+              columns={columns}
+              data={sortedMarketGroups}
+              categoryFilter={selectedCategory}
+            />
+          </>
         ) : (
           !isLoading && <p>No active market groups found.</p>
         )}

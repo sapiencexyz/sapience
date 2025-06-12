@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "compile": "tsc",
-    "build": "pnpm lint && tsc && npm run sentry:sourcemaps",
+    "build": "pnpm lint:fix && tsc && npm run sentry:sourcemaps",
     "dev": "pnpm migration:run && concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\" \"pnpm run dev:codegen\"",
     "dev:service": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/workers/worker.ts",
