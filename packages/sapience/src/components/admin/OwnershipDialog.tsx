@@ -7,7 +7,6 @@ import {
   DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
 import { Input } from '@foil/ui/components/ui/input';
-import type React from 'react';
 import { useState } from 'react';
 import type { Address } from 'viem';
 import { useAccount } from 'wagmi';
@@ -21,12 +20,12 @@ interface OwnershipDialogProps {
   currentOwner?: string;
 }
 
-const OwnershipDialog: React.FC<OwnershipDialogProps> = ({
+const OwnershipDialog = ({
   open,
   onOpenChange,
   marketGroupAddress,
   currentOwner,
-}) => {
+}: OwnershipDialogProps) => {
   const { address: connectedAddress } = useAccount();
   const [nomineeAddress, setNomineeAddress] = useState('');
   const [nomineeError, setNomineeError] = useState('');
