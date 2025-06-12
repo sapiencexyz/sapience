@@ -32,11 +32,10 @@ interface DataTableProps<TData, TValue> {
   categoryFilter?: string | null;
 }
 
-export default function DataTable<TData, TValue>({
-  columns,
-  data,
-  categoryFilter,
-}: DataTableProps<TData, TValue>) {
+export default function DataTable<
+  TData extends { category?: { slug?: string } },
+  TValue,
+>({ columns, data, categoryFilter }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -70,17 +69,19 @@ export default function DataTable<TData, TValue>({
     }
   }, [categoryFilter]);
 
-  // Add a virtual column for category filtering
+  // Build a memoized columns array that includes a hidden virtual column for category filtering
+  // We avoid `any` by constraining `TData` to include an optional `category.slug` field (see the
+  // generic constraint on `DataTable` below) and by specifying an explicit value type for the
+  // virtual column (string | undefined).
   const columnsWithCategoryFilter = React.useMemo(() => {
-    return [
-      ...columns,
-      {
-        id: 'categoryFilter',
-        accessorFn: (row: any) => row.category?.slug,
-        enableHiding: true,
-        filterFn: 'equals',
-      } as ColumnDef<TData, any>,
-    ];
+    const categoryFilterColumn: ColumnDef<TData, string | undefined> = {
+      id: 'categoryFilter',
+      accessorFn: (row) => row.category?.slug,
+      enableHiding: true,
+      filterFn: 'equals',
+    };
+
+    return [...columns, categoryFilterColumn];
   }, [columns]);
 
   const table = useReactTable({

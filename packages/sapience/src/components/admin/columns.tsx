@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@foil/ui/components/ui/badge';
 import { Button } from '@foil/ui/components/ui/button';
 import {
   Dialog,
@@ -239,13 +240,103 @@ const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
 
   return (
     <div className="flex items-center gap-2 justify-end">
-      <span className="text-sm text-gray-500">Chain ID: {group.chainId}</span>
       <MarketGroupDeployButton group={group} />
     </div>
   );
 };
 
+// Renders status badges for a market group
+const StatusBadges = ({ group }: { group: EnrichedMarketGroup }) => {
+  const nowSeconds = Date.now() / 1000;
+
+  const needsSettlement = group.markets.some((m) => {
+    const isDeployed = !!m.poolAddress;
+    const isPastEnd = (m.endTimestamp ?? 0) < nowSeconds;
+    const notSettled = !(m.settled ?? false);
+    return isDeployed && isPastEnd && notSettled;
+  });
+
+  const activeMarket = group.markets.some((m) => {
+    const start = m.startTimestamp ?? 0;
+    const end = m.endTimestamp ?? 0;
+    return start < nowSeconds && end > nowSeconds;
+  });
+
+  const upcomingMarket = group.markets.some((m) => {
+    const start = m.startTimestamp ?? 0;
+    return start > nowSeconds;
+  });
+
+  const needsDeployment =
+    !group.address || group.markets.some((m) => !m.poolAddress);
+
+  const allSettled =
+    group.markets.length > 0 &&
+    !needsSettlement &&
+    !activeMarket &&
+    !upcomingMarket;
+
+  const badges: JSX.Element[] = [];
+
+  if (needsSettlement) {
+    badges.push(
+      <Badge
+        key="needsSettlement"
+        variant="destructive"
+        className="whitespace-nowrap"
+      >
+        Needs Settlement
+      </Badge>
+    );
+  }
+
+  if (activeMarket) {
+    badges.push(
+      <Badge key="active" className="whitespace-nowrap">
+        Active Market
+      </Badge>
+    );
+  }
+
+  if (upcomingMarket) {
+    badges.push(
+      <Badge key="upcoming" variant="secondary" className="whitespace-nowrap">
+        Upcoming Markets
+      </Badge>
+    );
+  }
+
+  if (needsDeployment) {
+    badges.push(
+      <Badge
+        key="needsDeploy"
+        variant="destructive"
+        className="whitespace-nowrap"
+      >
+        Needs Deployment
+      </Badge>
+    );
+  }
+
+  if (allSettled) {
+    badges.push(
+      <Badge key="settled" variant="outline" className="whitespace-nowrap">
+        Settled
+      </Badge>
+    );
+  }
+
+  if (badges.length === 0) return null;
+
+  return <div className="flex flex-col items-start gap-1">{badges}</div>;
+};
+
 const columns: ColumnDef<EnrichedMarketGroup>[] = [
+  {
+    id: 'badges',
+    header: () => null,
+    cell: ({ row }) => <StatusBadges group={row.original} />,
+  },
   {
     accessorKey: 'question',
     header: 'Question',
@@ -271,7 +362,11 @@ const columns: ColumnDef<EnrichedMarketGroup>[] = [
     cell: ({ row }) => {
       const group = row.original;
       if (!group.address) {
-        return <span className="text-muted-foreground">Not deployed</span>;
+        return (
+          <span className="text-muted-foreground">
+            Chain ID: {group.chainId}
+          </span>
+        );
       }
       return (
         <div>

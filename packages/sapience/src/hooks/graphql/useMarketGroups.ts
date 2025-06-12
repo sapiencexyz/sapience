@@ -268,7 +268,7 @@ export const useEnrichedMarketGroups = () => {
               slug: marketGroup.category.slug,
               marketGroups: marketGroup.category.marketGroups,
               iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
-              color: focusAreaData?.color || DEFAULT_FOCUS_AREA.color,
+              color: focusAreaData?.color || '#9CA3AF', // Tailwind gray-400
             };
           } else {
             categoryInfo = {
@@ -277,7 +277,7 @@ export const useEnrichedMarketGroups = () => {
               slug: 'unknown',
               marketGroups: [],
               iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
-              color: DEFAULT_FOCUS_AREA.color,
+              color: '#9CA3AF', // Tailwind gray-400
             };
           }
 

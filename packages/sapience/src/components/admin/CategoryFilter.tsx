@@ -40,7 +40,6 @@ export default function CategoryFilter({
 
   return (
     <div className="mb-6">
-      <p className="text-sm text-muted-foreground mb-2">Filter by Category</p>
       <div className="overflow-x-auto pb-2">
         <div className="flex gap-2 min-w-max">
           <Button
@@ -58,15 +57,14 @@ export default function CategoryFilter({
               variant="outline"
               className={cn(
                 'cursor-pointer px-3 py-1.5 hover:bg-muted transition-colors',
-                selectedCategory === category.slug &&
-                  'bg-primary text-primary-foreground hover:bg-primary/90'
+                selectedCategory === category.slug && 'font-semibold'
               )}
               onClick={() => onCategoryChange(category.slug)}
               style={{
                 borderColor: category.color,
                 backgroundColor:
                   selectedCategory === category.slug
-                    ? category.color
+                    ? `${category.color}20` // ~12% opacity
                     : 'transparent',
               }}
             >
