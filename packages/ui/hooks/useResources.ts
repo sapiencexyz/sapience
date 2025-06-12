@@ -8,7 +8,7 @@ import { ResourceType, CandleType } from '../types/graphql';
 
 const LATEST_RESOURCE_PRICE_QUERY = gql`
   query GetLatestResourcePrice($slug: String!) {
-    resourceCandlesFromCache(
+    resourceCandles(
       slug: $slug
       from: ${Math.floor(Date.now() / 1000) - 300}  # Last 5 minutes
       to: ${Math.floor(Date.now() / 1000)}
@@ -25,7 +25,7 @@ const LATEST_RESOURCE_PRICE_QUERY = gql`
 
 const LATEST_INDEX_PRICE_QUERY = gql`
   query GetLatestIndexPrice($address: String!, $chainId: Int!, $epochId: String!) {
-    indexCandlesFromCache(
+    indexCandles(
       address: $address
       chainId: $chainId
       epochId: $epochId
@@ -102,7 +102,7 @@ export const useLatestResourcePrice = (slug: string) => {
         },
       });
 
-      const candles = data.resourceCandlesFromCache.data as CandleType[];
+      const candles = data.resourceCandles.data as CandleType[];
       if (!candles || candles.length === 0) {
         throw new Error('No price data found');
       }
@@ -153,7 +153,7 @@ export const useLatestIndexPrice = (market: {
         },
       });
 
-      const candles = data.indexCandlesFromCache.data as CandleType[];
+      const candles = data.indexCandles.data as CandleType[];
       if (!candles || candles.length === 0) {
         throw new Error('No index price data found');
       }

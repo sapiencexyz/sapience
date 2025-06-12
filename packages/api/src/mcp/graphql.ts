@@ -790,7 +790,7 @@ const getMarketCandles = {
 
     const query = `
       query GetMarketCandles($address: String!, $chainId: Int!, $marketId: String!, $from: Int!, $to: Int!, $interval: Int!) {
-        marketCandlesFromCache(address: $address, chainId: $chainId, marketId: $marketId, from: $from, to: $to, interval: $interval) {
+        marketCandles(address: $address, chainId: $chainId, marketId: $marketId, from: $from, to: $to, interval: $interval) {
           data {
             timestamp
             open
@@ -815,7 +815,7 @@ const getMarketCandles = {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result.data?.marketCandlesFromCache, null, 2),
+          text: JSON.stringify(result.data?.marketCandles, null, 2),
         },
       ],
     };
@@ -849,7 +849,7 @@ const getResourceCandles = {
 
     const query = `
       query GetResourceCandles($slug: String!, $from: Int!, $to: Int!, $interval: Int!) {
-        resourceCandlesFromCache(slug: $slug, from: $from, to: $to, interval: $interval) {
+        resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
           data {
             timestamp
             open
@@ -872,7 +872,7 @@ const getResourceCandles = {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result.data?.resourceCandlesFromCache, null, 2),
+          text: JSON.stringify(result.data?.resourceCandles, null, 2),
         },
       ],
     };
@@ -912,7 +912,7 @@ const getResourceTrailingAverageCandles = {
 
     const query = `
       query GetResourceTrailingAverageCandles($slug: String!, $from: Int!, $to: Int!, $interval: Int!, $trailingAvgTime: Int!) {
-        resourceTrailingAverageCandlesFromCache(slug: $slug, from: $from, to: $to, interval: $interval, trailingAvgTime: $trailingAvgTime) {
+        resourceTrailingAverageCandles(slug: $slug, from: $from, to: $to, interval: $interval, trailingAvgTime: $trailingAvgTime) {
           data {
             timestamp
             open
@@ -937,7 +937,7 @@ const getResourceTrailingAverageCandles = {
         {
           type: 'text' as const,
           text: JSON.stringify(
-            result.data?.resourceTrailingAverageCandlesFromCache,
+            result.data?.resourceTrailingAverageCandles,
             null,
             2
           ),
@@ -984,7 +984,7 @@ const getIndexCandles = {
 
     const query = `
       query GetIndexCandles($address: String!, $chainId: Int!, $marketId: String!, $from: Int!, $to: Int!, $interval: Int!) {
-        indexCandlesFromCache(address: $address, chainId: $chainId, marketId: $marketId, from: $from, to: $to, interval: $interval) {
+        indexCandles(address: $address, chainId: $chainId, marketId: $marketId, from: $from, to: $to, interval: $interval) {
           data {
             timestamp
             open
@@ -1009,7 +1009,7 @@ const getIndexCandles = {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(result.data?.indexCandlesFromCache, null, 2),
+          text: JSON.stringify(result.data?.indexCandles, null, 2),
         },
       ],
     };

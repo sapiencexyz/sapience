@@ -85,7 +85,7 @@ const getIntervalSeconds = (interval: TimeInterval): number => {
 
 // GraphQL Queries
 const MARKET_CANDLES_QUERY = gql`
-  query MarketCandlesFromCache(
+  query MarketCandles(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -93,7 +93,7 @@ const MARKET_CANDLES_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandlesFromCache(
+    marketCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -114,7 +114,7 @@ const MARKET_CANDLES_QUERY = gql`
 `;
 
 const INDEX_CANDLES_QUERY = gql`
-  query IndexCandlesFromCache(
+  query IndexCandles(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -122,7 +122,7 @@ const INDEX_CANDLES_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    indexCandlesFromCache(
+    indexCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -140,13 +140,13 @@ const INDEX_CANDLES_QUERY = gql`
 `;
 
 const RESOURCE_CANDLES_QUERY = gql`
-  query ResourceCandlesFromCache(
+  query ResourceCandles(
     $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandlesFromCache(
+    resourceCandles(
       slug: $slug
       from: $from
       to: $to
@@ -162,14 +162,14 @@ const RESOURCE_CANDLES_QUERY = gql`
 `;
 
 const TRAILING_RESOURCE_CANDLES_QUERY = gql`
-  query TrailingResourceCandlesFromCache(
+  query TrailingResourceCandles(
     $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
     $trailingAvgTime: Int!
   ) {
-    resourceTrailingAverageCandlesFromCache(
+    resourceTrailingAverageCandles(
       slug: $slug
       from: $from
       to: $to
@@ -318,7 +318,7 @@ export const useChart = ({
         },
       });
 
-      return data.marketCandlesFromCache.data.map((candle: any) => ({
+      return data.marketCandles.data.map((candle: any) => ({
         startTimestamp: timeToLocal(candle.timestamp * 1000),
         endTimestamp: timeToLocal((candle.timestamp + interval) * 1000),
         open: candle.open,
@@ -373,7 +373,7 @@ export const useChart = ({
         },
       });
 
-      return data.indexCandlesFromCache.data.map((candle: any) => ({
+      return data.indexCandles.data.map((candle: any) => ({
         price: Number(formatUnits(BigInt(candle.close), 9)),
         timestamp: timeToLocal(candle.timestamp * 1000),
       }));
@@ -408,7 +408,7 @@ export const useChart = ({
         },
       });
 
-      return data.resourceCandlesFromCache.data.map((candle: any) => ({
+      return data.resourceCandles.data.map((candle: any) => ({
         timestamp: timeToLocal(candle.timestamp * 1000),
         price: Number(formatUnits(BigInt(candle.close), 9)),
       }));
@@ -455,7 +455,7 @@ export const useChart = ({
           },
         });
 
-        return data.resourceTrailingAverageCandlesFromCache.data.map(
+        return data.resourceTrailingAverageCandles.data.map(
           (candle: any) => ({
             timestamp: timeToLocal(candle.timestamp * 1000),
             price: Number(formatUnits(BigInt(candle.close), 9)),

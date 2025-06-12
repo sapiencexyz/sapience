@@ -21,7 +21,7 @@ interface GraphQLError {
 
 // Adjust marketId type if needed (String! vs Int!) based on schema
 const GET_MARKET_CANDLES = gql`
-  query MarketCandlesFromCache(
+  query MarketCandles(
     $address: String!
     $chainId: Int!
     $marketId: String! # Assuming String! based on prior schema inspection
@@ -29,7 +29,7 @@ const GET_MARKET_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandlesFromCache(
+    marketCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -51,7 +51,7 @@ const GET_MARKET_CANDLES = gql`
 
 // Added query for index candles
 const GET_INDEX_CANDLES = gql`
-  query IndexCandlesFromCache(
+  query IndexCandles(
     $address: String!
     $chainId: Int!
     $marketId: String! # Required by schema, using first active market ID
@@ -59,7 +59,7 @@ const GET_INDEX_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    indexCandlesFromCache(
+    indexCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -94,7 +94,7 @@ interface UseMarketGroupChartDataReturn {
 }
 
 interface MarketCandlesResponse {
-  marketCandlesFromCache: {
+  marketCandles: {
     data: CandleType[] | null;
     lastUpdateTimestamp: number;
   } | null;
@@ -103,7 +103,7 @@ interface MarketCandlesResponse {
 // Added interface for IndexCandles response
 interface IndexCandlesResponse {
   // Updated to match the new structure
-  indexCandlesFromCache: {
+  indexCandles: {
     data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
     lastUpdateTimestamp: number;
   } | null;
@@ -193,10 +193,10 @@ export const useMarketGroupChartData = ({
                 ),
               };
             }
-            if (responseData && 'marketCandlesFromCache' in responseData) {
+            if (responseData && 'marketCandles' in responseData) {
               return {
                 marketId: marketIdString,
-                candles: responseData.marketCandlesFromCache?.data ?? [],
+                candles: responseData.marketCandles?.data ?? [],
                 error: null,
               };
             }
@@ -245,9 +245,9 @@ export const useMarketGroupChartData = ({
                   'GraphQL error fetching index candles'
               );
             }
-            if (responseData && 'indexCandlesFromCache' in responseData) {
+            if (responseData && 'indexCandles' in responseData) {
               // Return raw index candles here
-              return responseData.indexCandlesFromCache?.data ?? [];
+              return responseData.indexCandles?.data ?? [];
             }
             console.warn(
               `Unexpected response structure for index candles:`,

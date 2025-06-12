@@ -9,7 +9,7 @@ import { foilApi } from '../../lib/utils/util'; // Adjust path as needed
 
 // GraphQL Queries
 const GET_MARKET_CANDLES = gql`
-  query MarketCandlesFromCache(
+  query MarketCandles(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -17,7 +17,7 @@ const GET_MARKET_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandlesFromCache(
+    marketCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -38,7 +38,7 @@ const GET_MARKET_CANDLES = gql`
 `;
 
 const GET_INDEX_CANDLES = gql`
-  query IndexCandlesFromCache(
+  query IndexCandles(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -46,7 +46,7 @@ const GET_INDEX_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    indexCandlesFromCache(
+    indexCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -65,13 +65,13 @@ const GET_INDEX_CANDLES = gql`
 
 // Add Resource Candles Query
 const GET_RESOURCE_CANDLES = gql`
-  query ResourceCandlesFromCache(
+  query ResourceCandles(
     $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandlesFromCache(
+    resourceCandles(
       slug: $slug
       from: $from
       to: $to
@@ -89,14 +89,14 @@ const GET_RESOURCE_CANDLES = gql`
 // TODO: Make this dynamic?
 const TRAILING_AVG_TIME_SECONDS = 604800; // 7 day trailing average
 const GET_RESOURCE_TRAILING_AVG_CANDLES = gql`
-  query ResourceTrailingAverageCandlesFromCache(
+  query ResourceTrailingAverageCandles(
     $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
     $trailingAvgTime: Int!
   ) {
-    resourceTrailingAverageCandlesFromCache(
+    resourceTrailingAverageCandles(
       slug: $slug
       from: $from
       to: $to
@@ -215,25 +215,25 @@ const parseCandleResponse = <
 
 // Define expected shapes for parseCandleResponses arguments, referencing Query type keys
 type MarketCandlesQueryResponse = {
-  marketCandlesFromCache: {
+  marketCandles: {
     data: CandleType[] | null;
     lastUpdateTimestamp: number;
   } | null;
 };
 type IndexCandlesQueryResponse = {
-  indexCandlesFromCache: {
+  indexCandles: {
     data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
     lastUpdateTimestamp: number;
   } | null;
 };
 type ResourceCandlesQueryResponse = {
-  resourceCandlesFromCache: {
+  resourceCandles: {
     data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
     lastUpdateTimestamp: number;
   } | null;
 };
 type TrailingAvgCandlesQueryResponse = {
-  resourceTrailingAverageCandlesFromCache: {
+  resourceTrailingAverageCandles: {
     data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
     lastUpdateTimestamp: number;
   } | null;
@@ -254,15 +254,15 @@ const parseCandleResponses = (
   try {
     // Use the specific response types for better type checking
     marketCandles =
-      parseCandleResponse<MarketCandlesQueryResponse, 'marketCandlesFromCache'>(
+      parseCandleResponse<MarketCandlesQueryResponse, 'marketCandles'>(
         marketResponse,
-        'marketCandlesFromCache',
+        'marketCandles',
         'market'
       )?.data ?? [];
     indexCandlesRaw =
-      parseCandleResponse<IndexCandlesQueryResponse, 'indexCandlesFromCache'>(
+      parseCandleResponse<IndexCandlesQueryResponse, 'indexCandles'>(
         indexResponse,
-        'indexCandlesFromCache',
+        'indexCandles',
         'index'
       )?.data ?? [];
   } catch (error) {
@@ -275,18 +275,18 @@ const parseCandleResponses = (
     resourceSlug && resourceResponse
       ? (parseCandleResponse<
           ResourceCandlesQueryResponse,
-          'resourceCandlesFromCache'
-        >(resourceResponse, 'resourceCandlesFromCache', 'resource')?.data ?? [])
+          'resourceCandles'
+        >(resourceResponse, 'resourceCandles', 'resource')?.data ?? [])
       : [];
 
   const trailingAvgCandlesRaw: Pick<CandleType, 'timestamp' | 'close'>[] =
     resourceSlug && trailingAvgResponse
       ? (parseCandleResponse<
           TrailingAvgCandlesQueryResponse,
-          'resourceTrailingAverageCandlesFromCache'
+          'resourceTrailingAverageCandles'
         >(
           trailingAvgResponse,
-          'resourceTrailingAverageCandlesFromCache',
+          'resourceTrailingAverageCandles',
           'trailing average'
         )?.data ?? [])
       : [];

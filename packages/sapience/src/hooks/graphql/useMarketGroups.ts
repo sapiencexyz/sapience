@@ -89,7 +89,7 @@ export interface Candle {
 
 const LATEST_INDEX_PRICE_QUERY = gql`
   query GetLatestIndexPrice($address: String!, $chainId: Int!, $marketId: String!) {
-    indexCandlesFromCache(
+    indexCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -180,7 +180,7 @@ const MARKETS_QUERY = gql`
 `;
 
 const MARKET_CANDLES_QUERY = gql`
-  query GetMarketCandlesFromCache(
+  query GetMarketCandles(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -188,7 +188,7 @@ const MARKET_CANDLES_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandlesFromCache(
+    marketCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -335,7 +335,7 @@ export const useLatestIndexPrice = (market: {
           },
         });
 
-        const indexCandlesData = indexPriceApiResponse.indexCandlesFromCache;
+        const indexCandlesData = indexPriceApiResponse.indexCandles;
         if (
           !indexCandlesData ||
           !indexCandlesData.data ||
@@ -405,7 +405,7 @@ export const useMarketCandles = (market: {
           },
         });
 
-        return data.marketCandlesFromCache.data || [];
+        return data.marketCandles.data || [];
       } catch (error) {
         console.error('Error fetching market candles:', error);
         return null;

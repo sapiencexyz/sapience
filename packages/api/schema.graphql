@@ -124,23 +124,19 @@ type PositionType {
 type Query {
   categories: [CategoryType!]!
   getMarketLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
-  indexCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
-  indexCandlesFromCache(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
+  indexCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
   indexPriceAtTime(address: String!, chainId: Int!, marketId: String!, timestamp: Int!): CandleType
   legacyMarketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
-  marketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
-  marketCandlesFromCache(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
+  marketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
   marketGroup(address: String!, chainId: Int!): MarketGroupType
   marketGroups(baseTokenName: String, chainId: Int, collateralAsset: String): [MarketGroupType!]!
   marketGroupsByCategory(slug: String!): [MarketGroupType!]!
   markets(chainId: Int!, marketAddress: String!, marketId: Int!): [MarketType!]!
   positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
   resource(slug: String!): ResourceType
-  resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
-  resourceCandlesFromCache(from: Int!, interval: Int!, slug: String!, to: Int!): CandleAndTimestampType!
+  resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): CandleAndTimestampType!
   resourcePrices: [ResourcePriceType!]!
-  resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): [CandleType!]!
-  resourceTrailingAverageCandlesFromCache(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): CandleAndTimestampType!
+  resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): CandleAndTimestampType!
   resources(categorySlug: String): [ResourceType!]!
   totalVolumeByMarket(chainId: Int!, marketAddress: String!, marketId: Int!): Float!
   transactions(positionId: Int): [TransactionType!]!
