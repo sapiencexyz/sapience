@@ -187,7 +187,7 @@ const Admin = () => {
             </DialogTrigger>
             <DialogContent className="overflow-hidden">
               <DialogHeader>
-                <DialogTitle>Launch New Market Group with Markets</DialogTitle>
+                <DialogTitle>Launch New Market Group</DialogTitle>
               </DialogHeader>
               <CombinedMarketDialog onClose={() => setDialogOpen(false)} />
             </DialogContent>

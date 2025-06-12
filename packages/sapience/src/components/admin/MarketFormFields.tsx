@@ -34,7 +34,7 @@ const MarketFormFields: React.FC<MarketFormFieldsProps> = ({
     marketIndex !== undefined ? `${fieldName}-${marketIndex}` : fieldName;
 
   return (
-    <div className={`space-y-4 ${isCompact ? 'p-0' : 'p-4'}`}>
+    <div className="space-y-4 py-4">
       {/* Market Question & Option Name */}
       <div
         className={`grid grid-cols-1 ${isCompact ? 'gap-2' : 'md:grid-cols-2 gap-4'}`}
