@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@foil/ui/components/ui/select';
 import { useToast } from '@foil/ui/hooks/use-toast';
-import { Plus } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useSignMessage } from 'wagmi';
@@ -110,64 +110,60 @@ const ReindexFactoryForm = () => {
   };
 
   return (
-    <div className="border rounded-lg shadow-sm p-6">
-      <h2 className="text-lg font-semibold mb-4">
-        Reindex Market Group Factory
-      </h2>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="space-y-2">
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label htmlFor="factoryAddress" className="text-sm font-medium">
-            Factory Address
-          </label>
-          <Input
-            id="factoryAddress"
-            placeholder="0x..."
-            value={factoryAddress}
-            onChange={(e) => setFactoryAddress(e.target.value)}
-          />
-          {factoryAddress && !factoryAddress.startsWith('0x') && (
-            <p className="text-sm text-red-500">Address must start with 0x</p>
-          )}
-        </div>
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+        <label htmlFor="factoryAddress" className="text-sm font-medium">
+          Factory Address
+        </label>
+        <Input
+          id="factoryAddress"
+          placeholder="0x..."
+          value={factoryAddress}
+          onChange={(e) => setFactoryAddress(e.target.value)}
+        />
+        {factoryAddress && !factoryAddress.startsWith('0x') && (
+          <p className="text-sm text-red-500">Address must start with 0x</p>
+        )}
+      </div>
 
-        <div className="space-y-2">
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label htmlFor="chainSelect" className="text-sm font-medium">
-            Chain
-          </label>
-          <Select value={chainId} onValueChange={setChainId}>
-            <SelectTrigger id="chainSelect" className="w-full">
-              <SelectValue placeholder="Select chain" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Ethereum</SelectItem>
-              <SelectItem value="10">Optimism</SelectItem>
-              <SelectItem value="8453">Base</SelectItem>
-              <SelectItem value="42161">Arbitrum</SelectItem>
-              <SelectItem value="137">Polygon</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+        <label htmlFor="chainSelect" className="text-sm font-medium">
+          Chain
+        </label>
+        <Select value={chainId} onValueChange={setChainId}>
+          <SelectTrigger id="chainSelect" className="w-full">
+            <SelectValue placeholder="Select chain" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1">Ethereum</SelectItem>
+            <SelectItem value="10">Optimism</SelectItem>
+            <SelectItem value="8453">Base</SelectItem>
+            <SelectItem value="42161">Arbitrum</SelectItem>
+            <SelectItem value="137">Polygon</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? (
-            <>
-              <LottieLoader width={16} height={16} />
-              <span className="ml-2">Processing...</span>
-            </>
-          ) : (
-            'Reindex Factory'
-          )}
-        </Button>
-      </form>
-    </div>
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <LottieLoader width={16} height={16} />
+            <span className="ml-2">Processing...</span>
+          </>
+        ) : (
+          'Reindex Factory'
+        )}
+      </Button>
+    </form>
   );
 };
 
 const Admin = () => {
   const { data: marketGroups, isLoading, error } = useEnrichedMarketGroups();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
 
   // Sort market groups with most recent (highest ID) first
   const sortedMarketGroups = marketGroups
@@ -178,7 +174,7 @@ const Admin = () => {
     : [];
 
   return (
-    <div className="container pt-24 mx-auto px-6">
+    <div className="container pt-24 mx-auto px-6 pb-6">
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Control Center</h1>
         <div className="flex items-center space-x-4">
@@ -194,6 +190,20 @@ const Admin = () => {
                 <DialogTitle>Launch New Market Group with Markets</DialogTitle>
               </DialogHeader>
               <CombinedMarketDialog onClose={() => setDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
+          <Dialog open={reindexDialogOpen} onOpenChange={setReindexDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <RefreshCw className="mr-1 h-4 w-4" />
+                Reindex Factory
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="overflow-hidden max-w-md">
+              <DialogHeader>
+                <DialogTitle>Reindex Market Group Factory</DialogTitle>
+              </DialogHeader>
+              <ReindexFactoryForm />
             </DialogContent>
           </Dialog>
         </div>
@@ -212,11 +222,6 @@ const Admin = () => {
         ) : (
           !isLoading && <p>No active market groups found.</p>
         )}
-      </div>
-
-      {/* Add spacing before the reindex form */}
-      <div className="mt-12 mb-16">
-        <ReindexFactoryForm />
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ import type { Address } from 'viem';
 
 import { useMarketGroupLatestEpoch } from '~/hooks/contract/useMarketGroupLatestEpoch';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
+import { shortenAddress } from '~/lib/utils/util';
 
 import AddMarketDialog from './AddMarketDialog';
 import MarketDeployButton from './MarketDeployButton';
@@ -242,7 +243,7 @@ const columns: ColumnDef<EnrichedMarketGroup>[] = [
       }
       return (
         <div>
-          {getChainShortName(group.chainId)}:{group.address}
+          {getChainShortName(group.chainId)}:{shortenAddress(group.address)}
         </div>
       );
     },
@@ -255,7 +256,7 @@ const columns: ColumnDef<EnrichedMarketGroup>[] = [
       if (!group.owner) {
         return <span className="text-muted-foreground">N/A</span>;
       }
-      return <div>{group.owner}</div>;
+      return <div>{shortenAddress(group.owner)}</div>;
     },
   },
   {

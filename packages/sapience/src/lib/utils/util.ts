@@ -397,3 +397,9 @@ export function cn(...inputs: ClassValue[]) {
 export function bigIntAbs(value: bigint): bigint {
   return value < BigInt(0) ? -value : value;
 }
+
+export const shortenAddress = (address: string) => {
+  if (!address) return '';
+  if (address.length < 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
