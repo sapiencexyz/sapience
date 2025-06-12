@@ -150,23 +150,19 @@ export type Query = {
   __typename?: 'Query';
   categories: Array<CategoryType>;
   getMarketLeaderboard: Array<PnLType>;
-  indexCandles: Array<CandleType>;
-  indexCandlesFromCache: CandleAndTimestampType;
+  indexCandles: CandleAndTimestampType;
   indexPriceAtTime?: Maybe<CandleType>;
   legacyMarketCandles: Array<CandleType>;
-  marketCandles: Array<CandleType>;
-  marketCandlesFromCache: CandleAndTimestampType;
+  marketCandles: CandleAndTimestampType;
   marketGroup?: Maybe<MarketGroupType>;
   marketGroups: Array<MarketGroupType>;
   marketGroupsByCategory: Array<MarketGroupType>;
   markets: Array<MarketType>;
   positions: Array<PositionType>;
   resource?: Maybe<ResourceType>;
-  resourceCandles: Array<CandleType>;
-  resourceCandlesFromCache: CandleAndTimestampType;
+  resourceCandles: CandleAndTimestampType;
   resourcePrices: Array<ResourcePriceType>;
-  resourceTrailingAverageCandles: Array<CandleType>;
-  resourceTrailingAverageCandlesFromCache: CandleAndTimestampType;
+  resourceTrailingAverageCandles: CandleAndTimestampType;
   resources: Array<ResourceType>;
   totalVolumeByMarket: Scalars['Float']['output'];
   transactions: Array<TransactionType>;
@@ -181,16 +177,6 @@ export type QueryGetMarketLeaderboardArgs = {
 
 
 export type QueryIndexCandlesArgs = {
-  address: Scalars['String']['input'];
-  chainId: Scalars['Int']['input'];
-  from: Scalars['Int']['input'];
-  interval: Scalars['Int']['input'];
-  marketId: Scalars['String']['input'];
-  to: Scalars['Int']['input'];
-};
-
-
-export type QueryIndexCandlesFromCacheArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   from: Scalars['Int']['input'];
@@ -219,16 +205,6 @@ export type QueryLegacyMarketCandlesArgs = {
 
 
 export type QueryMarketCandlesArgs = {
-  address: Scalars['String']['input'];
-  chainId: Scalars['Int']['input'];
-  from: Scalars['Int']['input'];
-  interval: Scalars['Int']['input'];
-  marketId: Scalars['String']['input'];
-  to: Scalars['Int']['input'];
-};
-
-
-export type QueryMarketCandlesFromCacheArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   from: Scalars['Int']['input'];
@@ -283,24 +259,7 @@ export type QueryResourceCandlesArgs = {
 };
 
 
-export type QueryResourceCandlesFromCacheArgs = {
-  from: Scalars['Int']['input'];
-  interval: Scalars['Int']['input'];
-  slug: Scalars['String']['input'];
-  to: Scalars['Int']['input'];
-};
-
-
 export type QueryResourceTrailingAverageCandlesArgs = {
-  from: Scalars['Int']['input'];
-  interval: Scalars['Int']['input'];
-  slug: Scalars['String']['input'];
-  to: Scalars['Int']['input'];
-  trailingAvgTime: Scalars['Int']['input'];
-};
-
-
-export type QueryResourceTrailingAverageCandlesFromCacheArgs = {
   from: Scalars['Int']['input'];
   interval: Scalars['Int']['input'];
   slug: Scalars['String']['input'];

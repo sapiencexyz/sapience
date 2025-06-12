@@ -174,23 +174,19 @@ export type Query = {
   __typename?: 'Query';
   categories: Array<CategoryType>;
   getMarketLeaderboard: Array<PnLType>;
-  indexCandles: Array<CandleType>;
-  indexCandlesFromCache: CandleAndTimestampType;
+  indexCandles: CandleAndTimestampType;
   indexPriceAtTime?: Maybe<CandleType>;
   legacyMarketCandles: Array<CandleType>;
-  marketCandles: Array<CandleType>;
-  marketCandlesFromCache: CandleAndTimestampType;
+  marketCandles: CandleAndTimestampType;
   marketGroup?: Maybe<MarketGroupType>;
   marketGroups: Array<MarketGroupType>;
   marketGroupsByCategory: Array<MarketGroupType>;
   markets: Array<MarketType>;
   positions: Array<PositionType>;
   resource?: Maybe<ResourceType>;
-  resourceCandles: Array<CandleType>;
-  resourceCandlesFromCache: CandleAndTimestampType;
+  resourceCandles: CandleAndTimestampType;
   resourcePrices: Array<ResourcePriceType>;
-  resourceTrailingAverageCandles: Array<CandleType>;
-  resourceTrailingAverageCandlesFromCache: CandleAndTimestampType;
+  resourceTrailingAverageCandles: CandleAndTimestampType;
   resources: Array<ResourceType>;
   totalVolumeByMarket: Scalars['Float']['output'];
   transactions: Array<TransactionType>;
@@ -203,15 +199,6 @@ export type QueryGetMarketLeaderboardArgs = {
 };
 
 export type QueryIndexCandlesArgs = {
-  address: Scalars['String']['input'];
-  chainId: Scalars['Int']['input'];
-  from: Scalars['Int']['input'];
-  interval: Scalars['Int']['input'];
-  marketId: Scalars['String']['input'];
-  to: Scalars['Int']['input'];
-};
-
-export type QueryIndexCandlesFromCacheArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   from: Scalars['Int']['input'];
@@ -237,15 +224,6 @@ export type QueryLegacyMarketCandlesArgs = {
 };
 
 export type QueryMarketCandlesArgs = {
-  address: Scalars['String']['input'];
-  chainId: Scalars['Int']['input'];
-  from: Scalars['Int']['input'];
-  interval: Scalars['Int']['input'];
-  marketId: Scalars['String']['input'];
-  to: Scalars['Int']['input'];
-};
-
-export type QueryMarketCandlesFromCacheArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   from: Scalars['Int']['input'];
@@ -292,22 +270,7 @@ export type QueryResourceCandlesArgs = {
   to: Scalars['Int']['input'];
 };
 
-export type QueryResourceCandlesFromCacheArgs = {
-  from: Scalars['Int']['input'];
-  interval: Scalars['Int']['input'];
-  slug: Scalars['String']['input'];
-  to: Scalars['Int']['input'];
-};
-
 export type QueryResourceTrailingAverageCandlesArgs = {
-  from: Scalars['Int']['input'];
-  interval: Scalars['Int']['input'];
-  slug: Scalars['String']['input'];
-  to: Scalars['Int']['input'];
-  trailingAvgTime: Scalars['Int']['input'];
-};
-
-export type QueryResourceTrailingAverageCandlesFromCacheArgs = {
   from: Scalars['Int']['input'];
   interval: Scalars['Int']['input'];
   slug: Scalars['String']['input'];
@@ -882,20 +845,11 @@ export type QueryResolvers<
     >
   >;
   indexCandles?: Resolver<
-    Array<ResolversTypes['CandleType']>,
-    ParentType,
-    ContextType,
-    RequireFields<
-      QueryIndexCandlesArgs,
-      'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
-    >
-  >;
-  indexCandlesFromCache?: Resolver<
     ResolversTypes['CandleAndTimestampType'],
     ParentType,
     ContextType,
     RequireFields<
-      QueryIndexCandlesFromCacheArgs,
+      QueryIndexCandlesArgs,
       'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
     >
   >;
@@ -918,20 +872,11 @@ export type QueryResolvers<
     >
   >;
   marketCandles?: Resolver<
-    Array<ResolversTypes['CandleType']>,
-    ParentType,
-    ContextType,
-    RequireFields<
-      QueryMarketCandlesArgs,
-      'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
-    >
-  >;
-  marketCandlesFromCache?: Resolver<
     ResolversTypes['CandleAndTimestampType'],
     ParentType,
     ContextType,
     RequireFields<
-      QueryMarketCandlesFromCacheArgs,
+      QueryMarketCandlesArgs,
       'address' | 'chainId' | 'from' | 'interval' | 'marketId' | 'to'
     >
   >;
@@ -972,19 +917,10 @@ export type QueryResolvers<
     RequireFields<QueryResourceArgs, 'slug'>
   >;
   resourceCandles?: Resolver<
-    Array<ResolversTypes['CandleType']>,
-    ParentType,
-    ContextType,
-    RequireFields<QueryResourceCandlesArgs, 'from' | 'interval' | 'slug' | 'to'>
-  >;
-  resourceCandlesFromCache?: Resolver<
     ResolversTypes['CandleAndTimestampType'],
     ParentType,
     ContextType,
-    RequireFields<
-      QueryResourceCandlesFromCacheArgs,
-      'from' | 'interval' | 'slug' | 'to'
-    >
+    RequireFields<QueryResourceCandlesArgs, 'from' | 'interval' | 'slug' | 'to'>
   >;
   resourcePrices?: Resolver<
     Array<ResolversTypes['ResourcePriceType']>,
@@ -992,20 +928,11 @@ export type QueryResolvers<
     ContextType
   >;
   resourceTrailingAverageCandles?: Resolver<
-    Array<ResolversTypes['CandleType']>,
-    ParentType,
-    ContextType,
-    RequireFields<
-      QueryResourceTrailingAverageCandlesArgs,
-      'from' | 'interval' | 'slug' | 'to' | 'trailingAvgTime'
-    >
-  >;
-  resourceTrailingAverageCandlesFromCache?: Resolver<
     ResolversTypes['CandleAndTimestampType'],
     ParentType,
     ContextType,
     RequireFields<
-      QueryResourceTrailingAverageCandlesFromCacheArgs,
+      QueryResourceTrailingAverageCandlesArgs,
       'from' | 'interval' | 'slug' | 'to' | 'trailingAvgTime'
     >
   >;

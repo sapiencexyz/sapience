@@ -13,7 +13,7 @@ const INDEX_CANDLES_QUERY = gql`
     $marketId: String!
     $timestamp: Int!
   ) {
-    indexCandlesFromCache(
+    indexCandles(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -60,7 +60,7 @@ export function useSettlementPrice(marketGroup: MarketGroup, market: Market) {
         },
       });
 
-      const candles = response.data?.indexCandlesFromCache?.data;
+      const candles = response.data?.indexCandles?.data;
       if (!candles || candles.length === 0) {
         throw new Error('No index price data found');
       }
