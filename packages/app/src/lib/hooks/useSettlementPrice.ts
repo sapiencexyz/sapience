@@ -13,7 +13,7 @@ const INDEX_CANDLES_QUERY = gql`
     $marketId: String!
     $timestamp: Int!
   ) {
-    indexCandles(
+    indexCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -21,8 +21,11 @@ const INDEX_CANDLES_QUERY = gql`
       to: $timestamp
       interval: 60
     ) {
-      timestamp
-      close
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -57,7 +60,7 @@ export function useSettlementPrice(marketGroup: MarketGroup, market: Market) {
         },
       });
 
-      const candles = response.data?.indexCandles;
+      const candles = response.data?.indexCandlesFromCache?.data;
       if (!candles || candles.length === 0) {
         throw new Error('No index price data found');
       }
