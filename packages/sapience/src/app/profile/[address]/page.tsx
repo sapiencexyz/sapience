@@ -15,7 +15,7 @@ export default function PortfolioPage() {
       <div className="mb-12">
         <ProfileHeader address={address} />
       </div>
-      <UserPositionsTable account={address} showProfileButton={false} />
+      <UserPositionsTable account={address} showHeaderText={false} showProfileButton={false} />
     </div>
   );
 }
