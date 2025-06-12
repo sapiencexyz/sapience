@@ -9,8 +9,9 @@ import {
   DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
 import type { MarketType } from '@foil/ui/types';
-import type { ColumnDef, Row } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
+import { Pencil } from 'lucide-react';
 import { useState } from 'react';
 import type { Address } from 'viem';
 
@@ -33,10 +34,6 @@ const getChainShortName = (chainId: number): string => {
       return 'op';
     case 8453:
       return 'base';
-    case 42161:
-      return 'arb';
-    case 137:
-      return 'poly';
     default:
       return chainId.toString();
   }
@@ -143,9 +140,37 @@ const MarketItem = ({
   );
 };
 
-const ActionsCell = ({ row }: { row: Row<EnrichedMarketGroup> }) => {
-  const group = row.original as EnrichedMarketGroup;
+const OwnerCell = ({ group }: { group: EnrichedMarketGroup }) => {
   const [ownershipDialogOpen, setOwnershipDialogOpen] = useState(false);
+
+  if (!group.owner) {
+    return <span className="text-muted-foreground">N/A</span>;
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span>{shortenAddress(group.owner)}</span>
+      {group.address && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOwnershipDialogOpen(true)}
+            className="p-1 hover:bg-accent rounded-full transition-colors"
+          >
+            <Pencil className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+          </button>
+          <OwnershipDialog
+            open={ownershipDialogOpen}
+            onOpenChange={setOwnershipDialogOpen}
+            marketGroupAddress={group.address as Address}
+            currentOwner={group.owner ?? undefined}
+          />
+        </>
+      )}
+    </div>
+  );
+};
+
+const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
   const [marketsDialogOpen, setMarketsDialogOpen] = useState(false);
   const { latestEpochId } = useMarketGroupLatestEpoch(
     group.address as Address,
@@ -189,14 +214,12 @@ const ActionsCell = ({ row }: { row: Row<EnrichedMarketGroup> }) => {
             </div>
           </DialogContent>
         </Dialog>
-        <OwnershipDialog
-          open={ownershipDialogOpen}
-          onOpenChange={setOwnershipDialogOpen}
-          marketGroupAddress={group.address as Address}
-          currentOwner={group.owner ?? undefined}
-        />
         <AddMarketDialog
           marketGroupAddress={group.address as Address}
+          chainId={group.chainId}
+        />
+        <ReindexMarketButton
+          marketGroupAddress={group.address}
           chainId={group.chainId}
         />
         <Button variant="outline" size="sm" asChild>
@@ -208,10 +231,6 @@ const ActionsCell = ({ row }: { row: Row<EnrichedMarketGroup> }) => {
             View
           </a>
         </Button>
-        <ReindexMarketButton
-          marketGroupAddress={group.address}
-          chainId={group.chainId}
-        />
       </div>
     );
   }
@@ -262,17 +281,11 @@ const columns: ColumnDef<EnrichedMarketGroup>[] = [
   {
     accessorKey: 'owner',
     header: 'Owner',
-    cell: ({ row }) => {
-      const group = row.original;
-      if (!group.owner) {
-        return <span className="text-muted-foreground">N/A</span>;
-      }
-      return <div>{shortenAddress(group.owner)}</div>;
-    },
+    cell: ({ row }) => <OwnerCell group={row.original} />,
   },
   {
     id: 'actions',
-    cell: ActionsCell,
+    cell: ({ row }) => <ActionsCell group={row.original} />,
     header: () => <div className="text-right">Actions</div>,
   },
 ];

@@ -4,7 +4,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@foil/ui/components/ui/dialog';
 import { Input } from '@foil/ui/components/ui/input';
 import { useState } from 'react';
@@ -76,11 +75,6 @@ const OwnershipDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Ownership
-        </Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Market Group Ownership</DialogTitle>
