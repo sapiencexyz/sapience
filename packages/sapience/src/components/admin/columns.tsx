@@ -183,14 +183,24 @@ const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
         <Dialog open={marketsDialogOpen} onOpenChange={setMarketsDialogOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
-              Markets
+              Edit
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[625px]">
             <DialogHeader>
               <DialogTitle>Markets for {group.question}</DialogTitle>
+              <div className="flex items-center gap-2 pt-2">
+                <AddMarketDialog
+                  marketGroupAddress={group.address as Address}
+                  chainId={group.chainId}
+                />
+                <ReindexMarketButton
+                  marketGroupAddress={group.address}
+                  chainId={group.chainId}
+                />
+              </div>
             </DialogHeader>
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
               {group.markets.length > 0 ? (
                 group.markets
                   .sort((a, b) => {
@@ -214,14 +224,6 @@ const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
             </div>
           </DialogContent>
         </Dialog>
-        <AddMarketDialog
-          marketGroupAddress={group.address as Address}
-          chainId={group.chainId}
-        />
-        <ReindexMarketButton
-          marketGroupAddress={group.address}
-          chainId={group.chainId}
-        />
         <Button variant="outline" size="sm" asChild>
           <a
             href={`/forecasting/${getChainShortName(group.chainId)}:${group.address}`}
@@ -286,7 +288,7 @@ const columns: ColumnDef<EnrichedMarketGroup>[] = [
   {
     id: 'actions',
     cell: ({ row }) => <ActionsCell group={row.original} />,
-    header: () => <div className="text-right">Actions</div>,
+    header: () => <div className="text-right" />,
   },
 ];
 
