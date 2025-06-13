@@ -8,11 +8,13 @@ import {IFoilPositionEvents} from "../interfaces/IFoilPositionEvents.sol";
 import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
 import {ILiquidityModule} from "../interfaces/ILiquidityModule.sol";
 import {Pool} from "../libraries/Pool.sol";
+import {DecimalMath} from "../libraries/DecimalMath.sol";
 
 contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     using Position for Position.Data;
     using Epoch for Epoch.Data;
     using Market for Market.Data;
+    using DecimalMath for uint256;
 
     function createLiquidityPosition(
         IFoilStructs.LiquidityMintParams calldata params
@@ -170,7 +172,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         // if all liquidity is removed, close the position and return
         if (params.liquidity == stack.previousLiquidity)
-            return _closeLiquidityPosition(market, position);
+            return _closeLiquidityPosition(market, position, false, 0);
 
         // otherwise, validate the decreased liquidity and update the position
         // get tokens owed
@@ -245,6 +247,73 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 deltaCollateral: deltaCollateral
             })
         );
+    }
+
+    function closeLiquidityPosition(
+        IFoilStructs.LiquidityCloseParams memory params
+    )
+        external
+        override
+        nonReentrant
+        returns (
+            uint256 decreasedAmount0,
+            uint256 decreasedAmount1,
+            uint256 collateralAmount
+        )
+    {
+        if (params.deadline < block.timestamp) {
+            revert Errors.TransactionExpired(params.deadline, block.timestamp);
+        }
+
+        if (params.liquiditySlippage > 1e18 || params.tradeSlippage > 1e18) {
+            revert Errors.InvalidSlippage(
+                params.liquiditySlippage,
+                params.tradeSlippage
+            );
+        }
+
+        DecreaseLiquidityPositionStack memory stack;
+
+        Market.Data storage market = Market.load();
+        Position.Data storage position = Position.loadValid(params.positionId);
+        Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
+
+        epoch.validateEpochNotExpired();
+        position.preValidateLp();
+        (
+            stack.previousAmount0,
+            stack.previousAmount1,
+            stack.lowerTick,
+            stack.upperTick,
+            stack.previousLiquidity,
+            ,
+
+        ) = Pool.getCurrentPositionTokenAmounts(epoch, position);
+
+        stack.decreaseParams = INonfungiblePositionManager
+            .DecreaseLiquidityParams({
+                tokenId: position.uniswapPositionId,
+                liquidity: 0,
+                amount0Min: stack.previousAmount0.mulDecimal(
+                    1e18 - params.liquiditySlippage
+                ),
+                amount1Min: stack.previousAmount1.mulDecimal(
+                    1e18 - params.liquiditySlippage
+                ),
+                deadline: params.deadline
+            });
+
+        (decreasedAmount0, decreasedAmount1) = INonfungiblePositionManager(
+            epoch.marketParams.uniswapPositionManager
+        ).decreaseLiquidity(stack.decreaseParams);
+
+        return
+            _closeLiquidityPosition(
+                market,
+                position,
+                true,
+                params.tradeSlippage
+            );
     }
 
     function increaseLiquidityPosition(
@@ -545,7 +614,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
     function _closeLiquidityPosition(
         Market.Data storage market,
-        Position.Data storage position
+        Position.Data storage position,
+        bool closeTrade,
+        uint256 tradeSlippage
     )
         internal
         returns (
@@ -621,7 +692,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             position.depositedCollateralAmount = 0;
             position.kind = IFoilStructs.PositionKind.Unknown;
         } else {
-            position.kind = IFoilStructs.PositionKind.Trade;
+            if (!closeTrade) {
+                position.kind = IFoilStructs.PositionKind.Trade;
+            }
         }
 
         // Emit an event for the closed position
@@ -635,6 +708,105 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 collectedAmount1: collectedAmount1,
                 loanAmount0: position.borrowedVGas,
                 loanAmount1: position.borrowedVEth,
+                positionCollateralAmount: position.depositedCollateralAmount,
+                positionVethAmount: position.vEthAmount,
+                positionVgasAmount: position.vGasAmount,
+                positionBorrowedVeth: position.borrowedVEth,
+                positionBorrowedVgas: position.borrowedVGas,
+                deltaCollateral: deltaCollateral
+            })
+        );
+
+        // Notice: closing the trade position after the event is emitted to have both events show the valid intermediate state
+        if (position.kind == IFoilStructs.PositionKind.Trade && closeTrade) {
+            _closeTradePosition(epoch, position, tradeSlippage);
+        }
+    }
+
+    function _closeTradePosition(
+        Epoch.Data storage epoch,
+        Position.Data storage position,
+        uint256 tradeSlippage
+    ) internal {
+        uint256 initialPrice = epoch.getReferencePrice();
+        int256 deltaCollateralLimit = -int256(
+            position.depositedCollateralAmount * (1e18 - tradeSlippage)
+        );
+
+        Trade.QuoteOrTradeInputParams memory inputParams = Trade
+            .QuoteOrTradeInputParams({
+                oldPosition: position,
+                initialSize: position.positionSize(),
+                targetSize: 0,
+                deltaSize: -position.positionSize(),
+                isQuote: false
+            });
+
+        // Do the trade
+        Trade.QuoteOrTradeOutputParams memory outputParams = Trade.quoteOrTrade(
+            inputParams
+        );
+
+        position.vEthAmount = outputParams.position.vEthAmount;
+        position.vGasAmount = outputParams.position.vGasAmount;
+        position.borrowedVEth = outputParams.position.borrowedVEth;
+        position.borrowedVGas = outputParams.position.borrowedVGas;
+        position.depositedCollateralAmount = outputParams
+            .position
+            .depositedCollateralAmount;
+
+        // Ensures that the position only have single side tokens
+        position.rebalanceVirtualTokens();
+
+        // 1. Confirm no vgas tokens
+        if (position.vGasAmount > 0) {
+            // Notice. This error should not happen. If it's here it means something went wrong
+            revert Errors.InvalidData("Cannot close position with vGas tokens");
+        }
+        if (position.borrowedVGas > 0) {
+            // Notice. This error should not happen. If it's here it means something went wrong
+            revert Errors.InvalidData(
+                "Cannot close position with borrowed vGas tokens"
+            );
+        }
+
+        // 2. Confirm collateral is enough to pay for borrowed veth
+        if (
+            position.borrowedVEth > 0 &&
+            position.borrowedVEth > position.depositedCollateralAmount
+        ) {
+            // Notice. This error should not happen. If it's here it means something went wrong
+            revert Errors.InsufficientCollateral(
+                position.borrowedVEth,
+                position.depositedCollateralAmount
+            );
+        }
+
+        // 3. Reconcile collateral (again)
+        position.rebalanceCollateral();
+
+        // 4. Transfer the released collateral to the trader (pnl)
+        // Notice: under normal operations, the required collateral should be zero, but if somehow there is a "bad debt" it needs to be repaid.
+        int256 deltaCollateral = position.updateCollateral(
+            outputParams.requiredCollateral
+        );
+
+        // Check if the collateral is within the limit
+        Trade.checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
+
+        uint256 finalPrice = epoch.getReferencePrice();
+
+        epoch.validateCurrentPoolPriceInRange();
+
+        _emitTraderPositionModified(
+            IFoilPositionEvents.TraderPositionModifiedEventData({
+                sender: msg.sender,
+                epochId: position.epochId,
+                positionId: position.id,
+                requiredCollateral: outputParams.requiredCollateral,
+                initialPrice: initialPrice,
+                finalPrice: finalPrice,
+                tradeRatio: outputParams.tradeRatioD18,
                 positionCollateralAmount: position.depositedCollateralAmount,
                 positionVethAmount: position.vEthAmount,
                 positionVgasAmount: position.vGasAmount,
@@ -722,6 +894,26 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             eventData.collectedAmount1,
             eventData.loanAmount0,
             eventData.loanAmount1,
+            eventData.positionCollateralAmount,
+            eventData.positionVethAmount,
+            eventData.positionVgasAmount,
+            eventData.positionBorrowedVeth,
+            eventData.positionBorrowedVgas,
+            eventData.deltaCollateral
+        );
+    }
+
+    function _emitTraderPositionModified(
+        IFoilPositionEvents.TraderPositionModifiedEventData memory eventData
+    ) internal {
+        emit IFoilPositionEvents.TraderPositionModified(
+            eventData.sender,
+            eventData.epochId,
+            eventData.positionId,
+            eventData.requiredCollateral,
+            eventData.initialPrice,
+            eventData.finalPrice,
+            eventData.tradeRatio,
             eventData.positionCollateralAmount,
             eventData.positionVethAmount,
             eventData.positionVgasAmount,

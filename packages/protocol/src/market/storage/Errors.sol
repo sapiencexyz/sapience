@@ -63,4 +63,5 @@ library Errors {
     );
     error InvalidBondAmount(uint256 bondAmount, uint256 minBond);
     error ManualSettlementTooEarly(uint256 requiredDelay);
+    error InvalidSlippage(uint256 liquiditySlippage, uint256 tradeSlippage);
 }
