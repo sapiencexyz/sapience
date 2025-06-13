@@ -59,6 +59,19 @@ interface ILiquidityModule {
         external
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
 
+    /**
+     * @notice Closes the liquidity position
+     * @param params The parameters for closing the liquidity position
+     * @return amount0 The amount of token0 decreased
+     * @return amount1 The amount of token1 decreased
+     * @return collateralAmount The amount of collateral returned from the LP position, if it's closed as LP, if it's transformed to trade, then this amount is the collateral amount backing the trade position that is closed .
+     */
+    function closeLiquidityPosition(
+        IFoilStructs.LiquidityCloseParams memory params
+    )
+        external
+        returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
+
     struct IncreaseLiquidityPositionStack {
         uint256 previousAmount0;
         uint256 previousAmount1;
