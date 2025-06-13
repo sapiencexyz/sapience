@@ -222,9 +222,9 @@ const createEmptyMarket = (id: number): MarketInput => {
     startingSqrtPriceX96: DEFAULT_SQRT_PRICE,
     baseAssetMinPriceTick: DEFAULT_MIN_PRICE_TICK,
     baseAssetMaxPriceTick: DEFAULT_MAX_PRICE_TICK,
-    startingPrice: "0",
-    lowTickPrice: "0.00009908435194807992",
-    highTickPrice: "1",
+    startingPrice: '0.5',
+    lowTickPrice: '0.00009908435194807992',
+    highTickPrice: '1',
     claimStatement: '',
     rules: '', // Initialize optional field
   };

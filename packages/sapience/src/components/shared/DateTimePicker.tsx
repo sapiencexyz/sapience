@@ -1,13 +1,17 @@
 'use client';
 
-import { format, isSameDay } from 'date-fns';
-import { Calendar } from '@foil/ui/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@foil/ui/components/ui/popover';
 import { Button } from '@foil/ui/components/ui/button';
+import { Calendar } from '@foil/ui/components/ui/calendar';
 import { Input } from '@foil/ui/components/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@foil/ui/components/ui/popover';
 import { cn } from '@foil/ui/lib/utils';
+import { format, isSameDay } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 interface DateTimePickerProps {
   value: number; // Unix timestamp
@@ -19,7 +23,15 @@ interface DateTimePickerProps {
   timePart?: string; // 'HH:mm' string from parent
 }
 
-export function DateTimePicker({ value, onChange, id, className, min, max, timePart }: DateTimePickerProps) {
+const DateTimePicker = ({
+  value,
+  onChange,
+  id,
+  className,
+  min,
+  max,
+  timePart,
+}: DateTimePickerProps) => {
   const currentDate = new Date(value * 1000);
   const minDate = min ? new Date(min * 1000) : undefined;
   const maxDate = max ? new Date(max * 1000) : undefined;
@@ -99,15 +111,15 @@ export function DateTimePicker({ value, onChange, id, className, min, max, timeP
     const updatedTimestamp = Math.floor(updatedDate.getTime() / 1000);
     // Only perform range checks when not focused
     if (min !== undefined && updatedTimestamp < min) {
-        setError('End time is before start time, setting a fallback');
-        onChange(min);
-        return;
-      }
-      if (max !== undefined && updatedTimestamp > max) {
-        setError('Start time is after end time, setting a fallback');
-        onChange(max);
-        return;
-      }
+      setError('End time is before start time, setting a fallback');
+      onChange(min);
+      return;
+    }
+    if (max !== undefined && updatedTimestamp > max) {
+      setError('Start time is after end time, setting a fallback');
+      onChange(max);
+      return;
+    }
     setError(null);
     onChange(updatedTimestamp);
   }
@@ -130,7 +142,7 @@ export function DateTimePicker({ value, onChange, id, className, min, max, timeP
     <div className={cn('flex flex-col items-center', className)}>
       <div className="flex gap-2 items-center w-full">
         <div className="relative flex flex-col flex-[2]">
-          <Popover modal={true}>
+          <Popover modal>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -169,7 +181,9 @@ export function DateTimePicker({ value, onChange, id, className, min, max, timeP
         </div>
       </div>
       {error ? (
-        <div className="text-xs text-red-600 mt-1 w-full text-center">{error}</div>
+        <div className="text-xs text-red-600 mt-1 w-full text-center">
+          {error}
+        </div>
       ) : (
         <div className="text-xs text-gray-400 mt-1 w-full text-center">
           Unix timestamp: {value}
@@ -179,10 +193,14 @@ export function DateTimePicker({ value, onChange, id, className, min, max, timeP
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-blue-400 underline"
-          >Unix converter</a>
-          {')'}
+          >
+            Unix converter
+          </a>
+          )
         </div>
       )}
     </div>
   );
-}
+};
+
+export default DateTimePicker;

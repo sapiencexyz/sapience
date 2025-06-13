@@ -2,11 +2,15 @@
 
 import { Input } from '@foil/ui/components/ui/input';
 import { Label } from '@foil/ui/components/ui/label';
-import { DateTimePicker } from '../shared/DateTimePicker';
-import { priceToSqrtPriceX96, sqrtPriceX96ToPriceD18 } from '../../lib/utils/util';
-import { priceToTick, tickToPrice } from '../../lib/utils/tickUtils';
-import { TICK_SPACING } from '../../lib/constants/numbers';
 import { useState, useEffect } from 'react';
+
+import { TICK_SPACING } from '../../lib/constants/numbers';
+import { priceToTick } from '../../lib/utils/tickUtils';
+import {
+  priceToSqrtPriceX96,
+  sqrtPriceX96ToPriceD18,
+} from '../../lib/utils/util';
+import DateTimePicker from '../shared/DateTimePicker';
 
 export interface MarketInput {
   id: number;
@@ -31,7 +35,12 @@ interface MarketFormFieldsProps {
   isCompact?: boolean;
 }
 
-export function MarketFormFields({ market, onMarketChange, marketIndex, isCompact }: MarketFormFieldsProps) {
+const MarketFormFields = ({
+  market,
+  onMarketChange,
+  marketIndex,
+  isCompact,
+}: MarketFormFieldsProps) => {
   const [error, setError] = useState<string | null>(null);
   const [minPriceError, setMinPriceError] = useState<string | null>(null);
   const [maxPriceError, setMaxPriceError] = useState<string | null>(null);
@@ -74,15 +83,14 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
   };
 
   // Centralized logic for updating start/end times
-  const handleDateTimeChange = (field: 'startTime' | 'endTime', timestamp: number) => {
+  const handleDateTimeChange = (
+    field: 'startTime' | 'endTime',
+    timestamp: number
+  ) => {
     if (field === 'startTime') {
-      
-        onMarketChange('startTime', timestamp.toString());
-
+      onMarketChange('startTime', timestamp.toString());
     } else if (field === 'endTime') {
-
-        onMarketChange('endTime', timestamp.toString());
-  
+      onMarketChange('endTime', timestamp.toString());
     }
   };
 
@@ -90,7 +98,10 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const price = e.target.value;
     onMarketChange('startingPrice', price);
-    onMarketChange('startingSqrtPriceX96', priceToSqrtPriceX96(Number(price)).toString());
+    onMarketChange(
+      'startingSqrtPriceX96',
+      priceToSqrtPriceX96(Number(price)).toString()
+    );
   };
 
   // Handle min price change and convert to tick
@@ -99,7 +110,10 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
     onMarketChange('lowTickPrice', price.toString());
     if (!isMinPriceFocused) {
       const numPrice = Number(price);
-      onMarketChange('baseAssetMinPriceTick', priceToTick(numPrice, TICK_SPACING).toString());
+      onMarketChange(
+        'baseAssetMinPriceTick',
+        priceToTick(numPrice, TICK_SPACING).toString()
+      );
     }
   };
 
@@ -107,23 +121,36 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
     setIsMinPriceFocused(false);
     const numPrice = Number(market.lowTickPrice);
     const maxPrice = Number(market.highTickPrice);
-    
+
     if (numPrice <= 0) {
       const minPrice = 0.00009908435194807992;
       onMarketChange('lowTickPrice', minPrice.toString());
-      onMarketChange('baseAssetMinPriceTick', priceToTick(minPrice, TICK_SPACING).toString());
-      setMinPriceError('Price is too low for Uniswap. Minimum price set to 0.00009908435194807992');
+      onMarketChange(
+        'baseAssetMinPriceTick',
+        priceToTick(minPrice, TICK_SPACING).toString()
+      );
+      setMinPriceError(
+        'Price is too low for Uniswap. Minimum price set to 0.00009908435194807992'
+      );
       return;
     }
 
     if (numPrice > maxPrice) {
       onMarketChange('lowTickPrice', maxPrice.toString());
-      onMarketChange('baseAssetMinPriceTick', priceToTick(maxPrice, TICK_SPACING).toString());
-      setMinPriceError('Min price cannot be greater than max price. Set to max price value.');
+      onMarketChange(
+        'baseAssetMinPriceTick',
+        priceToTick(maxPrice, TICK_SPACING).toString()
+      );
+      setMinPriceError(
+        'Min price cannot be greater than max price. Set to max price value.'
+      );
       return;
     }
 
-    onMarketChange('baseAssetMinPriceTick', priceToTick(numPrice, TICK_SPACING).toString());
+    onMarketChange(
+      'baseAssetMinPriceTick',
+      priceToTick(numPrice, TICK_SPACING).toString()
+    );
     setMinPriceError(null);
   };
 
@@ -133,7 +160,10 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
     onMarketChange('highTickPrice', price.toString());
     if (!isMaxPriceFocused) {
       const numPrice = Number(price);
-      onMarketChange('baseAssetMaxPriceTick', priceToTick(numPrice, TICK_SPACING).toString());
+      onMarketChange(
+        'baseAssetMaxPriceTick',
+        priceToTick(numPrice, TICK_SPACING).toString()
+      );
     }
   };
 
@@ -141,39 +171,43 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
     setIsMaxPriceFocused(false);
     const numPrice = Number(market.highTickPrice);
     const minPrice = Number(market.lowTickPrice);
-    
+
     if (numPrice <= 0) {
       const minPrice = 0.00009908435194807992;
       onMarketChange('highTickPrice', minPrice.toString());
-      onMarketChange('baseAssetMaxPriceTick', priceToTick(minPrice, TICK_SPACING).toString());
-      setMaxPriceError('Price is too low for Uniswap. Minimum price set to 0.00009908435194807992');
+      onMarketChange(
+        'baseAssetMaxPriceTick',
+        priceToTick(minPrice, TICK_SPACING).toString()
+      );
+      setMaxPriceError(
+        'Price is too low for Uniswap. Minimum price set to 0.00009908435194807992'
+      );
       return;
     }
 
     if (numPrice < minPrice) {
       onMarketChange('highTickPrice', minPrice.toString());
-      onMarketChange('baseAssetMaxPriceTick', priceToTick(minPrice, TICK_SPACING).toString());
-      setMaxPriceError('Max price cannot be less than min price. Set to min price value.');
+      onMarketChange(
+        'baseAssetMaxPriceTick',
+        priceToTick(minPrice, TICK_SPACING).toString()
+      );
+      setMaxPriceError(
+        'Max price cannot be less than min price. Set to min price value.'
+      );
       return;
     }
 
-    onMarketChange('baseAssetMaxPriceTick', priceToTick(numPrice, TICK_SPACING).toString());
+    onMarketChange(
+      'baseAssetMaxPriceTick',
+      priceToTick(numPrice, TICK_SPACING).toString()
+    );
     setMaxPriceError(null);
-  };
-
-  // Get price from tick for display
-  const getPriceFromTick = (tick: string) => {
-    const numTick = Number(tick);
-    if (isNaN(numTick)) return '';
-    return tickToPrice(numTick, TICK_SPACING).toString();
   };
 
   console.log(market);
   return (
     <div className="space-y-4 py-4">
-      {error && (
-        <div className="text-sm text-red-500 mb-2">{error}</div>
-      )}
+      {error && <div className="text-sm text-red-500 mb-2">{error}</div>}
       {/* Market Question & Option Name */}
       <div
         className={`grid grid-cols-1 ${isCompact ? 'gap-2' : 'md:grid-cols-2 gap-6'}`}
@@ -183,7 +217,9 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
           <DateTimePicker
             id={fieldId('startTime')}
             value={startTimestamp}
-            onChange={(timestamp) => handleDateTimeChange('startTime', timestamp)}
+            onChange={(timestamp: number) =>
+              handleDateTimeChange('startTime', timestamp)
+            }
             min={0}
             max={endTimestamp}
             timePart={getTimePart(startTimestamp)}
@@ -194,7 +230,9 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
           <DateTimePicker
             id={fieldId('endTime')}
             value={endTimestamp}
-            onChange={(timestamp) => handleDateTimeChange('endTime', timestamp)}
+            onChange={(timestamp: number) =>
+              handleDateTimeChange('endTime', timestamp)
+            }
             min={startTimestamp}
             timePart={getTimePart(endTimestamp)}
           />
@@ -219,15 +257,22 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
             min="0"
           />
           <div className="text-xs text-gray-400 mt-1 w-full text-center">
-            computed sqrtPriceX96: {(priceToSqrtPriceX96(Number(market.startingPrice))).toString()}
+            computed sqrtPriceX96:{' '}
+            {priceToSqrtPriceX96(Number(market.startingPrice)).toString()}
             <br />
-            computed inverse: {(Number(sqrtPriceX96ToPriceD18(priceToSqrtPriceX96(Number(market.startingPrice)))) / 10 ** 18).toString()}
+            computed inverse:{' '}
+            {(
+              Number(
+                sqrtPriceX96ToPriceD18(
+                  priceToSqrtPriceX96(Number(market.startingPrice))
+                )
+              ) /
+              10 ** 18
+            ).toString()}
           </div>
         </div>
         <div>
-          <Label htmlFor={fieldId('lowTickPrice')}>
-            Min Price
-          </Label>
+          <Label htmlFor={fieldId('lowTickPrice')}>Min Price</Label>
           <Input
             id={fieldId('lowTickPrice')}
             type="number"
@@ -245,13 +290,13 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
             tick: {market.baseAssetMinPriceTick}
           </div>
           {minPriceError && (
-            <div className="text-xs text-red-500 mt-1 w-full text-center">{minPriceError}</div>
+            <div className="text-xs text-red-500 mt-1 w-full text-center">
+              {minPriceError}
+            </div>
           )}
         </div>
         <div>
-          <Label htmlFor={fieldId('highTickPrice')}>
-            Max Price
-          </Label>
+          <Label htmlFor={fieldId('highTickPrice')}>Max Price</Label>
           <Input
             id={fieldId('highTickPrice')}
             type="number"
@@ -269,12 +314,14 @@ export function MarketFormFields({ market, onMarketChange, marketIndex, isCompac
             tick: {market.baseAssetMaxPriceTick}
           </div>
           {maxPriceError && (
-            <div className="text-xs text-red-500 mt-1 w-full text-center">{maxPriceError}</div>
+            <div className="text-xs text-red-500 mt-1 w-full text-center">
+              {maxPriceError}
+            </div>
           )}
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default MarketFormFields;
