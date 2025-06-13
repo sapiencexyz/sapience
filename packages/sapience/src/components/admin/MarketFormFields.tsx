@@ -208,6 +208,62 @@ const MarketFormFields = ({
   return (
     <div className="space-y-4 py-4">
       {error && <div className="text-sm text-red-500 mb-2">{error}</div>}
+
+      {/* Market Question & Option Name */}
+      <div
+        className={`grid grid-cols-1 ${isCompact ? 'gap-2' : 'md:grid-cols-2 gap-4'}`}
+      >
+        <div>
+          <Label htmlFor={fieldId('marketQuestion')}>Market Question</Label>
+          <Input
+            id={fieldId('marketQuestion')}
+            type="text"
+            value={market.marketQuestion}
+            onChange={(e) => onMarketChange('marketQuestion', e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor={fieldId('optionName')}>Option Name (Optional)</Label>
+          <Input
+            id={fieldId('optionName')}
+            type="text"
+            value={market.optionName || ''}
+            onChange={(e) => onMarketChange('optionName', e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Claim Statement */}
+      <div>
+        <Label htmlFor={fieldId('claimStatement')}>Claim Statement</Label>
+        <Input
+          id={fieldId('claimStatement')}
+          type="text"
+          value={market.claimStatement}
+          onChange={(e) => onMarketChange('claimStatement', e.target.value)}
+          placeholder="e.g. The average cost of gas in June 2025..."
+          required
+        />
+        {!isCompact && (
+          <p className="text-sm text-muted-foreground mt-1">
+            This will be followed by the settlement value in UMA.
+          </p>
+        )}
+      </div>
+
+      {/* Rules */}
+      <div>
+        <Label htmlFor={fieldId('rules')}>Rules (Optional)</Label>
+        <textarea
+          id={fieldId('rules')}
+          className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          value={market.rules || ''}
+          onChange={(e) => onMarketChange('rules', e.target.value)}
+          placeholder="Enter any specific rules or conditions for this market..."
+        />
+      </div>
+
       {/* Market Question & Option Name */}
       <div
         className={`grid grid-cols-1 ${isCompact ? 'gap-2' : 'md:grid-cols-2 gap-6'}`}
