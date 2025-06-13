@@ -21,6 +21,7 @@ export class PositionResolver {
         .leftJoinAndSelect('position.market', 'market')
         .leftJoinAndSelect('market.marketGroup', 'marketGroup')
         .leftJoinAndSelect('marketGroup.resource', 'resource')
+        .leftJoinAndSelect('marketGroup.markets', 'markets')
         .leftJoinAndSelect('position.transactions', 'transactions')
         .leftJoinAndSelect('transactions.event', 'event');
 
