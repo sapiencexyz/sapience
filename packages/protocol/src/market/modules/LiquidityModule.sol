@@ -290,10 +290,11 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         ) = Pool.getCurrentPositionTokenAmounts(epoch, position);
 
+
         stack.decreaseParams = INonfungiblePositionManager
             .DecreaseLiquidityParams({
                 tokenId: position.uniswapPositionId,
-                liquidity: 0,
+                liquidity: stack.previousLiquidity,
                 amount0Min: stack.previousAmount0.mulDecimal(
                     1e18 - params.liquiditySlippage
                 ),
@@ -692,9 +693,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             position.depositedCollateralAmount = 0;
             position.kind = IFoilStructs.PositionKind.Unknown;
         } else {
-            if (!closeTrade) {
-                position.kind = IFoilStructs.PositionKind.Trade;
-            }
+            position.kind = IFoilStructs.PositionKind.Trade;
         }
 
         // Emit an event for the closed position
@@ -730,7 +729,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     ) internal {
         uint256 initialPrice = epoch.getReferencePrice();
         int256 deltaCollateralLimit = -int256(
-            position.depositedCollateralAmount * (1e18 - tradeSlippage)
+            position.depositedCollateralAmount.mulDecimal(1e18 - tradeSlippage)
         );
 
         Trade.QuoteOrTradeInputParams memory inputParams = Trade
@@ -790,6 +789,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         int256 deltaCollateral = position.updateCollateral(
             outputParams.requiredCollateral
         );
+
+        // 5. Set the position kind to unknown
+        position.kind = IFoilStructs.PositionKind.Unknown;
 
         // Check if the collateral is within the limit
         Trade.checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
