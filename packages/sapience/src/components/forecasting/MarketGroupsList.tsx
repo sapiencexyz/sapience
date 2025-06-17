@@ -117,14 +117,14 @@ const FocusAreaFilter = ({
   categories: Category[] | null | undefined; // Use defined Category type
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
 }) => (
-  <div className="p-5 w-[280px] mt-0">
+  <div className="p-5 pr-12 w-[280px] mt-0">
     <div className="pb-2">
       <h3 className="font-medium mb-4 md:hidden">Filters</h3>
-      <div className="space-y-1">
+      <div className="space-y-1 flex flex-col">
         <button
           type="button"
           onClick={() => handleCategoryClick(null)}
-          className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
+          className={`flex w-full text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
         >
           <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
             <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
@@ -154,7 +154,7 @@ const FocusAreaFilter = ({
                 type="button"
                 key={category.id}
                 onClick={() => handleCategoryClick(category.slug)}
-                className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
+                className={`flex w-full text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
               >
                 <div
                   className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
