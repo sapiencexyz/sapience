@@ -202,7 +202,7 @@ contract DecreaseLiquidityPosition is TestTrade {
             );
 
         // Close the position by decreasing all liquidity
-        (uint256 amount0, uint256 amount1, uint256 collateralAmount) = foil
+        (uint256 amount0, uint256 amount1,) = foil
             .decreaseLiquidityPosition(
                 IFoilStructs.LiquidityDecreaseParams({
                     positionId: positionId,
