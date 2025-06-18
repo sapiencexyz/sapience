@@ -3,7 +3,11 @@ pragma solidity ^0.8.22;
 
 import { OApp, Origin, MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IUMASettlementModule } from "../market/interfaces/IUMASettlementModule.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ILayerZeroBridge } from "./interfaces/ILayerZeroBridge.sol";
+import { OptimisticOracleV3Interface } from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 
 /**
  * @title UMALayerZeroBridge
@@ -14,13 +18,17 @@ import { IUMASettlementModule } from "../market/interfaces/IUMASettlementModule.
  * 3. Manages bond tokens and gas fees
  * 4. Sends verification results back to Converge
  */
-contract UMALayerZeroBridge is ILayerZeroBridge, OApp {
+contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
+    using SafeERC20 for IERC20;
+
     // State variables
     BridgeConfig public bridgeConfig;
-    mapping(uint256 => bytes32) public epochToAssertionId;  // Maps epoch IDs to UMA assertion IDs
-    mapping(bytes32 => uint256) public assertionIdToEpoch;  // Maps UMA assertion IDs to epoch IDs
-    uint256 public gasReserve;                              // Native token reserve for gas
-    uint256 public bondReserve;                             // Bond token reserve
+    mapping(address => mapping(uint256 => bytes32)) public marketEpochToAssertionId;  // marketAddress => epochId => assertionId
+    mapping(bytes32 => address) public assertionIdToMarket;                           // assertionId => marketAddress
+    mapping(bytes32 => uint256) public assertionIdToEpoch;                           // assertionId => epochId
+    mapping(address => mapping(address => uint256)) public submitterBondBalances;    // submitter => bondToken => balance
+    mapping(address => mapping(address => WithdrawalIntent)) public withdrawalIntents; // submitter => bondToken => intent
+    mapping(address => MarketBondConfig) public marketBondConfigs;                   // marketAddress => config
     
     // Constants for gas monitoring
     uint256 public constant WARNING_GAS_THRESHOLD = 0.1 ether;
@@ -29,48 +37,209 @@ contract UMALayerZeroBridge is ILayerZeroBridge, OApp {
     // Constructor and initialization
     constructor(address _endpoint, address _owner) OApp(_endpoint, _owner) Ownable(_owner) {}
 
-    // Core functions
-    function submitSettlement(...) external payable returns (bytes32) {
-        // 1. Receive settlement from Converge
-        // 2. Submit to UMA's OptimisticOracleV3
-        // 3. Store mapping between epoch and assertion ID
-        // 4. Emit events
+    // Bond Management Functions
+    function depositBond(address bondToken, uint256 amount) external nonReentrant {
+        require(amount > 0, "Amount must be greater than 0");
+        IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
+        submitterBondBalances[msg.sender][bondToken] += amount;
+        emit BondDeposited(msg.sender, bondToken, amount);
+        _sendBalanceUpdate(msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], BalanceUpdateType.DEPOSIT);
     }
-    
-    function verifySettlement(...) external {
-        // 1. Receive verification from UMA
-        // 2. Send verification back to Converge
-        // 3. Handle bond token returns
-        // 4. Emit events
+
+    function intentToWithdrawBond(address bondToken, uint256 amount) external nonReentrant {
+        require(amount > 0, "Amount must be greater than 0");
+        require(submitterBondBalances[msg.sender][bondToken] >= amount, "Insufficient balance");
+        require(withdrawalIntents[msg.sender][bondToken].amount == 0, "Withdrawal intent already exists");
+
+        withdrawalIntents[msg.sender][bondToken] = WithdrawalIntent({
+            amount: amount,
+            timestamp: block.timestamp,
+            executed: false
+        });
+
+        emit WithdrawalIntentCreated(msg.sender, bondToken, amount);
     }
-    
+
+    function executeWithdrawal(address bondToken) external nonReentrant {
+        WithdrawalIntent storage intent = withdrawalIntents[msg.sender][bondToken];
+        require(intent.amount > 0, "No withdrawal intent");
+        require(!intent.executed, "Withdrawal already executed");
+        require(block.timestamp >= intent.timestamp + bridgeConfig.withdrawalDelay, "Waiting period not over");
+
+        uint256 amount = intent.amount;
+        intent.executed = true;
+        submitterBondBalances[msg.sender][bondToken] -= amount;
+        
+        IERC20(bondToken).safeTransfer(msg.sender, amount);
+        emit WithdrawalExecuted(msg.sender, bondToken, amount);
+        _sendBalanceUpdate(msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], BalanceUpdateType.WITHDRAWAL);
+    }
+
+    function getBondBalance(address submitter, address bondToken) external view returns (uint256) {
+        return submitterBondBalances[submitter][bondToken];
+    }
+
+    function getPendingWithdrawal(address submitter, address bondToken) external view returns (uint256, uint256) {
+        WithdrawalIntent storage intent = withdrawalIntents[submitter][bondToken];
+        return (intent.amount, intent.timestamp);
+    }
+
+    // Settlement Functions
+    function submitSettlement(
+        address market,
+        uint256 epochId,
+        uint256 settlementPrice,
+        address bondToken,
+        uint256 bondAmount
+    ) external payable nonReentrant returns (bytes32) {
+        require(msg.sender == bridgeConfig.remoteBridge, "Only remote bridge can submit");
+        require(submitterBondBalances[market][bondToken] >= bondAmount, "Insufficient bond balance");
+
+        // Submit to UMA's OptimisticOracleV3
+        bytes32 assertionId = OptimisticOracleV3Interface(bridgeConfig.optimisticOracleV3).assertTruth(
+            abi.encodePacked(settlementPrice),
+            market,
+            address(this),
+            address(0),
+            uint64(bridgeConfig.assertionLiveness),
+            IERC20(bondToken),
+            bondAmount,
+            OptimisticOracleV3Interface(bridgeConfig.optimisticOracleV3).defaultIdentifier(),
+            bytes32(0)
+        );
+
+        // Update mappings
+        marketEpochToAssertionId[market][epochId] = assertionId;
+        assertionIdToMarket[assertionId] = market;
+        assertionIdToEpoch[assertionId] = epochId;
+
+        // Update bond balance
+        submitterBondBalances[market][bondToken] -= bondAmount;
+        _sendBalanceUpdate(market, bondToken, submitterBondBalances[market][bondToken], BalanceUpdateType.ASSERTION_USED);
+
+        emit SettlementSubmitted(market, epochId, assertionId);
+        return assertionId;
+    }
+
+    function verifySettlement(
+        address market,
+        uint256 epochId,
+        bytes32 assertionId,
+        bool verified
+    ) external payable nonReentrant {
+        require(msg.sender == bridgeConfig.remoteBridge, "Only remote bridge can verify");
+        require(marketEpochToAssertionId[market][epochId] == assertionId, "Invalid assertion ID");
+
+        // Send verification back to Converge
+        bytes memory payload = abi.encode(market, epochId, assertionId, verified);
+        _lzSend(
+            bridgeConfig.remoteChainId,
+            payload,
+            bytes(""), // No options
+            MessagingFee(msg.value, 0),
+            payable(msg.sender)
+        );
+
+        emit SettlementVerified(market, epochId, verified);
+    }
+
     // UMA callback functions
-    function assertionResolvedCallback(...) external {
-        // 1. Verify caller is UMA's OptimisticOracleV3
-        // 2. Get epoch ID from assertion ID
-        // 3. Send verification to Converge
-        // 4. Handle bond token returns
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
+        require(msg.sender == bridgeConfig.optimisticOracleV3, "Only UMA can call");
+        address market = assertionIdToMarket[assertionId];
+        uint256 epochId = assertionIdToEpoch[assertionId];
+        require(market != address(0), "Invalid assertion ID");
+
+        // Send resolution to Converge
+        bytes memory payload = abi.encode(market, epochId, assertionId, assertedTruthfully);
+        _lzSend(
+            bridgeConfig.remoteChainId,
+            payload,
+            bytes(""), // No options
+            MessagingFee(0, 0),
+            payable(address(this))
+        );
+
+        emit DisputeResolved(market, epochId, assertedTruthfully);
     }
-    
+
+    function assertionDisputedCallback(bytes32 assertionId) external {
+        require(msg.sender == bridgeConfig.optimisticOracleV3, "Only UMA can call");
+        address market = assertionIdToMarket[assertionId];
+        uint256 epochId = assertionIdToEpoch[assertionId];
+        require(market != address(0), "Invalid assertion ID");
+
+        // Send dispute notification to Converge
+        bytes memory payload = abi.encode(market, epochId, assertionId);
+        _lzSend(
+            bridgeConfig.remoteChainId,
+            payload,
+            bytes(""), // No options
+            MessagingFee(0, 0),
+            payable(address(this))
+        );
+
+        emit SettlementDisputed(market, epochId);
+    }
+
     // LayerZero message handling
-    function _lzReceive(...) internal override {
-        // 1. Verify message source
-        // 2. Process settlement message
-        // 3. Submit to UMA
-    }
-    
-    // Reserve management
-    function checkGasReserve() internal {
-        // Monitor gas levels and emit warnings
-    }
-    
-    function checkBondReserve() internal {
-        // Monitor bond token levels and emit warnings
+    function _lzReceive(
+        Origin calldata _origin,
+        bytes32 _guid,
+        bytes calldata payload,
+        address _executor,
+        bytes calldata _extraData
+    ) internal override {
+        require(_origin.srcEid == bridgeConfig.remoteChainId, "Invalid source chain");
+        require(address(uint160(uint256(_origin.sender))) == bridgeConfig.remoteBridge, "Invalid sender");
+
+        // Process the message based on its type
+        // Implementation depends on the message structure
     }
 
-    // TODO: Implement
-    function assertionDisputedCallback(bytes32 assertionId) external override {
-        // TODO: Implement
+    // Internal functions
+    function _sendBalanceUpdate(
+        address submitter,
+        address bondToken,
+        uint256 newBalance,
+        BalanceUpdateType updateType
+    ) internal {
+        BalanceUpdate memory update = BalanceUpdate({
+            submitter: submitter,
+            bondToken: bondToken,
+            newBalance: newBalance,
+            updateType: updateType
+        });
+
+        bytes memory payload = abi.encode(update);
+        _lzSend(
+            bridgeConfig.remoteChainId,
+            payload,
+            bytes(""), // No options
+            MessagingFee(0, 0),
+            payable(address(this))
+        );
+
+        emit BalanceUpdateSent(submitter, bondToken, newBalance);
     }
 
+    // Configuration functions
+    function setBridgeConfig(BridgeConfig calldata newConfig) external onlyOwner {
+        bridgeConfig = newConfig;
+        emit BridgeConfigUpdated(newConfig);
+    }
+
+    function setMarketBondConfig(address market, MarketBondConfig calldata newConfig) external onlyOwner {
+        marketBondConfigs[market] = newConfig;
+        emit MarketBondConfigUpdated(market, newConfig);
+    }
+
+    // View functions
+    function getBridgeConfig() external view returns (BridgeConfig memory) {
+        return bridgeConfig;
+    }
+
+    function getMarketBondConfig(address market) external view returns (MarketBondConfig memory) {
+        return marketBondConfigs[market];
+    }
 }
