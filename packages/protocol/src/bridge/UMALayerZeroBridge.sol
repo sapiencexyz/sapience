@@ -8,6 +8,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ILayerZeroBridge } from "./interfaces/ILayerZeroBridge.sol";
 import { OptimisticOracleV3Interface } from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import { IUMALayerZeroBridge } from "./interfaces/ILayerZeroBridge.sol";
 
 /**
  * @title UMALayerZeroBridge
@@ -18,17 +19,16 @@ import { OptimisticOracleV3Interface } from "@uma/core/contracts/optimistic-orac
  * 3. Manages bond tokens and gas fees
  * 4. Sends verification results back to Converge
  */
-contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
+contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     using SafeERC20 for IERC20;
 
     // State variables
-    BridgeConfig public bridgeConfig;
-    mapping(address => mapping(uint256 => bytes32)) public marketEpochToAssertionId;  // marketAddress => epochId => assertionId
-    mapping(bytes32 => address) public assertionIdToMarket;                           // assertionId => marketAddress
-    mapping(bytes32 => uint256) public assertionIdToEpoch;                           // assertionId => epochId
-    mapping(address => mapping(address => uint256)) public submitterBondBalances;    // submitter => bondToken => balance
-    mapping(address => mapping(address => WithdrawalIntent)) public withdrawalIntents; // submitter => bondToken => intent
-    mapping(address => MarketBondConfig) public marketBondConfigs;                   // marketAddress => config
+    BridgeConfig private  bridgeConfig;
+    mapping(address => mapping(uint256 => bytes32)) private marketEpochToAssertionId;  // marketAddress => epochId => assertionId
+    mapping(bytes32 => address) private assertionIdToMarket;                           // assertionId => marketAddress
+    mapping(bytes32 => uint256) private assertionIdToEpoch;                           // assertionId => epochId
+    mapping(address => mapping(address => uint256)) private submitterBondBalances;    // submitter => bondToken => balance
+    mapping(address => mapping(address => WithdrawalIntent)) private withdrawalIntents; // submitter => bondToken => intent
     
     // Constants for gas monitoring
     uint256 public constant WARNING_GAS_THRESHOLD = 0.1 ether;
@@ -43,7 +43,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
         submitterBondBalances[msg.sender][bondToken] += amount;
         emit BondDeposited(msg.sender, bondToken, amount);
-        _sendBalanceUpdate(msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], BalanceUpdateType.DEPOSIT);
+        // _sendBalanceUpdate(msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], BalanceUpdateType.DEPOSIT);
     }
 
     function intentToWithdrawBond(address bondToken, uint256 amount) external nonReentrant {
@@ -57,14 +57,14 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
             executed: false
         });
 
-        emit WithdrawalIntentCreated(msg.sender, bondToken, amount);
+        // emit WithdrawalIntentCreated(msg.sender, bondToken, amount);
     }
 
     function executeWithdrawal(address bondToken) external nonReentrant {
         WithdrawalIntent storage intent = withdrawalIntents[msg.sender][bondToken];
         require(intent.amount > 0, "No withdrawal intent");
         require(!intent.executed, "Withdrawal already executed");
-        require(block.timestamp >= intent.timestamp + bridgeConfig.withdrawalDelay, "Waiting period not over");
+        // require(block.timestamp >= intent.timestamp + bridgeConfig.withdrawalDelay, "Waiting period not over");
 
         uint256 amount = intent.amount;
         intent.executed = true;
@@ -72,7 +72,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
         
         IERC20(bondToken).safeTransfer(msg.sender, amount);
         emit WithdrawalExecuted(msg.sender, bondToken, amount);
-        _sendBalanceUpdate(msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], BalanceUpdateType.WITHDRAWAL);
+        // _sendBalanceUpdate(msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], BalanceUpdateType.WITHDRAWAL);
     }
 
     function getBondBalance(address submitter, address bondToken) external view returns (uint256) {
@@ -85,41 +85,41 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
     }
 
     // Settlement Functions
-    function submitSettlement(
-        address market,
-        uint256 epochId,
-        uint256 settlementPrice,
-        address bondToken,
-        uint256 bondAmount
-    ) external payable nonReentrant returns (bytes32) {
-        require(msg.sender == bridgeConfig.remoteBridge, "Only remote bridge can submit");
-        require(submitterBondBalances[market][bondToken] >= bondAmount, "Insufficient bond balance");
+    // function submitSettlement(
+    //     address market,
+    //     uint256 epochId,
+    //     uint256 settlementPrice,
+    //     address bondToken,
+    //     uint256 bondAmount
+    // ) external payable nonReentrant returns (bytes32) {
+    //     require(msg.sender == bridgeConfig.remoteBridge, "Only remote bridge can submit");
+    //     require(submitterBondBalances[market][bondToken] >= bondAmount, "Insufficient bond balance");
 
-        // Submit to UMA's OptimisticOracleV3
-        bytes32 assertionId = OptimisticOracleV3Interface(bridgeConfig.optimisticOracleV3).assertTruth(
-            abi.encodePacked(settlementPrice),
-            market,
-            address(this),
-            address(0),
-            uint64(bridgeConfig.assertionLiveness),
-            IERC20(bondToken),
-            bondAmount,
-            OptimisticOracleV3Interface(bridgeConfig.optimisticOracleV3).defaultIdentifier(),
-            bytes32(0)
-        );
+    //     // Submit to UMA's OptimisticOracleV3
+    //     bytes32 assertionId = OptimisticOracleV3Interface(bridgeConfig.optimisticOracleV3).assertTruth(
+    //         abi.encodePacked(settlementPrice),
+    //         market,
+    //         address(this),
+    //         address(0),
+    //         uint64(bridgeConfig.assertionLiveness),
+    //         IERC20(bondToken),
+    //         bondAmount,
+    //         OptimisticOracleV3Interface(bridgeConfig.optimisticOracleV3).defaultIdentifier(),
+    //         bytes32(0)
+    //     );
 
-        // Update mappings
-        marketEpochToAssertionId[market][epochId] = assertionId;
-        assertionIdToMarket[assertionId] = market;
-        assertionIdToEpoch[assertionId] = epochId;
+    //     // Update mappings
+    //     marketEpochToAssertionId[market][epochId] = assertionId;
+    //     assertionIdToMarket[assertionId] = market;
+    //     assertionIdToEpoch[assertionId] = epochId;
 
-        // Update bond balance
-        submitterBondBalances[market][bondToken] -= bondAmount;
-        _sendBalanceUpdate(market, bondToken, submitterBondBalances[market][bondToken], BalanceUpdateType.ASSERTION_USED);
+    //     // Update bond balance
+    //     submitterBondBalances[market][bondToken] -= bondAmount;
+    //     // _sendBalanceUpdate(market, bondToken, submitterBondBalances[market][bondToken], BalanceUpdateType.ASSERTION_USED);
 
-        emit SettlementSubmitted(market, epochId, assertionId);
-        return assertionId;
-    }
+    //     emit SettlementSubmitted(market, epochId, assertionId);
+    //     return assertionId;
+    // }
 
     function verifySettlement(
         address market,
@@ -140,12 +140,12 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
             payable(msg.sender)
         );
 
-        emit SettlementVerified(market, epochId, verified);
+        // emit SettlementVerified(market, epochId, verified);
     }
 
     // UMA callback functions
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
-        require(msg.sender == bridgeConfig.optimisticOracleV3, "Only UMA can call");
+        // require(msg.sender == bridgeConfig.optimisticOracleV3, "Only UMA can call");
         address market = assertionIdToMarket[assertionId];
         uint256 epochId = assertionIdToEpoch[assertionId];
         require(market != address(0), "Invalid assertion ID");
@@ -160,11 +160,11 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
             payable(address(this))
         );
 
-        emit DisputeResolved(market, epochId, assertedTruthfully);
+        // emit DisputeResolved(market, epochId, assertedTruthfully);
     }
 
     function assertionDisputedCallback(bytes32 assertionId) external {
-        require(msg.sender == bridgeConfig.optimisticOracleV3, "Only UMA can call");
+        // require(msg.sender == bridgeConfig.optimisticOracleV3, "Only UMA can call");
         address market = assertionIdToMarket[assertionId];
         uint256 epochId = assertionIdToEpoch[assertionId];
         require(market != address(0), "Invalid assertion ID");
@@ -179,7 +179,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
             payable(address(this))
         );
 
-        emit SettlementDisputed(market, epochId);
+        // emit SettlementDisputed(market, epochId);
     }
 
     // LayerZero message handling
@@ -198,30 +198,30 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
     }
 
     // Internal functions
-    function _sendBalanceUpdate(
-        address submitter,
-        address bondToken,
-        uint256 newBalance,
-        BalanceUpdateType updateType
-    ) internal {
-        BalanceUpdate memory update = BalanceUpdate({
-            submitter: submitter,
-            bondToken: bondToken,
-            newBalance: newBalance,
-            updateType: updateType
-        });
+    // function _sendBalanceUpdate(
+    //     address submitter,
+    //     address bondToken,
+    //     uint256 newBalance,
+    //     BalanceUpdateType updateType
+    // ) internal {
+    //     BalanceUpdate memory update = BalanceUpdate({
+    //         submitter: submitter,
+    //         bondToken: bondToken,
+    //         newBalance: newBalance,
+    //         updateType: updateType
+    //     });
 
-        bytes memory payload = abi.encode(update);
-        _lzSend(
-            bridgeConfig.remoteChainId,
-            payload,
-            bytes(""), // No options
-            MessagingFee(0, 0),
-            payable(address(this))
-        );
+    //     bytes memory payload = abi.encode(update);
+    //     _lzSend(
+    //         bridgeConfig.remoteChainId,
+    //         payload,
+    //         bytes(""), // No options
+    //         MessagingFee(0, 0),
+    //         payable(address(this))
+    //     );
 
-        emit BalanceUpdateSent(submitter, bondToken, newBalance);
-    }
+    //     emit BalanceUpdateSent(submitter, bondToken, newBalance);
+    // }
 
     // Configuration functions
     function setBridgeConfig(BridgeConfig calldata newConfig) external onlyOwner {
@@ -229,17 +229,8 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, ILayerZeroBridge {
         emit BridgeConfigUpdated(newConfig);
     }
 
-    function setMarketBondConfig(address market, MarketBondConfig calldata newConfig) external onlyOwner {
-        marketBondConfigs[market] = newConfig;
-        emit MarketBondConfigUpdated(market, newConfig);
-    }
-
     // View functions
     function getBridgeConfig() external view returns (BridgeConfig memory) {
         return bridgeConfig;
-    }
-
-    function getMarketBondConfig(address market) external view returns (MarketBondConfig memory) {
-        return marketBondConfigs[market];
     }
 }

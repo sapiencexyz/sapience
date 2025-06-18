@@ -1,20 +1,58 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+/**
+ * @title ILayerZeroBridge
+ * @notice Common interface for LayerZero bridge contracts
+ */
 interface ILayerZeroBridge {
-    // Structs
+    // Common structs
     struct BridgeConfig {
-        address optimisticOracleV3;   // UMA's OptimisticOracleV3 address (UMA side only)
-        uint256 assertionLiveness;    // UMA's assertion liveness period
-        uint16 remoteChainId;         // LayerZero chain ID of the other bridge
-        address remoteBridge;         // Address of the other bridge contract
-        uint256 balanceUpdateTimeout; // Timeout for balance updates
-        uint256 withdrawalDelay;      // Waiting period for withdrawals
+        uint16 remoteChainId;
+        address remoteBridge;
+        address settlementModule;
     }
 
+    struct SettlementData {
+        address market;
+        uint256 epochId;
+        uint256 settlementPrice;
+        uint256 timestamp;
+    }
+
+    struct VerificationData {
+        address market;
+        uint256 epochId;
+        bytes32 assertionId;
+        bool verified;
+    }
+
+    // Common events
+    event BridgeConfigUpdated(BridgeConfig config);
+    event SettlementSubmitted(address indexed market, uint256 indexed epochId, uint256 settlementPrice);
+    event SettlementVerified(address indexed market, uint256 indexed epochId, bytes32 assertionId, bool verified);
+    event BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount);
+    event BondWithdrawn(address indexed submitter, address indexed bondToken, uint256 amount);
+    event WithdrawalIntentCreated(address indexed submitter, address indexed bondToken, uint256 amount, uint256 timestamp);
+    event WithdrawalExecuted(address indexed submitter, address indexed bondToken, uint256 amount);
+    event AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId);
+
+    // Common functions
+    // function bridgeConfig() external view returns (BridgeConfig memory);
+    function setBridgeConfig(BridgeConfig calldata _config) external;
+}
+
+/**
+ * @title IUMALayerZeroBridge
+ * @notice Interface for UMA-side LayerZero bridge
+ */
+interface IUMALayerZeroBridge is ILayerZeroBridge {
+    // UMA-side specific structs
     struct MarketBondConfig {
-        address bondToken;            // Token used for bonds
-        uint256 bondAmount;           // Amount of bond tokens required
+        address bondToken;
+        uint256 bondAmount;
     }
 
     struct WithdrawalIntent {
@@ -23,67 +61,49 @@ interface ILayerZeroBridge {
         bool executed;
     }
 
-    enum BalanceUpdateType {
-        DEPOSIT,
-        WITHDRAWAL,
-        ASSERTION_USED,
-        ASSERTION_RETURNED
+    // UMA-side specific events
+    event MarketBondConfigSet(address indexed market, address bondToken, uint256 bondAmount);
+    event BondLostInDispute(address indexed submitter, address indexed bondToken, uint256 amount);
+    event BondReturnedFromDispute(address indexed submitter, address indexed bondToken, uint256 amount);
+
+    // UMA-side specific functions
+    // function setMarketBondConfig(address market, MarketBondConfig calldata config) external;
+    // function getMarketBondConfig(address market) external view returns (MarketBondConfig memory);
+    // function getBondBalance(address market, uint256 epochId) external view returns (uint256);
+    // function getWithdrawalIntent(address market) external view returns (WithdrawalIntent memory);
+    // function createWithdrawalIntent(uint256 amount) external;
+    // function executeWithdrawal() external;
+    // function processSettlement(SettlementData calldata data) external payable;
+    // function verifySettlement(VerificationData calldata data) external payable;
+}
+
+/**
+ * @title IMarketLayerZeroBridge
+ * @notice Interface for Market-side LayerZero bridge
+ */
+interface IMarketLayerZeroBridge is ILayerZeroBridge {
+    // Market-side specific structs
+    struct RemoteBalance {
+        uint256 amount;
+        uint256 lastUpdateTimestamp;
     }
 
-    struct BalanceUpdate {
-        address submitter;
-        address bondToken;
-        uint256 newBalance;
-        BalanceUpdateType updateType;
-    }
+    // Market-side specific events
+    event RemoteBalanceUpdated(address indexed market, uint256 amount, uint256 timestamp);
+    event SettlementProcessed(address indexed market, uint256 indexed epochId, uint256 settlementPrice);
+    event MarketGroupEnabled(address indexed marketGroup);
+    event MarketGroupDisabled(address indexed marketGroup);
 
-    // Events
-    event SettlementSubmitted(address indexed market, uint256 indexed epochId, bytes32 assertionId);
-    event SettlementVerified(address indexed market, uint256 indexed epochId, bool verified);
-    event SettlementDisputed(address indexed market, uint256 indexed epochId);
-    event DisputeResolved(address indexed market, uint256 indexed epochId, bool asserterWon);
-    event BridgeConfigUpdated(BridgeConfig newConfig);
-    event MarketBondConfigUpdated(address indexed market, MarketBondConfig newConfig);
-    event GasReserveLow(uint256 currentBalance);
-    event GasReserveCritical(uint256 currentBalance);
-    event BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount);
-    event WithdrawalIntentCreated(address indexed submitter, address indexed bondToken, uint256 amount);
-    event WithdrawalExecuted(address indexed submitter, address indexed bondToken, uint256 amount);
-    event WithdrawalCancelled(address indexed submitter, address indexed bondToken);
-    event InsufficientBondBalance(address indexed submitter, address indexed bondToken, uint256 required);
-    event BalanceUpdateSent(address indexed submitter, address indexed bondToken, uint256 newBalance);
-    event BalanceUpdateReceived(address indexed submitter, address indexed bondToken, uint256 newBalance);
-    event BalanceUpdateFailed(address indexed submitter, address indexed bondToken);
-    event BalanceSyncError(address indexed submitter, address indexed bondToken);
-
-    // Bond Management Functions
-    function depositBond(address bondToken, uint256 amount) external;
-    function intentToWithdrawBond(address bondToken, uint256 amount) external;
-    function executeWithdrawal(address bondToken) external;
-    function getBondBalance(address submitter, address bondToken) external view returns (uint256);
-    function getPendingWithdrawal(address submitter, address bondToken) external view returns (uint256, uint256);
-
-    // Settlement Functions
-    function submitSettlement(
-        address market,
-        uint256 epochId,
-        uint256 settlementPrice,
-        address bondToken,
-        uint256 bondAmount
+    // Market-side specific functions
+    // function getRemoteBalance(address submitter, address bondToken) external view returns (uint256);
+    // function getRemoteBondBalance(address submitter, address bondToken) external view returns (uint256);
+    function forwardAssertTruth(
+        address marketGroup,
+        uint256 marketId,
+        bytes memory claim,
+        address asserter,
+        uint64 liveness,
+        IERC20 currency,
+        uint256 bond
     ) external payable returns (bytes32);
-
-    function verifySettlement(
-        address market,
-        uint256 epochId,
-        bytes32 assertionId,
-        bool verified
-    ) external payable;
-
-    // Configuration Functions
-    function setBridgeConfig(BridgeConfig calldata newConfig) external;
-    function setMarketBondConfig(address market, MarketBondConfig calldata newConfig) external;
-
-    // View Functions
-    function getBridgeConfig() external view returns (BridgeConfig memory);
-    function getMarketBondConfig(address market) external view returns (MarketBondConfig memory);
 } 

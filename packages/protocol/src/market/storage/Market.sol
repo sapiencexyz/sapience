@@ -26,6 +26,7 @@ library Market {
         IFoilStructs.MarketParams marketParams;
         mapping(bytes32 => uint256) epochIdByAssertionId;
         uint256 minTradeSize;
+        bool isBridgeEnabled;
     }
 
     function load() internal pure returns (Data storage market) {

@@ -10,6 +10,7 @@ import {Market} from "../storage/Market.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
+import {IMarketLayerZeroBridge} from "../../bridge/interfaces/ILayerZeroBridge.sol";
 
 contract UMASettlementModule is
     IUMASettlementModule,
@@ -30,21 +31,6 @@ contract UMASettlementModule is
 
         require(epoch.assertionId == bytes32(0), "Assertion already submitted");
 
-        IERC20 bondCurrency = IERC20(epoch.marketParams.bondCurrency);
-        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                epoch.marketParams.optimisticOracleV3
-            );
-
-        bondCurrency.safeTransferFrom(
-            msg.sender,
-            address(this),
-            epoch.marketParams.bondAmount
-        );
-        bondCurrency.approve(
-            address(optimisticOracleV3),
-            epoch.marketParams.bondAmount
-        );
-
         uint256 decimalPrice = DecimalPrice.sqrtRatioX96ToPrice(
             settlementSqrtPriceX96
         );
@@ -55,17 +41,56 @@ contract UMASettlementModule is
             "."
         );
 
-        epoch.assertionId = optimisticOracleV3.assertTruth(
-            claim,
-            asserter,
-            address(this),
-            address(0),
-            epoch.marketParams.assertionLiveness,
-            IERC20(epoch.marketParams.bondCurrency),
-            epoch.marketParams.bondAmount,
-            optimisticOracleV3.defaultIdentifier(),
-            bytes32(0)
-        );
+        IERC20 bondCurrency = IERC20(epoch.marketParams.bondCurrency);
+
+        if(market.isBridgeEnabled) {
+            // TODO: Implement bridge functionality
+            // 1. Check if the submitter has enough bond balance 
+            IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(epoch.marketParams.optimisticOracleV3);
+            // uint256 balance = bridge.getRemoteBalance(msg.sender, bondCurrency);
+            // if(balance < epoch.marketParams.bondAmount) {
+            //     revert("Insufficient bond balance");
+            // }
+
+            // 2. If yes, send to the bridge the claim data
+            epoch.assertionId = bridge.forwardAssertTruth(
+                address(this),
+                epochId,
+                claim,
+                asserter,
+                epoch.marketParams.assertionLiveness,
+                IERC20(epoch.marketParams.bondCurrency),
+                epoch.marketParams.bondAmount
+            );
+            // 8. Call the bridge to process the settlement
+        } else {
+            OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
+                    epoch.marketParams.optimisticOracleV3
+                );
+
+            bondCurrency.safeTransferFrom(
+                msg.sender,
+                address(this),
+                epoch.marketParams.bondAmount
+            );
+            bondCurrency.approve(
+                address(optimisticOracleV3),
+                epoch.marketParams.bondAmount
+            );
+
+            epoch.assertionId = optimisticOracleV3.assertTruth(
+                claim,
+                asserter,
+                address(this),
+                address(0),
+                epoch.marketParams.assertionLiveness,
+                IERC20(epoch.marketParams.bondCurrency),
+                epoch.marketParams.bondAmount,
+                optimisticOracleV3.defaultIdentifier(),
+                bytes32(0)
+            );
+        }
+
 
         market.epochIdByAssertionId[epoch.assertionId] = epochId;
 
