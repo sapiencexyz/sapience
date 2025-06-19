@@ -265,7 +265,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             revert Errors.TransactionExpired(params.deadline, block.timestamp);
         }
 
-        if (params.liquiditySlippage > 1e18 || params.tradeSlippage > 1e18) {
+        if (
+            params.liquiditySlippage > DecimalMath.UNIT ||
+            params.tradeSlippage > DecimalMath.UNIT
+        ) {
             revert Errors.InvalidSlippage(
                 params.liquiditySlippage,
                 params.tradeSlippage
@@ -290,16 +293,15 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         ) = Pool.getCurrentPositionTokenAmounts(epoch, position);
 
-
         stack.decreaseParams = INonfungiblePositionManager
             .DecreaseLiquidityParams({
                 tokenId: position.uniswapPositionId,
                 liquidity: stack.previousLiquidity,
                 amount0Min: stack.previousAmount0.mulDecimal(
-                    1e18 - params.liquiditySlippage
+                    DecimalMath.UNIT - params.liquiditySlippage
                 ),
                 amount1Min: stack.previousAmount1.mulDecimal(
-                    1e18 - params.liquiditySlippage
+                    DecimalMath.UNIT - params.liquiditySlippage
                 ),
                 deadline: params.deadline
             });
@@ -533,7 +535,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             sqrtPriceX96,
             sqrtPriceAX96,
             sqrtPriceBX96,
-            1e18,
+            DecimalMath.UNIT,
             1e18
         );
 
@@ -558,15 +560,15 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         // scale up for fractional collateral ratio
         uint256 collateralRatio = FullMath.mulDiv(
             depositedCollateralAmount,
-            1e18, // Create MathUtil and use UNIT
+            DecimalMath.UNIT, // Create MathUtil and use UNIT
             requiredCollateral
         );
 
         // scale up liquidity by collateral amount
         return (
-            FullMath.mulDiv(unitAmount0, collateralRatio, 1e18),
-            FullMath.mulDiv(unitAmount1, collateralRatio, 1e18),
-            uint128(unitLiquidity * collateralRatio) / 1e18
+            FullMath.mulDiv(unitAmount0, collateralRatio, DecimalMath.UNIT),
+            FullMath.mulDiv(unitAmount1, collateralRatio, DecimalMath.UNIT),
+            uint128(unitLiquidity * collateralRatio) / 1e18 // Not using UNIT here because is an uint256
         );
     }
 
@@ -729,7 +731,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     ) internal {
         uint256 initialPrice = epoch.getReferencePrice();
         int256 deltaCollateralLimit = -int256(
-            position.depositedCollateralAmount.mulDecimal(1e18 - tradeSlippage)
+            position.depositedCollateralAmount.mulDecimal(
+                DecimalMath.UNIT - tradeSlippage
+            )
         );
 
         Trade.QuoteOrTradeInputParams memory inputParams = Trade
@@ -746,40 +750,17 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             inputParams
         );
 
-        position.vEthAmount = outputParams.position.vEthAmount;
-        position.vGasAmount = outputParams.position.vGasAmount;
-        position.borrowedVEth = outputParams.position.borrowedVEth;
-        position.borrowedVGas = outputParams.position.borrowedVGas;
-        position.depositedCollateralAmount = outputParams
-            .position
-            .depositedCollateralAmount;
+        uint256 finalPrice = epoch.getReferencePrice();
+
+        epoch.validateCurrentPoolPriceInRange();
+
+        position.updateWithNewPosition(outputParams.position);
 
         // Ensures that the position only have single side tokens
         position.rebalanceVirtualTokens();
 
-        // 1. Confirm no vgas tokens
-        if (position.vGasAmount > 0) {
-            // Notice. This error should not happen. If it's here it means something went wrong
-            revert Errors.InvalidData("Cannot close position with vGas tokens");
-        }
-        if (position.borrowedVGas > 0) {
-            // Notice. This error should not happen. If it's here it means something went wrong
-            revert Errors.InvalidData(
-                "Cannot close position with borrowed vGas tokens"
-            );
-        }
-
-        // 2. Confirm collateral is enough to pay for borrowed veth
-        if (
-            position.borrowedVEth > 0 &&
-            position.borrowedVEth > position.depositedCollateralAmount
-        ) {
-            // Notice. This error should not happen. If it's here it means something went wrong
-            revert Errors.InsufficientCollateral(
-                position.borrowedVEth,
-                position.depositedCollateralAmount
-            );
-        }
+        // 1. Confirm no vgas tokens (no need to check for borrowedVGas or vGasAmount since they are zero because targetSize is zero
+        // 2. Confirm collateral is enough to pay for borrowed veth (no need to check because borrowedVEth is zero because targetSize is zero)
 
         // 3. Reconcile collateral (again)
         position.rebalanceCollateral();
@@ -795,10 +776,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         // Check if the collateral is within the limit
         Trade.checkDeltaCollateralLimit(deltaCollateral, deltaCollateralLimit);
-
-        uint256 finalPrice = epoch.getReferencePrice();
-
-        epoch.validateCurrentPoolPriceInRange();
 
         _emitTraderPositionModified(
             IFoilPositionEvents.TraderPositionModifiedEventData({
