@@ -68,13 +68,14 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         uint256 initialPrice = epoch.getReferencePrice();
 
-        Trade.QuoteOrTradeInputParams memory inputParams = Trade.QuoteOrTradeInputParams({
-            oldPosition: position,
-            initialSize: 0,
-            targetSize: size,
-            deltaSize: size,
-            isQuote: false
-        });
+        Trade.QuoteOrTradeInputParams memory inputParams = Trade
+            .QuoteOrTradeInputParams({
+                oldPosition: position,
+                initialSize: 0,
+                targetSize: size,
+                deltaSize: size,
+                isQuote: false
+            });
 
         Trade.QuoteOrTradeOutputParams memory outputParams = Trade.quoteOrTrade(
             inputParams
@@ -175,26 +176,21 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         runtime.initialPrice = epoch.getReferencePrice();
 
-        Trade.QuoteOrTradeInputParams memory inputParams = Trade.QuoteOrTradeInputParams({
-            oldPosition: position,
-            initialSize: position.positionSize(),
-            targetSize: size,
-            deltaSize: runtime.deltaSize,
-            isQuote: false
-        });
+        Trade.QuoteOrTradeInputParams memory inputParams = Trade
+            .QuoteOrTradeInputParams({
+                oldPosition: position,
+                initialSize: position.positionSize(),
+                targetSize: size,
+                deltaSize: runtime.deltaSize,
+                isQuote: false
+            });
 
         // Do the trade
         Trade.QuoteOrTradeOutputParams memory outputParams = Trade.quoteOrTrade(
             inputParams
         );
 
-        position.vEthAmount = outputParams.position.vEthAmount;
-        position.vGasAmount = outputParams.position.vGasAmount;
-        position.borrowedVEth = outputParams.position.borrowedVEth;
-        position.borrowedVGas = outputParams.position.borrowedVGas;
-        position.depositedCollateralAmount = outputParams
-            .position
-            .depositedCollateralAmount;
+        position.updateWithNewPosition(outputParams.position);
 
         // Ensures that the position only have single side tokens
         position.rebalanceVirtualTokens();
@@ -292,7 +288,14 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     function quoteCreateTraderPosition(
         uint256 epochId,
         int256 size
-    ) external returns (uint256 requiredCollateral, uint256 fillPrice, uint256 price18DigitsAfter) {
+    )
+        external
+        returns (
+            uint256 requiredCollateral,
+            uint256 fillPrice,
+            uint256 price18DigitsAfter
+        )
+    {
         if (size == 0) {
             revert Errors.InvalidData("Size cannot be 0");
         }
@@ -305,22 +308,29 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         Position.Data memory position;
         position.epochId = epochId;
 
-        Trade.QuoteOrTradeInputParams memory inputParams = Trade.QuoteOrTradeInputParams({
-            oldPosition: position,
-            initialSize: 0,
-            targetSize: size,
-            deltaSize: size,
-            isQuote: true
-        });
+        Trade.QuoteOrTradeInputParams memory inputParams = Trade
+            .QuoteOrTradeInputParams({
+                oldPosition: position,
+                initialSize: 0,
+                targetSize: size,
+                deltaSize: size,
+                isQuote: true
+            });
 
         Trade.QuoteOrTradeOutputParams memory outputParams = Trade.quoteOrTrade(
             inputParams
         );
 
         epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
-        price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(outputParams.sqrtPriceX96After);
+        price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(
+            outputParams.sqrtPriceX96After
+        );
 
-        return (outputParams.requiredCollateral, outputParams.tradeRatioD18, price18DigitsAfter);
+        return (
+            outputParams.requiredCollateral,
+            outputParams.tradeRatioD18,
+            price18DigitsAfter
+        );
     }
 
     /**
@@ -358,20 +368,23 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidData("Size cannot be 0");
         }
 
-        Trade.QuoteOrTradeInputParams memory inputParams = Trade.QuoteOrTradeInputParams({
-            oldPosition: position,
-            initialSize: position.positionSize(),
-            targetSize: size,
-            deltaSize: deltaSize,
-            isQuote: true
-        });
+        Trade.QuoteOrTradeInputParams memory inputParams = Trade
+            .QuoteOrTradeInputParams({
+                oldPosition: position,
+                initialSize: position.positionSize(),
+                targetSize: size,
+                deltaSize: deltaSize,
+                isQuote: true
+            });
 
         Trade.QuoteOrTradeOutputParams memory outputParams = Trade.quoteOrTrade(
             inputParams
         );
 
         epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
-        price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(outputParams.sqrtPriceX96After);
+        price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(
+            outputParams.sqrtPriceX96After
+        );
 
         return (
             outputParams.expectedDeltaCollateral,
@@ -431,5 +444,4 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             eventData.deltaCollateral
         );
     }
-
 }
