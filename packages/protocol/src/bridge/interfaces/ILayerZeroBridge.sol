@@ -12,7 +12,6 @@ interface ILayerZeroBridge {
     struct BridgeConfig {
         uint16 remoteChainId;
         address remoteBridge;
-        address settlementModule;
     }
 
     struct SettlementData {
@@ -20,13 +19,6 @@ interface ILayerZeroBridge {
         uint256 epochId;
         uint256 settlementPrice;
         uint256 timestamp;
-    }
-
-    struct VerificationData {
-        address market;
-        uint256 epochId;
-        bytes32 assertionId;
-        bool verified;
     }
 
     // Common events
@@ -38,10 +30,6 @@ interface ILayerZeroBridge {
     event WithdrawalIntentCreated(address indexed submitter, address indexed bondToken, uint256 amount, uint256 timestamp);
     event WithdrawalExecuted(address indexed submitter, address indexed bondToken, uint256 amount);
     event AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId);
-
-    // Common functions
-    // function bridgeConfig() external view returns (BridgeConfig memory);
-    function setBridgeConfig(BridgeConfig calldata _config) external;
 }
 
 /**
