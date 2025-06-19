@@ -36,6 +36,8 @@ import { alertEvent } from '../workers/discordBot';
 import Foil from '@foil/protocol/deployments/Foil.json';
 import { PublicClient } from 'viem';
 import Sentry from '../instrument';
+import { transaction } from '../../generated/prisma';
+import { Decimal } from 'generated/prisma/runtime/library';
 
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -623,20 +625,27 @@ export const upsertEntitiesFromEvent = async (
   }
 
   let skipTransaction = false;
-  const newTransaction = {
+  const newTransaction: transaction & { 
+    event: any,
+    position?: any
+  } = {
     eventId: event.id,
-    type: 'addLiquidity' as any, // Will be set properly by helper functions
+    type: 'addLiquidity' as any,
     baseToken: null,
     quoteToken: null,
     borrowedBaseToken: null,
     borrowedQuoteToken: null,
-    collateral: '0',
+    collateral: new Decimal('0'),
     lpBaseDeltaToken: null,
     lpQuoteDeltaToken: null,
     tradeRatioD18: null,
     positionId: null,
     marketPriceId: null,
     collateralTransferId: null,
+    id: 0,
+    createdAt: new Date(),
+    event: event,
+    position: null,
   };
 
   // Process the event based on its type
@@ -810,8 +819,8 @@ export const upsertEntitiesFromEvent = async (
       await insertMarketPrice(newTransaction);
 
       // Ensure collateral is set to a default value if not present
-      if (!newTransaction.collateral || newTransaction.collateral === '') {
-        newTransaction.collateral = '0';
+      if (!newTransaction.collateral) {
+        newTransaction.collateral = new Decimal('0');
       }
 
       // Ensure all required fields have values
@@ -841,8 +850,14 @@ export const upsertEntitiesFromEvent = async (
 
       // Then create or modify the position with the saved transaction
       try {
+        // Add the event and position properties to the saved transaction
+        const transactionWithEvent = {
+          ...savedTransaction,
+          event: event,
+          position: null,
+        };
         
-        await createOrModifyPositionFromTransaction(savedTransaction);
+        await createOrModifyPositionFromTransaction(transactionWithEvent);
       } catch (positionError) {
         console.error('Error creating or modifying position:', positionError);
       }

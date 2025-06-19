@@ -1,9 +1,13 @@
-import { resourcePriceRepository } from '../../db';
+import prisma from '../../db';
 import { getBlockByTimestamp, getProviderForChain } from '../../utils/utils';
 import { Block, type PublicClient } from 'viem';
 import Sentry from '../../instrument';
 import { IResourcePriceIndexer } from '../../interfaces';
-import { Resource } from '../../models/Resource';
+
+interface Resource {
+  id: number;
+  slug: string;
+}
 
 class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
@@ -27,15 +31,29 @@ class EvmIndexer implements IResourcePriceIndexer {
     }
     try {
       const feePaid = BigInt(value) * BigInt(used);
-      const price = {
-        resource: { id: resource.id },
-        timestamp: Number(block.timestamp),
-        value: value.toString(),
-        used: used.toString(),
-        feePaid: feePaid.toString(),
-        blockNumber: Number(block.number),
-      };
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      
+      await prisma.resource_price.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: Number(block.timestamp),
+          },
+        },
+        create: {
+          resourceId: resource.id,
+          timestamp: Number(block.timestamp),
+          value: value.toString(),
+          used: used.toString(),
+          feePaid: feePaid.toString(),
+          blockNumber: Number(block.number),
+        },
+        update: {
+          value: value.toString(),
+          used: used.toString(),
+          feePaid: feePaid.toString(),
+          blockNumber: Number(block.number),
+        },
+      });
     } catch (error) {
       console.error(
         `[EvmIndexer.${resource.slug}] Error storing block price:`,
@@ -76,9 +94,9 @@ class EvmIndexer implements IResourcePriceIndexer {
     ) {
       try {
         // Check if we already have a price for this block
-        const existingPrice = await resourcePriceRepository.findOne({
+        const existingPrice = await prisma.resource_price.findFirst({
           where: {
-            resource: { id: resource.id },
+            resourceId: resource.id,
             blockNumber: Number(blockNumber),
           },
         });

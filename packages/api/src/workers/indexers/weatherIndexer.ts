@@ -1,11 +1,15 @@
 import dotenv from 'dotenv';
 import { IResourcePriceIndexer } from '../../interfaces';
-import { resourcePriceRepository } from '../../db';
-import { Resource } from '../../models/Resource';
+import prisma from '../../db';
 import WeatherService from './weatherService';
 import Sentry from '../../instrument';
 
 dotenv.config();
+
+interface Resource {
+  id: number;
+  slug: string;
+}
 
 interface WeatherRecord {
   timestamp: string;
@@ -95,10 +99,32 @@ export class WeatherIndexer implements IResourcePriceIndexer {
         );
 
         try {
-          await resourcePriceRepository.upsert(price, [
-            'resource',
-            'timestamp',
-          ]);
+          await prisma.resource_price.upsert({
+            where: {
+              resourceId_timestamp: {
+                resourceId: resource.id,
+                timestamp: Math.floor(
+                  new Date(weatherData.temperature.latest.timestamp).getTime() / 1000
+                ),
+              },
+            },
+            create: {
+              resourceId: resource.id,
+              timestamp: Math.floor(
+                new Date(weatherData.temperature.latest.timestamp).getTime() / 1000
+              ),
+              value: temperatureValue,
+              used: '1',
+              feePaid: temperatureValue,
+              blockNumber: 0,
+            },
+            update: {
+              value: temperatureValue,
+              used: '1',
+              feePaid: temperatureValue,
+              blockNumber: 0,
+            },
+          });
           console.log(
             `[WeatherIndexer.${this.resourceType}] Upserted temperature data in the database for ${price.timestamp}`
           );
@@ -139,10 +165,44 @@ export class WeatherIndexer implements IResourcePriceIndexer {
         // console.log(`[WeatherIndexer.${this.resourceType}] Prepared precipitation price data:`, price);
 
         try {
-          await resourcePriceRepository.upsert(price, [
-            'resource',
-            'timestamp',
-          ]);
+          await prisma.resource_price.upsert({
+            where: {
+              resourceId_timestamp: {
+                resourceId: resource.id,
+                timestamp: Math.floor(
+                  new Date(weatherData.precipitation.latest.timestamp).getTime() / 1000
+                ),
+              },
+            },
+            create: {
+              resourceId: resource.id,
+              timestamp: Math.floor(
+                new Date(weatherData.precipitation.latest.timestamp).getTime() / 1000
+              ),
+              value: (
+                weatherData.precipitation.latest.precipitation *
+                10 ** 9
+              ).toString(),
+              used: '1',
+              feePaid: (
+                weatherData.precipitation.latest.precipitation *
+                10 ** 9
+              ).toString(),
+              blockNumber: 0,
+            },
+            update: {
+              value: (
+                weatherData.precipitation.latest.precipitation *
+                10 ** 9
+              ).toString(),
+              used: '1',
+              feePaid: (
+                weatherData.precipitation.latest.precipitation *
+                10 ** 9
+              ).toString(),
+              blockNumber: 0,
+            },
+          });
           console.log(
             `[WeatherIndexer.${this.resourceType}] Upserted precipitation data in the database for ${price.timestamp}`
           );
@@ -203,9 +263,9 @@ export class WeatherIndexer implements IResourcePriceIndexer {
 
       for (const reading of weatherData) {
         console.log(reading);
-        const maybeReading = await resourcePriceRepository.findOne({
+        const maybeReading = await prisma.resource_price.findFirst({
           where: {
-            resource: { id: resource.id },
+            resourceId: resource.id,
             timestamp: Math.floor(new Date(reading.timestamp).getTime() / 1000),
           },
         });

@@ -1,9 +1,9 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
-import dataSource from '../../db';
-import { Transaction } from '../../models/Transaction';
+import prisma from '../../db';
 import { TransactionType } from '../types';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
 import { mapTransactionToType } from './mappers';
+
 @Resolver(() => TransactionType)
 export class TransactionResolver {
   @Query(() => [TransactionType])
@@ -11,14 +11,24 @@ export class TransactionResolver {
     @Arg('positionId', () => Int, { nullable: true }) positionId?: number
   ): Promise<TransactionType[]> {
     try {
-      const where: { position?: { id: number } } = {};
-      if (positionId) {
-        where.position = { id: positionId };
-      }
-
-      const transactions = await dataSource.getRepository(Transaction).find({
-        where,
-        relations: ['event', 'position'],
+      const transactions = await prisma.transaction.findMany({
+        where: positionId ? { positionId: positionId } : {},
+        include: {
+          position: {
+            include: {
+              market: {
+                include: {
+                  market_group: {
+                    include: {
+                      resource: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          event: true,
+        },
       });
 
       const hydratedTransactions = hydrateTransactions(transactions, false);

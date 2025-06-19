@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
 import { ResourcePerformanceManager } from 'src/performance/resourcePerformanceManager';
-import { resourceRepository } from 'src/db';
+import prisma from '../db';
 import { CandleCacheReBuilder } from 'src/candle-cache/candleCacheReBuilder';
 
 const router = Router();
@@ -34,7 +34,7 @@ router.get(
 
     try {
       console.log('Starting Cache Refresh');
-      const resources = await resourceRepository.find();
+      const resources = await prisma.resource.findMany();
       const resourcePerformanceManager =
         ResourcePerformanceManager.getInstance();
       if (hardInitialize && hardInitialize.toLowerCase() === 'true') {

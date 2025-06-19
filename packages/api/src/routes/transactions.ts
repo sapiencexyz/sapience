@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { validateRequestParams } from '../helpers/validateRequestParams';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { parseContractId } from '../helpers/parseContractId';
-import dataSource from '../db';
+import prisma from '../db';
 import { hydrateTransactions } from '../helpers/hydrateTransactions';
 
 const router = Router();
@@ -43,7 +43,7 @@ router.get(
       whereClause.position.positionId = parseInt(positionId);
     }
 
-    const transactions = await dataSource.transaction.findMany({
+    const transactions = await prisma.transaction.findMany({
       where: whereClause,
       include: {
         position: {

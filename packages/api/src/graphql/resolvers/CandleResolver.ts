@@ -1,15 +1,10 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
-import { Between } from 'typeorm';
-import dataSource from '../../db';
-import { Resource } from '../../models/Resource';
-import { ResourcePrice } from '../../models/ResourcePrice';
-import { MarketPrice } from '../../models/MarketPrice';
-import { MarketGroup } from '../../models/MarketGroup';
-import { Market } from '../../models/Market';
+import prisma from '../../db';
 import { CandleType } from '../types';
 import { ResourcePerformanceManager } from 'src/performance';
 import { CandleCacheRetriever } from 'src/candle-cache/candleCacheRetriever';
 import { CandleAndTimestampType } from '../types/CandleAndTimestampType';
+
 
 interface PricePoint {
   timestamp: number;
@@ -211,8 +206,11 @@ export class CandleResolver {
     @Arg('timestamp', () => Int) timestamp: number
   ): Promise<CandleType | null> {
     try {
-      const marketGroup = await dataSource.getRepository(MarketGroup).findOne({
-        where: { chainId, address: address.toLowerCase() },
+      const marketGroup = await prisma.market_group.findFirst({
+        where: { 
+          chainId, 
+          address: address.toLowerCase() 
+        },
       });
 
       if (!marketGroup) {
@@ -221,9 +219,9 @@ export class CandleResolver {
         );
       }
 
-      const market = await dataSource.getRepository(Market).findOne({
+      const market = await prisma.market.findFirst({
         where: {
-          marketGroup: { id: marketGroup.id },
+          marketGroupId: marketGroup.id,
           marketId: Number(marketId),
         },
       });
@@ -232,9 +230,13 @@ export class CandleResolver {
         throw new Error(`Market not found with id: ${marketId}`);
       }
 
-      const resource = await dataSource.getRepository(Resource).findOne({
+      const resource = await prisma.resource.findFirst({
         where: {
-          marketGroups: { id: marketGroup.id },
+          market_group: {
+            some: {
+              id: marketGroup.id,
+            },
+          },
         },
       });
 
@@ -247,20 +249,23 @@ export class CandleResolver {
         throw new Error(`Timestamp is before epoch start time`);
       }
 
-      const pricesInRange = await dataSource.getRepository(ResourcePrice).find({
+      const pricesInRange = await prisma.resource_price.findMany({
         where: {
-          resource: { id: resource.id },
-          timestamp: Between(epochStartTimestamp, timestamp),
+          resourceId: resource.id,
+          timestamp: {
+            gte: epochStartTimestamp,
+            lte: timestamp,
+          },
         },
-        order: { timestamp: 'ASC' },
+        orderBy: { timestamp: 'asc' },
       });
 
       return getIndexPriceAtTime(
         pricesInRange.map((p) => ({
           timestamp: Number(p.timestamp),
-          value: p.value,
-          used: p.used,
-          feePaid: p.feePaid,
+          value: p.value.toString(),
+          used: p.used.toString(),
+          feePaid: p.feePaid.toString(),
         })),
         timestamp
       );
@@ -321,8 +326,11 @@ export class CandleResolver {
     @Arg('interval', () => Int) interval: number
   ): Promise<CandleType[]> {
     try {
-      const marketGroup = await dataSource.getRepository(MarketGroup).findOne({
-        where: { chainId, address: address.toLowerCase() },
+      const marketGroup = await prisma.market_group.findFirst({
+        where: { 
+          chainId, 
+          address: address.toLowerCase() 
+        },
       });
 
       if (!marketGroup) {
@@ -331,9 +339,9 @@ export class CandleResolver {
         );
       }
 
-      const market = await dataSource.getRepository(Market).findOne({
+      const market = await prisma.market.findFirst({
         where: {
-          marketGroup: { id: marketGroup.id },
+          marketGroupId: marketGroup.id,
           marketId: Number(marketId),
         },
       });
@@ -343,53 +351,97 @@ export class CandleResolver {
       }
 
       // First get the most recent price before the from timestamp
-      const lastPriceBefore = await dataSource
-        .getRepository(MarketPrice)
-        .createQueryBuilder('marketPrice')
-        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
-        .leftJoinAndSelect('transaction.event', 'event')
-        .leftJoinAndSelect('event.marketGroup', 'marketGroup')
-        .leftJoinAndSelect('transaction.position', 'position')
-        .leftJoinAndSelect('position.epoch', 'epoch')
-        .where('marketGroup.chainId = :chainId', { chainId })
-        .andWhere('marketGroup.address = :address', {
-          address: address.toLowerCase(),
-        })
-        .andWhere('market.marketId = :marketId', { marketId: Number(marketId) })
-        .andWhere('CAST(marketPrice.timestamp AS bigint) < :from', {
-          from: from.toString(),
-        })
-        .orderBy('marketPrice.timestamp', 'DESC')
-        .take(1)
-        .getOne();
+      const lastPriceBefore = await prisma.market_price.findFirst({
+        where: {
+          transaction: {
+            event: {
+              market_group: {
+                chainId: chainId,
+                address: address.toLowerCase(),
+              },
+            },
+            position: {
+              market: {
+                marketId: Number(marketId),
+              },
+            },
+          },
+          timestamp: {
+            lt: BigInt(from),
+          },
+        },
+        orderBy: {
+          timestamp: 'desc',
+        },
+        include: {
+          transaction: {
+            include: {
+              event: {
+                include: {
+                  market_group: true,
+                },
+              },
+              position: {
+                include: {
+                  market: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
       // Then get all prices within the range
-      const pricesInRange = await dataSource
-        .getRepository(MarketPrice)
-        .createQueryBuilder('marketPrice')
-        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
-        .leftJoinAndSelect('transaction.event', 'event')
-        .leftJoinAndSelect('event.marketGroup', 'marketGroup')
-        .leftJoinAndSelect('transaction.position', 'position')
-        .leftJoinAndSelect('position.market', 'market')
-        .where('marketGroup.chainId = :chainId', { chainId })
-        .andWhere('marketGroup.address = :address', {
-          address: address.toLowerCase(),
-        })
-        .andWhere('market.marketId = :marketId', { marketId: Number(marketId) })
-        .andWhere(
-          'CAST(marketPrice.timestamp AS bigint) BETWEEN :from AND :to',
-          { from: from.toString(), to: to.toString() }
-        )
-        .orderBy('marketPrice.timestamp', 'ASC')
-        .getMany();
+      const pricesInRange = await prisma.market_price.findMany({
+        where: {
+          transaction: {
+            event: {
+              market_group: {
+                chainId: chainId,
+                address: address.toLowerCase(),
+              },
+            },
+            position: {
+              market: {
+                marketId: Number(marketId),
+              },
+            },
+          },
+          timestamp: {
+            gte: BigInt(from),
+            lte: BigInt(to),
+          },
+        },
+        orderBy: {
+          timestamp: 'asc',
+        },
+        include: {
+          transaction: {
+            include: {
+              event: {
+                include: {
+                  market_group: true,
+                },
+              },
+              position: {
+                include: {
+                  market: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
       // Combine the results, putting the last price before first if it exists
       const prices = pricesInRange;
-      const lastKnownPrice = lastPriceBefore?.value;
+      const lastKnownPrice = lastPriceBefore?.value?.toString();
 
       return groupPricesByInterval(
-        prices.map((p) => ({ timestamp: Number(p.timestamp), value: p.value })),
+        prices.map((p) => ({ 
+          timestamp: Number(p.timestamp), 
+          value: p.value.toString() 
+        })),
         interval,
         from,
         to,

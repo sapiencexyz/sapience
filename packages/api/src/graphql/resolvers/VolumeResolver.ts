@@ -2,8 +2,7 @@ import { Resolver, Query, Arg, Int } from 'type-graphql';
 import { getTransactionsInTimeRange } from '../../utils/serviceUtil'; // Assuming serviceUtil path
 import { formatUnits } from 'viem';
 import { TOKEN_PRECISION } from '../../constants'; // Assuming constants path
-import dataSource from '../../db'; // Import dataSource
-import { Market } from '../../models/Market'; // Import Epoch model
+import prisma from '../../db'; // Import prisma
 
 // Placeholder for GraphQL return type - might need to define this in schema
 // import { Volume } from '../types'; // Assuming a Volume type exists or will be created
@@ -68,16 +67,17 @@ async function getMarketStartEndTimestamps(
   marketAddress: string
 ): Promise<{ startTimestamp: number | null; endTimestamp: number | null }> {
   try {
-    const marketRepository = dataSource.getRepository(Market);
-    const market = await marketRepository.findOne({
+    const market = await prisma.market.findFirst({
       where: {
-        marketId: marketId, // Use number
-        marketGroup: {
-          chainId: chainId, // Use number
+        marketId: marketId,
+        market_group: {
+          chainId: chainId,
           address: marketAddress.toLowerCase(),
         },
       },
-      relations: ['marketGroup'], // Ensure market relation is loaded
+      include: {
+        market_group: true,
+      },
     });
 
     if (market && market.startTimestamp && market.endTimestamp) {

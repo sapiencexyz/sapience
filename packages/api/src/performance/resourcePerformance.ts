@@ -1,13 +1,5 @@
-import { Resource } from 'src/models/Resource';
-import {
-  marketRepository,
-  marketPriceRepository,
-  marketGroupRepository,
-  resourcePriceRepository,
-} from 'src/db';
-import { ResourcePrice } from 'src/models/ResourcePrice';
-import { MarketGroup } from 'src/models/MarketGroup';
-import { Market } from 'src/models/Market';
+import type { resource, market_group, resource_price } from '../../generated/prisma';
+import prisma from '../db';
 import {
   CandleData,
   MarketPriceData,
@@ -20,7 +12,6 @@ import {
   IndexMetadata,
   TrailingAvgMetadata,
 } from './types';
-import { IsNull, MoreThan } from 'typeorm';
 import { TIME_INTERVALS } from 'src/fixtures';
 
 import {
@@ -42,9 +33,9 @@ export class ResourcePerformance {
   static readonly MIN_INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
   static readonly BATCH_SIZE = 100000;
 
-  private resource: Resource | undefined;
-  private marketGroups: MarketGroup[];
-  private markets: Market[];
+  private resource: resource | undefined;
+  private marketGroups: market_group[];
+  private markets: any[]; 
   private intervals: number[] = [
     TIME_INTERVALS.intervals.INTERVAL_1_MINUTE,
     TIME_INTERVALS.intervals.INTERVAL_5_MINUTES,
@@ -70,7 +61,7 @@ export class ResourcePerformance {
 
   // Runtime data. The data that is used to process the resource data on each db pull
   private runtime: {
-    dbResourcePrices: ResourcePrice[];
+    dbResourcePrices: resource_price[];
     dbResourcePricesLength: number;
     currentIdx: number;
     processingResourceItems: boolean;
@@ -127,7 +118,7 @@ export class ResourcePerformance {
     marketProcessData: {},
   };
 
-  constructor(resource: Resource | undefined) {
+  constructor(resource: resource | undefined) {
     this.resource = resource;
     this.persistentStorage = {};
     for (const interval of this.intervals) {
@@ -230,8 +221,8 @@ export class ResourcePerformance {
           // Add to trailing avg storage
           this.persistentResourceCacheTrailingAvgStorage.push({
             t: item.timestamp,
-            u: item.used,
-            f: item.feePaid,
+            u: item.used.toString(),
+            f: item.feePaid.toString(),
           });
 
           for (const interval of this.intervals) {
@@ -323,7 +314,7 @@ export class ResourcePerformance {
     initialTimestamp?: number,
     batchSize: number = ResourcePerformance.BATCH_SIZE,
     skip: number = 0
-  ): Promise<{ prices: ResourcePrice[]; hasMore: boolean }> {
+  ): Promise<{ prices: resource_price[]; hasMore: boolean }> {
     if (!this.resource) {
       return {
         prices: [],
@@ -331,22 +322,24 @@ export class ResourcePerformance {
       };
     }
 
-    let whereClause;
+    let whereClause: any;
     if (initialTimestamp) {
       whereClause = {
-        resource: { id: this.resource.id },
-        timestamp: MoreThan(initialTimestamp),
+        resourceId: this.resource.id,
+        timestamp: {
+          gt: initialTimestamp,
+        },
       };
     } else {
       whereClause = {
-        resource: { id: this.resource.id },
+        resourceId: this.resource.id,
       };
     }
 
-    const batch = await resourcePriceRepository.find({
+    const batch = await prisma.resource_price.findMany({
       where: whereClause,
-      order: {
-        timestamp: 'ASC',
+      orderBy: {
+        timestamp: 'asc',
       },
       take: batchSize,
       skip: skip,
@@ -365,38 +358,81 @@ export class ResourcePerformance {
   ): Promise<{ prices: ReducedMarketPrice[]; hasMore: boolean }> {
     let batch;
     if (this.resource) {
-      batch = await marketPriceRepository
-        .createQueryBuilder('marketPrice')
-        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
-        .leftJoinAndSelect('transaction.event', 'event')
-        .leftJoinAndSelect('event.marketGroup', 'marketGroup')
-        .leftJoinAndSelect('marketGroup.resource', 'resource')
-        .leftJoinAndSelect('transaction.position', 'position')
-        .leftJoinAndSelect('position.market', 'market')
-        .where('resource.id = :resourceId', { resourceId: this.resource.id })
-        .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
-          from: initialTimestamp?.toString() ?? '0',
-        })
-        .orderBy('marketPrice.timestamp', 'ASC')
-        .take(batchSize)
-        .skip(skip)
-        .getMany();
+      batch = await prisma.market_price.findMany({
+        where: {
+          timestamp: {
+            gt: BigInt(initialTimestamp?.toString() ?? '0'),
+          },
+          transaction: {
+            event: {
+              market_group: {
+                resourceId: this.resource.id,
+              },
+            },
+          },
+        },
+        include: {
+          transaction: {
+            include: {
+              event: {
+                include: {
+                  market_group: {
+                    include: {
+                      resource: true,
+                    },
+                  },
+                },
+              },
+              position: {
+                include: {
+                  market: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          timestamp: 'asc',
+        },
+        take: batchSize,
+        skip: skip,
+      });
     } else {
-      batch = await marketPriceRepository
-        .createQueryBuilder('marketPrice')
-        .leftJoinAndSelect('marketPrice.transaction', 'transaction')
-        .leftJoinAndSelect('transaction.event', 'event')
-        .leftJoinAndSelect('event.marketGroup', 'marketGroup')
-        .leftJoinAndSelect('transaction.position', 'position')
-        .leftJoinAndSelect('position.market', 'market')
-        .where('marketGroup.resourceId IS NULL')
-        .andWhere('CAST(marketPrice.timestamp AS bigint) > :from', {
-          from: initialTimestamp?.toString() ?? '0',
-        })
-        .orderBy('marketPrice.timestamp', 'ASC')
-        .take(batchSize)
-        .skip(skip)
-        .getMany();
+      batch = await prisma.market_price.findMany({
+        where: {
+          timestamp: {
+            gt: BigInt(initialTimestamp?.toString() ?? '0'),
+          },
+          transaction: {
+            event: {
+              market_group: {
+                resourceId: null,
+              },
+            },
+          },
+        },
+        include: {
+          transaction: {
+            include: {
+              event: {
+                include: {
+                  market_group: true,
+                },
+              },
+              position: {
+                include: {
+                  market: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          timestamp: 'asc',
+        },
+        take: batchSize,
+        skip: skip,
+      });
     }
 
     const cleanedBatch = batch.filter((item) => {
@@ -408,9 +444,9 @@ export class ResourcePerformance {
     });
 
     const reducedBatch = cleanedBatch.map((item) => ({
-      value: item.value,
+      value: item.value.toString(),
       timestamp: Number(item.timestamp),
-      epoch: item.transaction.position.market.id,
+      epoch: item.transaction!.position!.market!.id,
     }));
 
     return {
@@ -429,16 +465,16 @@ export class ResourcePerformance {
       !onlyIfMissing
     ) {
       if (this.resource) {
-        this.marketGroups = await marketGroupRepository.find({
+        this.marketGroups = await prisma.market_group.findMany({
           where: {
-            resource: { id: this.resource.id },
+            resourceId: this.resource.id,
           },
         });
       } else {
         // resource is undefined. Look for marketGroups where resourceId is null
-        this.marketGroups = await marketGroupRepository.find({
+        this.marketGroups = await prisma.market_group.findMany({
           where: {
-            resource: IsNull(),
+            resourceId: null,
           },
         });
       }
@@ -448,32 +484,40 @@ export class ResourcePerformance {
     // Notice: doing it everytime since we don't know if a new epoch was added
     if (!this.markets || this.markets.length === 0 || !onlyIfMissing) {
       if (this.resource) {
-        this.markets = await marketRepository.find({
+        this.markets = await prisma.market.findMany({
           where: {
-            marketGroup: { resource: { id: this.resource.id } },
+            market_group: {
+              resourceId: this.resource.id,
+            },
           },
-          order: {
-            startTimestamp: 'ASC',
+          orderBy: {
+            startTimestamp: 'asc',
           },
-          relations: ['marketGroup'],
+          include: {
+            market_group: true,
+          },
         });
       } else {
         // resource is undefined. Look for markets where marketGroupId is null
-        this.markets = await marketRepository.find({
+        this.markets = await prisma.market.findMany({
           where: {
-            marketGroup: { resource: IsNull() },
+            market_group: {
+              resourceId: null,
+            },
           },
-          order: {
-            startTimestamp: 'ASC',
+          orderBy: {
+            startTimestamp: 'asc',
           },
-          relations: ['marketGroup'],
+          include: {
+            market_group: true,
+          },
         });
       }
     }
   }
 
   private initializeOrCleanupRuntimeData(
-    dbResourcePrices: ResourcePrice[],
+    dbResourcePrices: resource_price[],
     cleanup: boolean = false
   ) {
     if (!cleanup) {
@@ -590,12 +634,12 @@ export class ResourcePerformance {
   }
 
   private processResourcePriceData(
-    item: ResourcePrice,
+    item: resource_price,
     currentIdx: number,
     interval: number
   ) {
     const rpd = this.runtime.resourceProcessData[interval];
-    const price = BigInt(item.value);
+    const price = BigInt(item.value.toString());
 
     // If this is the first item or we're starting a new interval
     if (!rpd.nextTimestamp) {
@@ -726,7 +770,7 @@ export class ResourcePerformance {
   }
 
   private processIndexPricesData(
-    item: ResourcePrice,
+    item: resource_price,
     currentIdx: number,
     interval: number
   ) {
@@ -808,8 +852,8 @@ export class ResourcePerformance {
       const isLastItem = currentIdx === this.runtime.dbResourcePricesLength - 1;
       const isNewInterval = item.timestamp >= ripd.nextTimestamp;
 
-      ripd.used += BigInt(item.used);
-      ripd.feePaid += BigInt(item.feePaid);
+      ripd.used += BigInt(item.used.toString());
+      ripd.feePaid += BigInt(item.feePaid.toString());
 
       // check if it's the last price item or last in the interval
       if (
@@ -822,8 +866,8 @@ export class ResourcePerformance {
 
         if (!isNewInterval) {
           // We need to remove the current item from the data since it's not in the current interval
-          fixedFeePaid -= BigInt(item.feePaid);
-          fixedUsed -= BigInt(item.used);
+          fixedFeePaid -= BigInt(item.feePaid.toString());
+          fixedUsed -= BigInt(item.used.toString());
         }
 
         // Finalize the current interval
@@ -904,7 +948,7 @@ export class ResourcePerformance {
    * @param interval - The interval of the resource price item
    */
   private processTrailingAvgPricesData(
-    item: ResourcePrice,
+    item: resource_price,
     currentIdx: number,
     interval: number,
     trailingAvgTime: number,
@@ -991,8 +1035,8 @@ export class ResourcePerformance {
     const isNewInterval = item.timestamp >= rtpd.nextTimestamp;
 
     // Include the new item in accumulators and the runtime trailing avg data
-    rtpd.used += BigInt(item.used);
-    rtpd.feePaid += BigInt(item.feePaid);
+    rtpd.used += BigInt(item.used.toString());
+    rtpd.feePaid += BigInt(item.feePaid.toString());
 
     // Check if the datapoint is the last item or belongs to a new interval item (not running same interval item)
     if (isNewInterval || isLastItem) {
@@ -1001,8 +1045,8 @@ export class ResourcePerformance {
 
       if (!isNewInterval) {
         // We need to remove the current item from the data since it's not in the current interval
-        fixedFeePaid -= BigInt(item.feePaid);
-        fixedUsed -= BigInt(item.used);
+        fixedFeePaid -= BigInt(item.feePaid.toString());
+        fixedUsed -= BigInt(item.used.toString());
       }
 
       // Finalize the current interval
@@ -1242,8 +1286,8 @@ export class ResourcePerformance {
   private getMarketId(chainId: number, address: string, market: string) {
     const theMarket = this.markets.find(
       (e) =>
-        e.marketGroup.chainId === chainId &&
-        e.marketGroup.address === address.toLowerCase() &&
+        e.market_group.chainId === chainId &&
+        e.market_group.address === address.toLowerCase() &&
         e.marketId === Number(market)
     );
     if (!theMarket) {
@@ -1252,7 +1296,7 @@ export class ResourcePerformance {
 
     return {
       id: theMarket.id,
-      isCumulative: theMarket.marketGroup.isCumulative,
+      isCumulative: theMarket.market_group.isCumulative,
     };
   }
 
@@ -1367,7 +1411,7 @@ export class ResourcePerformance {
     return this.marketGroups.find(
       (m) =>
         m.chainId === chainId &&
-        m.address.toLowerCase() === address.toLowerCase()
+        m.address?.toLowerCase() === address.toLowerCase()
     );
   }
 

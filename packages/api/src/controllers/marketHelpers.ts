@@ -18,9 +18,6 @@ import type {
   market, 
   position, 
   transaction, 
-  collateral_transfer, 
-  market_price,
-  transaction_type_enum 
 } from '../../generated/prisma';
 
 // Define transaction types

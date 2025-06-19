@@ -9,8 +9,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { Resource } from 'src/models/Resource';
-import { Market } from 'src/models/Market';
+import type { resource, market } from '../../generated/prisma';
 import {
   Store,
   GenericMetadata,
@@ -31,10 +30,10 @@ export async function persist(
   persistentResourceCacheTrailingAvgStorage: ResourceCacheTrailingAvgStorage,
   latestResourceTimestamp: number,
   latestMarketTimestamp: number,
-  resource: Resource | undefined,
+  resource: resource | undefined,
   intervals: number[],
   trailingAvgTimes: number[],
-  markets: Market[]
+  markets: market[]
 ) {
   if (process.env.SAVE_STORAGE !== 'true') {
     return;
@@ -145,10 +144,10 @@ export async function persist(
 
 export async function restore(
   mode: PersistMode,
-  resource: Resource | undefined,
+  resource: resource | undefined,
   intervals: number[],
   trailingAvgTimes: number[],
-  markets: Market[]
+  markets: market[]
 ): Promise<
   | {
       storage: StorageData;

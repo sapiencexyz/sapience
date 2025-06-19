@@ -1,7 +1,6 @@
 import Foil from '@foil/protocol/deployments/Foil.json';
 import { Router } from 'express';
-import { marketRepository } from 'src/db';
-import { Market } from 'src/models/Market';
+import prisma from '../db';
 import { formatUnits, parseUnits } from 'viem';
 import { z } from 'zod';
 import { getProviderForChain } from '../utils/utils';
@@ -41,8 +40,8 @@ router.get('/:chainId/:marketAddress/:epochId/', async (req, res) => {
     }
 
     const currentPrice = await getCurrentPrice(
-      market.marketGroup.chainId,
-      market.marketGroup.address,
+      market.market_group.chainId,
+      market.market_group.address,
       market.marketId
     );
     if (!currentPrice) {
@@ -265,16 +264,18 @@ async function getMarket(
   chainId: string,
   marketAddress: string,
   marketId: string
-): Promise<Market | null> {
-  const market = await marketRepository.findOne({
+): Promise<any | null> {
+  const market = await prisma.market.findFirst({
     where: {
-      marketGroup: {
+      market_group: {
         chainId: parseInt(chainId),
         address: marketAddress.toLowerCase(),
       },
       marketId: parseInt(marketId),
     },
-    relations: ['marketGroup'],
+    include: {
+      market_group: true,
+    },
   });
   return market;
 }

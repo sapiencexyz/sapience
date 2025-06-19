@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { getMarketGroupAndMarket } from '../helpers/getMarketAndEpoch';
-import { marketGroupRepository, marketRepository } from '../db';
 
 interface Transaction {
   timeStamp: string;
@@ -17,8 +16,6 @@ router.post(
     const { walletAddress, chainId, marketAddress, epochId } = req.body;
 
     const { market } = await getMarketGroupAndMarket(
-      marketGroupRepository,
-      marketRepository,
       chainId,
       marketAddress.toLowerCase(),
       epochId

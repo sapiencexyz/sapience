@@ -1,5 +1,5 @@
 import { ResourcePerformance } from './resourcePerformance';
-import { Resource } from 'src/models/Resource';
+import type { resource } from '../../generated/prisma';
 import { clearStorageFiles } from './persistenceHelper';
 
 export class ResourcePerformanceManager {
@@ -9,7 +9,7 @@ export class ResourcePerformanceManager {
 
   private actionIdx: number = 0;
 
-  private resources: Resource[] = [];
+  private resources: resource[] = [];
   private resourcePerformances: {
     [resourceSlug: string]: ResourcePerformance;
   } = {};
@@ -23,7 +23,7 @@ export class ResourcePerformanceManager {
     return ResourcePerformanceManager._instance;
   }
 
-  public async initialize(resources: Resource[]) {
+  public async initialize(resources: resource[]) {
     if (ResourcePerformanceManager._initialized) {
       return;
     }
@@ -75,7 +75,7 @@ export class ResourcePerformanceManager {
     this.actionIdx++;
   }
 
-  public async hardRefreshAllResources(resources: Resource[]) {
+  public async hardRefreshAllResources(resources: resource[]) {
     console.log(
       `ResourcePerformanceManager Hard Refresh All Resources - op# ${this.actionIdx}`
     );
@@ -86,7 +86,7 @@ export class ResourcePerformanceManager {
     this.actionIdx++;
   }
 
-  public async softRefreshAllResources(resources: Resource[]) {
+  public async softRefreshAllResources(resources: resource[]) {
     console.log(
       `ResourcePerformanceManager Soft Refresh All Resources - op# ${this.actionIdx}`
     );
@@ -139,7 +139,7 @@ export class ResourcePerformanceManager {
   }
 
   private async initializeResources(
-    resources: Resource[],
+    resources: resource[],
     hardInitialize: boolean
   ) {
     console.log(
@@ -197,7 +197,7 @@ export class ResourcePerformanceManager {
   }
 
   private async updateResourceCache(
-    resource: Resource | undefined,
+    resource: resource | undefined,
     hardInitialize: boolean,
     logMode: 'initialize' | 'refresh'
   ) {

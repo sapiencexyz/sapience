@@ -1,12 +1,4 @@
 import { Buffer } from 'buffer';
-import { MarketGroup } from '../../models/MarketGroup';
-import { Resource } from '../../models/Resource';
-import { Position } from '../../models/Position';
-import { Transaction } from '../../models/Transaction';
-import { Market } from '../../models/Market';
-import { ResourcePrice } from '../../models/ResourcePrice';
-import { Category } from '../../models/Category';
-import { MarketParams } from '../../models/MarketParams';
 import { HydratedTransaction } from '../../helpers/hydrateTransactions';
 import {
   MarketGroupType,
@@ -18,6 +10,18 @@ import {
   CategoryType,
   MarketParamsType,
 } from '../types';
+
+interface MarketParams {
+  feeRate?: number | null;
+  assertionLiveness?: string | null;
+  bondCurrency?: string | null;
+  bondAmount?: string | null;
+  claimStatement?: string | null;
+  uniswapPositionManager?: string | null;
+  uniswapSwapRouter?: string | null;
+  uniswapQuoter?: string | null;
+  optimisticOracleV3?: string | null;
+}
 
 // Helper to decode hex string (0x...) to UTF-8
 const hexToString = (hex: string | null | undefined): string | null => {
@@ -40,20 +44,20 @@ const mapMarketParamsToType = (
 ): MarketParamsType | null => {
   if (!params) return null;
   return {
-    feeRate: params.feeRate,
-    assertionLiveness: params.assertionLiveness,
-    bondCurrency: params.bondCurrency,
-    bondAmount: params.bondAmount,
-    claimStatement: hexToString(params.claimStatement),
-    uniswapPositionManager: params.uniswapPositionManager,
-    uniswapSwapRouter: params.uniswapSwapRouter,
-    uniswapQuoter: params.uniswapQuoter,
-    optimisticOracleV3: params.optimisticOracleV3,
+    feeRate: params.feeRate ?? null,
+    assertionLiveness: params.assertionLiveness ?? null,
+    bondCurrency: params.bondCurrency ?? null,
+    bondAmount: params.bondAmount ?? null,
+    claimStatement: hexToString(params.claimStatement ?? null),
+    uniswapPositionManager: params.uniswapPositionManager ?? null,
+    uniswapSwapRouter: params.uniswapSwapRouter ?? null,
+    uniswapQuoter: params.uniswapQuoter ?? null,
+    optimisticOracleV3: params.optimisticOracleV3 ?? null,
   };
 };
 
 export const mapMarketGroupToType = (
-  marketGroup: MarketGroup
+  marketGroup: any
 ): MarketGroupType => ({
   id: marketGroup.id,
   address: marketGroup.address?.toLowerCase(),
@@ -61,7 +65,7 @@ export const mapMarketGroupToType = (
   chainId: marketGroup.chainId,
   isYin: marketGroup.isYin,
   isCumulative: marketGroup.isCumulative,
-  markets: marketGroup.markets?.map(mapMarketToType) || [],
+  markets: marketGroup.market?.map(mapMarketToType) || [],
   resource: marketGroup.resource
     ? mapResourceToType(marketGroup.resource)
     : null,
@@ -74,76 +78,96 @@ export const mapMarketGroupToType = (
   collateralAsset: marketGroup.collateralAsset,
   collateralSymbol: marketGroup.collateralSymbol,
   collateralDecimals: marketGroup.collateralDecimals,
-  minTradeSize: marketGroup.minTradeSize,
+  minTradeSize: marketGroup.minTradeSize?.toString() || null,
   factoryAddress: marketGroup.factoryAddress,
   initializationNonce: marketGroup.initializationNonce,
-  marketParams: mapMarketParamsToType(marketGroup.marketParams),
+  marketParams: mapMarketParamsToType({
+    feeRate: marketGroup.marketParamsFeerate,
+    assertionLiveness: marketGroup.marketParamsAssertionliveness?.toString(),
+    bondCurrency: marketGroup.marketParamsBondcurrency,
+    bondAmount: marketGroup.marketParamsBondamount?.toString(),
+    claimStatement: marketGroup.marketParamsClaimstatement,
+    uniswapPositionManager: marketGroup.marketParamsUniswappositionmanager,
+    uniswapSwapRouter: marketGroup.marketParamsUniswapswaprouter,
+    uniswapQuoter: marketGroup.marketParamsUniswapquoter,
+    optimisticOracleV3: marketGroup.marketParamsOptimisticoraclev3,
+  }),
   question: marketGroup.question,
-  claimStatement: hexToString(marketGroup.marketParams?.claimStatement),
+  claimStatement: hexToString(marketGroup.marketParamsClaimstatement),
   baseTokenName: marketGroup.baseTokenName,
   quoteTokenName: marketGroup.quoteTokenName,
 });
 
-export const mapResourceToType = (resource: Resource): ResourceType => ({
+export const mapResourceToType = (resource: any): ResourceType => ({
   id: resource.id,
   name: resource.name,
   slug: resource.slug,
   category: resource.category ? mapCategoryToType(resource.category) : null,
-  marketGroups: resource.marketGroups?.map(mapMarketGroupToType) || [],
-  resourcePrices: resource.resourcePrices?.map(mapResourcePriceToType) || [],
+  marketGroups: resource.market_group?.map(mapMarketGroupToType) || [],
+  resourcePrices: resource.resource_price?.map(mapResourcePriceToType) || [],
 });
 
-export const mapCategoryToType = (category: Category): CategoryType => ({
+export const mapCategoryToType = (category: any): CategoryType => ({
   id: category.id,
   name: category.name,
   slug: category.slug,
-  marketGroups: category.marketGroups?.map(mapMarketGroupToType) || [],
+  marketGroups: category.market_group?.map(mapMarketGroupToType) || [],
 });
 
-export const mapMarketToType = (market: Market): MarketType => ({
+export const mapMarketToType = (market: any): MarketType => ({
   id: market.id,
   marketId: market.marketId,
   startTimestamp: market.startTimestamp,
   endTimestamp: market.endTimestamp,
-  marketGroup: market.marketGroup
-    ? mapMarketGroupToType(market.marketGroup)
+  marketGroup: market.market_group
+    ? mapMarketGroupToType(market.market_group)
     : null,
-  positions: market.positions?.map(mapPositionToType) || [],
+  positions: market.position?.map(mapPositionToType) || [],
   settled: market.settled,
-  settlementPriceD18: market.settlementPriceD18,
+  settlementPriceD18: market.settlementPriceD18?.toString() || null,
   public: market.public,
   question: market.question || '',
   baseAssetMinPriceTick: market.baseAssetMinPriceTick,
   baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
   poolAddress: market.poolAddress,
   optionName: market.optionName,
-  startingSqrtPriceX96: market.startingSqrtPriceX96,
+  startingSqrtPriceX96: market.startingSqrtPriceX96?.toString() || null,
   rules: market.rules,
-  marketParams: mapMarketParamsToType(market.marketParams),
+  marketParams: mapMarketParamsToType({
+    feeRate: market.marketParamsFeerate,
+    assertionLiveness: market.marketParamsAssertionliveness?.toString(),
+    bondCurrency: market.marketParamsBondcurrency,
+    bondAmount: market.marketParamsBondamount?.toString(),
+    claimStatement: market.marketParamsClaimstatement,
+    uniswapPositionManager: market.marketParamsUniswappositionmanager,
+    uniswapSwapRouter: market.marketParamsUniswapswaprouter,
+    uniswapQuoter: market.marketParamsUniswapquoter,
+    optimisticOracleV3: market.marketParamsOptimisticoraclev3,
+  }),
   currentPrice: null,
 });
 
-export const mapPositionToType = (position: Position): PositionType => ({
+export const mapPositionToType = (position: any): PositionType => ({
   id: position.id,
   positionId: position.positionId,
   owner: position.owner?.toLowerCase() || '',
   isLP: position.isLP,
-  baseToken: position.baseToken,
-  quoteToken: position.quoteToken,
-  collateral: position.collateral,
+  baseToken: position.baseToken?.toString() || null,
+  quoteToken: position.quoteToken?.toString() || null,
+  collateral: position.collateral?.toString() || null,
   market: mapMarketToType(position.market),
-  transactions: position.transactions?.map(mapTransactionToType) || [],
-  borrowedBaseToken: position.borrowedBaseToken,
-  borrowedQuoteToken: position.borrowedQuoteToken,
-  lpBaseToken: position.lpBaseToken,
-  lpQuoteToken: position.lpQuoteToken,
+  transactions: position.transaction?.map(mapTransactionToType) || [],
+  borrowedBaseToken: position.borrowedBaseToken?.toString() || null,
+  borrowedQuoteToken: position.borrowedQuoteToken?.toString() || null,
+  lpBaseToken: position.lpBaseToken?.toString() || null,
+  lpQuoteToken: position.lpQuoteToken?.toString() || null,
   isSettled: position.isSettled,
-  lowPriceTick: position.lowPriceTick,
-  highPriceTick: position.highPriceTick,
+  lowPriceTick: position.lowPriceTick?.toString() || null,
+  highPriceTick: position.highPriceTick?.toString() || null,
 });
 
 export const mapTransactionToType = (
-  transaction: HydratedTransaction | Transaction
+  transaction: HydratedTransaction | any
 ): TransactionType => ({
   id: transaction.id,
   type: transaction.type,
@@ -151,22 +175,22 @@ export const mapTransactionToType = (
     ? Number(BigInt(transaction.event.timestamp))
     : 0,
   transactionHash: transaction.event?.transactionHash || null,
-  position: transaction.position
+  position: transaction.position && 'transaction' in transaction.position
     ? mapPositionToType(transaction.position)
     : null,
-  baseToken: transaction.baseToken,
-  quoteToken: transaction.quoteToken,
-  collateral: transaction.collateral,
-  lpBaseDeltaToken: transaction.lpBaseDeltaToken,
-  lpQuoteDeltaToken: transaction.lpQuoteDeltaToken,
+  baseToken: transaction.baseToken?.toString() || null,
+  quoteToken: transaction.quoteToken?.toString() || null,
+  collateral: transaction.collateral?.toString() || null,
+  lpBaseDeltaToken: transaction.lpBaseDeltaToken?.toString() || null,
+  lpQuoteDeltaToken: transaction.lpQuoteDeltaToken?.toString() || null,
   baseTokenDelta: (transaction as HydratedTransaction).baseTokenDelta || '0',
   quoteTokenDelta: (transaction as HydratedTransaction).quoteTokenDelta || '0',
   collateralDelta: (transaction as HydratedTransaction).collateralDelta || '0',
-  tradeRatioD18: transaction.tradeRatioD18 || null,
+  tradeRatioD18: transaction.tradeRatioD18?.toString() || null,
 });
 
 export const mapResourcePriceToType = (
-  price: ResourcePrice
+  price: any
 ): ResourcePriceType => ({
   id: price.id,
   timestamp: price.timestamp,
