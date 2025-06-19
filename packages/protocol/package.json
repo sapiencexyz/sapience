@@ -13,6 +13,10 @@
     "simulate-deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --dry-run --impersonate-all"
   },
   "devDependencies": {
+    "@layerzerolabs/lz-evm-messagelib-v2": "^3.0.104",
+    "@layerzerolabs/lz-evm-v1-0.7": "^3.0.104",
+    "@layerzerolabs/test-devtools-evm-foundry": "^6.0.3",
+    "@layerzerolabs/toolbox-foundry": "^0.1.12",
     "@types/chai": "^4.3.19",
     "@types/mocha": "^10.0.8",
     "@types/node": "^20.16.5",
