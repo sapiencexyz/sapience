@@ -1,16 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import 'tsconfig-paths/register';
-import {
-  marketRepository,
-  eventRepository,
-  initializeDataSource,
-  marketGroupRepository,
-  transactionRepository,
-} from '../db';
-import { MarketParams } from '../models/MarketParams';
-import { Event } from '../models/Event';
-import { MarketGroup } from '../models/MarketGroup';
-import { Transaction } from '../models/Transaction';
+import prisma from '../db';
 import { decodeEventLog, Log } from 'viem';
 import {
   EpochCreatedEventLog,
@@ -50,14 +40,6 @@ import Sentry from '../instrument';
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
-  const existingMarket = await marketGroupRepository.findOne({
-    where: {
-      address: marketInfo.deployment.address.toLowerCase(),
-      chainId: marketInfo.marketChainId,
-    },
-    relations: ['resource'],
-  });
-  const market = existingMarket || new MarketGroup();
 
   const client = getProviderForChain(marketInfo.marketChainId);
 
@@ -67,23 +49,32 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
     functionName: 'getMarket',
   })) as [string, string, string, string, any];
 
-  const updatedMarket = market;
+  const updatedMarketData = {
+    address: marketInfo.deployment.address.toLowerCase(),
+    vaultAddress: marketInfo.vaultAddress ?? '',
+    isYin: marketInfo.isYin ?? true,
+    isCumulative: marketInfo.isCumulative ?? false,
+    deployTxnBlockNumber: Number(marketInfo.deployment.deployTxnBlockNumber),
+    deployTimestamp: Number(marketInfo.deployment.deployTimestamp),
+    chainId: marketInfo.marketChainId,
+    owner: marketReadResult[0].toLowerCase(),
+    collateralAsset: marketReadResult[1],
+    collateralDecimals: null as number | null,
+    marketParamsFeerate: null as number | null,
+    marketParamsAssertionliveness: null,
+    marketParamsBondcurrency: null,
+    marketParamsBondamount: null,
+    marketParamsClaimstatement: null,
+    marketParamsUniswappositionmanager: null,
+    marketParamsUniswapswaprouter: null,
+    marketParamsUniswapquoter: null,
+    marketParamsOptimisticoraclev3: null,
+  };
 
-  updatedMarket.address = marketInfo.deployment.address.toLowerCase();
-  updatedMarket.vaultAddress = marketInfo.vaultAddress ?? '';
-  updatedMarket.isYin = marketInfo.isYin ?? true;
-  updatedMarket.isCumulative = marketInfo.isCumulative ?? false;
-  updatedMarket.deployTxnBlockNumber = Number(
-    marketInfo.deployment.deployTxnBlockNumber
-  );
-  updatedMarket.deployTimestamp = Number(marketInfo.deployment.deployTimestamp);
-  updatedMarket.chainId = marketInfo.marketChainId;
-  updatedMarket.owner = marketReadResult[0].toLowerCase();
-  updatedMarket.collateralAsset = marketReadResult[1];
-  if (updatedMarket.collateralAsset) {
+  if (updatedMarketData.collateralAsset) {
     try {
       const decimals = await client.readContract({
-        address: updatedMarket.collateralAsset as `0x${string}`,
+        address: updatedMarketData.collateralAsset as `0x${string}`,
         abi: [
           {
             constant: true,
@@ -97,36 +88,57 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
         ],
         functionName: 'decimals',
       });
-      updatedMarket.collateralDecimals = Number(decimals);
+      updatedMarketData.collateralDecimals = Number(decimals);
     } catch (error) {
       console.error(
-        `Failed to fetch decimals for token ${updatedMarket.collateralAsset}:`,
+        `Failed to fetch decimals for token ${updatedMarketData.collateralAsset}:`,
         error
       );
     }
   }
+
   const marketParamsRaw = marketReadResult[4];
-  const marketEpochParams: MarketParams = {
-    ...marketParamsRaw,
-    assertionLiveness: marketParamsRaw?.assertionLiveness?.toString() ?? '0',
-    bondAmount: marketParamsRaw?.bondAmount?.toString() ?? '0',
-  };
-  updatedMarket.marketParams = marketEpochParams;
-  await marketGroupRepository.save(updatedMarket);
+  if (marketParamsRaw) {
+    updatedMarketData.marketParamsFeerate = marketParamsRaw.feeRate || null;
+    updatedMarketData.marketParamsAssertionliveness = marketParamsRaw.assertionLiveness?.toString() || null;
+    updatedMarketData.marketParamsBondcurrency = marketParamsRaw.bondCurrency || null;
+    updatedMarketData.marketParamsBondamount = marketParamsRaw.bondAmount?.toString() || null;
+    updatedMarketData.marketParamsClaimstatement = marketParamsRaw.claimStatement || null;
+    updatedMarketData.marketParamsUniswappositionmanager = marketParamsRaw.uniswapPositionManager || null;
+    updatedMarketData.marketParamsUniswapswaprouter = marketParamsRaw.uniswapSwapRouter || null;
+    updatedMarketData.marketParamsUniswapquoter = marketParamsRaw.uniswapQuoter || null;
+    updatedMarketData.marketParamsOptimisticoraclev3 = marketParamsRaw.optimisticOracleV3 || null;
+  }
+
+  const updatedMarket = await prisma.market_group.upsert({
+    where: {
+      address_chainId: {
+        address: updatedMarketData.address,
+        chainId: updatedMarketData.chainId,
+      },
+    },
+    update: updatedMarketData,
+    create: updatedMarketData,
+    include: { resource: true },
+  });
+
   return updatedMarket;
 };
 
 // Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
 export const indexMarketGroupEvents = async (
-  market: MarketGroup,
+  market: any, // Using any for now since this depends on helper functions
   client: PublicClient
 ): Promise<() => void> => {
-  await initializeDataSource();
   const chainId = await client.getChainId();
 
   try {
+  
     await updateCollateralData(client, market);
-    await marketGroupRepository.save(market);
+    await prisma.market_group.update({
+      where: { id: market.id },
+      data: market,
+    });
   } catch (err) {
     console.error(
       `Failed to update collateral data for market ${market.address}:`,
@@ -318,14 +330,17 @@ export const indexMarketGroupEvents = async (
 };
 
 // Iterates over all blocks from the market's deploy block to the current block and calls upsertEvent for each one.
-export const reindexMarketEvents = async (market: MarketGroup) => {
-  await initializeDataSource();
+export const reindexMarketEvents = async (market: any) => {
   const client = getProviderForChain(market.chainId);
   const chainId = await client.getChainId();
 
   // Update collateral data
+  
   await updateCollateralData(client, market);
-  await marketGroupRepository.save(market);
+  await prisma.market_group.update({
+    where: { id: market.id },
+    data: market,
+  });
 
   // Get the contract deployment time and us it as initial lookback start time
   let deploymentBlock;
@@ -519,10 +534,9 @@ const upsertEvent = async (
     logData,
   });
 
-  // Find marke group with relations
-  const marketGroup = await marketGroupRepository.findOne({
+  // Find market group
+  const marketGroup = await prisma.market_group.findFirst({
     where: { chainId, address: marketGroupAddress.toLowerCase() },
-    relations: ['marketParams'],
   });
 
   if (!marketGroup) {
@@ -533,75 +547,75 @@ const upsertEvent = async (
 
   try {
     // Check if event already exists
-    const existingEvent = await eventRepository.findOne({
+    const existingEvent = await prisma.event.findFirst({
       where: {
         transactionHash: logData.transactionHash,
-        marketGroup: { id: marketGroup.id },
+        marketGroupId: marketGroup.id,
         blockNumber: Number(blockNumber),
         logIndex: logIndex,
       },
-      relations: ['marketGroup'],
+      include: { market_group: true },
     });
 
     if (existingEvent) {
       console.log('Event already exists, processing existing event');
-      // Update the existing event with any new data to avoid UpdateValuesMissingError
-      existingEvent.timestamp = timeStamp.toString();
-      existingEvent.logData = logData;
-      await eventRepository.save(existingEvent);
+      // Update the existing event with any new data
+      const updatedEvent = await prisma.event.update({
+        where: { id: existingEvent.id },
+        data: {
+          timestamp: BigInt(timeStamp.toString()),
+          logData: logData as any,
+        },
+        include: { market_group: true },
+      });
+      
       await upsertEntitiesFromEvent(
-        existingEvent,
+        updatedEvent,
         marketGroupAddress,
         marketId,
         chainId
       );
-      return existingEvent;
+      return updatedEvent;
     }
 
     console.log('inserting new event..');
-    const newEvent = new Event();
-    newEvent.marketGroup = marketGroup;
-    newEvent.blockNumber = Number(blockNumber);
-    newEvent.timestamp = timeStamp.toString();
-    newEvent.logIndex = logIndex;
-    newEvent.logData = logData;
-    newEvent.transactionHash = logData.transactionHash;
-
-    const savedEvent = await eventRepository.save(newEvent);
-
-    // Reload the event with all necessary relations
-    const loadedEvent = await eventRepository.findOne({
-      where: { id: savedEvent.id },
-      relations: ['marketGroup'],
+    const newEvent = await prisma.event.create({
+      data: {
+        marketGroupId: marketGroup.id,
+        blockNumber: Number(blockNumber),
+        timestamp: BigInt(timeStamp.toString()),
+        logIndex: logIndex,
+        logData: logData as any,
+        transactionHash: logData.transactionHash,
+      },
+      include: { market_group: true },
     });
 
-    if (!loadedEvent) {
-      throw new Error(`Failed to load saved event with ID ${savedEvent.id}`);
-    }
-
     await upsertEntitiesFromEvent(
-      loadedEvent,
+      newEvent,
       marketGroupAddress,
       marketId,
       chainId
     );
-    return loadedEvent;
+    return newEvent;
   } catch (error) {
     console.error('Error upserting event:', error);
     throw error;
   }
 };
+
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
 export const upsertEntitiesFromEvent = async (
-  event: Event,
+  event: any, // Using any for now since this depends on helper functions that need migration
   marketGroupAddress: string,
   marketId: number,
   chainId: number
 ) => {
   // First check if this event has already been processed by looking for an existing transaction
-  const existingTransaction = await transactionRepository.findOne({
-    where: { event: { id: event.id } },
+  const existingTransaction = await prisma.transaction.findFirst({
+    where: { eventId: event.id },
   });
+  
   if (existingTransaction) {
     if (event.logData.eventName != EventType.PositionSettled) {
       return;
@@ -609,8 +623,21 @@ export const upsertEntitiesFromEvent = async (
   }
 
   let skipTransaction = false;
-  const newTransaction = new Transaction();
-  newTransaction.event = event;
+  const newTransaction = {
+    eventId: event.id,
+    type: 'addLiquidity' as any, // Will be set properly by helper functions
+    baseToken: null,
+    quoteToken: null,
+    borrowedBaseToken: null,
+    borrowedQuoteToken: null,
+    collateral: '0',
+    lpBaseDeltaToken: null,
+    lpQuoteDeltaToken: null,
+    tradeRatioD18: null,
+    positionId: null,
+    marketPriceId: null,
+    collateralTransferId: null,
+  };
 
   // Process the event based on its type
   switch (event.logData.eventName) {
@@ -623,12 +650,14 @@ export const upsertEntitiesFromEvent = async (
         optimisticOracleV3: event.logData.args.optimisticOracleV3,
         marketParams: event.logData.args.marketParams,
       } as MarketCreatedUpdatedEventLog;
-      await createOrUpdateMarketFromEvent(
+      
+      
+       await createOrUpdateMarketFromEvent(
         marketCreatedArgs,
-        event.marketGroup.chainId,
-        event.marketGroup.address,
-        event.marketGroup
-      );
+        event.market_group.chainId,
+        event.market_group.address,
+        event.market_group
+       );
       skipTransaction = true;
       break;
     }
@@ -640,11 +669,13 @@ export const upsertEntitiesFromEvent = async (
         optimisticOracleV3: event.logData.args.optimisticOracleV3,
         marketParams: event.logData.args.marketParams,
       } as MarketCreatedUpdatedEventLog;
+      
+   
       await createOrUpdateMarketFromEvent(
-        marketUpdatedArgs,
-        event.marketGroup.chainId,
-        event.marketGroup.address,
-        event.marketGroup
+      marketUpdatedArgs,
+      event.market_group.chainId,
+      event.market_group.address,
+      event.market_group
       );
       skipTransaction = true;
       break;
@@ -659,11 +690,11 @@ export const upsertEntitiesFromEvent = async (
         endTime: event.logData.args.endTime,
         startingSqrtPriceX96: event.logData.args.startingSqrtPriceX96,
       } as EpochCreatedEventLog;
-      await createEpochFromEvent(epochCreatedArgs, event.marketGroup);
-
-      // Call createOrUpdateEpochFromContract with the data from the event
+      
+      
+      await createEpochFromEvent(epochCreatedArgs, event.market_group);
       await createOrUpdateEpochFromContract(
-        event.marketGroup,
+        event.market_group,
         Number(epochCreatedArgs.epochId)
       );
       skipTransaction = true;
@@ -671,18 +702,18 @@ export const upsertEntitiesFromEvent = async (
     }
     case EventType.EpochSettled: {
       console.log('Market settled event. event: ', event);
-      const epoch = await marketRepository.findOne({
+      const epoch = await prisma.market.findFirst({
         where: {
-          marketGroup: {
-            address: event.marketGroup.address.toLowerCase(),
-            chainId: event.marketGroup.chainId,
+          market_group: {
+            address: event.market_group.address.toLowerCase(),
+            chainId: event.market_group.chainId,
           },
           marketId: Number(event.logData.args.epochId),
         },
-        relations: ['marketGroup'],
+        include: { market_group: true },
       });
+      
       if (epoch) {
-        epoch.settled = true;
         const settlementSqrtPriceX96: bigint = BigInt(
           (event.logData.args.settlementSqrtPriceX96 as string)?.toString() ??
             '0'
@@ -690,10 +721,16 @@ export const upsertEntitiesFromEvent = async (
         const settlementPriceD18 = sqrtPriceX96ToSettlementPriceD18(
           settlementSqrtPriceX96
         );
-        epoch.settlementPriceD18 = settlementPriceD18.toString();
-        await marketRepository.save(epoch);
+        
+        await prisma.market.update({
+          where: { id: epoch.id },
+          data: {
+            settled: true,
+            settlementPriceD18: settlementPriceD18.toString(),
+          },
+        });
       } else {
-        console.error('Epoch not found for market: ', event.marketGroup);
+        console.error('Epoch not found for market: ', event.market_group);
       }
       skipTransaction = true;
       break;
@@ -702,12 +739,15 @@ export const upsertEntitiesFromEvent = async (
     // Position events
     case EventType.Transfer:
       console.log('Handling Transfer event: ', event);
+      
       await handleTransferEvent(event);
       skipTransaction = true;
       break;
     case EventType.PositionSettled:
       console.log('Handling Position Settled from event: ', event);
       settledPositions.push(event.logData.args.positionId);
+      
+      
       await Promise.all([
         handlePositionSettledEvent(event),
         updateTransactionFromPositionSettledEvent(
@@ -723,14 +763,17 @@ export const upsertEntitiesFromEvent = async (
     // Liquidity events
     case EventType.LiquidityPositionCreated:
       console.log('Creating liquidity position from event: ', event);
+      
       updateTransactionFromAddLiquidityEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionClosed:
       console.log('Closing liquidity position from event: ', event);
+      
       await updateTransactionFromLiquidityClosedEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionDecreased:
       console.log('Decreasing liquidity position from event: ', event);
+     
       await updateTransactionFromLiquidityModifiedEvent(
         newTransaction,
         event,
@@ -739,16 +782,19 @@ export const upsertEntitiesFromEvent = async (
       break;
     case EventType.LiquidityPositionIncreased:
       console.log('Increasing liquidity position from event: ', event);
+      
       await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
       break;
 
     // Trader events
     case EventType.TraderPositionCreated:
       console.log('Creating trader position from event: ', event);
+      
       await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
     case EventType.TraderPositionModified:
       console.log('Modifying trader position from event: ', event);
+    
       await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
 
@@ -759,8 +805,7 @@ export const upsertEntitiesFromEvent = async (
 
   if (!skipTransaction) {
     try {
-      // Fill transaction with collateral transfer and market price
-
+      
       await insertCollateralTransfer(newTransaction);
       await insertMarketPrice(newTransaction);
 
@@ -769,22 +814,35 @@ export const upsertEntitiesFromEvent = async (
         newTransaction.collateral = '0';
       }
 
-      // Ensure all required fields have values to prevent UpdateValuesMissingError
-      if (!newTransaction.baseToken) newTransaction.baseToken = '0';
-      if (!newTransaction.quoteToken) newTransaction.quoteToken = '0';
+      // Ensure all required fields have values
+      if (!newTransaction.baseToken) newTransaction.baseToken = null;
+      if (!newTransaction.quoteToken) newTransaction.quoteToken = null;
       if (!newTransaction.borrowedBaseToken)
-        newTransaction.borrowedBaseToken = '0';
+        newTransaction.borrowedBaseToken = null;
       if (!newTransaction.borrowedQuoteToken)
-        newTransaction.borrowedQuoteToken = '0';
-      if (!newTransaction.tradeRatioD18) newTransaction.tradeRatioD18 = '0';
+        newTransaction.borrowedQuoteToken = null;
+      if (!newTransaction.tradeRatioD18) newTransaction.tradeRatioD18 = null;
 
       // Save the transaction
       console.log('Saving new transaction: ', newTransaction);
-      await transactionRepository.save(newTransaction);
+      const savedTransaction = await prisma.transaction.create({
+        data: {
+          ...newTransaction,
+          baseToken: newTransaction.baseToken,
+          quoteToken: newTransaction.quoteToken,
+          borrowedBaseToken: newTransaction.borrowedBaseToken,
+          borrowedQuoteToken: newTransaction.borrowedQuoteToken,
+          collateral: newTransaction.collateral,
+          lpBaseDeltaToken: newTransaction.lpBaseDeltaToken,
+          lpQuoteDeltaToken: newTransaction.lpQuoteDeltaToken,
+          tradeRatioD18: newTransaction.tradeRatioD18,
+        },
+      });
 
       // Then create or modify the position with the saved transaction
       try {
-        await createOrModifyPositionFromTransaction(newTransaction);
+        
+        await createOrModifyPositionFromTransaction(savedTransaction);
       } catch (positionError) {
         console.error('Error creating or modifying position:', positionError);
       }

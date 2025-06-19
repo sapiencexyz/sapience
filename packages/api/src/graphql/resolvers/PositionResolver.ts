@@ -1,6 +1,5 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
-import dataSource from '../../db';
-import { Position } from '../../models/Position';
+import prisma from '../../db';
 import { PositionType } from '../types';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
 import { mapPositionToType } from './mappers';
@@ -15,39 +14,44 @@ export class PositionResolver {
     marketAddress?: string
   ): Promise<PositionType[]> {
     try {
-      let positionsQuery = await dataSource
-        .getRepository(Position)
-        .createQueryBuilder('position')
-        .leftJoinAndSelect('position.market', 'market')
-        .leftJoinAndSelect('market.marketGroup', 'marketGroup')
-        .leftJoinAndSelect('marketGroup.resource', 'resource')
-        .leftJoinAndSelect('position.transactions', 'transactions')
-        .leftJoinAndSelect('transactions.event', 'event');
+      const whereConditions: any = {};
 
       if (owner) {
-        positionsQuery = positionsQuery.where(
-          'LOWER(position.owner) = :owner',
-          {
-            owner: owner?.toLowerCase(),
-          }
-        );
+        whereConditions.owner = owner.toLowerCase();
       }
 
       if (chainId && marketAddress) {
-        positionsQuery.andWhere(
-          'marketGroup.chainId = :chainId AND LOWER(marketGroup.address) = :marketAddress',
-          {
-            chainId,
-            marketAddress: marketAddress.toLowerCase(),
-          }
-        );
+        whereConditions.market = {
+          market_group: {
+            chainId: chainId,
+            address: marketAddress.toLowerCase(),
+          },
+        };
       }
 
-      const positionsResult = await positionsQuery.getMany();
+      const positionsResult = await prisma.position.findMany({
+        where: whereConditions,
+        include: {
+          market: {
+            include: {
+              market_group: {
+                include: {
+                  resource: true,
+                },
+              },
+            },
+          },
+          transaction: {
+            include: {
+              event: true,
+            },
+          },
+        },
+      });
 
-      const hydratedPositions = positionsResult.map((position) => {
+      const hydratedPositions = positionsResult.map((position: any) => {
         const hydratedTransactions = hydrateTransactions(
-          position.transactions,
+          position.transaction,
           false
         );
         return { ...position, transactions: hydratedTransactions };

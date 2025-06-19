@@ -1,17 +1,6 @@
-import dataSource, {
-  cacheParamRepository,
-  marketPriceRepository,
-  resourcePriceRepository,
-  cacheCandleRepository,
-  marketGroupRepository,
-} from 'src/db';
-import { CacheParam } from 'src/models/CacheParam';
-import { ResourcePrice } from 'src/models/ResourcePrice';
-import { FindOptionsWhere, MoreThan, Between } from 'typeorm';
+import prisma from 'src/db';
 import { ReducedMarketPrice } from './types';
-import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES } from './config';
-import { MarketGroup } from 'src/models/MarketGroup';
 
 export interface ResourcePriceParams {
   initialTimestamp: number;
@@ -22,31 +11,28 @@ export interface ResourcePriceParams {
 }
 
 export async function getParam(paramName: string) {
-  const config = await cacheParamRepository.findOne({
+  const config = await prisma.cache_param.findFirst({
     where: { paramName },
   });
   if (!config) {
     return 0;
   }
-  return config.paramValueNumber;
+  return Number(config.paramValueNumber);
 }
 
 export async function setParam(paramName: string, paramValue: number) {
-  let config = await cacheParamRepository.findOne({ where: { paramName } });
-  if (!config) {
-    config = new CacheParam();
-    config.paramName = paramName;
-    config.paramValueNumber = paramValue;
-  }
-  config.paramValueNumber = paramValue;
-  await cacheParamRepository.save(config);
+  await prisma.cache_param.upsert({
+    where: { paramName },
+    update: { paramValueNumber: paramValue },
+    create: { paramName, paramValueNumber: paramValue },
+  });
 }
 
 export async function getResourcePricesCount(
   params: ResourcePriceParams
 ): Promise<number> {
-  const where: FindOptionsWhere<ResourcePrice> = {
-    timestamp: MoreThan(params.initialTimestamp),
+  const where: any = {
+    timestamp: { gt: params.initialTimestamp },
   };
 
   if (params.resourceSlug) {
@@ -54,24 +40,23 @@ export async function getResourcePricesCount(
   }
 
   if (params.startTimestamp && params.endTimestamp) {
-    where.timestamp = Between(params.startTimestamp, params.endTimestamp);
+    where.timestamp = { gte: params.startTimestamp, lte: params.endTimestamp };
   } else if (params.startTimestamp) {
-    where.timestamp = MoreThan(params.startTimestamp);
+    where.timestamp = { gt: params.startTimestamp };
   } else if (params.endTimestamp) {
-    where.timestamp = Between(params.initialTimestamp, params.endTimestamp);
+    where.timestamp = { gte: params.initialTimestamp, lte: params.endTimestamp };
   }
 
-  return resourcePriceRepository.count({
+  return prisma.resource_price.count({
     where,
-    relations: ['resource'],
   });
 }
 
 export async function getResourcePrices(
   params: ResourcePriceParams
-): Promise<{ prices: ResourcePrice[]; hasMore: boolean }> {
-  const where: FindOptionsWhere<ResourcePrice> = {
-    timestamp: MoreThan(params.initialTimestamp),
+): Promise<{ prices: any[]; hasMore: boolean }> {
+  const where: any = {
+    timestamp: { gt: params.initialTimestamp },
   };
 
   if (params.resourceSlug) {
@@ -79,17 +64,17 @@ export async function getResourcePrices(
   }
 
   if (params.startTimestamp && params.endTimestamp) {
-    where.timestamp = Between(params.startTimestamp, params.endTimestamp);
+    where.timestamp = { gte: params.startTimestamp, lte: params.endTimestamp };
   } else if (params.startTimestamp) {
-    where.timestamp = MoreThan(params.startTimestamp);
+    where.timestamp = { gt: params.startTimestamp };
   } else if (params.endTimestamp) {
-    where.timestamp = Between(params.initialTimestamp, params.endTimestamp);
+    where.timestamp = { gte: params.initialTimestamp, lte: params.endTimestamp };
   }
 
-  const prices = await resourcePriceRepository.find({
+  const prices = await prisma.resource_price.findMany({
     where,
-    order: { timestamp: 'ASC' },
-    relations: ['resource'],
+    orderBy: { timestamp: 'asc' },
+    include: { resource: true },
     take: params.quantity + 1,
   });
 
@@ -108,19 +93,25 @@ export async function getMarketPrices({
   initialTimestamp?: number;
   quantity: number;
 }): Promise<{ prices: ReducedMarketPrice[]; hasMore: boolean }> {
-  const marketPrices = await marketPriceRepository.find({
+  const marketPrices = await prisma.market_price.findMany({
     where: {
-      timestamp: MoreThan(initialTimestamp?.toString() ?? '0'),
+      timestamp: { gt: BigInt(initialTimestamp?.toString() ?? '0') },
     },
-    order: {
-      timestamp: 'ASC',
+    orderBy: {
+      timestamp: 'asc',
     },
     take: quantity,
-    relations: [
-      'transaction',
-      'transaction.position',
-      'transaction.position.market',
-    ],
+    include: {
+      transaction: {
+        include: {
+          position: {
+            include: {
+              market: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   const cleanedMarketPrices = marketPrices.filter((item) => {
@@ -132,9 +123,9 @@ export async function getMarketPrices({
   });
 
   const reducedMarketPrices = cleanedMarketPrices.map((item) => ({
-    value: item.value,
+    value: item.value.toString(),
     timestamp: Number(item.timestamp),
-    market: item.transaction.position.market.id,
+    market: item.transaction!.position!.market!.id,
   }));
 
   return {
@@ -153,24 +144,24 @@ export async function getLatestCandle({
   interval: number;
   marketIdx: number | undefined;
   resourceSlug: string | undefined;
-}): Promise<CacheCandle | null> {
-  const where: FindOptionsWhere<CacheCandle> = { candleType, interval };
+}): Promise<any | null> {
+  const where: any = { candleType, interval };
   if (marketIdx) {
     where.marketIdx = marketIdx;
   }
   if (resourceSlug) {
     where.resourceSlug = resourceSlug;
   }
-  const candle = await cacheCandleRepository.findOne({
+  const candle = await prisma.cache_candle.findFirst({
     where,
-    order: { timestamp: 'DESC' },
+    orderBy: { timestamp: 'desc' },
   });
   return candle;
 }
 
-export async function getMarketGroups(): Promise<MarketGroup[]> {
-  return marketGroupRepository.find({
-    relations: ['markets', 'resource'],
+export async function getMarketGroups(): Promise<any[]> {
+  return prisma.market_group.findMany({
+    include: { market: true, resource: true },
   });
 }
 
@@ -187,7 +178,7 @@ export async function getLastCandleFromDb({
   resourceSlug?: string;
   trailingAvgTime?: number;
 }) {
-  const where: FindOptionsWhere<CacheCandle> = { candleType, interval };
+  const where: any = { candleType, interval };
   if (marketIdx) {
     where.marketIdx = marketIdx;
   }
@@ -198,19 +189,34 @@ export async function getLastCandleFromDb({
     where.trailingAvgTime = trailingAvgTime;
   }
 
-  const candle = await cacheCandleRepository.findOne({
+  const candle = await prisma.cache_candle.findFirst({
     where,
-    order: { timestamp: 'DESC' },
+    orderBy: { timestamp: 'desc' },
   });
   return candle;
 }
 
-export async function saveCandle(candle: CacheCandle) {
-  await cacheCandleRepository.save(candle);
+export async function saveCandle(candle: any) {
+  await prisma.cache_candle.upsert({
+    where: {
+      candleType_interval_timestamp_resourceSlug_marketIdx_trailingAvgTime: {
+        candleType: candle.candleType,
+        interval: candle.interval,
+        timestamp: candle.timestamp,
+        resourceSlug: candle.resourceSlug,
+        marketIdx: candle.marketIdx,
+        trailingAvgTime: candle.trailingAvgTime,
+      },
+    },
+    update: candle,
+    create: candle,
+  });
 }
 
-export async function saveCandles(candles: CacheCandle[]) {
-  await cacheCandleRepository.save(candles);
+export async function saveCandles(candles: any[]) {
+  for (const candle of candles) {
+    await saveCandle(candle);
+  }
 }
 
 export async function getOrCreateCandle({
@@ -228,7 +234,7 @@ export async function getOrCreateCandle({
   trailingAvgTime: number;
   timestamp: number;
 }) {
-  const existingCandle = await cacheCandleRepository.findOne({
+  const existingCandle = await prisma.cache_candle.findFirst({
     where: {
       candleType: candleType,
       interval: interval,
@@ -243,13 +249,20 @@ export async function getOrCreateCandle({
     return existingCandle;
   }
 
-  const newCandle = new CacheCandle();
-  newCandle.candleType = candleType;
-  newCandle.interval = interval;
-  newCandle.timestamp = timestamp;
-  newCandle.marketIdx = marketIdx;
-  newCandle.resourceSlug = resourceSlug;
-  newCandle.trailingAvgTime = trailingAvgTime;
+  const newCandle = {
+    candleType,
+    interval,
+    timestamp,
+    marketIdx,
+    resourceSlug,
+    trailingAvgTime,
+    open: '0',
+    high: '0',
+    low: '0',
+    close: '0',
+    endTimestamp: 0,
+    lastUpdatedTimestamp: 0,
+  };
   return newCandle;
 }
 
@@ -270,10 +283,10 @@ export async function getCandles({
   marketIdx?: number;
   trailingAvgTime?: number;
 }) {
-  const where: FindOptionsWhere<CacheCandle> = {
+  const where: any = {
     candleType,
     interval,
-    timestamp: Between(from, to),
+    timestamp: { gte: from, lte: to },
   };
   if (candleType == CANDLE_TYPES.RESOURCE) {
     where.resourceSlug = resourceId;
@@ -285,26 +298,26 @@ export async function getCandles({
   } else if (candleType == CANDLE_TYPES.INDEX) {
     where.marketIdx = marketIdx;
   }
-  return cacheCandleRepository.find({
+  return prisma.cache_candle.findMany({
     where,
-    order: { timestamp: 'ASC' },
+    orderBy: { timestamp: 'asc' },
   });
 }
 
 export async function getMarketPricesCount(
   initialTimestamp: number
 ): Promise<number> {
-  return marketPriceRepository.count({
+  return prisma.market_price.count({
     where: {
-      timestamp: MoreThan(initialTimestamp?.toString() ?? '0'),
+      timestamp: { gt: BigInt(initialTimestamp?.toString() ?? '0') },
     },
   });
 }
 
 export async function truncateCandlesTable() {
-  await dataSource.query(`TRUNCATE TABLE "cache_candle" RESTART IDENTITY`);
+  await prisma.$executeRaw`TRUNCATE TABLE "cache_candle" RESTART IDENTITY`;
 }
 
 export async function truncateParamsTable() {
-  await dataSource.query(`TRUNCATE TABLE "cache_param" RESTART IDENTITY`);
+  await prisma.$executeRaw`TRUNCATE TABLE "cache_param" RESTART IDENTITY`;
 }

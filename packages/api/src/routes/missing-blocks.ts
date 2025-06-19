@@ -1,17 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { validateRequestParams } from '../helpers';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-import { Between } from 'typeorm';
-import { MarketGroup } from '../models/MarketGroup';
-import { ResourcePrice } from '../models/ResourcePrice';
 import { getMarketStartEndBlock } from 'src/controllers/marketHelpers';
-import dataSource from 'src/db';
+import prisma from 'src/db';
 import { INDEXERS } from '../fixtures';
 
 const router = Router();
-
-const marketRepository = dataSource.getRepository(MarketGroup);
-const resourcePriceRepository = dataSource.getRepository(ResourcePrice);
 
 const getMissingBlocks = async (
   chainId: string,
@@ -19,9 +13,9 @@ const getMissingBlocks = async (
   marketId: string
 ): Promise<{ missingBlockNumbers: number[] | null; error?: string }> => {
   // Find the market
-  const market = await marketRepository.findOne({
+  const market = await prisma.market_group.findFirst({
     where: { chainId: Number(chainId), address: address.toLowerCase() },
-    relations: ['resource'],
+    include: { resource: true },
   });
   if (!market) {
     return { missingBlockNumbers: null, error: 'Market not found' };
@@ -53,12 +47,15 @@ const getMissingBlocks = async (
   }
 
   // Get existing block numbers for ResourcePrice
-  const resourcePrices = await resourcePriceRepository.find({
+  const resourcePrices = await prisma.resource_price.findMany({
     where: {
-      resource: { id: market.resource.id },
-      blockNumber: Between(startBlockNumber, endBlockNumber),
+      resourceId: market.resource.id,
+      blockNumber: {
+        gte: startBlockNumber,
+        lte: endBlockNumber,
+      },
     },
-    select: ['blockNumber'],
+    select: { blockNumber: true },
   });
 
   const existingBlockNumbersSet = new Set(

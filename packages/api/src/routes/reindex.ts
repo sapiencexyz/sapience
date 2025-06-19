@@ -1,8 +1,7 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
-import { RenderJob } from '../models/RenderJob';
-import { renderJobRepository } from '../db';
+import prisma from '../db';
 import { createRenderJob, fetchRenderServices } from 'src/utils/utils';
 import { Request, Response } from 'express';
 
@@ -100,10 +99,12 @@ router.post(
       const startCommand = `pnpm run start:reindex-resource ${slug} ${startTimestamp} ${endTimestamp}`;
       const job = await createRenderJob(worker.service.id, startCommand);
 
-      const jobDb = new RenderJob();
-      jobDb.jobId = job.id;
-      jobDb.serviceId = job.serviceId;
-      await renderJobRepository.save(jobDb);
+      await prisma.render_job.create({
+        data: {
+          jobId: job.id,
+          serviceId: job.serviceId,
+        },
+      });
 
       res.json({ success: true, job });
       return;
@@ -171,10 +172,12 @@ const handleReindexRequest = async (
 
     const job = await createRenderJob(id, startCommand);
 
-    const jobDb = new RenderJob();
-    jobDb.jobId = job.id;
-    jobDb.serviceId = job.serviceId;
-    await renderJobRepository.save(jobDb);
+    await prisma.render_job.create({
+      data: {
+        jobId: job.id,
+        serviceId: job.serviceId,
+      },
+    });
 
     res.json({
       success: true,
@@ -261,10 +264,12 @@ router.post(
 
       const job = await createRenderJob(id, startCommand);
 
-      const jobDb = new RenderJob();
-      jobDb.jobId = job.id;
-      jobDb.serviceId = job.serviceId;
-      await renderJobRepository.save(jobDb);
+      await prisma.render_job.create({
+        data: {
+          jobId: job.id,
+          serviceId: job.serviceId,
+        },
+      });
 
       res.json({
         success: true,

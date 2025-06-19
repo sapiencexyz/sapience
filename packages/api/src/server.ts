@@ -1,4 +1,5 @@
-import { initializeDataSource, resourceRepository } from './db';
+import { initializeDataSource } from './db';
+import prisma from './db';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
@@ -71,9 +72,9 @@ const startServer = async () => {
     console.log(
       "WARNING: Initializing resources selectively so that we don't have to cache everything"
     );
-    resources = (await resourceRepository.find()).filter((res) => res.id === 8);
+    resources = (await prisma.resource.findMany()).filter((res) => res.id === 8) as any;
   } else {
-    resources = await resourceRepository.find();
+    resources = await prisma.resource.findMany() as any;
   }
 
   const resourcePerformanceManager = ResourcePerformanceManager.getInstance();

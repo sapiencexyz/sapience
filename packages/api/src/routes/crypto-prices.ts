@@ -1,7 +1,5 @@
 import { Router } from 'express';
-import { cryptoPriceRepository } from '../db';
-import { CryptoPrice } from '../models/CryptoPrice';
-import { MoreThan, In } from 'typeorm';
+import prisma from '../db';
 
 export const router = Router();
 
@@ -28,12 +26,12 @@ async function getDbPrices(
     ? new Date(Date.now() - CACHE_TTL)
     : new Date(0);
 
-  const cachedPrices = await cryptoPriceRepository.find({
+  const cachedPrices = await prisma.crypto_prices.findMany({
     where: {
-      ticker: In(TICKERS),
-      ...(useTimeCutoff && { timestamp: MoreThan(cutoffTime) }),
+      ticker: { in: [...TICKERS] },
+      ...(useTimeCutoff && { timestamp: { gt: cutoffTime } }),
     },
-    order: { timestamp: 'DESC' },
+    orderBy: { timestamp: 'desc' },
   });
 
   // Group by ticker and take the most recent price for each
@@ -134,16 +132,18 @@ router.get('/', async (req, res) => {
     });
 
     // 5. Update DB with fresh prices (only those successfully fetched)
-    const pricesToSave: Partial<CryptoPrice>[] = [];
+    const pricesToSave: { ticker: string; price: number }[] = [];
     TICKERS.forEach((ticker) => {
       if (freshPrices[ticker] !== null) {
-        pricesToSave.push({ ticker, price: freshPrices[ticker] });
+        pricesToSave.push({ ticker, price: freshPrices[ticker]! });
       }
     });
 
     if (pricesToSave.length > 0) {
       // Perform save operation asynchronously but don't wait for it to return response
-      cryptoPriceRepository.save(pricesToSave).then(() => {
+      prisma.crypto_prices.createMany({
+        data: pricesToSave,
+      }).then(() => {
         console.log('[DB CACHE UPDATED]');
       });
     }
