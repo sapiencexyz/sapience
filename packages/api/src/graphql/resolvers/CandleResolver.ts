@@ -168,9 +168,7 @@ export class CandleResolver {
         order: { timestamp: 'ASC' },
       });
 
-      if (marketGroup.address === '0xef4c6ec054013568aa740f1eba5545e3006bef82') {
-        console.log('pricesInRange', pricesInRange);
-      }
+
 
       return getIndexPriceAtTime(
         pricesInRange.map((p) => ({
