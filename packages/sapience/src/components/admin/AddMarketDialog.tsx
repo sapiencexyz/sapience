@@ -42,7 +42,7 @@ const marketApiSchema = z
     endTime: z.coerce
       .number()
       .int()
-      .nonnegative('End Time must be a non-negative integer'),
+      .positive('End Time must be a positive integer and is required'),
     startingSqrtPriceX96: z
       .string()
       .trim()
@@ -90,7 +90,7 @@ const createEmptyMarket = (id: number): MarketInput => {
     marketQuestion: '',
     optionName: '',
     startTime: now.toString(),
-    endTime: (now + 28 * 24 * 60 * 60).toString(), // Default to 28 days from now
+    endTime: '', // Empty string - user must set this
     startingSqrtPriceX96: DEFAULT_SQRT_PRICE,
     baseAssetMinPriceTick: DEFAULT_MIN_PRICE_TICK,
     baseAssetMaxPriceTick: DEFAULT_MAX_PRICE_TICK,

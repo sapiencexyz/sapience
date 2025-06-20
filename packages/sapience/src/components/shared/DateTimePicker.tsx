@@ -32,7 +32,8 @@ const DateTimePicker = ({
   max,
   timePart,
 }: DateTimePickerProps) => {
-  const currentDate = new Date(value * 1000);
+  const isUnset = value === 0;
+  const currentDate = isUnset ? new Date() : new Date(value * 1000);
   const minDate = min ? new Date(min * 1000) : undefined;
   const maxDate = max ? new Date(max * 1000) : undefined;
 
@@ -151,13 +152,15 @@ const DateTimePicker = ({
                 type="button"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {currentDate.toISOString().slice(0, 10)}
+                {isUnset
+                  ? 'Select date'
+                  : currentDate.toISOString().slice(0, 10)}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={currentDate}
+                selected={isUnset ? undefined : currentDate}
                 onSelect={handleDateSelect}
                 initialFocus
                 fromDate={minDate}
@@ -177,6 +180,7 @@ const DateTimePicker = ({
             id={id ? `${id}-time` : undefined}
             min={computeMinTime()}
             max={computeMaxTime()}
+            placeholder={isUnset ? 'Select time' : undefined}
           />
         </div>
       </div>
@@ -186,17 +190,21 @@ const DateTimePicker = ({
         </div>
       ) : (
         <div className="text-xs text-gray-400 mt-1 w-full text-center">
-          Unix timestamp: {value}
-          {' ('}
-          <a
-            href="https://www.unixtimestamp.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-blue-400 underline"
-          >
-            Unix converter
-          </a>
-          )
+          {isUnset ? 'Not set' : `Unix timestamp: ${value}`}
+          {!isUnset && (
+            <>
+              {' ('}
+              <a
+                href="https://www.unixtimestamp.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-400 underline"
+              >
+                Unix converter
+              </a>
+              )
+            </>
+          )}
         </div>
       )}
     </div>
