@@ -130,7 +130,7 @@ export const FOCUS_AREAS: FocusArea[] = [
       <rect x="19" y="9" width="2" height="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       <rect x="5" y="11" width="14" height="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>`,
-    color: '#FACC15', // yellow-400
+    color: '#F97316', // orange-500
   },
 ];
 
