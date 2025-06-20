@@ -273,8 +273,8 @@ const ForecastContent = () => {
           <div className="flex justify-start mb-6 mt-2">
             <EndTimeDisplay endTime={marketData?.endTimestamp} />
           </div>
-          <div className="flex flex-col gap-12">
-            <div className="flex flex-col md:flex-row gap-12">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row">
               <div className="flex flex-col w-full relative">
                 <div className="w-full h-[500px] relative">
                   <AnimatePresence>
@@ -469,7 +469,7 @@ const ForecastContent = () => {
             </div>
 
             {/* User Positions Table - Full Width */}
-            <div className="w-full my-4">
+
               {(() => {
                 if (!address) {
                   return null;
@@ -500,11 +500,10 @@ const ForecastContent = () => {
                   </div>
                 );
               })()}
-            </div>
 
             {/* Market Rules */}
             {marketData?.rules && (
-              <div className="w-full mt-8 mb-4">
+              <div className="w-full mb-4">
                 <h3 className="text-lg font-normal mb-2">Rules</h3>
                 <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {marketData.rules}
