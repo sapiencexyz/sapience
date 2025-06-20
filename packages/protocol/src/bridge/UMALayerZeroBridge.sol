@@ -10,6 +10,7 @@ import {ILayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import {IUMALayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
+import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol"; 
 
 struct AssertionMarketData {
     bytes32 assertionId;
@@ -70,6 +71,26 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
     function getBridgeConfig() external view returns (BridgeConfig memory) {
         return bridgeConfig;
+    }
+
+    // ETH Management for fees
+    function depositETH() external payable {
+        // Anyone can deposit ETH to help pay for fees
+        emit ETHDeposited(msg.sender, msg.value);
+    }
+
+    function withdrawETH(uint256 amount) external onlyOwner {
+        require(amount <= address(this).balance, "Insufficient balance");
+        
+        payable(owner()).transfer(amount);
+        emit ETHWithdrawn(owner(), amount);
+        
+        // Check gas thresholds after withdrawal
+        _checkGasThresholds();
+    }
+
+    function getETHBalance() external view returns (uint256) {
+        return address(this).balance;
     }
 
     // Bond Management Functions
@@ -154,10 +175,11 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         // Make assertion data to UMA side via LayerZero
         bytes memory commandPayload = Encoder.encodeFromUMAResolved(marketData.bridgeAssertionId, assertedTruthfully);
         
-        _sendLayerZeroMessage(
+        // Send message using contract's ETH balance
+        _sendLayerZeroMessageWithQuote(
             Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK,
             commandPayload,
-            payable(msg.sender)
+            payable(address(this)) // Refund to contract
         );
 
         submitterBondBalances[marketData.submitter][marketData.bondToken] += marketData.bondAmount;
@@ -174,10 +196,11 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         // Make assertion data to UMA side via LayerZero
         bytes memory commandPayload = Encoder.encodeFromUMADisputed(marketData.bridgeAssertionId);
         
-        _sendLayerZeroMessage(
+        // Send message using contract's ETH balance
+        _sendLayerZeroMessageWithQuote(
             Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK,
             commandPayload,
-            payable(msg.sender)
+            payable(address(this)) // Refund to contract
         );
 
         // We don't need to update the balance since it was already deducted when the assertion was submitted
@@ -240,6 +263,68 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         if (commandType == Encoder.CMD_TO_UMA_ASSERT_TRUTH) {
             _handleAssertTruthCmd(data);
         }
+    }
+
+    // Helper function to get LayerZero quote
+    function getLayerZeroQuote(
+        uint16 commandCode,
+        bytes memory commandPayload
+    ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
+        bytes memory message = abi.encode(commandCode, commandPayload);
+        
+        MessagingFee memory fee = _quote(
+            bridgeConfig.remoteChainId,
+            message,
+            bytes(""), // options
+            false // payInLzToken
+        );
+        
+        return (fee.nativeFee, fee.lzTokenFee);
+    }
+
+    // Helper function to check gas thresholds and emit alerts
+    function _checkGasThresholds() internal {
+        uint256 currentBalance = address(this).balance;
+        
+        if (currentBalance <= CRITICAL_GAS_THRESHOLD) {
+            emit GasReserveCritical(currentBalance);
+        } else if (currentBalance <= WARNING_GAS_THRESHOLD) {
+            emit GasReserveLow(currentBalance);
+        }
+    }
+
+    // Helper function to send LayerZero messages with quote
+    function _sendLayerZeroMessageWithQuote(
+        uint16 commandCode,
+        bytes memory commandPayload,
+        address payable refundAddress
+    ) internal returns (MessagingReceipt memory receipt) {
+        bytes memory message = abi.encode(commandCode, commandPayload);
+        
+        // Get quote for the message
+        MessagingFee memory fee = _quote(
+            bridgeConfig.remoteChainId,
+            message,
+            bytes(""), // options
+            false // payInLzToken
+        );
+        
+        // Check if contract has enough ETH
+        require(address(this).balance >= fee.nativeFee, "Insufficient ETH balance for fee");
+        
+        // Check gas thresholds and emit alerts before sending
+        _checkGasThresholds();
+        
+        // Send the message with the quoted fee
+        receipt = _lzSend(
+            bridgeConfig.remoteChainId,
+            message,
+            bytes(""), // options
+            fee,
+            refundAddress
+        );
+        
+        return receipt;
     }
 
     // Helper function to send LayerZero messages

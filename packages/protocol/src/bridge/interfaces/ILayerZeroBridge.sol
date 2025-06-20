@@ -30,6 +30,8 @@ interface ILayerZeroBridge {
     event WithdrawalIntentCreated(address indexed submitter, address indexed bondToken, uint256 amount, uint256 timestamp);
     event WithdrawalExecuted(address indexed submitter, address indexed bondToken, uint256 amount);
     event AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId);
+    event GasReserveLow(uint256 currentBalance);
+    event GasReserveCritical(uint256 currentBalance);
 }
 
 /**
@@ -53,6 +55,8 @@ interface IUMALayerZeroBridge is ILayerZeroBridge {
     event MarketBondConfigSet(address indexed market, address bondToken, uint256 bondAmount);
     event BondLostInDispute(address indexed submitter, address indexed bondToken, uint256 amount);
     event BondReturnedFromDispute(address indexed submitter, address indexed bondToken, uint256 amount);
+    event ETHDeposited(address indexed depositor, uint256 amount);
+    event ETHWithdrawn(address indexed recipient, uint256 amount);
 
     // UMA-side specific functions
     // function setMarketBondConfig(address market, MarketBondConfig calldata config) external;
@@ -81,6 +85,8 @@ interface IMarketLayerZeroBridge is ILayerZeroBridge {
     event SettlementProcessed(address indexed market, uint256 indexed epochId, uint256 settlementPrice);
     event MarketGroupEnabled(address indexed marketGroup);
     event MarketGroupDisabled(address indexed marketGroup);
+    event ETHDeposited(address indexed depositor, uint256 amount);
+    event ETHWithdrawn(address indexed recipient, uint256 amount);
 
     // Market-side specific functions
     // function getRemoteBalance(address submitter, address bondToken) external view returns (uint256);
@@ -93,5 +99,5 @@ interface IMarketLayerZeroBridge is ILayerZeroBridge {
         uint64 liveness,
         IERC20 currency,
         uint256 bond
-    ) external payable returns (bytes32);
+    ) external returns (bytes32);
 } 
