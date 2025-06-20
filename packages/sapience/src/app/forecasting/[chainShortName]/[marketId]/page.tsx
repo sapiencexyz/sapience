@@ -273,8 +273,8 @@ const ForecastContent = () => {
           <div className="flex justify-start mb-6 mt-2">
             <EndTimeDisplay endTime={marketData?.endTimestamp} />
           </div>
-          <div className="flex flex-col gap-12">
-            <div className="flex flex-col md:flex-row gap-12">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row">
               <div className="flex flex-col w-full relative">
                 <div className="w-full h-[500px] relative">
                   <AnimatePresence>
@@ -469,42 +469,41 @@ const ForecastContent = () => {
             </div>
 
             {/* User Positions Table - Full Width */}
-            <div className="w-full my-4">
-              {(() => {
-                if (!address) {
-                  return null;
-                }
-                if (isUserPositionsLoading) {
-                  return (
-                    <div className="mt-6 text-center p-6 border border-muted rounded bg-background/50">
-                      <div className="flex flex-col items-center justify-center py-2">
-                        <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Loading your positions...
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
+
+            {(() => {
+              if (!address) {
+                return null;
+              }
+              if (isUserPositionsLoading) {
                 return (
-                  <div>
-                    <UserPositionsTable
-                      account={address}
-                      marketAddress={marketAddress!}
-                      chainId={chainId === null ? undefined : chainId}
-                      marketId={
-                        numericMarketId === null ? undefined : numericMarketId
-                      }
-                      refetchUserPositions={refetchUserPositions}
-                    />
+                  <div className="mt-6 text-center p-6 border border-muted rounded bg-background/50">
+                    <div className="flex flex-col items-center justify-center py-2">
+                      <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Loading your positions...
+                      </p>
+                    </div>
                   </div>
                 );
-              })()}
-            </div>
+              }
+              return (
+                <div>
+                  <UserPositionsTable
+                    account={address}
+                    marketAddress={marketAddress!}
+                    chainId={chainId === null ? undefined : chainId}
+                    marketId={
+                      numericMarketId === null ? undefined : numericMarketId
+                    }
+                    refetchUserPositions={refetchUserPositions}
+                  />
+                </div>
+              );
+            })()}
 
             {/* Market Rules */}
             {marketData?.rules && (
-              <div className="w-full mt-8 mb-4">
+              <div className="w-full mb-4">
                 <h3 className="text-lg font-normal mb-2">Rules</h3>
                 <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                   {marketData.rules}
