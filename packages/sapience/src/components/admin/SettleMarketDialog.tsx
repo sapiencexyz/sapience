@@ -12,7 +12,6 @@ import type {
 } from '@foil/ui/types'; // Import types
 import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Privy
 import { Loader2 } from 'lucide-react'; // Import Loader2
-import type React from 'react';
 import { useState } from 'react'; // Import useState and useMemo
 import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex
 import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
@@ -86,7 +85,7 @@ interface BondInfoSectionProps {
   bondAmount: bigint | undefined;
 }
 
-const BondInfoSection: React.FC<BondInfoSectionProps> = ({
+const BondInfoSection = ({
   isLoading,
   error,
   marketParams,
@@ -98,7 +97,7 @@ const BondInfoSection: React.FC<BondInfoSectionProps> = ({
   handleApprove,
   bondCurrency,
   bondAmount,
-}) => (
+}: BondInfoSectionProps) => (
   <div>
     <h4 className="text-sm font-medium mb-2">Bond Details</h4>
     <div className="text-xs text-muted-foreground space-y-1">
@@ -162,10 +161,10 @@ interface SettleMarketDialogProps {
   marketGroup: MarketGroup;
 }
 
-const SettleMarketDialog: React.FC<SettleMarketDialogProps> = ({
+const SettleMarketDialog = ({
   market,
   marketGroup,
-}) => {
+}: SettleMarketDialogProps) => {
   // Use Privy's hook to get wallets
   const { wallets } = useWallets();
   const connectedWallet = wallets[0]; // Get the first connected wallet (if any)
@@ -492,14 +491,14 @@ interface SettlementInputProps {
   unitDisplay: string;
 }
 
-const SettlementInput: React.FC<SettlementInputProps> = ({
+const SettlementInput = ({
   isYesNoMarket,
   settlementValue,
   setSettlementValue,
   isSettling,
   connectedAddress,
   unitDisplay,
-}) => {
+}: SettlementInputProps) => {
   if (isYesNoMarket) {
     return (
       <div className="flex gap-4">
@@ -584,13 +583,13 @@ interface SettlementParamsDisplayProps {
   claimStatement: string; // This is `0x${string}` or empty string from prop
 }
 
-const SettlementParamsDisplay: React.FC<SettlementParamsDisplayProps> = ({
+const SettlementParamsDisplay = ({
   marketId,
   connectedAddress,
   isYesNoMarket,
   settlementValue,
   claimStatement,
-}) => {
+}: SettlementParamsDisplayProps) => {
   let settlementDisplayValue: string;
 
   if (isYesNoMarket) {
@@ -632,7 +631,7 @@ interface SettleButtonProps {
   connectedAddress: `0x${string}` | undefined;
 }
 
-const SettleButton: React.FC<SettleButtonProps> = ({
+const SettleButton = ({
   isSettling,
   requiresApproval,
   canSettle,
@@ -640,7 +639,7 @@ const SettleButton: React.FC<SettleButtonProps> = ({
   isApproving,
   handleSettle,
   connectedAddress,
-}) => {
+}: SettleButtonProps) => {
   let buttonText = 'Settle Market';
   if (isSettling) {
     buttonText = 'Submitting Settlement...';

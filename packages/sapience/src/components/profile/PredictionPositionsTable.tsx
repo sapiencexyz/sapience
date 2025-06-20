@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@foil/ui/components/ui/table';
-import type { ColumnDef, CellContext } from '@tanstack/react-table';
+import type { ColumnDef } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
@@ -201,12 +201,12 @@ const renderActionsCell = ({
   </a>
 );
 
-const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
+const PredictionPositionsTable = ({
   attestations,
   parentMarketAddress,
   parentChainId,
   parentMarketId,
-}) => {
+}: PredictionPositionsTableProps) => {
   const { marketGroups, isMarketsLoading } = useSapience();
 
   const isMarketPage = parentMarketAddress && parentChainId && parentMarketId;
@@ -256,36 +256,29 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
       {
-        accessorKey: 'rawTime',
-        header: 'Submitted',
-        cell: renderSubmittedCell,
+        accessorKey: 'question',
+        header: 'Question',
+        cell: (info) =>
+          renderQuestionCell({ row: info.row, marketGroups, isMarketsLoading }),
       },
-      ...(!isMarketPage && shouldDisplayQuestionColumn
-        ? [
-            {
-              id: 'question',
-              header: 'Question',
-              cell: (
-                props: CellContext<FormattedAttestation, unknown> // Type props
-              ) =>
-                renderQuestionCell({
-                  row: props.row,
-                  marketGroups,
-                  isMarketsLoading,
-                }), // Pass props.row
-            },
-          ]
-        : []),
       {
         accessorKey: 'value',
         header: 'Prediction',
-        cell: (props) =>
-          renderPredictionCell({ ...props, marketGroups, isMarketsLoading }),
+        cell: (info) =>
+          renderPredictionCell({
+            row: info.row,
+            marketGroups,
+            isMarketsLoading,
+          }),
+      },
+      {
+        accessorKey: 'rawTime',
+        header: 'Submitted',
+        cell: (info) => renderSubmittedCell({ row: info.row }),
       },
       {
         id: 'actions',
-        header: '',
-        cell: renderActionsCell,
+        cell: (info) => renderActionsCell({ row: info.row }),
       },
     ],
     [
@@ -297,7 +290,7 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
   );
 
   const table = useReactTable({
-    data: attestations || [], // Use attestations directly, handle null/undefined here
+    data: attestations || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -307,67 +300,78 @@ const PredictionPositionsTable: React.FC<PredictionPositionsTableProps> = ({
     return null;
   }
 
+  const renderContent = (
+    content: unknown
+  ): JSX.Element | string | number | null => {
+    if (typeof content === 'bigint') {
+      return content.toString();
+    }
+    if (Array.isArray(content)) {
+      return (
+        <>
+          {content.map((item, index) => (
+            <React.Fragment key={index}>{renderContent(item)}</React.Fragment>
+          ))}
+        </>
+      );
+    }
+    if (React.isValidElement(content)) {
+      return content;
+    }
+    return content as string | number | null;
+  };
+
   return (
-    <div>
-      <h3 className="font-medium mb-4">Predictions</h3>
-      <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className={
-                      header.id === 'question' ? '' : 'whitespace-nowrap'
-                    }
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                const content = header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    );
+                return (
+                  <TableHead key={header.id} colSpan={header.colSpan}>
+                    {renderContent(content)}
                   </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="hover:bg-secondary/10 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className={`${
-                        cell.column.id === 'question' ? '' : 'whitespace-nowrap'
-                      } ${cell.column.id === 'actions' ? 'text-right' : ''}`}
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows?.length ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() && 'selected'}
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const content = flexRender(
+                    cell.column.columnDef.cell,
+                    cell.getContext()
+                  );
+                  return (
+                    <TableCell key={cell.id}>
+                      {renderContent(content)}
                     </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow className="min-h-[69px]">
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center align-middle"
-                >
-                  No results.
-                </TableCell>
+                  );
+                })}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center">
+                No results.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 };
