@@ -470,36 +470,36 @@ const ForecastContent = () => {
 
             {/* User Positions Table - Full Width */}
 
-              {(() => {
-                if (!address) {
-                  return null;
-                }
-                if (isUserPositionsLoading) {
-                  return (
-                    <div className="mt-6 text-center p-6 border border-muted rounded bg-background/50">
-                      <div className="flex flex-col items-center justify-center py-2">
-                        <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Loading your positions...
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
+            {(() => {
+              if (!address) {
+                return null;
+              }
+              if (isUserPositionsLoading) {
                 return (
-                  <div>
-                    <UserPositionsTable
-                      account={address}
-                      marketAddress={marketAddress!}
-                      chainId={chainId === null ? undefined : chainId}
-                      marketId={
-                        numericMarketId === null ? undefined : numericMarketId
-                      }
-                      refetchUserPositions={refetchUserPositions}
-                    />
+                  <div className="mt-6 text-center p-6 border border-muted rounded bg-background/50">
+                    <div className="flex flex-col items-center justify-center py-2">
+                      <div className="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Loading your positions...
+                      </p>
+                    </div>
                   </div>
                 );
-              })()}
+              }
+              return (
+                <div>
+                  <UserPositionsTable
+                    account={address}
+                    marketAddress={marketAddress!}
+                    chainId={chainId === null ? undefined : chainId}
+                    marketId={
+                      numericMarketId === null ? undefined : numericMarketId
+                    }
+                    refetchUserPositions={refetchUserPositions}
+                  />
+                </div>
+              );
+            })()}
 
             {/* Market Rules */}
             {marketData?.rules && (
