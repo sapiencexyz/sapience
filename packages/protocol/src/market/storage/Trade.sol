@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {Epoch} from "./Epoch.sol";
 import {Market} from "./Market.sol";
+import {MarketGroup} from "./MarketGroup.sol";
 import {Errors} from "./Errors.sol";
 import {Position} from "./Position.sol";
 import {ISwapRouter} from "../interfaces/external/ISwapRouter.sol";
@@ -12,7 +12,7 @@ import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast
 import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 
 library Trade {
-    using Epoch for Epoch.Data;
+    using Market for Market.Data;
     using Position for Position.Data;
     using DecimalMath for uint256;
     using DecimalMath for int256;
@@ -20,39 +20,41 @@ library Trade {
     using SafeCastI256 for int256;
 
     function swapOrQuoteTokensExactIn(
-        Epoch.Data storage epoch,
-        uint256 amountInVEth,
-        uint256 amountInVGas,
+        Market.Data storage market,
+        uint256 amountInVQuote,
+        uint256 amountInVBase,
         bool isQuote
     )
         internal
         returns (
-            uint256 amountOutVEth,
-            uint256 amountOutVGas,
+            uint256 amountOutVQuote,
+            uint256 amountOutVBase,
             uint160 sqrtPriceX96After
         )
     {
-        if (amountInVEth > 0 && amountInVGas > 0) {
+        if (amountInVQuote > 0 && amountInVBase > 0) {
             revert Errors.InvalidData("Only one token can be traded at a time");
         }
 
-        if (amountInVEth == 0 && amountInVGas == 0) {
+        if (amountInVQuote == 0 && amountInVBase == 0) {
             revert Errors.InvalidData("At least one token should be traded");
         }
 
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        
         address tokenIn;
         address tokenOut;
         uint256 amountIn;
         uint256 amountOut;
 
-        if (amountInVEth > 0) {
-            tokenIn = address(epoch.ethToken);
-            tokenOut = address(epoch.gasToken);
-            amountIn = amountInVEth;
+        if (amountInVQuote > 0) {
+            tokenIn = address(market.quoteToken);
+            tokenOut = address(market.baseToken);
+            amountIn = amountInVQuote;
         } else {
-            tokenIn = address(epoch.gasToken);
-            tokenOut = address(epoch.ethToken);
-            amountIn = amountInVGas;
+            tokenIn = address(market.baseToken);
+            tokenOut = address(market.quoteToken);
+            amountIn = amountInVBase;
         }
 
         if (isQuote) {
@@ -61,16 +63,16 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amountIn: amountIn,
-                    fee: epoch.marketParams.feeRate,
+                    fee: marketGroup.marketParams.feeRate,
                     sqrtPriceLimitX96: 0
                 });
             (amountOut, sqrtPriceX96After, , ) = IQuoterV2(
-                epoch.marketParams.uniswapQuoter
+                marketGroup.marketParams.uniswapQuoter
             ).quoteExactInputSingle(params);
         } else {
             ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter
                 .ExactInputSingleParams({
-                    fee: epoch.marketParams.feeRate,
+                    fee: marketGroup.marketParams.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     tokenIn: tokenIn,
@@ -81,51 +83,53 @@ library Trade {
                     sqrtPriceLimitX96: 0
                 });
 
-            amountOut = ISwapRouter(epoch.marketParams.uniswapSwapRouter)
+            amountOut = ISwapRouter(marketGroup.marketParams.uniswapSwapRouter)
                 .exactInputSingle(swapParams);
         }
 
-        if (amountInVEth > 0) {
-            amountOutVGas = amountOut;
+        if (amountInVQuote > 0) {
+            amountOutVBase = amountOut;
         } else {
-            amountOutVEth = amountOut;
+            amountOutVQuote = amountOut;
         }
     }
 
     function swapOrQuoteTokensExactOut(
-        Epoch.Data storage epoch,
-        uint256 expectedAmountOutVEth,
-        uint256 expectedAmountOutVGas,
+        Market.Data storage market,
+        uint256 expectedAmountOutVQuote,
+        uint256 expectedAmountOutVBase,
         bool isQuote
     )
         internal
         returns (
-            uint256 requiredAmountInVEth,
-            uint256 requiredAmountInVGas,
+            uint256 requiredAmountInVQuote,
+            uint256 requiredAmountInVBase,
             uint160 sqrtPriceX96After
         )
     {
-        if (expectedAmountOutVEth > 0 && expectedAmountOutVGas > 0) {
+        if (expectedAmountOutVQuote > 0 && expectedAmountOutVBase > 0) {
             revert Errors.InvalidData("Only one token can be traded at a time");
         }
 
-        if (expectedAmountOutVEth == 0 && expectedAmountOutVGas == 0) {
+        if (expectedAmountOutVQuote == 0 && expectedAmountOutVBase == 0) {
             revert Errors.InvalidData("At least one token should be traded");
         }
 
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        
         address tokenIn;
         address tokenOut;
         uint256 amountOut;
         uint256 amountIn;
 
-        if (expectedAmountOutVEth > 0) {
-            tokenIn = address(epoch.gasToken);
-            tokenOut = address(epoch.ethToken);
-            amountOut = expectedAmountOutVEth;
+        if (expectedAmountOutVQuote > 0) {
+            tokenIn = address(market.baseToken);
+            tokenOut = address(market.quoteToken);
+            amountOut = expectedAmountOutVQuote;
         } else {
-            tokenIn = address(epoch.ethToken);
-            tokenOut = address(epoch.gasToken);
-            amountOut = expectedAmountOutVGas;
+            tokenIn = address(market.quoteToken);
+            tokenOut = address(market.baseToken);
+            amountOut = expectedAmountOutVBase;
         }
 
         if (isQuote) {
@@ -134,12 +138,12 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amount: amountOut,
-                    fee: epoch.marketParams.feeRate,
+                    fee: marketGroup.marketParams.feeRate,
                     sqrtPriceLimitX96: 0
                 });
 
             (amountIn, sqrtPriceX96After, , ) = IQuoterV2(
-                epoch.marketParams.uniswapQuoter
+                marketGroup.marketParams.uniswapQuoter
             ).quoteExactOutputSingle(params);
         } else {
             ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
@@ -147,7 +151,7 @@ library Trade {
                     tokenIn: tokenIn,
                     tokenOut: tokenOut,
                     amountOut: amountOut,
-                    fee: epoch.marketParams.feeRate,
+                    fee: marketGroup.marketParams.feeRate,
                     recipient: address(this),
                     deadline: block.timestamp,
                     // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
@@ -155,23 +159,23 @@ library Trade {
                     amountInMaximum: type(uint256).max
                 });
 
-            amountIn = ISwapRouter(epoch.marketParams.uniswapSwapRouter)
+            amountIn = ISwapRouter(marketGroup.marketParams.uniswapSwapRouter)
                 .exactOutputSingle(swapParams);
         }
-        if (expectedAmountOutVEth > 0) {
-            requiredAmountInVGas = amountIn;
+        if (expectedAmountOutVQuote > 0) {
+            requiredAmountInVBase = amountIn;
         } else {
-            requiredAmountInVEth = amountIn;
+            requiredAmountInVQuote = amountIn;
         }
     }
 
     struct QuoteRuntime {
         bool isLongDirection;
-        uint256 tradedVGas;
-        uint256 tradedVEth;
-        int256 signedTradedVGas;
-        int256 signedTradedVEth;
-        uint256 vEthFromZero; // vEth involved in the transaction from zero to target size
+        uint256 tradedVBase;
+        uint256 tradedVQuote;
+        int256 signedTradedVBase;
+        int256 signedTradedVQuote;
+        uint256 vQuoteFromZero; // vQuote involved in the transaction from zero to target size
         uint256 tradeRatioD18RoundDown;
         uint256 tradeRatioD18RoundUp;
     }
@@ -186,7 +190,7 @@ library Trade {
 
     struct QuoteOrTradeOutputParams {
         Position.Data position;
-        uint256 tradeRatioD18; // tradedVEth / tradedVGas
+        uint256 tradeRatioD18; // tradedVQuote / tradedVBase
         uint256 requiredCollateral;
         int256 expectedDeltaCollateral;
         int256 closePnL; // PnL from initial position to zero
@@ -197,7 +201,7 @@ library Trade {
         QuoteOrTradeInputParams memory params
     ) internal returns (QuoteOrTradeOutputParams memory output) {
         QuoteRuntime memory runtime;
-        Epoch.Data storage epoch = Epoch.load(params.oldPosition.epochId);
+        Market.Data storage market = Market.load(params.oldPosition.marketId);
 
         runtime.isLongDirection = params.deltaSize > 0;
 
@@ -205,65 +209,65 @@ library Trade {
             .oldPosition
             .depositedCollateralAmount;
 
-        // 1- Get or quote the transacted tokens (vEth and vGas)
-        runtime.signedTradedVGas = params.deltaSize;
-        runtime.tradedVGas = params.deltaSize.abs();
+        // 1- Get or quote the transacted tokens (vQuote and vBase)
+        runtime.signedTradedVBase = params.deltaSize;
+        runtime.tradedVBase = params.deltaSize.abs();
         if (runtime.isLongDirection) {
             // Long direction; Quote or Trade
-            (runtime.tradedVEth, , output.sqrtPriceX96After) = Trade
+            (runtime.tradedVQuote, , output.sqrtPriceX96After) = Trade
                 .swapOrQuoteTokensExactOut(
-                    epoch,
+                    market,
                     0,
-                    runtime.tradedVGas,
+                    runtime.tradedVBase,
                     params.isQuote
                 );
-            runtime.signedTradedVEth = runtime.tradedVEth.toInt();
+            runtime.signedTradedVQuote = runtime.tradedVQuote.toInt();
         } else {
             // Short direction; Quote or Trade
-            (runtime.tradedVEth, , output.sqrtPriceX96After) = Trade
+            (runtime.tradedVQuote, , output.sqrtPriceX96After) = Trade
                 .swapOrQuoteTokensExactIn(
-                    epoch,
+                    market,
                     0,
-                    runtime.tradedVGas,
+                    runtime.tradedVBase,
                     params.isQuote
                 );
-            runtime.signedTradedVEth = runtime.tradedVEth.toInt() * -1;
+            runtime.signedTradedVQuote = runtime.tradedVQuote.toInt() * -1;
         }
 
-        // Sanity check. vEth on trade is zero means someting went really wrong (maybe too small trade size, or not enough virtual tokens in the pool)
-        if (runtime.tradedVEth == 0) {
+        // Sanity check. vQuote on trade is zero means someting went really wrong (maybe too small trade size, or not enough virtual tokens in the pool)
+        if (runtime.tradedVQuote == 0) {
             revert Errors.InvalidInternalTradeSize(0);
         }
 
-        // 2- Get PnL and vEth involved in the transaction from initial size to zero (intermediate close the position).
+        // 2- Get PnL and vQuote involved in the transaction from initial size to zero (intermediate close the position).
         (
             runtime.tradeRatioD18RoundDown,
             runtime.tradeRatioD18RoundUp,
             output.closePnL,
-            runtime.vEthFromZero
-        ) = calculateCloseEthAndPnl(
-            runtime.tradedVEth,
-            runtime.tradedVGas,
-            runtime.signedTradedVEth,
+            runtime.vQuoteFromZero
+        ) = calculateCloseQuoteAndPnl(
+            runtime.tradedVQuote,
+            runtime.tradedVBase,
+            runtime.signedTradedVQuote,
             params.initialSize,
             params.targetSize,
             params.oldPosition
         );
 
         // Check if the tradeRatioD18 is within the bounds
-        if (runtime.tradeRatioD18RoundDown < epoch.minPriceD18) {
+        if (runtime.tradeRatioD18RoundDown < market.minPriceD18) {
             revert Errors.TradePriceOutOfBounds(
                 runtime.tradeRatioD18RoundDown,
-                epoch.minPriceD18,
-                epoch.maxPriceD18
+                market.minPriceD18,
+                market.maxPriceD18
             );
         }
 
-        if (runtime.tradeRatioD18RoundUp > epoch.maxPriceD18) {
+        if (runtime.tradeRatioD18RoundUp > market.maxPriceD18) {
             revert Errors.TradePriceOutOfBounds(
                 runtime.tradeRatioD18RoundUp,
-                epoch.minPriceD18,
-                epoch.maxPriceD18
+                market.minPriceD18,
+                market.maxPriceD18
             );
         }
 
@@ -273,20 +277,20 @@ library Trade {
         // 3- Regenerate the new position after the trade and closure
         if (params.targetSize > 0) {
             // End position is LONG
-            // Sanity check. borrowedVEth should be larger than zero if the position is long
-            if (runtime.vEthFromZero == 0) {
-                revert Errors.InvalidInternalTradeSize(runtime.vEthFromZero);
+            // Sanity check. borrowedVQuote should be larger than zero if the position is long
+            if (runtime.vQuoteFromZero == 0) {
+                revert Errors.InvalidInternalTradeSize(runtime.vQuoteFromZero);
             }
-            output.position.vGasAmount = params.targetSize.abs();
-            output.position.vEthAmount = 0;
-            output.position.borrowedVGas = 0;
-            output.position.borrowedVEth = runtime.vEthFromZero;
+            output.position.vBaseAmount = params.targetSize.abs();
+            output.position.vQuoteAmount = 0;
+            output.position.borrowedVBase = 0;
+            output.position.borrowedVQuote = runtime.vQuoteFromZero;
         } else {
             // End position is SHORT
-            output.position.vGasAmount = 0;
-            output.position.vEthAmount = runtime.vEthFromZero;
-            output.position.borrowedVGas = params.targetSize.abs();
-            output.position.borrowedVEth = 0;
+            output.position.vBaseAmount = 0;
+            output.position.vQuoteAmount = runtime.vQuoteFromZero;
+            output.position.borrowedVBase = params.targetSize.abs();
+            output.position.borrowedVQuote = 0;
         }
 
         // 4- Adjust position collateral with PNL
@@ -315,12 +319,12 @@ library Trade {
         }
 
         // 5- Get the required collateral for the trade\quote
-        uint256 newPositionCollateralRequired = epoch
+        uint256 newPositionCollateralRequired = market
             .getCollateralRequirementsForTrade(
-                output.position.vGasAmount,
-                output.position.vEthAmount,
-                output.position.borrowedVGas,
-                output.position.borrowedVEth
+                output.position.vBaseAmount,
+                output.position.vQuoteAmount,
+                output.position.borrowedVBase,
+                output.position.borrowedVQuote
             );
 
         output.requiredCollateral =
@@ -332,10 +336,10 @@ library Trade {
             output.position.depositedCollateralAmount.toInt();
     }
 
-    function calculateCloseEthAndPnl(
-        uint256 tradedVEth,
-        uint256 tradedVGas,
-        int256 signedTradedVEth,
+    function calculateCloseQuoteAndPnl(
+        uint256 tradedVQuote,
+        uint256 tradedVBase,
+        int256 signedTradedVQuote,
         int256 initialSize,
         int256 targetSize,
         Position.Data memory oldPosition
@@ -346,7 +350,7 @@ library Trade {
             uint256 tradeRatioD18RoundDown,
             uint256 tradeRatioD18RoundUp,
             int256 closePnL,
-            uint256 vEthFromZero
+            uint256 vQuoteFromZero
         )
     {
         // Notice: This function will use rounding up/low depending on the direction of the trade and the initial/final position size
@@ -356,48 +360,48 @@ library Trade {
         // - closePnL will always tend to be more negative (-1 if rounding is needed)
 
         // Get both versions of the tradeRatioD18 (rounded down and rounded up)
-        tradeRatioD18RoundDown = tradedVEth.divDecimal(tradedVGas);
-        tradeRatioD18RoundUp = tradedVEth.divDecimalRoundUp(tradedVGas);
+        tradeRatioD18RoundDown = tradedVQuote.divDecimal(tradedVBase);
+        tradeRatioD18RoundUp = tradedVQuote.divDecimalRoundUp(tradedVBase);
 
-        // get both versions of vEthToZero using both tradeRatioD18
-        // vEth to compensate the gas (either to pay borrowedVGas or borrowedVEth tokens from the close trade)
-        int256 vEthToZeroRoundDown = (initialSize * -1).mulDecimal(
+        // get both versions of vQuoteToZero using both tradeRatioD18
+        // vQuote to compensate the base (either to pay borrowedVBase or borrowedVQuote tokens from the close trade)
+        int256 vQuoteToZeroRoundDown = (initialSize * -1).mulDecimal(
             tradeRatioD18RoundDown.toInt()
         );
-        int256 vEthToZeroRoundUp = (initialSize * -1).mulDecimal(
+        int256 vQuoteToZeroRoundUp = (initialSize * -1).mulDecimal(
             tradeRatioD18RoundUp.toInt()
         );
 
-        // Calculate the closePnL as net vEth from original positon minus the vEth to zero
-        // net vEth from original positon minus the vEth to zero (closing Profit based on the new trade ratio. Using the worst case scenario)
+        // Calculate the closePnL as net vQuote from original positon minus the vQuote to zero
+        // net vQuote from original positon minus the vQuote to zero (closing Profit based on the new trade ratio. Using the worst case scenario)
         closePnL =
-            oldPosition.vEthAmount.toInt() -
-            oldPosition.borrowedVEth.toInt() -
-            (initialSize > 0 ? vEthToZeroRoundDown : vEthToZeroRoundUp);
+            oldPosition.vQuoteAmount.toInt() -
+            oldPosition.borrowedVQuote.toInt() -
+            (initialSize > 0 ? vQuoteToZeroRoundDown : vQuoteToZeroRoundUp);
 
-        // vEth from the trade that wasn't used to close the initial position (should be same as targetSize*tradeRatio, but there can be some rounding errors)
-        // vEthFromZero = signedTradedVEth - vEthToZero
+        // vQuote from the trade that wasn't used to close the initial position (should be same as targetSize*tradeRatio, but there can be some rounding errors)
+        // vQuoteFromZero = signedTradedVQuote - vQuoteToZero
         // But we need to use the worst case scenario on the tradeRatio rounding depending on the target size
-        // If target size is positive (LONG) the vEth is debt => should be the higher
-        // If target size is negative (SHORT) the vEth is credit => should be the lower
+        // If target size is positive (LONG) the vQuote is debt => should be the higher
+        // If target size is negative (SHORT) the vQuote is credit => should be the lower
         if (targetSize == 0) {
-            vEthFromZero = 0;
-            // Skip the rest since is just for getting the vEthFromZero with the proper rounding
+            vQuoteFromZero = 0;
+            // Skip the rest since is just for getting the vQuoteFromZero with the proper rounding
         } else {
-            uint256 vEthFromZeroFromRoundDown = (signedTradedVEth -
-                vEthToZeroRoundDown).abs();
-            uint256 vEthFromZeroFromRoundUp = (signedTradedVEth -
-                vEthToZeroRoundUp).abs();
+            uint256 vQuoteFromZeroFromRoundDown = (signedTradedVQuote -
+                vQuoteToZeroRoundDown).abs();
+            uint256 vQuoteFromZeroFromRoundUp = (signedTradedVQuote -
+                vQuoteToZeroRoundUp).abs();
             if (targetSize > 0) {
-                vEthFromZero = vEthFromZeroFromRoundDown >
-                    vEthFromZeroFromRoundUp
-                    ? vEthFromZeroFromRoundDown
-                    : vEthFromZeroFromRoundUp;
+                vQuoteFromZero = vQuoteFromZeroFromRoundDown >
+                    vQuoteFromZeroFromRoundUp
+                    ? vQuoteFromZeroFromRoundDown
+                    : vQuoteFromZeroFromRoundUp;
             } else {
-                vEthFromZero = vEthFromZeroFromRoundDown <
-                    vEthFromZeroFromRoundUp
-                    ? vEthFromZeroFromRoundDown
-                    : vEthFromZeroFromRoundUp;
+                vQuoteFromZero = vQuoteFromZeroFromRoundDown <
+                    vQuoteFromZeroFromRoundUp
+                    ? vQuoteFromZeroFromRoundDown
+                    : vQuoteFromZeroFromRoundUp;
             }
         }
 
@@ -405,7 +409,7 @@ library Trade {
             tradeRatioD18RoundDown,
             tradeRatioD18RoundUp,
             closePnL,
-            vEthFromZero
+            vQuoteFromZero
         );
     }
 

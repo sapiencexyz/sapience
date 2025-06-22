@@ -7,10 +7,10 @@ import {FullMath} from "../external/univ3/FullMath.sol";
 import {DecimalPrice} from "./DecimalPrice.sol";
 
 library Quote {
-    function quoteGasToEthWithPrice(
-        uint256 gasAmount,
+    function quoteBaseToQuoteWithPrice(
+        uint256 baseAmount,
         uint256 price
     ) internal pure returns (uint256) {
-        return FullMath.mulDiv(gasAmount, price, 1e18);
+        return FullMath.mulDiv(baseAmount, price, 1e18);
     }
 }
