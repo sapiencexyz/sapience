@@ -3,9 +3,15 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "../storage/Position.sol";
 import "../storage/ERC721Storage.sol";
+import "../storage/ERC721EnumerableStorage.sol";
 import "../storage/Trade.sol";
+import "../storage/Market.sol";
+import "../storage/MarketGroup.sol";
 import "../libraries/DecimalMath.sol";
-import {IFoilPositionEvents} from "../interfaces/IFoilPositionEvents.sol";
+import "../libraries/DecimalPrice.sol";
+import {ISapiencePositionEvents} from "../interfaces/ISapiencePositionEvents.sol";
+import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
+import {Errors} from "../storage/Errors.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
@@ -17,7 +23,7 @@ import {ITradeModule} from "../interfaces/ITradeModule.sol";
  * @dev See ITradeModule.
  */
 contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
-    using Epoch for Epoch.Data;
+    using Market for Market.Data;
     using Position for Position.Data;
     using DecimalMath for uint256;
     using DecimalMath for int256;
@@ -28,7 +34,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
      * @inheritdoc ITradeModule
      */
     function createTraderPosition(
-        uint256 epochId,
+        uint256 marketId,
         int256 size,
         uint256 deltaCollateralLimit,
         uint256 deadline
@@ -43,10 +49,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         _checkTradeSize(size);
 
-        Epoch.Data storage epoch = Epoch.load(epochId);
+        Market.Data storage market = Market.load(marketId);
 
-        // check if epoch is not settled
-        epoch.validateNotSettled();
+        // check if market is not settled
+        market.validateNotSettled();
 
         // Mint position NFT and initialize position
         positionId = ERC721EnumerableStorage.totalSupply() + 1;
@@ -63,10 +69,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidTransferRecipient(msg.sender);
         }
         ERC721Storage._mint(msg.sender, positionId);
-        position.epochId = epochId;
-        position.kind = IFoilStructs.PositionKind.Trade;
+        position.marketId = marketId;
+        position.kind = ISapienceStructs.PositionKind.Trade;
 
-        uint256 initialPrice = epoch.getReferencePrice();
+        uint256 initialPrice = market.getReferencePrice();
 
         Trade.QuoteOrTradeInputParams memory inputParams = Trade
             .QuoteOrTradeInputParams({
@@ -81,10 +87,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
-        position.vEthAmount = outputParams.position.vEthAmount;
-        position.vGasAmount = outputParams.position.vGasAmount;
-        position.borrowedVEth = outputParams.position.borrowedVEth;
-        position.borrowedVGas = outputParams.position.borrowedVGas;
+        position.vQuoteAmount = outputParams.position.vQuoteAmount;
+        position.vBaseAmount = outputParams.position.vBaseAmount;
+        position.borrowedVQuote = outputParams.position.borrowedVQuote;
+        position.borrowedVBase = outputParams.position.borrowedVBase;
 
         // Check if the collateral is within the limit
         // Notice: if deltaCollateralLimit is zero, it means no limit, so no need to check
@@ -106,24 +112,24 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // Validate after trading that collateral is enough
         position.afterTradeCheck();
 
-        uint256 finalPrice = epoch.getReferencePrice();
+        uint256 finalPrice = market.getReferencePrice();
 
-        epoch.validateCurrentPoolPriceInRange();
+        market.validateCurrentPoolPriceInRange();
 
         _emitTraderPositionCreated(
-            IFoilPositionEvents.TraderPositionCreatedEventData({
+            ISapiencePositionEvents.TraderPositionCreatedEventData({
                 sender: msg.sender,
-                epochId: epochId,
+                marketId: marketId,
                 positionId: positionId,
                 requiredCollateral: outputParams.requiredCollateral,
                 initialPrice: initialPrice,
                 finalPrice: finalPrice,
                 tradeRatio: outputParams.tradeRatioD18,
                 positionCollateralAmount: position.depositedCollateralAmount,
-                positionVethAmount: position.vEthAmount,
-                positionVgasAmount: position.vGasAmount,
-                positionBorrowedVeth: position.borrowedVEth,
-                positionBorrowedVgas: position.borrowedVGas,
+                positionVquoteAmount: position.vQuoteAmount,
+                positionVbaseAmount: position.vBaseAmount,
+                positionBorrowedVquote: position.borrowedVQuote,
+                positionBorrowedVbase: position.borrowedVBase,
                 deltaCollateral: deltaCollateral
             })
         );
@@ -156,7 +162,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         Position.Data storage position = Position.loadValid(positionId);
 
-        if (position.kind != IFoilStructs.PositionKind.Trade) {
+        if (position.kind != ISapienceStructs.PositionKind.Trade) {
             revert Errors.InvalidPositionKind();
         }
 
@@ -169,12 +175,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         _checkTradeSize(size);
         _checkTradeSize(runtime.deltaSize);
 
-        Epoch.Data storage epoch = Epoch.load(position.epochId);
+        Market.Data storage market = Market.load(position.marketId);
 
-        // check if epoch is not settled
-        epoch.validateNotSettled();
+        // check if market is not settled
+        market.validateNotSettled();
 
-        runtime.initialPrice = epoch.getReferencePrice();
+        runtime.initialPrice = market.getReferencePrice();
 
         Trade.QuoteOrTradeInputParams memory inputParams = Trade
             .QuoteOrTradeInputParams({
@@ -200,13 +206,13 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             // We need to:
 
             // 1. Confirm no vgas tokens
-            if (position.vGasAmount > 0) {
+            if (position.vBaseAmount > 0) {
                 // Notice. This error should not happen. If it's here it means something went wrong
                 revert Errors.InvalidData(
                     "Cannot close position with vGas tokens"
                 );
             }
-            if (position.borrowedVGas > 0) {
+            if (position.borrowedVBase > 0) {
                 // Notice. This error should not happen. If it's here it means something went wrong
                 revert Errors.InvalidData(
                     "Cannot close position with borrowed vGas tokens"
@@ -215,12 +221,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
             // 2. Confirm collateral is enough to pay for borrowed veth
             if (
-                position.borrowedVEth > 0 &&
-                position.borrowedVEth > position.depositedCollateralAmount
+                position.borrowedVQuote > 0 &&
+                position.borrowedVQuote > position.depositedCollateralAmount
             ) {
                 // Notice. This error should not happen. If it's here it means something went wrong
                 revert Errors.InsufficientCollateral(
-                    position.borrowedVEth,
+                    position.borrowedVQuote,
                     position.depositedCollateralAmount
                 );
             }
@@ -259,24 +265,24 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             position.afterTradeCheck();
         }
 
-        runtime.finalPrice = epoch.getReferencePrice();
+        runtime.finalPrice = market.getReferencePrice();
 
-        epoch.validateCurrentPoolPriceInRange();
+        market.validateCurrentPoolPriceInRange();
 
         _emitTraderPositionModified(
-            IFoilPositionEvents.TraderPositionModifiedEventData({
+            ISapiencePositionEvents.TraderPositionModifiedEventData({
                 sender: msg.sender,
-                epochId: position.epochId,
+                marketId: position.marketId,
                 positionId: positionId,
                 requiredCollateral: outputParams.requiredCollateral,
                 initialPrice: runtime.initialPrice,
                 finalPrice: runtime.finalPrice,
                 tradeRatio: outputParams.tradeRatioD18,
                 positionCollateralAmount: position.depositedCollateralAmount,
-                positionVethAmount: position.vEthAmount,
-                positionVgasAmount: position.vGasAmount,
-                positionBorrowedVeth: position.borrowedVEth,
-                positionBorrowedVgas: position.borrowedVGas,
+                positionVquoteAmount: position.vQuoteAmount,
+                positionVbaseAmount: position.vBaseAmount,
+                positionBorrowedVquote: position.borrowedVQuote,
+                positionBorrowedVbase: position.borrowedVBase,
                 deltaCollateral: runtime.deltaCollateral
             })
         );
@@ -286,7 +292,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
      * @inheritdoc ITradeModule
      */
     function quoteCreateTraderPosition(
-        uint256 epochId,
+        uint256 marketId,
         int256 size
     )
         external
@@ -300,13 +306,13 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidData("Size cannot be 0");
         }
 
-        Epoch.Data storage epoch = Epoch.load(epochId);
+        Market.Data storage market = Market.load(marketId);
 
-        // check if epoch is not settled
-        epoch.validateNotSettled();
+        // check if market is not settled
+        market.validateNotSettled();
 
         Position.Data memory position;
-        position.epochId = epochId;
+        position.marketId = marketId;
 
         Trade.QuoteOrTradeInputParams memory inputParams = Trade
             .QuoteOrTradeInputParams({
@@ -321,7 +327,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
-        epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
+        market.validatePriceInRange(outputParams.sqrtPriceX96After);
         price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(
             outputParams.sqrtPriceX96After
         );
@@ -354,11 +360,11 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         Position.Data storage position = Position.loadValid(positionId);
 
-        // check if epoch is not settled
-        Epoch.Data storage epoch = Epoch.load(position.epochId);
-        epoch.validateNotSettled();
+        // check if market is not settled
+        Market.Data storage market = Market.load(position.marketId);
+        market.validateNotSettled();
 
-        if (position.kind != IFoilStructs.PositionKind.Trade) {
+        if (position.kind != ISapienceStructs.PositionKind.Trade) {
             revert Errors.InvalidPositionKind();
         }
 
@@ -381,7 +387,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             inputParams
         );
 
-        epoch.validatePriceInRange(outputParams.sqrtPriceX96After);
+        market.validatePriceInRange(outputParams.sqrtPriceX96After);
         price18DigitsAfter = DecimalPrice.sqrtRatioX96ToPrice(
             outputParams.sqrtPriceX96After
         );
@@ -400,47 +406,47 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         }
 
         uint256 modSize = size > 0 ? size.toUint() : (size * -1).toUint();
-        if (modSize < Market.load().minTradeSize) {
+        if (modSize < MarketGroup.load().minTradeSize) {
             revert Errors.PositionSizeBelowMin();
         }
     }
 
     function _emitTraderPositionCreated(
-        IFoilPositionEvents.TraderPositionCreatedEventData memory eventData
+        ISapiencePositionEvents.TraderPositionCreatedEventData memory eventData
     ) internal {
-        emit IFoilPositionEvents.TraderPositionCreated(
+        emit ISapiencePositionEvents.TraderPositionCreated(
             eventData.sender,
-            eventData.epochId,
+            eventData.marketId,
             eventData.positionId,
             eventData.requiredCollateral,
             eventData.initialPrice,
             eventData.finalPrice,
             eventData.tradeRatio,
             eventData.positionCollateralAmount,
-            eventData.positionVethAmount,
-            eventData.positionVgasAmount,
-            eventData.positionBorrowedVeth,
-            eventData.positionBorrowedVgas,
+            eventData.positionVquoteAmount,
+            eventData.positionVbaseAmount,
+            eventData.positionBorrowedVquote,
+            eventData.positionBorrowedVbase,
             eventData.deltaCollateral
         );
     }
 
     function _emitTraderPositionModified(
-        IFoilPositionEvents.TraderPositionModifiedEventData memory eventData
+        ISapiencePositionEvents.TraderPositionModifiedEventData memory eventData
     ) internal {
-        emit IFoilPositionEvents.TraderPositionModified(
+        emit ISapiencePositionEvents.TraderPositionModified(
             eventData.sender,
-            eventData.epochId,
+            eventData.marketId,
             eventData.positionId,
             eventData.requiredCollateral,
             eventData.initialPrice,
             eventData.finalPrice,
             eventData.tradeRatio,
             eventData.positionCollateralAmount,
-            eventData.positionVethAmount,
-            eventData.positionVgasAmount,
-            eventData.positionBorrowedVeth,
-            eventData.positionBorrowedVgas,
+            eventData.positionVquoteAmount,
+            eventData.positionVbaseAmount,
+            eventData.positionBorrowedVquote,
+            eventData.positionBorrowedVbase,
             eventData.deltaCollateral
         );
     }

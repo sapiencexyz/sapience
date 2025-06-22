@@ -3,7 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import {IConfigurationModule} from "../market/interfaces/IConfigurationModule.sol";
-import {IFoilStructs} from "../market/interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../market/interfaces/ISapienceStructs.sol";
 
 contract MarketGroupFactory {
     using Clones for address;
@@ -23,14 +23,13 @@ contract MarketGroupFactory {
     function cloneAndInitializeMarketGroup(
         address collateralAsset,
         address[] calldata feeCollectors,
-        address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.MarketParams memory marketParams,
+        ISapienceStructs.MarketParams memory marketParams,
         uint256 nonce
     ) external returns (address) {
         address marketGroup = implementation.clone();
 
-        IConfigurationModule(marketGroup).initializeMarket(msg.sender, collateralAsset, feeCollectors, callbackRecipient, minTradeSize, marketParams);
+        IConfigurationModule(marketGroup).initializeMarketGroup(msg.sender, collateralAsset, feeCollectors, minTradeSize, marketParams);
 
         emit MarketGroupInitialized(msg.sender, marketGroup, nonce);
 

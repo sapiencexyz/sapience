@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {IFoilStructs} from "./IFoilStructs.sol";
+import {ISapienceStructs} from "./ISapienceStructs.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
 interface ILiquidityModule {
     /**
-     * @notice Creates a new liquidity position in the specified epoch
+     * @notice Creates a new liquidity position in the specified market
      * @param params The parameters for creating the liquidity position
      * @return id The unique identifier of the created position
      * @return requiredCollateralAmount The amount of collateral required for the position
@@ -17,7 +17,7 @@ interface ILiquidityModule {
      * @return addedAmount1 The amount of token1 added to the position
      */
     function createLiquidityPosition(
-        IFoilStructs.LiquidityMintParams memory params
+        ISapienceStructs.LiquidityMintParams memory params
     )
         external
         returns (
@@ -54,7 +54,7 @@ interface ILiquidityModule {
      * @return collateralAmount If position is closed, the amount of collateral returned.  If position is not closed, then this amount is current collateral amount backing the position.
      */
     function decreaseLiquidityPosition(
-        IFoilStructs.LiquidityDecreaseParams memory params
+        ISapienceStructs.LiquidityDecreaseParams memory params
     )
         external
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
@@ -89,7 +89,7 @@ interface ILiquidityModule {
     }
 
     function increaseLiquidityPosition(
-        IFoilStructs.LiquidityIncreaseParams memory params
+        ISapienceStructs.LiquidityIncreaseParams memory params
     )
         external
         returns (
@@ -101,7 +101,7 @@ interface ILiquidityModule {
         );
 
     function quoteLiquidityPositionTokens(
-        uint256 epochId,
+        uint256 marketId,
         uint256 depositedCollateralAmount,
         uint160 sqrtPriceX96,
         uint160 sqrtPriceAX96,
