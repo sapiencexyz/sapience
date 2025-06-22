@@ -2,6 +2,7 @@
 pragma solidity ^0.8.22;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { BridgeTypes } from "../BridgeTypes.sol";
 
 /**
  * @title ILayerZeroBridge
@@ -22,7 +23,7 @@ interface ILayerZeroBridge {
     }
 
     // Common events
-    event BridgeConfigUpdated(BridgeConfig config);
+    event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
     event SettlementSubmitted(address indexed market, uint256 indexed epochId, uint256 settlementPrice);
     event SettlementVerified(address indexed market, uint256 indexed epochId, bytes32 assertionId, bool verified);
     event BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount);
@@ -32,6 +33,9 @@ interface ILayerZeroBridge {
     event AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId);
     event GasReserveLow(uint256 currentBalance);
     event GasReserveCritical(uint256 currentBalance);
+
+    // Common functions
+    function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config) external;
 }
 
 /**

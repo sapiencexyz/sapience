@@ -9,7 +9,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IMarketLayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol"; 
+import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { BridgeTypes } from "./BridgeTypes.sol";
 
 /**
  * @title MarketLayerZeroBridge
@@ -25,9 +26,10 @@ contract MarketLayerZeroBridge is
     IMarketLayerZeroBridge
 {
     using Encoder for bytes;
+    using BridgeTypes for BridgeTypes.BridgeConfig;
     
     // State variables
-    BridgeConfig private bridgeConfig;
+    BridgeTypes.BridgeConfig private bridgeConfig;
     mapping(address => bool) private enabledMarketGroups;
     mapping(address => mapping(address => uint256))
         private remoteSubmitterBalances; // submitter => bondToken => balance
@@ -52,12 +54,12 @@ contract MarketLayerZeroBridge is
     ) OApp(_endpoint, _owner) Ownable(_owner) {}
 
     // Configuration functions
-    function setBridgeConfig(BridgeConfig calldata _config) external onlyOwner {
+    function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config) external onlyOwner {
         bridgeConfig = _config;
         emit BridgeConfigUpdated(_config);
     }
 
-    function getBridgeConfig() external view returns (BridgeConfig memory) {
+    function getBridgeConfig() external view returns (BridgeTypes.BridgeConfig memory) {
         return bridgeConfig;
     }
 
@@ -121,47 +123,47 @@ contract MarketLayerZeroBridge is
             commandType ==
             Encoder.CMD_FROM_ESCROW_DEPOSIT
         ) {
-            (address submitter, address bondToken, uint256 amount) = data
-                .decodeEscrowDeposit();
-            remoteSubmitterBalances[submitter][bondToken] += amount;
-            emit BondDeposited(submitter, bondToken, amount);
+            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
+            remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
+            emit BondDeposited(submitter, bondToken, deltaAmount);
         } else if (
             commandType ==
             Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW
         ) {
-            (address submitter, address bondToken, uint256 amount) = data
-                .decodeEscrowIntentToWithdraw();
-            remoteSubmitterWithdrawalIntent[submitter][bondToken] += amount;
-            emit BondWithdrawn(submitter, bondToken, amount);
+            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
+            remoteSubmitterWithdrawalIntent[submitter][bondToken] += deltaAmount;
+            emit BondWithdrawn(submitter, bondToken, deltaAmount);
         } else if (
             commandType ==
             Encoder.CMD_FROM_ESCROW_WITHDRAW
         ) {
-            (address submitter, address bondToken, uint256 amount) = data
-                .decodeEscrowWithdraw();
-            remoteSubmitterBalances[submitter][bondToken] -= amount;
-            remoteSubmitterWithdrawalIntent[submitter][bondToken] -= amount;
-            emit BondWithdrawn(submitter, bondToken, amount);
+            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
+            remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
+            remoteSubmitterWithdrawalIntent[submitter][bondToken] -= deltaAmount;
+            emit BondWithdrawn(submitter, bondToken, deltaAmount);
         } else if (
             commandType ==
             Encoder.CMD_FROM_ESCROW_BOND_SENT
         ) {
-            (address submitter, address bondToken, uint256 amount) = data
-                .decodeEscrowBondSent();
-            remoteSubmitterBalances[submitter][bondToken] -= amount;
+            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
+            remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
         } else if (
             commandType ==
             Encoder.CMD_FROM_ESCROW_BOND_RECEIVED
         ) {
-            (address submitter, address bondToken, uint256 amount) = data
-                .decodeEscrowBondReceived();
-            remoteSubmitterBalances[submitter][bondToken] += amount;
+            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
+            remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
         } else if (
             commandType ==
             Encoder.CMD_FROM_ESCROW_BOND_LOST_DISPUTE
         ) {
-            (address submitter, address bondToken, uint256 amount) = data
-                .decodeEscrowBondLostDisputed();
+            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
                 // Do nothing, the amount was already decremented when the bond was sent
         } else if (
             commandType ==

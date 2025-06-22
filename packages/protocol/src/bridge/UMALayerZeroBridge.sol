@@ -10,7 +10,10 @@ import {ILayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import {IUMALayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
-import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol"; 
+import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import {console2} from "forge-std/console2.sol";
+import {BridgeTypes} from "./BridgeTypes.sol";
+import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
 struct AssertionMarketData {
     bytes32 assertionId;
@@ -32,9 +35,11 @@ struct AssertionMarketData {
 contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     using SafeERC20 for IERC20;
     using Encoder for bytes;
+    using BridgeTypes for BridgeTypes.BridgeConfig;
+    using OptionsBuilder for bytes;
 
     // State variables
-    BridgeConfig private bridgeConfig;
+    BridgeTypes.BridgeConfig private bridgeConfig;
     address private optimisticOracleV3Address;
 
     mapping(bytes32 => AssertionMarketData) private assertionIdToMarketData; // assertionId => marketData
@@ -54,12 +59,14 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     ) OApp(_endpoint, _owner) Ownable(_owner) {}
 
     // Configuration functions
-    function setOptimisticOracleV3(address _optimisticOracleV3) external onlyOwner {
+    function setOptimisticOracleV3(
+        address _optimisticOracleV3
+    ) external onlyOwner {
         optimisticOracleV3Address = _optimisticOracleV3;
     }
 
     function setBridgeConfig(
-        BridgeConfig calldata newConfig
+        BridgeTypes.BridgeConfig calldata newConfig
     ) external onlyOwner {
         bridgeConfig = newConfig;
         emit BridgeConfigUpdated(newConfig);
@@ -69,7 +76,11 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         return optimisticOracleV3Address;
     }
 
-    function getBridgeConfig() external view returns (BridgeConfig memory) {
+    function getBridgeConfig()
+        external
+        view
+        returns (BridgeTypes.BridgeConfig memory)
+    {
         return bridgeConfig;
     }
 
@@ -81,10 +92,10 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
     function withdrawETH(uint256 amount) external onlyOwner {
         require(amount <= address(this).balance, "Insufficient balance");
-        
+
         payable(owner()).transfer(amount);
         emit ETHWithdrawn(owner(), amount);
-        
+
         // Check gas thresholds after withdrawal
         _checkGasThresholds();
     }
@@ -102,7 +113,13 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
         submitterBondBalances[msg.sender][bondToken] += amount;
         emit BondDeposited(msg.sender, bondToken, amount);
-        // _sendBalanceUpdate(msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], BalanceUpdateType.DEPOSIT);
+        _sendBalanceUpdate(
+            Encoder.CMD_FROM_ESCROW_BOND_SENT,
+            msg.sender,
+            bondToken,
+            submitterBondBalances[msg.sender][bondToken],
+            amount
+        );
     }
 
     function intentToWithdrawBond(
@@ -167,14 +184,19 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         bytes32 assertionId,
         bool assertedTruthfully
     ) external {
-        AssertionMarketData storage marketData = assertionIdToMarketData[assertionId];
+        AssertionMarketData storage marketData = assertionIdToMarketData[
+            assertionId
+        ];
         if (marketData.bridgeAssertionId == 0) {
             revert("Invalid assertion ID");
         }
 
         // Make assertion data to UMA side via LayerZero
-        bytes memory commandPayload = Encoder.encodeFromUMAResolved(marketData.bridgeAssertionId, assertedTruthfully);
-        
+        bytes memory commandPayload = Encoder.encodeFromUMAResolved(
+            marketData.bridgeAssertionId,
+            assertedTruthfully
+        );
+
         // Send message using contract's ETH balance
         _sendLayerZeroMessageWithQuote(
             Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK,
@@ -182,20 +204,26 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
             payable(address(this)) // Refund to contract
         );
 
-        submitterBondBalances[marketData.submitter][marketData.bondToken] += marketData.bondAmount;
+        submitterBondBalances[marketData.submitter][
+            marketData.bondToken
+        ] += marketData.bondAmount;
     }
 
     function assertionDisputedCallback(
         bytes32 assertionId
     ) external nonReentrant {
-        AssertionMarketData storage marketData = assertionIdToMarketData[assertionId];
+        AssertionMarketData storage marketData = assertionIdToMarketData[
+            assertionId
+        ];
         if (marketData.bridgeAssertionId == 0) {
             revert("Invalid assertion ID");
         }
 
         // Make assertion data to UMA side via LayerZero
-        bytes memory commandPayload = Encoder.encodeFromUMADisputed(marketData.bridgeAssertionId);
-        
+        bytes memory commandPayload = Encoder.encodeFromUMADisputed(
+            marketData.bridgeAssertionId
+        );
+
         // Send message using contract's ETH balance
         _sendLayerZeroMessageWithQuote(
             Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK,
@@ -237,6 +265,30 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     //     require(assertionId == epoch.assertionId, "Invalid assertionId");
     // }
 
+    function _sendBalanceUpdate(
+        uint16 updateType,
+        address submitter,
+        address bondToken,
+        uint256 finalAmount,
+        uint256 deltaAmount
+    ) internal {
+        // Make balance update data for UMA side via LayerZero
+        bytes memory commandPayload = Encoder.encodeFromBalanceUpdate(
+            submitter,
+            bondToken,
+            finalAmount,
+            deltaAmount
+        );
+
+        console2.log("LLL updateType", updateType);
+        // Send message using contract's ETH balance
+        _sendLayerZeroMessageWithQuote(
+            updateType,
+            commandPayload,
+            payable(address(this)) // Refund to contract
+        );
+    }
+
     // LayerZero message handling
     function _lzReceive(
         Origin calldata _origin,
@@ -266,26 +318,26 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     }
 
     // Helper function to get LayerZero quote
-    function getLayerZeroQuote(
-        uint16 commandCode,
-        bytes memory commandPayload
-    ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
-        bytes memory message = abi.encode(commandCode, commandPayload);
-        
-        MessagingFee memory fee = _quote(
-            bridgeConfig.remoteChainId,
-            message,
-            bytes(""), // options
-            false // payInLzToken
-        );
-        
-        return (fee.nativeFee, fee.lzTokenFee);
-    }
+    // function getLayerZeroQuote(
+    //     uint16 commandCode,
+    //     bytes memory commandPayload
+    // ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
+    //     bytes memory message = abi.encode(commandCode, commandPayload);
+
+    //     MessagingFee memory fee = _quote(
+    //         bridgeConfig.remoteChainId,
+    //         message,
+    //         bytes(""), // options
+    //         false // payInLzToken
+    //     );
+
+    //     return (fee.nativeFee, fee.lzTokenFee);
+    // }
 
     // Helper function to check gas thresholds and emit alerts
     function _checkGasThresholds() internal {
         uint256 currentBalance = address(this).balance;
-        
+
         if (currentBalance <= CRITICAL_GAS_THRESHOLD) {
             emit GasReserveCritical(currentBalance);
         } else if (currentBalance <= WARNING_GAS_THRESHOLD) {
@@ -300,96 +352,96 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         address payable refundAddress
     ) internal returns (MessagingReceipt memory receipt) {
         bytes memory message = abi.encode(commandCode, commandPayload);
-        
+        console2.log(
+            "LLL commandCode",
+            commandCode,
+            bridgeConfig.remoteChainId
+        );
+
+        bytes memory options = OptionsBuilder
+            .newOptions()
+            .addExecutorLzReceiveOption(50000, 0);
+
+        console2.log("LLL options done");
         // Get quote for the message
         MessagingFee memory fee = _quote(
             bridgeConfig.remoteChainId,
             message,
-            bytes(""), // options
+            options, // options
             false // payInLzToken
         );
-        
+        console2.log("LLL fee.nativeFee", fee.nativeFee);
+
         // Check if contract has enough ETH
-        require(address(this).balance >= fee.nativeFee, "Insufficient ETH balance for fee");
-        
+        require(
+            address(this).balance >= fee.nativeFee,
+            "Insufficient ETH balance for fee"
+        );
+
+        console2.log("LLL address(this).balance", address(this).balance);
         // Check gas thresholds and emit alerts before sending
         _checkGasThresholds();
-        
+        console2.log("LLL _lzSend", bridgeConfig.remoteChainId);
+
         // Send the message with the quoted fee
         receipt = _lzSend(
             bridgeConfig.remoteChainId,
             message,
-            bytes(""), // options
+            options, // options
             fee,
             refundAddress
         );
-        
+
         return receipt;
     }
 
-    // Helper function to send LayerZero messages
-    function _sendLayerZeroMessage(
-        uint16 commandCode,
-        bytes memory commandPayload,
-        address payable refundAddress
-    ) internal {
-        bytes memory message = abi.encode(commandCode, commandPayload);
-        
-        _lzSend(
-            bridgeConfig.remoteChainId,
-            message,
-            bytes(""), // options
-            MessagingFee(msg.value, 0),
-            refundAddress
-        );
-    }
-
     function _handleAssertTruthCmd(bytes memory data) internal {
-            // Decode the data from the Market side (incoming data: assertionId, asserter, liveness, currency, bond, claim)
-            (
-                uint256 bridgeAssertionId,
-                address asserter,
-                uint64 liveness,
-                address bondTokenAddress,
-                uint256 bondAmount,
-                bytes memory claim
-            ) = data.decodeToUMAAssertTruth();
+        // Decode the data from the Market side (incoming data: assertionId, asserter, liveness, currency, bond, claim)
+        (
+            uint256 bridgeAssertionId,
+            address asserter,
+            uint64 liveness,
+            address bondTokenAddress,
+            uint256 bondAmount,
+            bytes memory claim
+        ) = data.decodeToUMAAssertTruth();
 
-            // TODO: Check if the assertionId is already in the mapping and send back an error message
-            // TODO: Check if the bond is enough and send back an error message
+        // TODO: Check if the assertionId is already in the mapping and send back an error message
+        // TODO: Check if the bond is enough and send back an error message
 
-            OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                    optimisticOracleV3Address
-                );
-
-            IERC20 bondToken = IERC20(bondTokenAddress);
-
-            bondToken.approve(address(optimisticOracleV3), bondAmount);
-
-            bytes32 umaAssertionId = optimisticOracleV3.assertTruth(
-                claim,
-                asserter,
-                address(this),
-                address(0),
-                liveness,
-                bondToken,
-                bondAmount,
-                optimisticOracleV3.defaultIdentifier(),
-                bytes32(0)
+        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
+                optimisticOracleV3Address
             );
 
-            AssertionMarketData storage marketData = assertionIdToMarketData[umaAssertionId];
-            marketData.bridgeAssertionId = bridgeAssertionId;
-            marketData.submitter = asserter;
-            marketData.bondToken = bondTokenAddress;
-            marketData.bondAmount = bondAmount;
-            marketData.assertionId = umaAssertionId;
+        IERC20 bondToken = IERC20(bondTokenAddress);
 
-            submitterBondBalances[asserter][bondTokenAddress] -= bondAmount;
+        bondToken.approve(address(optimisticOracleV3), bondAmount);
 
-            // TODO: Should we send back the confirmation to the Market side?
+        bytes32 umaAssertionId = optimisticOracleV3.assertTruth(
+            claim,
+            asserter,
+            address(this),
+            address(0),
+            liveness,
+            bondToken,
+            bondAmount,
+            optimisticOracleV3.defaultIdentifier(),
+            bytes32(0)
+        );
 
-            // TODO: emit an event
+        AssertionMarketData storage marketData = assertionIdToMarketData[
+            umaAssertionId
+        ];
+        marketData.bridgeAssertionId = bridgeAssertionId;
+        marketData.submitter = asserter;
+        marketData.bondToken = bondTokenAddress;
+        marketData.bondAmount = bondAmount;
+        marketData.assertionId = umaAssertionId;
+
+        submitterBondBalances[asserter][bondTokenAddress] -= bondAmount;
+
+        // TODO: Should we send back the confirmation to the Market side?
+
+        // TODO: emit an event
     }
-
 }

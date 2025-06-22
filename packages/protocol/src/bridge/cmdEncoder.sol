@@ -16,6 +16,8 @@ library Encoder {
     uint16 constant CMD_FROM_ESCROW_BOND_RECEIVED = 8;
     uint16 constant CMD_FROM_ESCROW_BOND_LOST_DISPUTE = 9;
 
+
+
     function encodeType(uint16 commandType, bytes memory data) internal pure returns (bytes memory) {
         return abi.encodePacked(commandType, data);
     }
@@ -51,51 +53,60 @@ library Encoder {
     }
 
     // Forward from Bridge Bond Balance commands
-    function encodeEscrowDeposit(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
-        return abi.encodePacked(submitter, bondToken, amount);
+    function encodeFromBalanceUpdate(address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) internal pure returns (bytes memory) {
+        return abi.encodePacked(submitter, bondToken, finalAmount, deltaAmount);
     }
 
-    function decodeEscrowDeposit(bytes memory data) internal pure returns (address, address, uint256) {
-        return abi.decode(data, (address, address, uint256));
+    function decodeFromBalanceUpdate(bytes memory data) internal pure returns (address, address, uint256, uint256) {
+        return abi.decode(data, (address, address, uint256, uint256));
     }
 
-    function encodeEscrowIntentToWithdraw(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
-        return abi.encodePacked(submitter, bondToken, amount);
-    }
 
-    function decodeEscrowIntentToWithdraw(bytes memory data) internal pure returns (address, address, uint256) {
-        return abi.decode(data, (address, address, uint256));
-    }
+    // function encodeEscrowDeposit(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
+    //     return abi.encodePacked(submitter, bondToken, amount);
+    // }
 
-    function encodeEscrowWithdraw(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
-        return abi.encodePacked(submitter, bondToken, amount);
-    }
+    // function decodeEscrowDeposit(bytes memory data) internal pure returns (address, address, uint256) {
+    //     return abi.decode(data, (address, address, uint256));
+    // }
 
-    function decodeEscrowWithdraw(bytes memory data) internal pure returns (address, address, uint256) {
-        return abi.decode(data, (address, address, uint256));
-    }
+    // function encodeEscrowIntentToWithdraw(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
+    //     return abi.encodePacked(submitter, bondToken, amount);
+    // }
 
-    function encodeEscrowBondSent(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
-        return abi.encodePacked(submitter, bondToken, amount);
-    }
+    // function decodeEscrowIntentToWithdraw(bytes memory data) internal pure returns (address, address, uint256) {
+    //     return abi.decode(data, (address, address, uint256));
+    // }
 
-    function decodeEscrowBondSent(bytes memory data) internal pure returns (address, address, uint256) {
-        return abi.decode(data, (address, address, uint256));
-    }
+    // function encodeEscrowWithdraw(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
+    //     return abi.encodePacked(submitter, bondToken, amount);
+    // }
 
-    function encodeEscrowBondReceived(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
-        return abi.encodePacked(submitter, bondToken, amount);
-    }
+    // function decodeEscrowWithdraw(bytes memory data) internal pure returns (address, address, uint256) {
+    //     return abi.decode(data, (address, address, uint256));
+    // }
 
-    function decodeEscrowBondReceived(bytes memory data) internal pure returns (address, address, uint256) {
-        return abi.decode(data, (address, address, uint256));
-    }
+    // function encodeEscrowBondSent(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
+    //     return abi.encodePacked(submitter, bondToken, amount);
+    // }
 
-    function encodeEscrowBondLostDisputed(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
-        return abi.encodePacked(submitter, bondToken, amount);
-    }
+    // function decodeEscrowBondSent(bytes memory data) internal pure returns (address, address, uint256) {
+    //     return abi.decode(data, (address, address, uint256));
+    // }
 
-    function decodeEscrowBondLostDisputed(bytes memory data) internal pure returns (address, address, uint256) {
-        return abi.decode(data, (address, address, uint256));
-    }
+    // function encodeEscrowBondReceived(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
+    //     return abi.encodePacked(submitter, bondToken, amount);
+    // }
+
+    // function decodeEscrowBondReceived(bytes memory data) internal pure returns (address, address, uint256) {
+    //     return abi.decode(data, (address, address, uint256));
+    // }
+
+    // function encodeEscrowBondLostDisputed(address submitter, address bondToken, uint256 amount) internal pure returns (bytes memory) {
+    //     return abi.encodePacked(submitter, bondToken, amount);
+    // }
+
+    // function decodeEscrowBondLostDisputed(bytes memory data) internal pure returns (address, address, uint256) {
+    //     return abi.decode(data, (address, address, uint256));
+    // }
 }
