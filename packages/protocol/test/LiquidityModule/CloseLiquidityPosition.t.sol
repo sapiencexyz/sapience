@@ -3,14 +3,14 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {Epoch} from "../../src/market/storage/Epoch.sol";
+import {Market} from "../../src/market/storage/Market.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
-import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
@@ -19,13 +19,13 @@ import {Position} from "../../src/market/storage/Position.sol";
 contract DecreaseLiquidityPosition is TestTrade {
     using Cannon for Vm;
 
-    IFoil foil;
+    ISapience sapience;
     IMintableToken collateralAsset;
 
     address lp1;
     address initialLpUser;
     address trader1;
-    uint256 epochId;
+    uint256 marketId;
     address pool;
     address tokenA;
     address tokenB;
@@ -40,10 +40,10 @@ contract DecreaseLiquidityPosition is TestTrade {
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
-        foil = IFoil(vm.getAddress("Foil"));
+        sapience = ISapience(vm.getAddress("Sapience"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (foil, ) = createEpoch(
+        (sapience, ) = createMarket(
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
@@ -58,18 +58,18 @@ contract DecreaseLiquidityPosition is TestTrade {
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
         trader1 = TestUser.createUser("Trader1", INITIAL_LP_BALANCE);
 
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        epochId = epochData.epochId;
-        pool = epochData.pool;
-        tokenA = epochData.ethToken;
-        tokenB = epochData.gasToken;
+        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        marketId = marketData.marketId;
+        pool = marketData.pool;
+        tokenA = marketData.quoteToken;
+        tokenB = marketData.baseToken;
 
         // Create the initial context for the tests
         // First create an initial LP position to establish the pool
         vm.startPrank(initialLpUser);
         (
-            uint256 initialGasTokenAmount,
-            uint256 initialEthTokenAmount,
+            uint256 initialBaseTokenAmount,
+            uint256 initialQuoteTokenAmount,
 
         ) = getTokenAmountsForCollateralAmount(
                 INITIAL_COLLATERAL_AMOUNT,
@@ -77,16 +77,16 @@ contract DecreaseLiquidityPosition is TestTrade {
                 MAX_TICK
             );
 
-        foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: initialGasTokenAmount,
-                amountTokenB: initialEthTokenAmount,
+        sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: initialBaseTokenAmount,
+                amountQuoteToken: initialQuoteTokenAmount,
                 collateralAmount: INITIAL_COLLATERAL_AMOUNT + dust,
                 lowerTick: MIN_TICK,
                 upperTick: MAX_TICK,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -95,8 +95,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         // Now create lp1's position
         vm.startPrank(lp1);
         (
-            uint256 gasTokenAmount,
-            uint256 ethTokenAmount,
+            uint256 baseTokenAmount,
+            uint256 quoteTokenAmount,
 
         ) = getTokenAmountsForCollateralAmount(
                 INITIAL_COLLATERAL_AMOUNT,
@@ -104,22 +104,22 @@ contract DecreaseLiquidityPosition is TestTrade {
                 MAX_TICK
             );
 
-        (positionId, , , , , , ) = foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: gasTokenAmount,
-                amountTokenB: ethTokenAmount,
+        (positionId, , , , , , ) = sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: baseTokenAmount,
+                amountQuoteToken: quoteTokenAmount,
                 collateralAmount: INITIAL_COLLATERAL_AMOUNT + dust,
                 lowerTick: MIN_TICK,
                 upperTick: MAX_TICK,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
         vm.stopPrank();
 
-        // Create a trader position to make lp1 have more vGas tokens
+        // Create a trader position to make lp1 have more vBase tokens
         traderSellsGas();
         increaseLiquidityPosition(); // this collects fees from trader
     }
@@ -129,15 +129,15 @@ contract DecreaseLiquidityPosition is TestTrade {
         address trader = createUser("Trader", 1000 ether);
         vm.startPrank(trader);
 
-        // TODO notice this is a long position, not short => is buying bas
-        addTraderPosition(foil, epochId, 1 ether);
+        // TODO notice this is a long position, not short => is buying base
+        addTraderPosition(sapience, marketId, 1 ether);
 
         vm.stopPrank();
     }
 
     struct InitialValues {
-        uint256 initialGasTokenAmount;
-        uint256 initialEthTokenAmount;
+        uint256 initialBaseTokenAmount;
+        uint256 initialQuoteTokenAmount;
         uint256 initialOwedTokens0;
         uint256 initialOwedTokens1;
         uint128 initialLiquidity;
@@ -165,14 +165,14 @@ contract DecreaseLiquidityPosition is TestTrade {
         uint256 increaseAmount1 = initialAmount1 / 2; // Increase by 50%
 
         // Increase the liquidity position
-        foil.increaseLiquidityPosition(
-            IFoilStructs.LiquidityIncreaseParams({
+        sapience.increaseLiquidityPosition(
+            ISapienceStructs.LiquidityIncreaseParams({
                 positionId: positionId,
                 collateralAmount: 1000 ether,
-                gasTokenAmount: increaseAmount0,
-                ethTokenAmount: increaseAmount1,
-                minGasAmount: 0,
-                minEthAmount: 0,
+                baseTokenAmount: increaseAmount0,
+                quoteTokenAmount: increaseAmount1,
+                minBaseAmount: 0,
+                minQuoteAmount: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -186,7 +186,7 @@ contract DecreaseLiquidityPosition is TestTrade {
 
         vm.startPrank(lp1);
 
-        Position.Data memory initialPosition = foil.getPosition(positionId);
+        Position.Data memory initialPosition = sapience.getPosition(positionId);
 
         // Get initial position details
         (
@@ -202,49 +202,49 @@ contract DecreaseLiquidityPosition is TestTrade {
             );
 
         // Close the position by decreasing all liquidity
-        (uint256 amount0, uint256 amount1,) = foil
+        (uint256 amount0, uint256 amount1,) = sapience
             .decreaseLiquidityPosition(
-                IFoilStructs.LiquidityDecreaseParams({
+                ISapienceStructs.LiquidityDecreaseParams({
                     positionId: positionId,
                     liquidity: initialLiquidity,
-                    minGasAmount: 0,
-                    minEthAmount: 0,
+                    minBaseAmount: 0,
+                    minQuoteAmount: 0,
                     deadline: block.timestamp + 30 minutes
                 })
             );
 
         // Get updated position
-        Position.Data memory updatedPosition = foil.getPosition(positionId);
+        Position.Data memory updatedPosition = sapience.getPosition(positionId);
 
         // Verify the position is now a trade position
         assertEq(
             uint8(updatedPosition.kind),
-            uint8(IFoilStructs.PositionKind.Trade),
+            uint8(ISapienceStructs.PositionKind.Trade),
             "Position should be transformed into a trade position"
         );
 
         // Verify the position has the correct token amounts
-        if (amount0 + initialOwedTokens0 > initialPosition.borrowedVGas) {
+        if (amount0 + initialOwedTokens0 > initialPosition.borrowedVBase) {
             assertEq(
-                updatedPosition.vGasAmount,
-                initialPosition.borrowedVGas - (initialOwedTokens0 + amount0),
-                "vGas amount should be equal to borrowed vGas minus owed tokens and decreased amount"
+                updatedPosition.vBaseAmount,
+                initialPosition.borrowedVBase - (initialOwedTokens0 + amount0),
+                "vBase amount should be equal to borrowed vBase minus owed tokens and decreased amount"
             );
         } else {
             assertEq(
-                updatedPosition.borrowedVGas,
-                initialPosition.borrowedVGas - (initialOwedTokens0 + amount0),
-                "vGas amount should be equal to borrowed vGas minus owed tokens and decreased amount"
+                updatedPosition.borrowedVBase,
+                initialPosition.borrowedVBase - (initialOwedTokens0 + amount0),
+                "vBase amount should be equal to borrowed vBase minus owed tokens and decreased amount"
             );
         }
 
         // Verify the collateral amount is correct
-        int256 vEthLoan = int256(initialPosition.borrowedVEth) -
+        int256 vQuoteLoan = int256(initialPosition.borrowedVQuote) -
             int256(amount1);
         assertEq(
             updatedPosition.depositedCollateralAmount,
             uint256(
-                int256(initialPosition.depositedCollateralAmount) - vEthLoan
+                int256(initialPosition.depositedCollateralAmount) - vQuoteLoan
             ),
             "Deposited collateral amount shouldn't change"
         );
@@ -271,7 +271,7 @@ contract DecreaseLiquidityPosition is TestTrade {
 
         vm.startPrank(lp1);
 
-        Position.Data memory initialPosition = foil.getPosition(positionId);
+        Position.Data memory initialPosition = sapience.getPosition(positionId);
 
         // Get initial position details
         (
@@ -286,9 +286,9 @@ contract DecreaseLiquidityPosition is TestTrade {
             );
 
         // Close the position using closeLiquidityPosition
-        (uint256 amount0, uint256 amount1, ) = foil
+        (uint256 amount0, uint256 amount1, ) = sapience
             .closeLiquidityPosition(
-                IFoilStructs.LiquidityCloseParams({
+                ISapienceStructs.LiquidityCloseParams({
                     positionId: positionId,
                     liquiditySlippage: 1e18,
                     tradeSlippage: 1e18,
@@ -297,12 +297,12 @@ contract DecreaseLiquidityPosition is TestTrade {
             );
 
         // Get updated position
-        Position.Data memory updatedPosition = foil.getPosition(positionId);
+        Position.Data memory updatedPosition = sapience.getPosition(positionId);
 
         // Verify the position is not a trade position
         assertNotEq(
             uint8(updatedPosition.kind),
-            uint8(IFoilStructs.PositionKind.Trade),
+            uint8(ISapienceStructs.PositionKind.Trade),
             "Position should not be transformed into a trade position"
         );
 
@@ -312,10 +312,10 @@ contract DecreaseLiquidityPosition is TestTrade {
             "Uniswap position ID should be 0"
         );
         assertEq(updatedPosition.depositedCollateralAmount, 0, "Deposited collateral amount should be 0");
-        assertEq(updatedPosition.borrowedVEth, 0, "Borrowed vEth should be 0");
-        assertEq(updatedPosition.borrowedVGas, 0, "Borrowed vGas should be 0");
-        assertEq(updatedPosition.vGasAmount, 0, "vGas amount should be 0");
-        assertEq(updatedPosition.vEthAmount, 0, "vEth amount should be 0");
+        assertEq(updatedPosition.borrowedVQuote, 0, "Borrowed vQuote should be 0");
+        assertEq(updatedPosition.borrowedVBase, 0, "Borrowed vBase should be 0");
+        assertEq(updatedPosition.vBaseAmount, 0, "vBase amount should be 0");
+        assertEq(updatedPosition.vQuoteAmount, 0, "vQuote amount should be 0");
 
         // Notice +/- 1 due to rounding errors
         assertApproxEqAbs(
@@ -344,8 +344,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.InvalidSlippage.selector, 1e18 + 1, 1e18 )
         );
-        foil.closeLiquidityPosition(
-            IFoilStructs.LiquidityCloseParams({
+        sapience.closeLiquidityPosition(
+            ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
                 liquiditySlippage: 1e18 + 1,
                 tradeSlippage: 1e18,
@@ -366,8 +366,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.InvalidSlippage.selector, 1e18 , 1e18 + 1)
         );
-        foil.closeLiquidityPosition(
-            IFoilStructs.LiquidityCloseParams({
+        sapience.closeLiquidityPosition(
+            ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
                 liquiditySlippage: 1e18,
                 tradeSlippage: 1e18 + 1,
@@ -390,8 +390,8 @@ contract DecreaseLiquidityPosition is TestTrade {
     //     vm.expectRevert(
     //         abi.encodeWithSelector(Errors.InvalidSlippage.selector)
     //     );
-    //     foil.closeLiquidityPosition(
-    //         IFoilStructs.LiquidityCloseParams({
+    //     sapience.closeLiquidityPosition(
+    //         ISapienceStructs.LiquidityCloseParams({
     //             positionId: positionId,
     //             liquiditySlippage: 0.01  * 1e18, // 1% slippage
     //             tradeSlippage: 1e18,
@@ -413,8 +413,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.CollateralLimitReached.selector, -1099629689067318712314, -1109169447826266919685)
         );
-        foil.closeLiquidityPosition(
-            IFoilStructs.LiquidityCloseParams({
+        sapience.closeLiquidityPosition(
+            ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
                 liquiditySlippage: 1e18,
                 tradeSlippage: 0.001 * 1e18, // 1% slippage

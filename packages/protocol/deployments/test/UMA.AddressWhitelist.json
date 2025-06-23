@@ -180,7 +180,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xe2dfa296a4b47afe01f744e69532c46d39efaf779fb05a0d68edf882a338bcd6",
   "deployTxnBlockNumber": "6",
-  "deployTimestamp": "1750453820",
+  "deployTimestamp": "1750562587",
   "sourceName": "src/UMA/src/AddressWhitelistOverride.sol",
   "contractName": "AddressWhitelistOverride",
   "deployedOn": "deploy.AddressWhitelist",

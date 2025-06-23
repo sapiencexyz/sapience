@@ -342,10 +342,10 @@ library Position {
         Data storage self,
         Data memory newPosition
     ) internal {
-        self.vGasAmount = newPosition.vGasAmount;
-        self.vEthAmount = newPosition.vEthAmount;
-        self.borrowedVGas = newPosition.borrowedVGas;
-        self.borrowedVEth = newPosition.borrowedVEth;
+        self.vBaseAmount = newPosition.vBaseAmount;
+        self.vQuoteAmount = newPosition.vQuoteAmount;
+        self.borrowedVBase = newPosition.borrowedVBase;
+        self.borrowedVQuote = newPosition.borrowedVQuote;
         self.depositedCollateralAmount = newPosition.depositedCollateralAmount;
     }
 }

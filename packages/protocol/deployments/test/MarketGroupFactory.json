@@ -1,5 +1,5 @@
 {
-  "address": "0xbCF26943C0197d2eE0E5D05c716Be60cc2761508",
+  "address": "0x948B3c65b89DF0B4894ABE91E6D02FE579834F8F",
   "abi": [
     {
       "type": "constructor",
@@ -138,16 +138,16 @@
     }
   ],
   "constructorArgs": [
-    "0x712516e61c8b383df4a63cfe83d7701bce54b03e"
+    "0x71c95911e9a5d330f4d621842ec243ee1343292e"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x9cad786cbe3d8c973e0abbaf5f5ad245dcd7d4d51e474936775a1b81910fcbc7",
-  "deployTxnBlockNumber": "7",
-  "deployTimestamp": "1750453820",
+  "deployTxnHash": "0x85a23a231437f471d6168da54d5022dd68f7cbb6287bc4728183d6d542f5e697",
+  "deployTxnBlockNumber": "5",
+  "deployTimestamp": "1750562587",
   "sourceName": "src/marketGroupFactory/MarketGroupFactory.sol",
   "contractName": "MarketGroupFactory",
   "deployedOn": "deploy.MarketGroupFactory",
   "highlight": true,
   "gasUsed": 329979,
-  "gasCost": "1000260222"
+  "gasCost": "1000022444"
 }

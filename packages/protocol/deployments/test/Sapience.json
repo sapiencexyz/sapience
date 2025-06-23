@@ -710,6 +710,57 @@
     },
     {
       "type": "function",
+      "name": "closeLiquidityPosition",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "tuple",
+          "internalType": "struct ISapienceStructs.LiquidityCloseParams",
+          "components": [
+            {
+              "name": "positionId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "liquiditySlippage",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "tradeSlippage",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "deadline",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "decreasedAmount0",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "decreasedAmount1",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "collateralAmount",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "createLiquidityPosition",
       "inputs": [
         {
@@ -1505,6 +1556,91 @@
     },
     {
       "type": "event",
+      "name": "TraderPositionModified",
+      "inputs": [
+        {
+          "name": "sender",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "marketId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "requiredCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "initialPrice",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "finalPrice",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "tradeRatio",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionCollateralAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionVquoteAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionVbaseAmount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionBorrowedVquote",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "positionBorrowedVbase",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "deltaCollateral",
+          "type": "int256",
+          "indexed": false,
+          "internalType": "int256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
       "name": "Transfer",
       "inputs": [
         {
@@ -1552,6 +1688,22 @@
     },
     {
       "type": "error",
+      "name": "CollateralLimitReached",
+      "inputs": [
+        {
+          "name": "collateralRequired",
+          "type": "int256",
+          "internalType": "int256"
+        },
+        {
+          "name": "maxCollateral",
+          "type": "int256",
+          "internalType": "int256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "ExpiredMarket",
       "inputs": []
     },
@@ -1571,6 +1723,28 @@
         },
         {
           "name": "collateralAvailable",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidData",
+      "inputs": [
+        {
+          "name": "message",
+          "type": "string",
+          "internalType": "string"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "InvalidInternalTradeSize",
+      "inputs": [
+        {
+          "name": "tradeSize",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -1631,6 +1805,22 @@
     },
     {
       "type": "error",
+      "name": "InvalidSlippage",
+      "inputs": [
+        {
+          "name": "liquiditySlippage",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "tradeSlippage",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "InvalidTransferRecipient",
       "inputs": [
         {
@@ -1673,6 +1863,27 @@
     },
     {
       "type": "error",
+      "name": "PoolPriceOutOfRange",
+      "inputs": [
+        {
+          "name": "poolPrice",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "minPrice",
+          "type": "uint160",
+          "internalType": "uint160"
+        },
+        {
+          "name": "maxPrice",
+          "type": "uint160",
+          "internalType": "uint160"
+        }
+      ]
+    },
+    {
+      "type": "error",
       "name": "PositionAlreadyCreated",
       "inputs": []
     },
@@ -1704,6 +1915,27 @@
       "inputs": [
         {
           "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "TradePriceOutOfBounds",
+      "inputs": [
+        {
+          "name": "tradeRatioD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "minTradeRatioD18",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "maxTradeRatioD18",
           "type": "uint256",
           "internalType": "uint256"
         }
@@ -2086,91 +2318,6 @@
       "anonymous": false
     },
     {
-      "type": "event",
-      "name": "TraderPositionModified",
-      "inputs": [
-        {
-          "name": "sender",
-          "type": "address",
-          "indexed": true,
-          "internalType": "address"
-        },
-        {
-          "name": "marketId",
-          "type": "uint256",
-          "indexed": true,
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionId",
-          "type": "uint256",
-          "indexed": true,
-          "internalType": "uint256"
-        },
-        {
-          "name": "requiredCollateral",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "initialPrice",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "finalPrice",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "tradeRatio",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionCollateralAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionVquoteAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionVbaseAmount",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionBorrowedVquote",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "positionBorrowedVbase",
-          "type": "uint256",
-          "indexed": false,
-          "internalType": "uint256"
-        },
-        {
-          "name": "deltaCollateral",
-          "type": "int256",
-          "indexed": false,
-          "internalType": "int256"
-        }
-      ],
-      "anonymous": false
-    },
-    {
       "type": "error",
       "name": "CollateralBelowMin",
       "inputs": [
@@ -2183,22 +2330,6 @@
           "name": "minCollateral",
           "type": "uint256",
           "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "CollateralLimitReached",
-      "inputs": [
-        {
-          "name": "collateralRequired",
-          "type": "int256",
-          "internalType": "int256"
-        },
-        {
-          "name": "maxCollateral",
-          "type": "int256",
-          "internalType": "int256"
         }
       ]
     },
@@ -2220,77 +2351,13 @@
     },
     {
       "type": "error",
-      "name": "InvalidData",
-      "inputs": [
-        {
-          "name": "message",
-          "type": "string",
-          "internalType": "string"
-        }
-      ]
-    },
-    {
-      "type": "error",
-      "name": "InvalidInternalTradeSize",
-      "inputs": [
-        {
-          "name": "tradeSize",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "MarketSettled",
       "inputs": []
     },
     {
       "type": "error",
-      "name": "PoolPriceOutOfRange",
-      "inputs": [
-        {
-          "name": "poolPrice",
-          "type": "uint160",
-          "internalType": "uint160"
-        },
-        {
-          "name": "minPrice",
-          "type": "uint160",
-          "internalType": "uint160"
-        },
-        {
-          "name": "maxPrice",
-          "type": "uint160",
-          "internalType": "uint160"
-        }
-      ]
-    },
-    {
-      "type": "error",
       "name": "PositionSizeBelowMin",
       "inputs": []
-    },
-    {
-      "type": "error",
-      "name": "TradePriceOutOfBounds",
-      "inputs": [
-        {
-          "name": "tradeRatioD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "minTradeRatioD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        },
-        {
-          "name": "maxTradeRatioD18",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ]
     },
     {
       "type": "constructor",
@@ -3468,12 +3535,12 @@
     }
   ],
   "deployedOn": "router.Sapience",
-  "deployTxnHash": "0x105d6acefc65aca1135510f398cb8dd16d446728ee79bc4107ca4a07c32406d0",
+  "deployTxnHash": "0x6cf600d408b2ad6e7dc6d02cc6443024363c1ffe1a2b3de8011187b31ea95abf",
   "deployTxnBlockNumber": "2",
-  "deployTimestamp": "1750283134",
+  "deployTimestamp": "1750562589",
   "contractName": "Sapience",
   "sourceName": "Sapience.sol",
   "highlight": true,
-  "gasUsed": 3158503,
-  "gasCost": "1000040761"
+  "gasUsed": 3169977,
+  "gasCost": "1000047117"
 }

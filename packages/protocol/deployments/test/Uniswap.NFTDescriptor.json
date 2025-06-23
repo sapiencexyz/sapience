@@ -97,7 +97,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xc05a79ed2a75d94cfa6c066cb54d02446a11f9044408a4e13dbda232a3aecf64",
   "deployTxnBlockNumber": "1",
-  "deployTimestamp": "1750453821",
+  "deployTimestamp": "1750562587",
   "sourceName": "contracts/libraries/NFTDescriptor.sol",
   "contractName": "NFTDescriptor",
   "deployedOn": "deploy.NFTDescriptor",
