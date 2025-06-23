@@ -59,7 +59,7 @@ contract UMASettlementModule is
                 claim,
                 asserter,
                 epoch.marketParams.assertionLiveness,
-                IERC20(epoch.marketParams.bondCurrency),
+                epoch.marketParams.bondCurrency,
                 epoch.marketParams.bondAmount
             );
             // 8. Call the bridge to process the settlement

@@ -20,6 +20,7 @@ contract BridgeTest is TestHelperOz5 {
     address private marketUser = address(0x2);
     address private owner = address(0x3);
     address private refundAddress = address(0x4);
+    address private marketGroup = address(0x5);
 
     // Bridges
     MarketLayerZeroBridge private marketBridge;
@@ -36,8 +37,7 @@ contract BridgeTest is TestHelperOz5 {
     address umaEndpoint;
     address marketEndpoint;
 
-    bytes options;
-
+    uint256 private BOND_AMOUNT = 1_000 ether;
 
     function setUp() public override {
         vm.deal(umaUser, 1000 ether);
@@ -62,7 +62,6 @@ contract BridgeTest is TestHelperOz5 {
 
         umaEndpoint = address(umaBridge.endpoint());
         marketEndpoint = address(marketBridge.endpoint());
-        // options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(200000, 0);
 
         vm.deal(address(umaBridge), 100 ether);
         vm.deal(address(marketBridge), 100 ether);
@@ -70,17 +69,55 @@ contract BridgeTest is TestHelperOz5 {
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
-        BridgeTypes.BridgeConfig memory bridgeConfig = BridgeTypes.BridgeConfig({
+        umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
             remoteChainId: marketEiD,
             remoteBridge: address(marketBridge),
             settlementModule: address(0)
-        });
-        umaBridge.setBridgeConfig(bridgeConfig);
-        bridgeConfig.remoteChainId = umaEiD;
-        bridgeConfig.remoteBridge = address(umaBridge);
-        bridgeConfig.settlementModule = address(0);
-        marketBridge.setBridgeConfig(bridgeConfig);
+        }));
 
+        marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
+            remoteChainId: umaEiD,
+            remoteBridge: address(umaBridge),
+            settlementModule: address(0)
+        }));
+
+        // Deposit bond to the escrow
+        uint256 depositAmount = 100 * BOND_AMOUNT;
+        bondCurrency.mint(depositAmount, umaUser);
+        vm.startPrank(umaUser);
+        bondCurrency.approve(address(umaBridge), depositAmount);
+        umaBridge.depositBond(address(bondCurrency), depositAmount);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+
+        // Enable the market group
+        marketBridge.enableMarketGroup(marketGroup);
     }
 
+    function test_failsIfNotEnabledMarketGroup_LEO() public {
+        vm.startPrank(marketUser);
+        vm.expectRevert("Only enabled market groups can submit");
+        /*
+             address marketGroup,
+        uint256 marketId,
+        bytes memory claim,
+        address asserter,
+        uint64 liveness,
+        IERC20 currency,
+        uint256 bond
+        */
+        marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), 1 ether);
+        vm.stopPrank();
+    }
+
+    function test_forwardAssertTruth() public {
+        // Forward the assertion to the optimisticOracleV3
+        vm.startPrank(marketUser);
+        marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), 1 ether);
+        vm.stopPrank();
+
+        // Verify the balance movements (token)
+        uint256 finalUmaUserTokenBalance = bondCurrency.balanceOf(umaUser);
+        uint256 finalUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));
+    }
 }

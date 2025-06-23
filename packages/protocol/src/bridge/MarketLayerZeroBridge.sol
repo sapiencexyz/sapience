@@ -139,7 +139,7 @@ contract MarketLayerZeroBridge is
         ) {
             (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
                 .decodeFromBalanceUpdate();
-            remoteSubmitterWithdrawalIntent[submitter][bondToken] += deltaAmount;
+            remoteSubmitterWithdrawalIntent[submitter][bondToken] = deltaAmount; // Only one intent per pair submitter/bond allowed at a time
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
         } else if (
             commandType ==
@@ -189,22 +189,22 @@ contract MarketLayerZeroBridge is
         }
     }
 
-    // Helper function to get LayerZero quote
-    function getLayerZeroQuote(
-        uint16 commandCode,
-        bytes memory commandPayload
-    ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
-        bytes memory message = abi.encode(commandCode, commandPayload);
+    // // Helper function to get LayerZero quote
+    // function getLayerZeroQuote(
+    //     uint16 commandCode,
+    //     bytes memory commandPayload
+    // ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
+    //     bytes memory message = abi.encode(commandCode, commandPayload);
         
-        MessagingFee memory fee = _quote(
-            bridgeConfig.remoteChainId,
-            message,
-            bytes(""), // options
-            false // payInLzToken
-        );
+    //     MessagingFee memory fee = _quote(
+    //         bridgeConfig.remoteChainId,
+    //         message,
+    //         bytes(""), // options
+    //         false // payInLzToken
+    //     );
         
-        return (fee.nativeFee, fee.lzTokenFee);
-    }
+    //     return (fee.nativeFee, fee.lzTokenFee);
+    // }
 
     // Helper function to send LayerZero messages with quote
     function _sendLayerZeroMessageWithQuote(
@@ -271,7 +271,7 @@ contract MarketLayerZeroBridge is
         bytes memory claim,
         address asserter,
         uint64 liveness,
-        IERC20 currency,
+        address currency,
         uint256 bond
     ) external returns (bytes32) {
         require(

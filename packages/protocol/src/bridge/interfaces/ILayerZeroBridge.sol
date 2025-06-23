@@ -101,7 +101,7 @@ interface IMarketLayerZeroBridge is ILayerZeroBridge {
         bytes memory claim,
         address asserter,
         uint64 liveness,
-        IERC20 currency,
+        address currency,
         uint256 bond
     ) external returns (bytes32);
 } 
