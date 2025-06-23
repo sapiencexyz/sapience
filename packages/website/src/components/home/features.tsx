@@ -27,7 +27,7 @@ export const Features = () => {
             </div>
 
             <Button asChild className="rounded-2xl p-6 font-semibold">
-              <a href="https://app.foil.xyz/subscribe">Subscribe</a>
+              <a href="https://www.sapience.xyz/subscribe">Subscribe</a>
             </Button>
           </div>
           {isDesktop && (
@@ -72,7 +72,7 @@ export const Features = () => {
             </div>
 
             <Button asChild className="rounded-2xl p-6 font-semibold">
-              <a href="https://app.foil.xyz/markets/8453:0x20ba5e24ad8a5b9502d4882607f0c8526a1f3205/periods/1/trade">
+              <a href="https://www.sapience.xyz/markets/8453:0x20ba5e24ad8a5b9502d4882607f0c8526a1f3205/periods/1/trade">
                 Trade
               </a>
             </Button>
@@ -119,7 +119,7 @@ export const Features = () => {
             </div>
 
             <Button asChild className="rounded-2xl p-6 font-semibold">
-              <a href="https://app.foil.xyz/earn/ethereum-gas">Earn</a>
+              <a href="https://www.sapience.xyz/earn/ethereum-gas">Earn</a>
             </Button>
           </div>
           {isDesktop && (

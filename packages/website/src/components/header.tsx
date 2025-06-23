@@ -13,7 +13,7 @@ export const Header = () => {
             asChild
             className="flex items-center rounded-2xl p-6 font-semibold"
           >
-            <a href="https://app.foil.xyz" className="hidden md:inline-flex">
+            <a href="https://www.sapience.xyz" className="hidden md:inline-flex">
               Go to App
             </a>
           </Button>
@@ -21,7 +21,7 @@ export const Header = () => {
             asChild
             className="flex items-center rounded-2xl p-6 font-semibold md:hidden"
           >
-            <a href="https://app.foil.xyz">Install App</a>
+            <a href="https://www.sapience.xyz">Install App</a>
           </Button>
         </div>
       </section>
