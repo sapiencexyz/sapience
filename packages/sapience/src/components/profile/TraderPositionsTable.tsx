@@ -28,6 +28,7 @@ interface TraderPositionsTableProps {
   parentMarketAddress?: string;
   parentChainId?: number;
   parentMarketId?: number;
+  showHeader?: boolean;
 }
 
 function PositionCell({ position }: { position: PositionType }) {
@@ -204,6 +205,7 @@ export default function TraderPositionsTable({
   parentMarketAddress,
   parentChainId,
   parentMarketId,
+  showHeader = true,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -242,12 +244,12 @@ export default function TraderPositionsTable({
 
   return (
     <div>
-      <h3 className="font-medium mb-4">Trader Positions</h3>
+      {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
       <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead /> {/* Header for Position ID */}
+              <TableHead>ID</TableHead> {/* Header for Position ID */}
               {displayQuestionColumn && (
                 <TableHead className="whitespace-nowrap">Question</TableHead>
               )}
