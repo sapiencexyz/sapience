@@ -172,6 +172,8 @@ export class CandleResolver {
         orderBy: { timestamp: 'asc' },
       });
 
+
+
       return getIndexPriceAtTime(
         pricesInRange.map((p) => ({
           timestamp: Number(p.timestamp),

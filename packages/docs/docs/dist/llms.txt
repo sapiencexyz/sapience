@@ -1,0 +1,13 @@
+# Foil
+
+## Docs
+
+- [For Resource Consumers](/consumers-guide): ![Mock up](/images/ss2.png "Mock up")
+- [Ethereum L1 Gas Implementation](/l1-implementation): ![Diagram](/images/Diagram1.png "Diagram")
+- [Ethereum L2 Gas Implementation](/l2-implementation): ![Diagram](/images/Diagram3.png "Diagram")
+- [Market Settlement](/market-settlement): The Foil protocol architecture is modular, allowing different deployments to utilize different strategies for determining the settlement price after the expiration of a given market.
+- [Price Glossary](/price-glossary): The Foil protocol and app reference many different types of prices.
+- [Privacy Policy](/privacy-policy): Last Updated: February 1, 2025
+- [For Resource Producers](/producers-guide): ![Mock up](/images/ss1.png "Mock up")
+- [Terms of Service](/terms-of-service): Last Updated: February 1, 2025
+- [Token Vault](/token-vault): ![Diagram](/images/Diagram2.png "Diagram")

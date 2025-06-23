@@ -28,6 +28,7 @@ interface LpPositionsTableProps {
   parentMarketAddress?: string;
   parentChainId?: number;
   parentMarketId?: number;
+  showHeader?: boolean;
 }
 
 // Helper component for Market Cell (similar to app package but simpler for now)
@@ -110,6 +111,7 @@ export default function LpPositionsTable({
   parentMarketAddress,
   parentChainId,
   parentMarketId,
+  showHeader = true,
 }: LpPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -155,12 +157,12 @@ export default function LpPositionsTable({
 
   return (
     <div>
-      <h3 className="font-medium mb-4">Liquidity Positions</h3>
+      {showHeader && <h3 className="font-medium mb-4">Liquidity Positions</h3>}
       <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead /> {/* Header for Position ID */}
+              <TableHead>ID</TableHead> {/* Header for Position ID */}
               {displayQuestionColumn && <TableHead>Question</TableHead>}
               <TableHead>Collateral</TableHead>
               <TableHead>Base Tokens</TableHead> {/* Updated Header */}
