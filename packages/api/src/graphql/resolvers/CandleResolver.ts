@@ -1,7 +1,6 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
 import prisma from '../../db';
 import { CandleType } from '../types';
-import { ResourcePerformanceManager } from 'src/performance';
 import { CandleCacheRetriever } from 'src/candle-cache/candleCacheRetriever';
 import { CandleAndTimestampType } from '../types/CandleAndTimestampType';
 
@@ -111,92 +110,6 @@ const getIndexPriceAtTime = (
 
 @Resolver()
 export class CandleResolver {
-  @Query(() => [CandleType])
-  async resourceCandles(
-    @Arg('slug', () => String) slug: string,
-    @Arg('from', () => Int) from: number,
-    @Arg('to', () => Int) to: number,
-    @Arg('interval', () => Int) interval: number
-  ): Promise<CandleType[]> {
-    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance =
-      resourcePerformanceManager.getResourcePerformance(slug);
-
-    if (!resourcePerformance) {
-      throw new Error(`Resource performance not initialized for ${slug}`);
-    }
-
-    const prices = await resourcePerformance.getResourcePrices(
-      from,
-      to,
-      interval
-    );
-
-    return prices;
-  }
-
-  @Query(() => [CandleType])
-  async resourceTrailingAverageCandles(
-    @Arg('slug', () => String) slug: string,
-    @Arg('from', () => Int) from: number,
-    @Arg('to', () => Int) to: number,
-    @Arg('interval', () => Int) interval: number,
-    @Arg('trailingAvgTime', () => Int) trailingAvgTime: number
-  ): Promise<CandleType[]> {
-    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    const resourcePerformance =
-      resourcePerformanceManager.getResourcePerformance(slug);
-
-    if (!resourcePerformance) {
-      throw new Error(`Resource performance not initialized for ${slug}`);
-    }
-
-    const prices = await resourcePerformance.getTrailingAvgPrices(
-      from,
-      to,
-      interval,
-      trailingAvgTime
-    );
-
-    return prices;
-  }
-
-  @Query(() => [CandleType])
-  async indexCandles(
-    @Arg('chainId', () => Int) chainId: number,
-    @Arg('address', () => String) address: string,
-    @Arg('marketId', () => String) marketId: string,
-    @Arg('from', () => Int) from: number,
-    @Arg('to', () => Int) to: number,
-    @Arg('interval', () => Int) interval: number
-  ): Promise<CandleType[]> {
-    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    try {
-      const resourcePerformance =
-        resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
-          chainId,
-          address
-        );
-
-      if (!resourcePerformance) {
-        return [];
-      }
-
-      const prices = await resourcePerformance.getIndexPrices(
-        from,
-        to,
-        interval,
-        chainId,
-        address,
-        marketId
-      );
-
-      return prices;
-    } catch {
-      return [];
-    }
-  }
-
   // For retrieving the exact settlement price
   @Query(() => CandleType, { nullable: true })
   async indexPriceAtTime(
@@ -272,47 +185,6 @@ export class CandleResolver {
     } catch (error) {
       console.error('Error fetching index price at time:', error);
       throw new Error('Failed to fetch index price at time');
-    }
-  }
-
-  @Query(() => [CandleType])
-  async marketCandles(
-    @Arg('chainId', () => Int) chainId: number,
-    @Arg('address', () => String) address: string,
-    @Arg('marketId', () => String) marketId: string,
-    @Arg('from', () => Int) from: number,
-    @Arg('to', () => Int) to: number,
-    @Arg('interval', () => Int) interval: number
-  ): Promise<CandleType[]> {
-    const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-    try {
-      const resourcePerformance =
-        resourcePerformanceManager.getResourcePerformanceFromChainAndAddress(
-          chainId,
-          address
-        );
-
-      if (!resourcePerformance) {
-        console.log(
-          `No resource performance found for ${chainId}-${address}, returning empty array`
-        );
-        return [];
-      }
-
-      const prices = await resourcePerformance.getMarketPrices(
-        from,
-        to,
-        interval,
-        chainId,
-        address,
-        marketId
-      );
-      return prices;
-    } catch (error) {
-      console.log(
-        `Error getting market candles for market without resource: ${chainId}-${address}: ${error instanceof Error ? error.message : String(error)}`
-      );
-      return [];
     }
   }
 

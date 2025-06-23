@@ -2,11 +2,20 @@ import { ReducedMarketPrice } from '../types';
 import { CacheCandle } from 'src/models/CacheCandle';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
-import { getTimtestampCandleInterval } from '../candleUtils';
-import { getOrCreateCandle, saveCandle } from '../dbUtils';
+import { BNMax, BNMin, getTimtestampCandleInterval } from '../candleUtils';
+import {
+  getLatestMarketPrice,
+  getOrCreateCandle,
+  saveCandle,
+} from '../dbUtils';
 import { MarketInfo, MarketInfoStore } from '../marketInfoStore';
 
 export class MarketCandleProcessor {
+  private lastClosePricesByMarketAndInterval: Record<
+    number,
+    Record<number, string>
+  > = {};
+
   constructor(
     private runtimeCandles: RuntimeCandleStore,
     private marketInfoStore: MarketInfoStore
@@ -28,15 +37,19 @@ export class MarketCandleProcessor {
       timestamp: candleTimestamp,
     });
 
+    const open =
+      this.lastClosePricesByMarketAndInterval[price.market][interval] ??
+      price.value;
+
     // CANDLE VALUES
     candle.marketId = price.market;
     candle.address = marketInfo.marketGroupAddress;
     candle.chainId = marketInfo.marketGroupChainId;
     candle.endTimestamp = candleEndTimestamp;
     candle.lastUpdatedTimestamp = price.timestamp;
-    candle.open = price.value;
-    candle.high = price.value;
-    candle.low = price.value;
+    candle.open = open;
+    candle.high = BNMax(open, price.value);
+    candle.low = BNMin(open, price.value);
     candle.close = price.value;
     candle.marketId = price.market;
     return candle;
@@ -51,6 +64,24 @@ export class MarketCandleProcessor {
 
     // For each interval add the price to the candle
     for (const interval of CANDLE_CACHE_CONFIG.intervals) {
+      if (!this.lastClosePricesByMarketAndInterval[price.market]) {
+        this.lastClosePricesByMarketAndInterval[price.market] = {};
+      }
+      if (!this.lastClosePricesByMarketAndInterval[price.market][interval]) {
+        // Get the last known price to use as initial price
+        const lastPrice = await getLatestMarketPrice(
+          price.timestamp,
+          price.market
+        );
+        if (lastPrice) {
+          this.lastClosePricesByMarketAndInterval[price.market][interval] =
+            lastPrice.value;
+        } else {
+          this.lastClosePricesByMarketAndInterval[price.market][interval] =
+            price.value;
+        }
+      }
+
       // Calculate the start and end of the candle
       const { start: candleTimestamp, end: candleEndTimestamp } =
         getTimtestampCandleInterval(price.timestamp, interval);
@@ -64,6 +95,8 @@ export class MarketCandleProcessor {
 
       // If we have a candle but it's from a different period, save it and create a new one
       if (candle && candle.timestamp < candleTimestamp) {
+        this.lastClosePricesByMarketAndInterval[price.market][interval] =
+          candle.close;
         await saveCandle(candle);
         candle = await this.getNewCandle(
           interval,
@@ -85,10 +118,8 @@ export class MarketCandleProcessor {
         this.runtimeCandles.setMarketCandle(price.market, interval, candle);
       } else {
         // Update existing candle
-        candle.high = String(
-          Math.max(Number(candle.high), Number(price.value))
-        );
-        candle.low = String(Math.min(Number(candle.low), Number(price.value)));
+        candle.high = BNMax(candle.high, price.value);
+        candle.low = BNMin(candle.low, price.value);
         candle.close = price.value;
         candle.lastUpdatedTimestamp = price.timestamp;
       }

@@ -104,8 +104,8 @@ const Admin = () => {
       // Build the endpoint URL based on whether a specific resource is selected
       const endpoint =
         refreshResourceSlug && refreshResourceSlug !== 'all'
-          ? `/cache/refresh/${refreshResourceSlug}?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
-          : `/cache/refresh?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`;
+          ? `/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
+          : `/cache/refresh-candle-cache?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`;
 
       const response = await foilApi.get(endpoint);
 

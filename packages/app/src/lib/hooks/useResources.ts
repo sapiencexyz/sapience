@@ -43,6 +43,8 @@ export interface Resource {
 
 const RESOURCE_BITCOIN_HASH_SLUG = 'bitcoin-hashrate';
 
+const DECENTRALIZED_COMPUTE_CATEGORY_SLUG = 'decentralized-compute';
+
 const LATEST_RESOURCE_PRICE_QUERY = gql`
   query GetLatestResourcePrice(
     $slug: String!
@@ -50,16 +52,24 @@ const LATEST_RESOURCE_PRICE_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
-      timestamp
-      close
+    resourceCandlesFromCache(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 const LATEST_INDEX_PRICE_QUERY = gql`
   query GetLatestIndexPrice($address: String!, $chainId: Int!, $marketId: String!) {
-    indexCandles(
+    indexCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -67,15 +77,18 @@ const LATEST_INDEX_PRICE_QUERY = gql`
       to: ${Math.floor(Date.now() / 1000)}
       interval: 60  # 1 minute intervals
     ) {
-      timestamp
-      close
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 const RESOURCES_QUERY = gql`
-  query GetResources {
-    resources {
+  query GetResources($categorySlug: String) {
+    resources(categorySlug: $categorySlug) {
       id
       name
       slug
@@ -111,26 +124,25 @@ const RESOURCES_QUERY = gql`
 
 export const useResources = () => {
   return useQuery<Resource[]>({
-    queryKey: ['resources'],
+    queryKey: ['resources', { category: DECENTRALIZED_COMPUTE_CATEGORY_SLUG }],
     queryFn: async () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
+        variables: {
+          categorySlug: DECENTRALIZED_COMPUTE_CATEGORY_SLUG,
+        },
       });
       const resources = data.resources.sort((a: Resource, b: Resource) => {
         const indexA = RESOURCE_ORDER.indexOf(a.slug);
         const indexB = RESOURCE_ORDER.indexOf(b.slug);
         return indexA - indexB;
       });
-      const filteredResources = resources.filter(
-        (resource: Resource) =>
-          resource.category?.slug === 'decentralized-compute'
-      );
-      return filteredResources.map((resource: Resource) => ({
+      return resources.map((resource: Resource) => ({
         ...resource,
         iconPath: `/resources/${resource.slug}.svg`,
         marketGroups: resource.marketGroups.filter(
           (marketGroup: MarketGroup) =>
-            marketGroup.category?.slug === 'decentralized-compute'
+            marketGroup.category?.slug === DECENTRALIZED_COMPUTE_CATEGORY_SLUG
         ),
       }));
     },
@@ -139,7 +151,7 @@ export const useResources = () => {
 
 export const useResourcesAdmin = () => {
   return useQuery<Resource[]>({
-    queryKey: ['resources'],
+    queryKey: ['resources', 'admin'],
     queryFn: async () => {
       const { data } = await foilApi.post('/graphql', {
         query: print(RESOURCES_QUERY),
@@ -173,7 +185,7 @@ export const useLatestResourcePrice = (slug: string) => {
         },
       });
 
-      const candles = data.resourceCandles;
+      const candles = data.resourceCandlesFromCache.data;
       if (!candles || candles.length === 0) {
         throw new Error('No price data found');
       }
@@ -224,7 +236,7 @@ export const useLatestIndexPrice = (market: {
         },
       });
 
-      const candles = data.indexCandles;
+      const candles = data.indexCandlesFromCache.data;
       if (!candles || candles.length === 0) {
         throw new Error('No index price data found');
       }

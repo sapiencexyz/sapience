@@ -1,9 +1,6 @@
 import 'reflect-metadata';
-import {
-  initializeDataSource,
-  resourceRepository,
-  marketGroupRepository,
-} from '../db';
+import { initializeDataSource } from '../db';
+import prisma from '../db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
 import { handleJobCommand } from './jobs';
 import { startIndexingAndWatchingMarketGroups as indexMarketsJob } from './jobs/indexMarkets';
@@ -24,10 +21,10 @@ async function main() {
 }
 
 async function startMarketIndexers(): Promise<Promise<void | (() => void)>[]> {
-  const distinctChainIdsResult = await marketGroupRepository
-    .createQueryBuilder('marketGroup')
-    .select('DISTINCT "chainId"')
-    .getRawMany();
+  const distinctChainIdsResult = await prisma.market_group.findMany({
+    select: { chainId: true },
+    distinct: ['chainId'],
+  });
 
   const chainIds: number[] = distinctChainIdsResult.map(
     (result) => result.chainId
@@ -51,7 +48,7 @@ async function startResourceIndexers(): Promise<
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
     // Find the resource in the database
-    const resource = await resourceRepository.findOne({
+    const resource = await prisma.resource.findFirst({
       where: { slug: resourceSlug },
     });
 
@@ -64,7 +61,7 @@ async function startResourceIndexers(): Promise<
       // Then start watching for new blocks
       resourceJobs.push(
         createResilientProcess(
-          () => indexer.watchBlocksForResource(resource) as Promise<void>,
+          () => indexer.watchBlocksForResource(resource as any) as Promise<void>,
           `watchBlocksForResource-${resourceSlug}`
         )()
       );

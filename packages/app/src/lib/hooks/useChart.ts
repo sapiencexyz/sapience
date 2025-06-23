@@ -85,7 +85,7 @@ const getIntervalSeconds = (interval: TimeInterval): number => {
 
 // GraphQL Queries
 const MARKET_CANDLES_QUERY = gql`
-  query MarketCandles(
+  query MarketCandlesFromCache(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -93,7 +93,7 @@ const MARKET_CANDLES_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandles(
+    marketCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -101,17 +101,20 @@ const MARKET_CANDLES_QUERY = gql`
       to: $to
       interval: $interval
     ) {
-      timestamp
-      open
-      high
-      low
-      close
+      data {
+        timestamp
+        open
+        high
+        low
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 const INDEX_CANDLES_QUERY = gql`
-  query IndexCandles(
+  query IndexCandlesFromCache(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -119,7 +122,7 @@ const INDEX_CANDLES_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    indexCandles(
+    indexCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -127,43 +130,57 @@ const INDEX_CANDLES_QUERY = gql`
       to: $to
       interval: $interval
     ) {
-      timestamp
-      close
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 const RESOURCE_CANDLES_QUERY = gql`
-  query ResourceCandles(
+  query ResourceCandlesFromCache(
     $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
   ) {
-    resourceCandles(slug: $slug, from: $from, to: $to, interval: $interval) {
-      timestamp
-      close
+    resourceCandlesFromCache(
+      slug: $slug
+      from: $from
+      to: $to
+      interval: $interval
+    ) {
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 const TRAILING_RESOURCE_CANDLES_QUERY = gql`
-  query TrailingResourceCandles(
+  query TrailingResourceCandlesFromCache(
     $slug: String!
     $from: Int!
     $to: Int!
     $interval: Int!
     $trailingAvgTime: Int!
   ) {
-    resourceTrailingAverageCandles(
+    resourceTrailingAverageCandlesFromCache(
       slug: $slug
       from: $from
       to: $to
       interval: $interval
       trailingAvgTime: $trailingAvgTime
     ) {
-      timestamp
-      close
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -301,7 +318,7 @@ export const useChart = ({
         },
       });
 
-      return data.marketCandles.map((candle: any) => ({
+      return data.marketCandlesFromCache.data.map((candle: any) => ({
         startTimestamp: timeToLocal(candle.timestamp * 1000),
         endTimestamp: timeToLocal((candle.timestamp + interval) * 1000),
         open: candle.open,
@@ -356,7 +373,7 @@ export const useChart = ({
         },
       });
 
-      return data.indexCandles.map((candle: any) => ({
+      return data.indexCandlesFromCache.data.map((candle: any) => ({
         price: Number(formatUnits(BigInt(candle.close), 9)),
         timestamp: timeToLocal(candle.timestamp * 1000),
       }));
@@ -391,7 +408,7 @@ export const useChart = ({
         },
       });
 
-      return data.resourceCandles.map((candle: any) => ({
+      return data.resourceCandlesFromCache.data.map((candle: any) => ({
         timestamp: timeToLocal(candle.timestamp * 1000),
         price: Number(formatUnits(BigInt(candle.close), 9)),
       }));
@@ -438,10 +455,12 @@ export const useChart = ({
           },
         });
 
-        return data.resourceTrailingAverageCandles.map((candle: any) => ({
-          timestamp: timeToLocal(candle.timestamp * 1000),
-          price: Number(formatUnits(BigInt(candle.close), 9)),
-        }));
+        return data.resourceTrailingAverageCandlesFromCache.data.map(
+          (candle: any) => ({
+            timestamp: timeToLocal(candle.timestamp * 1000),
+            price: Number(formatUnits(BigInt(candle.close), 9)),
+          })
+        );
       },
       enabled: !!resourceSlug && !contextMarket?.isCumulative,
     });

@@ -1,5 +1,5 @@
-import { initializeDataSource, resourceRepository } from '../../db';
-import { Resource } from '../../models/Resource';
+import { initializeDataSource } from '../../db';
+import prisma from '../../db';
 import { reindexMarket } from './reindexMarket';
 import { reindexMissingBlocks } from './reindexMissingBlocks';
 import { reindexResource } from './reindexResource';
@@ -51,7 +51,7 @@ const callReindexResource = async (argv: string[]) => {
     process.exit(1);
   }
   await initializeDataSource(); // Ensure DB is initialized for this job
-  const resource: Resource | null = await resourceRepository.findOne({
+  const resource = await prisma.resource.findFirst({
     where: {
       slug: slug,
     },
@@ -61,7 +61,7 @@ const callReindexResource = async (argv: string[]) => {
     console.error('Resource for the chosen slug was not found');
     process.exit(1); // Exit with error if resource not found
   }
-  const result = await reindexResource(resource, startTimestamp, endTimestamp);
+  const result = await reindexResource(resource as any, startTimestamp, endTimestamp);
 
   if (!result) {
     console.error('Failed to reindex resource');

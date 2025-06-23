@@ -7,7 +7,9 @@ import { ResourcePriceType } from '../types';
 @Resolver(() => ResourceType)
 export class ResourceResolver {
   @Query(() => [ResourceType])
-  async resources(): Promise<ResourceType[]> {
+  async resources(
+    @Arg('categorySlug', () => String, { nullable: true }) categorySlug?: string
+  ): Promise<ResourceType[]> {
     try {
       const resources = await prisma.resource.findMany({
         include: {

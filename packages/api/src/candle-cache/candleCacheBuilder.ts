@@ -10,6 +10,11 @@ export class CandleCacheBuilder extends BaseCandleCacheBuilder {
     super();
   }
 
+  // Implement the abstract method to specify the IPC key for this class
+  protected getStatusIPCKey(): string {
+    return CANDLE_CACHE_IPC_KEYS.candleCacheBuilderStatus;
+  }
+
   public static getInstance() {
     if (!this.instance) {
       this.instance = new CandleCacheBuilder();

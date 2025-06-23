@@ -47,6 +47,7 @@ model cache_param {
   createdAt        DateTime @default(now()) @db.Timestamp(6)
   paramName        String   @unique(map: "UQ_aed649af408ded722f22e882314") @db.VarChar
   paramValueNumber Decimal  @db.Decimal(78, 0)
+  paramValueString String?  @db.Text
 
   @@index([paramName], map: "IDX_aed649af408ded722f22e88231")
 }

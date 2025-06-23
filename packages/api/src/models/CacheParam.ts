@@ -24,4 +24,7 @@ export class CacheParam {
 
   @Column({ type: 'numeric', precision: NUMERIC_PRECISION, scale: 0 })
   paramValueNumber: number;
+
+  @Column({ type: 'text', nullable: true })
+  paramValueString: string | null;
 }

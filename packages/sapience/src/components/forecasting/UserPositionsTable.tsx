@@ -22,6 +22,7 @@ interface UserPositionsTableProps {
   marketId?: number; // Changed from string to number to match typical ID types
   refetchUserPositions?: () => void;
   showProfileButton?: boolean;
+  showHeaderText?: boolean;
 }
 
 const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
@@ -30,6 +31,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
   chainId,
   marketId,
   refetchUserPositions,
+  showHeaderText = true,
   showProfileButton = true,
 }) => {
   // Animation variants
@@ -136,7 +138,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       variants={containerVariants}
     >
       <AnimatePresence mode="wait">
-        {hasAnyData && (
+        {hasAnyData && showHeaderText && (
           <motion.h3
             className="text-2xl font-medium mb-4"
             variants={itemVariants}

@@ -1,6 +1,6 @@
 import { TIME_INTERVALS } from 'src/fixtures';
-import { startOfCurrentInterval } from './helper';
-import prisma from '../db';
+import prisma from 'src/db';
+import { startOfInterval } from 'src/candle-cache/candleUtils';
 
 interface PnLData {
   owner: string;
@@ -25,8 +25,8 @@ interface EpochPnLData {
   datapointTime: number;
 }
 
-export class PnLPerformance {
-  private static instance: PnLPerformance;
+export class EpochPnL {
+  private static instance: EpochPnL;
   private INTERVAL = TIME_INTERVALS.intervals.INTERVAL_5_MINUTES;
 
   private epochs: EpochPnLData[] = [];
@@ -35,20 +35,17 @@ export class PnLPerformance {
     // Private constructor to prevent direct construction calls with the `new` operator
   }
 
-  public static getInstance(): PnLPerformance {
-    if (!PnLPerformance.instance) {
-      PnLPerformance.instance = new PnLPerformance();
+  public static getInstance(): EpochPnL {
+    if (!EpochPnL.instance) {
+      EpochPnL.instance = new EpochPnL();
     }
 
-    return PnLPerformance.instance;
+    return EpochPnL.instance;
   }
 
   async getEpochPnLs(chainId: number, address: string, epochId: number) {
     const currentTimestamp = Date.now() / 1000;
-    const datapointTime = startOfCurrentInterval(
-      currentTimestamp,
-      this.INTERVAL
-    );
+    const datapointTime = startOfInterval(currentTimestamp, this.INTERVAL);
 
     let epoch = this.epochs.find(
       (data) =>
@@ -80,9 +77,7 @@ export class PnLPerformance {
       // 1. Fetch positions for the epoch
       const positions = await prisma.position.findMany({
         where: {
-          market: {
-            id: epochData.id,
-          },
+          marketId: epochData.id,
         },
         include: {
           transaction: {
@@ -98,7 +93,9 @@ export class PnLPerformance {
       const pnlByOwner = new Map<string, PnLData>();
 
       for (const position of positions) {
-        const ownerId = position.owner ? position.owner.toLowerCase() : '';
+        if (!position.owner) continue; // Skip positions without owner
+        
+        const ownerId = position.owner.toLowerCase();
 
         if (!pnlByOwner.has(ownerId)) {
           pnlByOwner.set(ownerId, {

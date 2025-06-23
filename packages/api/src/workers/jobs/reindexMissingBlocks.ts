@@ -3,7 +3,6 @@ import { initializeMarket } from '../../controllers/market';
 import { getMarketStartEndBlock } from '../../controllers/marketHelpers';
 import * as Sentry from '@sentry/node';
 import { INDEXERS } from '../../fixtures';
-import { Resource } from 'src/models/Resource';
 
 export async function reindexMissingBlocks(
   chainId: number,
@@ -96,7 +95,7 @@ export async function reindexMissingBlocks(
 
     if (marketInfo.resource && marketInfo.resource?.priceIndexer) {
       await marketInfo.resource.priceIndexer.indexBlocks(
-        market.resource as Resource,
+        market.resource as any,
         missingBlockNumbers
       );
     }

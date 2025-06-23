@@ -28,6 +28,29 @@ export async function setParam(paramName: string, paramValue: number) {
   });
 }
 
+export async function getStringParam(
+  paramName: string
+): Promise<string | null> {
+  const config = await prisma.cache_param.findFirst({
+    where: { paramName },
+  });
+  if (!config) {
+    return null;
+  }
+  return config.paramValueString;
+}
+
+export async function setStringParam(
+  paramName: string,
+  paramValue: string | null
+) {
+  await prisma.cache_param.upsert({
+    where: { paramName },
+    update: { paramValueString: paramValue },
+    create: { paramName, paramValueNumber: 0, paramValueString: paramValue },
+  });
+}
+
 export async function getResourcePricesCount(
   params: ResourcePriceParams
 ): Promise<number> {
@@ -86,6 +109,30 @@ export async function getResourcePrices(
   return { prices, hasMore };
 }
 
+export async function getLatestResourcePrice(
+  initialTimestamp: number,
+  resourceSlug: string
+): Promise<any | null> {
+  const resourcePrice = await prisma.resource_price.findFirst({
+    where: {
+      timestamp: { lt: initialTimestamp },
+      resource: { slug: resourceSlug },
+    },
+    orderBy: {
+      timestamp: 'desc',
+    },
+    include: {
+      resource: true,
+    },
+  });
+
+  if (!resourcePrice) {
+    return null;
+  }
+
+  return resourcePrice;
+}
+
 export async function getMarketPrices({
   initialTimestamp,
   quantity,
@@ -131,6 +178,46 @@ export async function getMarketPrices({
   return {
     prices: reducedMarketPrices,
     hasMore: marketPrices.length === quantity,
+  };
+}
+
+export async function getLatestMarketPrice(
+  initialTimestamp: number,
+  marketIdx: number
+): Promise<ReducedMarketPrice | null> {
+  const marketPrice = await prisma.market_price.findFirst({
+    where: {
+      timestamp: { lt: BigInt(initialTimestamp.toString()) },
+      transaction: {
+        position: {
+          market: { id: marketIdx },
+        },
+      },
+    },
+    orderBy: {
+      timestamp: 'desc',
+    },
+    include: {
+      transaction: {
+        include: {
+          position: {
+            include: {
+              market: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!marketPrice || !marketPrice.transaction?.position?.market) {
+    return null;
+  }
+
+  return {
+    value: marketPrice.value.toString(),
+    timestamp: Number(marketPrice.timestamp),
+    market: marketPrice.transaction.position.market.id,
   };
 }
 

@@ -9,7 +9,7 @@ import {
 } from 'viem';
 import { mainnet, sepolia, cannon, base, arbitrum } from 'viem/chains';
 import { TOKEN_PRECISION } from '../constants';
-import { marketRepository } from '../db';
+import prisma from '../db';
 import { Deployment } from '../interfaces';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -157,15 +157,17 @@ export const getTimestampsForReindex = async (
   }
 
   // get info from database
-  const market = await marketRepository.findOne({
+  const market = await prisma.market.findFirst({
     where: {
       marketId: epochId,
-      marketGroup: {
+      market_group: {
         address: contractDeployment.address.toLowerCase(),
         chainId,
       },
     },
-    relations: ['marketGroup'],
+    include: {
+      market_group: true,
+    },
   });
 
   if (!market || !market.startTimestamp || !market.endTimestamp) {
@@ -556,4 +558,22 @@ export function createResilientProcess<T>(
 
 export const truncateAddress = (address: string) => {
   return address.slice(0, 6) + '...' + address.slice(-4);
+};
+
+export const formatToFirstSignificantDecimal = (value: number): string => {
+  if (value === 0) return '0';
+  if (Math.abs(value) >= 1) {
+    return value.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  const absValue = Math.abs(value);
+  const decimalPlaces = Math.max(1, Math.ceil(-Math.log10(absValue)) + 1);
+
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: Math.min(decimalPlaces, 18),
+  });
 };

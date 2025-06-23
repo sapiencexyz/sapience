@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class Migration1748528252663 implements MigrationInterface {
-  name = 'Migration1748528252663';
+export class Migration1749151918542 implements MigrationInterface {
+  name = 'Migration1749151918542';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`TRUNCATE TABLE "cache_candle" RESTART IDENTITY`);
