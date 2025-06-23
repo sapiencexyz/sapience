@@ -281,12 +281,8 @@ const PredictionPositionsTable = ({
         cell: (info) => renderActionsCell({ row: info.row }),
       },
     ],
-    [
-      marketGroups,
-      isMarketsLoading,
-      isMarketPage,
-      shouldDisplayQuestionColumn, // Use memoized value and remove attestations
-    ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [marketGroups, isMarketsLoading, isMarketPage, shouldDisplayQuestionColumn]
   );
 
   const table = useReactTable({

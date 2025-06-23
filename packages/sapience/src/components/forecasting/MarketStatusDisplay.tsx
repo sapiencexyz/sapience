@@ -80,7 +80,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
     }
 
     return (
-      <div className="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-6 text-center">
+      <div className="rounded-lg border border-border p-6 text-center">
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="rounded-full bg-green-100 dark:bg-green-800 p-2">
             <svg
