@@ -133,7 +133,7 @@
   "linkedLibraries": {},
   "deployTxnHash": "0xadf69b1519997349ef1fda710ea80d2f0e3fe110a3b05268b41935506d3d6711",
   "deployTxnBlockNumber": "7",
-  "deployTimestamp": "1750453820",
+  "deployTimestamp": "1750562587",
   "sourceName": "src/UMA/src/FinderOverride.sol",
   "contractName": "FinderOverride",
   "deployedOn": "deploy.Finder",

@@ -30,21 +30,6 @@ interface ILiquidityModule {
             uint256 addedAmount1
         );
 
-    struct DecreaseLiquidityPositionStack {
-        uint256 previousAmount0;
-        uint256 previousAmount1;
-        uint128 previousLiquidity;
-        int24 lowerTick;
-        int24 upperTick;
-        INonfungiblePositionManager.DecreaseLiquidityParams decreaseParams;
-        uint256 tokensOwed0;
-        uint256 tokensOwed1;
-        bool isFeeCollector;
-        uint256 requiredCollateralAmount;
-        uint256 newCollateralAmount;
-        uint256 loanAmount0;
-        uint256 loanAmount1;
-    }
 
     /**
      * @notice Decreases the liquidity position
@@ -67,26 +52,11 @@ interface ILiquidityModule {
      * @return collateralAmount The amount of collateral returned from the LP position, if it's closed as LP, if it's transformed to trade, then this amount is the collateral amount backing the trade position that is closed .
      */
     function closeLiquidityPosition(
-        IFoilStructs.LiquidityCloseParams memory params
+        ISapienceStructs.LiquidityCloseParams memory params
     )
         external
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
 
-    struct IncreaseLiquidityPositionStack {
-        uint256 previousAmount0;
-        uint256 previousAmount1;
-        uint128 previousLiquidity;
-        int24 lowerTick;
-        int24 upperTick;
-        INonfungiblePositionManager.IncreaseLiquidityParams increaseParams;
-        uint256 tokensOwed0;
-        uint256 tokensOwed1;
-        bool isFeeCollector;
-        uint256 requiredCollateralAmount;
-        uint256 newCollateralAmount;
-        uint256 loanAmount0;
-        uint256 loanAmount1;
-    }
 
     function increaseLiquidityPosition(
         ISapienceStructs.LiquidityIncreaseParams memory params
