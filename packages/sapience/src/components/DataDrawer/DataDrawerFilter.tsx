@@ -21,7 +21,7 @@ const DataDrawerFilter = ({
         onClick={() => onAddressChange(null)}
         className={`flex items-center gap-2 ${selectedView === 'market' ? 'bg-secondary' : ''}`}
       >
-        <ChartColumnIncreasingIcon className="w-4 h-4" /> All Period Data
+        <ChartColumnIncreasingIcon className="w-4 h-4" /> All Market Data
       </Button>
       <WalletAddressPopover
         onWalletSelect={onAddressChange}

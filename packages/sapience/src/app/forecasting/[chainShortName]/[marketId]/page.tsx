@@ -12,9 +12,9 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 
-import DataDrawer from '~/components/DataDrawer';
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
+import DataDrawer from '~/components/DataDrawer';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
