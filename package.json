@@ -4,11 +4,11 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter docs run build && pnpm --filter foil run build && pnpm --filter data run build",
+    "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter foil-docs run build && pnpm --filter foil run build && pnpm --filter data run build",
     "test": "pnpm run test --recursive",
     "dev:protocol": "pnpm --filter protocol run dev",
     "dev:app": "pnpm --filter app run dev",
-    "dev:docs": "pnpm --filter docs run dev",
+    "dev:foil-docs": "pnpm --filter foil-docs run dev",
     "dev:foil": "pnpm --filter foil run dev",
     "dev:agent": "pnpm --filter agent run dev",
     "dev:api": "concurrently \"NODE_ENV=development pnpm --filter api run dev:service\" \"NODE_ENV=development pnpm --filter api run dev:worker\"",
