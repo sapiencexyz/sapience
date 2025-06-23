@@ -1,11 +1,16 @@
-import { ResourcePrice } from 'src/models/ResourcePrice';
-import { CacheCandle } from 'src/models/CacheCandle';
+import type {
+  resource_price,
+  cache_candle,
+  resource,
+} from '../../../generated/prisma';
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getTimtestampCandleInterval } from '../candleUtils';
 import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { MarketInfo, MarketInfoStore } from '../marketInfoStore';
 import { Decimal } from '@prisma/client/runtime/library';
+
+type ResourcePriceWithResource = resource_price & { resource: resource };
 
 export class IndexCandleProcessor {
   constructor(
@@ -14,13 +19,17 @@ export class IndexCandleProcessor {
   ) {}
 
   private getNewAvgPaidAndFee = (
-    prevCandle: CacheCandle | undefined,
-    price: ResourcePrice
+    prevCandle: cache_candle | undefined,
+    price: ResourcePriceWithResource
   ) => {
     const feePaid =
-      (prevCandle ? BigInt(prevCandle.sumFeePaid) : BigInt(0)) + BigInt(price.feePaid);
+      (prevCandle && prevCandle.sumFeePaid
+        ? BigInt(prevCandle.sumFeePaid.toString())
+        : BigInt(0)) + BigInt(price.feePaid.toString());
     const used =
-      (prevCandle ? BigInt(prevCandle.sumUsed) : BigInt(0)) + BigInt(price.used);
+      (prevCandle && prevCandle.sumUsed
+        ? BigInt(prevCandle.sumUsed.toString())
+        : BigInt(0)) + BigInt(price.used.toString());
     const avg = used > 0 ? feePaid / used : 0;
     return { feePaid, used, avg };
   };
@@ -29,10 +38,10 @@ export class IndexCandleProcessor {
     interval: number,
     candleTimestamp: number,
     candleEndTimestamp: number,
-    price: ResourcePrice,
+    price: ResourcePriceWithResource,
     marketInfo: MarketInfo,
-    prevCandle: CacheCandle | undefined
-  ): Promise<CacheCandle> {
+    prevCandle: cache_candle | undefined
+  ): Promise<cache_candle> {
     const { feePaid, used, avg } = this.getNewAvgPaidAndFee(prevCandle, price);
 
     const candle = await getOrCreateCandle({
@@ -54,12 +63,12 @@ export class IndexCandleProcessor {
     candle.high = String(avg);
     candle.low = String(avg);
     candle.close = String(avg);
-    candle.sumFeePaid = new Decimal(feePaid);
-    candle.sumUsed = new Decimal(used);
+    candle.sumFeePaid = new Decimal(feePaid.toString());
+    candle.sumUsed = new Decimal(used.toString());
     return candle;
   }
 
-  public async processResourcePrice(price: ResourcePrice) {
+  public async processResourcePrice(price: ResourcePriceWithResource) {
     // For each market, check if the price timestamp is within the market's active period
     for (const marketIdx of this.marketInfoStore.getAllMarketIndexesByResourceSlug(
       price.resource.slug
@@ -118,8 +127,8 @@ export class IndexCandleProcessor {
           candle.low = String(avg);
           candle.close = String(avg);
           candle.lastUpdatedTimestamp = price.timestamp;
-          candle.sumFeePaid = new Decimal(feePaid);
-          candle.sumUsed = new Decimal(used);
+          candle.sumFeePaid = new Decimal(feePaid.toString());
+          candle.sumUsed = new Decimal(used.toString());
         }
       }
     }

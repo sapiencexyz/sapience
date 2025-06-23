@@ -2,7 +2,7 @@ import { ResponseCandleData } from './types';
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
 import { getTimeWindow } from './candleUtils';
 import { getCandles, getMarketGroups } from './dbUtils';
-import { CacheCandle } from 'src/models/CacheCandle';
+import type { cache_candle } from '../../generated/prisma';
 import { MarketInfoStore } from './marketInfoStore';
 import type { Prisma } from '../../generated/prisma';
 
@@ -198,7 +198,7 @@ export class CandleCacheRetriever {
     initialTimestamp: number;
     finalTimestamp: number;
     interval: number;
-    candles: CacheCandle[];
+    candles: cache_candle[];
     isCumulative: boolean;
     fillMissingCandles: boolean;
     fillInitialCandlesWithZeroes: boolean;
