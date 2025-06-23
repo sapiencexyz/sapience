@@ -11,7 +11,7 @@ import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle
 import {IUMALayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {console2} from "forge-std/console2.sol";
+// import {console2} from "forge-std/console2.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 
@@ -37,6 +37,8 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     using Encoder for bytes;
     using BridgeTypes for BridgeTypes.BridgeConfig;
     using OptionsBuilder for bytes;
+
+    uint256 public constant WITHDRAWAL_DELAY = 1 days;
 
     // State variables
     BridgeTypes.BridgeConfig private bridgeConfig;
@@ -104,28 +106,39 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         return address(this).balance;
     }
 
+    // Receive function to accept ETH
+    receive() external payable {
+        emit ETHDeposited(msg.sender, msg.value);
+    }
+
     // Bond Management Functions
     function depositBond(
         address bondToken,
         uint256 amount
-    ) external nonReentrant {
+    ) external nonReentrant returns (MessagingReceipt memory) {
         require(amount > 0, "Amount must be greater than 0");
+
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
-        submitterBondBalances[msg.sender][bondToken] += amount;
-        emit BondDeposited(msg.sender, bondToken, amount);
-        _sendBalanceUpdate(
-            Encoder.CMD_FROM_ESCROW_BOND_SENT,
+        
+        MessagingReceipt memory receipt = _sendBalanceUpdate(
+            Encoder.CMD_FROM_ESCROW_DEPOSIT,
             msg.sender,
             bondToken,
             submitterBondBalances[msg.sender][bondToken],
             amount
         );
+        
+        submitterBondBalances[msg.sender][bondToken] += amount;
+        
+        emit BondDeposited(msg.sender, bondToken, amount);
+        
+        return receipt;
     }
 
     function intentToWithdrawBond(
         address bondToken,
         uint256 amount
-    ) external nonReentrant {
+    ) external nonReentrant returns (MessagingReceipt memory) {
         require(amount > 0, "Amount must be greater than 0");
         require(
             submitterBondBalances[msg.sender][bondToken] >= amount,
@@ -136,30 +149,49 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
             "Withdrawal intent already exists"
         );
 
+        MessagingReceipt memory receipt = _sendBalanceUpdate(
+            Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW,
+            msg.sender,
+            bondToken,
+            submitterBondBalances[msg.sender][bondToken],
+            amount
+        );
+
         withdrawalIntents[msg.sender][bondToken] = WithdrawalIntent({
             amount: amount,
             timestamp: block.timestamp,
             executed: false
         });
 
-        // emit WithdrawalIntentCreated(msg.sender, bondToken, amount);
+        emit BondWithdrawalIntentCreated(msg.sender, bondToken, amount, block.timestamp);
+
+        return receipt;
     }
 
-    function executeWithdrawal(address bondToken) external nonReentrant {
+    function executeWithdrawal(address bondToken) external nonReentrant returns (MessagingReceipt memory) {
         WithdrawalIntent storage intent = withdrawalIntents[msg.sender][
             bondToken
         ];
         require(intent.amount > 0, "No withdrawal intent");
         require(!intent.executed, "Withdrawal already executed");
-        // require(block.timestamp >= intent.timestamp + bridgeConfig.withdrawalDelay, "Waiting period not over");
+        require(block.timestamp >= intent.timestamp + WITHDRAWAL_DELAY, "Waiting period not over");
 
-        uint256 amount = intent.amount;
+        MessagingReceipt memory receipt = _sendBalanceUpdate(
+            Encoder.CMD_FROM_ESCROW_WITHDRAW,
+            msg.sender,
+            bondToken,
+            submitterBondBalances[msg.sender][bondToken],
+            intent.amount
+        );
+
         intent.executed = true;
-        submitterBondBalances[msg.sender][bondToken] -= amount;
+        submitterBondBalances[msg.sender][bondToken] -= intent.amount;
 
-        IERC20(bondToken).safeTransfer(msg.sender, amount);
-        emit WithdrawalExecuted(msg.sender, bondToken, amount);
-        // _sendBalanceUpdate(msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], BalanceUpdateType.WITHDRAWAL);
+        emit WithdrawalExecuted(msg.sender, bondToken, intent.amount);
+
+        IERC20(bondToken).safeTransfer(msg.sender, intent.amount);
+
+        return receipt;
     }
 
     function getBondBalance(
@@ -183,7 +215,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     function assertionResolvedCallback(
         bytes32 assertionId,
         bool assertedTruthfully
-    ) external {
+    ) external returns (MessagingReceipt memory) {
         AssertionMarketData storage marketData = assertionIdToMarketData[
             assertionId
         ];
@@ -198,20 +230,21 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         );
 
         // Send message using contract's ETH balance
-        _sendLayerZeroMessageWithQuote(
+        (MessagingReceipt memory receipt, ) = _sendLayerZeroMessageWithQuote(
             Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK,
-            commandPayload,
-            payable(address(this)) // Refund to contract
+            commandPayload,false
         );
 
         submitterBondBalances[marketData.submitter][
             marketData.bondToken
         ] += marketData.bondAmount;
+
+        return receipt;
     }
 
     function assertionDisputedCallback(
         bytes32 assertionId
-    ) external nonReentrant {
+    ) external nonReentrant returns (MessagingReceipt memory) {
         AssertionMarketData storage marketData = assertionIdToMarketData[
             assertionId
         ];
@@ -225,45 +258,15 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         );
 
         // Send message using contract's ETH balance
-        _sendLayerZeroMessageWithQuote(
+        (MessagingReceipt memory receipt, ) = _sendLayerZeroMessageWithQuote(
             Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK,
-            commandPayload,
-            payable(address(this)) // Refund to contract
+            commandPayload,false
         );
 
         // We don't need to update the balance since it was already deducted when the assertion was submitted
+
+        return receipt;
     }
-
-    // function validateSubmission(
-    //     Epoch.Data storage epoch,
-    //     Market.Data storage market,
-    //     address caller
-    // ) internal view {
-    //     require(
-    //         block.timestamp >= epoch.endTime,
-    //         "Market epoch activity is still allowed"
-    //     );
-    //     require(!epoch.settled, "Market epoch already settled");
-    //     require(caller == market.owner, "Only owner can call this function");
-    // }
-
-    // function validateUMACallback(
-    //     Epoch.Data storage epoch,
-    //     address caller,
-    //     bytes32 assertionId
-    // ) internal view {
-    //     OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-    //             epoch.marketParams.optimisticOracleV3
-    //         );
-
-    //     require(
-    //         block.timestamp > epoch.endTime,
-    //         "Market epoch activity is still allowed"
-    //     );
-    //     require(!epoch.settled, "Market epoch already settled");
-    //     require(caller == address(optimisticOracleV3), "Invalid caller");
-    //     require(assertionId == epoch.assertionId, "Invalid assertionId");
-    // }
 
     function _sendBalanceUpdate(
         uint16 updateType,
@@ -271,7 +274,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         address bondToken,
         uint256 finalAmount,
         uint256 deltaAmount
-    ) internal {
+    ) internal returns (MessagingReceipt memory) {
         // Make balance update data for UMA side via LayerZero
         bytes memory commandPayload = Encoder.encodeFromBalanceUpdate(
             submitter,
@@ -280,13 +283,13 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
             deltaAmount
         );
 
-        console2.log("LLL updateType", updateType);
         // Send message using contract's ETH balance
-        _sendLayerZeroMessageWithQuote(
+        (MessagingReceipt memory receipt, ) = _sendLayerZeroMessageWithQuote(
             updateType,
-            commandPayload,
-            payable(address(this)) // Refund to contract
+            commandPayload,false    
         );
+
+        return receipt;
     }
 
     // LayerZero message handling
@@ -318,7 +321,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     }
 
     // Helper function to get LayerZero quote
-    // function getLayerZeroQuote(
+    // function _debugGetLayerZeroQuote(
     //     uint16 commandCode,
     //     bytes memory commandPayload
     // ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
@@ -333,6 +336,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
     //     return (fee.nativeFee, fee.lzTokenFee);
     // }
+
 
     // Helper function to check gas thresholds and emit alerts
     function _checkGasThresholds() internal {
@@ -349,28 +353,25 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     function _sendLayerZeroMessageWithQuote(
         uint16 commandCode,
         bytes memory commandPayload,
-        address payable refundAddress
-    ) internal returns (MessagingReceipt memory receipt) {
+        bool onlyQuote
+    ) internal returns (MessagingReceipt memory receipt, MessagingFee memory fee) {
         bytes memory message = abi.encode(commandCode, commandPayload);
-        console2.log(
-            "LLL commandCode",
-            commandCode,
-            bridgeConfig.remoteChainId
-        );
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(50000, 0);
+            .addExecutorLzReceiveOption(5000000000, 0);
 
-        console2.log("LLL options done");
         // Get quote for the message
-        MessagingFee memory fee = _quote(
+        fee = _quote(
             bridgeConfig.remoteChainId,
             message,
             options, // options
             false // payInLzToken
         );
-        console2.log("LLL fee.nativeFee", fee.nativeFee);
+
+        if (onlyQuote) {
+            return (MessagingReceipt(0,0,fee), fee);
+        }
 
         // Check if contract has enough ETH
         require(
@@ -378,21 +379,29 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
             "Insufficient ETH balance for fee"
         );
 
-        console2.log("LLL address(this).balance", address(this).balance);
         // Check gas thresholds and emit alerts before sending
         _checkGasThresholds();
-        console2.log("LLL _lzSend", bridgeConfig.remoteChainId);
 
-        // Send the message with the quoted fee
-        receipt = _lzSend(
+        // Send the message using the external send function with ETH from contract
+        receipt = this._sendMessageWithETH{value: fee.nativeFee}(
             bridgeConfig.remoteChainId,
             message,
-            options, // options
-            fee,
-            refundAddress
+            options,
+            fee
         );
 
-        return receipt;
+        return (receipt, fee);
+    }
+
+    // External function to send LayerZero messages with ETH from contract balance
+    function _sendMessageWithETH(
+        uint32 _dstEid,
+        bytes memory _message,
+        bytes memory _options,
+        MessagingFee memory _fee
+    ) external payable returns (MessagingReceipt memory) {
+        require(msg.sender == address(this), "Only self-call allowed");
+        return _lzSend(_dstEid, _message, _options, _fee, payable(address(this)));
     }
 
     function _handleAssertTruthCmd(bytes memory data) internal {
@@ -444,4 +453,6 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
         // TODO: emit an event
     }
+
+    
 }

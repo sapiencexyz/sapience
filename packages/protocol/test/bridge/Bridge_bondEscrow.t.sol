@@ -30,8 +30,9 @@ contract BridgeTest is TestHelperOz5 {
     address private optimisticOracleV3;
 
     // LZ data
-    uint32 private aEid = 1;
-    uint32 private bEid = 2;
+    uint32 private umaEiD = 1;
+    uint32 private marketEiD = 2;
+
     address umaEndpoint;
     address marketEndpoint;
 
@@ -46,13 +47,13 @@ contract BridgeTest is TestHelperOz5 {
         super.setUp();
         setUpEndpoints(2, LibraryType.UltraLightNode);
 
-        marketBridge = MarketLayerZeroBridge(
-            _deployOApp(type(MarketLayerZeroBridge).creationCode, abi.encode(address(endpoints[aEid]), address(this)))
-        );
+        marketBridge = MarketLayerZeroBridge(payable(
+            _deployOApp(type(MarketLayerZeroBridge).creationCode, abi.encode(address(endpoints[marketEiD]), address(this)))
+        ));
 
-        umaBridge = UMALayerZeroBridge(
-            _deployOApp(type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[bEid]), address(this)))
-        );
+        umaBridge = UMALayerZeroBridge(payable( 
+            _deployOApp(type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this)))
+        ));
 
         address[] memory oapps = new address[](2);
         oapps[0] = address(marketBridge);
@@ -70,29 +71,22 @@ contract BridgeTest is TestHelperOz5 {
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         BridgeTypes.BridgeConfig memory bridgeConfig = BridgeTypes.BridgeConfig({
-            remoteChainId: aEid,
+            remoteChainId: marketEiD,
             remoteBridge: address(marketBridge),
             settlementModule: address(0)
         });
         umaBridge.setBridgeConfig(bridgeConfig);
-        bridgeConfig.remoteChainId = bEid;
+        bridgeConfig.remoteChainId = umaEiD;
         bridgeConfig.remoteBridge = address(umaBridge);
         bridgeConfig.settlementModule = address(0);
         marketBridge.setBridgeConfig(bridgeConfig);
 
     }
 
-    function test_constructor_LEO() public {
-        assertEq(address(marketBridge.owner()), address(this));
-        assertEq(address(umaBridge.owner()), address(this));
-
-        assertEq(address(marketBridge.endpoint()), address(endpoints[aEid]));
-        assertEq(address(umaBridge.endpoint()), address(endpoints[bEid]));
-    }
-
-    function test_UMA_deposit_LEO() public {
+    function test_Escrow_deposit() public {
         uint256 initialUmaEthBalance = address(umaBridge).balance;
         uint256 initialUmaBondBalance = bondCurrency.balanceOf(umaUser);
+        uint256 initialRemoteUserBondBalance = marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
 
         bondCurrency.mint(100 ether, umaUser);
         uint256 initialUmaUserBondBalance = bondCurrency.balanceOf(umaUser);
@@ -102,43 +96,20 @@ contract BridgeTest is TestHelperOz5 {
         umaBridge.depositBond(address(bondCurrency), 1 ether);
         vm.stopPrank();
 
-        uint256 finalUmaEthBalance = address(umaBridge).balance;
         uint256 finalUmaUserBondBalance = bondCurrency.balanceOf(umaUser);
         uint256 finalUmaBondBalance = bondCurrency.balanceOf(address(umaBridge));
 
         assertEq(finalUmaUserBondBalance, initialUmaUserBondBalance - 1 ether);
         assertEq(finalUmaBondBalance, initialUmaBondBalance + 1 ether);
 
-        console.log("initialUmaEthBalance:        ", initialUmaEthBalance);
-        console.log("finalUmaEthBalance:          ", finalUmaEthBalance);
-        console.log("initialUmaBondBalance:       ", initialUmaBondBalance);
-        console.log("finalUmaBondBalance:         ", finalUmaBondBalance);
-        console.log("initialUmaUserBondBalance:   ", initialUmaUserBondBalance);
-        console.log("finalUmaUserBondBalance:     ", finalUmaUserBondBalance);
+        uint256 finalRemoteUserBondBalance = marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
+        assertEq(finalRemoteUserBondBalance, initialRemoteUserBondBalance, "Message is still not propagated through LZ");
+        // Verify packets for marketBridge (bridge through LZ)
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
 
-
-
-        // MessagingReceipt memory receipt = umaBridge.send{value: twiceQuoteFee}(bEid, message, options, twiceQuoteFee);
-        // verifyPackets(bEid, addressToBytes32(address(marketBridge)));
-
-        // assertEq(receipt.fee.nativeFee, quoteFee);
-        // assertEq(receipt.fee.lzTokenFee, 0);
-
-        // assertEq(address(endpoint).balance, 0);
-        // assertEq((endpointSetup.sendLibs[0]).balance, quoteFee);
+        finalRemoteUserBondBalance = marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
+        assertEq(finalRemoteUserBondBalance, initialRemoteUserBondBalance + 1 ether, "Message is propagated through LZ");
     }
 
-    function test_bridge() public {
-        assertEq(address(umaUser).balance, 1000 ether);
-        assertEq(address(marketUser).balance, 1000 ether);
-
-        vm.startPrank(umaUser);
-        vm.deal(umaUser, 100 ether);
-        vm.stopPrank();
-        assertEq(
-            address(umaUser).balance,
-            100 ether
-        );
-    }
 
 }

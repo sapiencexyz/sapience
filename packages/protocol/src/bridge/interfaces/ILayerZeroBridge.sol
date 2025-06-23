@@ -28,7 +28,7 @@ interface ILayerZeroBridge {
     event SettlementVerified(address indexed market, uint256 indexed epochId, bytes32 assertionId, bool verified);
     event BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount);
     event BondWithdrawn(address indexed submitter, address indexed bondToken, uint256 amount);
-    event WithdrawalIntentCreated(address indexed submitter, address indexed bondToken, uint256 amount, uint256 timestamp);
+    event BondWithdrawalIntentCreated(address indexed submitter, address indexed bondToken, uint256 amount, uint256 timestamp);
     event WithdrawalExecuted(address indexed submitter, address indexed bondToken, uint256 amount);
     event AssertionSubmitted(address indexed marketGroup, uint256 indexed marketId, uint256 assertionId);
     event GasReserveLow(uint256 currentBalance);

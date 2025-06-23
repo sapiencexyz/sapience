@@ -11,6 +11,7 @@ import {Encoder} from "./cmdEncoder.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { BridgeTypes } from "./BridgeTypes.sol";
+// import {console2} from "forge-std/console2.sol";
 
 /**
  * @title MarketLayerZeroBridge
@@ -91,6 +92,11 @@ contract MarketLayerZeroBridge is
 
     function getETHBalance() external view returns (uint256) {
         return address(this).balance;
+    }
+
+    // Receive function to accept ETH
+    receive() external payable {
+        emit ETHDeposited(msg.sender, msg.value);
     }
 
     // Helper function to check gas thresholds and emit alerts
@@ -203,8 +209,7 @@ contract MarketLayerZeroBridge is
     // Helper function to send LayerZero messages with quote
     function _sendLayerZeroMessageWithQuote(
         uint16 commandCode,
-        bytes memory commandPayload,
-        address payable refundAddress
+        bytes memory commandPayload
     ) internal returns (MessagingReceipt memory receipt) {
         bytes memory message = abi.encode(commandCode, commandPayload);
         
@@ -222,16 +227,26 @@ contract MarketLayerZeroBridge is
         // Check gas thresholds and emit alerts before sending
         _checkGasThresholds();
         
-        // Send the message with the quoted fee
-        receipt = _lzSend(
+        // Send the message using the external send function with ETH from contract
+        receipt = this._sendMessageWithETH{value: fee.nativeFee}(
             bridgeConfig.remoteChainId,
             message,
-            bytes(""), // options
-            fee,
-            refundAddress
+            bytes(""),
+            fee
         );
         
         return receipt;
+    }
+
+    // External function to send LayerZero messages with ETH from contract balance
+    function _sendMessageWithETH(
+        uint32 _dstEid,
+        bytes memory _message,
+        bytes memory _options,
+        MessagingFee memory _fee
+    ) external payable returns (MessagingReceipt memory) {
+        require(msg.sender == address(this), "Only self-call allowed");
+        return _lzSend(_dstEid, _message, _options, _fee, payable(address(this)));
     }
 
     function getRemoteSubmitterBalance(
@@ -267,8 +282,7 @@ contract MarketLayerZeroBridge is
         // Send the message with automatic fee calculation
         MessagingReceipt memory receipt = _sendLayerZeroMessageWithQuote(
             Encoder.CMD_TO_UMA_ASSERT_TRUTH,
-            commandPayload,
-            payable(msg.sender)
+            commandPayload
         );
 
         // Store the assertionId to marketGroup mapping
