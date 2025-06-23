@@ -37,6 +37,7 @@ import { usePositions } from '~/hooks/graphql/usePositions';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 
 import DataDrawerFilter from './DataDrawerFilter';
+import MarketLeaderboard from './MarketLeaderboard';
 
 interface DataDrawerProps {
   trigger?: React.ReactNode;
@@ -237,43 +238,52 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
               {tabTitles[selectedTab]}
             </h2>
             <TabsContent value="leaderboard">
-              <div className="w-full py-8 text-center text-muted-foreground">
-                <TrophyIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-                Coming soon
+              <div className="max-h-96 overflow-y-auto">
+                <MarketLeaderboard
+                  marketAddress={marketAddress}
+                  chainId={chainId}
+                  marketId={numericMarketId?.toString() || null}
+                />
               </div>
             </TabsContent>
             <TabsContent value="transactions">
-              {renderTransactionTable()}
+              <div className="max-h-96 overflow-y-auto">
+                {renderTransactionTable()}
+              </div>
             </TabsContent>
             <TabsContent value="trader-positions">
-              {isLoadingPositions ? (
-                <div className="w-full py-8 text-center text-muted-foreground">
-                  <p>Loading positions...</p>
-                </div>
-              ) : (
-                <TraderPositionsTable
-                  positions={traderPositions}
-                  parentMarketAddress={marketAddress || undefined}
-                  parentChainId={chainId || undefined}
-                  parentMarketId={numericMarketId || undefined}
-                  showHeader={false}
-                />
-              )}
+              <div className="max-h-96 overflow-y-auto">
+                {isLoadingPositions ? (
+                  <div className="w-full py-8 text-center text-muted-foreground">
+                    <p>Loading positions...</p>
+                  </div>
+                ) : (
+                  <TraderPositionsTable
+                    positions={traderPositions}
+                    parentMarketAddress={marketAddress || undefined}
+                    parentChainId={chainId || undefined}
+                    parentMarketId={numericMarketId || undefined}
+                    showHeader={false}
+                  />
+                )}
+              </div>
             </TabsContent>
             <TabsContent value="lp-positions">
-              {isLoadingPositions ? (
-                <div className="w-full py-8 text-center text-muted-foreground">
-                  <p>Loading positions...</p>
-                </div>
-              ) : (
-                <LpPositionsTable
-                  positions={lpPositions}
-                  parentMarketAddress={marketAddress || undefined}
-                  parentChainId={chainId || undefined}
-                  parentMarketId={numericMarketId || undefined}
-                  showHeader={false}
-                />
-              )}
+              <div className="max-h-96 overflow-y-auto">
+                {isLoadingPositions ? (
+                  <div className="w-full py-8 text-center text-muted-foreground">
+                    <p>Loading positions...</p>
+                  </div>
+                ) : (
+                  <LpPositionsTable
+                    positions={lpPositions}
+                    parentMarketAddress={marketAddress || undefined}
+                    parentChainId={chainId || undefined}
+                    parentMarketId={numericMarketId || undefined}
+                    showHeader={false}
+                  />
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         </div>
