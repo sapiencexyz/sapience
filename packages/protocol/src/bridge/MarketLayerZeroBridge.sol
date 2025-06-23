@@ -295,7 +295,7 @@ contract MarketLayerZeroBridge is
         address marketGroup,
         uint256 marketId,
         bytes memory claim,
-        address asserter,
+        address asserter, // Notice, asserter is the address of the user that deposited the bond on the other side of the bridge (UMA Side)
         uint64 liveness,
         address currency,
         uint256 bond

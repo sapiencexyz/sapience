@@ -75,6 +75,8 @@ contract BridgeTest is TestHelperOz5 {
             settlementModule: address(0)
         }));
 
+        umaBridge.setOptimisticOracleV3(optimisticOracleV3);
+
         marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
             remoteChainId: umaEiD,
             remoteBridge: address(umaBridge),
@@ -94,21 +96,38 @@ contract BridgeTest is TestHelperOz5 {
         marketBridge.enableMarketGroup(marketGroup);
     }
 
-    function test_failsIfNotEnabledMarketGroup_LEO() public {
+    function test_failsIfNotEnabledMarketGroup() public {
         vm.startPrank(marketUser);
         vm.expectRevert("Only enabled market groups can submit");
         marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), BOND_AMOUNT);
         vm.stopPrank();
     }
 
-    function test_forwardAssertTruth_LEO() public {
+    function test_forwardAssertTruth() public {
+        // Verify the balance movements (token)
+        uint256 initialUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));
+        uint256 initialUserBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
+
         // Forward the assertion to the optimisticOracleV3
         vm.startPrank(marketGroup);
-        bytes32 assertionId = marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), BOND_AMOUNT);
+        bytes32 assertionId = marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(umaUser), 3600, address(bondCurrency), BOND_AMOUNT);
         vm.stopPrank();
 
         // Verify the balance movements (token)
-        uint256 finalUmaUserTokenBalance = bondCurrency.balanceOf(umaUser);
         uint256 finalUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));
+        uint256 finalUserBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
+
+        // Before propagating the assertion, the balance should be the same
+        assertEq(finalUmaTokenBalance, initialUmaTokenBalance);
+        assertEq(finalUserBondBalance, initialUserBondBalance);
+
+        // Propagate the assertion
+        verifyPackets(umaEiD, addressToBytes32(address(umaBridge)));
+
+        // After propagating the assertion, the balance should be different
+        finalUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));
+        finalUserBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
+        assertEq(finalUmaTokenBalance, initialUmaTokenBalance - BOND_AMOUNT);
+        assertEq(finalUserBondBalance, initialUserBondBalance - BOND_AMOUNT);
     }
 }

@@ -431,7 +431,6 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         marketData.assertionId = umaAssertionId;
 
         submitterBondBalances[asserter][bondTokenAddress] -= bondAmount;
-
         // TODO: Should we send back the confirmation to the Market side?
 
         // TODO: emit an event
