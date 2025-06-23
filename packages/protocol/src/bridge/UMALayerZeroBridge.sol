@@ -11,9 +11,9 @@ import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle
 import {IUMALayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-// import {console2} from "forge-std/console2.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+// import {console2} from "forge-std/console2.sol";
 
 struct AssertionMarketData {
     bytes32 assertionId;

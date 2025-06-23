@@ -97,23 +97,14 @@ contract BridgeTest is TestHelperOz5 {
     function test_failsIfNotEnabledMarketGroup_LEO() public {
         vm.startPrank(marketUser);
         vm.expectRevert("Only enabled market groups can submit");
-        /*
-             address marketGroup,
-        uint256 marketId,
-        bytes memory claim,
-        address asserter,
-        uint64 liveness,
-        IERC20 currency,
-        uint256 bond
-        */
-        marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), 1 ether);
+        marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), BOND_AMOUNT);
         vm.stopPrank();
     }
 
-    function test_forwardAssertTruth() public {
+    function test_forwardAssertTruth_LEO() public {
         // Forward the assertion to the optimisticOracleV3
-        vm.startPrank(marketUser);
-        marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), 1 ether);
+        vm.startPrank(marketGroup);
+        bytes32 assertionId = marketBridge.forwardAssertTruth(address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), BOND_AMOUNT);
         vm.stopPrank();
 
         // Verify the balance movements (token)

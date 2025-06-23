@@ -10,7 +10,8 @@ import {IMarketLayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import { BridgeTypes } from "./BridgeTypes.sol";
+import {BridgeTypes} from "./BridgeTypes.sol";
+import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 // import {console2} from "forge-std/console2.sol";
 
 /**
@@ -28,7 +29,8 @@ contract MarketLayerZeroBridge is
 {
     using Encoder for bytes;
     using BridgeTypes for BridgeTypes.BridgeConfig;
-    
+    using OptionsBuilder for bytes;
+
     // State variables
     BridgeTypes.BridgeConfig private bridgeConfig;
     mapping(address => bool) private enabledMarketGroups;
@@ -55,12 +57,18 @@ contract MarketLayerZeroBridge is
     ) OApp(_endpoint, _owner) Ownable(_owner) {}
 
     // Configuration functions
-    function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config) external onlyOwner {
+    function setBridgeConfig(
+        BridgeTypes.BridgeConfig calldata _config
+    ) external onlyOwner {
         bridgeConfig = _config;
         emit BridgeConfigUpdated(_config);
     }
 
-    function getBridgeConfig() external view returns (BridgeTypes.BridgeConfig memory) {
+    function getBridgeConfig()
+        external
+        view
+        returns (BridgeTypes.BridgeConfig memory)
+    {
         return bridgeConfig;
     }
 
@@ -72,7 +80,9 @@ contract MarketLayerZeroBridge is
         enabledMarketGroups[marketGroup] = false;
     }
 
-    function isMarketGroupEnabled(address marketGroup) external view returns (bool) {
+    function isMarketGroupEnabled(
+        address marketGroup
+    ) external view returns (bool) {
         return enabledMarketGroups[marketGroup];
     }
 
@@ -102,7 +112,7 @@ contract MarketLayerZeroBridge is
     // Helper function to check gas thresholds and emit alerts
     function _checkGasThresholds() internal {
         uint256 currentBalance = address(this).balance;
-        
+
         if (currentBalance <= CRITICAL_GAS_THRESHOLD) {
             emit GasReserveCritical(currentBalance);
         } else if (currentBalance <= WARNING_GAS_THRESHOLD) {
@@ -124,66 +134,67 @@ contract MarketLayerZeroBridge is
         // TODO: Check the message is coming from the right source
 
         if (false) {
-            // Do Nothing here, this is a placeholder to have better  
-        } else if (
-            commandType ==
-            Encoder.CMD_FROM_ESCROW_DEPOSIT
-        ) {
-            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
-                .decodeFromBalanceUpdate();
+            // Do Nothing here, this is a placeholder to have better
+        } else if (commandType == Encoder.CMD_FROM_ESCROW_DEPOSIT) {
+            (
+                address submitter,
+                address bondToken,
+                uint256 finalAmount,
+                uint256 deltaAmount
+            ) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
             emit BondDeposited(submitter, bondToken, deltaAmount);
-        } else if (
-            commandType ==
-            Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW
-        ) {
-            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
-                .decodeFromBalanceUpdate();
+        } else if (commandType == Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW) {
+            (
+                address submitter,
+                address bondToken,
+                uint256 finalAmount,
+                uint256 deltaAmount
+            ) = data.decodeFromBalanceUpdate();
             remoteSubmitterWithdrawalIntent[submitter][bondToken] = deltaAmount; // Only one intent per pair submitter/bond allowed at a time
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
-        } else if (
-            commandType ==
-            Encoder.CMD_FROM_ESCROW_WITHDRAW
-        ) {
-            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
-                .decodeFromBalanceUpdate();
+        } else if (commandType == Encoder.CMD_FROM_ESCROW_WITHDRAW) {
+            (
+                address submitter,
+                address bondToken,
+                uint256 finalAmount,
+                uint256 deltaAmount
+            ) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
-            remoteSubmitterWithdrawalIntent[submitter][bondToken] -= deltaAmount;
+            remoteSubmitterWithdrawalIntent[submitter][
+                bondToken
+            ] -= deltaAmount;
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
-        } else if (
-            commandType ==
-            Encoder.CMD_FROM_ESCROW_BOND_SENT
-        ) {
-            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
-                .decodeFromBalanceUpdate();
+        } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_SENT) {
+            (
+                address submitter,
+                address bondToken,
+                uint256 finalAmount,
+                uint256 deltaAmount
+            ) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
-        } else if (
-            commandType ==
-            Encoder.CMD_FROM_ESCROW_BOND_RECEIVED
-        ) {
-            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
-                .decodeFromBalanceUpdate();
+        } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_RECEIVED) {
+            (
+                address submitter,
+                address bondToken,
+                uint256 finalAmount,
+                uint256 deltaAmount
+            ) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
-        } else if (
-            commandType ==
-            Encoder.CMD_FROM_ESCROW_BOND_LOST_DISPUTE
-        ) {
-            (address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) = data
-                .decodeFromBalanceUpdate();
-                // Do nothing, the amount was already decremented when the bond was sent
-        } else if (
-            commandType ==
-            Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK
-        ) {
-            (uint256 assertionId, bool verified) = data
-                    .decodeFromUMAResolved();
-                // Call the callback of the marketGroup to process the verification
-        } else if (
-            commandType ==
-            Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK
-        ) {
+        } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_LOST_DISPUTE) {
+            (
+                address submitter,
+                address bondToken,
+                uint256 finalAmount,
+                uint256 deltaAmount
+            ) = data.decodeFromBalanceUpdate();
+            // Do nothing, the amount was already decremented when the bond was sent
+        } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
+            (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
+            // Call the callback of the marketGroup to process the verification
+        } else if (commandType == Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK) {
             uint256 assertionId = data.decodeFromUMADisputed();
-                // Call the callback of the marketGroup to process the verification
+            // Call the callback of the marketGroup to process the verification
         } else {
             revert("Invalid command type");
         }
@@ -195,47 +206,61 @@ contract MarketLayerZeroBridge is
     //     bytes memory commandPayload
     // ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
     //     bytes memory message = abi.encode(commandCode, commandPayload);
-        
+
     //     MessagingFee memory fee = _quote(
     //         bridgeConfig.remoteChainId,
     //         message,
     //         bytes(""), // options
     //         false // payInLzToken
     //     );
-        
+
     //     return (fee.nativeFee, fee.lzTokenFee);
     // }
 
     // Helper function to send LayerZero messages with quote
     function _sendLayerZeroMessageWithQuote(
         uint16 commandCode,
-        bytes memory commandPayload
-    ) internal returns (MessagingReceipt memory receipt) {
+        bytes memory commandPayload,
+        bool onlyQuote
+    )
+        internal
+        returns (MessagingReceipt memory receipt, MessagingFee memory fee)
+    {
         bytes memory message = abi.encode(commandCode, commandPayload);
-        
+
+        bytes memory options = OptionsBuilder
+            .newOptions()
+            .addExecutorLzReceiveOption(5000000000, 0);
+
         // Get quote for the message
-        MessagingFee memory fee = _quote(
+        fee = _quote(
             bridgeConfig.remoteChainId,
             message,
-            bytes(""), // options
+            options, // options
             false // payInLzToken
         );
-        
+
+        if (onlyQuote) {
+            return (MessagingReceipt(0, 0, fee), fee);
+        }
         // Check if contract has enough ETH
-        require(address(this).balance >= fee.nativeFee, "Insufficient ETH balance for fee");
-        
+        require(
+            address(this).balance >= fee.nativeFee,
+            "Insufficient ETH balance for fee"
+        );
+
         // Check gas thresholds and emit alerts before sending
         _checkGasThresholds();
-        
+
         // Send the message using the external send function with ETH from contract
         receipt = this._sendMessageWithETH{value: fee.nativeFee}(
             bridgeConfig.remoteChainId,
             message,
-            bytes(""),
+            options,
             fee
         );
-        
-        return receipt;
+
+        return (receipt, fee);
     }
 
     // External function to send LayerZero messages with ETH from contract balance
@@ -246,7 +271,8 @@ contract MarketLayerZeroBridge is
         MessagingFee memory _fee
     ) external payable returns (MessagingReceipt memory) {
         require(msg.sender == address(this), "Only self-call allowed");
-        return _lzSend(_dstEid, _message, _options, _fee, payable(address(this)));
+        return
+            _lzSend(_dstEid, _message, _options, _fee, payable(address(this)));
     }
 
     function getRemoteSubmitterBalance(
@@ -284,23 +310,27 @@ contract MarketLayerZeroBridge is
         lastAssertionId++;
 
         // Make assertion data to UMA side via LayerZero
-        bytes memory commandPayload = Encoder.encodeToUMAAssertTruth(lastAssertionId, asserter, liveness, address(currency), bond, claim);
-        
+        bytes memory commandPayload = Encoder.encodeToUMAAssertTruth(
+            lastAssertionId,
+            asserter,
+            liveness,
+            address(currency),
+            bond,
+            claim
+        );
+
         // Send the message with automatic fee calculation
-        MessagingReceipt memory receipt = _sendLayerZeroMessageWithQuote(
+        (MessagingReceipt memory receipt, MessagingFee memory fee) = _sendLayerZeroMessageWithQuote(
             Encoder.CMD_TO_UMA_ASSERT_TRUTH,
-            commandPayload
+            commandPayload,
+            false
         );
 
         // Store the assertionId to marketGroup mapping
         assertionIdToMarketGroup[lastAssertionId] = marketGroup;
 
         // Emit the assertion submitted event
-        emit AssertionSubmitted(
-            marketGroup,
-            marketId,
-            lastAssertionId
-        );
+        emit AssertionSubmitted(marketGroup, marketId, lastAssertionId);
 
         return bytes32(lastAssertionId);
     }
