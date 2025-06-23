@@ -15,9 +15,9 @@ import { useAccount } from 'wagmi';
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
 import DataDrawer from '~/components/DataDrawer';
+import MarketHeader from '~/components/forecasting/MarketHeader';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
-import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { usePositions } from '~/hooks/graphql/usePositions';
@@ -106,7 +106,6 @@ const ForecastContent = () => {
     marketData,
     isLoadingMarket,
     isLoadingMarketContract,
-    displayQuestion,
     chainId,
     marketAddress,
     numericMarketId,
@@ -117,6 +116,8 @@ const ForecastContent = () => {
     baseTokenName,
     quoteTokenName,
     marketClassification,
+    marketContractData,
+    collateralAssetAddress,
   } = useMarketPage();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
@@ -266,14 +267,18 @@ const ForecastContent = () => {
                 </div>
               )}
           </div>
-          {displayQuestion && (
-            <h1 className="text-2xl md:text-4xl font-normal mb-2 leading-tight">
-              {displayQuestion}
-            </h1>
-          )}
-          <div className="flex justify-start mb-6 mt-2">
-            <EndTimeDisplay endTime={marketData?.endTimestamp} />
-          </div>
+          <MarketHeader
+            marketData={marketData!}
+            marketContractData={marketContractData}
+            chainId={chainId!}
+            marketAddress={marketAddress!}
+            marketClassification={marketClassification!}
+            collateralAssetAddress={collateralAssetAddress}
+            baseTokenName={baseTokenName}
+            quoteTokenName={quoteTokenName}
+            minTick={minTick}
+            maxTick={maxTick}
+          />
           <div className="flex flex-col gap-4">
             <div className="flex flex-col lg:flex-row lg:gap-8">
               <div className="flex flex-col w-full relative">
