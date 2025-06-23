@@ -239,7 +239,7 @@ library Position {
         rebalanceEthTokens(self);
         rebalanceCollateral(self);
         // after rebalancing the Eth Tokens and Collateral, all virtual tokens are zeroed and only the deposited collateral is left with the net balance.
-        
+
         return self.depositedCollateralAmount;
     }
 
@@ -337,5 +337,16 @@ library Position {
 
         // Total net value in ETH terms (profit or loss)
         return netVETH + netVGASValue;
+    }
+
+    function updateWithNewPosition(
+        Data storage self,
+        Data memory newPosition
+    ) internal {
+        self.vGasAmount = newPosition.vGasAmount;
+        self.vEthAmount = newPosition.vEthAmount;
+        self.borrowedVGas = newPosition.borrowedVGas;
+        self.borrowedVEth = newPosition.borrowedVEth;
+        self.depositedCollateralAmount = newPosition.depositedCollateralAmount;
     }
 }
