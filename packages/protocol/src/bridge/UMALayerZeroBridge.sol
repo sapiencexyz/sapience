@@ -175,6 +175,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         require(intent.amount > 0, "No withdrawal intent");
         require(!intent.executed, "Withdrawal already executed");
         require(block.timestamp >= intent.timestamp + WITHDRAWAL_DELAY, "Waiting period not over");
+        require(submitterBondBalances[msg.sender][bondToken] >= intent.amount, "Insufficient balance");
 
         MessagingReceipt memory receipt = _sendBalanceUpdate(
             Encoder.CMD_FROM_ESCROW_WITHDRAW,
@@ -319,24 +320,6 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
             _handleAssertTruthCmd(data);
         }
     }
-
-    // Helper function to get LayerZero quote
-    // function _debugGetLayerZeroQuote(
-    //     uint16 commandCode,
-    //     bytes memory commandPayload
-    // ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
-    //     bytes memory message = abi.encode(commandCode, commandPayload);
-
-    //     MessagingFee memory fee = _quote(
-    //         bridgeConfig.remoteChainId,
-    //         message,
-    //         bytes(""), // options
-    //         false // payInLzToken
-    //     );
-
-    //     return (fee.nativeFee, fee.lzTokenFee);
-    // }
-
 
     // Helper function to check gas thresholds and emit alerts
     function _checkGasThresholds() internal {

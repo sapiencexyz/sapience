@@ -256,6 +256,13 @@ contract MarketLayerZeroBridge is
         return remoteSubmitterBalances[submitter][bondToken];
     }
 
+    function getRemoteSubmitterWithdrawalIntent(
+        address submitter,
+        address bondToken
+    ) external view returns (uint256) {
+        return remoteSubmitterWithdrawalIntent[submitter][bondToken];
+    }
+
     // UMA Replacement Functions
     // Implement the functions to conform with OptimisticOracleV3Interface
     function forwardAssertTruth(
