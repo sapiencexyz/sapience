@@ -61,7 +61,7 @@ async function startResourceIndexers(): Promise<
       // Then start watching for new blocks
       resourceJobs.push(
         createResilientProcess(
-          () => indexer.watchBlocksForResource(resource as any) as Promise<void>,
+          () => indexer.watchBlocksForResource(resource) as Promise<void>,
           `watchBlocksForResource-${resourceSlug}`
         )()
       );

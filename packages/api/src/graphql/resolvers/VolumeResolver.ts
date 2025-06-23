@@ -39,7 +39,7 @@ export class VolumeResolver {
       // Check if baseToken exists and is a valid number string
       if (transaction.baseToken) {
         try {
-          const baseTokenBigInt = BigInt(transaction.baseToken);
+          const baseTokenBigInt = BigInt(transaction.baseToken.toString());
           const absBaseTokenDelta = Math.abs(
             parseFloat(formatUnits(baseTokenBigInt, TOKEN_PRECISION))
           );

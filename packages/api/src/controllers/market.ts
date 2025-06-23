@@ -42,7 +42,6 @@ import { Decimal } from 'generated/prisma/runtime/library';
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
 export const initializeMarket = async (marketInfo: MarketInfo) => {
-
   const client = getProviderForChain(marketInfo.marketChainId);
 
   const marketReadResult = (await client.readContract({
@@ -102,14 +101,22 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
   const marketParamsRaw = marketReadResult[4];
   if (marketParamsRaw) {
     updatedMarketData.marketParamsFeerate = marketParamsRaw.feeRate || null;
-    updatedMarketData.marketParamsAssertionliveness = marketParamsRaw.assertionLiveness?.toString() || null;
-    updatedMarketData.marketParamsBondcurrency = marketParamsRaw.bondCurrency || null;
-    updatedMarketData.marketParamsBondamount = marketParamsRaw.bondAmount?.toString() || null;
-    updatedMarketData.marketParamsClaimstatement = marketParamsRaw.claimStatement || null;
-    updatedMarketData.marketParamsUniswappositionmanager = marketParamsRaw.uniswapPositionManager || null;
-    updatedMarketData.marketParamsUniswapswaprouter = marketParamsRaw.uniswapSwapRouter || null;
-    updatedMarketData.marketParamsUniswapquoter = marketParamsRaw.uniswapQuoter || null;
-    updatedMarketData.marketParamsOptimisticoraclev3 = marketParamsRaw.optimisticOracleV3 || null;
+    updatedMarketData.marketParamsAssertionliveness =
+      marketParamsRaw.assertionLiveness?.toString() || null;
+    updatedMarketData.marketParamsBondcurrency =
+      marketParamsRaw.bondCurrency || null;
+    updatedMarketData.marketParamsBondamount =
+      marketParamsRaw.bondAmount?.toString() || null;
+    updatedMarketData.marketParamsClaimstatement =
+      marketParamsRaw.claimStatement || null;
+    updatedMarketData.marketParamsUniswappositionmanager =
+      marketParamsRaw.uniswapPositionManager || null;
+    updatedMarketData.marketParamsUniswapswaprouter =
+      marketParamsRaw.uniswapSwapRouter || null;
+    updatedMarketData.marketParamsUniswapquoter =
+      marketParamsRaw.uniswapQuoter || null;
+    updatedMarketData.marketParamsOptimisticoraclev3 =
+      marketParamsRaw.optimisticOracleV3 || null;
   }
 
   const updatedMarket = await prisma.market_group.upsert({
@@ -128,6 +135,44 @@ export const initializeMarket = async (marketInfo: MarketInfo) => {
 };
 
 // Called when the process starts after initialization. Watches events for a given market and calls upsertEvent for each one.
+
+/**
+ * Extract only the market_group table fields from a market object, excluding relations
+ */
+const extractMarketGroupFields = (market: any) => {
+  return {
+    address: market.address,
+    vaultAddress: market.vaultAddress,
+    isYin: market.isYin,
+    chainId: market.chainId,
+    deployTimestamp: market.deployTimestamp,
+    deployTxnBlockNumber: market.deployTxnBlockNumber,
+    owner: market.owner,
+    collateralAsset: market.collateralAsset,
+    resourceId: market.resourceId,
+    marketParamsFeerate: market.marketParamsFeerate,
+    marketParamsAssertionliveness: market.marketParamsAssertionliveness,
+    marketParamsBondcurrency: market.marketParamsBondcurrency,
+    marketParamsBondamount: market.marketParamsBondamount,
+    marketParamsClaimstatement: market.marketParamsClaimstatement,
+    marketParamsUniswappositionmanager:
+      market.marketParamsUniswappositionmanager,
+    marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
+    marketParamsUniswapquoter: market.marketParamsUniswapquoter,
+    marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
+    isCumulative: market.isCumulative,
+    categoryId: market.categoryId,
+    question: market.question,
+    baseTokenName: market.baseTokenName,
+    quoteTokenName: market.quoteTokenName,
+    collateralDecimals: market.collateralDecimals,
+    collateralSymbol: market.collateralSymbol,
+    initializationNonce: market.initializationNonce,
+    factoryAddress: market.factoryAddress,
+    minTradeSize: market.minTradeSize,
+  };
+};
+
 export const indexMarketGroupEvents = async (
   market: any, // Using any for now since this depends on helper functions
   client: PublicClient
@@ -135,11 +180,10 @@ export const indexMarketGroupEvents = async (
   const chainId = await client.getChainId();
 
   try {
-  
     await updateCollateralData(client, market);
     await prisma.market_group.update({
       where: { id: market.id },
-      data: market,
+      data: extractMarketGroupFields(market),
     });
   } catch (err) {
     console.error(
@@ -337,11 +381,11 @@ export const reindexMarketEvents = async (market: any) => {
   const chainId = await client.getChainId();
 
   // Update collateral data
-  
+
   await updateCollateralData(client, market);
   await prisma.market_group.update({
     where: { id: market.id },
-    data: market,
+    data: extractMarketGroupFields(market),
   });
 
   // Get the contract deployment time and us it as initial lookback start time
@@ -570,7 +614,7 @@ const upsertEvent = async (
         },
         include: { market_group: true },
       });
-      
+
       await upsertEntitiesFromEvent(
         updatedEvent,
         marketGroupAddress,
@@ -617,7 +661,7 @@ export const upsertEntitiesFromEvent = async (
   const existingTransaction = await prisma.transaction.findFirst({
     where: { eventId: event.id },
   });
-  
+
   if (existingTransaction) {
     if (event.logData.eventName != EventType.PositionSettled) {
       return;
@@ -625,9 +669,9 @@ export const upsertEntitiesFromEvent = async (
   }
 
   let skipTransaction = false;
-  const newTransaction: transaction & { 
-    event: any,
-    position?: any
+  const newTransaction: transaction & {
+    event: any;
+    position?: any;
   } = {
     eventId: event.id,
     type: 'addLiquidity' as any,
@@ -659,14 +703,13 @@ export const upsertEntitiesFromEvent = async (
         optimisticOracleV3: event.logData.args.optimisticOracleV3,
         marketParams: event.logData.args.marketParams,
       } as MarketCreatedUpdatedEventLog;
-      
-      
-       await createOrUpdateMarketFromEvent(
+
+      await createOrUpdateMarketFromEvent(
         marketCreatedArgs,
         event.market_group.chainId,
         event.market_group.address,
         event.market_group
-       );
+      );
       skipTransaction = true;
       break;
     }
@@ -678,13 +721,12 @@ export const upsertEntitiesFromEvent = async (
         optimisticOracleV3: event.logData.args.optimisticOracleV3,
         marketParams: event.logData.args.marketParams,
       } as MarketCreatedUpdatedEventLog;
-      
-   
+
       await createOrUpdateMarketFromEvent(
-      marketUpdatedArgs,
-      event.market_group.chainId,
-      event.market_group.address,
-      event.market_group
+        marketUpdatedArgs,
+        event.market_group.chainId,
+        event.market_group.address,
+        event.market_group
       );
       skipTransaction = true;
       break;
@@ -699,8 +741,7 @@ export const upsertEntitiesFromEvent = async (
         endTime: event.logData.args.endTime,
         startingSqrtPriceX96: event.logData.args.startingSqrtPriceX96,
       } as EpochCreatedEventLog;
-      
-      
+
       await createEpochFromEvent(epochCreatedArgs, event.market_group);
       await createOrUpdateEpochFromContract(
         event.market_group,
@@ -721,7 +762,7 @@ export const upsertEntitiesFromEvent = async (
         },
         include: { market_group: true },
       });
-      
+
       if (epoch) {
         const settlementSqrtPriceX96: bigint = BigInt(
           (event.logData.args.settlementSqrtPriceX96 as string)?.toString() ??
@@ -730,7 +771,7 @@ export const upsertEntitiesFromEvent = async (
         const settlementPriceD18 = sqrtPriceX96ToSettlementPriceD18(
           settlementSqrtPriceX96
         );
-        
+
         await prisma.market.update({
           where: { id: epoch.id },
           data: {
@@ -748,15 +789,14 @@ export const upsertEntitiesFromEvent = async (
     // Position events
     case EventType.Transfer:
       console.log('Handling Transfer event: ', event);
-      
+
       await handleTransferEvent(event);
       skipTransaction = true;
       break;
     case EventType.PositionSettled:
       console.log('Handling Position Settled from event: ', event);
       settledPositions.push(event.logData.args.positionId);
-      
-      
+
       await Promise.all([
         handlePositionSettledEvent(event),
         updateTransactionFromPositionSettledEvent(
@@ -772,17 +812,17 @@ export const upsertEntitiesFromEvent = async (
     // Liquidity events
     case EventType.LiquidityPositionCreated:
       console.log('Creating liquidity position from event: ', event);
-      
+
       updateTransactionFromAddLiquidityEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionClosed:
       console.log('Closing liquidity position from event: ', event);
-      
+
       await updateTransactionFromLiquidityClosedEvent(newTransaction, event);
       break;
     case EventType.LiquidityPositionDecreased:
       console.log('Decreasing liquidity position from event: ', event);
-     
+
       await updateTransactionFromLiquidityModifiedEvent(
         newTransaction,
         event,
@@ -791,19 +831,19 @@ export const upsertEntitiesFromEvent = async (
       break;
     case EventType.LiquidityPositionIncreased:
       console.log('Increasing liquidity position from event: ', event);
-      
+
       await updateTransactionFromLiquidityModifiedEvent(newTransaction, event);
       break;
 
     // Trader events
     case EventType.TraderPositionCreated:
       console.log('Creating trader position from event: ', event);
-      
+
       await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
     case EventType.TraderPositionModified:
       console.log('Modifying trader position from event: ', event);
-    
+
       await updateTransactionFromTradeModifiedEvent(newTransaction, event);
       break;
 
@@ -814,7 +854,6 @@ export const upsertEntitiesFromEvent = async (
 
   if (!skipTransaction) {
     try {
-      
       await insertCollateralTransfer(newTransaction);
       await insertMarketPrice(newTransaction);
 
@@ -856,7 +895,7 @@ export const upsertEntitiesFromEvent = async (
           event: event,
           position: null,
         };
-        
+
         await createOrModifyPositionFromTransaction(transactionWithEvent);
       } catch (positionError) {
         console.error('Error creating or modifying position:', positionError);

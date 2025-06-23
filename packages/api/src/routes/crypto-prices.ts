@@ -141,11 +141,13 @@ router.get('/', async (req, res) => {
 
     if (pricesToSave.length > 0) {
       // Perform save operation asynchronously but don't wait for it to return response
-      prisma.crypto_prices.createMany({
-        data: pricesToSave,
-      }).then(() => {
-        console.log('[DB CACHE UPDATED]');
-      });
+      prisma.crypto_prices
+        .createMany({
+          data: pricesToSave,
+        })
+        .then(() => {
+          console.log('[DB CACHE UPDATED]');
+        });
     }
 
     return res.json(finalPrices);

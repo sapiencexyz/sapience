@@ -12,12 +12,12 @@ import {
 } from '../interfaces';
 import { getBlockByTimestamp, getProviderForChain } from '../utils/utils';
 import Foil from '@foil/protocol/deployments/Foil.json';
-import type { 
-  event, 
-  market_group, 
-  market, 
-  position, 
-  transaction, 
+import type {
+  event,
+  market_group,
+  market,
+  position,
+  transaction,
 } from '../../generated/prisma';
 
 // Define transaction types
@@ -46,7 +46,9 @@ interface MarketParams {
  * Handles a Transfer event by updating the owner of the corresponding Position.
  * @param event The Transfer event
  */
-export const handleTransferEvent = async (event: event & { market_group: market_group }) => {
+export const handleTransferEvent = async (
+  event: event & { market_group: market_group }
+) => {
   const args = getLogDataArgs(event.logData);
   const { to, tokenId } = args;
 
@@ -77,7 +79,7 @@ export const handleTransferEvent = async (event: event & { market_group: market_
     where: { id: existingPosition.id },
     data: { owner: (to as string).toLowerCase() },
   });
-  
+
   console.log(`Updated owner of position ${tokenId} to ${to}`);
 };
 
@@ -110,7 +112,7 @@ export const handlePositionSettledEvent = async (event: event) => {
     where: { id: existingPosition.id },
     data: { isSettled: true },
   });
-  
+
   console.log(`Updated isSettled state of position ${positionId} to true`);
 };
 
@@ -119,9 +121,9 @@ export const handlePositionSettledEvent = async (event: event) => {
  * @param transaction the Transaction to use for creating/modifying the position
  */
 export const createOrModifyPositionFromTransaction = async (
-  transaction: transaction & { 
-    event: event & { market_group: market_group },
-    position?: position | null
+  transaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
   }
 ) => {
   try {
@@ -169,7 +171,7 @@ export const createOrModifyPositionFromTransaction = async (
           },
         },
       });
-      
+
       if (!foundEpoch) {
         console.error(
           'Epoch not found: ',
@@ -185,7 +187,7 @@ export const createOrModifyPositionFromTransaction = async (
     if (!epoch) {
       throw new Error('Epoch is undefined');
     }
-    
+
     const positionId = Number(eventArgs.positionId);
     if (isNaN(positionId)) {
       console.error('Invalid positionId:', eventArgs.positionId);
@@ -208,44 +210,56 @@ export const createOrModifyPositionFromTransaction = async (
             event: true,
             market_price: true,
             collateral_transfer: true,
-          }
+          },
         },
         market: {
           include: {
             market_group: true,
-          }
+          },
         },
-      }
+      },
     });
 
     let savedPosition: position;
 
     if (existingPosition) {
       console.log('Found existing position:', existingPosition.id);
-      
+
       // Update existing position
       savedPosition = await prisma.position.update({
         where: { id: existingPosition.id },
         data: {
           positionId: positionId,
           marketId: epoch.id,
-          owner: ((eventArgs.sender as string) || existingPosition.owner || '').toLowerCase(),
+          owner: (
+            (eventArgs.sender as string) ||
+            existingPosition.owner ||
+            ''
+          ).toLowerCase(),
           isLP: isLpPosition(transaction),
           baseToken: toDecimal(eventArgs.positionVgasAmount || '0'),
           quoteToken: toDecimal(eventArgs.positionVethAmount || '0'),
           borrowedBaseToken: toDecimal(eventArgs.positionBorrowedVgas || '0'),
           borrowedQuoteToken: toDecimal(eventArgs.positionBorrowedVeth || '0'),
           collateral: toDecimal(eventArgs.positionCollateralAmount || '0'),
-          lpBaseToken: toDecimal(eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'),
-          lpQuoteToken: toDecimal(eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0'),
-          highPriceTick: toDecimal(eventArgs.upperTick || existingPosition.highPriceTick || '0'),
-          lowPriceTick: toDecimal(eventArgs.lowerTick || existingPosition.lowPriceTick || '0'),
+          lpBaseToken: toDecimal(
+            eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'
+          ),
+          lpQuoteToken: toDecimal(
+            eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0'
+          ),
+          highPriceTick: toDecimal(
+            eventArgs.upperTick || existingPosition.highPriceTick || '0'
+          ),
+          lowPriceTick: toDecimal(
+            eventArgs.lowerTick || existingPosition.lowPriceTick || '0'
+          ),
           isSettled: existingPosition.isSettled ?? false,
         },
       });
     } else {
       console.log('Creating new position for positionId:', positionId);
-      
+
       // Create new position
       savedPosition = await prisma.position.create({
         data: {
@@ -258,8 +272,12 @@ export const createOrModifyPositionFromTransaction = async (
           borrowedBaseToken: toDecimal(eventArgs.positionBorrowedVgas || '0'),
           borrowedQuoteToken: toDecimal(eventArgs.positionBorrowedVeth || '0'),
           collateral: toDecimal(eventArgs.positionCollateralAmount || '0'),
-          lpBaseToken: toDecimal(eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'),
-          lpQuoteToken: toDecimal(eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0'),
+          lpBaseToken: toDecimal(
+            eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'
+          ),
+          lpQuoteToken: toDecimal(
+            eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0'
+          ),
           highPriceTick: toDecimal(eventArgs.upperTick || '0'),
           lowPriceTick: toDecimal(eventArgs.lowerTick || '0'),
           isSettled: false,
@@ -282,19 +300,23 @@ export const createOrModifyPositionFromTransaction = async (
 };
 
 const updateTransactionStateFromEvent = (
-  transaction: transaction & { 
-    event: event & { market_group: market_group },
-    position?: position | null
+  transaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
   },
   event: event
 ) => {
   const eventArgs = getLogDataArgs(event.logData);
-  
+
   // Latest position state
   transaction.baseToken = toDecimal(eventArgs.positionVgasAmount || '0');
   transaction.quoteToken = toDecimal(eventArgs.positionVethAmount || '0');
-  transaction.borrowedBaseToken = toDecimal(eventArgs.positionBorrowedVgas || '0');
-  transaction.borrowedQuoteToken = toDecimal(eventArgs.positionBorrowedVeth || '0');
+  transaction.borrowedBaseToken = toDecimal(
+    eventArgs.positionBorrowedVgas || '0'
+  );
+  transaction.borrowedQuoteToken = toDecimal(
+    eventArgs.positionBorrowedVeth || '0'
+  );
   transaction.collateral = toDecimal(eventArgs.positionCollateralAmount || '0');
 
   if (eventArgs.tradeRatio) {
@@ -306,10 +328,12 @@ const updateTransactionStateFromEvent = (
  * Find or create a CollateralTransfer for a Transaction.
  * @param transaction the Transaction to find or create a CollateralTransfer for
  */
-export const insertCollateralTransfer = async (transaction: transaction & { 
-  event: event & { market_group: market_group },
-  position?: position | null
-}) => {
+export const insertCollateralTransfer = async (
+  transaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
+  }
+) => {
   const eventArgs = getLogDataArgs(transaction.event.logData);
 
   if (!eventArgs.deltaCollateral || eventArgs.deltaCollateral == '0') {
@@ -352,16 +376,18 @@ export const insertCollateralTransfer = async (transaction: transaction & {
  * Create a MarketPrice for a Transaction.
  * @param transaction the Transaction to create a MarketPrice for
  */
-export const insertMarketPrice = async (transaction: transaction & { 
-  event: event & { market_group: market_group },
-  position?: position | null
-}) => {
+export const insertMarketPrice = async (
+  transaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
+  }
+) => {
   if (
     transaction.type === TransactionType.LONG ||
     transaction.type === TransactionType.SHORT
   ) {
     const args = getLogDataArgs(transaction.event.logData);
-    
+
     // Create a new market price
     const newMp = await prisma.market_price.create({
       data: {
@@ -399,7 +425,7 @@ export const updateCollateralData = async (
         abi: erc20Abi,
         functionName: 'symbol',
       });
-      
+
       await prisma.market_group.update({
         where: { id: market.id },
         data: {
@@ -432,7 +458,7 @@ export const createOrUpdateMarketFromContract = async (
   console.log('marketReadResult', marketReadResult);
 
   let updatedMarket: market_group;
-  
+
   if (initialMarket) {
     updatedMarket = initialMarket;
   } else {
@@ -443,7 +469,7 @@ export const createOrUpdateMarketFromContract = async (
         market: true,
       },
     });
-    
+
     if (existingMarket) {
       updatedMarket = existingMarket;
     } else {
@@ -454,7 +480,9 @@ export const createOrUpdateMarketFromContract = async (
           deployTxnBlockNumber: Number(contractDeployment.deployTxnBlockNumber),
           deployTimestamp: Number(contractDeployment.deployTimestamp),
           chainId,
-          owner: ((marketReadResult as MarketReadResult)[0] as string).toLowerCase(),
+          owner: (
+            (marketReadResult as MarketReadResult)[0] as string
+          ).toLowerCase(),
           collateralAsset: (marketReadResult as MarketReadResult)[1],
         },
       });
@@ -465,7 +493,7 @@ export const createOrUpdateMarketFromContract = async (
   await updateCollateralData(client, updatedMarket);
 
   const marketParamsRaw = (marketReadResult as MarketReadResult)[4];
-  
+
   // Update market with new data
   updatedMarket = await prisma.market_group.update({
     where: { id: updatedMarket.id },
@@ -474,20 +502,25 @@ export const createOrUpdateMarketFromContract = async (
       deployTxnBlockNumber: Number(contractDeployment.deployTxnBlockNumber),
       deployTimestamp: Number(contractDeployment.deployTimestamp),
       chainId,
-      owner: ((marketReadResult as MarketReadResult)[0] as string).toLowerCase(),
+      owner: (
+        (marketReadResult as MarketReadResult)[0] as string
+      ).toLowerCase(),
       collateralAsset: (marketReadResult as MarketReadResult)[1],
       marketParamsFeerate: marketParamsRaw.feeRate || null,
-      marketParamsAssertionliveness: marketParamsRaw.assertionLiveness?.toString() || null,
+      marketParamsAssertionliveness:
+        marketParamsRaw.assertionLiveness?.toString() || null,
       marketParamsBondcurrency: marketParamsRaw.bondCurrency || null,
       marketParamsBondamount: marketParamsRaw.bondAmount?.toString() || null,
       marketParamsClaimstatement: marketParamsRaw.claimStatement || null,
-      marketParamsUniswappositionmanager: marketParamsRaw.uniswapPositionManager || null,
+      marketParamsUniswappositionmanager:
+        marketParamsRaw.uniswapPositionManager || null,
       marketParamsUniswapswaprouter: marketParamsRaw.uniswapSwapRouter || null,
       marketParamsUniswapquoter: marketParamsRaw.uniswapQuoter || null,
-      marketParamsOptimisticoraclev3: marketParamsRaw.optimisticOracleV3 || null,
+      marketParamsOptimisticoraclev3:
+        marketParamsRaw.optimisticOracleV3 || null,
     },
   });
-  
+
   return updatedMarket;
 };
 
@@ -517,7 +550,7 @@ export const createOrUpdateEpochFromContract = async (
       marketId: _epochId,
     },
   });
-  
+
   if (existingEpoch) {
     // Update existing epoch
     await prisma.market.update({
@@ -538,7 +571,8 @@ export const createOrUpdateEpochFromContract = async (
         marketParamsBondcurrency: market.marketParamsBondcurrency,
         marketParamsBondamount: market.marketParamsBondamount,
         marketParamsClaimstatement: market.marketParamsClaimstatement,
-        marketParamsUniswappositionmanager: market.marketParamsUniswappositionmanager,
+        marketParamsUniswappositionmanager:
+          market.marketParamsUniswappositionmanager,
         marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
         marketParamsUniswapquoter: market.marketParamsUniswapquoter,
         marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
@@ -564,7 +598,8 @@ export const createOrUpdateEpochFromContract = async (
         marketParamsBondcurrency: market.marketParamsBondcurrency,
         marketParamsBondamount: market.marketParamsBondamount,
         marketParamsClaimstatement: market.marketParamsClaimstatement,
-        marketParamsUniswappositionmanager: market.marketParamsUniswappositionmanager,
+        marketParamsUniswappositionmanager:
+          market.marketParamsUniswappositionmanager,
         marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
         marketParamsUniswapquoter: market.marketParamsUniswapquoter,
         marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
@@ -589,7 +624,7 @@ export const createOrUpdateMarketFromEvent = async (
   originalMarket?: market_group | null
 ) => {
   let market: market_group;
-  
+
   if (originalMarket) {
     market = originalMarket;
   } else {
@@ -599,21 +634,26 @@ export const createOrUpdateMarketFromEvent = async (
         chainId,
         address: address.toLowerCase(),
         marketParamsFeerate: Number(eventArgs.marketParams.feeRate) || null,
-        marketParamsAssertionliveness: eventArgs?.marketParams?.assertionLiveness?.toString() || null,
+        marketParamsAssertionliveness:
+          eventArgs?.marketParams?.assertionLiveness?.toString() || null,
         marketParamsBondcurrency: eventArgs?.marketParams?.bondCurrency || null,
-        marketParamsBondamount: eventArgs?.marketParams?.bondAmount?.toString() || null,
-        marketParamsClaimstatement: eventArgs?.marketParams?.claimStatement || null,
-        marketParamsUniswappositionmanager: eventArgs?.uniswapPositionManager || null,
+        marketParamsBondamount:
+          eventArgs?.marketParams?.bondAmount?.toString() || null,
+        marketParamsClaimstatement:
+          eventArgs?.marketParams?.claimStatement || null,
+        marketParamsUniswappositionmanager:
+          eventArgs?.uniswapPositionManager || null,
         marketParamsUniswapswaprouter: eventArgs?.uniswapSwapRouter || null,
-        marketParamsUniswapquoter: eventArgs?.marketParams?.uniswapQuoter || null,
+        marketParamsUniswapquoter:
+          eventArgs?.marketParams?.uniswapQuoter || null,
         marketParamsOptimisticoraclev3: eventArgs?.optimisticOracleV3 || null,
       },
     });
   }
 
   // Update market data
-  const updateData: any = {};
-  
+  const updateData: Partial<market_group> = {};
+
   if (eventArgs.collateralAsset) {
     updateData.collateralAsset = eventArgs.collateralAsset;
   }
@@ -627,7 +667,7 @@ export const createOrUpdateMarketFromEvent = async (
       data: updateData,
     });
   }
-  
+
   return market;
 };
 
@@ -644,9 +684,9 @@ export const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
  * @param event the Event containing the LiquidityPositionCreatedEventLog args
  */
 export const updateTransactionFromAddLiquidityEvent = (
-  newTransaction: transaction & { 
-    event: event & { market_group: market_group },
-    position?: position | null
+  newTransaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
   },
   event: event
 ) => {
@@ -691,9 +731,9 @@ export const updateTransactionFromAddLiquidityEvent = (
  * @param isDecrease whether the event is a decrease or increase in liquidity
  */
 export const updateTransactionFromLiquidityClosedEvent = async (
-  newTransaction: transaction & { 
-    event: event & { market_group: market_group },
-    position?: position | null
+  newTransaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
   },
   event: event
 ) => {
@@ -738,9 +778,9 @@ export const updateTransactionFromLiquidityClosedEvent = async (
  * @param isDecrease whether the event is a decrease or increase in liquidity
  */
 export const updateTransactionFromLiquidityModifiedEvent = async (
-  newTransaction: transaction & { 
-    event: event & { market_group: market_group },
-    position?: position | null
+  newTransaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
   },
   event: event,
   isDecrease?: boolean
@@ -752,14 +792,18 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
   updateTransactionStateFromEvent(newTransaction, event);
 
   const args = getLogDataArgs(event.logData);
-  
+
   newTransaction.lpBaseDeltaToken = isDecrease
-    ? toDecimal((BigInt(args.decreasedAmount0 || '0') * BigInt(-1)).toString())
-    : toDecimal(args.increasedAmount0 || '0');
-    
+    ? toDecimal(
+        (BigInt(String(args.decreasedAmount0 || '0')) * BigInt(-1)).toString()
+      )
+    : toDecimal(String(args.increasedAmount0 || '0'));
+
   newTransaction.lpQuoteDeltaToken = isDecrease
-    ? toDecimal((BigInt(args.decreasedAmount1 || '0') * BigInt(-1)).toString())
-    : toDecimal(args.increasedAmount1 || '0');
+    ? toDecimal(
+        (BigInt(String(args.decreasedAmount1 || '0')) * BigInt(-1)).toString()
+      )
+    : toDecimal(String(args.increasedAmount1 || '0'));
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
@@ -793,9 +837,9 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
  * @param event the Event containing the TradePositionModifiedEventLog args
  */
 export const updateTransactionFromTradeModifiedEvent = async (
-  newTransaction: transaction & { 
-    event: event & { market_group: market_group },
-    position?: position | null
+  newTransaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
   },
   event: event
 ) => {
@@ -836,9 +880,9 @@ export const updateTransactionFromTradeModifiedEvent = async (
 };
 
 export const updateTransactionFromPositionSettledEvent = async (
-  newTransaction: transaction & { 
-    event: event & { market_group: market_group },
-    position?: position | null
+  newTransaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
   },
   event: event,
   marketGroupAddress: string,
@@ -869,7 +913,8 @@ export const updateTransactionFromPositionSettledEvent = async (
     );
     if (position) {
       updateTransactionStateFromEvent(newTransaction, event);
-      newTransaction.tradeRatioD18 = market.settlementPriceD18 || new Decimal('0');
+      newTransaction.tradeRatioD18 =
+        market.settlementPriceD18 || new Decimal('0');
       found = true;
       break;
     }
@@ -936,7 +981,8 @@ export const createEpochFromEvent = async (
         marketParamsBondcurrency: market.marketParamsBondcurrency,
         marketParamsBondamount: market.marketParamsBondamount,
         marketParamsClaimstatement: market.marketParamsClaimstatement,
-        marketParamsUniswappositionmanager: market.marketParamsUniswappositionmanager,
+        marketParamsUniswappositionmanager:
+          market.marketParamsUniswappositionmanager,
         marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
         marketParamsUniswapquoter: market.marketParamsUniswapquoter,
         marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
@@ -957,7 +1003,8 @@ export const createEpochFromEvent = async (
         marketParamsBondcurrency: market.marketParamsBondcurrency,
         marketParamsBondamount: market.marketParamsBondamount,
         marketParamsClaimstatement: market.marketParamsClaimstatement,
-        marketParamsUniswappositionmanager: market.marketParamsUniswappositionmanager,
+        marketParamsUniswappositionmanager:
+          market.marketParamsUniswappositionmanager,
         marketParamsUniswapswaprouter: market.marketParamsUniswapswaprouter,
         marketParamsUniswapquoter: market.marketParamsUniswapquoter,
         marketParamsOptimisticoraclev3: market.marketParamsOptimisticoraclev3,
@@ -1005,22 +1052,22 @@ export const getMarketStartEndBlock = async (
   return { startBlockNumber, endBlockNumber };
 };
 
-const isLpPosition = (transaction: transaction & { 
-  event: event & { market_group: market_group },
-  position?: position | null
-}) => {
+const isLpPosition = (
+  transaction: transaction & {
+    event: event & { market_group: market_group };
+    position?: position | null;
+  }
+) => {
   if (transaction.type === TransactionType.ADD_LIQUIDITY) {
     return true;
   } else if (transaction.type === TransactionType.REMOVE_LIQUIDITY) {
     // for remove liquidity, check if the position closed and kind is 2, which means it becomes a trade position
-    const logData = transaction.event.logData as any;
+    const logData = transaction.event.logData as Record<string, unknown>;
     const eventName = logData?.eventName;
-    const kind = logData?.args?.kind;
-    
-    if (
-      eventName === EventType.LiquidityPositionClosed &&
-      `${kind}` === '2'
-    ) {
+    const args = logData?.args as Record<string, unknown> | undefined;
+    const kind = args?.kind;
+
+    if (eventName === EventType.LiquidityPositionClosed && `${kind}` === '2') {
       return false;
     }
     return true;
@@ -1029,21 +1076,21 @@ const isLpPosition = (transaction: transaction & {
 };
 
 // Helper function to safely convert values to Decimal
-const toDecimal = (value: any): Decimal => {
+const toDecimal = (value: unknown): Decimal => {
   if (value === null || value === undefined) {
     return new Decimal('0');
   }
-  return new Decimal(value.toString());
+  return new Decimal(String(value));
 };
 
 // Helper function to safely access logData.args
-const getLogDataArgs = (logData: any): Record<string, any> => {
+const getLogDataArgs = (logData: unknown): Record<string, unknown> => {
   if (!logData || typeof logData !== 'object') {
     return {};
   }
-  return logData.args || {};
+  const logDataObj = logData as Record<string, unknown>;
+  return (logDataObj.args as Record<string, unknown>) || {};
 };
-
 
 // Define contract return types as tuples with specific types
 type MarketReadResult = readonly [

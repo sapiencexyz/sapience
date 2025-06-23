@@ -34,7 +34,9 @@ export class MarketInfoStore {
   }
 
   public async updateMarketInfo(marketGroups: MarketGroupWithRelations[]) {
-    console.log(`updateMarketInfo: marketGroups.length: ${marketGroups.length}`);
+    console.log(
+      `updateMarketInfo: marketGroups.length: ${marketGroups.length}`
+    );
     let _debugCounter = 0;
     for (const marketGroup of marketGroups) {
       // Add resource slug
@@ -70,7 +72,7 @@ export class MarketInfoStore {
 
   public getMarketInfoByChainAndAddress(
     chainId: number,
-    address: string,  
+    address: string,
     marketId: string
   ): MarketInfo | undefined {
     for (const marketInfo of this.marketInfoByIdx.values()) {

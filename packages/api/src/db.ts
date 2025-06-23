@@ -17,7 +17,10 @@ const isLive =
 
 // Create Prisma client with appropriate logging
 const prisma = new PrismaClient({
-  log: isLive && shouldLogInLive ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
+  log:
+    isLive && shouldLogInLive
+      ? ['query', 'info', 'warn', 'error']
+      : ['warn', 'error'],
 });
 
 // Initialize database connection

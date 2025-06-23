@@ -4,6 +4,7 @@ import { parseContractId } from '../helpers/parseContractId';
 import { validateRequestParams } from '../helpers/validateRequestParams';
 import prisma from '../db';
 import { formatDbBigInt } from '../utils/utils';
+import type { Prisma } from '../../generated/prisma';
 
 const router = Router();
 
@@ -31,9 +32,9 @@ router.get(
     }
 
     // Query for positions related to any epoch of this market
-    const whereCondition: any = {
-      market: { 
-        marketGroupId: marketGroup.id 
+    const whereCondition: Prisma.positionWhereInput = {
+      market: {
+        marketGroupId: marketGroup.id,
       },
     };
 
@@ -60,13 +61,25 @@ router.get(
     // Format the data
     const formattedPositions = positions.map((position) => ({
       ...position,
-      baseToken: position.baseToken ? formatDbBigInt(position.baseToken.toString()) : null,
-      quoteToken: position.quoteToken ? formatDbBigInt(position.quoteToken.toString()) : null,
-      borrowedBaseToken: position.borrowedBaseToken ? formatDbBigInt(position.borrowedBaseToken.toString()) : null,
-      borrowedQuoteToken: position.borrowedQuoteToken ? formatDbBigInt(position.borrowedQuoteToken.toString()) : null,
+      baseToken: position.baseToken
+        ? formatDbBigInt(position.baseToken.toString())
+        : null,
+      quoteToken: position.quoteToken
+        ? formatDbBigInt(position.quoteToken.toString())
+        : null,
+      borrowedBaseToken: position.borrowedBaseToken
+        ? formatDbBigInt(position.borrowedBaseToken.toString())
+        : null,
+      borrowedQuoteToken: position.borrowedQuoteToken
+        ? formatDbBigInt(position.borrowedQuoteToken.toString())
+        : null,
       collateral: formatDbBigInt(position.collateral.toString()),
-      lpBaseToken: position.lpBaseToken ? formatDbBigInt(position.lpBaseToken.toString()) : null,
-      lpQuoteToken: position.lpQuoteToken ? formatDbBigInt(position.lpQuoteToken.toString()) : null,
+      lpBaseToken: position.lpBaseToken
+        ? formatDbBigInt(position.lpBaseToken.toString())
+        : null,
+      lpQuoteToken: position.lpQuoteToken
+        ? formatDbBigInt(position.lpQuoteToken.toString())
+        : null,
     }));
     res.json(formattedPositions);
   })
@@ -96,8 +109,8 @@ router.get(
     const position = await prisma.position.findFirst({
       where: {
         positionId: Number(positionId),
-        market: { 
-          marketGroupId: marketGroup.id 
+        market: {
+          marketGroupId: marketGroup.id,
         },
       },
       include: {
@@ -121,13 +134,25 @@ router.get(
     // Format the data
     const formattedPosition = {
       ...position,
-      baseToken: position.baseToken ? formatDbBigInt(position.baseToken.toString()) : null,
-      quoteToken: position.quoteToken ? formatDbBigInt(position.quoteToken.toString()) : null,
-      borrowedBaseToken: position.borrowedBaseToken ? formatDbBigInt(position.borrowedBaseToken.toString()) : null,
-      borrowedQuoteToken: position.borrowedQuoteToken ? formatDbBigInt(position.borrowedQuoteToken.toString()) : null,
+      baseToken: position.baseToken
+        ? formatDbBigInt(position.baseToken.toString())
+        : null,
+      quoteToken: position.quoteToken
+        ? formatDbBigInt(position.quoteToken.toString())
+        : null,
+      borrowedBaseToken: position.borrowedBaseToken
+        ? formatDbBigInt(position.borrowedBaseToken.toString())
+        : null,
+      borrowedQuoteToken: position.borrowedQuoteToken
+        ? formatDbBigInt(position.borrowedQuoteToken.toString())
+        : null,
       collateral: formatDbBigInt(position.collateral.toString()),
-      lpBaseToken: position.lpBaseToken ? formatDbBigInt(position.lpBaseToken.toString()) : null,
-      lpQuoteToken: position.lpQuoteToken ? formatDbBigInt(position.lpQuoteToken.toString()) : null,
+      lpBaseToken: position.lpBaseToken
+        ? formatDbBigInt(position.lpBaseToken.toString())
+        : null,
+      lpQuoteToken: position.lpQuoteToken
+        ? formatDbBigInt(position.lpQuoteToken.toString())
+        : null,
     };
 
     res.json(formattedPosition);

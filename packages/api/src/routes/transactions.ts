@@ -4,6 +4,7 @@ import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { parseContractId } from '../helpers/parseContractId';
 import prisma from '../db';
 import { hydrateTransactions } from '../helpers/hydrateTransactions';
+import type { Prisma } from '../../generated/prisma';
 
 const router = Router();
 
@@ -20,11 +21,11 @@ router.get(
     const { chainId, address } = parseContractId(contractId);
 
     // Build the where clause
-    const whereClause: any = {
+    const whereClause: Prisma.transactionWhereInput = {
       position: {
         market: {
           market_group: {
-            chainId: chainId,
+            chainId: parseInt(chainId),
             address: address.toLowerCase(),
           },
         },
@@ -36,11 +37,15 @@ router.get(
       // Note: In the new schema, there's no direct epoch relationship
       // This might need to be adjusted based on your business logic
       // For now, we'll use marketId as a substitute if that's what epochId represents
-      whereClause.position.market.marketId = parseInt(epochId);
+      if (whereClause.position && whereClause.position.market) {
+        whereClause.position.market.marketId = parseInt(epochId);
+      }
     }
 
     if (positionId) {
-      whereClause.position.positionId = parseInt(positionId);
+      if (whereClause.position) {
+        whereClause.position.positionId = parseInt(positionId);
+      }
     }
 
     const transactions = await prisma.transaction.findMany({

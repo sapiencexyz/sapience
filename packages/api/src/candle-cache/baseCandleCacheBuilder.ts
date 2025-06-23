@@ -21,6 +21,15 @@ import { IndexCandleProcessor } from './processors/indexCandleProcessor';
 import { TrailingAvgCandleProcessor } from './processors/trailingAvgCandleProcessor';
 import { MarketCandleProcessor } from './processors/marketCandleProcessor';
 import { ResourcePrice } from 'src/models/ResourcePrice';
+import type { Prisma } from '../../generated/prisma';
+
+// Type for what getMarketGroups returns
+type MarketGroupWithRelations = Prisma.market_groupGetPayload<{
+  include: {
+    resource: true;
+    market: true;
+  };
+}>;
 
 export interface ResourcePriceParams {
   initialTimestamp: number;
@@ -65,7 +74,9 @@ export abstract class BaseCandleCacheBuilder {
   protected getResourcePricesFn: (
     params: ResourcePriceParams
   ) => Promise<{ prices: ResourcePrice[]; hasMore: boolean }> =
-    getResourcePrices;
+    getResourcePrices as unknown as (
+      params: ResourcePriceParams
+    ) => Promise<{ prices: ResourcePrice[]; hasMore: boolean }>;
 
   // Abstract method that derived classes must implement to specify their IPC key
   protected abstract getStatusIPCKey(): string;
@@ -144,7 +155,9 @@ export abstract class BaseCandleCacheBuilder {
 
   protected async getUpdatedMarketsAndMarketGroups() {
     const marketGroups = await getMarketGroups();
-    await this.marketInfoStore.updateMarketInfo(marketGroups);
+    await this.marketInfoStore.updateMarketInfo(
+      marketGroups as unknown as MarketGroupWithRelations[]
+    );
   }
 
   protected async processResourcePrices(initialTimestamp: number = 0) {

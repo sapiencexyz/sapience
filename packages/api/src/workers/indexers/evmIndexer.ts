@@ -3,11 +3,7 @@ import { getBlockByTimestamp, getProviderForChain } from '../../utils/utils';
 import { Block, type PublicClient } from 'viem';
 import Sentry from '../../instrument';
 import { IResourcePriceIndexer } from '../../interfaces';
-
-interface Resource {
-  id: number;
-  slug: string;
-}
+import type { resource } from '../../../generated/prisma';
 
 class EvmIndexer implements IResourcePriceIndexer {
   public client: PublicClient;
@@ -20,7 +16,7 @@ class EvmIndexer implements IResourcePriceIndexer {
     this.client = getProviderForChain(chainId);
   }
 
-  private async storeBlockPrice(block: Block, resource: Resource) {
+  private async storeBlockPrice(block: Block, resource: resource) {
     const value = block?.baseFeePerGas; // in wei
     const used = block?.gasUsed;
     if (!value || !block.number) {
@@ -31,7 +27,7 @@ class EvmIndexer implements IResourcePriceIndexer {
     }
     try {
       const feePaid = BigInt(value) * BigInt(used);
-      
+
       await prisma.resource_price.upsert({
         where: {
           resourceId_timestamp: {
@@ -63,7 +59,7 @@ class EvmIndexer implements IResourcePriceIndexer {
   }
 
   async indexBlockPriceFromTimestamp(
-    resource: Resource,
+    resource: resource,
     timestamp: number,
     endTimestamp?: number,
     overwriteExisting: boolean = false
@@ -133,7 +129,7 @@ class EvmIndexer implements IResourcePriceIndexer {
     return true;
   }
 
-  async indexBlocks(resource: Resource, blocks: number[]): Promise<boolean> {
+  async indexBlocks(resource: resource, blocks: number[]): Promise<boolean> {
     for (const blockNumber of blocks) {
       try {
         console.log(
@@ -159,7 +155,7 @@ class EvmIndexer implements IResourcePriceIndexer {
     return true;
   }
 
-  async watchBlocksForResource(resource: Resource) {
+  async watchBlocksForResource(resource: resource) {
     if (this.isWatching) {
       console.log(
         `[EvmIndexer.${resource.slug}] Already watching blocks for this resource`

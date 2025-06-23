@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import type { CandleType } from '@foil/ui/types';
+import type { CandleType } from '@foil/ui/types/graphql';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 

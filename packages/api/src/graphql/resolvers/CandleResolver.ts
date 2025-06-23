@@ -4,7 +4,6 @@ import { CandleType } from '../types';
 import { CandleCacheRetriever } from 'src/candle-cache/candleCacheRetriever';
 import { CandleAndTimestampType } from '../types/CandleAndTimestampType';
 
-
 interface PricePoint {
   timestamp: number;
   value: string;
@@ -120,9 +119,9 @@ export class CandleResolver {
   ): Promise<CandleType | null> {
     try {
       const marketGroup = await prisma.market_group.findFirst({
-        where: { 
-          chainId, 
-          address: address.toLowerCase() 
+        where: {
+          chainId,
+          address: address.toLowerCase(),
         },
       });
 
@@ -199,9 +198,9 @@ export class CandleResolver {
   ): Promise<CandleType[]> {
     try {
       const marketGroup = await prisma.market_group.findFirst({
-        where: { 
-          chainId, 
-          address: address.toLowerCase() 
+        where: {
+          chainId,
+          address: address.toLowerCase(),
         },
       });
 
@@ -310,9 +309,9 @@ export class CandleResolver {
       const lastKnownPrice = lastPriceBefore?.value?.toString();
 
       return groupPricesByInterval(
-        prices.map((p) => ({ 
-          timestamp: Number(p.timestamp), 
-          value: p.value.toString() 
+        prices.map((p) => ({
+          timestamp: Number(p.timestamp),
+          value: p.value.toString(),
         })),
         interval,
         from,

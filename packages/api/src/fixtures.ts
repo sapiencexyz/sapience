@@ -5,6 +5,7 @@ import { IResourcePriceIndexer } from './interfaces';
 import evmIndexer from './workers/indexers/evmIndexer';
 import { WeatherIndexer } from './workers/indexers/weatherIndexer';
 import BtcHashIndexer from './workers/indexers/btcHashIndexer';
+import type { resource } from '../generated/prisma';
 
 export const TIME_INTERVALS = {
   intervals: {
@@ -76,7 +77,7 @@ export const initializeFixtures = async (): Promise<void> => {
         console.log('Created resource:', resourceData.name);
       } else {
         let updated = false;
-        const updateData: any = {};
+        const updateData: Partial<resource> = {};
 
         if (resource.slug !== resourceData.slug) {
           updateData.slug = resourceData.slug;

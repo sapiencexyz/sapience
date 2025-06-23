@@ -1,6 +1,12 @@
 import prisma from 'src/db';
 import { ReducedMarketPrice } from './types';
 import { CANDLE_TYPES } from './config';
+import type {
+  resource_price,
+  cache_candle,
+  market_group,
+  Prisma,
+} from '../../generated/prisma';
 
 export interface ResourcePriceParams {
   initialTimestamp: number;
@@ -54,7 +60,7 @@ export async function setStringParam(
 export async function getResourcePricesCount(
   params: ResourcePriceParams
 ): Promise<number> {
-  const where: any = {
+  const where: Prisma.resource_priceWhereInput = {
     timestamp: { gt: params.initialTimestamp },
   };
 
@@ -67,7 +73,10 @@ export async function getResourcePricesCount(
   } else if (params.startTimestamp) {
     where.timestamp = { gt: params.startTimestamp };
   } else if (params.endTimestamp) {
-    where.timestamp = { gte: params.initialTimestamp, lte: params.endTimestamp };
+    where.timestamp = {
+      gte: params.initialTimestamp,
+      lte: params.endTimestamp,
+    };
   }
 
   return prisma.resource_price.count({
@@ -77,8 +86,8 @@ export async function getResourcePricesCount(
 
 export async function getResourcePrices(
   params: ResourcePriceParams
-): Promise<{ prices: any[]; hasMore: boolean }> {
-  const where: any = {
+): Promise<{ prices: resource_price[]; hasMore: boolean }> {
+  const where: Prisma.resource_priceWhereInput = {
     timestamp: { gt: params.initialTimestamp },
   };
 
@@ -91,7 +100,10 @@ export async function getResourcePrices(
   } else if (params.startTimestamp) {
     where.timestamp = { gt: params.startTimestamp };
   } else if (params.endTimestamp) {
-    where.timestamp = { gte: params.initialTimestamp, lte: params.endTimestamp };
+    where.timestamp = {
+      gte: params.initialTimestamp,
+      lte: params.endTimestamp,
+    };
   }
 
   const prices = await prisma.resource_price.findMany({
@@ -112,7 +124,7 @@ export async function getResourcePrices(
 export async function getLatestResourcePrice(
   initialTimestamp: number,
   resourceSlug: string
-): Promise<any | null> {
+): Promise<resource_price | null> {
   const resourcePrice = await prisma.resource_price.findFirst({
     where: {
       timestamp: { lt: initialTimestamp },
@@ -231,8 +243,8 @@ export async function getLatestCandle({
   interval: number;
   marketIdx: number | undefined;
   resourceSlug: string | undefined;
-}): Promise<any | null> {
-  const where: any = { candleType, interval };
+}): Promise<cache_candle | null> {
+  const where: Prisma.cache_candleWhereInput = { candleType, interval };
   if (marketIdx) {
     where.marketIdx = marketIdx;
   }
@@ -246,7 +258,7 @@ export async function getLatestCandle({
   return candle;
 }
 
-export async function getMarketGroups(): Promise<any[]> {
+export async function getMarketGroups(): Promise<market_group[]> {
   return prisma.market_group.findMany({
     include: { market: true, resource: true },
   });
@@ -265,7 +277,7 @@ export async function getLastCandleFromDb({
   resourceSlug?: string;
   trailingAvgTime?: number;
 }) {
-  const where: any = { candleType, interval };
+  const where: Prisma.cache_candleWhereInput = { candleType, interval };
   if (marketIdx) {
     where.marketIdx = marketIdx;
   }
@@ -283,24 +295,24 @@ export async function getLastCandleFromDb({
   return candle;
 }
 
-export async function saveCandle(candle: any) {
+export async function saveCandle(candle: Prisma.cache_candleCreateInput) {
   await prisma.cache_candle.upsert({
     where: {
       candleType_interval_timestamp_resourceSlug_marketIdx_trailingAvgTime: {
         candleType: candle.candleType,
         interval: candle.interval,
         timestamp: candle.timestamp,
-        resourceSlug: candle.resourceSlug,
-        marketIdx: candle.marketIdx,
-        trailingAvgTime: candle.trailingAvgTime,
-      },
+        resourceSlug: candle.resourceSlug || null,
+        marketIdx: candle.marketIdx || null,
+        trailingAvgTime: candle.trailingAvgTime || null,
+      } as Prisma.cache_candleCandleTypeIntervalTimestampResourceSlugMarketIdxTrailingAvgTimeCompoundUniqueInput,
     },
     update: candle,
     create: candle,
   });
 }
 
-export async function saveCandles(candles: any[]) {
+export async function saveCandles(candles: Prisma.cache_candleCreateInput[]) {
   for (const candle of candles) {
     await saveCandle(candle);
   }
@@ -337,6 +349,8 @@ export async function getOrCreateCandle({
   }
 
   const newCandle = {
+    id: 0, // Temporary ID for new candles
+    createdAt: new Date(),
     candleType,
     interval,
     timestamp,
@@ -349,6 +363,12 @@ export async function getOrCreateCandle({
     close: '0',
     endTimestamp: 0,
     lastUpdatedTimestamp: 0,
+    sumUsed: null,
+    sumFeePaid: null,
+    trailingStartTimestamp: null as number | null,
+    address: null as string | null,
+    chainId: null as number | null,
+    marketId: null as number | null,
   };
   return newCandle;
 }
@@ -370,7 +390,7 @@ export async function getCandles({
   marketIdx?: number;
   trailingAvgTime?: number;
 }) {
-  const where: any = {
+  const where: Prisma.cache_candleWhereInput = {
     candleType,
     interval,
     timestamp: { gte: from, lte: to },

@@ -92,8 +92,11 @@ export async function handleMarketGroupInitialized(
       });
 
       try {
-        // Cast to any to work with the legacy updateCollateralData function
-        await updateCollateralData(client, updatedMarketGroup as any);
+        // Cast to work with the legacy updateCollateralData function
+        await updateCollateralData(
+          client,
+          updatedMarketGroup as unknown as market_group
+        );
       } catch (err) {
         console.error(
           `Failed to update collateral data for market group ${updatedMarketGroup.address}:`,

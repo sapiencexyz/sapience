@@ -1,5 +1,5 @@
+import 'reflect-metadata';
 import { initializeDataSource } from './db';
-import prisma from './db';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
@@ -60,25 +60,6 @@ const startServer = async () => {
   if (process.env.NODE_ENV === 'production') {
     Sentry.setupExpressErrorHandler(app);
   }
-
-  console.log('ResourcePerformanceManager - Starting');
-
-  let resources;
-  if (
-    process.env.NODE_ENV === 'development' &&
-    process.env.DATABASE_URL?.includes('render')
-  ) {
-    console.log(
-      "WARNING: Initializing resources selectively so that we don't have to cache everything"
-    );
-    resources = (await prisma.resource.findMany()).filter((res) => res.id === 8) as any;
-  } else {
-    resources = await prisma.resource.findMany() as any;
-  }
-
-  const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-  await resourcePerformanceManager.initialize(resources);
-  console.log('ResourcePerformanceManager - Initialized');
 
   // Global error handle
   // Needs the unused _next parameter to be passed in: https://expressjs.com/en/guide/error-handling.html

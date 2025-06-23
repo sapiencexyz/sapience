@@ -114,9 +114,7 @@ const MARKET_GROUPS_QUERY = gql`
         baseAssetMaxPriceTick
         poolAddress
         currentPrice
-        marketParams {
-          claimStatement
-        }
+        marketParamsClaimstatement 
       }
     }
   }
@@ -135,9 +133,7 @@ interface ApiMarketResponse {
   baseAssetMinPriceTick: number;
   baseAssetMaxPriceTick: number;
   poolAddress?: string | null;
-  marketParams?: {
-    claimStatement?: string | null;
-  } | null;
+  marketParamsClaimstatement?: string | null;
 }
 
 interface ApiMarketGroupResponse {
@@ -234,7 +230,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
               baseAssetMinPriceTick: market.baseAssetMinPriceTick,
               baseAssetMaxPriceTick: market.baseAssetMaxPriceTick,
               poolAddress: market.poolAddress,
-              claimStatement: market.marketParams?.claimStatement,
+              claimStatement: market.marketParamsClaimstatement,
               // Add other fields required by ApiMarket if they exist in ApiMarketResponse
               settled: market.settled,
               optionName: market.optionName,

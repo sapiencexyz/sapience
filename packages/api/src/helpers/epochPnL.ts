@@ -94,7 +94,7 @@ export class EpochPnL {
 
       for (const position of positions) {
         if (!position.owner) continue; // Skip positions without owner
-        
+
         const ownerId = position.owner.toLowerCase();
 
         if (!pnlByOwner.has(ownerId)) {

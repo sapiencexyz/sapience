@@ -5,6 +5,7 @@ import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getTimtestampCandleInterval } from '../candleUtils';
 import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { MarketInfo, MarketInfoStore } from '../marketInfoStore';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export class IndexCandleProcessor {
   constructor(
@@ -53,8 +54,8 @@ export class IndexCandleProcessor {
     candle.high = String(avg);
     candle.low = String(avg);
     candle.close = String(avg);
-    candle.sumFeePaid = String(feePaid);
-    candle.sumUsed = String(used);
+    candle.sumFeePaid = new Decimal(feePaid);
+    candle.sumUsed = new Decimal(used);
     return candle;
   }
 
@@ -117,8 +118,8 @@ export class IndexCandleProcessor {
           candle.low = String(avg);
           candle.close = String(avg);
           candle.lastUpdatedTimestamp = price.timestamp;
-          candle.sumFeePaid = String(feePaid);
-          candle.sumUsed = String(used);
+          candle.sumFeePaid = new Decimal(feePaid);
+          candle.sumUsed = new Decimal(used);
         }
       }
     }

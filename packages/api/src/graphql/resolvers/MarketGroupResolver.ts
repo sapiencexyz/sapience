@@ -9,8 +9,8 @@ import {
   Field,
 } from 'type-graphql';
 import prisma from '../../db';
-import { MarketType, MarketGroupType } from '../types';
-import { mapMarketGroupToType, mapMarketToType } from './mappers';
+import { MarketGroup, Market } from '../types/PrismaTypes';
+import type { market_group, market, Prisma } from '../../../generated/prisma';
 
 @InputType()
 export class MarketFilterInput {
@@ -27,18 +27,18 @@ export class MarketOrderInput {
   direction: 'ASC' | 'DESC';
 }
 
-@Resolver(() => MarketGroupType)
+@Resolver(() => MarketGroup)
 export class MarketGroupResolver {
-  @Query(() => [MarketGroupType])
+  @Query(() => [MarketGroup])
   async marketGroups(
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('collateralAsset', () => String, { nullable: true })
     collateralAsset?: string,
     @Arg('baseTokenName', () => String, { nullable: true })
     baseTokenName?: string
-  ): Promise<MarketGroupType[]> {
+  ): Promise<MarketGroup[]> {
     try {
-      const whereConditions: any = {};
+      const whereConditions: Prisma.market_groupWhereInput = {};
 
       if (chainId !== undefined) {
         whereConditions.chainId = chainId;
@@ -61,23 +61,23 @@ export class MarketGroupResolver {
         },
       });
 
-      return marketGroups.map(mapMarketGroupToType);
+      return marketGroups as MarketGroup[];
     } catch (error) {
       console.error('Error fetching market groups:', error);
       throw new Error('Failed to fetch market groups');
     }
   }
 
-  @Query(() => MarketGroupType, { nullable: true })
+  @Query(() => MarketGroup, { nullable: true })
   async marketGroup(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string
-  ): Promise<MarketGroupType | null> {
+  ): Promise<MarketGroup | null> {
     try {
       const marketGroup = await prisma.market_group.findFirst({
-        where: { 
-          chainId, 
-          address: address.toLowerCase() 
+        where: {
+          chainId,
+          address: address.toLowerCase(),
         },
         include: {
           market: true,
@@ -88,26 +88,26 @@ export class MarketGroupResolver {
 
       if (!marketGroup) return null;
 
-      return mapMarketGroupToType(marketGroup);
+      return marketGroup as MarketGroup;
     } catch (error) {
       console.error('Error fetching market group:', error);
       throw new Error('Failed to fetch market group');
     }
   }
 
-  @FieldResolver(() => [MarketType])
+  @FieldResolver(() => [Market])
   async markets(
-    @Root() marketGroup: any,
+    @Root() marketGroup: market_group & { market?: market[] },
     @Arg('filter', () => MarketFilterInput, { nullable: true })
     filter?: MarketFilterInput,
     @Arg('orderBy', () => MarketOrderInput, { nullable: true })
     orderBy?: MarketOrderInput
-  ): Promise<MarketType[]> {
+  ): Promise<Market[]> {
     try {
       let markets = marketGroup.market;
 
       if (!markets) {
-        const whereConditions: any = {
+        const whereConditions: Prisma.marketWhereInput = {
           marketGroupId: marketGroup.id,
         };
 
@@ -117,9 +117,11 @@ export class MarketGroupResolver {
           };
         }
 
-        const orderByCondition: any = {};
+        const orderByCondition: Prisma.marketOrderByWithRelationInput = {};
         if (orderBy?.field === 'endTimestamp') {
-          orderByCondition.endTimestamp = orderBy.direction.toLowerCase();
+          orderByCondition.endTimestamp = orderBy.direction.toLowerCase() as
+            | 'asc'
+            | 'desc';
         } else {
           orderByCondition.endTimestamp = 'asc';
         }
@@ -132,12 +134,12 @@ export class MarketGroupResolver {
         if (filter?.endTimestamp_gt) {
           const endTimestampGt = parseInt(filter.endTimestamp_gt, 10);
           markets = markets.filter(
-            (m: any) => m.endTimestamp && m.endTimestamp > endTimestampGt
+            (m: market) => m.endTimestamp && m.endTimestamp > endTimestampGt
           );
         }
 
         if (orderBy?.field === 'endTimestamp') {
-          markets.sort((a: any, b: any) => {
+          markets.sort((a: market, b: market) => {
             const timeA = a.endTimestamp || 0;
             const timeB = b.endTimestamp || 0;
             if (orderBy.direction === 'ASC') {
@@ -147,11 +149,14 @@ export class MarketGroupResolver {
             }
           });
         } else {
-          markets.sort((a: any, b: any) => (a.endTimestamp || 0) - (b.endTimestamp || 0));
+          markets.sort(
+            (a: market, b: market) =>
+              (a.endTimestamp || 0) - (b.endTimestamp || 0)
+          );
         }
       }
 
-      return markets.map(mapMarketToType);
+      return markets as Market[];
     } catch (error) {
       console.error('Error fetching markets for market group:', error);
       throw new Error('Failed to fetch markets');

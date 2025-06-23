@@ -11,17 +11,20 @@ export type PrismaTransactionWithIncludes = Prisma.transactionGetPayload<{
             market_group: {
               include: {
                 resource: true;
-              }
-            }
-          }
-        }
-      }
+              };
+            };
+          };
+        };
+      };
     };
     event: true;
-  }
+  };
 }>;
 
-export type HydratedTransaction = Omit<PrismaTransactionWithIncludes, 'tradeRatioD18'> & {
+export type HydratedTransaction = Omit<
+  PrismaTransactionWithIncludes,
+  'tradeRatioD18'
+> & {
   tradeRatioD18: string | null;
   collateralDelta: string;
   baseTokenDelta: string;
@@ -42,7 +45,9 @@ export const hydrateTransactions = (
   for (const transaction of transactions) {
     // Convert Prisma Decimal to string for formatDbBigInt
     const tradeRatioD18Str = transaction.tradeRatioD18?.toString() || null;
-    const formattedTradeRatio = tradeRatioD18Str ? formatDbBigInt(tradeRatioD18Str) : null;
+    const formattedTradeRatio = tradeRatioD18Str
+      ? formatDbBigInt(tradeRatioD18Str)
+      : null;
 
     const hydratedTransaction: HydratedTransaction = {
       ...transaction,
@@ -64,16 +69,26 @@ export const hydrateTransactions = (
     }
 
     // Convert Prisma Decimal values to BigInt for calculations
-    const baseTokenBigInt = transaction.baseToken ? BigInt(transaction.baseToken.toString()) : BigInt(0);
-    const quoteTokenBigInt = transaction.quoteToken ? BigInt(transaction.quoteToken.toString()) : BigInt(0);
+    const baseTokenBigInt = transaction.baseToken
+      ? BigInt(transaction.baseToken.toString())
+      : BigInt(0);
+    const quoteTokenBigInt = transaction.quoteToken
+      ? BigInt(transaction.quoteToken.toString())
+      : BigInt(0);
     const collateralBigInt = BigInt(transaction.collateral.toString());
-    const lpBaseDeltaBigInt = transaction.lpBaseDeltaToken ? BigInt(transaction.lpBaseDeltaToken.toString()) : null;
-    const lpQuoteDeltaBigInt = transaction.lpQuoteDeltaToken ? BigInt(transaction.lpQuoteDeltaToken.toString()) : null;
+    const lpBaseDeltaBigInt = transaction.lpBaseDeltaToken
+      ? BigInt(transaction.lpBaseDeltaToken.toString())
+      : null;
+    const lpQuoteDeltaBigInt = transaction.lpQuoteDeltaToken
+      ? BigInt(transaction.lpQuoteDeltaToken.toString())
+      : null;
 
     // If the transaction is from a liquidity position, use the lpDeltaToken values
     // Otherwise, use the baseToken and quoteToken values from the previous transaction (trade with history)
-    const currentBaseTokenBalance = lpBaseDeltaBigInt || (baseTokenBigInt - lastBaseToken);
-    const currentQuoteTokenBalance = lpQuoteDeltaBigInt || (quoteTokenBigInt - lastQuoteToken);
+    const currentBaseTokenBalance =
+      lpBaseDeltaBigInt || baseTokenBigInt - lastBaseToken;
+    const currentQuoteTokenBalance =
+      lpQuoteDeltaBigInt || quoteTokenBigInt - lastQuoteToken;
     const currentCollateralBalance = collateralBigInt - lastCollateral;
 
     hydratedTransaction.baseTokenDelta = shouldFormatUnits

@@ -66,11 +66,11 @@ export class ResourceCandleProcessor {
         if (lastPrice) {
           this.lastClosePricesByResourceAndInterval[price.resource.slug][
             interval
-          ] = lastPrice.value;
+          ] = lastPrice.value.toString();
         } else {
           this.lastClosePricesByResourceAndInterval[price.resource.slug][
             interval
-          ] = price.value;
+          ] = price.value.toString();
         }
       }
 
@@ -93,7 +93,7 @@ export class ResourceCandleProcessor {
       if (candle && candle.timestamp < candleTimestamp) {
         this.lastClosePricesByResourceAndInterval[price.resource.slug][
           interval
-        ] = candle.close;
+        ] = candle.close.toString();
         await saveCandle(candle);
         candle = await this.getNewCandle(
           interval,

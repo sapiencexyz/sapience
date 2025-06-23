@@ -15,12 +15,17 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { walletAddress, chainId, marketAddress, epochId } = req.body;
 
-    const { market } = await getMarketGroupAndMarket(
+    const result = await getMarketGroupAndMarket(
       chainId,
       marketAddress.toLowerCase(),
       epochId
     );
 
+    if (!result) {
+      throw new Error('Market not found');
+    }
+
+    const { market } = result;
     const duration =
       Number(market.endTimestamp) - Number(market.startTimestamp);
     const startTime = Math.floor(Date.now() / 1000) - duration;

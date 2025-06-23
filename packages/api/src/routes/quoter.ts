@@ -4,6 +4,7 @@ import prisma from '../db';
 import { formatUnits, parseUnits } from 'viem';
 import { z } from 'zod';
 import { getProviderForChain } from '../utils/utils';
+import type { Prisma } from '../../generated/prisma';
 
 const router = Router();
 const MAX_ITERATIONS = 10;
@@ -35,7 +36,7 @@ router.get('/:chainId/:marketAddress/:epochId/', async (req, res) => {
 
     // Get the epoch data
     const market = await getMarket(chainId, marketAddress, epochId);
-    if (!market) {
+    if (!market || !market.market_group || !market.market_group.address) {
       return res.status(404).json({ error: 'Market not found' });
     }
 
@@ -264,7 +265,9 @@ async function getMarket(
   chainId: string,
   marketAddress: string,
   marketId: string
-): Promise<any | null> {
+): Promise<Prisma.marketGetPayload<{
+  include: { market_group: true };
+}> | null> {
   const market = await prisma.market.findFirst({
     where: {
       market_group: {

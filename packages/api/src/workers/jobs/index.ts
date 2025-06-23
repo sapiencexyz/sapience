@@ -61,7 +61,7 @@ const callReindexResource = async (argv: string[]) => {
     console.error('Resource for the chosen slug was not found');
     process.exit(1); // Exit with error if resource not found
   }
-  const result = await reindexResource(resource as any, startTimestamp, endTimestamp);
+  const result = await reindexResource(resource, startTimestamp, endTimestamp);
 
   if (!result) {
     console.error('Failed to reindex resource');

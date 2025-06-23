@@ -1,13 +1,11 @@
 import { Resolver, Query, Arg } from 'type-graphql';
 import prisma from '../../db';
-import { CategoryType } from '../types';
-import { MarketGroupType } from '../types';
-import { mapCategoryToType, mapMarketGroupToType } from './mappers';
+import { Category, MarketGroup } from '../types/PrismaTypes';
 
-@Resolver(() => CategoryType)
+@Resolver(() => Category)
 export class CategoryResolver {
-  @Query(() => [CategoryType])
-  async categories(): Promise<CategoryType[]> {
+  @Query(() => [Category])
+  async categories(): Promise<Category[]> {
     try {
       const categories = await prisma.category.findMany({
         include: {
@@ -19,17 +17,17 @@ export class CategoryResolver {
           },
         },
       });
-      return categories.map((category) => mapCategoryToType(category as any));
+      return categories as Category[];
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw new Error('Failed to fetch categories');
     }
   }
 
-  @Query(() => [MarketGroupType])
+  @Query(() => [MarketGroup])
   async marketGroupsByCategory(
     @Arg('slug', () => String) slug: string
-  ): Promise<MarketGroupType[]> {
+  ): Promise<MarketGroup[]> {
     try {
       const category = await prisma.category.findFirst({
         where: { slug },
@@ -47,7 +45,7 @@ export class CategoryResolver {
         throw new Error(`Category with slug ${slug} not found`);
       }
 
-      return category.market_group.map((marketGroup) => mapMarketGroupToType(marketGroup as any));
+      return category.market_group as MarketGroup[];
     } catch (error) {
       console.error('Error fetching markets by category:', error);
       throw new Error('Failed to fetch markets by category');

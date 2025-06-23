@@ -1,20 +1,20 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
 import prisma from '../../db';
-import { PositionType } from '../types';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
-import { mapPositionToType } from './mappers';
+import { Position } from '../types/PrismaTypes';
+import type { Prisma } from '../../../generated/prisma';
 
-@Resolver(() => PositionType)
+@Resolver(() => Position)
 export class PositionResolver {
-  @Query(() => [PositionType])
+  @Query(() => [Position])
   async positions(
     @Arg('owner', () => String, { nullable: true }) owner?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('marketAddress', () => String, { nullable: true })
     marketAddress?: string
-  ): Promise<PositionType[]> {
+  ): Promise<Position[]> {
     try {
-      const whereConditions: any = {};
+      const whereConditions: Prisma.positionWhereInput = {};
 
       if (owner) {
         whereConditions.owner = owner.toLowerCase();
@@ -49,15 +49,15 @@ export class PositionResolver {
         },
       });
 
-      const hydratedPositions = positionsResult.map((position: any) => {
+      const hydratedPositions = positionsResult.map((position) => {
         const hydratedTransactions = hydrateTransactions(
-          position.transaction,
+          position.transaction as Parameters<typeof hydrateTransactions>[0],
           false
         );
         return { ...position, transactions: hydratedTransactions };
       });
 
-      return hydratedPositions.map(mapPositionToType);
+      return hydratedPositions as unknown as Position[];
     } catch (error) {
       console.error('Error fetching positions:', error);
       throw new Error('Failed to fetch positions');

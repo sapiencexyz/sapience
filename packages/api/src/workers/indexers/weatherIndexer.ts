@@ -104,14 +104,16 @@ export class WeatherIndexer implements IResourcePriceIndexer {
               resourceId_timestamp: {
                 resourceId: resource.id,
                 timestamp: Math.floor(
-                  new Date(weatherData.temperature.latest.timestamp).getTime() / 1000
+                  new Date(weatherData.temperature.latest.timestamp).getTime() /
+                    1000
                 ),
               },
             },
             create: {
               resourceId: resource.id,
               timestamp: Math.floor(
-                new Date(weatherData.temperature.latest.timestamp).getTime() / 1000
+                new Date(weatherData.temperature.latest.timestamp).getTime() /
+                  1000
               ),
               value: temperatureValue,
               used: '1',
@@ -170,14 +172,17 @@ export class WeatherIndexer implements IResourcePriceIndexer {
               resourceId_timestamp: {
                 resourceId: resource.id,
                 timestamp: Math.floor(
-                  new Date(weatherData.precipitation.latest.timestamp).getTime() / 1000
+                  new Date(
+                    weatherData.precipitation.latest.timestamp
+                  ).getTime() / 1000
                 ),
               },
             },
             create: {
               resourceId: resource.id,
               timestamp: Math.floor(
-                new Date(weatherData.precipitation.latest.timestamp).getTime() / 1000
+                new Date(weatherData.precipitation.latest.timestamp).getTime() /
+                  1000
               ),
               value: (
                 weatherData.precipitation.latest.precipitation *

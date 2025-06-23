@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import type { MarketType, MarketGroupType, CategoryType } from '@foil/ui/types';
+import type { Market as MarketType, MarketGroup as MarketGroupType, Category as CategoryType } from '@foil/ui/types/graphql';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
@@ -132,17 +132,15 @@ const MARKETS_QUERY = gql`
         name
         slug
       }
-      marketParams {
-        feeRate
-        assertionLiveness
-        bondCurrency
-        bondAmount
-        claimStatement
-        uniswapPositionManager
-        uniswapSwapRouter
-        uniswapQuoter
-        optimisticOracleV3
-      }
+      marketParamsFeerate
+      marketParamsAssertionliveness
+      marketParamsBondcurrency
+      marketParamsBondamount
+      marketParamsClaimstatement
+      marketParamsUniswappositionmanager
+      marketParamsUniswapswaprouter
+      marketParamsUniswapquoter
+      marketParamsOptimisticoraclev3
       category {
         id
         name
@@ -163,17 +161,15 @@ const MARKETS_QUERY = gql`
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
         startingSqrtPriceX96
-        marketParams {
-          feeRate
-          assertionLiveness
-          bondCurrency
-          bondAmount
-          claimStatement
-          uniswapPositionManager
-          uniswapSwapRouter
-          uniswapQuoter
-          optimisticOracleV3
-        }
+        marketParamsFeerate
+        marketParamsAssertionliveness
+        marketParamsBondcurrency
+        marketParamsBondamount
+        marketParamsClaimstatement
+        marketParamsUniswappositionmanager
+        marketParamsUniswapswaprouter
+        marketParamsUniswapquoter
+        marketParamsOptimisticoraclev3
       }
     }
   }
@@ -281,7 +277,7 @@ export const useEnrichedMarketGroups = () => {
             };
           }
 
-          const mappedMarkets = marketGroup.markets.map(
+          const mappedMarkets = (marketGroup.markets || []).map(
             (market): MarketType => ({
               ...market,
               id: market.id.toString(),

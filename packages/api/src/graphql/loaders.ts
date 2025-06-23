@@ -1,14 +1,14 @@
 import DataLoader from 'dataloader';
 import prisma from '../db';
-import type {transaction } from '../../generated/prisma';
+import type { transaction } from '../../generated/prisma';
 
 // Batch function to load market groups by IDs
 const batchMarketGroups = async (ids: readonly number[]) => {
   const marketGroups = await prisma.market_group.findMany({
     where: { id: { in: [...ids] } },
-    include: { 
-      market: true, 
-      resource: true 
+    include: {
+      market: true,
+      resource: true,
     },
   });
 
@@ -20,9 +20,9 @@ const batchMarketGroups = async (ids: readonly number[]) => {
 const batchResources = async (ids: readonly number[]) => {
   const resources = await prisma.resource.findMany({
     where: { id: { in: [...ids] } },
-    include: { 
-      market_group: true, 
-      resource_price: true 
+    include: {
+      market_group: true,
+      resource_price: true,
     },
   });
 
@@ -36,13 +36,13 @@ const batchResources = async (ids: readonly number[]) => {
 const batchPositions = async (ids: readonly number[]) => {
   const positions = await prisma.position.findMany({
     where: { id: { in: [...ids] } },
-    include: { 
+    include: {
       market: {
         include: {
           market_group: true,
         },
-      }, 
-      transaction: true 
+      },
+      transaction: true,
     },
   });
 
@@ -56,9 +56,9 @@ const batchPositions = async (ids: readonly number[]) => {
 const batchMarkets = async (ids: readonly number[]) => {
   const markets = await prisma.market.findMany({
     where: { id: { in: [...ids] } },
-    include: { 
-      market_group: true, 
-      position: true 
+    include: {
+      market_group: true,
+      position: true,
     },
   });
 
@@ -70,7 +70,7 @@ const batchMarkets = async (ids: readonly number[]) => {
 const batchTransactionsByPosition = async (positionIds: readonly number[]) => {
   const transactions = await prisma.transaction.findMany({
     where: { positionId: { in: [...positionIds] } },
-    include: { 
+    include: {
       position: {
         include: {
           market: {

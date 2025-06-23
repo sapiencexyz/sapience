@@ -344,7 +344,9 @@ router.post(
         });
       }
 
-      const nextMarketIndex = marketGroup.market ? marketGroup.market.length : 0;
+      const nextMarketIndex = marketGroup.market
+        ? marketGroup.market.length
+        : 0;
 
       try {
         const savedMarket = await createSingleMarket(

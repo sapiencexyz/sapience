@@ -1,17 +1,31 @@
 import { Resolver, Query, Arg } from 'type-graphql';
 import prisma from '../../db';
-import { ResourceType } from '../types';
-import { mapResourceToType } from './mappers';
-import { ResourcePriceType } from '../types';
+import { Resource, ResourcePrice } from '../types/PrismaTypes';
+import type {
+  resource,
+  resource_price,
+  market_group,
+  category,
+  Prisma,
+} from '../../../generated/prisma';
 
-@Resolver(() => ResourceType)
+@Resolver(() => Resource)
 export class ResourceResolver {
-  @Query(() => [ResourceType])
+  @Query(() => [Resource])
   async resources(
     @Arg('categorySlug', () => String, { nullable: true }) categorySlug?: string
-  ): Promise<ResourceType[]> {
+  ): Promise<Resource[]> {
     try {
+      const whereConditions: Prisma.resourceWhereInput = {};
+
+      if (categorySlug) {
+        whereConditions.category = {
+          slug: categorySlug,
+        };
+      }
+
       const resources = await prisma.resource.findMany({
+        where: whereConditions,
         include: {
           market_group: {
             include: {
@@ -22,19 +36,24 @@ export class ResourceResolver {
           category: true,
         },
       });
-      return resources.map(mapResourceToType as any);
+      return resources as Resource[];
     } catch (error) {
       console.error('Error fetching resources:', error);
       throw new Error('Failed to fetch resources');
     }
   }
 
-  @Query(() => ResourceType, { nullable: true })
+  @Query(() => Resource, { nullable: true })
   async resource(
     @Arg('slug', () => String) slug: string
-  ): Promise<ResourceType | null> {
+  ): Promise<Resource | null> {
     try {
-      const resource = await prisma.resource.findFirst({
+      const resource:
+        | (resource & {
+            market_group: (market_group & { category: category | null })[];
+            category: category | null;
+          })
+        | null = await prisma.resource.findFirst({
         where: { slug },
         include: {
           market_group: {
@@ -48,26 +67,32 @@ export class ResourceResolver {
 
       if (!resource) return null;
 
-      return mapResourceToType(resource as any);
+      return resource as Resource;
     } catch (error) {
       console.error('Error fetching resource:', error);
       throw new Error('Failed to fetch resource');
     }
   }
 
-  @Query(() => [ResourcePriceType])
-  async resourcePrices(): Promise<ResourcePriceType[]> {
+  @Query(() => [ResourcePrice])
+  async resourcePrices(): Promise<ResourcePrice[]> {
     try {
-      const prices = await prisma.resource_price.findMany({
-        include: {
-          resource: true,
-        },
-      });
+      const prices: (resource_price & { resource: resource | null })[] =
+        await prisma.resource_price.findMany({
+          include: {
+            resource: true,
+          },
+        });
 
-      return prices.map((price) => ({
-        ...price,
-        resource: mapResourceToType(price.resource),
-      }));
+      return prices.map(
+        (price: resource_price & { resource: resource | null }) => ({
+          id: price.id,
+          timestamp: price.timestamp,
+          value: price.value.toString(),
+          blockNumber: price.blockNumber,
+          resource: price.resource ? (price.resource as Resource) : null,
+        })
+      ) as ResourcePrice[];
     } catch (error) {
       console.error('Error fetching resource prices:', error);
       throw new Error('Failed to fetch resource prices');
