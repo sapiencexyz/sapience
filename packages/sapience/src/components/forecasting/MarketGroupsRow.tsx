@@ -160,7 +160,7 @@ const MarketGroupsRow = ({
   return (
     <Link href={`/forecasting/${chainShortName}:${marketAddress}`}>
       {/* Main Row Container for Color Bar + Content */}
-      <div className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch">
+      <div className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px]">
         {/* Colored Bar (Full Height) */}
         <div
           className="w-1 min-w-[4px] max-w-[4px]"

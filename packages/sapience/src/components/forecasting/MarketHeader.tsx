@@ -7,13 +7,22 @@ import {
 } from '@foil/ui/components/ui/tooltip';
 import type { MarketType } from '@foil/ui/types';
 import { format, formatDistanceToNow, fromUnixTime } from 'date-fns';
-import { MoveHorizontal, ArrowRight } from 'lucide-react';
+import {
+  MoveHorizontal,
+  ArrowRight,
+  TrendingUp,
+  DollarSign,
+} from 'lucide-react';
 import { FaCubes, FaRegCalendar } from 'react-icons/fa';
 import { IoDocumentTextOutline } from 'react-icons/io5';
 import { LiaRulerVerticalSolid } from 'react-icons/lia';
 import * as chains from 'viem/chains';
 
 import NumberDisplay from '../shared/NumberDisplay';
+import {
+  useTotalVolume,
+  useOpenInterest,
+} from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
@@ -57,6 +66,19 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
 }) => {
   // Get chain information
   const chain = Object.values(chains).find((c) => c.id === chainId);
+
+  // Fetch volume and open interest data
+  const { data: totalVolume } = useTotalVolume({
+    address: marketAddress,
+    chainId,
+    marketId: marketData?.marketId || 0,
+  });
+
+  const { data: openInterest } = useOpenInterest({
+    address: marketAddress,
+    chainId,
+    marketId: marketData?.marketId || 0,
+  });
 
   // Format end time for badge
   const endTimeBadge = (() => {
@@ -103,6 +125,50 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
 
   const links = (
     <>
+      {totalVolume !== null && totalVolume !== undefined && (
+        <div className="inline-flex items-center">
+          <span className="inline-block mr-1.5">
+            <TrendingUp className="w-4 h-4 opacity-80" />
+          </span>
+          <span className="font-medium mr-1">Volume:</span>
+          <NumberDisplay value={totalVolume} />
+          <span className="ml-1">{unitDisplay}</span>
+        </div>
+      )}
+
+      {openInterest !== null && openInterest !== undefined && (
+        <div className="inline-flex items-center">
+          <span className="inline-block mr-1.5">
+            <DollarSign className="w-4 h-4 opacity-80" />
+          </span>
+          <span className="font-medium mr-1">Open Interest:</span>
+          <NumberDisplay value={openInterest} />
+          <span className="ml-1">{unitDisplay}</span>
+        </div>
+      )}
+
+      {startTimeString && endTimeString && (
+        <div className="inline-flex items-center">
+          <span className="inline-block mr-1.5">
+            <FaRegCalendar className="opacity-80" />
+          </span>
+          <span className="font-medium mr-1">Period:</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>{startTimeString}</TooltipTrigger>
+              <TooltipContent>{startTimeTooltip}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <ArrowRight className="w-3 h-3 mx-1" />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>{endTimeString}</TooltipTrigger>
+              <TooltipContent>{endTimeTooltip}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      )}
+
       <a
         className="hover:no-underline inline-flex items-center"
         target="_blank"
@@ -143,28 +209,6 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
           <MoveHorizontal className="w-3 h-3 mx-1" />
           <NumberDisplay value={maxPrice} />
           <span className="ml-1">{unitDisplay}</span>
-        </div>
-      )}
-
-      {startTimeString && endTimeString && (
-        <div className="inline-flex items-center">
-          <span className="inline-block mr-1.5">
-            <FaRegCalendar className="opacity-80" />
-          </span>
-          <span className="font-medium mr-1">Period:</span>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>{startTimeString}</TooltipTrigger>
-              <TooltipContent>{startTimeTooltip}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <ArrowRight className="w-3 h-3 mx-1" />
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>{endTimeString}</TooltipTrigger>
-              <TooltipContent>{endTimeTooltip}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
         </div>
       )}
     </>
