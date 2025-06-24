@@ -141,7 +141,7 @@ const marketSchema = z
     endTime: z.coerce
       .number()
       .int()
-      .nonnegative('Valid End Time (>= 0) is required'),
+      .positive('Valid End Time (> 0) is required'),
     startingSqrtPriceX96: z
       .string()
       .trim()
@@ -218,7 +218,7 @@ const createEmptyMarket = (id: number): MarketInput => {
     marketQuestion: '',
     optionName: '',
     startTime: now.toString(),
-    endTime: (now + 28 * 24 * 60 * 60).toString(),
+    endTime: '', // Empty string - user must set this
     startingSqrtPriceX96: DEFAULT_SQRT_PRICE,
     baseAssetMinPriceTick: DEFAULT_MIN_PRICE_TICK,
     baseAssetMaxPriceTick: DEFAULT_MAX_PRICE_TICK,
@@ -227,6 +227,28 @@ const createEmptyMarket = (id: number): MarketInput => {
     highTickPrice: '1',
     claimStatement: '',
     rules: '', // Initialize optional field
+  };
+};
+
+// Create a new market with parameters copied from the previous market
+const createMarketFromPrevious = (
+  id: number,
+  previousMarket: MarketInput
+): MarketInput => {
+  return {
+    id,
+    marketQuestion: previousMarket.marketQuestion, // Copy market question
+    optionName: previousMarket.optionName || '', // Copy option name if it exists
+    startTime: previousMarket.startTime, // Copy start time from previous market
+    endTime: '', // Keep empty - user must set this
+    startingSqrtPriceX96: previousMarket.startingSqrtPriceX96, // Copy pricing parameters
+    baseAssetMinPriceTick: previousMarket.baseAssetMinPriceTick,
+    baseAssetMaxPriceTick: previousMarket.baseAssetMaxPriceTick,
+    startingPrice: previousMarket.startingPrice,
+    lowTickPrice: previousMarket.lowTickPrice,
+    highTickPrice: previousMarket.highTickPrice,
+    claimStatement: previousMarket.claimStatement, // Copy claim statement
+    rules: previousMarket.rules || '', // Copy rules if they exist
   };
 };
 
@@ -282,6 +304,9 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
 
   // Markets state (uses imported MarketInput)
   const [markets, setMarkets] = useState<MarketInput[]>([createEmptyMarket(1)]);
+  const [marketsWithCopiedParams, setMarketsWithCopiedParams] = useState<
+    Set<number>
+  >(new Set());
 
   // Form state
   const [formError, setFormError] = useState<string | null>(null);
@@ -342,10 +367,26 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
     // Use a unique ID, e.g., timestamp or incrementing number if more robust generation is needed
     const newMarketId =
       markets.length > 0 ? Math.max(...markets.map((m) => m.id)) + 1 : 1;
-    setMarkets((prevMarkets) => [
-      ...prevMarkets,
-      createEmptyMarket(newMarketId),
-    ]);
+
+    setMarkets((prevMarkets) => {
+      const newMarket =
+        prevMarkets.length > 0
+          ? createMarketFromPrevious(
+              newMarketId,
+              prevMarkets[prevMarkets.length - 1]
+            )
+          : createEmptyMarket(newMarketId);
+
+      return [...prevMarkets, newMarket];
+    });
+
+    // Track that this market has copied parameters (if there was a previous market)
+    if (markets.length > 0) {
+      setMarketsWithCopiedParams(
+        (prev) => new Set([...Array.from(prev), newMarketId])
+      );
+    }
+
     setActiveMarketIndex(markets.length); // Set active to the new market
   };
 
@@ -358,6 +399,16 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       // If sequential IDs (1, 2, 3...) are strictly needed after removal, map them:
       // return newMarkets.map((market, i) => ({ ...market, id: i + 1 }));
       return prevMarkets.filter((_, i) => i !== index);
+    });
+
+    // Clean up tracking of copied parameters for the removed market
+    setMarketsWithCopiedParams((prev) => {
+      const newSet = new Set(Array.from(prev));
+      const removedMarketId = markets[index]?.id;
+      if (removedMarketId) {
+        newSet.delete(removedMarketId);
+      }
+      return newSet;
     });
 
     // Adjust activeMarketIndex
@@ -737,6 +788,15 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
           </Button>
         </div>
 
+        {markets.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            💡 New markets will copy all parameters from the previous market
+            including market question, claim statement, pricing parameters,
+            rules, and option names. You&apos;ll still need to set the end time
+            for each market.
+          </p>
+        )}
+
         <div className="flex flex-wrap gap-2 mb-4">
           {markets.map((market, index) => (
             <button
@@ -750,6 +810,14 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               onClick={() => setActiveMarketIndex(index)}
             >
               Market {index + 1} {/* Display 1-based index for user */}
+              {marketsWithCopiedParams.has(market.id) && (
+                <span
+                  className="ml-1 text-xs opacity-70"
+                  title="Parameters copied from previous market"
+                >
+                  📋
+                </span>
+              )}
               {markets.length > 1 && (
                 <Trash
                   className="h-3.5 w-3.5 ml-2 cursor-pointer"

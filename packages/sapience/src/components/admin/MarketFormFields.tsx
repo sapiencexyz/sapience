@@ -69,6 +69,9 @@ const MarketFormFields = ({
 
   // Parse string timestamps to numbers safely
   const parseTimestamp = (value: string): number => {
+    if (!value || value.trim() === '') {
+      return 0; // Return 0 for empty values
+    }
     const parsed = parseInt(value, 10);
     return Number.isNaN(parsed) ? Math.floor(Date.now() / 1000) : parsed;
   };
@@ -78,6 +81,7 @@ const MarketFormFields = ({
 
   // Get the time part as a string for a given timestamp
   const getTimePart = (timestamp: number) => {
+    if (timestamp === 0) return ''; // Return empty string for unset timestamps
     const d = new Date(timestamp * 1000);
     return d.toISOString().slice(11, 16); // 'HH:mm'
   };
@@ -269,7 +273,7 @@ const MarketFormFields = ({
         className={`grid grid-cols-1 ${isCompact ? 'gap-2' : 'md:grid-cols-2 gap-6'}`}
       >
         <div>
-          <Label htmlFor={fieldId('startTime')}>Start Time</Label>
+          <Label htmlFor={fieldId('startTime')}>Start Time (UTC)</Label>
           <DateTimePicker
             id={fieldId('startTime')}
             value={startTimestamp}
@@ -277,12 +281,12 @@ const MarketFormFields = ({
               handleDateTimeChange('startTime', timestamp)
             }
             min={0}
-            max={endTimestamp}
+            max={endTimestamp > 0 ? endTimestamp : undefined}
             timePart={getTimePart(startTimestamp)}
           />
         </div>
         <div>
-          <Label htmlFor={fieldId('endTime')}>End Time</Label>
+          <Label htmlFor={fieldId('endTime')}>End Time (UTC)</Label>
           <DateTimePicker
             id={fieldId('endTime')}
             value={endTimestamp}
