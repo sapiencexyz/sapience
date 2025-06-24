@@ -190,5 +190,3 @@ export const useMarketLeaderboard = (
     wstEthPriceUsd,
   };
 };
-
-

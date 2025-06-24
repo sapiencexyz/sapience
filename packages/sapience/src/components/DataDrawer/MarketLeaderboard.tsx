@@ -1,6 +1,5 @@
 'use client';
 
-import React, { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -17,6 +16,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import dynamic from 'next/dynamic';
+import { useMemo } from 'react';
 
 import ProfitCell from '~/components/leaderboard/ProfitCell';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';

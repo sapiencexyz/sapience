@@ -1,6 +1,9 @@
 'use client';
 
-import { IntervalSelector, PriceSelector } from '@sapience/ui/components/charts';
+import {
+  IntervalSelector,
+  PriceSelector,
+} from '@sapience/ui/components/charts';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { ChartType, LineType, TimeInterval } from '@sapience/ui/types/charts';
