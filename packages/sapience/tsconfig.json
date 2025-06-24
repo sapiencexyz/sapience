@@ -18,8 +18,10 @@
     "paths": {
       "~/*": ["./*"],
       "@/components/*": ["./components/*"],
-      "@/protocol/*": ["../../protocol/*"],
-      "@/sapience/ui/*": ["../../ui/*"]
+      "@/protocol/*": ["../../protocol/*"],      
+      "@/sapience/ui/*": ["../../ui/*"],
+      "@sapience/ui": ["../../ui/index.ts"],
+      "@sapience/ui/*": ["../../ui/*"]
     },
     "incremental": true,
     "plugins": [
