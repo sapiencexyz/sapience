@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client'; // Keep for gql tag even if not using Apollo Client hooks
 // Removed useQuery import from @tanstack/react-query
-import type { CandleType } from '@foil/ui/types';
+import type { CandleType } from '@sapience/ui/types';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react'; // Removed useMemo
 

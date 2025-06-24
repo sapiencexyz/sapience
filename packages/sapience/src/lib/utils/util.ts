@@ -2,7 +2,7 @@ import type {
   MarketGroupType,
   MarketType,
   TransactionType,
-} from '@foil/ui/types';
+} from '@sapience/ui/types';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { createPublicClient, formatEther, http } from 'viem';

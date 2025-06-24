@@ -1,7 +1,7 @@
 'use client';
 
-import { Input } from '@foil/ui/components/ui/input';
-import { Label } from '@foil/ui/components/ui/label';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Label } from '@sapience/ui/components/ui/label';
 import { useState, useEffect } from 'react';
 
 import { TICK_SPACING } from '../../lib/constants/numbers';

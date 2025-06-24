@@ -69,7 +69,7 @@ export default defineConfig({
         },
         { 
           text: 'Source Code', 
-          link: 'https://github.com/foilxyz/foil',
+          link: 'https://github.com/sapiencexyz/sapience',
         },
       ], 
     }

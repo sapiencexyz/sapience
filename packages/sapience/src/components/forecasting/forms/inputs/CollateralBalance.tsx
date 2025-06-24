@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useEffect } from 'react';
 import { useAccount, useBalance } from 'wagmi';

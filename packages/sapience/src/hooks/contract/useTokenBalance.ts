@@ -1,4 +1,4 @@
-import erc20ABI from '@foil/ui/abis/erc20abi.json';
+import erc20ABI from '@sapience/ui/abis/erc20abi.json';
 import { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';

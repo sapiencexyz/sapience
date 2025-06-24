@@ -1,5 +1,5 @@
-import { Badge } from '@foil/ui/components/ui/badge';
-import type { MarketGroupType, MarketType } from '@foil/ui/types';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 
 import type { MarketGroupClassification } from '~/lib/types';

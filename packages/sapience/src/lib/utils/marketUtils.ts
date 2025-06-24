@@ -1,4 +1,4 @@
-import type { MarketGroupType, MarketType } from '@foil/ui/types';
+import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 
 import { MarketGroupClassification } from '../types';
 

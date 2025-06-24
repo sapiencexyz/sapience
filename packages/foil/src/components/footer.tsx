@@ -17,7 +17,7 @@ export const Footer = () => {
           className="border border-white/50 bg-black hover:text-primary"
         >
           <a
-            href="https://discord.gg/foil"
+            href="https://discord.gg/sapience"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Discord"
@@ -32,7 +32,7 @@ export const Footer = () => {
           className="border border-white/50 bg-black hover:text-primary"
         >
           <a
-            href="https://twitter.com/foilxyz"
+            href="https://twitter.com/sapiencexyz"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Twitter"
@@ -47,7 +47,7 @@ export const Footer = () => {
           className="border border-white/50 bg-black hover:text-primary"
         >
           <a
-            href="https://github.com/foilxyz"
+            href="https://github.com/sapiencexyz"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub"
@@ -62,7 +62,7 @@ export const Footer = () => {
           className="border border-white/50 bg-black hover:text-primary"
         >
           <a
-            href="https://docs.foil.xyz"
+            href="https://docs.sapience.xyz/"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Docs"

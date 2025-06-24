@@ -40,18 +40,8 @@ export const Features = () => {
                   exit={{ opacity: 0, y: 20, scale: 1.4 }}
                   transition={{
                     ease: 'easeOut',
-                    opacity: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
-                    y: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
-                    scale: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
+                    delay: 2,
+                    duration: 0.3,
                   }}
                 >
                   <Spline scene="https://prod.spline.design/7JZzAjAE4Qn13sVS/scene.splinecode" />
@@ -87,18 +77,8 @@ export const Features = () => {
                   exit={{ opacity: 0, y: -30, scale: 1.4, x: 70 }}
                   transition={{
                     ease: 'easeOut',
-                    opacity: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
-                    y: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
-                    scale: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
+                    delay: 2,
+                    duration: 0.3,
                   }}
                 >
                   <Spline scene="https://prod.spline.design/UeFGrlFVniWxvAFh/scene.splinecode" />
@@ -132,18 +112,8 @@ export const Features = () => {
                   exit={{ opacity: 0, y: 20, scale: 1.4 }}
                   transition={{
                     ease: 'easeOut',
-                    opacity: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
-                    y: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
-                    scale: {
-                      enter: { delay: 2, duration: 0.3 },
-                      exit: { delay: 0, duration: 0.3 },
-                    },
+                    delay: 2,
+                    duration: 0.3,
                   }}
                 >
                   <Spline scene="https://prod.spline.design/7CmxSKnIOio6fOz8/scene.splinecode" />

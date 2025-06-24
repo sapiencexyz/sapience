@@ -1,4 +1,4 @@
-import { Badge } from '@foil/ui/components/ui/badge';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 
 interface EndTimeDisplayProps {

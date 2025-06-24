@@ -1,11 +1,11 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@foil/ui/components/ui/select';
+} from '@sapience/ui/components/ui/select';
 import type { Table } from '@tanstack/react-table';
 import {
   ChevronLeft,

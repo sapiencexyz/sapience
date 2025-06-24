@@ -1,4 +1,4 @@
-import Foil from '@foil/protocol/deployments/Foil.json';
+import Foil from '@sapience/protocol/deployments/Foil.json';
 import { Router } from 'express';
 import { marketRepository } from 'src/db';
 import { Market } from 'src/models/Market';
