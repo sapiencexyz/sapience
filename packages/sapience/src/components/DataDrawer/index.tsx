@@ -1,9 +1,9 @@
-import { Badge } from '@foil/ui/components/ui/badge';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Drawer,
   DrawerContent,
   DrawerTrigger,
-} from '@foil/ui/components/ui/drawer';
+} from '@sapience/ui/components/ui/drawer';
 import {
   Table,
   TableBody,
@@ -11,13 +11,13 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
+} from '@sapience/ui/components/ui/table';
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from '@foil/ui/components/ui/tabs';
+} from '@sapience/ui/components/ui/tabs';
 import { formatDistanceToNow } from 'date-fns';
 import {
   TrophyIcon,

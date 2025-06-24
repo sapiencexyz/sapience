@@ -1,5 +1,5 @@
-import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
-import type { MarketType } from '@foil/ui/types';
+import { useFoilAbi } from '@sapience/ui/hooks/useFoilAbi';
+import type { MarketType } from '@sapience/ui/types';
 import type { ReactNode } from 'react';
 import { createContext, useContext, useMemo } from 'react';
 import type { Abi, Address } from 'viem';

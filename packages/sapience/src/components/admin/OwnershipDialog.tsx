@@ -1,11 +1,11 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@foil/ui/components/ui/dialog';
-import { Input } from '@foil/ui/components/ui/input';
+} from '@sapience/ui/components/ui/dialog';
+import { Input } from '@sapience/ui/components/ui/input';
 import { useState } from 'react';
 import type { Address } from 'viem';
 import { useAccount } from 'wagmi';

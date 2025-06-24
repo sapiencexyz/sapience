@@ -408,8 +408,8 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         const scaledHashrate =
           (dayHashrate * BigInt(10 ** 12)) / this.ZETTA_MULTIPLIER;
 
-        // Calculate fee/hashrate ratio for the day; scaled by 10^9 for the frontend to process
-        const dailyRatio = (scaledFees * BigInt(10 ** 9)) / scaledHashrate;
+        // Calculate fee/hashrate ratio for the day; scaled by 10^1 for the frontend (10^9 * 10^(-8) = default 9 decimals upscaling * btc decimals downscaling)
+        const dailyRatio = (scaledFees * BigInt(10 ** 1)) / scaledHashrate;
         totalDailyRatio += dailyRatio;
         daysWithData++;
 

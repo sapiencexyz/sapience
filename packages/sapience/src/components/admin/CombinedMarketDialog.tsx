@@ -1,27 +1,27 @@
 'use client';
 
-import { Button, Input, Label, useResources } from '@foil/ui';
+import { Button, Input, Label, useResources } from '@sapience/ui';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@foil/ui/components/ui/accordion';
+} from '@sapience/ui/components/ui/accordion';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Card, CardContent } from '@foil/ui/components/ui/card';
+} from '@sapience/ui/components/ui/alert';
+import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@foil/ui/components/ui/select';
-import { Switch } from '@foil/ui/components/ui/switch';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/select';
+import { Switch } from '@sapience/ui/components/ui/switch';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Loader2, Plus, Trash } from 'lucide-react';
 import { useState, useEffect } from 'react';

@@ -1,7 +1,7 @@
 import { encodeFunctionData } from 'viem';
 // import { base } from 'viem/chains';
 // import { createPublicClient, http } from 'viem';
-import FoilABI from '@foil/protocol/deployments/Foil.json';
+import FoilABI from '@sapience/protocol/deployments/Foil.json';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';
 

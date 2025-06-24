@@ -1,5 +1,5 @@
 import { basePublicClient } from '../utils/utils';
-import FoilABI from '@foil/protocol/deployments/Foil.json';
+import FoilABI from '@sapience/protocol/deployments/Foil.json';
 import type { Abi } from 'abitype';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 import { z } from 'zod';

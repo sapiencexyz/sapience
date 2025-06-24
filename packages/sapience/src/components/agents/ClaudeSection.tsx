@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 

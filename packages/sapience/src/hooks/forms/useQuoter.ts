@@ -1,4 +1,4 @@
-import type { MarketGroupType } from '@foil/ui/types/graphql';
+import type { MarketGroupType } from '@sapience/ui/types/graphql';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef } from 'react';
 import { parseUnits } from 'viem';

@@ -1,11 +1,11 @@
-import { Badge } from '@foil/ui/components/ui/badge';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
-import type { MarketType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/tooltip';
+import type { MarketType } from '@sapience/ui/types';
 import { format, formatDistanceToNow, fromUnixTime } from 'date-fns';
 import {
   MoveHorizontal,

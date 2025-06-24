@@ -1,5 +1,5 @@
 {
-  "name": "@foil/api",
+  "name": "@sapience/api",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
@@ -38,7 +38,7 @@
   "dependencies": {
     "@apollo/server": "^4.11.3",
     "@apollo/server-plugin-response-cache": "^4.1.4",
-    "@foil/protocol": "workspace:*",
+    "@sapience/protocol": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.11.4",
     "@msgpack/msgpack": "^3.1.1",
     "@sentry/cli": "^2.39.0",

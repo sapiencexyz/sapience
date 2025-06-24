@@ -8,10 +8,10 @@ services:
     type: web
     env: node
     plan: pro
-    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
-    startCommand: pnpm --filter @foil/api start:service
+    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @sapience/api install
+    startCommand: pnpm --filter @sapience/api start:service
     autoDeploy: true
-    repo: https://github.com/foilxyz/foil
+    repo: https://github.com/sapiencexyz/sapience
     branch: main
     envVars:
       - key: DATABASE_URL
@@ -23,8 +23,8 @@ services:
     type: worker
     env: node
     plan: standard
-    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
-    startCommand: pnpm --filter @foil/api start:worker
+    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @sapience/api install
+    startCommand: pnpm --filter @sapience/api start:worker
     autoDeploy: true
     branch: main
     envVars:
@@ -37,10 +37,10 @@ services:
     type: worker
     env: node
     plan: pro
-    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
-    startCommand: pnpm --filter @foil/api start:candle-cache
+    buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @sapience/api install
+    startCommand: pnpm --filter @sapience/api start:candle-cache
     autoDeploy: true
-    repo: https://github.com/foilxyz/foil
+    repo: https://github.com/sapiencexyz/sapience
     branch: main
     envVars:
       - key: DATABASE_URL

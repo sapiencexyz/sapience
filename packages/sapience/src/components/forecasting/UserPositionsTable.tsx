@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { User } from 'lucide-react';
 import Link from 'next/link';
@@ -42,18 +42,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       transition: {
         duration: 0.3,
         staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.4,
-        ease: [0.25, 0.25, 0, 1],
       },
     },
   };
@@ -141,7 +129,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
         {hasAnyData && showHeaderText && (
           <motion.h3
             className="text-2xl font-medium mb-4"
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10 }}
           >
             Your Positions
@@ -152,7 +139,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <AnimatePresence>
         {hasTraderPositions && (
           <motion.div
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
             <TraderPositionsTable
@@ -168,7 +154,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <AnimatePresence>
         {hasLpPositions && (
           <motion.div
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
             <LpPositionsTable
@@ -184,7 +169,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <AnimatePresence>
         {hasAttestations && (
           <motion.div
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
             <PredictionPositionsTable
@@ -200,7 +184,6 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       <AnimatePresence>
         {showProfileButton && (
           <motion.div
-            variants={itemVariants}
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
             <Link href={`/profile/${account}`}>

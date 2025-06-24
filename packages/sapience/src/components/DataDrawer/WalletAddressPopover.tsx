@@ -1,10 +1,10 @@
-import { Button } from '@foil/ui/components/ui/button';
-import { Input } from '@foil/ui/components/ui/input';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@foil/ui/components/ui/popover';
+} from '@sapience/ui/components/ui/popover';
 import { Loader2, WalletIcon, ArrowRightIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
