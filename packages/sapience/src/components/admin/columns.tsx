@@ -276,7 +276,7 @@ const StatusBadges = ({ group }: { group: EnrichedMarketGroup }) => {
     !activeMarket &&
     !upcomingMarket;
 
-  const badges: JSX.Element[] = [];
+  const badges: React.ReactNode[] = [];
 
   if (needsSettlement) {
     badges.push(

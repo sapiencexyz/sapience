@@ -298,7 +298,7 @@ const PredictionPositionsTable = ({
 
   const renderContent = (
     content: unknown
-  ): JSX.Element | string | number | null => {
+  ): React.ReactNode | string | number | null => {
     if (typeof content === 'bigint') {
       return content.toString();
     }

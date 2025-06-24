@@ -11,12 +11,12 @@
     "preview": "vocs preview"
   },
   "dependencies": {
-    "react": "latest",
-    "react-dom": "latest",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "vocs": "^1.0.5"
   },
   "devDependencies": {
-    "@types/react": "^18.3.5",
+    "@types/react": "19.1.8",
     "typescript": "^5.5.4"
   },
   "engines": {

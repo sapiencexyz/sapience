@@ -69,7 +69,7 @@ const PriceChart: React.FC<PriceChartProps> = ({
 
   // Render the chart using the rendering hook
   const { isLogarithmic, setIsLogarithmic, hoverData } = useLightweightChart({
-    containerRef,
+    containerRef: containerRef as React.RefObject<HTMLDivElement>,
     priceData: chartData,
     selectedPrices,
   });
