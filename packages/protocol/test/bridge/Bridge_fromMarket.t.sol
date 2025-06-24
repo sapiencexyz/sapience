@@ -205,7 +205,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         vm.stopPrank();
     }
 
-    function test_forwardAssertTruth_LEO() public {
+    function test_forwardAssertTruth() public {
         // Verify the balance movements (token)
         uint256 initialUmaTokenBalance = bondCurrency.balanceOf(
             address(umaBridge)
@@ -224,21 +224,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
             address(bondCurrency),
             BOND_AMOUNT
         );
-        console2.log("submitSettlementPrice");
         bytes32 assertionId = mockMarketGroup.submitSettlementPrice(1, address(umaUser), 1);
-        console2.log("assertionId");
-
-        // vm.startPrank(address(mockMarketGroup));
-        // bytes32 assertionId = marketBridge.forwardAssertTruth(
-        //     address(marketUser),
-        //     1,
-        //     "some claim message",
-        //     address(umaUser),
-        //     3600,
-        //     address(bondCurrency),
-        //     BOND_AMOUNT
-        // );
-        // vm.stopPrank();
 
         // Verify the balance movements (token)
         uint256 finalUmaTokenBalance = bondCurrency.balanceOf(
@@ -259,11 +245,20 @@ contract BridgeTestFromMarket is TestHelperOz5 {
             initialUserRemoteBondBalance - BOND_AMOUNT
         );
 
-        console2.log("going to verify packets");
-        console2.log("address", address(mockOptimisticOracleV3));
+        uint256 initialMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
+
         // Propagate the assertion
         verifyPackets(umaEiD, addressToBytes32(address(umaBridge)));
-        console2.log("packets verified");
+        bytes32 umaAssertionId = mockOptimisticOracleV3.getLastAssertionId();
+        MockOptimisticOracleV3.AssertionData memory umaAssertionData = mockOptimisticOracleV3.getAssertionData(umaAssertionId);
+
+        uint256 finalMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
+        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance + BOND_AMOUNT);
+        assertEq(umaAssertionData.claim, "some claim message");
+        assertEq(umaAssertionData.liveness, 3600);
+        assertEq(address(umaAssertionData.bondToken), address(bondCurrency));
+        assertEq(umaAssertionData.bondAmount, BOND_AMOUNT);
+
 
         // After propagating the assertion, the balance should be different
         finalUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));

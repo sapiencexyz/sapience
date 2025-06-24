@@ -191,10 +191,12 @@ contract MarketLayerZeroBridge is
         //     // Do nothing, the amount was already decremented when the bond was sent
         } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
             (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
-            // Call the callback of the marketGroup to process the verification
+            address marketGroup = assertionIdToMarketGroup[assertionId];
+            IUMASettlementModule(marketGroup).assertionResolvedCallback(bytes32(assertionId), verified);
         } else if (commandType == Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK) {
             uint256 assertionId = data.decodeFromUMADisputed();
-            // Call the callback of the marketGroup to process the verification
+            address marketGroup = assertionIdToMarketGroup[assertionId];
+            IUMASettlementModule(marketGroup).assertionDisputedCallback(bytes32(assertionId));
         } else {
             revert("Invalid command type");
         }

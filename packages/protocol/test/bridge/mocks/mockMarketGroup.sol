@@ -2,6 +2,9 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import {IMarketLayerZeroBridge} from "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import {IUMASettlementModule} from "../../../src/market/interfaces/IUMASettlementModule.sol";
+import {console2} from "forge-std/console2.sol";
+
 
 /**
  * @title MockMarketGroup
@@ -9,7 +12,7 @@ import {IMarketLayerZeroBridge} from "../../../src/bridge/interfaces/ILayerZeroB
  * for testing purposes. This simulates a market group that can submit settlements
  * and receive callbacks from UMA.
  */
-contract MockMarketGroup {
+contract MockMarketGroup is IUMASettlementModule{
     // Storage for tracking calls and state
     struct AssertionData {
         bytes32 assertionId;
@@ -83,6 +86,10 @@ contract MockMarketGroup {
         });
     }
 
+    function getAssertionData(bytes32 assertionId) external view returns (AssertionData memory) {
+        return assertionData[assertionId];
+    }
+
     /**
      * @notice Mock implementation of assertionResolvedCallback
      * @param assertionId The assertion ID that was resolved
@@ -92,6 +99,7 @@ contract MockMarketGroup {
         bytes32 assertionId,
         bool assertedTruthfully
     ) external {
+      console2.log("assertionResolvedCallback");
         // Mark the assertion as resolved
         assertionData[assertionId].resolved = true;
         assertionData[assertionId].assertedTruthfully = assertedTruthfully;

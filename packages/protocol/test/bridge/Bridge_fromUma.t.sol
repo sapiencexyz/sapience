@@ -43,6 +43,9 @@ contract BridgeTestFromUma is TestHelperOz5 {
 
     uint256 private BOND_AMOUNT = 1_000 ether;
 
+    bytes32 private umaAssertionId;
+    bytes32 private marketAssertionId;
+
     function setUp() public override {
         vm.deal(umaUser, 1000 ether);
         vm.deal(marketUser, 1000 ether);
@@ -93,8 +96,6 @@ contract BridgeTestFromUma is TestHelperOz5 {
             })
         );
 
-        umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
-
         marketBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({
                 remoteChainId: umaEiD,
@@ -102,6 +103,11 @@ contract BridgeTestFromUma is TestHelperOz5 {
                 settlementModule: address(0)
             })
         );
+
+        // Link bridges to the external contracts
+        umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
+        marketBridge.enableMarketGroup(address(mockMarketGroup));
+
 
         // Deposit bond to the escrow
         uint256 depositAmount = 100 * BOND_AMOUNT;
@@ -112,7 +118,17 @@ contract BridgeTestFromUma is TestHelperOz5 {
         vm.stopPrank();
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
 
+        // Create a claim
+        mockMarketGroup.setAssertThruthData(
+            "some claim message",
+            3600,
+            address(bondCurrency),
+            BOND_AMOUNT
+        );
+        marketAssertionId = mockMarketGroup.submitSettlementPrice(1, address(umaUser), 1);    
 
+        verifyPackets(umaEiD, addressToBytes32(address(umaBridge)));
+        umaAssertionId = mockOptimisticOracleV3.getLastAssertionId();
     }
 
     function test_failsNotUma_Resolved() public {
@@ -143,6 +159,71 @@ contract BridgeTestFromUma is TestHelperOz5 {
         vm.stopPrank();
     }
 
-    function test_failsIfNotEnoughBond_Resolved() public {
+    function test_resolved() public {
+        uint256 initialUmaUserBalance = bondCurrency.balanceOf(umaUser);
+        uint256 initialUmaBridgeBalance = bondCurrency.balanceOf(address(umaBridge));
+        uint256 initialMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
+
+        mockOptimisticOracleV3.resolveAssertion(umaAssertionId, true);
+
+        // Check the balances on UMA side (before and after the propagation)
+        uint256 finalUmaUserBalance = bondCurrency.balanceOf(umaUser);
+        uint256 finalUmaBridgeBalance = bondCurrency.balanceOf(address(umaBridge));
+        uint256 finalMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
+
+        assertEq(finalUmaUserBalance, initialUmaUserBalance + BOND_AMOUNT, "UMA user balance should increase");
+        assertEq(finalUmaBridgeBalance, initialUmaBridgeBalance, "UMA bridge balance should be the same");
+        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance - BOND_AMOUNT, "Mock optimistic oracle balance should decrease");
+
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+
+        // Check the balances on UMA side (after the propagation)
+        finalUmaUserBalance = bondCurrency.balanceOf(umaUser);
+        finalUmaBridgeBalance = bondCurrency.balanceOf(address(umaBridge));
+        finalMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
+
+        assertEq(finalUmaUserBalance, initialUmaUserBalance + BOND_AMOUNT, "UMA user balance should increase (after propagation)");
+        assertEq(finalUmaBridgeBalance, initialUmaBridgeBalance , "UMA bridge balance should be the same (after propagation)");
+        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance - BOND_AMOUNT, "Mock optimistic oracle balance should decrease (after propagation)");
+
+        // Check state of the market group
+        MockMarketGroup.AssertionData memory assertionData = mockMarketGroup.getAssertionData(marketAssertionId);
+        assertEq(assertionData.resolved, true, "Market group should be resolved");
+        assertEq(assertionData.disputed, false, "Market group should not be disputed");
+        assertEq(assertionData.assertedTruthfully, true, "Market group should be resolved truthfully");
+    }
+
+    function test_disputed() public {
+        uint256 initialUmaUserBalance = bondCurrency.balanceOf(umaUser);
+        uint256 initialUmaBridgeBalance = bondCurrency.balanceOf(address(umaBridge));
+        uint256 initialMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
+
+        mockOptimisticOracleV3.disputeAssertion(umaAssertionId);
+
+        // Check the balances on UMA side (before and after the propagation)
+        uint256 finalUmaUserBalance = bondCurrency.balanceOf(umaUser);
+        uint256 finalUmaBridgeBalance = bondCurrency.balanceOf(address(umaBridge));
+        uint256 finalMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
+
+        assertEq(finalUmaUserBalance, initialUmaUserBalance, "UMA user balance should be the same (bond lost)");
+        assertEq(finalUmaBridgeBalance, initialUmaBridgeBalance, "UMA bridge balance should be the same");
+        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance - BOND_AMOUNT, "Mock optimistic oracle balance should decrease");
+
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+
+        // Check the balances on UMA side (after the propagation)
+        finalUmaUserBalance = bondCurrency.balanceOf(umaUser);
+        finalUmaBridgeBalance = bondCurrency.balanceOf(address(umaBridge));
+        finalMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
+
+        assertEq(finalUmaUserBalance, initialUmaUserBalance, "UMA user balance should be the same (after propagation)");
+        assertEq(finalUmaBridgeBalance, initialUmaBridgeBalance , "UMA bridge balance should be the same (after propagation)");
+        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance - BOND_AMOUNT, "Mock optimistic oracle balance should decrease (after propagation)");
+
+        // Check state of the market group
+        MockMarketGroup.AssertionData memory assertionData = mockMarketGroup.getAssertionData(marketAssertionId);
+        assertEq(assertionData.resolved, false, "Market group should not be resolved");
+        assertEq(assertionData.disputed, true, "Market group should be disputed");
+        assertEq(assertionData.assertedTruthfully, false, "Market group should be disputed truthfully");
     }
  }
