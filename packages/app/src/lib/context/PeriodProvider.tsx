@@ -1,4 +1,4 @@
-import { useToast } from '@foil/ui/hooks/use-toast';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Pool } from '@uniswap/v3-sdk';
 import type React from 'react';
 import type { ReactNode } from 'react';

@@ -5,8 +5,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@foil/ui/components/ui/dialog';
-import type { MarketGroupType, MarketType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/dialog';
+import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';

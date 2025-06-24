@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { Calendar } from '@foil/ui/components/ui/calendar';
-import { Checkbox } from '@foil/ui/components/ui/checkbox';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Calendar } from '@sapience/ui/components/ui/calendar';
+import { Checkbox } from '@sapience/ui/components/ui/checkbox';
 import {
   Command,
   CommandEmpty,
@@ -10,22 +10,22 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@foil/ui/components/ui/command';
-import { Input } from '@foil/ui/components/ui/input';
+} from '@sapience/ui/components/ui/command';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@foil/ui/components/ui/popover';
-import { Separator } from '@foil/ui/components/ui/separator';
-import Slider from '@foil/ui/components/ui/slider';
+} from '@sapience/ui/components/ui/popover';
+import { Separator } from '@sapience/ui/components/ui/separator';
+import Slider from '@sapience/ui/components/ui/slider';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@foil/ui/components/ui/tabs';
-import { cn } from '@foil/ui/lib/utils';
+} from '@sapience/ui/components/ui/tabs';
+import { cn } from '@sapience/ui/lib/utils';
 import type { Column, ColumnMeta, RowData, Table } from '@tanstack/react-table';
 import { format, isEqual } from 'date-fns';
 import { FilterXIcon, ArrowRight, Filter, X, Ellipsis } from 'lucide-react';

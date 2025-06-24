@@ -1,6 +1,6 @@
-import { Input } from '@foil/ui/components/ui/input';
-import { Label } from '@foil/ui/components/ui/label';
-import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Label } from '@sapience/ui/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { useState, useEffect } from 'react';
 import { useFormContext } from 'react-hook-form';
 

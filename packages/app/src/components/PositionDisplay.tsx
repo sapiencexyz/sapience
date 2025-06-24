@@ -3,7 +3,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+} from '@sapience/ui/components/ui/tooltip';
 import type React from 'react';
 
 interface PositionDisplayProps {

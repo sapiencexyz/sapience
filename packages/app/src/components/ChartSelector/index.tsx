@@ -1,10 +1,10 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@foil/ui/components/ui/dropdown-menu';
+} from '@sapience/ui/components/ui/dropdown-menu';
 import { ChevronUp, ChevronDown, Check } from 'lucide-react';
 import { useContext, useState } from 'react';
 import type React from 'react';

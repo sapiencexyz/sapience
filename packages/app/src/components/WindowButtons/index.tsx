@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import type React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 

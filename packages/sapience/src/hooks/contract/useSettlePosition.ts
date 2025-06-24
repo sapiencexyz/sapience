@@ -1,4 +1,4 @@
-import { foilAbi } from '@foil/ui/lib/abi';
+import { foilAbi } from '@sapience/ui/lib/abi';
 import type { Abi } from 'abitype';
 import { useCallback, useState } from 'react';
 import { useSimulateContract, useWriteContract } from 'wagmi';

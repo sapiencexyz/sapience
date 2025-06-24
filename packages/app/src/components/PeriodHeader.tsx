@@ -3,7 +3,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+} from '@sapience/ui/components/ui/tooltip';
 import { format } from 'date-fns';
 import { MoveHorizontal, ArrowRight } from 'lucide-react';
 import Image from 'next/image';

@@ -1,13 +1,13 @@
 'use client';
 
 import { gql } from '@apollo/client';
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@foil/ui/components/ui/dialog';
+} from '@sapience/ui/components/ui/dialog';
 import Spline from '@splinetool/react-spline';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';

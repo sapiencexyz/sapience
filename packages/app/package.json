@@ -1,5 +1,5 @@
 {
-  "name": "@foil/app",
+  "name": "@sapience/app",
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@apollo/client": "^3.12.4",
-    "@foil/ui": "workspace:*",
+    "@sapience/ui": "workspace:*",
     "@hookform/resolvers": "^3.9.1",
     "@rainbow-me/rainbowkit": "^2.1.5",
     "@sentry/nextjs": "^8",

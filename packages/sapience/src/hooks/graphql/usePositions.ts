@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import type { PositionType } from '@foil/ui/types';
+import type { PositionType } from '@sapience/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 

@@ -1,10 +1,10 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@foil/ui/components/ui/popover';
-import { cn } from '@foil/ui/lib/utils';
+} from '@sapience/ui/components/ui/popover';
+import { cn } from '@sapience/ui/lib/utils';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { useState } from 'react';
 

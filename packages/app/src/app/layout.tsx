@@ -1,4 +1,4 @@
-import { Toaster } from '@foil/ui/components/ui/toaster';
+import { Toaster } from '@sapience/ui/components/ui/toaster';
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
 
@@ -66,8 +66,8 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    creator: '@foilxyz',
-    site: '@foilxyz',
+    creator: '@sapiencexyz',
+    site: '@sapiencexyz',
     card: 'summary_large_image',
     title: {
       default: APP_NAME,

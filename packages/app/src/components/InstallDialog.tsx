@@ -6,7 +6,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@foil/ui/components/ui/dialog';
+} from '@sapience/ui/components/ui/dialog';
 import { Share, PlusSquare } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';

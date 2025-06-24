@@ -1,13 +1,13 @@
 'use client';
 
-import { Card, CardContent } from '@foil/ui/components/ui/card';
-import { Toggle } from '@foil/ui/components/ui/toggle';
+import { Card, CardContent } from '@sapience/ui/components/ui/card';
+import { Toggle } from '@sapience/ui/components/ui/toggle';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+} from '@sapience/ui/components/ui/tooltip';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Loader2, ChevronDown } from 'lucide-react';
 import Image from 'next/image';

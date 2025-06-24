@@ -1,8 +1,8 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { FormItem, FormLabel } from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
+import { Button } from '@sapience/ui/components/ui/button';
+import { FormItem, FormLabel } from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useState } from 'react';

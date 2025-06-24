@@ -4,7 +4,7 @@ import type {
   MarketGroupType,
   CategoryType,
   PositionType,
-} from '@foil/ui/types';
+} from '@sapience/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { formatUnits } from 'viem';

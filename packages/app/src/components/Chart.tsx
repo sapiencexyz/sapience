@@ -3,8 +3,8 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
-import { cn } from '@foil/ui/lib/utils';
+} from '@sapience/ui/components/ui/tooltip';
+import { cn } from '@sapience/ui/lib/utils';
 import { Loader2 } from 'lucide-react';
 import { useRef, useContext, useMemo, useEffect, useState } from 'react';
 import type React from 'react';

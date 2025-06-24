@@ -4,8 +4,8 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@foil/ui/components/ui/dialog';
-import type { MarketType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/dialog';
+import type { MarketType } from '@sapience/ui/types';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toBytes, bytesToHex } from 'viem';

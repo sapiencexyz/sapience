@@ -1,10 +1,10 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@foil/ui/components/ui/dialog';
+} from '@sapience/ui/components/ui/dialog';
 import { Edit } from 'lucide-react';
 import Link from 'next/link';
 import type React from 'react';

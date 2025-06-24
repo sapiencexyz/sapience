@@ -25,7 +25,7 @@ This will:
 You can import these types directly in your components:
 
 ```typescript
-import { MarketType, MarketGroupType } from '@foil/ui/types';
+import { MarketType, MarketGroupType } from '@sapience/ui/types';
 
 // Use them in your component props
 interface MyComponentProps {

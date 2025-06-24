@@ -3,9 +3,9 @@
 'use client';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { Button } from '@foil/ui/components/ui/button';
-import { Form } from '@foil/ui/components/ui/form';
-import { useToast } from '@foil/ui/hooks/use-toast';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Form } from '@sapience/ui/components/ui/form';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { TickMath } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
 import { Loader2 } from 'lucide-react';

@@ -1,12 +1,12 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+} from '@sapience/ui/components/ui/tooltip';
 import { Copy } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getEnsName } from 'viem/ens';

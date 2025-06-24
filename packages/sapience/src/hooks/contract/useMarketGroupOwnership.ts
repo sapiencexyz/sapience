@@ -1,4 +1,4 @@
-import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
+import { useFoilAbi } from '@sapience/ui/hooks/useFoilAbi';
 import { useEffect, useState } from 'react';
 import type { Address } from 'viem';
 import { useReadContract, useWriteContract } from 'wagmi';

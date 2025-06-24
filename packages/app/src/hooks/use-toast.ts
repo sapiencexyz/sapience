@@ -4,7 +4,7 @@
 import type {
   ToastActionElement,
   ToastProps,
-} from '@foil/ui/components/ui/toast';
+} from '@sapience/ui/components/ui/toast';
 import * as React from 'react';
 
 // Add custom styles to the toast props

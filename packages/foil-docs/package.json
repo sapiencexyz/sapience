@@ -1,5 +1,5 @@
 {
-  "name": "@foil/foil-docs",
+  "name": "@sapience/foil-docs",
   "version": "1.0.0",
   "private": true,
   "main": "index.js",

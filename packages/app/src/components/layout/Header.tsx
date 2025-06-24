@@ -4,18 +4,18 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@foil/ui/components/ui/accordion';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/accordion';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Drawer,
   DrawerContent,
   DrawerTrigger,
-} from '@foil/ui/components/ui/drawer';
+} from '@sapience/ui/components/ui/drawer';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@foil/ui/components/ui/popover';
+} from '@sapience/ui/components/ui/popover';
 import { Menu, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';

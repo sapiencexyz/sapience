@@ -1,7 +1,7 @@
 import {
   ToggleGroup,
   ToggleGroupItem,
-} from '@foil/ui/components/ui/toggle-group';
+} from '@sapience/ui/components/ui/toggle-group';
 import Image from 'next/image';
 import { useContext } from 'react';
 

@@ -2,13 +2,13 @@ import {
   Drawer,
   DrawerContent,
   DrawerTrigger,
-} from '@foil/ui/components/ui/drawer';
+} from '@sapience/ui/components/ui/drawer';
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
-} from '@foil/ui/components/ui/tabs';
+} from '@sapience/ui/components/ui/tabs';
 import {
   TrophyIcon,
   ListIcon,

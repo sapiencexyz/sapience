@@ -1,7 +1,7 @@
 'use client';
 
-import { badgeVariants } from '@foil/ui/components/ui/badge';
-import { cn } from '@foil/ui/lib/utils';
+import { badgeVariants } from '@sapience/ui/components/ui/badge';
+import { cn } from '@sapience/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Loader2 } from 'lucide-react';
 

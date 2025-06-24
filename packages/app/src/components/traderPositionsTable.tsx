@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -6,14 +6,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
+} from '@sapience/ui/components/ui/table';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
-import { toast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/tooltip';
+import { toast } from '@sapience/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import {
   useReactTable,

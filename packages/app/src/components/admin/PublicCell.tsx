@@ -1,4 +1,4 @@
-import { Switch } from '@foil/ui/components/ui/switch';
+import { Switch } from '@sapience/ui/components/ui/switch';
 import { Loader2 } from 'lucide-react';
 import type React from 'react';
 

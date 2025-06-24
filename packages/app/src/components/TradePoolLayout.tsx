@@ -1,7 +1,7 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { Label } from '@foil/ui/components/ui/label';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
 import { CircleHelp, DatabaseIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useContext } from 'react';

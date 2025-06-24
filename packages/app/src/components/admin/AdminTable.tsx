@@ -1,5 +1,5 @@
-import { Button } from '@foil/ui/components/ui/button';
-import { Checkbox } from '@foil/ui/components/ui/checkbox';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Checkbox } from '@sapience/ui/components/ui/checkbox';
 import {
   Command,
   CommandEmpty,
@@ -8,12 +8,12 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from '@foil/ui/components/ui/command';
+} from '@sapience/ui/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@foil/ui/components/ui/popover';
+} from '@sapience/ui/components/ui/popover';
 import {
   Table,
   TableHeader,
@@ -21,8 +21,8 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from '@foil/ui/components/ui/table';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/table';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import {
   useReactTable,
   flexRender,

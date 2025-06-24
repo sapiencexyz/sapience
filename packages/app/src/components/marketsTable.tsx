@@ -1,7 +1,7 @@
 'use client';
 
-import { Badge } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableHeader,
@@ -9,7 +9,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from '@foil/ui/components/ui/table';
+} from '@sapience/ui/components/ui/table';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   useReactTable,

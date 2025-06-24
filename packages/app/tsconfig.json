@@ -19,7 +19,7 @@
       "~/*": ["./*"],
       "@/components/*": ["./components/*"],
       "@/protocol/*": ["../../protocol/*"],
-      "@foil/ui/*": ["../../ui/*"],
+      "@/sapience/ui/*": ["../../ui/*"],
       
     },
     "incremental": true,

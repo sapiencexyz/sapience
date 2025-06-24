@@ -6,23 +6,23 @@ import {
   Alert,
   AlertTitle,
   AlertDescription,
-} from '@foil/ui/components/ui/alert';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-} from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
+} from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/tooltip';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { formatDuration, intervalToDuration, format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

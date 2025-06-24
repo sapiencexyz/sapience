@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { timeToLocal } from '@foil/ui/lib/utils';
+import { timeToLocal } from '@sapience/ui/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import type {

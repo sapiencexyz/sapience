@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { User } from 'lucide-react';
 import Link from 'next/link';

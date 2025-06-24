@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -8,23 +8,23 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
-import { Label } from '@foil/ui/components/ui/label';
-import { Separator } from '@foil/ui/components/ui/separator';
+} from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Label } from '@sapience/ui/components/ui/label';
+import { Separator } from '@sapience/ui/components/ui/separator';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@foil/ui/components/ui/tabs';
+} from '@sapience/ui/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/tooltip';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import Decimal from 'decimal.js';
 import { BookTextIcon, HelpCircle, InfoIcon, Loader2 } from 'lucide-react';
 import Image from 'next/image';

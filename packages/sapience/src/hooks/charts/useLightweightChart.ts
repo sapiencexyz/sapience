@@ -1,4 +1,4 @@
-import { LineType } from '@foil/ui/types/charts'; // Import LineType
+import { LineType } from '@sapience/ui/types/charts'; // Import LineType
 import type {
   UTCTimestamp,
   IChartApi,

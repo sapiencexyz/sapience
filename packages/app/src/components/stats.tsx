@@ -4,7 +4,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+} from '@sapience/ui/components/ui/tooltip';
 import { formatDistanceToNow } from 'date-fns';
 import { BookTextIcon, InfoIcon } from 'lucide-react';
 import { useContext } from 'react';

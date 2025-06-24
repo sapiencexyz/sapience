@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 import { useConnectWallet } from '../lib/context/ConnectWalletProvider';

@@ -1,15 +1,15 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { Checkbox } from '@foil/ui/components/ui/checkbox';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Checkbox } from '@sapience/ui/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@foil/ui/components/ui/dialog';
-import { cn } from '@foil/ui/lib/utils';
+} from '@sapience/ui/components/ui/dialog';
+import { cn } from '@sapience/ui/lib/utils';
 import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';

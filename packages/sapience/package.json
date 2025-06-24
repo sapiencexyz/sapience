@@ -1,5 +1,5 @@
 {
-  "name": "@foil/sapience",
+  "name": "@sapience/sapience",
   "version": "0.1.0",
   "license": "MIT",
   "private": true,
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@apollo/client": "^3.12.4",
-    "@foil/ui": "workspace:*",
+    "@sapience/ui": "workspace:*",
     "@hookform/resolvers": "3.9.0",
     "@privy-io/react-auth": "^2.11.1",
     "@privy-io/wagmi": "^1.0.3",

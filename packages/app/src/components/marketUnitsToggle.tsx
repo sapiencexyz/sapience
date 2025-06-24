@@ -1,4 +1,4 @@
-import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import type React from 'react';
 import { useContext } from 'react';
 

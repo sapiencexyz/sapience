@@ -1,4 +1,4 @@
-import { ScrollArea } from '@foil/ui/components/ui/scroll-area';
+import { ScrollArea } from '@sapience/ui/components/ui/scroll-area';
 import { useSearchParams } from 'next/navigation';
 import { useContext, useEffect } from 'react';
 

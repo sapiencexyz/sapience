@@ -20,7 +20,7 @@ importers:
       '@apollo/server-plugin-response-cache':
         specifier: ^4.1.4
         version: 4.1.4(@apollo/server@4.11.3(encoding@0.1.13)(graphql@16.10.0))(graphql@16.10.0)
-      '@foil/protocol':
+      '@sapience/protocol':
         specifier: workspace:*
         version: link:../protocol
       '@modelcontextprotocol/sdk':
@@ -141,7 +141,7 @@ importers:
       '@apollo/client':
         specifier: ^3.12.4
         version: 3.12.4(@types/react@18.3.7)(graphql@16.10.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@foil/ui':
+      '@sapience/ui':
         specifier: workspace:*
         version: link:../ui
       '@hookform/resolvers':
@@ -526,7 +526,7 @@ importers:
       '@apollo/client':
         specifier: ^3.12.4
         version: 3.12.4(@types/react@18.3.12)(graphql@16.10.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@foil/ui':
+      '@sapience/ui':
         specifier: workspace:*
         version: link:../ui
       '@hookform/resolvers':

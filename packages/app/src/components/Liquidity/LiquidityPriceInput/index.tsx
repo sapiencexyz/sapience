@@ -1,7 +1,7 @@
 'use client';
 
-import { FormItem, FormLabel, FormMessage } from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
+import { FormItem, FormLabel, FormMessage } from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
 import { useContext } from 'react';
 import type { Control, Path, FieldValues } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
