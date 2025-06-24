@@ -2,7 +2,7 @@ import type {
   MarketGroupType,
   MarketType,
   TransactionType,
-} from '@foil/ui/types';
+} from '@sapience/ui/types';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { createPublicClient, formatEther, http } from 'viem';
@@ -390,6 +390,35 @@ export function tickToPrice(tick: number | string | undefined | null): number {
   return 1.0001 ** numericTick;
 }
 
+/**
+ * Converts settlementSqrtPriceX96 to settlementPriceD18
+ * @param settlementSqrtPriceX96 sqrt price in X96 format as bigint
+ * @returns bigint price with 18 decimals
+ */
+export const sqrtPriceX96ToPriceD18 = (sqrtPriceX96: bigint): bigint => {
+  // 2^192
+  return (
+    (sqrtPriceX96 * sqrtPriceX96 * BigInt(10 ** 18)) /
+    BigInt('6277101735386680763835789423207666416102355444464034512896')
+  );
+};
+
+/**
+ * Converts a price to sqrtPriceX96 format used by Uniswap V3
+ * @param price The price to convert
+ * @returns The sqrtPriceX96 value
+ */
+export const priceToSqrtPriceX96 = (price: number): bigint => {
+  // Calculate the square root of the price
+  const sqrtPrice = BigInt(Math.floor(Math.sqrt(price) * 10 ** 18)); // 10^18 is the precision of the sqrt price
+
+  // Calculate 2^96 without using bigint exponentiation
+  const Q96 = BigInt('79228162514264337593543950336');
+
+  // Convert to bigint format required by the Uniswap contracts
+  return BigInt(sqrtPrice * Q96) / BigInt(10 ** 18);
+};
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -397,3 +426,9 @@ export function cn(...inputs: ClassValue[]) {
 export function bigIntAbs(value: bigint): bigint {
   return value < BigInt(0) ? -value : value;
 }
+
+export const shortenAddress = (address: string) => {
+  if (!address) return '';
+  if (address.length < 12) return address;
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};

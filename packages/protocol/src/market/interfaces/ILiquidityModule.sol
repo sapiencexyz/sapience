@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {IFoilStructs} from "./IFoilStructs.sol";
+import {ISapienceStructs} from "./ISapienceStructs.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
 interface ILiquidityModule {
     /**
-     * @notice Creates a new liquidity position in the specified epoch
+     * @notice Creates a new liquidity position in the specified market
      * @param params The parameters for creating the liquidity position
      * @return id The unique identifier of the created position
      * @return requiredCollateralAmount The amount of collateral required for the position
@@ -17,7 +17,7 @@ interface ILiquidityModule {
      * @return addedAmount1 The amount of token1 added to the position
      */
     function createLiquidityPosition(
-        IFoilStructs.LiquidityMintParams memory params
+        ISapienceStructs.LiquidityMintParams memory params
     )
         external
         returns (
@@ -30,21 +30,6 @@ interface ILiquidityModule {
             uint256 addedAmount1
         );
 
-    struct DecreaseLiquidityPositionStack {
-        uint256 previousAmount0;
-        uint256 previousAmount1;
-        uint128 previousLiquidity;
-        int24 lowerTick;
-        int24 upperTick;
-        INonfungiblePositionManager.DecreaseLiquidityParams decreaseParams;
-        uint256 tokensOwed0;
-        uint256 tokensOwed1;
-        bool isFeeCollector;
-        uint256 requiredCollateralAmount;
-        uint256 newCollateralAmount;
-        uint256 loanAmount0;
-        uint256 loanAmount1;
-    }
 
     /**
      * @notice Decreases the liquidity position
@@ -54,7 +39,20 @@ interface ILiquidityModule {
      * @return collateralAmount If position is closed, the amount of collateral returned.  If position is not closed, then this amount is current collateral amount backing the position.
      */
     function decreaseLiquidityPosition(
-        IFoilStructs.LiquidityDecreaseParams memory params
+        ISapienceStructs.LiquidityDecreaseParams memory params
+    )
+        external
+        returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
+
+    /**
+     * @notice Closes the liquidity position
+     * @param params The parameters for closing the liquidity position
+     * @return amount0 The amount of token0 decreased
+     * @return amount1 The amount of token1 decreased
+     * @return collateralAmount The amount of collateral returned from the LP position, if it's closed as LP, if it's transformed to trade, then this amount is the collateral amount backing the trade position that is closed .
+     */
+    function closeLiquidityPosition(
+        ISapienceStructs.LiquidityCloseParams memory params
     )
         external
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
@@ -89,7 +87,7 @@ interface ILiquidityModule {
     }
 
     function increaseLiquidityPosition(
-        IFoilStructs.LiquidityIncreaseParams memory params
+        ISapienceStructs.LiquidityIncreaseParams memory params
     )
         external
         returns (
@@ -101,7 +99,7 @@ interface ILiquidityModule {
         );
 
     function quoteLiquidityPositionTokens(
-        uint256 epochId,
+        uint256 marketId,
         uint256 depositedCollateralAmount,
         uint160 sqrtPriceX96,
         uint160 sqrtPriceAX96,

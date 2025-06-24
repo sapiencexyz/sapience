@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import "./Epoch.sol";
+import "./Market.sol";
+import "./MarketGroup.sol";
 import "./Trade.sol";
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCastU256, SafeCastI256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 
 import {DecimalMath} from "../libraries/DecimalMath.sol";
-import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
 import {ERC721Storage} from "./ERC721Storage.sol";
 import {Errors} from "./Errors.sol";
-import {Market} from "./Market.sol";
 import {Pool} from "../libraries/Pool.sol";
+import {TickMath} from "../external/univ3/TickMath.sol";
 
 library Position {
     using SafeCastU256 for uint256;
@@ -22,25 +23,23 @@ library Position {
     using SafeERC20 for IERC20;
     using Market for Market.Data;
 
-    using Epoch for Epoch.Data;
-
     struct Data {
         // Unique identifier for the position
         uint256 id;
         // Type of position (e.g., Trade, Liquidity)
-        IFoilStructs.PositionKind kind;
-        // ID of the epoch this position belongs to
-        uint256 epochId;
+        ISapienceStructs.PositionKind kind;
+        // ID of the market this position belongs to
+        uint256 marketId;
         // User's collateral amount backing their positions
         uint256 depositedCollateralAmount;
-        // Amount of virtual ETH borrowed
-        uint256 borrowedVEth;
-        // Amount of virtual Gas borrowed
-        uint256 borrowedVGas;
-        // Amount of accrued/bought virtual ETH
-        uint256 vEthAmount;
-        // Amount of accrued/bought virtual Gas
-        uint256 vGasAmount;
+        // Amount of virtual quote token borrowed
+        uint256 borrowedVQuote;
+        // Amount of virtual base token borrowed
+        uint256 borrowedVBase;
+        // Amount of accrued/bought virtual quote token
+        uint256 vQuoteAmount;
+        // Amount of accrued/bought virtual base token
+        uint256 vBaseAmount;
         // ID of the associated Uniswap V3 LP position (not applicable to traders)
         uint256 uniswapPositionId;
         // Flag indicating if the position has been settled
@@ -50,7 +49,7 @@ library Position {
     function load(
         uint256 positionId
     ) internal pure returns (Data storage position) {
-        bytes32 s = keccak256(abi.encode("foil.gas.position", positionId));
+        bytes32 s = keccak256(abi.encode("sapience.position", positionId));
 
         assembly {
             position.slot := s
@@ -87,7 +86,7 @@ library Position {
         Data storage self,
         uint256 amount
     ) internal returns (int256 deltaCollateral) {
-        IERC20 collateralAsset = Market.load().collateralAsset;
+        IERC20 collateralAsset = MarketGroup.load().collateralAsset;
         deltaCollateral =
             amount.toInt() -
             self.depositedCollateralAmount.toInt();
@@ -111,24 +110,24 @@ library Position {
     }
 
     function afterTradeCheck(Data storage self) internal view {
-        Epoch.load(self.epochId).validateCollateralRequirementsForTrade(
+        Market.load(self.marketId).validateCollateralRequirementsForTrade(
             self.depositedCollateralAmount,
-            self.vGasAmount,
-            self.vEthAmount,
-            self.borrowedVGas,
-            self.borrowedVEth
+            self.vBaseAmount,
+            self.vQuoteAmount,
+            self.borrowedVBase,
+            self.borrowedVQuote
         );
 
-        if (self.depositedCollateralAmount < Market.MIN_COLLATERAL) {
+        if (self.depositedCollateralAmount < MarketGroup.MIN_COLLATERAL) {
             revert Errors.CollateralBelowMin(
                 self.depositedCollateralAmount,
-                Market.MIN_COLLATERAL
+                MarketGroup.MIN_COLLATERAL
             );
         }
     }
 
     function preValidateLp(Data storage self) internal view {
-        if (self.kind != IFoilStructs.PositionKind.Liquidity) {
+        if (self.kind != ISapienceStructs.PositionKind.Liquidity) {
             revert Errors.InvalidPositionKind();
         }
 
@@ -162,7 +161,7 @@ library Position {
 
     function updateValidLp(
         Data storage self,
-        Epoch.Data storage epoch,
+        Market.Data storage market,
         UpdateLpParams memory params
     )
         internal
@@ -173,16 +172,16 @@ library Position {
             uint256 loanAmount1
         )
     {
-        self.kind = IFoilStructs.PositionKind.Liquidity;
-        self.epochId = epoch.id;
+        self.kind = ISapienceStructs.PositionKind.Liquidity;
+        self.marketId = market.id;
         self.uniswapPositionId = params.uniswapNftId;
-        self.borrowedVGas += params.additionalLoanAmount0;
-        self.borrowedVEth += params.additionalLoanAmount1;
+        self.borrowedVBase += params.additionalLoanAmount0;
+        self.borrowedVQuote += params.additionalLoanAmount1;
 
-        loanAmount0 = self.borrowedVGas;
-        loanAmount1 = self.borrowedVEth;
+        loanAmount0 = self.borrowedVBase;
+        loanAmount1 = self.borrowedVQuote;
 
-        requiredCollateral = epoch.requiredCollateralForLiquidity(
+        requiredCollateral = market.requiredCollateralForLiquidity(
             params.liquidity,
             loanAmount0,
             loanAmount1,
@@ -212,103 +211,103 @@ library Position {
     ) internal returns (uint256 collateralAmountReturned) {
         self.isSettled = true;
 
-        // 1- reconcile gas tokens
-        rebalanceGasTokens(self);
+        // 1- reconcile base tokens
+        rebalanceBaseTokens(self);
 
-        // 2- convert everything to ETH
-        if (self.vGasAmount > 0) {
-            self.vEthAmount += self.vGasAmount.mulDecimal(settlementPriceD18);
-            self.vGasAmount = 0;
+        // 2- convert everything to quote tokens
+        if (self.vBaseAmount > 0) {
+            self.vQuoteAmount += self.vBaseAmount.mulDecimal(settlementPriceD18);
+            self.vBaseAmount = 0;
         }
-        if (self.borrowedVGas > 0) {
-            self.borrowedVEth += self.borrowedVGas.mulDecimal(
+        if (self.borrowedVBase > 0) {
+            self.borrowedVQuote += self.borrowedVBase.mulDecimal(
                 settlementPriceD18
             );
             // round up
-            self.borrowedVEth += mulmod(
-                self.borrowedVGas,
+            self.borrowedVQuote += mulmod(
+                self.borrowedVBase,
                 settlementPriceD18,
                 1e18
             ) > 0
                 ? 1
                 : 0;
 
-            self.borrowedVGas = 0;
+            self.borrowedVBase = 0;
         }
 
-        rebalanceEthTokens(self);
+        rebalanceQuoteTokens(self);
         rebalanceCollateral(self);
-        // after rebalancing the Eth Tokens and Collateral, all virtual tokens are zeroed and only the deposited collateral is left with the net balance.
+        // after rebalancing the Quote Tokens and Collateral, all virtual tokens are zeroed and only the deposited collateral is left with the net balance.
 
         return self.depositedCollateralAmount;
     }
 
     function positionSize(Data storage self) internal view returns (int256) {
-        return self.vGasAmount.toInt() - self.borrowedVGas.toInt();
+        return self.vBaseAmount.toInt() - self.borrowedVBase.toInt();
     }
 
     /**
-     * Rebalances the virtual tokens (ETH, GAS) between borrowed and accrued.
+     * Rebalances the virtual tokens (base, quote) between borrowed and accrued.
      */
     function rebalanceVirtualTokens(Data storage self) internal {
-        rebalanceGasTokens(self);
-        rebalanceEthTokens(self);
+        rebalanceBaseTokens(self);
+        rebalanceQuoteTokens(self);
     }
 
     /**
-     * Rebalances the virtual gas tokens between borrowed and accrued.
+     * Rebalances the virtual base tokens between borrowed and accrued.
      */
-    function rebalanceGasTokens(Data storage self) internal {
-        if (self.vGasAmount > self.borrowedVGas) {
-            self.vGasAmount -= self.borrowedVGas;
-            self.borrowedVGas = 0;
+    function rebalanceBaseTokens(Data storage self) internal {
+        if (self.vBaseAmount > self.borrowedVBase) {
+            self.vBaseAmount -= self.borrowedVBase;
+            self.borrowedVBase = 0;
         } else {
-            self.borrowedVGas -= self.vGasAmount;
-            self.vGasAmount = 0;
+            self.borrowedVBase -= self.vBaseAmount;
+            self.vBaseAmount = 0;
         }
     }
 
     /**
-     * Rebalances the virtual eth tokens between borrowed and accrued.
+     * Rebalances the virtual quote tokens between borrowed and accrued.
      */
-    function rebalanceEthTokens(Data storage self) private {
-        if (self.vEthAmount > self.borrowedVEth) {
-            self.vEthAmount -= self.borrowedVEth;
-            self.borrowedVEth = 0;
+    function rebalanceQuoteTokens(Data storage self) private {
+        if (self.vQuoteAmount > self.borrowedVQuote) {
+            self.vQuoteAmount -= self.borrowedVQuote;
+            self.borrowedVQuote = 0;
         } else {
-            self.borrowedVEth -= self.vEthAmount;
-            self.vEthAmount = 0;
+            self.borrowedVQuote -= self.vQuoteAmount;
+            self.vQuoteAmount = 0;
         }
     }
 
     /**
-     * If accrued vETH, it's added to the deposited collateral.
-     * If borrowed vETH, it's subtracted from the deposited collateral.
+     * If accrued vQuote, it's added to the deposited collateral.
+     * If borrowed vQuote, it's subtracted from the deposited collateral.
      * This function rebalances collateral against the virtual tokens, and resets the virtual tokens to 0.
      */
     function rebalanceCollateral(Data storage self) internal {
-        if (self.vEthAmount > 0) {
-            self.depositedCollateralAmount += self.vEthAmount;
-            self.vEthAmount = 0;
+        if (self.vQuoteAmount > 0) {
+            self.depositedCollateralAmount += self.vQuoteAmount;
+            self.vQuoteAmount = 0;
         }
 
-        if (self.borrowedVEth > 0) {
-            self.depositedCollateralAmount -= self.borrowedVEth;
-            self.borrowedVEth = 0;
+        if (self.borrowedVQuote > 0) {
+            self.depositedCollateralAmount -= self.borrowedVQuote;
+            self.borrowedVQuote = 0;
         }
     }
 
     function getPnl(Data storage self) internal view returns (int256) {
-        Epoch.Data storage epoch = Epoch.load(self.epochId);
+        Market.Data storage market = Market.load(self.marketId);
 
-        uint256 gasPriceD18 = epoch.getReferencePrice();
+        uint256 basePriceD18 = market.getReferencePrice();
 
-        // Initialize net virtual GAS and ETH positions
-        int256 netVGAS;
-        int256 netVETH;
+        // Initialize net virtual base and quote positions
+        int256 netVBase;
+        int256 netVQuote;
 
         // If the position is a Liquidity Provider (LP) position
-        if (self.kind == IFoilStructs.PositionKind.Liquidity) {
+        if (self.kind == ISapienceStructs.PositionKind.Liquidity) {
             // Get the current amounts and fees owed from the Uniswap position manager
             (
                 uint256 amount0,
@@ -318,25 +317,36 @@ library Position {
                 ,
                 uint256 tokensOwed0,
                 uint256 tokensOwed1
-            ) = Pool.getCurrentPositionTokenAmounts(epoch, self);
+            ) = Pool.getCurrentPositionTokenAmounts(market, self);
 
-            // Add these amounts to the position's vGasAmount and vEthAmount
-            uint256 totalVGAS = self.vGasAmount + amount0 + tokensOwed0;
-            uint256 totalVETH = self.vEthAmount + amount1 + tokensOwed1;
+            // Add these amounts to the position's vBaseAmount and vQuoteAmount
+            uint256 totalVBase = self.vBaseAmount + amount0 + tokensOwed0;
+            uint256 totalVQuote = self.vQuoteAmount + amount1 + tokensOwed1;
 
-            netVGAS = int256(totalVGAS) - int256(self.borrowedVGas);
-            netVETH = int256(totalVETH) - int256(self.borrowedVEth);
+            netVBase = int256(totalVBase) - int256(self.borrowedVBase);
+            netVQuote = int256(totalVQuote) - int256(self.borrowedVQuote);
         } else {
             // For trader positions, use the stored values
-            netVGAS = int256(self.vGasAmount) - int256(self.borrowedVGas);
-            netVETH = int256(self.vEthAmount) - int256(self.borrowedVEth);
+            netVBase = int256(self.vBaseAmount) - int256(self.borrowedVBase);
+            netVQuote = int256(self.vQuoteAmount) - int256(self.borrowedVQuote);
         }
 
-        // Calculate the net value of virtual GAS holdings in ETH terms
-        int256 netVGASValue = netVGAS.mulDecimal(int256(gasPriceD18));
+        // Calculate the net value of virtual base holdings in quote terms
+        int256 netVBaseValue = netVBase.mulDecimal(int256(basePriceD18));
 
-        // Total net value in ETH terms (profit or loss)
-        return netVETH + netVGASValue;
+        // Total net value in quote terms (profit or loss)
+        return netVQuote + netVBaseValue;
+    }
+
+    function updateWithNewPosition(
+        Data storage self,
+        Data memory newPosition
+    ) internal {
+        self.vBaseAmount = newPosition.vBaseAmount;
+        self.vQuoteAmount = newPosition.vQuoteAmount;
+        self.borrowedVBase = newPosition.borrowedVBase;
+        self.borrowedVQuote = newPosition.borrowedVQuote;
+        self.depositedCollateralAmount = newPosition.depositedCollateralAmount;
     }
 
     function updateWithNewPosition(

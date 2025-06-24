@@ -1,5 +1,5 @@
-import { Badge } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -7,8 +7,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
-import type { PositionType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/table';
+import type { PositionType } from '@sapience/ui/types';
 import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
@@ -28,6 +28,7 @@ interface TraderPositionsTableProps {
   parentMarketAddress?: string;
   parentChainId?: number;
   parentMarketId?: number;
+  showHeader?: boolean;
 }
 
 function PositionCell({ position }: { position: PositionType }) {
@@ -204,6 +205,7 @@ export default function TraderPositionsTable({
   parentMarketAddress,
   parentChainId,
   parentMarketId,
+  showHeader = true,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -242,12 +244,12 @@ export default function TraderPositionsTable({
 
   return (
     <div>
-      <h3 className="font-medium mb-4">Trader Positions</h3>
+      {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
       <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead /> {/* Header for Position ID */}
+              <TableHead>ID</TableHead> {/* Header for Position ID */}
               {displayQuestionColumn && (
                 <TableHead className="whitespace-nowrap">Question</TableHead>
               )}

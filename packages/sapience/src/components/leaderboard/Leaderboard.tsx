@@ -7,8 +7,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
-import { cn } from '@foil/ui/lib/utils';
+} from '@sapience/ui/components/ui/table';
+import { cn } from '@sapience/ui/lib/utils';
 import {
   useReactTable,
   flexRender,

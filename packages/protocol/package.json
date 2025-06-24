@@ -1,5 +1,5 @@
 {
-  "name": "@foil/protocol",
+  "name": "@sapience/protocol",
   "license": "MIT",
   "private": true,
   "version": "1.0.1",
@@ -38,7 +38,7 @@
     "@uma/core": "^2.59.1",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "2.22.0"
+    "@usecannon/cli": "2.23.0"
   },
   "resolutions": {
     "@openzeppelin/contracts": "^5.0.2"

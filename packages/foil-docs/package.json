@@ -1,0 +1,26 @@
+{
+  "name": "@sapience/foil-docs",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vocs dev --port 3003",
+    "build": "vocs build",
+    "preview": "vocs preview"
+  },
+  "dependencies": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "vocs": "^1.0.5"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.8",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20.14.x",
+    "pnpm": "9.x"
+  }
+}

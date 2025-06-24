@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import { Rocket } from 'lucide-react';
 
 export default function BotsQuickStart() {

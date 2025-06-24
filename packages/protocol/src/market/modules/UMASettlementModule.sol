@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
+import {MarketGroup} from "../storage/MarketGroup.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
@@ -17,33 +17,37 @@ contract UMASettlementModule is
     ReentrancyGuardUpgradeable
 {
     using SafeERC20 for IERC20;
-    using Epoch for Epoch.Data;
+    using Market for Market.Data;
+    using MarketGroup for MarketGroup.Data;
 
     function submitSettlementPrice(
-        uint256 epochId,
+        uint256 marketId,
         address asserter,
         uint160 settlementSqrtPriceX96
     ) external nonReentrant returns (bytes32) {
-        Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.loadValid(epochId);
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        Market.Data storage market = Market.loadValid(marketId);
 
-        validateSubmission(epoch, market, msg.sender);
+        validateSubmission(market, marketGroup, msg.sender);
 
-        require(epoch.assertionId == bytes32(0), "Assertion already submitted");
+        require(
+            market.assertionId == bytes32(0),
+            "Assertion already submitted"
+        );
 
         uint256 decimalPrice = DecimalPrice.sqrtRatioX96ToPrice(
             settlementSqrtPriceX96
         );
 
         bytes memory claim = abi.encodePacked(
-            string(epoch.claimStatement),
+            string(market.claimStatement),
             Strings.toString(decimalPrice),
             "."
         );
 
-        IERC20 bondCurrency = IERC20(epoch.marketParams.bondCurrency);
+        IERC20 bondCurrency = IERC20(marketGroup.marketParams.bondCurrency);
 
-        if(market.isBridgeEnabled) {
+        if(marketGroup.isBridgeEnabled) {
             // TODO: Implement bridge functionality
             // 1. Check if the submitter has enough bond balance 
             IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(epoch.marketParams.optimisticOracleV3);
@@ -91,23 +95,35 @@ contract UMASettlementModule is
             );
         }
 
+        market.assertionId = optimisticOracleV3.assertTruth(
+            claim,
+            asserter,
+            address(this),
+            address(0),
+            marketGroup.marketParams.assertionLiveness,
+            IERC20(marketGroup.marketParams.bondCurrency),
+            marketGroup.marketParams.bondAmount,
+            optimisticOracleV3.defaultIdentifier(),
+            bytes32(0)
+        );
+>>>>>>> origin/protocol-v2
 
-        market.epochIdByAssertionId[epoch.assertionId] = epochId;
+        marketGroup.marketIdByAssertionId[market.assertionId] = marketId;
 
-        epoch.settlement = Epoch.Settlement({
+        market.settlement = Market.Settlement({
             settlementPriceSqrtX96: settlementSqrtPriceX96,
             submissionTime: block.timestamp,
             disputed: false
         });
 
         emit SettlementSubmitted(
-            epochId,
+            marketId,
             asserter,
             settlementSqrtPriceX96,
             block.timestamp
         );
 
-        return epoch.assertionId;
+        return market.assertionId;
     }
 
     function assertionResolvedCallback(
@@ -115,97 +131,79 @@ contract UMASettlementModule is
         bool assertedTruthfully
     ) external {
         assertedTruthfully;
-        Market.Data storage market = Market.load();
-        uint256 epochId = market.epochIdByAssertionId[assertionId];
-        Epoch.Data storage epoch = Epoch.load(epochId);
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        uint256 marketId = marketGroup.marketIdByAssertionId[assertionId];
+        Market.Data storage market = Market.load(marketId);
 
-        validateUMACallback(epoch, msg.sender, assertionId);
+        validateUMACallback(market, msg.sender, assertionId);
 
-        Epoch.Settlement storage settlement = epoch.settlement;
+        Market.Settlement storage settlement = market.settlement;
 
-        if (!epoch.settlement.disputed) {
-            epoch.setSettlementPriceInRange(
+        if (!market.settlement.disputed) {
+            market.setSettlementPriceInRange(
                 DecimalPrice.sqrtRatioX96ToPrice(
                     settlement.settlementPriceSqrtX96
                 )
             );
 
-            // Call the callback recipient
-            if (address(market.callbackRecipient) != address(0)) {
-                try
-                    market.callbackRecipient.resolutionCallback(
-                        settlement.settlementPriceSqrtX96
-                    )
-                // multiple catches by design to ensure any error is caught/logged
-                {
-
-                } catch Error(string memory reason) {
-                    emit ResolutionCallbackFailure(
-                        bytes(reason),
-                        settlement.settlementPriceSqrtX96
-                    );
-                } catch (bytes memory reason) {
-                    emit ResolutionCallbackFailure(
-                        reason,
-                        settlement.settlementPriceSqrtX96
-                    );
-                }
-            }
-
-            emit EpochSettled(
-                epochId,
+            emit MarketSettled(
+                marketId,
                 assertionId,
                 settlement.settlementPriceSqrtX96
             );
         }
 
         // clear the assertionId
-        epoch.assertionId = bytes32(0);
+        market.assertionId = bytes32(0);
     }
 
     function assertionDisputedCallback(
         bytes32 assertionId
     ) external nonReentrant {
-        Market.Data storage market = Market.load();
-        uint256 epochId = market.epochIdByAssertionId[assertionId];
-        Epoch.Data storage epoch = Epoch.load(epochId);
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        uint256 marketId = marketGroup.marketIdByAssertionId[assertionId];
+        Market.Data storage market = Market.load(marketId);
 
-        validateUMACallback(epoch, msg.sender, assertionId);
+        validateUMACallback(market, msg.sender, assertionId);
 
-        Epoch.Settlement storage settlement = epoch.settlement;
+        Market.Settlement storage settlement = market.settlement;
         settlement.disputed = true;
 
-        emit SettlementDisputed(epochId, block.timestamp);
+        emit SettlementDisputed(marketId, block.timestamp);
     }
 
     function validateSubmission(
-        Epoch.Data storage epoch,
         Market.Data storage market,
+        MarketGroup.Data storage marketGroup,
         address caller
     ) internal view {
         require(
-            block.timestamp >= epoch.endTime,
-            "Market epoch activity is still allowed"
+            block.timestamp >= market.endTime,
+            "Market activity is still allowed"
         );
-        require(!epoch.settled, "Market epoch already settled");
-        require(caller == market.owner, "Only owner can call this function");
+        require(!market.settled, "Market already settled");
+        require(
+            caller == marketGroup.owner,
+            "Only owner can call this function"
+        );
     }
 
     function validateUMACallback(
-        Epoch.Data storage epoch,
+        Market.Data storage market,
         address caller,
         bytes32 assertionId
     ) internal view {
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                epoch.marketParams.optimisticOracleV3
+                marketGroup.marketParams.optimisticOracleV3
             );
 
         require(
-            block.timestamp > epoch.endTime,
-            "Market epoch activity is still allowed"
+            block.timestamp > market.endTime,
+            "Market activity is still allowed"
         );
-        require(!epoch.settled, "Market epoch already settled");
+        require(!market.settled, "Market already settled");
         require(caller == address(optimisticOracleV3), "Invalid caller");
-        require(assertionId == epoch.assertionId, "Invalid assertionId");
+        require(assertionId == market.assertionId, "Invalid assertionId");
     }
 }

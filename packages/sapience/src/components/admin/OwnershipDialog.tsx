@@ -1,13 +1,11 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from '@foil/ui/components/ui/dialog';
-import { Input } from '@foil/ui/components/ui/input';
-import type React from 'react';
+} from '@sapience/ui/components/ui/dialog';
+import { Input } from '@sapience/ui/components/ui/input';
 import { useState } from 'react';
 import type { Address } from 'viem';
 import { useAccount } from 'wagmi';
@@ -21,12 +19,12 @@ interface OwnershipDialogProps {
   currentOwner?: string;
 }
 
-const OwnershipDialog: React.FC<OwnershipDialogProps> = ({
+const OwnershipDialog = ({
   open,
   onOpenChange,
   marketGroupAddress,
   currentOwner,
-}) => {
+}: OwnershipDialogProps) => {
   const { address: connectedAddress } = useAccount();
   const [nomineeAddress, setNomineeAddress] = useState('');
   const [nomineeError, setNomineeError] = useState('');
@@ -77,11 +75,6 @@ const OwnershipDialog: React.FC<OwnershipDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          Ownership
-        </Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Market Group Ownership</DialogTitle>

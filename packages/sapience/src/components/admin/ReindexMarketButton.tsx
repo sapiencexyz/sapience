@@ -1,7 +1,7 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { useToast } from '@foil/ui/hooks/use-toast';
+import { Button } from '@sapience/ui/components/ui/button';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useSignMessage } from 'wagmi';

@@ -4,23 +4,22 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
-import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {SettlementModule} from "../../src/market/modules/SettlementModule.sol";
 import {TradeModule} from "../../src/market/modules/TradeModule.sol";
 import {Market} from "../../src/market/storage/Market.sol";
 import {Position} from "../../src/market/storage/Position.sol";
-import {Epoch} from "../../src/market/storage/Epoch.sol";
+import {Market} from "../../src/market/storage/Market.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
-import {IFoil} from "../../src/market/interfaces/IFoil.sol";
-import {IMockVault} from "../../src/market/interfaces/mocks/IMockVault.sol";
+import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 
 contract SettleLPTest is TestTrade {
     using Cannon for Vm;
 
-    IFoil public foil;
-    uint256 epochId;
+    ISapience public sapience;
+    uint256 marketId;
     address pool;
     address tokenA;
     address tokenB;
@@ -34,7 +33,7 @@ contract SettleLPTest is TestTrade {
     IMintableToken collateralAsset;
     int24 constant MIN_TICK = 16000;
     int24 constant MAX_TICK = 29800;
-    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
     uint256 constant settlementPrice = 10 ether;
     uint160 constant settlementPriceSqrt = 250541448375047946302209916928;
     uint256 constant BOND_AMOUNT = 5 ether;
@@ -49,20 +48,20 @@ contract SettleLPTest is TestTrade {
         trader2 = createUser("trader2", 1000 ether);
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (foil, owner) = createEpochWithCallback(
+        (sapience, owner) = createMarket(
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
-            vm.getAddress("MockVault"),
             MIN_TRADE_SIZE,
-            "wstGwei/gas"
+            "wstGwei/quote"
         );
 
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        epochId = epochData.epochId;
-        pool = epochData.pool;
-        tokenA = epochData.ethToken;
-        tokenB = epochData.gasToken;
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
+        marketId = marketData.marketId;
+        pool = marketData.pool;
+        tokenA = marketData.quoteToken;
+        tokenB = marketData.baseToken;
 
         // Create LP position
         provideLiquidity(lp1, 100 ether);
@@ -71,10 +70,10 @@ contract SettleLPTest is TestTrade {
     }
 
     function provideLiquidity(address user, uint256 collateralAmount) internal {
-        // Get token amounts for collateral using TestEpoch's method
+        // Get token amounts for collateral using TestMarket's method
         (
-            uint256 gasTokenAmount,
-            uint256 ethTokenAmount,
+            uint256 baseTokenAmount,
+            uint256 quoteTokenAmount,
 
         ) = getTokenAmountsForCollateralAmount(
                 collateralAmount,
@@ -84,16 +83,16 @@ contract SettleLPTest is TestTrade {
 
         // Create initial position
         vm.startPrank(user);
-        (lpPositionId, , , , , , ) = foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: gasTokenAmount,
-                amountTokenB: ethTokenAmount,
+        (lpPositionId, , , , , , ) = sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: baseTokenAmount,
+                amountQuoteToken: quoteTokenAmount,
                 collateralAmount: collateralAmount + dust,
                 lowerTick: MIN_TICK,
                 upperTick: MAX_TICK,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -105,7 +104,11 @@ contract SettleLPTest is TestTrade {
         uint256 amount
     ) internal returns (uint256 traderPositionId) {
         vm.startPrank(trader);
-        traderPositionId = addTraderPosition(foil, epochId, int256(amount));
+        traderPositionId = addTraderPosition(
+            sapience,
+            marketId,
+            int256(amount)
+        );
         vm.stopPrank();
     }
 
@@ -114,7 +117,11 @@ contract SettleLPTest is TestTrade {
         uint256 amount
     ) internal returns (uint256 traderPositionId) {
         vm.startPrank(trader);
-        traderPositionId = addTraderPosition(foil, epochId, -int256(amount));
+        traderPositionId = addTraderPosition(
+            sapience,
+            marketId,
+            -int256(amount)
+        );
         vm.stopPrank();
     }
 
@@ -127,7 +134,7 @@ contract SettleLPTest is TestTrade {
             )
         );
         vm.prank(lp1);
-        foil.settlePosition(invalidPositionId);
+        sapience.settlePosition(invalidPositionId);
     }
 
     function test_revertWhen_notOwner() public {
@@ -140,38 +147,36 @@ contract SettleLPTest is TestTrade {
             )
         );
         vm.prank(randomUser);
-        foil.settlePosition(lpPositionId);
+        sapience.settlePosition(lpPositionId);
     }
 
-    function test_revertWhen_epochNotSettled() public {
+    function test_revertWhen_marketNotSettled() public {
         vm.expectRevert(
-            abi.encodeWithSelector(Errors.EpochNotSettled.selector, epochId)
+            abi.encodeWithSelector(Errors.MarketNotSettled.selector, marketId)
         );
         vm.prank(lp1);
-        foil.settlePosition(lpPositionId);
+        sapience.settlePosition(lpPositionId);
     }
 
     function test_settleLp() public {
-        // Warp to end of epoch
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        vm.warp(epochData.endTime + 1);
+        // Warp to end of market
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
+        vm.warp(marketData.endTime + 1);
 
         // Set settlement price
-        settleEpoch(epochId, settlementPriceSqrt, owner);
+        settleMarket(marketId, settlementPriceSqrt, owner);
 
         // Settle LP position
         vm.prank(lp1);
-        foil.settlePosition(lpPositionId);
+        sapience.settlePosition(lpPositionId);
 
         // Assert position is settled
-        Position.Data memory updatedPosition = foil.getPosition(lpPositionId);
+        Position.Data memory updatedPosition = sapience.getPosition(
+            lpPositionId
+        );
         bool isSettled = updatedPosition.isSettled;
         assertTrue(isSettled, "Position should be settled");
-
-        assertEq(
-            IMockVault(vm.getAddress("MockVault")).getLastSettlementPrice(),
-            settlementPriceSqrt
-        );
 
         // TODO: fix this, need to calculate tokens that were collected which is a bit tricky
         // assertCollateralBalanceAfterSettlement(
@@ -222,9 +227,9 @@ contract SettleLPTest is TestTrade {
     //     data.owned1InCollateral = data.totalOwed1;
 
     //     data.loan0InCollateral =
-    //         (position.borrowedVGas * settlementPrice) /
+    //         (position.borrowedVBase * settlementPrice) /
     //         1e18;
-    //     data.loan1InCollateral = position.borrowedVEth;
+    //     data.loan1InCollateral = position.borrowedVQuote;
 
     //     // Calculate expected collateral balance after settlement
     //     data.expectedCollateralReturned =

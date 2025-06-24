@@ -1,13 +1,13 @@
 {
-  "name": "@foil/api",
+  "name": "@sapience/api",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "compile": "pnpm lint && tsc",
-    "build": "pnpm lint && tsc && npm run sentry:sourcemaps",
+    "compile": "pnpm lint:fix && tsc",
+    "build": "pnpm lint:fix && tsc && npm run sentry:sourcemaps",
     "dev": "pnpm migration:run && concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\" \"pnpm run dev:codegen\"",
     "dev:service": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/workers/worker.ts",
@@ -38,7 +38,7 @@
   "dependencies": {
     "@apollo/server": "^4.11.3",
     "@apollo/server-plugin-response-cache": "^4.1.4",
-    "@foil/protocol": "workspace:*",
+    "@sapience/protocol": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.11.4",
     "@msgpack/msgpack": "^3.1.1",
     "@sentry/cli": "^2.39.0",

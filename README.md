@@ -14,6 +14,6 @@ See the [website](https://foil.xyz), [app](https://app.foil.xyz), and [docs](htt
 - Start the API
   - `pnpm run dev:api` and access at http://localhost:3001
 - Start the website
-  - `pnpm run dev:website` and access at http://localhost:3002
+  - `pnpm run dev:foil` and access at http://localhost:3002
 - Start the docs
   - `pnpm run dev:docs` and access at http://localhost:3003

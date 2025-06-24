@@ -6,7 +6,7 @@ import {
   getProviderForChain,
 } from '../../utils/utils';
 import { Abi, decodeEventLog, Log } from 'viem';
-import marketGroupFactoryData from '@foil/protocol/deployments/FoilFactory.json';
+import marketGroupFactoryData from '@sapience/protocol/deployments/FoilFactory.json';
 import { handleMarketGroupInitialized } from './indexMarkets';
 
 const marketGroupFactoryAbi = marketGroupFactoryData.abi;

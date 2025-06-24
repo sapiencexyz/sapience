@@ -3,10 +3,10 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip'; // Assuming shared UI components
-import { cn } from '@foil/ui/lib/utils'; // Assuming shared utils
-import type { LineType } from '@foil/ui/types/charts';
-import { TimeInterval } from '@foil/ui/types/charts'; // Assuming shared types
+} from '@sapience/ui/components/ui/tooltip'; // Assuming shared UI components
+import { cn } from '@sapience/ui/lib/utils'; // Assuming shared utils
+import type { LineType } from '@sapience/ui/types/charts';
+import { TimeInterval } from '@sapience/ui/types/charts'; // Assuming shared types
 import dynamic from 'next/dynamic'; // Add dynamic import
 import { useRef, useEffect } from 'react';
 import type React from 'react';
@@ -37,6 +37,8 @@ interface PriceChartProps {
     chainId: number;
     marketId: number; // Assuming numeric ID here, adjust if string
     quoteTokenName?: string; // Pass from parent if available
+    startTimestamp?: number | null | undefined; // Add start timestamp
+    endTimestamp?: number | null | undefined; // Add end timestamp
   };
   selectedInterval: TimeInterval;
   selectedPrices: Record<LineType, boolean>;
@@ -63,13 +65,15 @@ const PriceChart: React.FC<PriceChartProps> = ({
     interval: intervalToSecondsMap[selectedInterval],
     quoteTokenName: market.quoteTokenName,
     resourceSlug, // Pass resourceSlug to the hook
+    startTimestamp: market.startTimestamp ?? undefined, // Pass start timestamp
+    endTimestamp: market.endTimestamp ?? undefined, // Pass end timestamp
     // trailingAvgTimeSeconds: 604800, // Pass the 7-day average time (in seconds)
     // Add fromTimestamp/toTimestamp based on selectedWindow if needed in the future
   });
 
   // Render the chart using the rendering hook
   const { isLogarithmic, setIsLogarithmic, hoverData } = useLightweightChart({
-    containerRef,
+    containerRef: containerRef as React.RefObject<HTMLDivElement>,
     priceData: chartData,
     selectedPrices,
   });
