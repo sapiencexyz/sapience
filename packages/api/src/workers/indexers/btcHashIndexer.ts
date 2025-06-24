@@ -480,7 +480,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
   ): Promise<void> {
     try {
       // Convert target date to UTC timestamp
-      const targetUTCTimestamp = Date.UTC(
+      const targetTimestamp = Date.UTC(
         targetDate.getUTCFullYear(),
         targetDate.getUTCMonth(),
         targetDate.getUTCDate(),
@@ -490,7 +490,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
       );
 
       // Set endTimestamp to start of the day in UTC
-      const endTimestamp = Math.floor(targetUTCTimestamp / 1000);
+      const endTimestamp = Math.floor(targetTimestamp / 1000);
       const startTimestamp = endTimestamp - 7 * 24 * 60 * 60; // 7 days before target date
 
       const existingPrice = await resourcePriceRepository.findOne({
