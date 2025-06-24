@@ -26,9 +26,6 @@ export class MarketInfoStore {
   }
 
   public async updateMarketInfo(marketGroups: MarketGroup[]) {
-    console.log(
-      `updateMarketInfo: marketGroups.length: ${marketGroups.length}`
-    );
     let _debugCounter = 0;
     for (const marketGroup of marketGroups) {
       // Add resource slug
