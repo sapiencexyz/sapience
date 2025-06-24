@@ -1,14 +1,14 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@foil/ui/components/ui/dialog';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/dialog';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
@@ -94,6 +94,9 @@ const createEmptyMarket = (id: number): MarketInput => {
     startingSqrtPriceX96: DEFAULT_SQRT_PRICE,
     baseAssetMinPriceTick: DEFAULT_MIN_PRICE_TICK,
     baseAssetMaxPriceTick: DEFAULT_MAX_PRICE_TICK,
+    startingPrice: '0.5',
+    lowTickPrice: '0.00009908435194807992',
+    highTickPrice: '1',
     claimStatement: '',
     rules: '',
   };

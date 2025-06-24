@@ -1,20 +1,20 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@foil/ui/components/ui/dropdown-menu';
+} from '@sapience/ui/components/ui/dropdown-menu';
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarTrigger,
   useSidebar,
-} from '@foil/ui/components/ui/sidebar';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+} from '@sapience/ui/components/ui/sidebar';
 import { LogOut, Menu, User } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -124,9 +124,9 @@ const Header = () => {
   return (
     <>
       {/* Top Header Bar */}
-      <header className="w-full py-5 md:py-6 z-[50] fixed top-0 left-0">
+      <header className="w-full py-5 md:py-6 z-[50] fixed top-0 left-0 pointer-events-none">
         <div className="mx-auto px-4 md:px-6 flex items-center justify-between">
-          <div className="flex flex-col">
+          <div className="flex flex-col pointer-events-auto">
             <div className="flex items-center bg-background/30 p-2 pr-4 md:pr-1 backdrop-blur-sm rounded-full">
               <Link href="/" className="inline-block">
                 <div className="flex items-center gap-2">
@@ -153,12 +153,12 @@ const Header = () => {
           {/* Mobile Sidebar Trigger Button (fixed left, with border, hover effect) */}
           <SidebarTrigger
             id="nav-sidebar"
-            className="fixed left-0 top-16 z-[51] flex items-center justify-center md:hidden border border-l-0 border-border bg-background/30 p-5 pl-4 backdrop-blur-sm rounded-r-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all"
+            className="fixed left-0 top-16 z-[51] flex items-center justify-center md:hidden border border-l-0 border-border bg-background/30 p-5 pl-4 backdrop-blur-sm rounded-r-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
           >
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 pointer-events-auto">
             <div className="block">
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
@@ -221,7 +221,7 @@ const Header = () => {
             <div>
               We&apos;re{' '}
               <a
-                href="https://github.com/foilxyz/foil/tree/main/packages/sapience"
+                href="https://github.com/sapiencexyz/sapience/tree/main/packages/sapience"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline-offset-2 underline"
@@ -243,7 +243,7 @@ const Header = () => {
           <div className="flex items-center gap-2 p-2">
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
-                href="https://github.com/foilxyz/foil"
+                href="https://github.com/sapiencexyz/sapience"
                 target="_blank"
                 rel="noopener noreferrer"
               >

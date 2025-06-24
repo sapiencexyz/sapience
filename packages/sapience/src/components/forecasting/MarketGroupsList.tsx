@@ -1,15 +1,15 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { Input } from '@foil/ui/components/ui/input';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
-} from '@foil/ui/components/ui/sheet';
-import { Skeleton } from '@foil/ui/components/ui/skeleton';
-import { useIsMobile } from '@foil/ui/hooks/use-mobile';
-import { type MarketType as GraphQLMarketType } from '@foil/ui/types/graphql';
+} from '@sapience/ui/components/ui/sheet';
+import { Skeleton } from '@sapience/ui/components/ui/skeleton';
+import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
+import { type MarketType as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -117,14 +117,14 @@ const FocusAreaFilter = ({
   categories: Category[] | null | undefined; // Use defined Category type
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
 }) => (
-  <div className="p-5 w-[280px] mt-0">
+  <div className="p-5 pr-12 w-[280px] mt-0">
     <div className="pb-2">
       <h3 className="font-medium mb-4 md:hidden">Filters</h3>
-      <div className="space-y-1">
+      <div className="space-y-1 flex flex-col">
         <button
           type="button"
           onClick={() => handleCategoryClick(null)}
-          className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
+          className={`flex w-full text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === null ? selectedStatusClass : hoverStatusClass}`}
         >
           <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
             <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
@@ -154,7 +154,7 @@ const FocusAreaFilter = ({
                 type="button"
                 key={category.id}
                 onClick={() => handleCategoryClick(category.slug)}
-                className={`inline-flex text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
+                className={`flex w-full text-left px-2 pr-4 py-1.5 rounded-full items-center gap-2 transition-colors text-xs ${selectedCategorySlug === category.slug ? selectedStatusClass : hoverStatusClass}`}
               >
                 <div
                   className="rounded-full p-1 w-7 h-7 flex items-center justify-center"

@@ -1,15 +1,15 @@
 'use client';
 
-import { Badge } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@foil/ui/components/ui/dropdown-menu';
-import { Label } from '@foil/ui/components/ui/label';
+} from '@sapience/ui/components/ui/dropdown-menu';
+import { Label } from '@sapience/ui/components/ui/label';
 import { ChevronDown } from 'lucide-react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type React from 'react';

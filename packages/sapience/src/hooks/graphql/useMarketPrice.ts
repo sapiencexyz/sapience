@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import type { CandleType } from '@foil/ui/types';
+import type { CandleType } from '@sapience/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 
@@ -10,7 +10,7 @@ const WEI_PER_ETHER = 1e18;
 
 // --- GraphQL Query for Market Candles ---
 const MARKET_CANDLES_QUERY = gql`
-  query GetMarketCandles(
+  query GetMarketCandlesFromCache(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -18,7 +18,7 @@ const MARKET_CANDLES_QUERY = gql`
     $from: Int!
     $to: Int!
   ) {
-    marketCandles(
+    marketCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -26,8 +26,11 @@ const MARKET_CANDLES_QUERY = gql`
       from: $from
       to: $to
     ) {
-      close
-      timestamp
+      data {
+        close
+        timestamp
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -86,7 +89,7 @@ export function useMarketPrice(
           throw new Error(errors[0].message);
         }
 
-        const candles = data?.marketCandles as CandleType[];
+        const candles = data?.marketCandlesFromCache?.data as CandleType[];
         if (candles && candles.length > 0) {
           // Sort by timestamp descending to ensure we get the latest candle
           candles.sort(

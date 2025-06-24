@@ -5,8 +5,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@foil/ui/components/ui/dialog';
-import type { MarketGroupType, MarketType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/dialog';
+import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -16,9 +16,9 @@ import { useAccount } from 'wagmi';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
+import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
-import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,
@@ -231,19 +231,13 @@ const MarketGroupPageContent = () => {
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-4xl flex flex-col">
-        <div className="flex flex-col px-4 md:px-3">
-          <h1 className="text-2xl md:text-4xl font-normal mb-2 leading-tight">
-            {formatQuestion(
-              activeMarket?.question ||
-                (activeMarkets.length === 1
-                  ? activeMarkets[0].question
-                  : marketGroupData.question)
-            )}
-          </h1>
-          <div className="flex justify-start mb-6 mt-2">
-            <EndTimeDisplay endTime={activeMarket?.endTimestamp} />
-          </div>
-        </div>
+        <MarketGroupHeader
+          marketGroupData={marketGroupData}
+          activeMarket={activeMarket}
+          chainId={chainId}
+          marketClassification={marketClassification}
+          chainShortName={chainShortName}
+        />
 
         {/* Main content layout: Apply gap-6 and px-3 from user example */}
         <div className="flex flex-col gap-6 px-3">

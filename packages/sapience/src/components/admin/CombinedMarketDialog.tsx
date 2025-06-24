@@ -1,33 +1,27 @@
 'use client';
 
-import { Button, Input, Label, useResources } from '@foil/ui';
+import { Button, Input, Label, useResources } from '@sapience/ui';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@foil/ui/components/ui/accordion';
+} from '@sapience/ui/components/ui/accordion';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@foil/ui/components/ui/card';
+} from '@sapience/ui/components/ui/alert';
+import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@foil/ui/components/ui/select';
-import { Switch } from '@foil/ui/components/ui/switch';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/select';
+import { Switch } from '@sapience/ui/components/ui/switch';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Loader2, Plus, Trash } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -228,6 +222,9 @@ const createEmptyMarket = (id: number): MarketInput => {
     startingSqrtPriceX96: DEFAULT_SQRT_PRICE,
     baseAssetMinPriceTick: DEFAULT_MIN_PRICE_TICK,
     baseAssetMaxPriceTick: DEFAULT_MAX_PRICE_TICK,
+    startingPrice: '0.5',
+    lowTickPrice: '0.00009908435194807992',
+    highTickPrice: '1',
     claimStatement: '',
     rules: '', // Initialize optional field
   };
@@ -507,7 +504,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
     >
       {/* Market Group Details Section - remains largely the same */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium">Market Group Details</h3>
         {/* Market Group Question */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -540,7 +536,41 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               </SelectContent>
             </Select>
           </div>
-          {/* Base Token Name Input */}
+        </div>
+        {/* Resource Selection */}
+        <div className="space-y-2">
+          <Label htmlFor="resource">Index</Label>
+          <Select
+            value={selectedResourceId?.toString() || 'none'}
+            onValueChange={(value) => {
+              const newResourceId =
+                value !== 'none' ? parseInt(value, 10) : null;
+              setSelectedResourceId(newResourceId);
+              // Update token names based on resource selection
+              if (newResourceId === null) {
+                setBaseTokenName('Yes');
+                setQuoteTokenName('sUSDS');
+              } else {
+                setBaseTokenName('');
+                setQuoteTokenName('');
+              }
+            }}
+          >
+            <SelectTrigger id="resource">
+              <SelectValue placeholder="Select a resource (optional)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None (Yes/No)</SelectItem>
+              {resources?.map((resource) => (
+                <SelectItem key={resource.id} value={resource.id.toString()}>
+                  {resource.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {/* Base Token Name Input */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="baseTokenName">Base Token Name</Label>
             <Input
@@ -548,7 +578,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               type="text"
               value={baseTokenName}
               onChange={(e) => setBaseTokenName(e.target.value)}
-              placeholder="Yes"
               required
             />
           </div>
@@ -560,34 +589,9 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               type="text"
               value={quoteTokenName}
               onChange={(e) => setQuoteTokenName(e.target.value)}
-              placeholder="sUSDS"
               required
             />
           </div>
-        </div>
-        {/* Resource Selection */}
-        <div className="space-y-2">
-          <Label htmlFor="resource">Index</Label>
-          <Select
-            value={selectedResourceId?.toString() || 'none'}
-            onValueChange={(value) =>
-              setSelectedResourceId(
-                value !== 'none' ? parseInt(value, 10) : null
-              )
-            }
-          >
-            <SelectTrigger id="resource">
-              <SelectValue placeholder="Select a resource (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {resources?.map((resource) => (
-                <SelectItem key={resource.id} value={resource.id.toString()}>
-                  {resource.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
         {/* isCumulative toggle */}
         {selectedResourceId && (
@@ -765,9 +769,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             className={activeMarketIndex === index ? 'block' : 'hidden'}
           >
             <Card>
-              <CardHeader>
-                <CardTitle>Market {index + 1} Details</CardTitle>
-              </CardHeader>
               <CardContent>
                 <MarketFormFields
                   market={market}
@@ -777,25 +778,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                   marketIndex={index} // Pass index for unique field IDs
                 />
               </CardContent>
-              <CardFooter className="flex justify-end space-x-2">
-                {index !== 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setActiveMarketIndex(index - 1)}
-                  >
-                    Previous Market
-                  </Button>
-                )}
-                {index !== markets.length - 1 && (
-                  <Button
-                    type="button"
-                    onClick={() => setActiveMarketIndex(index + 1)}
-                  >
-                    Next Market
-                  </Button>
-                )}
-              </CardFooter>
             </Card>
           </div>
         ))}

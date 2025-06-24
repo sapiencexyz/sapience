@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client'; // Keep for gql tag even if not using Apollo Client hooks
 // Removed useQuery import from @tanstack/react-query
-import type { CandleType } from '@foil/ui/types';
+import type { CandleType } from '@sapience/ui/types';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react'; // Removed useMemo
 
@@ -21,7 +21,7 @@ interface GraphQLError {
 
 // Adjust marketId type if needed (String! vs Int!) based on schema
 const GET_MARKET_CANDLES = gql`
-  query MarketCandles(
+  query MarketCandlesFromCache(
     $address: String!
     $chainId: Int!
     $marketId: String! # Assuming String! based on prior schema inspection
@@ -29,7 +29,7 @@ const GET_MARKET_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandles(
+    marketCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -37,18 +37,21 @@ const GET_MARKET_CANDLES = gql`
       to: $to
       interval: $interval
     ) {
-      timestamp
-      open
-      high
-      low
-      close
+      data {
+        timestamp
+        open
+        high
+        low
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
 
 // Added query for index candles
 const GET_INDEX_CANDLES = gql`
-  query IndexCandles(
+  query IndexCandlesFromCache(
     $address: String!
     $chainId: Int!
     $marketId: String! # Required by schema, using first active market ID
@@ -56,7 +59,7 @@ const GET_INDEX_CANDLES = gql`
     $to: Int!
     $interval: Int!
   ) {
-    indexCandles(
+    indexCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -64,8 +67,11 @@ const GET_INDEX_CANDLES = gql`
       to: $to
       interval: $interval
     ) {
-      timestamp
-      close # Only need close for the index line
+      data {
+        timestamp
+        close # Only need close for the index line
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -88,13 +94,19 @@ interface UseMarketGroupChartDataReturn {
 }
 
 interface MarketCandlesResponse {
-  marketCandles: CandleType[] | null;
+  marketCandlesFromCache: {
+    data: CandleType[] | null;
+    lastUpdateTimestamp: number;
+  } | null;
 }
 
 // Added interface for IndexCandles response
 interface IndexCandlesResponse {
-  // Ensure the 'close' type matches what the GraphQL query actually returns (likely string or number)
-  indexCandles: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+  // Updated to match the new structure
+  indexCandlesFromCache: {
+    data: Pick<CandleType, 'timestamp' | 'close'>[] | null;
+    lastUpdateTimestamp: number;
+  } | null;
 }
 
 export const useMarketGroupChartData = ({
@@ -181,10 +193,10 @@ export const useMarketGroupChartData = ({
                 ),
               };
             }
-            if (responseData && 'marketCandles' in responseData) {
+            if (responseData && 'marketCandlesFromCache' in responseData) {
               return {
                 marketId: marketIdString,
-                candles: responseData.marketCandles ?? [],
+                candles: responseData.marketCandlesFromCache?.data ?? [],
                 error: null,
               };
             }
@@ -233,9 +245,9 @@ export const useMarketGroupChartData = ({
                   'GraphQL error fetching index candles'
               );
             }
-            if (responseData && 'indexCandles' in responseData) {
+            if (responseData && 'indexCandlesFromCache' in responseData) {
               // Return raw index candles here
-              return responseData.indexCandles ?? [];
+              return responseData.indexCandlesFromCache?.data ?? [];
             }
             console.warn(
               `Unexpected response structure for index candles:`,

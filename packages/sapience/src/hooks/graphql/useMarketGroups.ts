@@ -1,7 +1,13 @@
 import { gql } from '@apollo/client';
-import type { MarketType, MarketGroupType, CategoryType } from '@foil/ui/types';
+import type {
+  MarketType,
+  MarketGroupType,
+  CategoryType,
+  PositionType,
+} from '@sapience/ui/types';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
+import { formatUnits } from 'viem';
 
 import { FOCUS_AREAS, DEFAULT_FOCUS_AREA } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types';
@@ -89,7 +95,7 @@ export interface Candle {
 
 const LATEST_INDEX_PRICE_QUERY = gql`
   query GetLatestIndexPrice($address: String!, $chainId: Int!, $marketId: String!) {
-    indexCandles(
+    indexCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -97,8 +103,11 @@ const LATEST_INDEX_PRICE_QUERY = gql`
       to: ${Math.floor(Date.now() / 1000)}
       interval: 60  # 1 minute intervals
     ) {
-      timestamp
-      close
+      data {
+        timestamp
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -177,7 +186,7 @@ const MARKETS_QUERY = gql`
 `;
 
 const MARKET_CANDLES_QUERY = gql`
-  query GetMarketCandles(
+  query GetMarketCandlesFromCache(
     $address: String!
     $chainId: Int!
     $marketId: String!
@@ -185,7 +194,7 @@ const MARKET_CANDLES_QUERY = gql`
     $to: Int!
     $interval: Int!
   ) {
-    marketCandles(
+    marketCandlesFromCache(
       address: $address
       chainId: $chainId
       marketId: $marketId
@@ -193,11 +202,14 @@ const MARKET_CANDLES_QUERY = gql`
       to: $to
       interval: $interval
     ) {
-      timestamp
-      open
-      high
-      low
-      close
+      data {
+        timestamp
+        open
+        high
+        low
+        close
+      }
+      lastUpdateTimestamp
     }
   }
 `;
@@ -213,6 +225,25 @@ const TOTAL_VOLUME_QUERY = gql`
       chainId: $chainId
       marketId: $marketId
     )
+  }
+`;
+
+const OPEN_INTEREST_QUERY = gql`
+  query GetOpenInterest($marketAddress: String, $chainId: Int) {
+    positions(marketAddress: $marketAddress, chainId: $chainId) {
+      id
+      positionId
+      collateral
+      isSettled
+      market {
+        id
+        marketId
+        marketGroup {
+          id
+          collateralDecimals
+        }
+      }
+    }
   }
 `;
 
@@ -262,7 +293,7 @@ export const useEnrichedMarketGroups = () => {
               slug: marketGroup.category.slug,
               marketGroups: marketGroup.category.marketGroups,
               iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
-              color: focusAreaData?.color || DEFAULT_FOCUS_AREA.color,
+              color: focusAreaData?.color || '#9CA3AF', // Tailwind gray-400
             };
           } else {
             categoryInfo = {
@@ -271,7 +302,7 @@ export const useEnrichedMarketGroups = () => {
               slug: 'unknown',
               marketGroups: [],
               iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
-              color: DEFAULT_FOCUS_AREA.color,
+              color: '#9CA3AF', // Tailwind gray-400
             };
           }
 
@@ -329,12 +360,16 @@ export const useLatestIndexPrice = (market: {
           },
         });
 
-        const indexCandlesData = indexPriceApiResponse.indexCandles;
-        if (!indexCandlesData || indexCandlesData.length === 0) {
+        const indexCandlesData = indexPriceApiResponse.indexCandlesFromCache;
+        if (
+          !indexCandlesData ||
+          !indexCandlesData.data ||
+          indexCandlesData.data.length === 0
+        ) {
           return { timestamp: null, value: null };
         }
 
-        const latestCandle = indexCandlesData.reduce(
+        const latestCandle = indexCandlesData.data.reduce(
           (latest: Candle | null, current: Candle) => {
             return !latest || current.timestamp > latest.timestamp
               ? current
@@ -395,7 +430,7 @@ export const useMarketCandles = (market: {
           },
         });
 
-        return data.marketCandles || [];
+        return data.marketCandlesFromCache.data || [];
       } catch (error) {
         console.error('Error fetching market candles:', error);
         return null;
@@ -438,6 +473,89 @@ export const useTotalVolume = (market: {
       }
     },
     enabled: !!market.address && !!market.chainId && market.marketId !== 0,
+    refetchInterval: 60000,
+  });
+};
+
+export const useOpenInterest = (market: {
+  address: string;
+  chainId: number;
+  marketId: number;
+}) => {
+  return useQuery<number | null>({
+    queryKey: [
+      'openInterest',
+      `${market.chainId}:${market.address}`,
+      market.marketId,
+    ],
+    queryFn: async () => {
+      if (!market.address || !market.chainId || market.marketId === 0) {
+        return null;
+      }
+
+      try {
+        const { data, errors } = await foilApi.post('/graphql', {
+          query: print(OPEN_INTEREST_QUERY),
+          variables: {
+            marketAddress: market.address,
+            chainId: market.chainId,
+          },
+        });
+
+        if (errors) {
+          console.error('GraphQL errors:', errors);
+          return null;
+        }
+
+        if (!data || !data.positions) {
+          console.log('No positions data received');
+          return 0;
+        }
+
+        // Filter positions for this specific market and sum collateral for unsettled positions
+        const marketPositions = data.positions.filter(
+          (position: PositionType) =>
+            position.market.marketId === market.marketId
+        );
+
+        const unsettledPositions = marketPositions.filter(
+          (position: PositionType) =>
+            position.isSettled === false || position.isSettled === null
+        );
+
+        // Get collateral decimals from the first position (they should all be the same market group)
+        const collateralDecimals =
+          marketPositions.length > 0
+            ? marketPositions[0].market.marketGroup.collateralDecimals || 18
+            : 18;
+
+        return unsettledPositions.reduce(
+          (total: number, position: PositionType) => {
+            try {
+              // Convert from smallest unit to human readable using formatUnits
+              const collateralBigInt = BigInt(position.collateral);
+              const collateralValue = Number(
+                formatUnits(collateralBigInt, collateralDecimals)
+              );
+              return total + collateralValue;
+            } catch (error) {
+              console.warn(
+                'Error parsing collateral value:',
+                position.collateral,
+                error
+              );
+              return total;
+            }
+          },
+          0
+        );
+      } catch (error) {
+        console.error('Error fetching open interest:', error);
+        return null;
+      }
+    },
+    enabled: Boolean(market.address) && Boolean(market.chainId),
+    staleTime: 30000,
     refetchInterval: 60000,
   });
 };

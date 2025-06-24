@@ -3,7 +3,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+} from '@sapience/ui/components/ui/tooltip';
 import { InfoIcon } from 'lucide-react';
 import type React from 'react';
 
@@ -41,6 +41,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   optionNames,
   hoveredDataPoint,
 }) => {
+  const MARKET_PREDICTION_LABEL = 'Market Prediction';
   const displayDataPoint = hoveredDataPoint || latestDataPoint;
 
   if (!displayDataPoint) {
@@ -63,9 +64,9 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         // Determine label based on hover state and option names
         let baseLabel: string;
         if (optionNames?.length === 1) {
-          baseLabel = 'Market Prediction';
+          baseLabel = MARKET_PREDICTION_LABEL;
         } else {
-          baseLabel = optionNames?.[index] ?? 'Market Prediction';
+          baseLabel = optionNames?.[index] ?? MARKET_PREDICTION_LABEL;
         }
 
         let label: string;
@@ -86,6 +87,9 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
             />
             <span className="font-medium text-foreground">
               {formatValue(value)}
+              {baseLabel === MARKET_PREDICTION_LABEL && !isMultipleChoice
+                ? ' Chance'
+                : ''}
             </span>
             <span className="text-muted-foreground">{label}</span>
           </div>
