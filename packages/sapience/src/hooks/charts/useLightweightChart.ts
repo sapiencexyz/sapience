@@ -61,7 +61,7 @@ export const useLightweightChart = ({
   selectedPrices, // Destructure selectedPrices
 }: UseLightweightChartProps) => {
   const chartRef = useRef<IChartApi | null>(null);
-  const resizeObserverRef = useRef<ResizeObserver>();
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const indexPriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const resourcePriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null); // Add ref for resource price
