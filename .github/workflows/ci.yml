@@ -107,6 +107,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Clear pnpm cache (for Prisma)
+        run: pnpm store prune
+
       - name: Generate Prisma client
         run: pnpm run prisma:generate
         working-directory: packages/api
