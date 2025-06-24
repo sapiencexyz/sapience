@@ -304,6 +304,13 @@ contract MarketLayerZeroBridge is
             enabledMarketGroups[msg.sender],
             "Only enabled market groups can submit"
         );
+
+        // Check if the asserter has enough bond
+        require(
+            remoteSubmitterBalances[asserter][currency] >= bond + remoteSubmitterWithdrawalIntent[asserter][currency],
+            "Asserter does not have enough bond"
+        );
+
         // TODO: check if we need to verify other stuff here
 
         // Advance to next assertionId
@@ -325,6 +332,9 @@ contract MarketLayerZeroBridge is
             commandPayload,
             false
         );
+
+        // Deduct the bond from the asserter
+        remoteSubmitterBalances[asserter][currency] -= bond;
 
         // Store the assertionId to marketGroup mapping
         assertionIdToMarketGroup[lastAssertionId] = marketGroup;
