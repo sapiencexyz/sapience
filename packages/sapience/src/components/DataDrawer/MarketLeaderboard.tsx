@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import {
   Table,
   TableBody,
@@ -133,7 +134,7 @@ const MarketLeaderboard = ({
                   {flexRender(
                     header.column.columnDef.header,
                     header.getContext()
-                  )}
+                  ) as React.ReactNode}
                 </TableHead>
               ))}
             </TableRow>
@@ -154,7 +155,7 @@ const MarketLeaderboard = ({
                       'text-right': cell.column.id === 'totalPnL',
                     })}
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    {flexRender(cell.column.columnDef.cell, cell.getContext()) as React.ReactNode}
                   </TableCell>
                 ))}
               </TableRow>
