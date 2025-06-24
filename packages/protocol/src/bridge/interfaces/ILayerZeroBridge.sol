@@ -3,6 +3,7 @@ pragma solidity ^0.8.22;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BridgeTypes } from "../BridgeTypes.sol";
+import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /**
  * @title ILayerZeroBridge
@@ -61,6 +62,8 @@ interface IUMALayerZeroBridge is ILayerZeroBridge {
     event BondReturnedFromDispute(address indexed submitter, address indexed bondToken, uint256 amount);
     event ETHDeposited(address indexed depositor, uint256 amount);
     event ETHWithdrawn(address indexed recipient, uint256 amount);
+    event AssertionResolved(bytes32 indexed assertionId, bool assertedTruthfully);
+    event AssertionDisputed(bytes32 indexed assertionId);
 
     // UMA-side specific functions
     // function setMarketBondConfig(address market, MarketBondConfig calldata config) external;
@@ -71,6 +74,8 @@ interface IUMALayerZeroBridge is ILayerZeroBridge {
     // function executeWithdrawal() external;
     // function processSettlement(SettlementData calldata data) external payable;
     // function verifySettlement(VerificationData calldata data) external payable;
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external returns (MessagingReceipt memory);
+    function assertionDisputedCallback(bytes32 assertionId) external returns (MessagingReceipt memory);
 }
 
 /**

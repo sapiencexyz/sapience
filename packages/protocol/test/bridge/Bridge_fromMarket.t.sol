@@ -12,7 +12,7 @@ import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 
-contract BridgeTest is TestHelperOz5 {
+contract BridgeTestFromMarket is TestHelperOz5 {
     using Cannon for Vm;
 
     // Users

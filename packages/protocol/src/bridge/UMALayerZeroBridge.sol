@@ -216,10 +216,15 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     function assertionResolvedCallback(
         bytes32 assertionId,
         bool assertedTruthfully
-    ) external returns (MessagingReceipt memory) {
+    ) external override returns (MessagingReceipt memory) {
         AssertionMarketData storage marketData = assertionIdToMarketData[
             assertionId
         ];
+
+        if(msg.sender != optimisticOracleV3Address) {
+            revert("Only the OptimisticOracleV3 can call this function");
+        }
+
         if (marketData.bridgeAssertionId == 0) {
             revert("Invalid assertion ID");
         }
@@ -245,10 +250,15 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
     function assertionDisputedCallback(
         bytes32 assertionId
-    ) external nonReentrant returns (MessagingReceipt memory) {
+    ) external override nonReentrant returns (MessagingReceipt memory) {
         AssertionMarketData storage marketData = assertionIdToMarketData[
             assertionId
         ];
+
+        if(msg.sender != optimisticOracleV3Address) {
+            revert("Only the OptimisticOracleV3 can call this function");
+        }
+
         if (marketData.bridgeAssertionId == 0) {
             revert("Invalid assertion ID");
         }
@@ -435,6 +445,4 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
         // TODO: emit an event
     }
-
-    
 }

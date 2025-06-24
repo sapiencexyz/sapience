@@ -165,14 +165,14 @@ contract MarketLayerZeroBridge is
                 bondToken
             ] -= deltaAmount;
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
-        } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_SENT) {
-            (
-                address submitter,
-                address bondToken,
-                uint256 finalAmount,
-                uint256 deltaAmount
-            ) = data.decodeFromBalanceUpdate();
-            remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
+        // } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_SENT) {
+        //     (
+        //         address submitter,
+        //         address bondToken,
+        //         uint256 finalAmount,
+        //         uint256 deltaAmount
+        //     ) = data.decodeFromBalanceUpdate();
+        //     remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
         } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_RECEIVED) {
             (
                 address submitter,
@@ -181,14 +181,14 @@ contract MarketLayerZeroBridge is
                 uint256 deltaAmount
             ) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
-        } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_LOST_DISPUTE) {
-            (
-                address submitter,
-                address bondToken,
-                uint256 finalAmount,
-                uint256 deltaAmount
-            ) = data.decodeFromBalanceUpdate();
-            // Do nothing, the amount was already decremented when the bond was sent
+        // } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_LOST_DISPUTE) {
+        //     (
+        //         address submitter,
+        //         address bondToken,
+        //         uint256 finalAmount,
+        //         uint256 deltaAmount
+        //     ) = data.decodeFromBalanceUpdate();
+        //     // Do nothing, the amount was already decremented when the bond was sent
         } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
             (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
             // Call the callback of the marketGroup to process the verification
@@ -199,23 +199,6 @@ contract MarketLayerZeroBridge is
             revert("Invalid command type");
         }
     }
-
-    // // Helper function to get LayerZero quote
-    // function getLayerZeroQuote(
-    //     uint16 commandCode,
-    //     bytes memory commandPayload
-    // ) external view returns (uint256 nativeFee, uint256 lzTokenFee) {
-    //     bytes memory message = abi.encode(commandCode, commandPayload);
-
-    //     MessagingFee memory fee = _quote(
-    //         bridgeConfig.remoteChainId,
-    //         message,
-    //         bytes(""), // options
-    //         false // payInLzToken
-    //     );
-
-    //     return (fee.nativeFee, fee.lzTokenFee);
-    // }
 
     // Helper function to send LayerZero messages with quote
     function _sendLayerZeroMessageWithQuote(
