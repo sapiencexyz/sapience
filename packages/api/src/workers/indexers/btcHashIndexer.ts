@@ -103,7 +103,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
 
       timestamp = Math.floor(priceData.timestamp.getTime() / 1000);
       const price = {
-        resource: { id: resource.id },
+        resourceId: resource.id,
         timestamp,
         value: priceData.average_fee.toString(),
         used: '1', // Set to 1 as requested
@@ -111,7 +111,16 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         blockNumber: timestamp,
       };
 
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      await prisma.resource_price.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: timestamp,
+          },
+        },
+        update: price,
+        create: price,
+      });
       console.log(
         `[BtcIndexer] Stored price and hashrate for timestamp ${timestamp}`
       );
