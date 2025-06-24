@@ -10,7 +10,7 @@ import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { TrailingAvgHistoryStore } from '../trailingAvgHistoryStore';
 import { startOfInterval, startOfNextInterval } from '../candleUtils';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Decimal } from '../../../generated/prisma/runtime/library';
 
 export class TrailingAvgCandleProcessor {
   constructor(

@@ -1,6 +1,5 @@
 import { cache_candle } from '../../generated/prisma';
 
-// Use Prisma's generated type for cache_candle
 type CacheCandle = cache_candle;
 
 export type CandleType = 'market' | 'resource' | 'index' | 'trailingAvg';

@@ -8,7 +8,7 @@ import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getTimtestampCandleInterval } from '../candleUtils';
 import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { MarketInfo, MarketInfoStore } from '../marketInfoStore';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Decimal } from '../../../generated/prisma/runtime/library';
 
 type ResourcePriceWithResource = resource_price & { resource: resource };
 

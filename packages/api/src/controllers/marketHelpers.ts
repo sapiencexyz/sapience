@@ -17,6 +17,7 @@ import {
   TradePositionEventLog,
   EpochData,
   EventType,
+  MarketParams,
 } from '../interfaces';
 import { getBlockByTimestamp, getProviderForChain } from '../utils/utils';
 import Foil from '@sapience/protocol/deployments/Foil.json';
@@ -652,9 +653,9 @@ export const createOrUpdateMarketFromEvent = async (
 
 export const getTradeTypeFromEvent = (eventArgs: TradePositionEventLog) => {
   if (BigInt(eventArgs.finalPrice) > BigInt(eventArgs.initialPrice)) {
-    return TransactionType.LONG;
+    return TransactionType.long;
   }
-  return TransactionType.SHORT;
+  return TransactionType.short;
 };
 
 /**
@@ -669,7 +670,7 @@ export const updateTransactionFromAddLiquidityEvent = (
   },
   event: event
 ) => {
-  newTransaction.type = TransactionType.ADD_LIQUIDITY;
+  newTransaction.type = TransactionType.addLiquidity;
 
   updateTransactionStateFromEvent(newTransaction, event);
 
@@ -716,7 +717,7 @@ export const updateTransactionFromLiquidityClosedEvent = async (
   },
   event: event
 ) => {
-  newTransaction.type = TransactionType.REMOVE_LIQUIDITY;
+  newTransaction.type = TransactionType.removeLiquidity;
 
   updateTransactionStateFromEvent(newTransaction, event);
 
@@ -765,8 +766,8 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
   isDecrease?: boolean
 ) => {
   newTransaction.type = isDecrease
-    ? TransactionType.REMOVE_LIQUIDITY
-    : TransactionType.ADD_LIQUIDITY;
+    ? TransactionType.removeLiquidity
+    : TransactionType.addLiquidity;
 
   updateTransactionStateFromEvent(newTransaction, event);
 
@@ -868,7 +869,7 @@ export const updateTransactionFromPositionSettledEvent = async (
   marketId: number,
   chainId: number
 ) => {
-  newTransaction.type = TransactionType.SETTLE_POSITION;
+  newTransaction.type = TransactionType.settledPosition;
 
   const args = getLogDataArgs(event.logData);
   const positionId = args.positionId;
@@ -1037,9 +1038,9 @@ const isLpPosition = (
     position?: position | null;
   }
 ) => {
-  if (transaction.type === TransactionType.ADD_LIQUIDITY) {
+  if (transaction.type === TransactionType.addLiquidity) {
     return true;
-  } else if (transaction.type === TransactionType.REMOVE_LIQUIDITY) {
+  } else if (transaction.type === TransactionType.removeLiquidity) {
     // for remove liquidity, check if the position closed and kind is 2, which means it becomes a trade position
     const logData = transaction.event.logData as Record<string, unknown>;
     const eventName = logData?.eventName;
