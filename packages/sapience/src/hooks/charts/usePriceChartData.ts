@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client'; // Keep for gql tag
-import type { CandleType } from '@foil/ui/types/graphql';
+import type { CandleType } from '@sapience/ui/types/graphql';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { formatEther } from 'viem';

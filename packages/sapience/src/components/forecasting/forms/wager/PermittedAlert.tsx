@@ -2,7 +2,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
+} from '@sapience/ui/components/ui/alert';
 
 interface PermittedAlertProps {
   isPermitted: boolean;

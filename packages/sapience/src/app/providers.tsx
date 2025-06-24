@@ -51,7 +51,7 @@ const config = createConfig({
   transports,
 });
 
-const Providers = ({ children }: { children: JSX.Element }) => {
+const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
     <PrivyProvider
       appId="cm9x5nf6q00gmk10ns01ppicr"

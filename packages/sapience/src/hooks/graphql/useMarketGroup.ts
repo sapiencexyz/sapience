@@ -1,8 +1,5 @@
 import { gql } from '@apollo/client';
-import type {
-  MarketGroup as MarketGroupType,
-  Market as MarketType,
-} from '@foil/ui/types/graphql';
+import type { MarketGroup as MarketGroupType, Market as MarketType } from '@sapience/ui/types/graphql';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { useEffect, useState } from 'react';

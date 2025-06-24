@@ -1,7 +1,15 @@
 import 'tsconfig-paths/register';
 import prisma from '../db';
 import { PublicClient, erc20Abi } from 'viem';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Decimal } from 'generated/prisma/runtime/library';
+import type { 
+  transaction, 
+  event, 
+  market_group, 
+  position, 
+  market 
+} from '../../generated/prisma';
+import { transaction_type_enum as TransactionType } from '../../generated/prisma';
 import {
   Deployment,
   EpochCreatedEventLog,
@@ -11,36 +19,7 @@ import {
   EventType,
 } from '../interfaces';
 import { getBlockByTimestamp, getProviderForChain } from '../utils/utils';
-import Foil from '@foil/protocol/deployments/Foil.json';
-import type {
-  event,
-  market_group,
-  market,
-  position,
-  transaction,
-} from '../../generated/prisma';
-
-// Define transaction types
-const TransactionType = {
-  ADD_LIQUIDITY: 'addLiquidity' as const,
-  REMOVE_LIQUIDITY: 'removeLiquidity' as const,
-  LONG: 'long' as const,
-  SHORT: 'short' as const,
-  SETTLE_POSITION: 'settledPosition' as const,
-};
-
-// Define market params interface to match the embedded type in Prisma schema
-interface MarketParams {
-  feeRate?: number;
-  assertionLiveness?: string;
-  bondCurrency?: string;
-  bondAmount?: string;
-  claimStatement?: string;
-  uniswapPositionManager?: string;
-  uniswapSwapRouter?: string;
-  uniswapQuoter?: string;
-  optimisticOracleV3?: string;
-}
+import Foil from '@sapience/protocol/deployments/Foil.json';
 
 /**
  * Handles a Transfer event by updating the owner of the corresponding Position.
@@ -383,8 +362,8 @@ export const insertMarketPrice = async (
   }
 ) => {
   if (
-    transaction.type === TransactionType.LONG ||
-    transaction.type === TransactionType.SHORT
+    transaction.type === TransactionType.long ||
+    transaction.type === TransactionType.short
   ) {
     const args = getLogDataArgs(transaction.event.logData);
 

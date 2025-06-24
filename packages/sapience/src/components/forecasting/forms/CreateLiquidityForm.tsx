@@ -1,13 +1,13 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { SlippageTolerance } from '@sapience/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -15,9 +15,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import type { Abi } from 'viem';

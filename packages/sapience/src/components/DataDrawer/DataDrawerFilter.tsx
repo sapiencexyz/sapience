@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import { ChartColumnIncreasingIcon } from 'lucide-react';
 
 import WalletAddressPopover from './WalletAddressPopover';

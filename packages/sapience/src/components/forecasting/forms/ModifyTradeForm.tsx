@@ -1,14 +1,14 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { SlippageTolerance } from '@foil/ui/components/SlippageTolerance';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { SlippageTolerance } from '@sapience/ui/components/SlippageTolerance';
 import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from '@foil/ui/components/ui/alert';
-import { Badge } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
+} from '@sapience/ui/components/ui/alert';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Form,
   FormControl,
@@ -16,16 +16,16 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@foil/ui/components/ui/form';
-import { Input } from '@foil/ui/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
+} from '@sapience/ui/components/ui/form';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/tooltip';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
 import type React from 'react';

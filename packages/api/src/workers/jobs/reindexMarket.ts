@@ -7,7 +7,7 @@ import * as Sentry from '@sentry/node';
 import prisma from '../../db';
 import { INDEXERS } from '../../fixtures';
 import { Abi } from 'viem';
-import Foil from '@foil/protocol/deployments/Foil.json';
+import Foil from '@sapience/protocol/deployments/Foil.json';
 
 export async function reindexMarket(
   chainId: number,

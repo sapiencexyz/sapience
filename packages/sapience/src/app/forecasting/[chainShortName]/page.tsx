@@ -5,11 +5,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@foil/ui/components/ui/dialog';
+} from '@sapience/ui/components/ui/dialog';
 import type {
   MarketGroup as MarketGroupType,
   Market as MarketType,
-} from '@foil/ui/types/graphql';
+} from '@sapience/ui/types/graphql';
 import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';

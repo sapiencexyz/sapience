@@ -1,15 +1,15 @@
 'use client';
 
-import { Badge } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@foil/ui/components/ui/dialog';
-import type { MarketType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/dialog';
+import type { MarketType } from '@sapience/ui/types';
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
 import { Pencil } from 'lucide-react';
@@ -276,7 +276,7 @@ const StatusBadges = ({ group }: { group: EnrichedMarketGroup }) => {
     !activeMarket &&
     !upcomingMarket;
 
-  const badges: JSX.Element[] = [];
+  const badges: React.ReactNode[] = [];
 
   if (needsSettlement) {
     badges.push(

@@ -1,4 +1,4 @@
-import { useToast } from '@foil/ui/hooks/use-toast';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useCallback, useEffect, useState } from 'react';
 import { formatUnits, type Abi } from 'viem';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';

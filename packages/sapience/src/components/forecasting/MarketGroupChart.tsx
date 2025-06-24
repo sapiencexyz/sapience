@@ -1,6 +1,6 @@
 'use client';
 
-import type { MarketGroupType } from '@foil/ui/types';
+import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 import { useMemo, useState } from 'react'; // <-- Import useMemo and useState
 import {
   CartesianGrid,

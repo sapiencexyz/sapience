@@ -27,7 +27,7 @@ const slides = [
   },
 ];
 
-function useIsInViewport(ref: React.RefObject<HTMLElement>) {
+function useIsInViewport(ref: React.RefObject<HTMLElement | null>) {
   const [isIntersecting, setIsIntersecting] = useState(false);
 
   useEffect(() => {

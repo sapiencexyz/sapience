@@ -1,11 +1,11 @@
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { Badge } from '@foil/ui/components/ui/badge';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
+} from '@sapience/ui/components/ui/tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
 import type React from 'react';
 

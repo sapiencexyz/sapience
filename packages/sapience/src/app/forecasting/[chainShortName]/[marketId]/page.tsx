@@ -1,10 +1,10 @@
 'use client';
 
-import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
-import { Button } from '@foil/ui/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
-import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import type { Market as GqlMarketType } from '@foil/ui/types/graphql';
+import { IntervalSelector, PriceSelector } from '@sapience/ui/components/charts';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import { ChartType, LineType, TimeInterval } from '@sapience/ui/types/charts';
+import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, LineChart, BarChart2, DatabaseIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';

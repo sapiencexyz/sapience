@@ -1,16 +1,16 @@
 /* eslint-disable sonarjs/cognitive-complexity */
 
-import { Button } from '@foil/ui/components/ui/button'; // Import Button
-import { Input } from '@foil/ui/components/ui/input'; // Import Input
-import { Label } from '@foil/ui/components/ui/label'; // Import Label
-import { Separator } from '@foil/ui/components/ui/separator'; // Import Separator
-import { useToast } from '@foil/ui/hooks/use-toast'; // Import useToast
-import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi'; // Import the hook
+import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Privy
+import { Button } from '@sapience/ui/components/ui/button'; // Import Button
+import { Input } from '@sapience/ui/components/ui/input'; // Import Input
+import { Label } from '@sapience/ui/components/ui/label'; // Import Label
+import { Separator } from '@sapience/ui/components/ui/separator'; // Import Separator
+import { useToast } from '@sapience/ui/hooks/use-toast'; // Import useToast
+import { useFoilAbi } from '@sapience/ui/hooks/useFoilAbi'; // Import the hook
 import type {
   MarketType as Market,
   MarketGroupType as MarketGroup,
-} from '@foil/ui/types'; // Import types
-import { useWallets } from '@privy-io/react-auth'; // Import useWallets from Privy
+} from '@sapience/ui/types'; // Import types
 import { Loader2 } from 'lucide-react'; // Import Loader2
 import { useState } from 'react'; // Import useState and useMemo
 import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex

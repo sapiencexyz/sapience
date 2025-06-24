@@ -33,7 +33,7 @@ import {
   updateCollateralData,
 } from './marketHelpers';
 import { alertEvent } from '../workers/discordBot';
-import Foil from '@foil/protocol/deployments/Foil.json';
+import Foil from '@sapience/protocol/deployments/Foil.json';
 import { PublicClient } from 'viem';
 import Sentry from '../instrument';
 import { transaction } from '../../generated/prisma';

@@ -1,10 +1,10 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@foil/ui/components/ui/popover';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/popover';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, ExternalLink, Wallet } from 'lucide-react';
 import Image from 'next/image';

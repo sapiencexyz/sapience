@@ -1,14 +1,14 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { Calendar } from '@foil/ui/components/ui/calendar';
-import { Input } from '@foil/ui/components/ui/input';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Calendar } from '@sapience/ui/components/ui/calendar';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@foil/ui/components/ui/popover';
-import { cn } from '@foil/ui/lib/utils';
+} from '@sapience/ui/components/ui/popover';
+import { cn } from '@sapience/ui/lib/utils';
 import { format, isSameDay } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';

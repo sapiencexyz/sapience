@@ -1,5 +1,5 @@
 {
-  "name": "@foil/monorepo",
+  "name": "@sapience/monorepo",
   "version": "0.1",
   "private": true,
   "main": "index.js",

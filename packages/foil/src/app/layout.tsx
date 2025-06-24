@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     },
   },
   twitter: {
-    creator: '@foilxyz',
+    creator: '@sapiencexyz',
     card: 'summary_large_image',
   },
   icons: {

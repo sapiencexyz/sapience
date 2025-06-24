@@ -1,7 +1,7 @@
 'use client';
 
 import { gql } from '@apollo/client';
-import { useToast } from '@foil/ui/hooks/use-toast';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import type {
   QueryObserverResult,
   RefetchOptions,

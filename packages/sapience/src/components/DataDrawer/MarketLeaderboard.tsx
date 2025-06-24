@@ -8,8 +8,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
-import { cn } from '@foil/ui/lib/utils';
+} from '@sapience/ui/components/ui/table';
+import { cn } from '@sapience/ui/lib/utils';
 import {
   useReactTable,
   flexRender,
@@ -130,10 +130,12 @@ const MarketLeaderboard = ({
                     }
                   )}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  ) as React.ReactNode}
+                  <>
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                  </>
                 </TableHead>
               ))}
             </TableRow>
@@ -154,7 +156,12 @@ const MarketLeaderboard = ({
                       'text-right': cell.column.id === 'totalPnL',
                     })}
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext()) as React.ReactNode}
+                    <>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </>
                   </TableCell>
                 ))}
               </TableRow>

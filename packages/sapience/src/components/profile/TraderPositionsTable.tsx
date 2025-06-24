@@ -1,5 +1,5 @@
-import { Badge } from '@foil/ui/components/ui/badge';
-import { Button } from '@foil/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -7,8 +7,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
-import type { PositionType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/table';
+import type { PositionType } from '@sapience/ui/types';
 import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';

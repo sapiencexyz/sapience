@@ -1,9 +1,9 @@
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { Button } from '@foil/ui/components/ui/button';
-import { useToast } from '@foil/ui/hooks/use-toast';
-import { foilAbi } from '@foil/ui/lib/abi';
-import type { MarketGroupType } from '@foil/ui/types';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { Button } from '@sapience/ui/components/ui/button';
+import { useToast } from '@sapience/ui/hooks/use-toast';
+import { foilAbi } from '@sapience/ui/lib/abi';
+import type { MarketGroupType } from '@sapience/ui/types';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';

@@ -3,7 +3,7 @@ import { getProviderForChain } from '../../utils/utils';
 import { Log, decodeEventLog, PublicClient, Abi } from 'viem';
 import { indexMarketGroupEvents } from '../../controllers/market';
 import { updateCollateralData } from '../../controllers/marketHelpers';
-import marketGroupFactoryData from '@foil/protocol/deployments/FoilFactory.json';
+import marketGroupFactoryData from '@sapience/protocol/deployments/FoilFactory.json';
 import Sentry from '../../instrument';
 import type { market_group } from '../../../generated/prisma';
 

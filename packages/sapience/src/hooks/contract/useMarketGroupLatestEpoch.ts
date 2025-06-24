@@ -1,4 +1,4 @@
-import { useFoilAbi } from '@foil/ui/hooks/useFoilAbi';
+import { useFoilAbi } from '@sapience/ui/hooks/useFoilAbi';
 import type { Address, Abi } from 'viem';
 import { useReadContract } from 'wagmi';
 

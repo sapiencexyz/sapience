@@ -5,7 +5,7 @@ module.exports = {
         "./src/**/*.{js,ts,jsx,tsx,mdx}",
         "../../packages/ui/components/**/*.{js,ts,jsx,tsx}"
     ],
-    presets: [require('@foil/ui/tailwind-preset')],
+    presets: [require('@sapience/ui/tailwind-preset')],
     theme: {
         extend: {
             fontFamily: {

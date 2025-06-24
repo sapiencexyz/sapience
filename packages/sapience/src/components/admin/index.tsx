@@ -1,22 +1,22 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@foil/ui/components/ui/dialog';
-import { Input } from '@foil/ui/components/ui/input';
+} from '@sapience/ui/components/ui/dialog';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@foil/ui/components/ui/select';
-import { useToast } from '@foil/ui/hooks/use-toast';
+} from '@sapience/ui/components/ui/select';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { Plus, RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';

@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -6,14 +6,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
+} from '@sapience/ui/components/ui/table';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
-import type { PositionType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/tooltip';
+import type { PositionType } from '@sapience/ui/types';
 import { Info } from 'lucide-react';
 import Link from 'next/link';
 import { formatEther } from 'viem';
