@@ -86,8 +86,9 @@ const GET_RESOURCE_CANDLES = gql`
   }
 `;
 
-// TODO: Make this dynamic?
-const TRAILING_AVG_TIME_SECONDS = 604800; // 7 day trailing average
+const TRAILING_AVG_TIME_SECONDS_7_DAYS = 604800; // 7 day trailing average
+const TRAILING_AVG_TIME_SECONDS_28_DAYS = 2419200; // 28 day trailing average
+
 const GET_RESOURCE_TRAILING_AVG_CANDLES = gql`
   query ResourceTrailingAverageCandlesFromCache(
     $slug: String!
@@ -134,6 +135,8 @@ interface UsePriceChartDataProps {
   quoteTokenName?: string; // Needed for correct index price scaling
   fromTimestamp?: number; // Optional start time (Unix seconds)
   toTimestamp?: number; // Optional end time (Unix seconds)
+  startTimestamp?: number; // Market start time
+  endTimestamp?: number; // Market end time
 }
 
 // Hook Return Interface
@@ -299,15 +302,32 @@ const parseCandleResponses = (
   };
 };
 
+// Helper function to determine trailing average time
+const getTrailingAvgTime = (
+  marketStartTimestamp?: number,
+  marketEndTimestamp?: number
+): number => {
+  if (!marketStartTimestamp || !marketEndTimestamp) {
+    return TRAILING_AVG_TIME_SECONDS_7_DAYS;
+  }
+
+  const marketDuration = marketEndTimestamp - marketStartTimestamp;
+  return marketDuration > TRAILING_AVG_TIME_SECONDS_7_DAYS
+    ? TRAILING_AVG_TIME_SECONDS_28_DAYS
+    : TRAILING_AVG_TIME_SECONDS_7_DAYS;
+};
+
 export const usePriceChartData = ({
   marketAddress,
   chainId,
   marketId,
-  resourceSlug, // Destructure resourceSlug
+  resourceSlug,
   interval,
   quoteTokenName,
   fromTimestamp: propFromTimestamp,
   toTimestamp: propToTimestamp,
+  startTimestamp: marketStartTimestamp,
+  endTimestamp: marketEndTimestamp,
 }: UsePriceChartDataProps): UsePriceChartDataReturn => {
   const { stEthPerToken } = useSapience(); // Still needed for index scaling
 
@@ -350,6 +370,12 @@ export const usePriceChartData = ({
         })
       : Promise.resolve(null); // Resolve null if no slug
 
+    // Get trailing average time
+    const trailingAvgTime = getTrailingAvgTime(
+      marketStartTimestamp,
+      marketEndTimestamp
+    );
+
     const trailingAvgQuery = resourceSlug
       ? foilApi.post('/graphql', {
           query: print(GET_RESOURCE_TRAILING_AVG_CANDLES),
@@ -358,7 +384,7 @@ export const usePriceChartData = ({
             from,
             to,
             interval,
-            trailingAvgTime: TRAILING_AVG_TIME_SECONDS,
+            trailingAvgTime,
           },
         })
       : Promise.resolve(null); // Resolve null if no slug
