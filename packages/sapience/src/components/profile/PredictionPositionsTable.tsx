@@ -1,5 +1,5 @@
-import { NumberDisplay } from '@foil/ui/components/NumberDisplay';
-import { Button } from '@foil/ui/components/ui/button';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -7,7 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
+} from '@sapience/ui/components/ui/table';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   flexRender,
@@ -281,12 +281,8 @@ const PredictionPositionsTable = ({
         cell: (info) => renderActionsCell({ row: info.row }),
       },
     ],
-    [
-      marketGroups,
-      isMarketsLoading,
-      isMarketPage,
-      shouldDisplayQuestionColumn, // Use memoized value and remove attestations
-    ]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [marketGroups, isMarketsLoading, isMarketPage, shouldDisplayQuestionColumn]
   );
 
   const table = useReactTable({
@@ -302,7 +298,7 @@ const PredictionPositionsTable = ({
 
   const renderContent = (
     content: unknown
-  ): JSX.Element | string | number | null => {
+  ): React.ReactNode | string | number | null => {
     if (typeof content === 'bigint') {
       return content.toString();
     }

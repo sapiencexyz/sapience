@@ -1,7 +1,7 @@
 'use client';
 
-import { Input } from '@foil/ui/components/ui/input';
-import { Label } from '@foil/ui/components/ui/label';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Label } from '@sapience/ui/components/ui/label';
 import { useState, useEffect } from 'react';
 
 import { TICK_SPACING } from '../../lib/constants/numbers';
@@ -127,11 +127,11 @@ const MarketFormFields = ({
     const maxPrice = Number(market.highTickPrice);
 
     if (numPrice <= 0) {
-      const minPrice = 0.00009908435194807992;
-      onMarketChange('lowTickPrice', minPrice.toString());
+      const uniswapMinPrice = 0.00009908435194807992;
+      onMarketChange('lowTickPrice', uniswapMinPrice.toString());
       onMarketChange(
         'baseAssetMinPriceTick',
-        priceToTick(minPrice, TICK_SPACING).toString()
+        priceToTick(uniswapMinPrice, TICK_SPACING).toString()
       );
       setMinPriceError(
         'Price is too low for Uniswap. Minimum price set to 0.00009908435194807992'
@@ -177,11 +177,11 @@ const MarketFormFields = ({
     const minPrice = Number(market.lowTickPrice);
 
     if (numPrice <= 0) {
-      const minPrice = 0.00009908435194807992;
-      onMarketChange('highTickPrice', minPrice.toString());
+      const uniswapMinPrice = 0.00009908435194807992;
+      onMarketChange('highTickPrice', uniswapMinPrice.toString());
       onMarketChange(
         'baseAssetMaxPriceTick',
-        priceToTick(minPrice, TICK_SPACING).toString()
+        priceToTick(uniswapMinPrice, TICK_SPACING).toString()
       );
       setMaxPriceError(
         'Price is too low for Uniswap. Minimum price set to 0.00009908435194807992'

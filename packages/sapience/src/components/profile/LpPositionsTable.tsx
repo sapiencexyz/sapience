@@ -1,4 +1,4 @@
-import { Button } from '@foil/ui/components/ui/button';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -6,14 +6,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@foil/ui/components/ui/table';
+} from '@sapience/ui/components/ui/table';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@foil/ui/components/ui/tooltip';
-import type { PositionType } from '@foil/ui/types';
+} from '@sapience/ui/components/ui/tooltip';
+import type { PositionType } from '@sapience/ui/types';
 import { Info } from 'lucide-react';
 import Link from 'next/link';
 import { formatEther } from 'viem';
@@ -28,6 +28,7 @@ interface LpPositionsTableProps {
   parentMarketAddress?: string;
   parentChainId?: number;
   parentMarketId?: number;
+  showHeader?: boolean;
 }
 
 // Helper component for Market Cell (similar to app package but simpler for now)
@@ -110,6 +111,7 @@ export default function LpPositionsTable({
   parentMarketAddress,
   parentChainId,
   parentMarketId,
+  showHeader = true,
 }: LpPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -155,12 +157,12 @@ export default function LpPositionsTable({
 
   return (
     <div>
-      <h3 className="font-medium mb-4">Liquidity Positions</h3>
+      {showHeader && <h3 className="font-medium mb-4">Liquidity Positions</h3>}
       <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead /> {/* Header for Position ID */}
+              <TableHead>ID</TableHead> {/* Header for Position ID */}
               {displayQuestionColumn && <TableHead>Question</TableHead>}
               <TableHead>Collateral</TableHead>
               <TableHead>Base Tokens</TableHead> {/* Updated Header */}

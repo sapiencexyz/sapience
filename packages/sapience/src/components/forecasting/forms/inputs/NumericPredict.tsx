@@ -1,6 +1,6 @@
-import { Input } from '@foil/ui/components/ui/input';
-import { Label } from '@foil/ui/components/ui/label';
-import Slider from '@foil/ui/components/ui/slider';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Label } from '@sapience/ui/components/ui/label';
+import Slider from '@sapience/ui/components/ui/slider';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useFormContext } from 'react-hook-form';
 

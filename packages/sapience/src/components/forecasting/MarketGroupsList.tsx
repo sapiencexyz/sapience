@@ -1,15 +1,15 @@
 'use client';
 
-import { Button } from '@foil/ui/components/ui/button';
-import { Input } from '@foil/ui/components/ui/input';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
-} from '@foil/ui/components/ui/sheet';
-import { Skeleton } from '@foil/ui/components/ui/skeleton';
-import { useIsMobile } from '@foil/ui/hooks/use-mobile';
-import { type MarketType as GraphQLMarketType } from '@foil/ui/types/graphql';
+} from '@sapience/ui/components/ui/sheet';
+import { Skeleton } from '@sapience/ui/components/ui/skeleton';
+import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
+import { type MarketType as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

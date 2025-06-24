@@ -1,12 +1,15 @@
 'use client';
 
-import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
-import { Button } from '@foil/ui/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
-import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import type { MarketType as GqlMarketType } from '@foil/ui/types/graphql';
+import {
+  IntervalSelector,
+  PriceSelector,
+} from '@sapience/ui/components/charts';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import { ChartType, LineType, TimeInterval } from '@sapience/ui/types/charts';
+import type { MarketType as GqlMarketType } from '@sapience/ui/types/graphql';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, LineChart, BarChart2 } from 'lucide-react';
+import { ChevronLeft, LineChart, BarChart2, DatabaseIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
@@ -14,9 +17,10 @@ import { useAccount } from 'wagmi';
 
 import OrderBookChart from '~/components/charts/OrderBookChart';
 import PriceChart from '~/components/charts/PriceChart';
+import DataDrawer from '~/components/DataDrawer';
+import MarketHeader from '~/components/forecasting/MarketHeader';
 import PositionSelector from '~/components/forecasting/PositionSelector';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
-import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
 import { usePositions } from '~/hooks/graphql/usePositions';
@@ -105,7 +109,6 @@ const ForecastContent = () => {
     marketData,
     isLoadingMarket,
     isLoadingMarketContract,
-    displayQuestion,
     chainId,
     marketAddress,
     numericMarketId,
@@ -116,6 +119,8 @@ const ForecastContent = () => {
     baseTokenName,
     quoteTokenName,
     marketClassification,
+    marketContractData,
+    collateralAssetAddress,
   } = useMarketPage();
 
   const [selectedInterval, setSelectedInterval] = useState<TimeInterval>(
@@ -265,16 +270,20 @@ const ForecastContent = () => {
                 </div>
               )}
           </div>
-          {displayQuestion && (
-            <h1 className="text-2xl md:text-4xl font-normal mb-2 leading-tight">
-              {displayQuestion}
-            </h1>
-          )}
-          <div className="flex justify-start mb-6 mt-2">
-            <EndTimeDisplay endTime={marketData?.endTimestamp} />
-          </div>
+          <MarketHeader
+            marketData={marketData!}
+            marketContractData={marketContractData}
+            chainId={chainId!}
+            marketAddress={marketAddress!}
+            marketClassification={marketClassification!}
+            collateralAssetAddress={collateralAssetAddress}
+            baseTokenName={baseTokenName}
+            quoteTokenName={quoteTokenName}
+            minTick={minTick}
+            maxTick={maxTick}
+          />
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col md:flex-row">
+            <div className="flex flex-col lg:flex-row lg:gap-8">
               <div className="flex flex-col w-full relative">
                 <div className="w-full h-[500px] relative">
                   <AnimatePresence>
@@ -327,7 +336,7 @@ const ForecastContent = () => {
                     )}
                   </AnimatePresence>
                 </div>
-                <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center my-4 gap-4">
+                <div className="flex flex-col lg:flex-row justify-between w-full items-start lg:items-center my-4 gap-4">
                   <div className="flex flex-row flex-wrap gap-3 w-full items-center">
                     <div className="order-1 sm:order-1">
                       <div className="flex rounded-md overflow-hidden">
@@ -358,41 +367,50 @@ const ForecastContent = () => {
                       </div>
                     </div>
 
-                    {chartType === ChartType.PRICE && (
-                      <>
-                        <motion.div
-                          className="order-2 sm:order-2 ml-auto"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.1 }}
-                        >
-                          <IntervalSelector
-                            selectedInterval={selectedInterval}
-                            setSelectedInterval={setSelectedInterval}
-                          />
-                        </motion.div>
-                        {marketData?.marketGroup?.resource?.slug && (
+                    <div className="order-2 sm:order-2 ml-auto flex flex-wrap gap-3">
+                      {chartType === ChartType.PRICE && (
+                        <>
                           <motion.div
-                            className="order-3 sm:order-3"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.1 }}
                           >
-                            <PriceSelector
-                              selectedPrices={selectedPrices}
-                              setSelectedPrices={handlePriceSelection}
+                            <IntervalSelector
+                              selectedInterval={selectedInterval}
+                              setSelectedInterval={setSelectedInterval}
                             />
                           </motion.div>
-                        )}
-                      </>
-                    )}
+                          {marketData?.marketGroup?.resource?.slug && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.1 }}
+                            >
+                              <PriceSelector
+                                selectedPrices={selectedPrices}
+                                setSelectedPrices={handlePriceSelection}
+                              />
+                            </motion.div>
+                          )}
+                        </>
+                      )}
+
+                      <DataDrawer
+                        trigger={
+                          <Button className="w-full sm:w-auto">
+                            <DatabaseIcon className="w-4 h-4 mr-0.5" />
+                            Data
+                          </Button>
+                        }
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="w-full md:max-w-[340px] pb-4">
+              <div className="w-full lg:max-w-[340px] pb-4">
                 <div className="bg-card p-6 rounded border mb-5 overflow-auto">
                   <div className="w-full">
                     <h3 className="text-3xl font-normal mb-4">
@@ -467,8 +485,6 @@ const ForecastContent = () => {
                 </button>
               </div>
             </div>
-
-            {/* User Positions Table - Full Width */}
 
             {(() => {
               if (!address) {
