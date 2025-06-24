@@ -348,15 +348,4 @@ library Position {
         self.borrowedVQuote = newPosition.borrowedVQuote;
         self.depositedCollateralAmount = newPosition.depositedCollateralAmount;
     }
-
-    function updateWithNewPosition(
-        Data storage self,
-        Data memory newPosition
-    ) internal {
-        self.vGasAmount = newPosition.vGasAmount;
-        self.vEthAmount = newPosition.vEthAmount;
-        self.borrowedVGas = newPosition.borrowedVGas;
-        self.borrowedVEth = newPosition.borrowedVEth;
-        self.depositedCollateralAmount = newPosition.depositedCollateralAmount;
-    }
 }

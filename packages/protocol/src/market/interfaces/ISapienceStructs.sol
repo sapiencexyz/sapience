@@ -35,13 +35,6 @@ interface ISapienceStructs {
         uint256 deadline;
     }
 
-    struct LiquidityCloseParams {
-        uint256 positionId;
-        uint256 liquiditySlippage; // slippage for closing the liquidity position D18 100% = 1e18
-        uint256 tradeSlippage; // slippage for closing the trade position D18 100% = 1e18
-        uint256 deadline;
-    }
-
     struct LiquidityIncreaseParams {
         uint256 positionId;
         uint256 collateralAmount;

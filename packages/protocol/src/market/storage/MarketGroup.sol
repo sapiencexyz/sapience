@@ -23,6 +23,7 @@ library MarketGroup {
         ISapienceStructs.MarketParams marketParams;
         mapping(bytes32 => uint256) marketIdByAssertionId;
         uint256 minTradeSize;
+        bool isBridgeEnabled;
     }
 
     function load() internal pure returns (Data storage marketGroup) {
