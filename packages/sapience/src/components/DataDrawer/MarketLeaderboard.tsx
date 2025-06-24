@@ -130,10 +130,12 @@ const MarketLeaderboard = ({
                     }
                   )}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
+                  <>
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                  </>
                 </TableHead>
               ))}
             </TableRow>
@@ -154,7 +156,12 @@ const MarketLeaderboard = ({
                       'text-right': cell.column.id === 'totalPnL',
                     })}
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </>
                   </TableCell>
                 ))}
               </TableRow>
