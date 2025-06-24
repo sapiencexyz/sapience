@@ -45,7 +45,10 @@ interface ProfitCellProps<TData> {
 
 const ProfitCell = <TData,>({ row, table }: ProfitCellProps<TData>) => {
   // Ensure the correct column ID is used, assumed to be 'totalPnL' based on previous context
-  const value = row.getValue('totalPnL') as number;
+  const rawValue = row.getValue('totalPnL');
+  // Convert bigint to number if needed
+  const value =
+    typeof rawValue === 'bigint' ? Number(rawValue) : (rawValue as number);
   const wstEthPriceUsd = table.options.meta?.wstEthPriceUsd ?? null; // Provide null as default
 
   // Render the display component with the extracted value and price
