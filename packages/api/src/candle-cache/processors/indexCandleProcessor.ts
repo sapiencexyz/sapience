@@ -23,13 +23,11 @@ export class IndexCandleProcessor {
     price: ResourcePriceWithResource
   ) => {
     const feePaid =
-      (prevCandle && prevCandle.sumFeePaid
-        ? BigInt(prevCandle.sumFeePaid.toString())
-        : BigInt(0)) + BigInt(price.feePaid.toString());
+      (prevCandle ? BigInt(prevCandle.sumFeePaid) : BigInt(0)) +
+      BigInt(price.feePaid);
     const used =
-      (prevCandle && prevCandle.sumUsed
-        ? BigInt(prevCandle.sumUsed.toString())
-        : BigInt(0)) + BigInt(price.used.toString());
+      (prevCandle ? BigInt(prevCandle.sumUsed) : BigInt(0)) +
+      BigInt(price.used);
     const avg = used > 0 ? feePaid / used : 0;
     return { feePaid, used, avg };
   };

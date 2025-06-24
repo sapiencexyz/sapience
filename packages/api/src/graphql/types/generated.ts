@@ -130,7 +130,11 @@ export type MarketGroup = {
   vaultAddress?: Maybe<Scalars['String']['output']>;
 };
 
+<<<<<<< HEAD
 export type MarketGroupMarketsArgs = {
+=======
+export type MarketGroupTypeMarketsArgs = {
+>>>>>>> main
   filter?: InputMaybe<MarketFilterInput>;
   orderBy?: InputMaybe<MarketOrderInput>;
 };
@@ -507,6 +511,7 @@ export type CandleTypeResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
+<<<<<<< HEAD
 export type CategoryResolvers<
   ContextType = ApolloContext,
   ParentType extends
@@ -515,6 +520,16 @@ export type CategoryResolvers<
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   marketGroups?: Resolver<
     Maybe<Array<ResolversTypes['MarketGroup']>>,
+=======
+export type CategoryTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['CategoryType'] = ResolversParentTypes['CategoryType'],
+> = ResolversObject<{
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  marketGroups?: Resolver<
+    Array<ResolversTypes['MarketGroupType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
@@ -523,10 +538,183 @@ export type CategoryResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
+<<<<<<< HEAD
 export type MarketResolvers<
   ContextType = ApolloContext,
   ParentType extends
     ResolversParentTypes['Market'] = ResolversParentTypes['Market'],
+> = ResolversObject<{
+  baseAssetMaxPriceTick?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  baseAssetMinPriceTick?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  currentPrice?: Resolver<
+=======
+export type MarketGroupTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['MarketGroupType'] = ResolversParentTypes['MarketGroupType'],
+> = ResolversObject<{
+  address?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  baseTokenName?: Resolver<
+>>>>>>> main
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+<<<<<<< HEAD
+  endTimestamp?: Resolver<
+=======
+  category?: Resolver<
+    Maybe<ResolversTypes['CategoryType']>,
+    ParentType,
+    ContextType
+  >;
+  chainId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  claimStatement?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  collateralAsset?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  collateralDecimals?: Resolver<
+>>>>>>> main
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+<<<<<<< HEAD
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  marketGroup?: Resolver<
+    Maybe<ResolversTypes['MarketGroup']>,
+=======
+  collateralSymbol?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  deployTimestamp?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  deployTxnBlockNumber?: Resolver<
+    Maybe<ResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  factoryAddress?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  initializationNonce?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  isCumulative?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  isYin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  marketParams?: Resolver<
+    Maybe<ResolversTypes['MarketParamsType']>,
+    ParentType,
+    ContextType
+  >;
+  markets?: Resolver<
+    Array<ResolversTypes['MarketType']>,
+    ParentType,
+    ContextType,
+    Partial<MarketGroupTypeMarketsArgs>
+  >;
+  minTradeSize?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  owner?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  question?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  quoteTokenName?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  resource?: Resolver<
+    Maybe<ResolversTypes['ResourceType']>,
+    ParentType,
+    ContextType
+  >;
+  vaultAddress?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
+export type MarketParamsTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['MarketParamsType'] = ResolversParentTypes['MarketParamsType'],
+> = ResolversObject<{
+  assertionLiveness?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  bondAmount?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  bondCurrency?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  claimStatement?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  feeRate?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  optimisticOracleV3?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  uniswapPositionManager?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  uniswapQuoter?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  uniswapSwapRouter?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
+export type MarketTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['MarketType'] = ResolversParentTypes['MarketType'],
 > = ResolversObject<{
   baseAssetMaxPriceTick?: Resolver<
     Maybe<ResolversTypes['Int']>,
@@ -550,11 +738,13 @@ export type MarketResolvers<
   >;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   marketGroup?: Resolver<
-    Maybe<ResolversTypes['MarketGroup']>,
+    Maybe<ResolversTypes['MarketGroupType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
   marketId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+<<<<<<< HEAD
   marketParamsAssertionliveness?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
@@ -597,6 +787,10 @@ export type MarketResolvers<
   >;
   marketParamsUniswapswaprouter?: Resolver<
     Maybe<ResolversTypes['String']>,
+=======
+  marketParams?: Resolver<
+    Maybe<ResolversTypes['MarketParamsType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
@@ -611,7 +805,11 @@ export type MarketResolvers<
     ContextType
   >;
   positions?: Resolver<
+<<<<<<< HEAD
     Maybe<Array<ResolversTypes['Position']>>,
+=======
+    Array<ResolversTypes['PositionType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
@@ -637,6 +835,7 @@ export type MarketResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
+<<<<<<< HEAD
 export type MarketGroupResolvers<
   ContextType = ApolloContext,
   ParentType extends
@@ -768,6 +967,8 @@ export type MarketGroupResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
+=======
+>>>>>>> main
 export type PnLTypeResolvers<
   ContextType = ApolloContext,
   ParentType extends
@@ -792,6 +993,7 @@ export type PnLTypeResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
+<<<<<<< HEAD
 export type PositionResolvers<
   ContextType = ApolloContext,
   ParentType extends
@@ -802,6 +1004,14 @@ export type PositionResolvers<
     ParentType,
     ContextType
   >;
+=======
+export type PositionTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['PositionType'] = ResolversParentTypes['PositionType'],
+> = ResolversObject<{
+  baseToken?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+>>>>>>> main
   borrowedBaseToken?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
@@ -812,11 +1022,15 @@ export type PositionResolvers<
     ParentType,
     ContextType
   >;
+<<<<<<< HEAD
   collateral?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
     ContextType
   >;
+=======
+  collateral?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+>>>>>>> main
   highPriceTick?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
@@ -844,6 +1058,7 @@ export type PositionResolvers<
     ParentType,
     ContextType
   >;
+<<<<<<< HEAD
   market?: Resolver<Maybe<ResolversTypes['Market']>, ParentType, ContextType>;
   owner?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   positionId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -854,6 +1069,14 @@ export type PositionResolvers<
   >;
   transactions?: Resolver<
     Maybe<Array<ResolversTypes['Transaction']>>,
+=======
+  market?: Resolver<ResolversTypes['MarketType'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  positionId?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  quoteToken?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  transactions?: Resolver<
+    Array<ResolversTypes['TransactionType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
@@ -866,7 +1089,11 @@ export type QueryResolvers<
     ResolversParentTypes['Query'] = ResolversParentTypes['Query'],
 > = ResolversObject<{
   categories?: Resolver<
+<<<<<<< HEAD
     Array<ResolversTypes['Category']>,
+=======
+    Array<ResolversTypes['CategoryType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
@@ -916,37 +1143,61 @@ export type QueryResolvers<
     >
   >;
   marketGroup?: Resolver<
+<<<<<<< HEAD
     Maybe<ResolversTypes['MarketGroup']>,
+=======
+    Maybe<ResolversTypes['MarketGroupType']>,
+>>>>>>> main
     ParentType,
     ContextType,
     RequireFields<QueryMarketGroupArgs, 'address' | 'chainId'>
   >;
   marketGroups?: Resolver<
+<<<<<<< HEAD
     Array<ResolversTypes['MarketGroup']>,
+=======
+    Array<ResolversTypes['MarketGroupType']>,
+>>>>>>> main
     ParentType,
     ContextType,
     Partial<QueryMarketGroupsArgs>
   >;
   marketGroupsByCategory?: Resolver<
+<<<<<<< HEAD
     Array<ResolversTypes['MarketGroup']>,
+=======
+    Array<ResolversTypes['MarketGroupType']>,
+>>>>>>> main
     ParentType,
     ContextType,
     RequireFields<QueryMarketGroupsByCategoryArgs, 'slug'>
   >;
   markets?: Resolver<
+<<<<<<< HEAD
     Array<ResolversTypes['Market']>,
+=======
+    Array<ResolversTypes['MarketType']>,
+>>>>>>> main
     ParentType,
     ContextType,
     RequireFields<QueryMarketsArgs, 'chainId' | 'marketAddress' | 'marketId'>
   >;
   positions?: Resolver<
+<<<<<<< HEAD
     Array<ResolversTypes['Position']>,
+=======
+    Array<ResolversTypes['PositionType']>,
+>>>>>>> main
     ParentType,
     ContextType,
     Partial<QueryPositionsArgs>
   >;
   resource?: Resolver<
+<<<<<<< HEAD
     Maybe<ResolversTypes['Resource']>,
+=======
+    Maybe<ResolversTypes['ResourceType']>,
+>>>>>>> main
     ParentType,
     ContextType,
     RequireFields<QueryResourceArgs, 'slug'>
@@ -961,7 +1212,11 @@ export type QueryResolvers<
     >
   >;
   resourcePrices?: Resolver<
+<<<<<<< HEAD
     Array<ResolversTypes['ResourcePrice']>,
+=======
+    Array<ResolversTypes['ResourcePriceType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
@@ -975,7 +1230,11 @@ export type QueryResolvers<
     >
   >;
   resources?: Resolver<
+<<<<<<< HEAD
     Array<ResolversTypes['Resource']>,
+=======
+    Array<ResolversTypes['ResourceType']>,
+>>>>>>> main
     ParentType,
     ContextType,
     Partial<QueryResourcesArgs>
@@ -990,13 +1249,18 @@ export type QueryResolvers<
     >
   >;
   transactions?: Resolver<
+<<<<<<< HEAD
     Array<ResolversTypes['Transaction']>,
+=======
+    Array<ResolversTypes['TransactionType']>,
+>>>>>>> main
     ParentType,
     ContextType,
     Partial<QueryTransactionsArgs>
   >;
 }>;
 
+<<<<<<< HEAD
 export type ResourceResolvers<
   ContextType = ApolloContext,
   ParentType extends
@@ -1027,11 +1291,21 @@ export type ResourcePriceResolvers<
   ContextType = ApolloContext,
   ParentType extends
     ResolversParentTypes['ResourcePrice'] = ResolversParentTypes['ResourcePrice'],
+=======
+export type ResourcePriceTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['ResourcePriceType'] = ResolversParentTypes['ResourcePriceType'],
+>>>>>>> main
 > = ResolversObject<{
   blockNumber?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   resource?: Resolver<
+<<<<<<< HEAD
     Maybe<ResolversTypes['Resource']>,
+=======
+    Maybe<ResolversTypes['ResourceType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
@@ -1040,6 +1314,7 @@ export type ResourcePriceResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 }>;
 
+<<<<<<< HEAD
 export type TransactionResolvers<
   ContextType = ApolloContext,
   ParentType extends
@@ -1052,10 +1327,63 @@ export type TransactionResolvers<
   >;
   collateral?: Resolver<
     Maybe<ResolversTypes['String']>,
+=======
+export type ResourceTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['ResourceType'] = ResolversParentTypes['ResourceType'],
+> = ResolversObject<{
+  category?: Resolver<
+    Maybe<ResolversTypes['CategoryType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+<<<<<<< HEAD
+=======
+  marketGroups?: Resolver<
+    Array<ResolversTypes['MarketGroupType']>,
+    ParentType,
+    ContextType
+  >;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  resourcePrices?: Resolver<
+    Array<ResolversTypes['ResourcePriceType']>,
+    ParentType,
+    ContextType
+  >;
+  slug?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+}>;
+
+export type TransactionTypeResolvers<
+  ContextType = ApolloContext,
+  ParentType extends
+    ResolversParentTypes['TransactionType'] = ResolversParentTypes['TransactionType'],
+> = ResolversObject<{
+  baseToken?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  baseTokenDelta?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  collateral?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  collateralDelta?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+>>>>>>> main
   lpBaseDeltaToken?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
@@ -1067,7 +1395,11 @@ export type TransactionResolvers<
     ContextType
   >;
   position?: Resolver<
+<<<<<<< HEAD
     Maybe<ResolversTypes['Position']>,
+=======
+    Maybe<ResolversTypes['PositionType']>,
+>>>>>>> main
     ParentType,
     ContextType
   >;
@@ -1076,7 +1408,16 @@ export type TransactionResolvers<
     ParentType,
     ContextType
   >;
+<<<<<<< HEAD
   timestamp?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+=======
+  quoteTokenDelta?: Resolver<
+    Maybe<ResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  timestamp?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+>>>>>>> main
   tradeRatioD18?: Resolver<
     Maybe<ResolversTypes['String']>,
     ParentType,
