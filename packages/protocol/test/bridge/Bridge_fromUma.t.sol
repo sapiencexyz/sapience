@@ -84,7 +84,6 @@ contract BridgeTestFromUma is TestHelperOz5 {
         mockMarketGroup = new MockMarketGroup(address(marketBridge));
 
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
-        // optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         umaBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({

@@ -13,7 +13,7 @@ import {Encoder} from "./cmdEncoder.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
-// import {console2} from "forge-std/console2.sol";
+import {console2} from "forge-std/console2.sol";
 
 struct AssertionMarketData {
     bytes32 assertionId;
@@ -311,6 +311,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         address _executor,
         bytes calldata _extraData
     ) internal override {
+        console2.log("lzReceive");
         require(
             _origin.srcEid == bridgeConfig.remoteChainId,
             "Invalid source chain"
@@ -323,10 +324,15 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
         // TODO: Check if the sender is the remote bridge
 
+        console2.log("lzReceive 2");
+
         // Handle incoming messages from the UMA side
         (uint16 commandType, bytes memory data) = _message.decodeType();
 
+        console2.log("commandType", commandType);
+
         if (commandType == Encoder.CMD_TO_UMA_ASSERT_TRUTH) {
+            console2.log("handleAssertTruthCmd");
             _handleAssertTruthCmd(data);
         }
     }
@@ -398,6 +404,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     }
 
     function _handleAssertTruthCmd(bytes memory data) internal {
+        console2.log("handleAssertTruthCmd 2");
         // Decode the data from the Market side (incoming data: assertionId, asserter, liveness, currency, bond, claim)
         (
             uint256 bridgeAssertionId,
@@ -408,6 +415,8 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
             bytes memory claim
         ) = data.decodeToUMAAssertTruth();
 
+        console2.log("handleAssertTruthCmd 3");
+
         // TODO: Check if the assertionId is already in the mapping and send back an error message
         // TODO: Check if the bond is enough and send back an error message
 
@@ -415,9 +424,14 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
                 optimisticOracleV3Address
             );
 
+        console2.log("handleAssertTruthCmd 4");
+
         IERC20 bondToken = IERC20(bondTokenAddress);
 
         bondToken.approve(address(optimisticOracleV3), bondAmount);
+
+        console2.log("handleAssertTruthCmd 5");
+        console2.log("optimisticOracleV3Address", address(optimisticOracleV3)  );
 
         bytes32 umaAssertionId = optimisticOracleV3.assertTruth(
             claim,
@@ -431,6 +445,8 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
             bytes32(0)
         );
 
+        console2.log("handleAssertTruthCmd 6");
+
         AssertionMarketData storage marketData = assertionIdToMarketData[
             umaAssertionId
         ];
@@ -439,6 +455,8 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         marketData.bondToken = bondTokenAddress;
         marketData.bondAmount = bondAmount;
         marketData.assertionId = umaAssertionId;
+
+        console2.log("handleAssertTruthCmd 7");
 
         submitterBondBalances[asserter][bondTokenAddress] -= bondAmount;
         // TODO: Should we send back the confirmation to the Market side?

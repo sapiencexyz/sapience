@@ -8,6 +8,8 @@ import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
+import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
+import {MockMarketGroup} from "./mocks/mockMarketGroup.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
@@ -28,7 +30,8 @@ contract BridgeTestFromMarket is TestHelperOz5 {
 
     // Other contracts
     IMintableToken private bondCurrency;
-    address private optimisticOracleV3;
+    MockOptimisticOracleV3 private mockOptimisticOracleV3;
+    MockMarketGroup private mockMarketGroup;
 
     // LZ data
     uint32 private umaEiD = 1;
@@ -76,8 +79,10 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         vm.deal(address(umaBridge), 100 ether);
         vm.deal(address(marketBridge), 100 ether);
 
+        mockOptimisticOracleV3 = new MockOptimisticOracleV3(address(umaBridge));
+        mockMarketGroup = new MockMarketGroup(address(marketBridge));
+
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
-        optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         umaBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({
@@ -87,7 +92,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
             })
         );
 
-        umaBridge.setOptimisticOracleV3(optimisticOracleV3);
+        umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
 
         marketBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({
@@ -107,7 +112,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
 
         // Enable the market group
-        marketBridge.enableMarketGroup(marketGroup);
+        marketBridge.enableMarketGroup(address(mockMarketGroup));
     }
 
     function test_failsIfNotEnabledMarketGroup() public {
@@ -132,7 +137,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         );
 
         // Check it reverts
-        vm.startPrank(marketGroup);
+        vm.startPrank(address(mockMarketGroup));
         vm.expectRevert("Asserter does not have enough bond");
         marketBridge.forwardAssertTruth(
             address(marketUser),
@@ -146,7 +151,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         vm.stopPrank();
 
         // Confirm it pass with enough bond
-        vm.startPrank(marketGroup);
+        vm.startPrank(address(mockMarketGroup));
         marketBridge.forwardAssertTruth(
             address(marketUser),
             1,
@@ -173,7 +178,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
 
         // Check it reverts
-        vm.startPrank(marketGroup);
+        vm.startPrank(address(mockMarketGroup));
         vm.expectRevert("Asserter does not have enough bond");
         marketBridge.forwardAssertTruth(
             address(marketUser),
@@ -187,7 +192,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         vm.stopPrank();
 
         // Confirm it pass with enough bond
-        vm.startPrank(marketGroup);
+        vm.startPrank(address(mockMarketGroup));
         marketBridge.forwardAssertTruth(
             address(marketUser),
             1,
@@ -200,7 +205,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         vm.stopPrank();
     }
 
-    function test_forwardAssertTruth() public {
+    function test_forwardAssertTruth_LEO() public {
         // Verify the balance movements (token)
         uint256 initialUmaTokenBalance = bondCurrency.balanceOf(
             address(umaBridge)
@@ -213,17 +218,27 @@ contract BridgeTestFromMarket is TestHelperOz5 {
             .getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
 
         // Forward the assertion to the optimisticOracleV3
-        vm.startPrank(marketGroup);
-        bytes32 assertionId = marketBridge.forwardAssertTruth(
-            address(marketUser),
-            1,
+        mockMarketGroup.setAssertThruthData(
             "some claim message",
-            address(umaUser),
             3600,
             address(bondCurrency),
             BOND_AMOUNT
         );
-        vm.stopPrank();
+        console2.log("submitSettlementPrice");
+        bytes32 assertionId = mockMarketGroup.submitSettlementPrice(1, address(umaUser), 1);
+        console2.log("assertionId");
+
+        // vm.startPrank(address(mockMarketGroup));
+        // bytes32 assertionId = marketBridge.forwardAssertTruth(
+        //     address(marketUser),
+        //     1,
+        //     "some claim message",
+        //     address(umaUser),
+        //     3600,
+        //     address(bondCurrency),
+        //     BOND_AMOUNT
+        // );
+        // vm.stopPrank();
 
         // Verify the balance movements (token)
         uint256 finalUmaTokenBalance = bondCurrency.balanceOf(
@@ -244,8 +259,11 @@ contract BridgeTestFromMarket is TestHelperOz5 {
             initialUserRemoteBondBalance - BOND_AMOUNT
         );
 
+        console2.log("going to verify packets");
+        console2.log("address", address(mockOptimisticOracleV3));
         // Propagate the assertion
         verifyPackets(umaEiD, addressToBytes32(address(umaBridge)));
+        console2.log("packets verified");
 
         // After propagating the assertion, the balance should be different
         finalUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));

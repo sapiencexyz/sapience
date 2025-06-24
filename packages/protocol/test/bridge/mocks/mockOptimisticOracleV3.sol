@@ -3,7 +3,7 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import {IUMALayerZeroBridge} from "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
+import {console2} from "forge-std/console2.sol";
 
 /**
  * @title MockOptimisticOracleV3
@@ -49,7 +49,9 @@ contract MockOptimisticOracleV3 {
     IERC20 bondToken,
     uint256 bondAmount
   ) external returns (bytes32 assertionId) {  
+    console2.log("assertTruth");
     assertionId = keccak256(abi.encodePacked(claim, asserter, sender, receiver, liveness, address(bondToken), bondAmount));
+    console2.log("assertTruth 2");
     assertionData[assertionId] = AssertionData({
       claim: claim,
       asserter: asserter,
@@ -59,7 +61,9 @@ contract MockOptimisticOracleV3 {
       bondToken: bondToken,
       bondAmount: bondAmount
     });
+    console2.log("assertTruth 3");
     lastAssertionId = assertionId;
+    console2.log("assertTruth 4");
     return assertionId;
   }
 }
