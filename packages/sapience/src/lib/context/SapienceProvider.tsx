@@ -114,7 +114,7 @@ const MARKET_GROUPS_QUERY = gql`
         baseAssetMaxPriceTick
         poolAddress
         currentPrice
-        marketParamsClaimstatement 
+        marketParamsClaimstatement
       }
     }
   }

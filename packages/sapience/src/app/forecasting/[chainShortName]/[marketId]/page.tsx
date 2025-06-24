@@ -4,7 +4,7 @@ import { IntervalSelector, PriceSelector } from '@foil/ui/components/charts';
 import { Button } from '@foil/ui/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@foil/ui/components/ui/tabs';
 import { ChartType, LineType, TimeInterval } from '@foil/ui/types/charts';
-import type { MarketType as GqlMarketType } from '@foil/ui/types/graphql';
+import type { Market as GqlMarketType } from '@foil/ui/types/graphql';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, LineChart, BarChart2, DatabaseIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -242,12 +242,12 @@ const ForecastContent = () => {
                       {marketData.marketGroup.markets
                         .filter(
                           (
-                            market // market.id is string, numericMarketId is number | null, market.marketId is number
+                            market: GqlMarketType // market.id is string, numericMarketId is number | null, market.marketId is number
                           ) =>
                             market.endTimestamp &&
                             market.endTimestamp * 1000 > Date.now()
                         )
-                        .map((market) => {
+                        .map((market: GqlMarketType) => {
                           const buttonText =
                             market.optionName ||
                             market.question ||

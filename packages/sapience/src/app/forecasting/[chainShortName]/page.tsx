@@ -6,7 +6,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@foil/ui/components/ui/dialog';
-import type { MarketGroupType, MarketType } from '@foil/ui/types';
+import type {
+  MarketGroup as MarketGroupType,
+  Market as MarketType,
+} from '@foil/ui/types/graphql';
 import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -218,8 +221,8 @@ const MarketGroupPageContent = () => {
     );
   }
 
-  const optionNames = marketGroupData.markets.map(
-    (market) => market.optionName || ''
+  const optionNames = (marketGroupData.markets || []).map(
+    (market: MarketType) => market.optionName || ''
   );
 
   // Find the active market once

@@ -37,8 +37,8 @@ function PositionCell({ position }: { position: PositionType }) {
   const netPositionBI = baseTokenBI - borrowedBaseTokenBI;
   const value = Number(formatEther(netPositionBI));
   const absValue = Math.abs(value);
-  const baseTokenName = position.market.marketGroup?.baseTokenName;
-  const marketClassification = position.market.marketGroup
+  const baseTokenName = position.market?.marketGroup?.baseTokenName;
+  const marketClassification = position.market?.marketGroup
     ? getMarketGroupClassification(position.market.marketGroup)
     : MarketGroupClassification.NUMERIC;
 
@@ -83,8 +83,8 @@ function PositionCell({ position }: { position: PositionType }) {
 }
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
-  const baseTokenName = position.market.marketGroup?.baseTokenName;
-  const collateralSymbol = position.market.marketGroup?.collateralSymbol;
+  const baseTokenName = position.market?.marketGroup?.baseTokenName;
+  const collateralSymbol = position.market?.marketGroup?.collateralSymbol;
 
   if (baseTokenName === 'Yes') {
     const baseTokenBI = BigInt(position.baseToken || '0');
@@ -112,8 +112,8 @@ function MaxPayoutCell({ position }: { position: PositionType }) {
 
 function PositionValueCell({ position }: { position: PositionType }) {
   const { transactions } = position;
-  const { marketId } = position.market;
-  const { marketGroup } = position.market;
+  const marketId = position.market?.marketId;
+  const marketGroup = position.market?.marketGroup;
   const address = marketGroup?.address || '';
   const chainId = marketGroup?.chainId || 0;
   const baseTokenName = marketGroup?.baseTokenName;
@@ -137,7 +137,7 @@ function PositionValueCell({ position }: { position: PositionType }) {
   const isLong = netPosition >= 0;
 
   // --- Calculate Effective Entry Price ---
-  const entryPrice = calculateEffectiveEntryPrice(transactions, isLong);
+  const entryPrice = calculateEffectiveEntryPrice(transactions || [], isLong);
 
   // --- Calculate Position Size, Value, PnL ---
   let positionSize = 0;
@@ -217,7 +217,7 @@ export default function TraderPositionsTable({
   }
 
   const validPositions = positions.filter(
-    (p) => p && p.market && p.market.marketGroup && p.id && !p.isLP // Added !isLP check
+    (p) => p && p.market && p.market?.marketGroup && p.id && !p.isLP // Added !isLP check
   );
 
   if (validPositions.length === 0) {
@@ -236,9 +236,9 @@ export default function TraderPositionsTable({
     // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
     displayQuestionColumn = validPositions.some(
       (p) =>
-        p.market.marketGroup &&
-        p.market.marketGroup.markets &&
-        p.market.marketGroup.markets.length > 1
+        p.market?.marketGroup &&
+        p.market?.marketGroup?.markets &&
+        p.market?.marketGroup?.markets.length > 1
     );
   }
 

@@ -60,7 +60,7 @@ export default function YesNoWagerForm({
   // Use the quoter hook directly
   const { quoteData, isQuoteLoading, quoteError } = useQuoter({
     marketData: marketGroupData,
-    marketId: marketGroupData.markets[0].marketId, // first market in the array
+    marketId: marketGroupData.markets?.[0]?.marketId ?? 0, // first market in the array
     expectedPrice: predictionValue === YES_SQRT_PRICE_X96 ? 1 : 0.0000009,
     wagerAmount,
   });
@@ -78,7 +78,7 @@ export default function YesNoWagerForm({
     marketAddress: marketGroupData.address as `0x${string}`,
     marketAbi: foilAbi().abi,
     chainId: marketGroupData.chainId,
-    numericMarketId: marketGroupData.markets[0].marketId,
+    numericMarketId: marketGroupData.markets?.[0]?.marketId ?? 0,
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
     collateralAmount: wagerAmount,
     slippagePercent: 0.5, // Default slippage percentage

@@ -1,5 +1,10 @@
 import { gql } from '@apollo/client';
-import type { Market as MarketType, MarketGroup as MarketGroupType, Category as CategoryType } from '@foil/ui/types/graphql';
+import type {
+  Market as MarketType,
+  MarketGroup as MarketGroupType,
+  Category as CategoryType,
+  Position as PositionType,
+} from '@foil/ui/types/graphql';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { formatUnits } from 'viem';
@@ -506,7 +511,7 @@ export const useOpenInterest = (market: {
         // Filter positions for this specific market and sum collateral for unsettled positions
         const marketPositions = data.positions.filter(
           (position: PositionType) =>
-            position.market.marketId === market.marketId
+            position.market && position.market.marketId === market.marketId
         );
 
         const unsettledPositions = marketPositions.filter(
@@ -524,6 +529,9 @@ export const useOpenInterest = (market: {
           (total: number, position: PositionType) => {
             try {
               // Convert from smallest unit to human readable using formatUnits
+              if (!position.collateral) {
+                return total;
+              }
               const collateralBigInt = BigInt(position.collateral);
               const collateralValue = Number(
                 formatUnits(collateralBigInt, collateralDecimals)
