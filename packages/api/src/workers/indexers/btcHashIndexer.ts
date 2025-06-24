@@ -82,7 +82,6 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     return await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-
   private async storeBlockPrice(
     _blockNumber: number,
     resource: Resource,
@@ -91,10 +90,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     let timestamp: number;
     try {
       // Validate block data fields
-      if (
-        !priceData.timestamp ||
-        typeof priceData.average_fee !== 'bigint'
-      ) {
+      if (!priceData.timestamp || typeof priceData.average_fee !== 'bigint') {
         console.warn(
           `[BtcIndexer] Invalid block data for block ${priceData.timestamp}. Skipping block.`
         );
@@ -106,7 +102,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         resource: { id: resource.id },
         timestamp,
         value: priceData.average_fee.toString(),
-        used: "1", // Set to 1 as requested
+        used: '1', // Set to 1 as requested
         feePaid: priceData.average_fee.toString(), // Use calculated value
         blockNumber: timestamp,
       };
@@ -342,20 +338,26 @@ class BtcHashIndexer implements IResourcePriceIndexer {
   ): {
     averageFeesPerHashrate: bigint;
   } {
-    console.log(`[BtcIndexer] calculateMetrics called with ${blocks.length} blocks, ${hashrates.length} hashrates, targetTimestamp: ${targetTimestamp}`);
-    console.log(`[BtcIndexer] Target date: ${new Date(targetTimestamp * 1000).toISOString()}`);
-    
+    console.log(
+      `[BtcIndexer] calculateMetrics called with ${blocks.length} blocks, ${hashrates.length} hashrates, targetTimestamp: ${targetTimestamp}`
+    );
+    console.log(
+      `[BtcIndexer] Target date: ${new Date(targetTimestamp * 1000).toISOString()}`
+    );
+
     // Get blocks from last 7 days relative to target date
     const sevenDaysAgoTimestamp = targetTimestamp - 7 * 24 * 60 * 60;
     const last7DaysBlocks = blocks.filter(
       (block) => block.timestamp >= sevenDaysAgoTimestamp
     );
-    
-    console.log(`[BtcIndexer] Found ${last7DaysBlocks.length} blocks in the last 7 days (from ${new Date(sevenDaysAgoTimestamp * 1000).toISOString()})`);
+
+    console.log(
+      `[BtcIndexer] Found ${last7DaysBlocks.length} blocks in the last 7 days (from ${new Date(sevenDaysAgoTimestamp * 1000).toISOString()})`
+    );
 
     // Group blocks by day (UTC day boundary)
     const blocksByDay = new Map<string, BlockData[]>();
-    
+
     for (const block of last7DaysBlocks) {
       // Convert block timestamp to UTC day boundary
       const blockDate = new Date(block.timestamp * 1000);
@@ -364,16 +366,18 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         blockDate.getUTCMonth(),
         blockDate.getUTCDate()
       ).toString();
-      
+
       if (!blocksByDay.has(dayKey)) {
         blocksByDay.set(dayKey, []);
       }
       blocksByDay.get(dayKey)!.push(block);
     }
-    
+
     console.log(`[BtcIndexer] Grouped blocks by day:`);
     for (const [dayKey, dayBlocks] of blocksByDay.entries()) {
-      console.log(`${new Date(Number(dayKey)).toISOString()}: ${dayBlocks.length} blocks`);
+      console.log(
+        `${new Date(Number(dayKey)).toISOString()}: ${dayBlocks.length} blocks`
+      );
     }
 
     // Calculate daily fee/hashrate ratios
@@ -381,45 +385,57 @@ class BtcHashIndexer implements IResourcePriceIndexer {
     let daysWithData = 0;
 
     for (let dayOffset = 1; dayOffset <= 7; dayOffset++) {
-      const dayTimestamp = targetTimestamp - (dayOffset * 24 * 60 * 60);
+      const dayTimestamp = targetTimestamp - dayOffset * 24 * 60 * 60;
       const dayHashrate = this.getHashrateForTimestamp(dayTimestamp);
 
       const dayKey = (dayTimestamp * 1000).toString();
       const dayBlocks = blocksByDay.get(dayKey) || [];
-      
-      console.log(`[BtcIndexer] Day ${dayOffset}: timestamp=${dayTimestamp}, blocks=${dayBlocks.length}, hashrate=${dayHashrate.toString()}`);
-      
+
+      console.log(
+        `[BtcIndexer] Day ${dayOffset}: timestamp=${dayTimestamp}, blocks=${dayBlocks.length}, hashrate=${dayHashrate.toString()}`
+      );
+
       if (dayBlocks.length > 0 && dayHashrate > 0n) {
         // Calculate total fees for the day
         let totalFees = 0n;
         for (const block of dayBlocks) {
           totalFees += BigInt(block.total_fee);
         }
-        
+
         // Scale fees to preserve decimals (multiply by 10^12)
         const scaledFees = totalFees * BigInt(10 ** 12);
         // Scale hashrate to preserve decimals (multiply by 10^12) -> decimals should cancel out
-        const scaledHashrate = dayHashrate * BigInt(10 ** 12) / this.ZETTA_MULTIPLIER;
-        
+        const scaledHashrate =
+          (dayHashrate * BigInt(10 ** 12)) / this.ZETTA_MULTIPLIER;
+
         // Calculate fee/hashrate ratio for the day; scaled by 10^9 for the frontend to process
-        const dailyRatio = scaledFees * BigInt(10 ** 9) / scaledHashrate;
+        const dailyRatio = (scaledFees * BigInt(10 ** 9)) / scaledHashrate;
         totalDailyRatio += dailyRatio;
         daysWithData++;
-        
-        console.log(`[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: totalFees=${totalFees.toString()}, scaledFees=${scaledFees.toString()}, dailyRatio=${dailyRatio.toString()}`);
-        console.log(`[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: hashrate=${dayHashrate.toString()}, scaledHashrate (Zh * 10^12)=${scaledHashrate.toString()}`);
+
+        console.log(
+          `[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: totalFees=${totalFees.toString()}, scaledFees=${scaledFees.toString()}, dailyRatio=${dailyRatio.toString()}`
+        );
+        console.log(
+          `[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: hashrate=${dayHashrate.toString()}, scaledHashrate (Zh * 10^12)=${scaledHashrate.toString()}`
+        );
       } else {
-        console.log(`[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: Skipping - no blocks (${dayBlocks.length}) or no hashrate (${dayHashrate.toString()})`);
+        console.log(
+          `[BtcIndexer] ${new Date(Number(dayKey)).toISOString()}: Skipping - no blocks (${dayBlocks.length}) or no hashrate (${dayHashrate.toString()})`
+        );
       }
     }
 
     // Calculate 7-day average
-    const averageFeesPerHashrate = daysWithData > 0 
-      ? totalDailyRatio / BigInt(daysWithData)
-      : 0n;
+    const averageFeesPerHashrate =
+      daysWithData > 0 ? totalDailyRatio / BigInt(daysWithData) : 0n;
 
-    console.log(`[BtcIndexer] Final calculation: daysWithData=${daysWithData}, totalDailyRatio=${totalDailyRatio.toString()}, averageFeesPerHashrate=${averageFeesPerHashrate.toString()}`);
-    console.log(`[BtcIndexer] Calculation breakdown: totalDailyRatio / ${daysWithData} = ${totalDailyRatio} / ${daysWithData} = ${averageFeesPerHashrate}`);
+    console.log(
+      `[BtcIndexer] Final calculation: daysWithData=${daysWithData}, totalDailyRatio=${totalDailyRatio.toString()}, averageFeesPerHashrate=${averageFeesPerHashrate.toString()}`
+    );
+    console.log(
+      `[BtcIndexer] Calculation breakdown: totalDailyRatio / ${daysWithData} = ${totalDailyRatio} / ${daysWithData} = ${averageFeesPerHashrate}`
+    );
 
     return {
       averageFeesPerHashrate,
@@ -494,9 +510,9 @@ class BtcHashIndexer implements IResourcePriceIndexer {
           `[BtcIndexer] Time window: ${new Date(startTimestamp * 1000).toISOString()} to ${new Date(endTimestamp * 1000).toISOString()}`
         );
 
-        // currently refetching the whole thing to upfetch latest data for prev. day from the API 
+        // currently refetching the whole thing to upfetch latest data for prev. day from the API
         // TODO: upfetch only the hashrate for the previous day
-        await this.fetchHistoricalHashrates(); 
+        await this.fetchHistoricalHashrates();
 
         // Get blocks for the time window from deque
         let blocks = this.blockDeque.getAllBlocks();
