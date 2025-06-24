@@ -11,7 +11,7 @@ services:
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: pnpm --filter @foil/api start:service
     autoDeploy: true
-    repo: https://github.com/foilxyz/foil
+    repo: https://github.com/sapiencexyz/sapience
     branch: main
     envVars:
       - key: DATABASE_URL
@@ -40,7 +40,7 @@ services:
     buildCommand: chmod +x render-build.sh && ./render-build.sh && pnpm --filter @foil/api install
     startCommand: pnpm --filter @foil/api start:candle-cache
     autoDeploy: true
-    repo: https://github.com/foilxyz/foil
+    repo: https://github.com/sapiencexyz/sapience
     branch: main
     envVars:
       - key: DATABASE_URL

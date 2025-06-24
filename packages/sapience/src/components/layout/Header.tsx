@@ -221,7 +221,7 @@ const Header = () => {
             <div>
               We&apos;re{' '}
               <a
-                href="https://github.com/foilxyz/foil/tree/main/packages/sapience"
+                href="https://github.com/sapiencexyz/sapience/tree/main/packages/sapience"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline-offset-2 underline"
@@ -243,7 +243,7 @@ const Header = () => {
           <div className="flex items-center gap-2 p-2">
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
-                href="https://github.com/foilxyz/foil"
+                href="https://github.com/sapiencexyz/sapience"
                 target="_blank"
                 rel="noopener noreferrer"
               >
