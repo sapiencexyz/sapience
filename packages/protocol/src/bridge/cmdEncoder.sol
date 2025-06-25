@@ -12,9 +12,7 @@ library Encoder {
     uint16 constant CMD_FROM_ESCROW_DEPOSIT = 4;
     uint16 constant CMD_FROM_ESCROW_INTENT_TO_WITHDRAW = 5;
     uint16 constant CMD_FROM_ESCROW_WITHDRAW = 6;
-    uint16 constant CMD_FROM_ESCROW_BOND_SENT = 7;
-    uint16 constant CMD_FROM_ESCROW_BOND_RECEIVED = 8;
-    uint16 constant CMD_FROM_ESCROW_BOND_LOST_DISPUTE = 9;
+    uint16 constant CMD_FROM_ESCROW_BOND_RECEIVED = 7;
 
 
 
