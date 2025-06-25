@@ -109,6 +109,11 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
         marketBridge.enableMarketGroup(address(mockMarketGroup));
 
+        marketBridge.setMaxExecutionGas(1000000);
+        umaBridge.setMaxExecutionGas(1000000);
+
+        marketBridge.setGasThresholds(0.01 ether, 0.005 ether);
+        umaBridge.setGasThresholds(0.1 ether, 0.05 ether);
 
         // Deposit bond to the escrow
         uint256 depositAmount = 100 * BOND_AMOUNT;
@@ -354,7 +359,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.stopPrank();
         
         // Should be below critical threshold now
-        assertTrue(address(marketBridge).balance <= marketBridge.CRITICAL_GAS_THRESHOLD());
+        (uint256 warningGasThreshold, uint256 criticalGasThreshold) = marketBridge.getGasThresholds();
+        assertTrue(address(marketBridge).balance <= criticalGasThreshold);
     }
 
     function test_UMABridge_gasThresholdWarnings() public {
@@ -370,7 +376,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.stopPrank();
         
         // Should be below critical threshold now
-        assertTrue(address(umaBridge).balance <= umaBridge.CRITICAL_GAS_THRESHOLD());
+        (uint256 warningGasThreshold, uint256 criticalGasThreshold) = umaBridge.getGasThresholds();
+        assertTrue(address(umaBridge).balance <= criticalGasThreshold);
     }
 
     // Multiple deposits and withdrawals

@@ -46,9 +46,10 @@ contract MarketLayerZeroBridge is
         private marketEpochToLocalId; // marketGroupAddress => marketId => localId
     // mapping(address => MarketBondConfig) private marketBondConfigs; // marketGroupAddress => config
 
-    // Constants for gas monitoring
-    uint256 public constant WARNING_GAS_THRESHOLD = 0.01 ether;
-    uint256 public constant CRITICAL_GAS_THRESHOLD = 0.005 ether;
+    // gas monitoring and execution gas
+    uint256 private WARNING_GAS_THRESHOLD = 0.1 ether;
+    uint256 private CRITICAL_GAS_THRESHOLD = 0.05 ether;
+    uint128 private maxExecutionGas;
 
     // Constructor and initialization
     constructor(
@@ -59,40 +60,57 @@ contract MarketLayerZeroBridge is
     // Configuration functions
     function setBridgeConfig(
         BridgeTypes.BridgeConfig calldata _config
-    ) external onlyOwner {
+    ) external override onlyOwner {
         bridgeConfig = _config;
         emit BridgeConfigUpdated(_config);
     }
 
     function getBridgeConfig()
-        external
+        external override
         view
         returns (BridgeTypes.BridgeConfig memory)
     {
         return bridgeConfig;
     }
 
-    function enableMarketGroup(address marketGroup) external onlyOwner {
+    function setMaxExecutionGas(uint128 _maxExecutionGas) external override onlyOwner {
+        maxExecutionGas = _maxExecutionGas;
+    }
+    
+    function getMaxExecutionGas() external override view returns (uint128) {
+        return maxExecutionGas;
+    }
+
+    function setGasThresholds(uint256 _warningGasThreshold, uint256 _criticalGasThreshold) external override onlyOwner {
+        WARNING_GAS_THRESHOLD = _warningGasThreshold;
+        CRITICAL_GAS_THRESHOLD = _criticalGasThreshold;
+    }
+
+    function getGasThresholds() external override view returns (uint256, uint256) {
+        return (WARNING_GAS_THRESHOLD, CRITICAL_GAS_THRESHOLD);
+    }
+
+    function enableMarketGroup(address marketGroup) external override onlyOwner {
         enabledMarketGroups[marketGroup] = true;
     }
 
-    function disableMarketGroup(address marketGroup) external onlyOwner {
+    function disableMarketGroup(address marketGroup) external override onlyOwner {
         enabledMarketGroups[marketGroup] = false;
     }
 
     function isMarketGroupEnabled(
         address marketGroup
-    ) external view returns (bool) {
+    ) external override view returns (bool) {
         return enabledMarketGroups[marketGroup];
     }
 
     // ETH Management for fees
-    function depositETH() external payable {
+    function depositETH() external override payable {
         // Anyone can deposit ETH to help pay for fees
         emit ETHDeposited(msg.sender, msg.value);
     }
 
-    function withdrawETH(uint256 amount) external onlyOwner {
+    function withdrawETH(uint256 amount) external override onlyOwner {
         require(amount <= address(this).balance, "Insufficient balance");
         payable(owner()).transfer(amount);
         emit ETHWithdrawn(owner(), amount);
@@ -100,7 +118,7 @@ contract MarketLayerZeroBridge is
         _checkGasThresholds();
     }
 
-    function getETHBalance() external view returns (uint256) {
+    function getETHBalance() external override view returns (uint256) {
         return address(this).balance;
     }
 
@@ -139,7 +157,7 @@ contract MarketLayerZeroBridge is
             (
                 address submitter,
                 address bondToken,
-                uint256 finalAmount,
+                ,
                 uint256 deltaAmount
             ) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
@@ -148,7 +166,7 @@ contract MarketLayerZeroBridge is
             (
                 address submitter,
                 address bondToken,
-                uint256 finalAmount,
+                ,
                 uint256 deltaAmount
             ) = data.decodeFromBalanceUpdate();
             remoteSubmitterWithdrawalIntent[submitter][bondToken] = deltaAmount; // Only one intent per pair submitter/bond allowed at a time
@@ -157,7 +175,7 @@ contract MarketLayerZeroBridge is
             (
                 address submitter,
                 address bondToken,
-                uint256 finalAmount,
+                ,
                 uint256 deltaAmount
             ) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
@@ -165,30 +183,14 @@ contract MarketLayerZeroBridge is
                 bondToken
             ] -= deltaAmount;
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
-        // } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_SENT) {
-        //     (
-        //         address submitter,
-        //         address bondToken,
-        //         uint256 finalAmount,
-        //         uint256 deltaAmount
-        //     ) = data.decodeFromBalanceUpdate();
-        //     remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
         } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_RECEIVED) {
             (
                 address submitter,
                 address bondToken,
-                uint256 finalAmount,
+                ,
                 uint256 deltaAmount
             ) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
-        // } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_LOST_DISPUTE) {
-        //     (
-        //         address submitter,
-        //         address bondToken,
-        //         uint256 finalAmount,
-        //         uint256 deltaAmount
-        //     ) = data.decodeFromBalanceUpdate();
-        //     // Do nothing, the amount was already decremented when the bond was sent
         } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
             (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
             address marketGroup = assertionIdToMarketGroup[assertionId];
@@ -215,7 +217,7 @@ contract MarketLayerZeroBridge is
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(5000000000, 0);
+            .addExecutorLzReceiveOption(maxExecutionGas, 0);
 
         // Get quote for the message
         fee = _quote(

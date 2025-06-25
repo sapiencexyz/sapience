@@ -108,6 +108,11 @@ contract BridgeTestFromUma is TestHelperOz5 {
         umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
         marketBridge.enableMarketGroup(address(mockMarketGroup));
 
+        marketBridge.setMaxExecutionGas(1000000);
+        umaBridge.setMaxExecutionGas(1000000);
+
+        marketBridge.setGasThresholds(0.01 ether, 0.005 ether);
+        umaBridge.setGasThresholds(0.1 ether, 0.05 ether);
 
         // Deposit bond to the escrow
         uint256 depositAmount = 100 * BOND_AMOUNT;
@@ -129,6 +134,7 @@ contract BridgeTestFromUma is TestHelperOz5 {
 
         verifyPackets(umaEiD, addressToBytes32(address(umaBridge)));
         umaAssertionId = mockOptimisticOracleV3.getLastAssertionId();
+
     }
 
     function test_failsNotUma_Resolved() public {

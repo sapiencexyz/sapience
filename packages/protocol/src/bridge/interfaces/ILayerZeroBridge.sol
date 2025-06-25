@@ -37,6 +37,17 @@ interface ILayerZeroBridge {
 
     // Common functions
     function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config) external;
+    function setMaxExecutionGas(uint128 _maxExecutionGas) external ;
+    function setGasThresholds(uint256 _warningGasThreshold, uint256 _criticalGasThreshold) external ;
+    function getBridgeConfig() external view returns (BridgeTypes.BridgeConfig memory);
+    function getMaxExecutionGas() external view returns (uint128);
+    function getGasThresholds() external view returns (uint256, uint256);
+
+    // ETH Management for fees
+    function depositETH() external payable;
+    function withdrawETH(uint256 amount) external;
+    function getETHBalance() external view returns (uint256);
+    
 }
 
 /**
@@ -66,16 +77,19 @@ interface IUMALayerZeroBridge is ILayerZeroBridge {
     event AssertionDisputed(bytes32 indexed assertionId);
 
     // UMA-side specific functions
-    // function setMarketBondConfig(address market, MarketBondConfig calldata config) external;
-    // function getMarketBondConfig(address market) external view returns (MarketBondConfig memory);
-    // function getBondBalance(address market, uint256 epochId) external view returns (uint256);
-    // function getWithdrawalIntent(address market) external view returns (WithdrawalIntent memory);
-    // function createWithdrawalIntent(uint256 amount) external;
-    // function executeWithdrawal() external;
-    // function processSettlement(SettlementData calldata data) external payable;
-    // function verifySettlement(VerificationData calldata data) external payable;
     function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external returns (MessagingReceipt memory);
     function assertionDisputedCallback(bytes32 assertionId) external returns (MessagingReceipt memory);
+
+    // Optimistic Oracle V3
+    function setOptimisticOracleV3(address _optimisticOracleV3) external;
+    function getOptimisticOracleV3() external view returns (address);
+
+    // Bond Management
+    function depositBond(address bondToken, uint256 amount) external returns (MessagingReceipt memory);
+    function intentToWithdrawBond(address bondToken, uint256 amount) external returns (MessagingReceipt memory);
+    function executeWithdrawal(address bondToken) external returns (MessagingReceipt memory);
+    function getBondBalance(address submitter, address bondToken) external view returns (uint256);
+    function getPendingWithdrawal(address submitter, address bondToken) external view returns (uint256, uint256);
 }
 
 /**
@@ -109,4 +123,14 @@ interface IMarketLayerZeroBridge is ILayerZeroBridge {
         address currency,
         uint256 bond
     ) external returns (bytes32);
+
+    // MarketGroup Management
+    function enableMarketGroup(address marketGroup) external;
+    function disableMarketGroup(address marketGroup) external;
+    function isMarketGroupEnabled(address marketGroup) external view returns (bool);
+
+    // MarketBond Management
+    // function setMarketBondConfig(address market, MarketBondConfig calldata config) external;
+    // function getMarketBondConfig(address market) external view returns (MarketBondConfig memory);
+    
 } 

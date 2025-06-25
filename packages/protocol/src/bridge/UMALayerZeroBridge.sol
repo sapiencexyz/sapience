@@ -50,9 +50,10 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     mapping(address => mapping(address => WithdrawalIntent))
         private withdrawalIntents; // submitter => bondToken => intent
 
-    // Constants for gas monitoring
-    uint256 public constant WARNING_GAS_THRESHOLD = 0.1 ether;
-    uint256 public constant CRITICAL_GAS_THRESHOLD = 0.05 ether;
+    // gas monitoring and execution gas
+    uint256 private WARNING_GAS_THRESHOLD = 0.1 ether;
+    uint256 private CRITICAL_GAS_THRESHOLD = 0.05 ether;
+    uint128 private maxExecutionGas;
 
     // Constructor and initialization
     constructor(
@@ -61,38 +62,56 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     ) OApp(_endpoint, _owner) Ownable(_owner) {}
 
     // Configuration functions
-    function setOptimisticOracleV3(
-        address _optimisticOracleV3
-    ) external onlyOwner {
-        optimisticOracleV3Address = _optimisticOracleV3;
-    }
-
     function setBridgeConfig(
         BridgeTypes.BridgeConfig calldata newConfig
-    ) external onlyOwner {
+    ) external override onlyOwner {
         bridgeConfig = newConfig;
         emit BridgeConfigUpdated(newConfig);
     }
 
-    function getOptimisticOracleV3() external view returns (address) {
-        return optimisticOracleV3Address;
-    }
-
     function getBridgeConfig()
-        external
+        external override
         view
         returns (BridgeTypes.BridgeConfig memory)
     {
         return bridgeConfig;
     }
 
+    function setOptimisticOracleV3(
+        address _optimisticOracleV3
+    ) external override onlyOwner {
+        optimisticOracleV3Address = _optimisticOracleV3;
+    }
+
+    function getOptimisticOracleV3() external override view returns (address) {
+        return optimisticOracleV3Address;
+    }
+
+    function setMaxExecutionGas(uint128 _maxExecutionGas) external override onlyOwner {
+        maxExecutionGas = _maxExecutionGas;
+    }
+
+    function getMaxExecutionGas() external override view returns (uint128) {
+        return maxExecutionGas;
+    }
+
+    function setGasThresholds(uint256 _warningGasThreshold, uint256 _criticalGasThreshold) external override onlyOwner {
+        WARNING_GAS_THRESHOLD = _warningGasThreshold;
+        CRITICAL_GAS_THRESHOLD = _criticalGasThreshold;
+    }
+
+    function getGasThresholds() external override view returns (uint256, uint256) {
+        return (WARNING_GAS_THRESHOLD, CRITICAL_GAS_THRESHOLD);
+    }
+
+
     // ETH Management for fees
-    function depositETH() external payable {
+    function depositETH() external override payable {
         // Anyone can deposit ETH to help pay for fees
         emit ETHDeposited(msg.sender, msg.value);
     }
 
-    function withdrawETH(uint256 amount) external onlyOwner {
+    function withdrawETH(uint256 amount) external override onlyOwner {
         require(amount <= address(this).balance, "Insufficient balance");
 
         payable(owner()).transfer(amount);
@@ -102,7 +121,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         _checkGasThresholds();
     }
 
-    function getETHBalance() external view returns (uint256) {
+    function getETHBalance() external override view returns (uint256) {
         return address(this).balance;
     }
 
@@ -115,7 +134,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     function depositBond(
         address bondToken,
         uint256 amount
-    ) external nonReentrant returns (MessagingReceipt memory) {
+    ) external override nonReentrant returns (MessagingReceipt memory) {
         require(amount > 0, "Amount must be greater than 0");
 
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
@@ -138,7 +157,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     function intentToWithdrawBond(
         address bondToken,
         uint256 amount
-    ) external nonReentrant returns (MessagingReceipt memory) {
+    ) external override nonReentrant returns (MessagingReceipt memory) {
         require(amount > 0, "Amount must be greater than 0");
         require(
             submitterBondBalances[msg.sender][bondToken] >= amount,
@@ -168,7 +187,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         return receipt;
     }
 
-    function executeWithdrawal(address bondToken) external nonReentrant returns (MessagingReceipt memory) {
+    function executeWithdrawal(address bondToken) external override nonReentrant returns (MessagingReceipt memory) {
         WithdrawalIntent storage intent = withdrawalIntents[msg.sender][
             bondToken
         ];
@@ -198,14 +217,14 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     function getBondBalance(
         address submitter,
         address bondToken
-    ) external view returns (uint256) {
+    ) external override view returns (uint256) {
         return submitterBondBalances[submitter][bondToken];
     }
 
     function getPendingWithdrawal(
         address submitter,
         address bondToken
-    ) external view returns (uint256, uint256) {
+    ) external override view returns (uint256, uint256) {
         WithdrawalIntent storage intent = withdrawalIntents[submitter][
             bondToken
         ];
@@ -216,7 +235,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
     function assertionResolvedCallback(
         bytes32 assertionId,
         bool assertedTruthfully
-    ) external override returns (MessagingReceipt memory) {
+    ) external override nonReentrant returns (MessagingReceipt memory) {
         AssertionMarketData storage marketData = assertionIdToMarketData[
             assertionId
         ];
@@ -350,7 +369,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(5000000000, 0);
+            .addExecutorLzReceiveOption(maxExecutionGas, 0);
 
         // Get quote for the message
         fee = _quote(

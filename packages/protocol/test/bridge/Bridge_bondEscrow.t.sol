@@ -60,6 +60,12 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         umaEndpoint = address(umaBridge.endpoint());
         marketEndpoint = address(marketBridge.endpoint());
 
+        marketBridge.setMaxExecutionGas(1000000);
+        umaBridge.setMaxExecutionGas(1000000);
+
+        marketBridge.setGasThresholds(0.01 ether, 0.005 ether);
+        umaBridge.setGasThresholds(0.1 ether, 0.05 ether);
+        
         vm.deal(address(umaBridge), 100 ether);
         vm.deal(address(marketBridge), 100 ether);
 
@@ -77,6 +83,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
             remoteBridge: address(umaBridge),
             settlementModule: address(0)
         }));
+
     }
 
     function test_failsIfWrongDepositAmount() public {

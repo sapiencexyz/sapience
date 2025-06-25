@@ -102,6 +102,13 @@ contract BridgeTestFromMarket is TestHelperOz5 {
             })
         );
 
+        marketBridge.setMaxExecutionGas(1000000);
+        umaBridge.setMaxExecutionGas(1000000);
+
+        marketBridge.setGasThresholds(0.01 ether, 0.005 ether);
+        umaBridge.setGasThresholds(0.1 ether, 0.05 ether);
+
+
         // Deposit bond to the escrow
         uint256 depositAmount = 100 * BOND_AMOUNT;
         bondCurrency.mint(depositAmount, umaUser);
