@@ -45,7 +45,6 @@
     "decimal.js": "^10.5.0",
     "framer-motion": "12.19.1",
     "graphql": "^16.10.0",
-    "graphql-depth-limit": "^1.1.0",
     "jsbi": "3",
     "lightweight-charts": "^5.0.1",
     "lodash": "^4.17.21",
