@@ -57,6 +57,7 @@ interface ILiquidityModule {
         external
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
 
+
     function increaseLiquidityPosition(
         ISapienceStructs.LiquidityIncreaseParams memory params
     )
