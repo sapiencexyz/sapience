@@ -101,7 +101,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
 
   if (marketId !== undefined) {
     allPositions = allPositions.filter(
-      (position) => position.market.marketId === marketId
+      (position) => position.market?.marketId === marketId
     );
   }
 

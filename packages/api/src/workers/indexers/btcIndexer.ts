@@ -1,6 +1,6 @@
 import { IResourcePriceIndexer } from '../../interfaces';
-import { resourcePriceRepository } from '../../db';
-import { Resource } from '../../models/Resource';
+import type { resource } from '../../../generated/prisma';
+import prisma from '../../db';
 import axios from 'axios';
 import Sentry from '../../instrument';
 
@@ -87,7 +87,7 @@ class BtcIndexer implements IResourcePriceIndexer {
     }
   }
 
-  private async pollLatestBlock(resource: Resource) {
+  private async pollLatestBlock(resource: resource) {
     let response = null;
 
     while (!response) {
@@ -110,9 +110,9 @@ class BtcIndexer implements IResourcePriceIndexer {
           }
 
           // Check if we already have this block
-          const existingPrice = await resourcePriceRepository.findOne({
+          const existingPrice = await prisma.resource_price.findFirst({
             where: {
-              resource: { id: resource.id },
+              resourceId: resource.id,
               blockNumber: block.height,
             },
           });
@@ -154,7 +154,7 @@ class BtcIndexer implements IResourcePriceIndexer {
 
   private async storeBlockPrice(
     blockNumber: number,
-    resource: Resource,
+    resource: resource,
     blockData?: BlockData
   ) {
     try {
@@ -179,16 +179,28 @@ class BtcIndexer implements IResourcePriceIndexer {
       const feePerWeight =
         data.weight > 0 ? (data.total_fee / data.weight) * 10 ** 9 : BigInt(0);
 
-      const price = {
-        resource: { id: resource.id },
-        timestamp: data.time,
-        value: feePerWeight.toString(),
-        used: data.weight.toString(),
-        feePaid: data.total_fee.toString(),
-        blockNumber: blockNumber,
-      };
-
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      await prisma.resource_price.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: data.time,
+          },
+        },
+        create: {
+          resourceId: resource.id,
+          timestamp: data.time,
+          value: feePerWeight.toString(),
+          used: data.weight.toString(),
+          feePaid: data.total_fee.toString(),
+          blockNumber: blockNumber,
+        },
+        update: {
+          value: feePerWeight.toString(),
+          used: data.weight.toString(),
+          feePaid: data.total_fee.toString(),
+          blockNumber: blockNumber,
+        },
+      });
       console.log(`[BtcIndexer] Stored price for block ${blockNumber}`);
       return true;
     } catch (error) {
@@ -207,7 +219,7 @@ class BtcIndexer implements IResourcePriceIndexer {
   }
 
   async indexBlockPriceFromTimestamp(
-    resource: Resource,
+    resource: resource,
     startTimestamp: number,
     endTimestamp?: number, // TODO: add support for endTimestamp
     overwriteExisting: boolean = false
@@ -260,9 +272,9 @@ class BtcIndexer implements IResourcePriceIndexer {
       ) {
         try {
           // Check if we already have a price for this block
-          const existingPrice = await resourcePriceRepository.findOne({
+          const existingPrice = await prisma.resource_price.findFirst({
             where: {
-              resource: { id: resource.id },
+              resourceId: resource.id,
               blockNumber: Number(blockNumber),
             },
           });
@@ -300,7 +312,7 @@ class BtcIndexer implements IResourcePriceIndexer {
     }
   }
 
-  async indexBlocks(resource: Resource, blocks: number[]): Promise<boolean> {
+  async indexBlocks(resource: resource, blocks: number[]): Promise<boolean> {
     for (const blockNumber of blocks) {
       try {
         console.log('[BtcIndexer] Indexing data from block', blockNumber);
@@ -320,7 +332,7 @@ class BtcIndexer implements IResourcePriceIndexer {
     return true;
   }
 
-  async watchBlocksForResource(resource: Resource) {
+  async watchBlocksForResource(resource: resource) {
     if (this.isWatching) {
       console.log(
         '[BtcIndexer] Already watching blocks for resource:',

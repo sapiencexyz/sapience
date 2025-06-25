@@ -1,5 +1,10 @@
-import { ResourcePrice } from 'src/models/ResourcePrice';
-import { CacheCandle } from 'src/models/CacheCandle';
+import type {
+  resource_price,
+  cache_candle,
+  resource,
+} from '../../../generated/prisma';
+
+type ResourcePriceWithResource = resource_price & { resource: resource };
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { BNMax, BNMin, getTimtestampCandleInterval } from '../candleUtils';
@@ -21,9 +26,9 @@ export class ResourceCandleProcessor {
     interval: number,
     candleTimestamp: number,
     candleEndTimestamp: number,
-    price: ResourcePrice,
+    price: ResourcePriceWithResource,
     resourceSlug: string
-  ): Promise<CacheCandle> {
+  ): Promise<cache_candle> {
     const candle = await getOrCreateCandle({
       candleType: CANDLE_TYPES.RESOURCE,
       interval: interval,
@@ -35,19 +40,19 @@ export class ResourceCandleProcessor {
 
     const open =
       this.lastClosePricesByResourceAndInterval[resourceSlug][interval] ??
-      price.value;
+      price.value.toString();
 
     // CANDLE VALUES
     candle.endTimestamp = candleEndTimestamp;
     candle.lastUpdatedTimestamp = price.timestamp;
     candle.open = open;
-    candle.high = BNMax(open, price.value);
-    candle.low = BNMin(open, price.value);
-    candle.close = price.value;
+    candle.high = BNMax(open, price.value.toString());
+    candle.low = BNMin(open, price.value.toString());
+    candle.close = price.value.toString();
     return candle;
   }
 
-  public async processResourcePrice(price: ResourcePrice) {
+  public async processResourcePrice(price: ResourcePriceWithResource) {
     // For each interval add the price to the candle
     for (const interval of CANDLE_CACHE_CONFIG.intervals) {
       if (!this.lastClosePricesByResourceAndInterval[price.resource.slug]) {
@@ -66,11 +71,11 @@ export class ResourceCandleProcessor {
         if (lastPrice) {
           this.lastClosePricesByResourceAndInterval[price.resource.slug][
             interval
-          ] = lastPrice.value;
+          ] = lastPrice.value.toString();
         } else {
           this.lastClosePricesByResourceAndInterval[price.resource.slug][
             interval
-          ] = price.value;
+          ] = price.value.toString();
         }
       }
 
@@ -93,7 +98,7 @@ export class ResourceCandleProcessor {
       if (candle && candle.timestamp < candleTimestamp) {
         this.lastClosePricesByResourceAndInterval[price.resource.slug][
           interval
-        ] = candle.close;
+        ] = candle.close.toString();
         await saveCandle(candle);
         candle = await this.getNewCandle(
           interval,
@@ -102,11 +107,13 @@ export class ResourceCandleProcessor {
           price,
           price.resource.slug
         );
-        this.runtimeCandles.setResourceCandle(
-          price.resource.slug,
-          interval,
-          candle
-        );
+        if (candle) {
+          this.runtimeCandles.setResourceCandle(
+            price.resource.slug,
+            interval,
+            candle
+          );
+        }
       } else if (!candle) {
         // Create new candle if none exists
         candle = await this.getNewCandle(
@@ -116,16 +123,18 @@ export class ResourceCandleProcessor {
           price,
           price.resource.slug
         );
-        this.runtimeCandles.setResourceCandle(
-          price.resource.slug,
-          interval,
-          candle
-        );
+        if (candle) {
+          this.runtimeCandles.setResourceCandle(
+            price.resource.slug,
+            interval,
+            candle
+          );
+        }
       } else {
         // Update existing candle
-        candle.high = BNMax(candle.high, price.value);
-        candle.low = BNMin(candle.low, price.value);
-        candle.close = price.value;
+        candle.high = BNMax(candle.high, price.value.toString());
+        candle.low = BNMin(candle.low, price.value.toString());
+        candle.close = price.value.toString();
         candle.lastUpdatedTimestamp = price.timestamp;
       }
     }

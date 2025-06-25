@@ -1,13 +1,9 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { isValidWalletSignature } from '../middleware';
-import dataSource from '../db';
-import { MarketGroup } from '../models/MarketGroup';
-import { Market } from '../models/Market';
+import prisma from '../db';
 
 const router = Router();
-const marketGroupRepository = dataSource.getRepository(MarketGroup);
-const marketRepository = dataSource.getRepository(Market);
 
 router.post(
   '/',
@@ -23,12 +19,11 @@ router.post(
       return;
     }
 
-    const marketGroup = await marketGroupRepository.findOne({
+    const marketGroup = await prisma.market_group.findFirst({
       where: {
         chainId: Number(chainId),
         address: address.toLowerCase(),
       },
-      relations: ['markets'],
     });
 
     if (!marketGroup) {
@@ -36,9 +31,9 @@ router.post(
       return;
     }
 
-    const market = await marketRepository.findOne({
+    const market = await prisma.market.findFirst({
       where: {
-        marketGroup: { id: marketGroup.id },
+        marketGroupId: marketGroup.id,
         marketId: Number(marketId),
       },
     });
@@ -48,8 +43,14 @@ router.post(
       return;
     }
 
-    market.public = !market.public;
-    await marketRepository.save(market);
+    await prisma.market.update({
+      where: {
+        id: market.id,
+      },
+      data: {
+        public: !market.public,
+      },
+    });
 
     res.json({ success: true });
   })

@@ -1,4 +1,12 @@
-import { MarketGroup } from 'src/models/MarketGroup';
+import { Prisma } from '../../generated/prisma';
+
+// Define the type for MarketGroup with necessary includes
+type MarketGroupWithRelations = Prisma.market_groupGetPayload<{
+  include: {
+    resource: true;
+    market: true;
+  };
+}>;
 
 export interface MarketInfo {
   resourceSlug: string;
@@ -25,16 +33,19 @@ export class MarketInfoStore {
     return this.instance;
   }
 
-  public async updateMarketInfo(marketGroups: MarketGroup[]) {
+  public async updateMarketInfo(marketGroups: MarketGroupWithRelations[]) {
+    console.log(
+      `updateMarketInfo: marketGroups.length: ${marketGroups.length}`
+    );
     let _debugCounter = 0;
     for (const marketGroup of marketGroups) {
       // Add resource slug
       const resourceSlug = marketGroup.resource?.slug ?? 'no-resource';
 
       // Add market with extra data
-      if (marketGroup.markets) {
-        _debugCounter += marketGroup.markets.length;
-        for (const market of marketGroup.markets) {
+      if (marketGroup.market) {
+        _debugCounter += marketGroup.market.length;
+        for (const market of marketGroup.market) {
           if (this.marketInfoByIdx.has(market.id) || !marketGroup.address) {
             continue;
           }

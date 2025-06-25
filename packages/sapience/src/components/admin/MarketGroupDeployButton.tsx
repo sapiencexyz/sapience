@@ -198,14 +198,31 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       !group.initializationNonce ||
       !group.collateralAsset ||
       !group.minTradeSize ||
-      !group.marketParams
+      !group.marketParamsFeerate ||
+      !group.marketParamsAssertionliveness ||
+      !group.marketParamsBondamount ||
+      !group.marketParamsBondcurrency ||
+      !group.marketParamsUniswappositionmanager ||
+      !group.marketParamsUniswapswaprouter ||
+      !group.marketParamsUniswapquoter ||
+      !group.marketParamsOptimisticoraclev3
     ) {
       setDeployError('Missing required market group data for deployment.');
       return;
     }
 
     try {
-      const { marketParams } = group;
+      // Reconstruct marketParams from flattened properties
+      const marketParams = {
+        feeRate: group.marketParamsFeerate,
+        assertionLiveness: group.marketParamsAssertionliveness,
+        bondAmount: group.marketParamsBondamount,
+        bondCurrency: group.marketParamsBondcurrency,
+        uniswapPositionManager: group.marketParamsUniswappositionmanager,
+        uniswapSwapRouter: group.marketParamsUniswapswaprouter,
+        uniswapQuoter: group.marketParamsUniswapquoter,
+        optimisticOracleV3: group.marketParamsOptimisticoraclev3,
+      };
       // Validate numeric marketParams fields
       const feeRateNumber = Number(marketParams.feeRate);
       const assertionLivenessNumber = Number(marketParams.assertionLiveness);

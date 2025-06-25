@@ -9,7 +9,7 @@ import {
 } from 'viem';
 import { mainnet, sepolia, cannon, base, arbitrum } from 'viem/chains';
 import { TOKEN_PRECISION } from '../constants';
-import { marketRepository } from '../db';
+import prisma from '../db';
 import { Deployment } from '../interfaces';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -157,15 +157,17 @@ export const getTimestampsForReindex = async (
   }
 
   // get info from database
-  const market = await marketRepository.findOne({
+  const market = await prisma.market.findFirst({
     where: {
       marketId: epochId,
-      marketGroup: {
+      market_group: {
         address: contractDeployment.address.toLowerCase(),
         chainId,
       },
     },
-    relations: ['marketGroup'],
+    include: {
+      market_group: true,
+    },
   });
 
   if (!market || !market.startTimestamp || !market.endTimestamp) {

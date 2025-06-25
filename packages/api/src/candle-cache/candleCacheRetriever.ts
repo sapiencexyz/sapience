@@ -2,8 +2,17 @@ import { ResponseCandleData } from './types';
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
 import { getTimeWindow } from './candleUtils';
 import { getCandles, getMarketGroups } from './dbUtils';
-import { CacheCandle } from 'src/models/CacheCandle';
+import type { cache_candle } from '../../generated/prisma';
 import { MarketInfoStore } from './marketInfoStore';
+import type { Prisma } from '../../generated/prisma';
+
+// Type for what getMarketGroups returns
+type MarketGroupWithRelations = Prisma.market_groupGetPayload<{
+  include: {
+    resource: true;
+    market: true;
+  };
+}>;
 
 export class CandleCacheRetriever {
   private static instance: CandleCacheRetriever;
@@ -189,14 +198,20 @@ export class CandleCacheRetriever {
     initialTimestamp: number;
     finalTimestamp: number;
     interval: number;
-    candles: CacheCandle[];
+    candles: cache_candle[];
     isCumulative: boolean;
     fillMissingCandles: boolean;
     fillInitialCandlesWithZeroes: boolean;
   }): Promise<{ data: ResponseCandleData[]; lastUpdateTimestamp: number }> {
     if (
+      (console.log(
+        'candles',
+        candles,
+        fillMissingCandles,
+        fillInitialCandlesWithZeroes
+      ),
       (!candles || candles.length === 0) &&
-      !(fillMissingCandles || fillInitialCandlesWithZeroes)
+        !(fillMissingCandles || fillInitialCandlesWithZeroes))
     ) {
       return { data: [], lastUpdateTimestamp: 0 };
     }
@@ -210,10 +225,10 @@ export class CandleCacheRetriever {
     // First, create entries only for the candles we have
     const outputEntries: ResponseCandleData[] = candles.map((candle) => ({
       timestamp: candle.timestamp,
-      open: isCumulative ? candle.sumUsed : candle.open,
-      high: isCumulative ? candle.sumUsed : candle.high,
-      low: isCumulative ? candle.sumUsed : candle.low,
-      close: isCumulative ? candle.sumUsed : candle.close,
+      open: isCumulative ? candle.sumUsed?.toString() || '0' : candle.open,
+      high: isCumulative ? candle.sumUsed?.toString() || '0' : candle.high,
+      low: isCumulative ? candle.sumUsed?.toString() || '0' : candle.low,
+      close: isCumulative ? candle.sumUsed?.toString() || '0' : candle.close,
     }));
 
     const firstCandleTimestamp = candles[0]?.timestamp ?? timeWindow.to;
@@ -294,6 +309,8 @@ export class CandleCacheRetriever {
     }
     // get all market groups
     const marketGroups = await getMarketGroups();
-    await this.marketInfoStore.updateMarketInfo(marketGroups);
+    await this.marketInfoStore.updateMarketInfo(
+      marketGroups as unknown as MarketGroupWithRelations[]
+    );
   }
 }

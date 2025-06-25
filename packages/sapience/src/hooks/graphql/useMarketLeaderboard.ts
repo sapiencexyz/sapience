@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { foilApi } from '~/lib/utils/util';
 
-interface MarketLeaderboardEntry {
+export interface MarketLeaderboardEntry {
   owner: string;
   totalPnL: number;
 }
@@ -190,5 +190,3 @@ export const useMarketLeaderboard = (
     wstEthPriceUsd,
   };
 };
-
-export type { MarketLeaderboardEntry };

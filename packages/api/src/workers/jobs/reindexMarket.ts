@@ -4,7 +4,7 @@ import {
   reindexMarketEvents,
 } from '../../controllers/market';
 import * as Sentry from '@sentry/node';
-import { marketGroupRepository } from '../../db';
+import prisma from '../../db';
 import { INDEXERS } from '../../fixtures';
 import { Abi } from 'viem';
 import Foil from '@sapience/protocol/deployments/Foil.json';
@@ -27,12 +27,14 @@ export async function reindexMarket(
     await initializeDataSource();
 
     // Find the market in the database instead of using MARKETS
-    const marketEntity = await marketGroupRepository.findOne({
+    const marketEntity = await prisma.market_group.findFirst({
       where: {
         chainId,
         address: address.toLowerCase(),
       },
-      relations: ['resource'],
+      include: {
+        resource: true,
+      },
     });
 
     if (!marketEntity) {

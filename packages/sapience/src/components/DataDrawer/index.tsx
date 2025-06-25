@@ -81,7 +81,7 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
           positionType: position.isLP ? 'LP' : 'Trader',
         })) || []
     )
-    .sort((a, b) => b.timestamp - a.timestamp);
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
   const getTransactionTypeDisplay = (type: string) => {
     switch (type) {
@@ -164,9 +164,12 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
                   <TableRow key={tx.id}>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
-                        {formatDistanceToNow(new Date(tx.timestamp * 1000), {
-                          addSuffix: true,
-                        })}
+                        {formatDistanceToNow(
+                          new Date((tx.timestamp || 0) * 1000),
+                          {
+                            addSuffix: true,
+                          }
+                        )}
                       </span>
                     </TableCell>
                     <TableCell>

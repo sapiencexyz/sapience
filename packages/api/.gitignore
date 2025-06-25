@@ -5,3 +5,5 @@ data
 
 # Application specific files
 /storage
+
+/generated/prisma

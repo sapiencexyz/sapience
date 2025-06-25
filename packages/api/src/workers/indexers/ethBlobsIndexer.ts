@@ -1,13 +1,13 @@
-import { resourcePriceRepository } from '../../db';
+import prisma from '../../db';
 import Sentry from '../../instrument';
 import { IResourcePriceIndexer } from '../../interfaces';
-import { Resource } from '../../models/Resource';
+import type { resource } from '../../../generated/prisma';
 import axios from 'axios';
 import {
   getBlockByTimestamp,
   getProviderForChain,
   sleep,
-} from 'src/utils/utils';
+} from '../../utils/utils';
 import { PublicClient } from 'viem';
 
 interface BlobData {
@@ -106,7 +106,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
     }
   }
 
-  private async storeBlockPrice(blockNumber: number, resource: Resource) {
+  private async storeBlockPrice(blockNumber: number, resource: resource) {
     try {
       const blobData = await this.fetchBlobDataFromBlobscan(blockNumber);
       if (!blobData) {
@@ -117,16 +117,28 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
       const feePaid =
         BigInt(blobData.blobGasPrice) * BigInt(blobData.blobGasUsed);
 
-      const price = {
-        resource: { id: resource.id },
-        timestamp: blobData.timestamp,
-        value: blobData.blobGasPrice,
-        used: blobData.blobGasUsed,
-        feePaid: feePaid.toString(),
-        blockNumber: blockNumber,
-      };
-
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      await prisma.resource_price.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: blobData.timestamp,
+          },
+        },
+        create: {
+          resourceId: resource.id,
+          timestamp: blobData.timestamp,
+          value: blobData.blobGasPrice,
+          used: blobData.blobGasUsed,
+          feePaid: feePaid.toString(),
+          blockNumber: blockNumber,
+        },
+        update: {
+          value: blobData.blobGasPrice,
+          used: blobData.blobGasUsed,
+          feePaid: feePaid.toString(),
+          blockNumber: blockNumber,
+        },
+      });
       console.log(
         `[EthBlobIndexer] Stored block price for block ${blockNumber}`
       );
@@ -144,7 +156,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
   }
 
   async indexBlockPriceFromTimestamp(
-    resource: Resource,
+    resource: resource,
     startTimestamp: number,
     endTimestamp?: number,
     overwriteExisting: boolean = false
@@ -184,9 +196,9 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
         blockNumber--
       ) {
         try {
-          const maybeResourcePrice = await resourcePriceRepository.findOne({
+          const maybeResourcePrice = await prisma.resource_price.findFirst({
             where: {
-              resource: { id: resource.id },
+              resourceId: resource.id,
               blockNumber,
             },
           });
@@ -272,7 +284,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
     return latestBlock.number;
   }
 
-  async indexBlocks(resource: Resource, blocks: number[]): Promise<boolean> {
+  async indexBlocks(resource: resource, blocks: number[]): Promise<boolean> {
     for (const blockNumber of blocks) {
       try {
         console.log('Indexing blob data from block', blockNumber);
@@ -295,7 +307,7 @@ class ethBlobsIndexer implements IResourcePriceIndexer {
     return true;
   }
 
-  async watchBlocksForResource(resource: Resource) {
+  async watchBlocksForResource(resource: resource) {
     if (this.isWatching) {
       console.log(
         '[EthBlobIndexer] Already watching blocks for resource:',

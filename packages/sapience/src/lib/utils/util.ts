@@ -163,7 +163,7 @@ export const findActiveMarkets = (
 ): MarketType[] => {
   const nowInSeconds = Date.now() / 1000;
   // Filter markets based on timestamps
-  return marketGroupData.markets.filter(
+  return (marketGroupData.markets || []).filter(
     (
       market: MarketType // Use MarketType here
     ) => {
@@ -322,7 +322,7 @@ export function calculateEffectiveEntryPrice(
 
   // Sort transactions by timestamp (oldest first)
   const sortedTransactions = [...transactions].sort(
-    (a, b) => a.timestamp - b.timestamp
+    (a, b) => (a.timestamp || 0) - (b.timestamp || 0)
   );
 
   // Initialize entry price calculation variables
@@ -334,11 +334,12 @@ export function calculateEffectiveEntryPrice(
     // Skip non-trade transactions
     if (tx.type === 'trade') {
       // Parse token deltas safely, handling null/undefined and converting from wei string
+      // Use the correct property names from the GraphQL Transaction type
       const baseTokenDelta = parseFloat(
-        formatEther(BigInt(tx.baseTokenDelta ?? '0'))
+        formatEther(BigInt(tx.baseToken ?? '0'))
       );
       const quoteTokenDelta = parseFloat(
-        formatEther(BigInt(tx.quoteTokenDelta ?? '0'))
+        formatEther(BigInt(tx.quoteToken ?? '0'))
       );
 
       // Accumulate deltas

@@ -1,7 +1,20 @@
 import { ONE_DAY_MS, ONE_HOUR_MS } from '../constants';
-import dataSource from '../db';
-import { Transaction } from '../models/Transaction';
+import prisma from '../db';
+import { Prisma } from '../../generated/prisma';
 import { TimeWindow } from '../interfaces';
+
+// Type for transaction with all necessary includes
+type TransactionWithIncludes = Prisma.transactionGetPayload<{
+  include: {
+    event: {
+      include: {
+        market_group: true;
+      };
+    };
+    market_price: true;
+    position: true;
+  };
+}>;
 
 class EntityGroup<T> {
   startTimestamp: number;
@@ -18,37 +31,45 @@ export async function getTransactionsInTimeRange(
   endTimestamp: number,
   chainId: string,
   marketAddress: string
-): Promise<Transaction[]> {
-  const transactionRepository = dataSource.getRepository(Transaction);
-  return await transactionRepository
-    .createQueryBuilder('transaction')
-    .innerJoinAndSelect('transaction.event', 'event')
-    .innerJoinAndSelect('event.marketGroup', 'marketGroup')
-    .leftJoinAndSelect('transaction.marketPrice', 'marketPrice')
-    .leftJoinAndSelect('transaction.position', 'position')
-    .where(
-      'CAST(event.timestamp AS BIGINT) BETWEEN :startTimestamp AND :endTimestamp',
-      {
-        startTimestamp,
-        endTimestamp,
-      }
-    )
-    .andWhere('marketGroup.chainId = :chainId', { chainId })
-    .andWhere('marketGroup.address = :marketAddress', {
-      marketAddress: marketAddress.toLowerCase(),
-    })
-    .orderBy('CAST(event.timestamp AS BIGINT)', 'ASC')
-    .getMany();
+): Promise<TransactionWithIncludes[]> {
+  return await prisma.transaction.findMany({
+    where: {
+      event: {
+        timestamp: {
+          gte: BigInt(startTimestamp),
+          lte: BigInt(endTimestamp),
+        },
+        market_group: {
+          chainId: parseInt(chainId),
+          address: marketAddress.toLowerCase(),
+        },
+      },
+    },
+    include: {
+      event: {
+        include: {
+          market_group: true,
+        },
+      },
+      market_price: true,
+      position: true,
+    },
+    orderBy: {
+      event: {
+        timestamp: 'asc',
+      },
+    },
+  });
 }
 
 export function groupTransactionsByTimeWindow(
-  transactions: Transaction[],
+  transactions: TransactionWithIncludes[],
   window: TimeWindow
-): EntityGroup<Transaction>[] {
+): EntityGroup<TransactionWithIncludes>[] {
   return groupEntitiesByTimeWindow(
     transactions,
     window,
-    (transaction) => Number(transaction.event.timestamp) * 1000
+    (transaction) => Number(transaction.event!.timestamp) * 1000
   );
 }
 

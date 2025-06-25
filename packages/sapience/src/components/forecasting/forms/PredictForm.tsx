@@ -28,12 +28,9 @@ export default function PredictForm({
   marketClassification,
   chainId,
 }: PredictFormProps) {
-  const lowerBound = tickToPrice(
-    marketGroupData.markets[0].baseAssetMinPriceTick!
-  );
-  const upperBound = tickToPrice(
-    marketGroupData.markets[0].baseAssetMaxPriceTick!
-  );
+  const firstMarket = marketGroupData.markets?.[0];
+  const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
+  const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
   // Create schema based on market category
   const formSchema = useMemo(() => {
     switch (marketClassification) {
@@ -75,7 +72,7 @@ export default function PredictForm({
       case MarketGroupClassification.YES_NO:
         return YES_SQRT_PRICE_X96;
       case MarketGroupClassification.MULTIPLE_CHOICE:
-        return marketGroupData.markets[0].marketId.toString();
+        return firstMarket?.marketId?.toString() ?? '0';
       case MarketGroupClassification.NUMERIC:
         return String(Math.round((lowerBound + upperBound) / 2));
       default:
@@ -103,7 +100,7 @@ export default function PredictForm({
     if (marketClassification === MarketGroupClassification.MULTIPLE_CHOICE) {
       return Number(predictionValue);
     }
-    return marketGroupData.markets[0].marketId;
+    return firstMarket?.marketId ?? 0;
   }, [marketClassification, predictionValue, marketGroupData.markets]);
 
   const submissionValue = useMemo(() => {
@@ -139,7 +136,7 @@ export default function PredictForm({
       case MarketGroupClassification.MULTIPLE_CHOICE:
         return (
           <MultipleChoicePredict
-            options={marketGroupData.markets.map((market) => ({
+            options={(marketGroupData.markets || []).map((market) => ({
               name: market.optionName || '',
               marketId: market.marketId,
             }))}

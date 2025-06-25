@@ -33,13 +33,13 @@ interface LpPositionsTableProps {
 
 // Helper component for Market Cell (similar to app package but simpler for now)
 function MarketCell({ position }: { position: PositionType }) {
-  return position.market.question;
+  return position.market?.question || 'N/A';
 }
 
 // Helper component for Collateral Cell
 function CollateralCell({ position }: { position: PositionType }) {
-  const decimals = position.market.marketGroup?.collateralDecimals || 18; // Default to 18 if not provided
-  const symbol = position.market.marketGroup?.collateralSymbol || 'Tokens';
+  const decimals = position.market?.marketGroup?.collateralDecimals || 18; // Default to 18 if not provided
+  const symbol = position.market?.marketGroup?.collateralSymbol || 'Tokens';
   const displayValue = Number(position.collateral) / 10 ** decimals;
 
   return (
@@ -126,7 +126,7 @@ export default function LpPositionsTable({
     (p) =>
       p &&
       p.market &&
-      p.market.marketGroup &&
+      p.market?.marketGroup &&
       p.id &&
       p.isLP && // Ensure it's an LP position
       p.lowPriceTick !== undefined && // Check necessary fields exist
@@ -149,9 +149,9 @@ export default function LpPositionsTable({
     // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
     displayQuestionColumn = validPositions.some(
       (p) =>
-        p.market.marketGroup &&
-        p.market.marketGroup.markets &&
-        p.market.marketGroup.markets.length > 1
+        p.market?.marketGroup &&
+        p.market?.marketGroup?.markets &&
+        p.market?.marketGroup?.markets.length > 1
     );
   }
 
@@ -177,7 +177,7 @@ export default function LpPositionsTable({
           </TableHeader>
           <TableBody>
             {validPositions.map((position: PositionType) => {
-              const { marketGroup } = position.market;
+              const { marketGroup } = position.market || {};
               const baseUnit = `${marketGroup?.baseTokenName || 'Base'}`;
               const quoteUnit = `${marketGroup?.collateralSymbol || 'Quote'}`;
               const priceUnit = `${marketGroup?.collateralSymbol || 'Quote'}/${marketGroup?.baseTokenName || 'Base'}`;
@@ -188,7 +188,7 @@ export default function LpPositionsTable({
               const chainShortName = marketGroup?.chainId
                 ? getChainShortName(marketGroup.chainId)
                 : 'unknown';
-              const positionUrl = `/positions/${chainShortName}:${marketGroup?.address}/${position.market.marketId}?positionId=${position.positionId}`;
+              const positionUrl = `/positions/${chainShortName}:${marketGroup?.address}/${position.market?.marketId}?positionId=${position.positionId}`;
 
               // For displaying PnL, we'll need to adapt since totalPnL might not exist
               // We'll just show N/A in that case

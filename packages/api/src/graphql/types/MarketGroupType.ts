@@ -2,7 +2,6 @@ import { Field, ObjectType, ID, Int, Directive } from 'type-graphql';
 import { MarketType } from './MarketType';
 import { ResourceType } from './ResourceType';
 import { CategoryType } from './CategoryType';
-import { MarketParamsType } from './MarketParamsType';
 
 @Directive('@cacheControl(maxAge: 300)')
 @ObjectType()
@@ -61,8 +60,32 @@ export class MarketGroupType {
   @Field(() => String, { nullable: true })
   initializationNonce: string | null;
 
-  @Field(() => MarketParamsType, { nullable: true })
-  marketParams: MarketParamsType | null;
+  @Field(() => Int, { nullable: true })
+  marketParamsFeerate: number | null;
+
+  @Field(() => String, { nullable: true })
+  marketParamsAssertionliveness: string | null;
+
+  @Field(() => String, { nullable: true })
+  marketParamsBondcurrency: string | null;
+
+  @Field(() => String, { nullable: true })
+  marketParamsBondamount: string | null;
+
+  @Field(() => String, { nullable: true })
+  marketParamsClaimstatement: string | null;
+
+  @Field(() => String, { nullable: true })
+  marketParamsUniswappositionmanager: string | null;
+
+  @Field(() => String, { nullable: true })
+  marketParamsUniswapswaprouter: string | null;
+
+  @Field(() => String, { nullable: true })
+  marketParamsUniswapquoter: string | null;
+
+  @Field(() => String, { nullable: true })
+  marketParamsOptimisticoraclev3: string | null;
 
   @Field(() => String, { nullable: true })
   question: string | null;

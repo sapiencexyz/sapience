@@ -1,10 +1,10 @@
 import Foil from '@sapience/protocol/deployments/Foil.json';
 import { Router } from 'express';
-import { marketRepository } from 'src/db';
-import { Market } from 'src/models/Market';
+import prisma from '../db';
 import { formatUnits, parseUnits } from 'viem';
 import { z } from 'zod';
 import { getProviderForChain } from '../utils/utils';
+import type { Prisma } from '../../generated/prisma';
 
 const router = Router();
 const MAX_ITERATIONS = 10;
@@ -36,13 +36,13 @@ router.get('/:chainId/:marketAddress/:epochId/', async (req, res) => {
 
     // Get the epoch data
     const market = await getMarket(chainId, marketAddress, epochId);
-    if (!market) {
+    if (!market || !market.market_group || !market.market_group.address) {
       return res.status(404).json({ error: 'Market not found' });
     }
 
     const currentPrice = await getCurrentPrice(
-      market.marketGroup.chainId,
-      market.marketGroup.address,
+      market.market_group.chainId,
+      market.market_group.address,
       market.marketId
     );
     if (!currentPrice) {
@@ -265,16 +265,20 @@ async function getMarket(
   chainId: string,
   marketAddress: string,
   marketId: string
-): Promise<Market | null> {
-  const market = await marketRepository.findOne({
+): Promise<Prisma.marketGetPayload<{
+  include: { market_group: true };
+}> | null> {
+  const market = await prisma.market.findFirst({
     where: {
-      marketGroup: {
+      market_group: {
         chainId: parseInt(chainId),
         address: marketAddress.toLowerCase(),
       },
       marketId: parseInt(marketId),
     },
-    relations: ['marketGroup'],
+    include: {
+      market_group: true,
+    },
   });
   return market;
 }

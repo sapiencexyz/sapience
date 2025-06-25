@@ -9,7 +9,7 @@ import {
 } from '@sapience/ui/components/ui/sheet';
 import { Skeleton } from '@sapience/ui/components/ui/skeleton';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
-import { type MarketType as GraphQLMarketType } from '@sapience/ui/types/graphql';
+import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import {

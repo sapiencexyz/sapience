@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { initializeDataSource } from './db';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';

@@ -29,12 +29,9 @@ export default function NumericWagerForm({
 }: NumericWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const lowerBound = tickToPrice(
-    marketGroupData.markets[0].baseAssetMinPriceTick!
-  );
-  const upperBound = tickToPrice(
-    marketGroupData.markets[0].baseAssetMaxPriceTick!
-  );
+  const firstMarket = marketGroupData.markets?.[0];
+  const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
+  const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
   const unitDisplay = ''; // marketGroupData.unitDisplay || '';
 
   // Form validation schema
@@ -77,7 +74,7 @@ export default function NumericWagerForm({
   // Use the quoter hook directly
   const { quoteData, isQuoteLoading, quoteError } = useQuoter({
     marketData: marketGroupData,
-    marketId: marketGroupData.markets[0].marketId,
+    marketId: firstMarket?.marketId ?? 0,
     expectedPrice: Number(predictionValue),
     wagerAmount,
   });
@@ -95,7 +92,7 @@ export default function NumericWagerForm({
     marketAddress: marketGroupData.address as `0x${string}`,
     marketAbi: foilAbi().abi,
     chainId: marketGroupData.chainId,
-    numericMarketId: marketGroupData.markets[0].marketId,
+    numericMarketId: firstMarket?.marketId ?? 0,
     size: BigInt(quoteData?.maxSize || 0), // The size to buy (from the quote)
     collateralAmount: wagerAmount,
     slippagePercent: 0.5, // Default slippage percentage

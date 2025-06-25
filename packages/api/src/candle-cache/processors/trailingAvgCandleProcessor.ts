@@ -1,10 +1,16 @@
-import { ResourcePrice } from 'src/models/ResourcePrice';
-import { CacheCandle } from 'src/models/CacheCandle';
+import type {
+  resource_price,
+  cache_candle,
+  resource,
+} from '../../../generated/prisma';
+
+type ResourcePriceWithResource = resource_price & { resource: resource };
 import { CANDLE_TYPES, CANDLE_CACHE_CONFIG } from '../config';
 import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { TrailingAvgHistoryStore } from '../trailingAvgHistoryStore';
 import { startOfInterval, startOfNextInterval } from '../candleUtils';
+import { Decimal } from '../../../generated/prisma/runtime/library';
 
 export class TrailingAvgCandleProcessor {
   constructor(
@@ -16,12 +22,12 @@ export class TrailingAvgCandleProcessor {
     interval: number,
     candleTimestamp: number,
     candleEndTimestamp: number,
-    price: ResourcePrice,
+    price: ResourcePriceWithResource,
     trailingAvgTime: number,
     sumUsed: bigint,
     sumFeePaid: bigint,
     startOfTrailingWindow: number
-  ): Promise<CacheCandle> {
+  ): Promise<cache_candle> {
     const candle = await getOrCreateCandle({
       candleType: CANDLE_TYPES.TRAILING_AVG,
       interval: interval,
@@ -40,14 +46,14 @@ export class TrailingAvgCandleProcessor {
     candle.high = avg.toString();
     candle.low = avg.toString();
     candle.close = avg.toString();
-    candle.sumUsed = sumUsed.toString();
-    candle.sumFeePaid = sumFeePaid.toString();
+    candle.sumUsed = new Decimal(sumUsed.toString());
+    candle.sumFeePaid = new Decimal(sumFeePaid.toString());
     candle.trailingStartTimestamp = startOfTrailingWindow;
     return candle;
   }
 
   public async processResourcePrice(
-    price: ResourcePrice,
+    price: ResourcePriceWithResource,
     trailingAvgTime: number
   ) {
     // Add the new price to history and get the updated sums
@@ -90,19 +96,21 @@ export class TrailingAvgCandleProcessor {
         candle.high = avg.toString();
         candle.low = avg.toString();
         candle.close = avg.toString();
-        candle.sumUsed = sumUsed.toString();
-        candle.sumFeePaid = sumFeePaid.toString();
+        candle.sumUsed = new Decimal(sumUsed.toString());
+        candle.sumFeePaid = new Decimal(sumFeePaid.toString());
         candle.trailingStartTimestamp = startOfTrailingWindow;
         candle.lastUpdatedTimestamp = price.timestamp;
       }
 
       // Store the candle in runtime
-      this.runtimeCandles.setTrailingAvgCandle(
-        price.resource.slug,
-        interval,
-        trailingAvgTime,
-        candle
-      );
+      if (candle) {
+        this.runtimeCandles.setTrailingAvgCandle(
+          price.resource.slug,
+          interval,
+          trailingAvgTime,
+          candle
+        );
+      }
     }
   }
 }

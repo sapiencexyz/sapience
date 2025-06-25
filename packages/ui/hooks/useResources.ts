@@ -4,7 +4,7 @@ import { print } from 'graphql';
 
 import { foilApi } from '../lib';
 import { RESOURCE_ORDER, type ResourceSlug } from '../types/resources';
-import { ResourceType, CandleType } from '../types/graphql';
+import { ResourceType, CandleType } from '../types';
 
 const LATEST_RESOURCE_PRICE_QUERY = gql`
   query GetLatestResourcePrice($slug: String!) {
