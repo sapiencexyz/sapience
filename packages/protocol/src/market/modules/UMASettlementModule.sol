@@ -47,7 +47,7 @@ contract UMASettlementModule is
 
         IERC20 bondCurrency = IERC20(marketGroup.marketParams.bondCurrency);
 
-        if(marketGroup.isBridgeEnabled) {
+        if(marketGroup.bridgedSettlement) {
             // TODO: Implement bridge functionality
             // 1. Check if the submitter has enough bond balance 
             IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(marketGroup.marketParams.optimisticOracleV3);
