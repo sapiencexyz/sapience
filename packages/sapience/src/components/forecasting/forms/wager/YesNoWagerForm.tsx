@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { foilAbi } from '@sapience/ui/lib/abi';
 import type { MarketGroupType } from '@sapience/ui/types';
@@ -40,6 +41,7 @@ export default function YesNoWagerForm({
         required_error: 'Please select Yes or No',
       }),
       wagerAmount: wagerAmountSchema,
+      comment: z.string().optional(),
     });
   }, []);
 
@@ -49,6 +51,7 @@ export default function YesNoWagerForm({
     defaultValues: {
       predictionValue: YES_SQRT_PRICE_X96, // Default to YES
       wagerAmount: '',
+      comment: '',
     },
     mode: 'onChange', // Validate on change for immediate feedback
   });
@@ -185,6 +188,18 @@ export default function YesNoWagerForm({
 
           {renderQuoteData()}
         </div>
+
+        {/* Comment field */}
+        <div>
+          <Label htmlFor="comment">Comment (Optional)</Label>
+          <textarea
+            id="comment"
+            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Add a comment about your wager..."
+            {...methods.register('comment')}
+          />
+        </div>
+
         <PermittedAlert isPermitted={isPermitted} />
 
         <Button

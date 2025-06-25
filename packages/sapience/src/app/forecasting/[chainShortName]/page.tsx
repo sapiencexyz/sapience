@@ -6,6 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
+import { Label } from '@sapience/ui/components/ui/label';
+import { Switch } from '@sapience/ui/components/ui/switch';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -15,6 +17,8 @@ import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import PositionBadge from '~/components/shared/PositionBadge';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
@@ -28,6 +32,91 @@ import type { MarketGroupClassification } from '~/lib/types';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 
 export type ActiveTab = 'predict' | 'wager';
+
+// Mock comment data with positions
+const mockComments = [
+  {
+    id: 1,
+    address: '0x742d35Cc6Ab4b8c0e5d5b7a1aebd2C7B4e37Ca2D',
+    timestamp: Date.now() - 1000 * 60 * 30, // 30 minutes ago
+    comment: 'This market looks really promising. I think the price will continue to trend upward based on recent economic indicators.',
+    positions: [
+      {
+        id: 'pos1',
+        positionId: 123,
+        baseToken: '1500000000000000000',
+        borrowedBaseToken: '0',
+        collateral: '1000000000000000000',
+        owner: '0x742d35Cc6Ab4b8c0e5d5b7a1aebd2C7B4e37Ca2D',
+        isLP: false,
+        market: {
+          marketId: 1,
+          question: 'Will BTC reach $100k by end of 2024?',
+          marketGroup: {
+            baseTokenName: 'BTC',
+            collateralSymbol: 'USDC',
+            chainId: 1,
+            address: '0x123',
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 2,
+    address: '0x8ba1f109551bD432803012645Hac136c22C5FfFF',
+    timestamp: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
+    comment: 'Not sure about this one. The volatility has been crazy lately and I think we might see a correction soon.',
+    positions: [
+      {
+        id: 'pos2',
+        positionId: 124,
+        baseToken: '0',
+        borrowedBaseToken: '800000000000000000',
+        collateral: '500000000000000000',
+        owner: '0x8ba1f109551bD432803012645Hac136c22C5FfFF',
+        isLP: false,
+        market: {
+          marketId: 1,
+          question: 'Will BTC reach $100k by end of 2024?',
+          marketGroup: {
+            baseTokenName: 'BTC',
+            collateralSymbol: 'USDC',
+            chainId: 1,
+            address: '0x123',
+          },
+        },
+      },
+    ],
+  },
+  {
+    id: 3,
+    address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+    timestamp: Date.now() - 1000 * 60 * 60 * 6, // 6 hours ago
+    comment: 'Just placed a large wager on YES. The fundamentals look strong and I expect this to resolve positively.',
+    positions: [
+      {
+        id: 'pos3',
+        positionId: 125,
+        baseToken: '2000000000000000000',
+        borrowedBaseToken: '0',
+        collateral: '1500000000000000000',
+        owner: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+        isLP: false,
+        market: {
+          marketId: 1,
+          question: 'Will BTC reach $100k by end of 2024?',
+          marketGroup: {
+            baseTokenName: 'BTC',
+            collateralSymbol: 'USDC',
+            chainId: 1,
+            address: '0x123',
+          },
+        },
+      },
+    ],
+  },
+];
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(
@@ -324,6 +413,37 @@ const MarketGroupPageContent = () => {
               </div>
             );
           })()}
+
+          {/* Row 4: Comments Section */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-2xl font-medium">Comments</h3>
+              <div className="flex items-center space-x-2">
+                <Switch id="only-with-positions" />
+                <Label htmlFor="only-with-positions" className="text-sm">
+                  Only accounts with positions
+                </Label>
+              </div>
+            </div>
+            <div className="bg-card border border-border rounded shadow-sm">
+              <div className="divide-y divide-border">
+              {mockComments.map((comment) => (
+                <div key={comment.id} className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <AddressDisplay address={comment.address} />
+                      <PositionBadge positions={comment.positions} />
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(comment.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="leading-relaxed">{comment.comment}</p>
+                </div>
+              ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

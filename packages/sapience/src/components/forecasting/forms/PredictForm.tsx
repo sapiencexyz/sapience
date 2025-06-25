@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
 import type { MarketGroupType } from '@sapience/ui/types';
 import { useEffect, useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -36,13 +37,19 @@ export default function PredictForm({
   );
   // Create schema based on market category
   const formSchema = useMemo(() => {
+    const baseSchema = {
+      comment: z.string().optional(),
+    };
+
     switch (marketClassification) {
       case MarketGroupClassification.MULTIPLE_CHOICE:
         return z.object({
+          ...baseSchema,
           predictionValue: z.string().min(1, 'Please select an option'),
         });
       case MarketGroupClassification.YES_NO:
         return z.object({
+          ...baseSchema,
           predictionValue: z.enum([NO_SQRT_PRICE_X96, YES_SQRT_PRICE_X96], {
             required_error: 'Please select Yes or No',
             invalid_type_error: 'Please select Yes or No',
@@ -50,6 +57,7 @@ export default function PredictForm({
         });
       case MarketGroupClassification.NUMERIC:
         return z.object({
+          ...baseSchema,
           predictionValue: z
             .string()
             .min(1, 'Please enter a prediction value')
@@ -65,6 +73,7 @@ export default function PredictForm({
         });
       default:
         return z.object({
+          ...baseSchema,
           predictionValue: z.string().min(1, 'Please enter a prediction'),
         });
     }
@@ -88,6 +97,7 @@ export default function PredictForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       predictionValue: defaultPredictionValue,
+      comment: '',
     },
     mode: 'onChange', // Validate on change for immediate feedback
   });
@@ -166,6 +176,17 @@ export default function PredictForm({
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         {renderCategoryInput()}
+
+        {/* Comment field */}
+        <div>
+          <Label htmlFor="comment">Comment (Optional)</Label>
+          <textarea
+            id="comment"
+            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Add a comment about your prediction..."
+            {...methods.register('comment')}
+          />
+        </div>
 
         <Button
           type="submit"
