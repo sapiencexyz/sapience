@@ -1,6 +1,7 @@
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
+import depthLimit from 'graphql-depth-limit';
 import { buildSchema } from 'type-graphql';
 import {
   MarketGroupResolver,
@@ -51,6 +52,7 @@ export const initializeApolloServer = async () => {
       }),
       responseCachePlugin(),
     ],
+    validationRules: [depthLimit(8)],
   });
 
   // Start Apollo Server
