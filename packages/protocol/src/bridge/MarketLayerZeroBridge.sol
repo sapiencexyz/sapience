@@ -5,13 +5,14 @@ import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ILayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {IUMASettlementModule} from "../market/interfaces/IUMASettlementModule.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IMarketLayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import {ETHManagement} from "./abstract/ETHManagement.sol";
+import {GasManagement} from "./abstract/GasManagement.sol";
 // import {console2} from "forge-std/console2.sol";
 
 /**
@@ -25,7 +26,8 @@ import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/Option
 contract MarketLayerZeroBridge is
     OApp,
     ReentrancyGuard,
-    IMarketLayerZeroBridge
+    IMarketLayerZeroBridge,
+    ETHManagement
 {
     using Encoder for bytes;
     using BridgeTypes for BridgeTypes.BridgeConfig;
@@ -44,18 +46,12 @@ contract MarketLayerZeroBridge is
 
     mapping(address => mapping(uint256 => bytes32))
         private marketEpochToLocalId; // marketGroupAddress => marketId => localId
-    // mapping(address => MarketBondConfig) private marketBondConfigs; // marketGroupAddress => config
-
-    // gas monitoring and execution gas
-    uint256 private WARNING_GAS_THRESHOLD = 0.1 ether;
-    uint256 private CRITICAL_GAS_THRESHOLD = 0.05 ether;
-    uint128 private maxExecutionGas;
 
     // Constructor and initialization
     constructor(
         address _endpoint,
         address _owner
-    ) OApp(_endpoint, _owner) Ownable(_owner) {}
+    ) OApp(_endpoint, _owner) ETHManagement(_owner) {}
 
     // Configuration functions
     function setBridgeConfig(
@@ -73,23 +69,6 @@ contract MarketLayerZeroBridge is
         return bridgeConfig;
     }
 
-    function setMaxExecutionGas(uint128 _maxExecutionGas) external override onlyOwner {
-        maxExecutionGas = _maxExecutionGas;
-    }
-    
-    function getMaxExecutionGas() external override view returns (uint128) {
-        return maxExecutionGas;
-    }
-
-    function setGasThresholds(uint256 _warningGasThreshold, uint256 _criticalGasThreshold) external override onlyOwner {
-        WARNING_GAS_THRESHOLD = _warningGasThreshold;
-        CRITICAL_GAS_THRESHOLD = _criticalGasThreshold;
-    }
-
-    function getGasThresholds() external override view returns (uint256, uint256) {
-        return (WARNING_GAS_THRESHOLD, CRITICAL_GAS_THRESHOLD);
-    }
-
     function enableMarketGroup(address marketGroup) external override onlyOwner {
         enabledMarketGroups[marketGroup] = true;
     }
@@ -102,40 +81,6 @@ contract MarketLayerZeroBridge is
         address marketGroup
     ) external override view returns (bool) {
         return enabledMarketGroups[marketGroup];
-    }
-
-    // ETH Management for fees
-    function depositETH() external override payable {
-        // Anyone can deposit ETH to help pay for fees
-        emit ETHDeposited(msg.sender, msg.value);
-    }
-
-    function withdrawETH(uint256 amount) external override onlyOwner {
-        require(amount <= address(this).balance, "Insufficient balance");
-        payable(owner()).transfer(amount);
-        emit ETHWithdrawn(owner(), amount);
-        // Check gas thresholds after withdrawal
-        _checkGasThresholds();
-    }
-
-    function getETHBalance() external override view returns (uint256) {
-        return address(this).balance;
-    }
-
-    // Receive function to accept ETH
-    receive() external payable {
-        emit ETHDeposited(msg.sender, msg.value);
-    }
-
-    // Helper function to check gas thresholds and emit alerts
-    function _checkGasThresholds() internal {
-        uint256 currentBalance = address(this).balance;
-
-        if (currentBalance <= CRITICAL_GAS_THRESHOLD) {
-            emit GasReserveCritical(currentBalance);
-        } else if (currentBalance <= WARNING_GAS_THRESHOLD) {
-            emit GasReserveLow(currentBalance);
-        }
     }
 
     // LayerZero message handling
@@ -217,7 +162,7 @@ contract MarketLayerZeroBridge is
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(maxExecutionGas, 0);
+            .addExecutorLzReceiveOption(_getMaxExecutionGas(), 0);
 
         // Get quote for the message
         fee = _quote(
@@ -230,11 +175,9 @@ contract MarketLayerZeroBridge is
         if (onlyQuote) {
             return (MessagingReceipt(0, 0, fee), fee);
         }
+        
         // Check if contract has enough ETH
-        require(
-            address(this).balance >= fee.nativeFee,
-            "Insufficient ETH balance for fee"
-        );
+        _requireSufficientETH(fee.nativeFee);
 
         // Check gas thresholds and emit alerts before sending
         _checkGasThresholds();

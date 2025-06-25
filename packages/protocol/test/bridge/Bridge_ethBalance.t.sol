@@ -5,7 +5,7 @@ import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/
 import {MarketLayerZeroBridge} from "../../src/bridge/MarketLayerZeroBridge.sol";
 import {UMALayerZeroBridge} from "../../src/bridge/UMALayerZeroBridge.sol";
 import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
-import {ILayerZeroBridge, IUMALayerZeroBridge, IMarketLayerZeroBridge} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import {IETHManagement, IGasManagement} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
@@ -164,7 +164,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         
         vm.startPrank(marketUser);
         vm.expectEmit(true, true, false, true);
-        emit IMarketLayerZeroBridge.ETHDeposited(marketUser, depositAmount);
+        emit IETHManagement.ETHDeposited(marketUser, depositAmount);
         marketBridge.depositETH{value: depositAmount}();
         vm.stopPrank();
     }
@@ -187,7 +187,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         
         vm.startPrank(owner);
         vm.expectEmit(true, true, false, true);
-        emit IMarketLayerZeroBridge.ETHWithdrawn(owner, withdrawAmount);
+        emit IETHManagement.ETHWithdrawn(owner, withdrawAmount);
         marketBridge.withdrawETH(withdrawAmount);
         vm.stopPrank();
     }
@@ -238,7 +238,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         
         vm.startPrank(marketUser);
         vm.expectEmit(true, true, false, true);
-        emit IMarketLayerZeroBridge.ETHDeposited(marketUser, sendAmount);
+        emit IETHManagement.ETHDeposited(marketUser, sendAmount);
         (bool success,) = address(marketBridge).call{value: sendAmount}("");
         assertTrue(success);
         vm.stopPrank();
@@ -265,7 +265,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         
         vm.startPrank(umaUser);
         vm.expectEmit(true, true, false, true);
-        emit IUMALayerZeroBridge.ETHDeposited(umaUser, depositAmount);
+        emit IETHManagement.ETHDeposited(umaUser, depositAmount);
         umaBridge.depositETH{value: depositAmount}();
         vm.stopPrank();
     }
@@ -288,7 +288,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         
         vm.startPrank(owner);
         vm.expectEmit(true, true, false, true);
-        emit IUMALayerZeroBridge.ETHWithdrawn(owner, withdrawAmount);
+        emit IETHManagement.ETHWithdrawn(owner, withdrawAmount);
         umaBridge.withdrawETH(withdrawAmount);
         vm.stopPrank();
     }
@@ -339,7 +339,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         
         vm.startPrank(umaUser);
         vm.expectEmit(true, true, false, true);
-        emit IUMALayerZeroBridge.ETHDeposited(umaUser, sendAmount);
+        emit IETHManagement.ETHDeposited(umaUser, sendAmount);
         (bool success,) = address(umaBridge).call{value: sendAmount}("");
         assertTrue(success);
         vm.stopPrank();

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.22;
 
 import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -13,6 +12,8 @@ import {Encoder} from "./cmdEncoder.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import {ETHManagement} from "./abstract/ETHManagement.sol";
+import {BondManagement} from "./abstract/BondManagement.sol";
 // import {console2} from "forge-std/console2.sol";
 
 struct AssertionMarketData {
@@ -32,34 +33,23 @@ struct AssertionMarketData {
  * 3. Manages bond tokens and gas fees
  * 4. Sends verification results back to Converge
  */
-contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
+contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondManagement {
     using SafeERC20 for IERC20;
     using Encoder for bytes;
     using BridgeTypes for BridgeTypes.BridgeConfig;
     using OptionsBuilder for bytes;
-
-    uint256 public constant WITHDRAWAL_DELAY = 1 days;
 
     // State variables
     BridgeTypes.BridgeConfig private bridgeConfig;
     address private optimisticOracleV3Address;
 
     mapping(bytes32 => AssertionMarketData) private assertionIdToMarketData; // assertionId => marketData
-    mapping(address => mapping(address => uint256))
-        private submitterBondBalances; // submitter => bondToken => balance
-    mapping(address => mapping(address => WithdrawalIntent))
-        private withdrawalIntents; // submitter => bondToken => intent
-
-    // gas monitoring and execution gas
-    uint256 private WARNING_GAS_THRESHOLD = 0.1 ether;
-    uint256 private CRITICAL_GAS_THRESHOLD = 0.05 ether;
-    uint128 private maxExecutionGas;
 
     // Constructor and initialization
     constructor(
         address _endpoint,
         address _owner
-    ) OApp(_endpoint, _owner) Ownable(_owner) {}
+    ) OApp(_endpoint, _owner) ETHManagement(_owner) {}
 
     // Configuration functions
     function setBridgeConfig(
@@ -85,150 +75,6 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
     function getOptimisticOracleV3() external override view returns (address) {
         return optimisticOracleV3Address;
-    }
-
-    function setMaxExecutionGas(uint128 _maxExecutionGas) external override onlyOwner {
-        maxExecutionGas = _maxExecutionGas;
-    }
-
-    function getMaxExecutionGas() external override view returns (uint128) {
-        return maxExecutionGas;
-    }
-
-    function setGasThresholds(uint256 _warningGasThreshold, uint256 _criticalGasThreshold) external override onlyOwner {
-        WARNING_GAS_THRESHOLD = _warningGasThreshold;
-        CRITICAL_GAS_THRESHOLD = _criticalGasThreshold;
-    }
-
-    function getGasThresholds() external override view returns (uint256, uint256) {
-        return (WARNING_GAS_THRESHOLD, CRITICAL_GAS_THRESHOLD);
-    }
-
-
-    // ETH Management for fees
-    function depositETH() external override payable {
-        // Anyone can deposit ETH to help pay for fees
-        emit ETHDeposited(msg.sender, msg.value);
-    }
-
-    function withdrawETH(uint256 amount) external override onlyOwner {
-        require(amount <= address(this).balance, "Insufficient balance");
-
-        payable(owner()).transfer(amount);
-        emit ETHWithdrawn(owner(), amount);
-
-        // Check gas thresholds after withdrawal
-        _checkGasThresholds();
-    }
-
-    function getETHBalance() external override view returns (uint256) {
-        return address(this).balance;
-    }
-
-    // Receive function to accept ETH
-    receive() external payable {
-        emit ETHDeposited(msg.sender, msg.value);
-    }
-
-    // Bond Management Functions
-    function depositBond(
-        address bondToken,
-        uint256 amount
-    ) external override nonReentrant returns (MessagingReceipt memory) {
-        require(amount > 0, "Amount must be greater than 0");
-
-        IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
-        
-        MessagingReceipt memory receipt = _sendBalanceUpdate(
-            Encoder.CMD_FROM_ESCROW_DEPOSIT,
-            msg.sender,
-            bondToken,
-            submitterBondBalances[msg.sender][bondToken],
-            amount
-        );
-        
-        submitterBondBalances[msg.sender][bondToken] += amount;
-        
-        emit BondDeposited(msg.sender, bondToken, amount);
-        
-        return receipt;
-    }
-
-    function intentToWithdrawBond(
-        address bondToken,
-        uint256 amount
-    ) external override nonReentrant returns (MessagingReceipt memory) {
-        require(amount > 0, "Amount must be greater than 0");
-        require(
-            submitterBondBalances[msg.sender][bondToken] >= amount,
-            "Insufficient balance"
-        );
-        require(
-            withdrawalIntents[msg.sender][bondToken].amount == 0,
-            "Withdrawal intent already exists"
-        );
-
-        MessagingReceipt memory receipt = _sendBalanceUpdate(
-            Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW,
-            msg.sender,
-            bondToken,
-            submitterBondBalances[msg.sender][bondToken],
-            amount
-        );
-
-        withdrawalIntents[msg.sender][bondToken] = WithdrawalIntent({
-            amount: amount,
-            timestamp: block.timestamp,
-            executed: false
-        });
-
-        emit BondWithdrawalIntentCreated(msg.sender, bondToken, amount, block.timestamp);
-
-        return receipt;
-    }
-
-    function executeWithdrawal(address bondToken) external override nonReentrant returns (MessagingReceipt memory) {
-        WithdrawalIntent storage intent = withdrawalIntents[msg.sender][
-            bondToken
-        ];
-        require(intent.amount > 0, "No withdrawal intent");
-        require(!intent.executed, "Withdrawal already executed");
-        require(block.timestamp >= intent.timestamp + WITHDRAWAL_DELAY, "Waiting period not over");
-        require(submitterBondBalances[msg.sender][bondToken] >= intent.amount, "Insufficient balance");
-
-        MessagingReceipt memory receipt = _sendBalanceUpdate(
-            Encoder.CMD_FROM_ESCROW_WITHDRAW,
-            msg.sender,
-            bondToken,
-            submitterBondBalances[msg.sender][bondToken],
-            intent.amount
-        );
-
-        intent.executed = true;
-        submitterBondBalances[msg.sender][bondToken] -= intent.amount;
-
-        emit WithdrawalExecuted(msg.sender, bondToken, intent.amount);
-
-        IERC20(bondToken).safeTransfer(msg.sender, intent.amount);
-
-        return receipt;
-    }
-
-    function getBondBalance(
-        address submitter,
-        address bondToken
-    ) external override view returns (uint256) {
-        return submitterBondBalances[submitter][bondToken];
-    }
-
-    function getPendingWithdrawal(
-        address submitter,
-        address bondToken
-    ) external override view returns (uint256, uint256) {
-        WithdrawalIntent storage intent = withdrawalIntents[submitter][
-            bondToken
-        ];
-        return (intent.amount, intent.timestamp);
     }
 
     // UMA callback functions
@@ -296,30 +142,6 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         return receipt;
     }
 
-    function _sendBalanceUpdate(
-        uint16 updateType,
-        address submitter,
-        address bondToken,
-        uint256 finalAmount,
-        uint256 deltaAmount
-    ) internal returns (MessagingReceipt memory) {
-        // Make balance update data for UMA side via LayerZero
-        bytes memory commandPayload = Encoder.encodeFromBalanceUpdate(
-            submitter,
-            bondToken,
-            finalAmount,
-            deltaAmount
-        );
-
-        // Send message using contract's ETH balance
-        (MessagingReceipt memory receipt, ) = _sendLayerZeroMessageWithQuote(
-            updateType,
-            commandPayload,false    
-        );
-
-        return receipt;
-    }
-
     // LayerZero message handling
     function _lzReceive(
         Origin calldata _origin,
@@ -348,17 +170,6 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         }
     }
 
-    // Helper function to check gas thresholds and emit alerts
-    function _checkGasThresholds() internal {
-        uint256 currentBalance = address(this).balance;
-
-        if (currentBalance <= CRITICAL_GAS_THRESHOLD) {
-            emit GasReserveCritical(currentBalance);
-        } else if (currentBalance <= WARNING_GAS_THRESHOLD) {
-            emit GasReserveLow(currentBalance);
-        }
-    }
-
     // Helper function to send LayerZero messages with quote
     function _sendLayerZeroMessageWithQuote(
         uint16 commandCode,
@@ -369,7 +180,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(maxExecutionGas, 0);
+            .addExecutorLzReceiveOption(_getMaxExecutionGas(), 0);
 
         // Get quote for the message
         fee = _quote(
@@ -384,10 +195,7 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         }
 
         // Check if contract has enough ETH
-        require(
-            address(this).balance >= fee.nativeFee,
-            "Insufficient ETH balance for fee"
-        );
+        _requireSufficientETH(fee.nativeFee);
 
         // Check gas thresholds and emit alerts before sending
         _checkGasThresholds();
@@ -457,9 +265,44 @@ contract UMALayerZeroBridge is OApp, ReentrancyGuard, IUMALayerZeroBridge {
         marketData.bondAmount = bondAmount;
         marketData.assertionId = umaAssertionId;
 
-        submitterBondBalances[asserter][bondTokenAddress] -= bondAmount;
-        // TODO: Should we send back the confirmation to the Market side?
+        _updateBondBalance(asserter, bondTokenAddress, bondAmount, false);
+    }
 
-        // TODO: emit an event
+    // Implementation of abstract function from BondManagement
+    function _sendBalanceUpdate(
+        uint16 commandType,
+        address submitter,
+        address bondToken,
+        uint256 finalAmount,
+        uint256 deltaAmount
+    ) internal override returns (MessagingReceipt memory) {
+        // Make balance update data for UMA side via LayerZero
+        bytes memory commandPayload = Encoder.encodeFromBalanceUpdate(
+            submitter,
+            bondToken,
+            finalAmount,
+            deltaAmount
+        );
+
+        // Send message using contract's ETH balance
+        (MessagingReceipt memory receipt, ) = _sendLayerZeroMessageWithQuote(
+            commandType,
+            commandPayload,false    
+        );
+
+        return receipt;
+    }
+
+    // Implementation of command type functions
+    function _getDepositCommandType() internal pure override returns (uint16) {
+        return Encoder.CMD_FROM_ESCROW_DEPOSIT;
+    }
+
+    function _getIntentToWithdrawCommandType() internal pure override returns (uint16) {
+        return Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW;
+    }
+
+    function _getWithdrawCommandType() internal pure override returns (uint16) {
+        return Encoder.CMD_FROM_ESCROW_WITHDRAW;
     }
 }
