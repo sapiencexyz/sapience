@@ -52,7 +52,7 @@ export const initializeApolloServer = async () => {
       }),
       responseCachePlugin(),
     ],
-    validationRules: [depthLimit(8)],
+    validationRules: [depthLimit(5)],
   });
 
   // Start Apollo Server
