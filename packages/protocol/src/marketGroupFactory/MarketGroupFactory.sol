@@ -24,12 +24,13 @@ contract MarketGroupFactory {
         address collateralAsset,
         address[] calldata feeCollectors,
         uint256 minTradeSize,
+        bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams,
         uint256 nonce
     ) external returns (address) {
         address marketGroup = implementation.clone();
 
-        IConfigurationModule(marketGroup).initializeMarketGroup(msg.sender, collateralAsset, feeCollectors, minTradeSize, marketParams);
+        IConfigurationModule(marketGroup).initializeMarketGroup(msg.sender, collateralAsset, feeCollectors, minTradeSize, bridgedSettlement, marketParams);
 
         emit MarketGroupInitialized(msg.sender, marketGroup, nonce);
 
