@@ -128,7 +128,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
                 liquidity: liquidity,
-                additionalCollateral: params.collateralAmount,
+                additionalCollateral: marketGroup.normalizeCollateralAmount(params.collateralAmount),
                 additionalLoanAmount0: addedAmount0,
                 additionalLoanAmount1: addedAmount1,
                 lowerTick: params.lowerTick,
@@ -438,7 +438,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
                 liquidity: stack.previousLiquidity + liquidity,
-                additionalCollateral: params.collateralAmount,
+                additionalCollateral: marketGroup.normalizeCollateralAmount(params.collateralAmount),
                 additionalLoanAmount0: amount0, // these are the added tokens to the position
                 additionalLoanAmount1: amount1,
                 lowerTick: stack.lowerTick,
@@ -577,7 +577,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             sqrtPriceAX96,
             sqrtPriceBX96,
             DecimalMath.UNIT,
-            1e18
+            DecimalMath.UNIT
         );
 
         (uint256 unitAmount0, uint256 unitAmount1) = LiquidityAmounts
@@ -609,7 +609,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         return (
             FullMath.mulDiv(unitAmount0, collateralRatio, DecimalMath.UNIT),
             FullMath.mulDiv(unitAmount1, collateralRatio, DecimalMath.UNIT),
-            uint128(unitLiquidity * collateralRatio) / 1e18 // Not using UNIT here because is an uint256
+            uint128((uint256(unitLiquidity) * collateralRatio) / DecimalMath.UNIT)
         );
     }
 
@@ -617,15 +617,17 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 positionId,
         uint256 collateralAmount
     ) external override {
-        if (!MarketGroup.load().isFeeCollector(msg.sender)) {
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        if (!marketGroup.isFeeCollector(msg.sender)) {
             revert Errors.OnlyFeeCollector();
         }
 
         Position.Data storage position = Position.loadValid(positionId);
         position.validateLp();
+        
         // add to the collateral instead of updating
         int256 deltaCollateral = position.updateCollateral(
-            position.depositedCollateralAmount + collateralAmount
+            position.depositedCollateralAmount + marketGroup.normalizeCollateralAmount(collateralAmount)
         );
 
         emit ISapiencePositionEvents.CollateralDeposited(
