@@ -23,11 +23,12 @@ import {
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, Loader2, Plus, Trash } from 'lucide-react';
+import { AlertCircle, Loader2, Plus, Trash, ArrowLeft } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { z } from 'zod';
+import { useRouter } from 'next/navigation';
 
 import {
   FOCUS_AREAS,
@@ -120,7 +121,9 @@ const marketParamsSchema = z.object({
   uniswapSwapRouter: z
     .string()
     .refine(isAddress, 'Invalid Uniswap Swap Router Address'),
-  uniswapQuoter: z.string().refine(isAddress, 'Invalid Uniswap Quoter Address'),
+  uniswapQuoter: z
+    .string()
+    .refine(isAddress, 'Invalid Uniswap Quoter Address'),
   optimisticOracleV3: z
     .string()
     .refine(isAddress, 'Invalid Optimistic Oracle V3 Address'),
@@ -263,17 +266,14 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: resources } = useResources();
+  const router = useRouter();
 
   // Market group state
   const [chainId, setChainId] = useState<string>('8453');
   const [factoryAddress, setFactoryAddress] = useState<string>(
     DEFAULT_FACTORY_ADDRESS
   );
-  const [owner, setOwner] = useState<string>(
-    currentChainId === BASE_CHAIN_ID
-      ? DEFAULT_BASE_OWNER
-      : connectedAddress || ''
-  );
+  const [owner, setOwner] = useState<string>('');
   const [collateralAsset, setCollateralAsset] = useState<string>(
     DEFAULT_COLLATERAL_ASSET
   );
@@ -311,31 +311,21 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   // Form state
   const [formError, setFormError] = useState<string | null>(null);
   const [activeMarketIndex, setActiveMarketIndex] = useState<number>(0);
+  const [isMounted, setIsMounted] = useState(false);
+
+  const [showCat, setShowCat] = useState(true);
 
   useEffect(() => {
+    setIsMounted(true);
+    // Generate nonce only on client side to prevent hydration mismatch
     setNonce(Math.floor(Math.random() * 1e18).toString());
-  }, []);
-
-  useEffect(() => {
-    const isOwnerDefaultForCurrentChain =
-      owner ===
-      (currentChainId === BASE_CHAIN_ID
-        ? DEFAULT_BASE_OWNER
-        : connectedAddress || '');
-    const isOwnerDefaultForNewChain =
-      owner ===
-      (Number(currentChainId) === BASE_CHAIN_ID
-        ? DEFAULT_BASE_OWNER
-        : connectedAddress || '');
-
-    if (isOwnerDefaultForNewChain || isOwnerDefaultForCurrentChain) {
-      setOwner(
-        Number(currentChainId) === BASE_CHAIN_ID
-          ? DEFAULT_BASE_OWNER
-          : connectedAddress || ''
-      );
-    }
-  }, [currentChainId, connectedAddress, owner]);
+    
+    // Set owner based on chain and connected address after mounting
+    const defaultOwner = currentChainId === BASE_CHAIN_ID
+      ? DEFAULT_BASE_OWNER
+      : connectedAddress || '';
+    setOwner(defaultOwner);
+  }, [currentChainId, connectedAddress]);
 
   const handleMarketParamsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -538,23 +528,21 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   const { mutate: createMarketGroup, isPending } = useMutation<
     unknown,
     Error,
-    CreateCombinedPayload
+    CreateCombinedPayload,
+    unknown
   >({
     mutationFn: createCombinedMarketGroup,
     onSuccess: () => {
       toast({
         title: 'Success',
-        description: 'Market Group and Markets created successfully.',
+        description: 'Market group created successfully!',
       });
-      queryClient.invalidateQueries({ queryKey: ['marketGroups'] });
-      onClose?.();
     },
-    onError: (error: Error) => {
-      console.error('Error creating market group:', error);
+    onError: (error) => {
       toast({
-        variant: 'destructive',
         title: 'Error',
         description: error.message,
+        variant: 'destructive',
       });
     },
   });
@@ -566,388 +554,489 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
     const validationError = validateFormData();
     if (validationError) {
       setFormError(validationError);
-      toast({
-        title: 'Validation Error',
-        description: validationError,
-        variant: 'destructive',
-      });
       return;
     }
 
-    const timestamp = Date.now();
-    let signature: `0x${string}` | undefined;
+    if (!connectedAddress) {
+      setFormError('Please connect your wallet to create a market group');
+      return;
+    }
+
     try {
-      signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });
-    } catch (signError) {
-      console.error('Signature failed:', signError);
-      toast({
-        title: 'Signature Required',
-        description: 'Failed to get user signature.',
-        variant: 'destructive',
+      // Generate signature timestamp
+      const signatureTimestamp = Math.floor(Date.now() / 1000);
+
+      // Create the payload
+      const payload: CreateCombinedPayload = {
+        chainId,
+        owner,
+        collateralAsset,
+        minTradeSize,
+        marketParams,
+        nonce,
+        question,
+        category: selectedCategory,
+        baseTokenName,
+        quoteTokenName,
+        factoryAddress,
+        resourceId: selectedResourceId || undefined,
+        isCumulative: selectedResourceId ? isCumulative : undefined,
+        markets: markets.map(({ id, ...market }) => market), // Remove client-side id
+        signature: undefined, // Will be set after signing
+        signatureTimestamp,
+      };
+
+      // Sign the message
+      const message = ADMIN_AUTHENTICATE_MSG;
+      const signature = await signMessageAsync({ message });
+
+      if (!signature) {
+        setFormError('Failed to sign message');
+        return;
+      }
+
+      // Add signature to payload
+      payload.signature = signature;
+
+      // Create the market group
+      await createMarketGroup(payload);
+
+      // Play success sound
+      const audio = new Audio('/cat-meow.mp3');
+      audio.play().catch((e) => {
+        console.log('Error playing success sound', e);
+        // Fallback: create a simple success beep
+        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        
+        oscillator.frequency.setValueAtTime(1000, context.currentTime);
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+        
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 0.5);
       });
-      return;
+
+      // Navigate back to admin page
+      router.push('/admin');
+    } catch (error) {
+      console.error('Error creating market group:', error);
+      setFormError(
+        error instanceof Error ? error.message : 'Failed to create market group'
+      );
     }
-
-    const marketsForApi = markets.map(({ id, ...marketData }) => marketData);
-
-    const payload: CreateCombinedPayload = {
-      chainId,
-      owner,
-      collateralAsset,
-      minTradeSize,
-      marketParams,
-      nonce,
-      question,
-      category: selectedCategory,
-      baseTokenName,
-      quoteTokenName,
-      factoryAddress,
-      ...(selectedResourceId && {
-        resourceId: selectedResourceId,
-        isCumulative,
-      }),
-      markets: marketsForApi, // Use markets without id
-      signature,
-      signatureTimestamp: timestamp,
-    };
-
-    createMarketGroup(payload);
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-6 overflow-y-auto max-h-[85vh] p-1"
-    >
-      {/* Market Group Details Section - remains largely the same */}
-      <div className="space-y-4">
-        {/* Market Group Question */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="marketGroupQuestion">Market Group Question</Label>
-            <Input
-              id="marketGroupQuestion"
-              type="text"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Enter the main question for the market group"
-              required
-            />
-          </div>
-          {/* Category */}
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
-            >
-              <SelectTrigger id="category">
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {FOCUS_AREAS.map((area) => (
-                  <SelectItem key={area.id} value={area.id}>
-                    {area.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <>
+      {!isMounted ? (
+        <div className="flex items-center justify-center p-8">
+          <Loader2 className="h-6 w-6 animate-spin" />
         </div>
-        {/* Resource Selection */}
-        <div className="space-y-2">
-          <Label htmlFor="resource">Index</Label>
-          <Select
-            value={selectedResourceId?.toString() || 'none'}
-            onValueChange={(value) => {
-              const newResourceId =
-                value !== 'none' ? parseInt(value, 10) : null;
-              setSelectedResourceId(newResourceId);
-              // Update token names based on resource selection
-              if (newResourceId === null) {
-                setBaseTokenName('Yes');
-                setQuoteTokenName('sUSDS');
-              } else {
-                setBaseTokenName('');
-                setQuoteTokenName('');
-              }
-            }}
+      ) : (
+        <div className="relative">
+          {/* Form - takes full width */}
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6 p-1"
           >
-            <SelectTrigger id="resource">
-              <SelectValue placeholder="Select a resource (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None (Yes/No)</SelectItem>
-              {resources?.map((resource) => (
-                <SelectItem key={resource.id} value={resource.id.toString()}>
-                  {resource.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        {/* Base Token Name Input */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="baseTokenName">Base Token Name</Label>
-            <Input
-              id="baseTokenName"
-              type="text"
-              value={baseTokenName}
-              onChange={(e) => setBaseTokenName(e.target.value)}
-              required
-            />
-          </div>
-          {/* Quote Token Name Input */}
-          <div className="space-y-2">
-            <Label htmlFor="quoteTokenName">Quote Token Name</Label>
-            <Input
-              id="quoteTokenName"
-              type="text"
-              value={quoteTokenName}
-              onChange={(e) => setQuoteTokenName(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-        {/* isCumulative toggle */}
-        {selectedResourceId && (
-          <div className="flex items-center gap-2 py-2">
-            <Label htmlFor="isCumulative" className="font-medium">
-              Cumulative
-            </Label>
-            <Switch
-              id="isCumulative"
-              checked={isCumulative}
-              onCheckedChange={setIsCumulative}
-            />
-          </div>
-        )}
-      </div>
+            {/* Back Button */}
+            <div className="flex items-center gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push('/admin')}
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Admin
+              </Button>
+            </div>
 
-      {/* Markets Section - Refactored to use MarketFormFields */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">Markets</h3>
-          <Button type="button" variant="outline" size="sm" onClick={addMarket}>
-            <Plus className="h-4 w-4 mr-2" /> Add Market
-          </Button>
-        </div>
-
-        {markets.length > 0 && (
-          <p className="text-sm text-muted-foreground">
-            💡 New markets will copy all parameters from the previous market
-            including market question, claim statement, pricing parameters,
-            rules, and option names. You&apos;ll still need to set the end time
-            for each market.
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          {markets.map((market, index) => (
-            <button
-              key={market.id} // Use market.id for key
-              type="button"
-              className={`px-3 py-1 text-sm rounded flex items-center ${
-                activeMarketIndex === index
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary'
-              }`}
-              onClick={() => setActiveMarketIndex(index)}
-            >
-              Market {index + 1} {/* Display 1-based index for user */}
-              {marketsWithCopiedParams.has(market.id) && (
-                <span
-                  className="ml-1 text-xs opacity-70"
-                  title="Parameters copied from previous market"
-                >
-                  📋
-                </span>
-              )}
-              {markets.length > 1 && (
-                <Trash
-                  className="h-3.5 w-3.5 ml-2 cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeMarket(index);
+            {/* Market Group Details Section - remains largely the same */}
+            <div className="space-y-4">
+              {/* Market Group Question */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="marketGroupQuestion">Market Group Question</Label>
+                  <Input
+                    id="marketGroupQuestion"
+                    type="text"
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="Enter the main question for the market group"
+                    required
+                  />
+                </div>
+                {/* Category */}
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FOCUS_AREAS.map((area) => (
+                        <SelectItem key={area.id} value={area.id}>
+                          {area.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {/* Resource Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="resource">Index</Label>
+                <Select
+                  value={selectedResourceId?.toString() || 'none'}
+                  onValueChange={(value) => {
+                    const newResourceId =
+                      value !== 'none' ? parseInt(value, 10) : null;
+                    setSelectedResourceId(newResourceId);
+                    // Update token names based on resource selection
+                    if (newResourceId === null) {
+                      setBaseTokenName('Yes');
+                      setQuoteTokenName('sUSDS');
+                    } else {
+                      setBaseTokenName('');
+                      setQuoteTokenName('');
+                    }
                   }}
-                />
+                >
+                  <SelectTrigger id="resource">
+                    <SelectValue placeholder="Select a resource (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None (Yes/No)</SelectItem>
+                    {resources?.map((resource) => (
+                      <SelectItem key={resource.id} value={resource.id.toString()}>
+                        {resource.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Base Token Name Input */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="baseTokenName">Base Token Name</Label>
+                  <Input
+                    id="baseTokenName"
+                    type="text"
+                    value={baseTokenName}
+                    onChange={(e) => setBaseTokenName(e.target.value)}
+                    required
+                  />
+                </div>
+                {/* Quote Token Name Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="quoteTokenName">Quote Token Name</Label>
+                  <Input
+                    id="quoteTokenName"
+                    type="text"
+                    value={quoteTokenName}
+                    onChange={(e) => setQuoteTokenName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              {/* isCumulative toggle */}
+              {selectedResourceId && (
+                <div className="flex items-center gap-2 py-2">
+                  <Label htmlFor="isCumulative" className="font-medium">
+                    Cumulative
+                  </Label>
+                  <Switch
+                    id="isCumulative"
+                    checked={isCumulative}
+                    onCheckedChange={setIsCumulative}
+                  />
+                </div>
               )}
-            </button>
-          ))}
-        </div>
+            </div>
 
-        {markets.map((market, index) => (
-          <div
-            key={market.id}
-            className={activeMarketIndex === index ? 'block' : 'hidden'}
-          >
-            <Card>
-              <CardContent>
-                <MarketFormFields
-                  market={market}
-                  onMarketChange={(field, value) =>
-                    handleMarketChange(index, field, value)
-                  }
-                  marketIndex={index} // Pass index for unique field IDs
-                  onMarketGroupChange={handleMarketGroupChange}
-                  marketGroupQuestion={question}
-                  category={selectedCategory}
-                  resourceId={selectedResourceId?.toString()}
-                  baseTokenName={baseTokenName}
-                  quoteTokenName={quoteTokenName}
-                  chainId={chainId}
-                  factoryAddress={factoryAddress}
-                  owner={owner}
-                  collateralAsset={collateralAsset}
-                  minTradeSize={minTradeSize}
-                  marketParams={marketParams}
-                  onAdvancedConfigChange={handleAdvancedConfigChange}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        ))}
-      </div>
+            {/* Markets Section - Refactored to use MarketFormFields */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">Markets</h3>
+                <Button type="button" variant="outline" size="sm" onClick={addMarket}>
+                  <Plus className="h-4 w-4 mr-2" /> Add Market
+                </Button>
+              </div>
 
-      {/* Advanced Market Group Configuration */}
-      <div className="space-y-4">
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="details">
-            <AccordionTrigger>
-              Advanced Market Group Configuration
-            </AccordionTrigger>
-            <AccordionContent className="space-y-6 pt-4">
-              {/* Chain ID and Factory Address */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="chainId">Chain ID</Label>
-                  <Input
-                    id="chainId"
-                    type="number"
-                    value={chainId}
-                    onChange={(e) => setChainId(e.target.value)}
-                    placeholder="e.g., 1"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="factoryAddress">Factory Address</Label>
-                  <Input
-                    id="factoryAddress"
-                    type="text"
-                    value={factoryAddress}
-                    onChange={(e) => setFactoryAddress(e.target.value)}
-                    placeholder="0x..."
-                    required
-                  />
-                </div>
+              {markets.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  💡 New markets will copy all parameters from the previous market
+                  including market question, claim statement, pricing parameters,
+                  rules, and option names. You&apos;ll still need to set the end time
+                  for each market.
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2 mb-4">
+                {markets.map((market, index) => (
+                  <button
+                    key={market.id} // Use market.id for key
+                    type="button"
+                    className={`px-3 py-1 text-sm rounded flex items-center ${
+                      activeMarketIndex === index
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary'
+                    }`}
+                    onClick={() => setActiveMarketIndex(index)}
+                  >
+                    Market {index + 1} {/* Display 1-based index for user */}
+                    {marketsWithCopiedParams.has(market.id) && (
+                      <span
+                        className="ml-1 text-xs opacity-70"
+                        title="Parameters copied from previous market"
+                      >
+                        📋
+                      </span>
+                    )}
+                    {markets.length > 1 && (
+                      <Trash
+                        className="h-3.5 w-3.5 ml-2 cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeMarket(index);
+                        }}
+                      />
+                    )}
+                  </button>
+                ))}
               </div>
-              {/* Owner, Nonce, Collateral Asset, Min Trade Size */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="owner">Owner</Label>
-                  <Input
-                    id="owner"
-                    type="text"
-                    value={owner}
-                    onChange={(e) => setOwner(e.target.value)}
-                    placeholder="0x..."
-                    required
-                  />
+
+              {markets.map((market, index) => (
+                <div
+                  key={market.id}
+                  className={activeMarketIndex === index ? 'block' : 'hidden'}
+                >
+                  <Card>
+                    <CardContent>
+                      <MarketFormFields
+                        market={market}
+                        onMarketChange={(field, value) =>
+                          handleMarketChange(index, field, value)
+                        }
+                        marketIndex={index} // Pass index for unique field IDs
+                        onMarketGroupChange={handleMarketGroupChange}
+                        marketGroupQuestion={question}
+                        category={selectedCategory}
+                        resourceId={selectedResourceId?.toString()}
+                        baseTokenName={baseTokenName}
+                        quoteTokenName={quoteTokenName}
+                        chainId={chainId}
+                        factoryAddress={factoryAddress}
+                        owner={owner}
+                        collateralAsset={collateralAsset}
+                        minTradeSize={minTradeSize}
+                        marketParams={marketParams}
+                        onAdvancedConfigChange={handleAdvancedConfigChange}
+                      />
+                    </CardContent>
+                  </Card>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nonce">Nonce</Label>
-                  <Input
-                    id="nonce"
-                    type="text"
-                    value={nonce}
-                    onChange={(e) => setNonce(e.target.value)}
-                    placeholder="Random nonce value"
-                    required
-                    inputMode="numeric"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="collateralAsset">Collateral Asset</Label>
-                  <Input
-                    id="collateralAsset"
-                    type="text"
-                    value={collateralAsset}
-                    onChange={(e) => setCollateralAsset(e.target.value)}
-                    placeholder="0x..."
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="minTradeSize">Min Trade Size (Units)</Label>
-                  <Input
-                    id="minTradeSize"
-                    type="text"
-                    value={minTradeSize}
-                    onChange={(e) => setMinTradeSize(e.target.value)}
-                    placeholder="e.g., 1000000000000000000"
-                    required
-                    inputMode="numeric"
-                  />
-                </div>
-              </div>
-              {/* Market Parameters */}
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
-                  {Object.entries(marketParams).map(([key, value]) => {
-                    const isNumericInput =
-                      key === 'feeRate' ||
-                      key === 'assertionLiveness' ||
-                      key === 'bondAmount';
-                    const inputType = isNumericInput ? 'number' : 'text';
-                    const inputModeType = isNumericInput ? 'numeric' : 'text';
-                    let placeholderText = '0x...';
-                    if (key.includes('Amount') || key.includes('Liveness'))
-                      placeholderText = 'e.g., 100...';
-                    else if (key.includes('Rate'))
-                      placeholderText = 'e.g., 3000';
-                    return (
-                      <div key={key} className="space-y-2">
-                        <Label htmlFor={key} className="capitalize">
-                          {key.replace(/([A-Z])/g, ' $1')}
-                        </Label>
+              ))}
+            </div>
+
+            {/* Advanced Market Group Configuration */}
+            <div className="space-y-4">
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="details">
+                  <AccordionTrigger>
+                    Advanced Market Group Configuration
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-6 pt-4">
+                    {/* Chain ID and Factory Address */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="chainId">Chain ID</Label>
                         <Input
-                          id={key}
-                          type={inputType}
-                          name={key}
-                          value={value}
-                          onChange={handleMarketParamsChange}
-                          placeholder={placeholderText}
+                          id="chainId"
+                          type="number"
+                          value={chainId}
+                          onChange={(e) => setChainId(e.target.value)}
+                          placeholder="e.g., 1"
                           required
-                          inputMode={inputModeType}
-                          disabled={key === 'feeRate'}
                         />
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="factoryAddress">Factory Address</Label>
+                        <Input
+                          id="factoryAddress"
+                          type="text"
+                          value={factoryAddress}
+                          onChange={(e) => setFactoryAddress(e.target.value)}
+                          placeholder="0x..."
+                          required
+                        />
+                      </div>
+                    </div>
+                    {/* Owner, Nonce, Collateral Asset, Min Trade Size */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="owner">Owner</Label>
+                        <Input
+                          id="owner"
+                          type="text"
+                          value={owner}
+                          onChange={(e) => setOwner(e.target.value)}
+                          placeholder="0x..."
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="nonce">Nonce</Label>
+                        <Input
+                          id="nonce"
+                          type="text"
+                          value={nonce}
+                          onChange={(e) => setNonce(e.target.value)}
+                          placeholder="Random nonce value"
+                          required
+                          inputMode="numeric"
+                        />
+                     </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="collateralAsset">Collateral Asset</Label>
+                        <Input
+                          id="collateralAsset"
+                          type="text"
+                          value={collateralAsset}
+                          onChange={(e) => setCollateralAsset(e.target.value)}
+                          placeholder="0x..."
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="minTradeSize">Min Trade Size (Units)</Label>
+                        <Input
+                          id="minTradeSize"
+                          type="text"
+                          value={minTradeSize}
+                          onChange={(e) => setMinTradeSize(e.target.value)}
+                          placeholder="e.g., 1000000000000000000"
+                          required
+                          inputMode="numeric"
+                        />
+                      </div>
+                    </div>
+                    {/* Market Parameters */}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-4">
+                        {Object.entries(marketParams).map(([key, value]) => {
+                          const isNumericInput =
+                            key === 'feeRate' ||
+                            key === 'assertionLiveness' ||
+                            key === 'bondAmount';
+                          const inputType = isNumericInput ? 'number' : 'text';
+                          const inputModeType = isNumericInput ? 'numeric' : 'text';
+                          let placeholderText = '0x...';
+                          if (key.includes('Amount') || key.includes('Liveness'))
+                            placeholderText = 'e.g., 100...';
+                          else if (key.includes('Rate'))
+                            placeholderText = 'e.g., 3000';
+                          return (
+                            <div key={key} className="space-y-2">
+                              <Label htmlFor={key} className="capitalize">
+                                {key.replace(/([A-Z])/g, ' $1')}
+                              </Label>
+                              <Input
+                                id={key}
+                                type={inputType}
+                                name={key}
+                                value={value}
+                                onChange={handleMarketParamsChange}
+                                placeholder={placeholderText}
+                                required
+                                inputMode={inputModeType}
+                                disabled={key === 'feeRate'}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </div>
+
+            <div className="mt-6">
+              <Button type="submit" disabled={isPending} className="w-full">
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{' '}
+                Submit Market Group & Markets
+              </Button>
+            </div>
+
+            {formError && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+          </form>
+
+          {/* Cat Picture - absolutely positioned in the whitespace on the right, with toggle always visible below */}
+          <div className="hidden md:block">
+            <div className="fixed right-12 top-32 z-20 w-80 flex flex-col justify-center items-center">
+              {showCat && (
+                <>
+                  <img
+                    src="https://freepngimg.com/thumb/cat/40-cat-png-image-download-picture-kitten.png"
+                    alt="A cute cat"
+                    className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform"
+                    onClick={() => {
+                      // Using local cat meow sound file
+                      const audio = new Audio('/cat-meow.mp3');
+                      audio.play().catch((e) => {
+                        console.log('Error playing audio, playing a beep sound instead', e);
+                        // Fallback: create a simple beep sound
+                        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+                        const oscillator = context.createOscillator();
+                        const gainNode = context.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(context.destination);
+                        
+                        oscillator.frequency.setValueAtTime(800, context.currentTime);
+                        oscillator.type = 'sine';
+                        
+                        gainNode.gain.setValueAtTime(0.3, context.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+                        
+                        oscillator.start(context.currentTime);
+                        oscillator.stop(context.currentTime + 0.3);
+                      });
+                    }}
+                  />
+                  <p className="text-sm text-muted-foreground mt-2 text-center">
+                    🐱 Your friendly companion (pet it!)
+                  </p>
+                </>
+              )}
+              {/* Show Cat Toggle always visible under the image/caption */}
+              <div className="flex items-center gap-2 mt-4">
+                <Switch id="show-cat" checked={showCat} onCheckedChange={setShowCat} />
+                <label htmlFor="show-cat" className="text-sm font-medium select-none cursor-pointer">Show Cat</label>
               </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
-
-      <div className="mt-6">
-        <Button type="submit" disabled={isPending} className="w-full">
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{' '}
-          Submit Market Group & Markets
-        </Button>
-      </div>
-
-      {formError && (
-        <Alert variant="destructive" className="mt-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{formError}</AlertDescription>
-        </Alert>
+            </div>
+          </div>
+        </div>
       )}
-    </form>
+    </>
   );
 };
 

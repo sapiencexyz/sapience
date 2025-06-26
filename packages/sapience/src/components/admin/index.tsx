@@ -29,7 +29,6 @@ import { foilApi } from '~/lib/utils/util';
 
 import CategoryFilter from './CategoryFilter';
 import columns from './columns';
-import CombinedMarketDialog from './CombinedMarketDialog';
 import DataTable from './data-table';
 
 // Dynamically import LottieLoader
@@ -402,7 +401,6 @@ const RefreshCacheForm = () => {
 
 const Admin = () => {
   const { data: marketGroups, isLoading, error } = useEnrichedMarketGroups();
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
@@ -421,20 +419,12 @@ const Admin = () => {
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Control Center</h1>
         <div className="flex items-center space-x-4">
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-1 h-4 w-4" />
-                New Market Group
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="overflow-hidden">
-              <DialogHeader>
-                <DialogTitle>Launch New Market Group</DialogTitle>
-              </DialogHeader>
-              <CombinedMarketDialog onClose={() => setDialogOpen(false)} />
-            </DialogContent>
-          </Dialog>
+          <Button asChild>
+            <a href="/admin/create">
+              <Plus className="mr-1 h-4 w-4" />
+              New Market Group
+            </a>
+          </Button>
           <Dialog open={reindexDialogOpen} onOpenChange={setReindexDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">

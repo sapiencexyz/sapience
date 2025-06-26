@@ -261,10 +261,10 @@ const MarketFormFields = ({
       }
     } else {
       // When focused, just update sqrtPriceX96 without validation
-      onMarketChange(
-        'startingSqrtPriceX96',
-        priceToSqrtPriceX96(Number(price)).toString()
-      );
+    onMarketChange(
+      'startingSqrtPriceX96',
+      priceToSqrtPriceX96(Number(price)).toString()
+    );
     }
   };
 
@@ -295,10 +295,10 @@ const MarketFormFields = ({
       
       // Always update tick
       if (numPrice > 0) {
-        onMarketChange(
-          'baseAssetMinPriceTick',
-          priceToTick(numPrice, TICK_SPACING).toString()
-        );
+      onMarketChange(
+        'baseAssetMinPriceTick',
+        priceToTick(numPrice, TICK_SPACING).toString()
+      );
       }
       setMinPriceError(null);
       
@@ -423,10 +423,10 @@ const MarketFormFields = ({
       
       // Always update tick
       if (numPrice > 0) {
-        onMarketChange(
-          'baseAssetMaxPriceTick',
-          priceToTick(numPrice, TICK_SPACING).toString()
-        );
+      onMarketChange(
+        'baseAssetMaxPriceTick',
+        priceToTick(numPrice, TICK_SPACING).toString()
+      );
       }
       setMaxPriceError(null);
       
