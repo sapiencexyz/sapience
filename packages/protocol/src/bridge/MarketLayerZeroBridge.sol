@@ -62,24 +62,29 @@ contract MarketLayerZeroBridge is
     }
 
     function getBridgeConfig()
-        external override
+        external
         view
+        override
         returns (BridgeTypes.BridgeConfig memory)
     {
         return bridgeConfig;
     }
 
-    function enableMarketGroup(address marketGroup) external override onlyOwner {
+    function enableMarketGroup(
+        address marketGroup
+    ) external override onlyOwner {
         enabledMarketGroups[marketGroup] = true;
     }
 
-    function disableMarketGroup(address marketGroup) external override onlyOwner {
+    function disableMarketGroup(
+        address marketGroup
+    ) external override onlyOwner {
         enabledMarketGroups[marketGroup] = false;
     }
 
     function isMarketGroupEnabled(
         address marketGroup
-    ) external override view returns (bool) {
+    ) external view override returns (bool) {
         return enabledMarketGroups[marketGroup];
     }
 
@@ -91,59 +96,56 @@ contract MarketLayerZeroBridge is
         address _executor,
         bytes calldata _extraData
     ) internal override {
+        require(
+            _origin.srcEid == bridgeConfig.remoteChainId,
+            "Invalid source chain"
+        );
+        require(
+            address(uint160(uint256(_origin.sender))) ==
+                bridgeConfig.remoteBridge,
+            "Invalid sender"
+        );
+
         // Handle incoming messages from the UMA side
         (uint16 commandType, bytes memory data) = _message.decodeType();
-
-        // TODO: Check the message is coming from the right source
 
         if (false) {
             // Do Nothing here, this is a placeholder to have better
         } else if (commandType == Encoder.CMD_FROM_ESCROW_DEPOSIT) {
-            (
-                address submitter,
-                address bondToken,
-                ,
-                uint256 deltaAmount
-            ) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, , uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
             emit BondDeposited(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW) {
-            (
-                address submitter,
-                address bondToken,
-                ,
-                uint256 deltaAmount
-            ) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, , uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
             remoteSubmitterWithdrawalIntent[submitter][bondToken] = deltaAmount; // Only one intent per pair submitter/bond allowed at a time
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_ESCROW_WITHDRAW) {
-            (
-                address submitter,
-                address bondToken,
-                ,
-                uint256 deltaAmount
-            ) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, , uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] -= deltaAmount;
             remoteSubmitterWithdrawalIntent[submitter][
                 bondToken
             ] -= deltaAmount;
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
         } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_RECEIVED) {
-            (
-                address submitter,
-                address bondToken,
-                ,
-                uint256 deltaAmount
-            ) = data.decodeFromBalanceUpdate();
+            (address submitter, address bondToken, , uint256 deltaAmount) = data
+                .decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
         } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
             (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
             address marketGroup = assertionIdToMarketGroup[assertionId];
-            IUMASettlementModule(marketGroup).assertionResolvedCallback(bytes32(assertionId), verified);
+            IUMASettlementModule(marketGroup).assertionResolvedCallback(
+                bytes32(assertionId),
+                verified
+            );
         } else if (commandType == Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK) {
             uint256 assertionId = data.decodeFromUMADisputed();
             address marketGroup = assertionIdToMarketGroup[assertionId];
-            IUMASettlementModule(marketGroup).assertionDisputedCallback(bytes32(assertionId));
+            IUMASettlementModule(marketGroup).assertionDisputedCallback(
+                bytes32(assertionId)
+            );
         } else {
             revert("Invalid command type");
         }
@@ -175,7 +177,7 @@ contract MarketLayerZeroBridge is
         if (onlyQuote) {
             return (MessagingReceipt(0, 0, fee), fee);
         }
-        
+
         // Check if contract has enough ETH
         _requireSufficientETH(fee.nativeFee);
 
@@ -237,7 +239,8 @@ contract MarketLayerZeroBridge is
 
         // Check if the asserter has enough bond
         require(
-            remoteSubmitterBalances[asserter][currency] >= bond + remoteSubmitterWithdrawalIntent[asserter][currency],
+            remoteSubmitterBalances[asserter][currency] >=
+                bond + remoteSubmitterWithdrawalIntent[asserter][currency],
             "Asserter does not have enough bond"
         );
 
@@ -257,11 +260,14 @@ contract MarketLayerZeroBridge is
         );
 
         // Send the message with automatic fee calculation
-        (MessagingReceipt memory receipt, MessagingFee memory fee) = _sendLayerZeroMessageWithQuote(
-            Encoder.CMD_TO_UMA_ASSERT_TRUTH,
-            commandPayload,
-            false
-        );
+        (
+            MessagingReceipt memory receipt,
+            MessagingFee memory fee
+        ) = _sendLayerZeroMessageWithQuote(
+                Encoder.CMD_TO_UMA_ASSERT_TRUTH,
+                commandPayload,
+                false
+            );
 
         // Deduct the bond from the asserter
         remoteSubmitterBalances[asserter][currency] -= bond;

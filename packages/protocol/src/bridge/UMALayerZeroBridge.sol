@@ -33,7 +33,12 @@ struct AssertionMarketData {
  * 3. Manages bond tokens and gas fees
  * 4. Sends verification results back to Converge
  */
-contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondManagement {
+contract UMALayerZeroBridge is
+    OApp,
+    IUMALayerZeroBridge,
+    ETHManagement,
+    BondManagement
+{
     using SafeERC20 for IERC20;
     using Encoder for bytes;
     using BridgeTypes for BridgeTypes.BridgeConfig;
@@ -60,8 +65,9 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
     }
 
     function getBridgeConfig()
-        external override
+        external
         view
+        override
         returns (BridgeTypes.BridgeConfig memory)
     {
         return bridgeConfig;
@@ -73,7 +79,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         optimisticOracleV3Address = _optimisticOracleV3;
     }
 
-    function getOptimisticOracleV3() external override view returns (address) {
+    function getOptimisticOracleV3() external view override returns (address) {
         return optimisticOracleV3Address;
     }
 
@@ -86,7 +92,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
             assertionId
         ];
 
-        if(msg.sender != optimisticOracleV3Address) {
+        if (msg.sender != optimisticOracleV3Address) {
             revert("Only the OptimisticOracleV3 can call this function");
         }
 
@@ -103,7 +109,8 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         // Send message using contract's ETH balance
         (MessagingReceipt memory receipt, ) = _sendLayerZeroMessageWithQuote(
             Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK,
-            commandPayload,false
+            commandPayload,
+            false
         );
 
         // Notice: the bond is sent back to the submitter, not to the bridge, that's why we don't update the balance here.
@@ -118,7 +125,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
             assertionId
         ];
 
-        if(msg.sender != optimisticOracleV3Address) {
+        if (msg.sender != optimisticOracleV3Address) {
             revert("Only the OptimisticOracleV3 can call this function");
         }
 
@@ -134,7 +141,8 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         // Send message using contract's ETH balance
         (MessagingReceipt memory receipt, ) = _sendLayerZeroMessageWithQuote(
             Encoder.CMD_FROM_UMA_DISPUTED_CALLBACK,
-            commandPayload,false
+            commandPayload,
+            false
         );
 
         // We don't need to update the balance since it was already deducted when the assertion was submitted
@@ -160,13 +168,13 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
             "Invalid sender"
         );
 
-        // TODO: Check if the sender is the remote bridge
-
         // Handle incoming messages from the UMA side
         (uint16 commandType, bytes memory data) = _message.decodeType();
 
         if (commandType == Encoder.CMD_TO_UMA_ASSERT_TRUTH) {
             _handleAssertTruthCmd(data);
+        } else {
+            revert("Invalid command type");
         }
     }
 
@@ -175,7 +183,10 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         uint16 commandCode,
         bytes memory commandPayload,
         bool onlyQuote
-    ) internal returns (MessagingReceipt memory receipt, MessagingFee memory fee) {
+    )
+        internal
+        returns (MessagingReceipt memory receipt, MessagingFee memory fee)
+    {
         bytes memory message = abi.encode(commandCode, commandPayload);
 
         bytes memory options = OptionsBuilder
@@ -191,7 +202,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         );
 
         if (onlyQuote) {
-            return (MessagingReceipt(0,0,fee), fee);
+            return (MessagingReceipt(0, 0, fee), fee);
         }
 
         // Check if contract has enough ETH
@@ -219,7 +230,8 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         MessagingFee memory _fee
     ) external payable returns (MessagingReceipt memory) {
         require(msg.sender == address(this), "Only self-call allowed");
-        return _lzSend(_dstEid, _message, _options, _fee, payable(address(this)));
+        return
+            _lzSend(_dstEid, _message, _options, _fee, payable(address(this)));
     }
 
     function _handleAssertTruthCmd(bytes memory data) internal {
@@ -287,7 +299,8 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         // Send message using contract's ETH balance
         (MessagingReceipt memory receipt, ) = _sendLayerZeroMessageWithQuote(
             commandType,
-            commandPayload,false    
+            commandPayload,
+            false
         );
 
         return receipt;
@@ -298,7 +311,12 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         return Encoder.CMD_FROM_ESCROW_DEPOSIT;
     }
 
-    function _getIntentToWithdrawCommandType() internal pure override returns (uint16) {
+    function _getIntentToWithdrawCommandType()
+        internal
+        pure
+        override
+        returns (uint16)
+    {
         return Encoder.CMD_FROM_ESCROW_INTENT_TO_WITHDRAW;
     }
 
