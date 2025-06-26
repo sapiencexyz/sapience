@@ -23,7 +23,6 @@ target="sapience@uniswap"
 source="mintable-token@permissionless-mint"
 target="sapience@test-collateral-asset"
 var.symbol="wstETH"
-var.decimals="6"
 
 [clone.BondCurrency]
 source="mintable-token@permissionless-mint"
