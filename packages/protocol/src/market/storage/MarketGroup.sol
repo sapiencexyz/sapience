@@ -213,4 +213,18 @@ library MarketGroup {
     ) internal view returns (uint256) {
         return amount / self.collateralScalingFactor;
     }
+
+    /**
+     * @notice Denormalizes a collateral amount from 18 decimals to token's native decimals, rounding up
+     * @param self MarketGroup storage
+     * @param amount The amount in 18 decimals
+     * @return The amount in the collateral token's native decimals, rounded up
+     */
+    function denormalizeCollateralAmountUp(
+        Data storage self,
+        uint256 amount
+    ) internal view returns (uint256) {
+        uint256 factor = self.collateralScalingFactor;
+        return (amount + factor - 1) / factor;
+    }
 }

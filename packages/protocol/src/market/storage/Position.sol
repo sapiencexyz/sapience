@@ -98,15 +98,15 @@ library Position {
         if (deltaCollateral == 0) {
             return 0;
         } else if (deltaCollateral > 0) {
-            // Convert to token decimals for transfer
-            uint256 transferAmount = marketGroup.denormalizeCollateralAmount(deltaCollateral.toUint());
+            // Convert to token decimals for transfer (round up to ensure protocol receives full amount)
+            uint256 transferAmount = marketGroup.denormalizeCollateralAmountUp(deltaCollateral.toUint());
             collateralAsset.safeTransferFrom(
                 msg.sender,
                 address(this),
                 transferAmount
             );
         } else if (deltaCollateral < 0) {
-            // Convert to token decimals for transfer
+            // Convert to token decimals for transfer (round down to protect protocol)
             uint256 transferAmount = marketGroup.denormalizeCollateralAmount((deltaCollateral * -1).toUint());
             collateralAsset.safeTransfer(
                 msg.sender,
