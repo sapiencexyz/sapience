@@ -877,7 +877,7 @@ const MarketFormFields = ({
                   setShowMarketGroupDropdown(false);
                   setSelectedDropdownIndex(-1);
                 }}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-2 top-1/2 transform text-muted-foreground hover:text-foreground p-1"
               >
                 <X className="h-4 w-4" />
               </button>
