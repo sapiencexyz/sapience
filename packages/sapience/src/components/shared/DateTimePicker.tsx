@@ -9,7 +9,6 @@ import {
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
 import { cn } from '@sapience/ui/lib/utils';
-import { format, isSameDay } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -34,16 +33,60 @@ const DateTimePicker = ({
 }: DateTimePickerProps) => {
   const isUnset = value === 0;
   const currentDate = isUnset ? new Date() : new Date(value * 1000);
-  const minDate = min ? new Date(min * 1000) : undefined;
+  
+  // Set minimum date to today to prevent selecting past dates (in UTC)
+  const now = new Date();
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds()));
+  const minDate = min ? new Date(min * 1000) : today;
   const maxDate = max ? new Date(max * 1000) : undefined;
 
   const datePart = new Date(currentDate);
-  datePart.setHours(0, 0, 0, 0);
+  datePart.setUTCHours(0, 0, 0, 0);
 
   // Local state for time input and focus
   const [localTime, setLocalTime] = useState(timePart || '');
   const [isFocused, setIsFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Separate state for calendar (local time)
+  const [calendarDate, setCalendarDate] = useState<Date | undefined>(
+    isUnset ? undefined : new Date(value * 1000)
+  );
+
+  // Helper function to format time in UTC
+  const formatUTCTime = (date: Date) => {
+    return date.toISOString().slice(11, 16); // 'HH:mm' in UTC
+  };
+
+  // Helper function to check if two dates are the same day in UTC
+  const isSameUTCDay = (date1: Date, date2: Date) => {
+    return (
+      date1.getUTCFullYear() === date2.getUTCFullYear() &&
+      date1.getUTCMonth() === date2.getUTCMonth() &&
+      date1.getUTCDate() === date2.getUTCDate()
+    );
+  };
+
+  // Helper function to convert local timestamp to UTC timestamp
+  const localToUTCTimestamp = (localDate: Date): number => {
+    const utcDate = new Date(Date.UTC(localDate.getFullYear(), localDate.getMonth(), localDate.getDate()));
+    return Math.floor(utcDate.getTime() / 1000);
+  };
+
+  // Helper function to convert UTC timestamp to local date for calendar
+  const utcToLocalDate = (utcTimestamp: number): Date => {
+    const utcDate = new Date(utcTimestamp * 1000);
+    return new Date(utcDate.getUTCFullYear(), utcDate.getUTCMonth(), utcDate.getUTCDate());
+  };
+
+  // Sync calendarDate with value changes
+  useEffect(() => {
+    if (isUnset) {
+      setCalendarDate(undefined);
+    } else {
+      setCalendarDate(utcToLocalDate(value));
+    }
+  }, [value, isUnset]);
 
   // Sync localTime with prop changes
   useEffect(() => {
@@ -61,22 +104,89 @@ const DateTimePicker = ({
 
   const handleDateSelect = (newDate: Date | undefined) => {
     if (!newDate) return;
-    const [hours, minutes] = (localTime || '').split(':').map(Number);
-    const updatedDate = new Date(newDate);
+    
+    // Update calendar state with local date
+    setCalendarDate(newDate);
+    
+    // Transform local date to UTC timestamp
+    const utcTimestamp = localToUTCTimestamp(newDate);
+    
+    // Check if the selected date is today (in UTC)
+    const utcDate = new Date(utcTimestamp * 1000);
+    const isToday = isSameUTCDay(utcDate, today);
+    
+    let hours = 0;
+    let minutes = 0;
+    
+    if (isToday) {
+      // If today is selected, use current time + 1 minute (in UTC)
+      const oneMinuteAhead = new Date(now.getTime() + 60000); // Add 60 seconds
+      hours = oneMinuteAhead.getUTCHours();
+      minutes = oneMinuteAhead.getUTCMinutes();
+    } else {
+      // For other dates, use existing time or default to 00:00
+      [hours, minutes] = (localTime || '').split(':').map(Number);
+    }
+    
+    const updatedDate = new Date(utcDate);
     updatedDate.setUTCHours(hours || 0, minutes || 0, 0, 0);
     const updatedTimestamp = Math.floor(updatedDate.getTime() / 1000);
+    
     if (!isFocused) {
+      // Check min constraint first
       if (min !== undefined && updatedTimestamp < min) {
         setError('End time is before start time');
         onChange(min);
+        // Update local time to match the min constraint
+        const minDate = new Date(min * 1000);
+        setLocalTime(formatUTCTime(minDate));
         return;
       }
+      
+      // Check max constraint
       if (max !== undefined && updatedTimestamp > max) {
         setError('Start time is after end time');
         onChange(max);
+        // Update local time to match the max constraint
+        const maxDate = new Date(max * 1000);
+        setLocalTime(formatUTCTime(maxDate));
         return;
       }
+      
+      // If today and time is in the past, set to current time (but only if constraints allow)
+      if (isToday) {
+        const oneMinuteAhead = new Date(now.getTime() + 60000); // Add 60 seconds
+        const currentTime = oneMinuteAhead.getUTCHours() * 60 + oneMinuteAhead.getUTCMinutes();
+        const selectedTime = (hours || 0) * 60 + (minutes || 0);
+        
+        if (selectedTime < currentTime) {
+          // Check if one minute ahead would violate min constraint
+          const oneMinuteAheadDate = new Date();
+          oneMinuteAheadDate.setUTCHours(oneMinuteAhead.getUTCHours(), oneMinuteAhead.getUTCMinutes(), 0, 0);
+          const oneMinuteAheadTimestamp = Math.floor(oneMinuteAheadDate.getTime() / 1000);
+          
+          if (min !== undefined && oneMinuteAheadTimestamp < min) {
+            setError('Current time is before minimum allowed time');
+            onChange(min);
+            // Update local time to match the min constraint
+            const minDate = new Date(min * 1000);
+            setLocalTime(formatUTCTime(minDate));
+            return;
+          }
+          
+          setError('Cannot set time in the past');
+          onChange(oneMinuteAheadTimestamp);
+          setLocalTime(formatUTCTime(oneMinuteAhead));
+          return;
+        }
+      }
+      
       setError(null);
+      // Set local time to match the actual selected time
+      if (isToday) {
+        const oneMinuteAhead = new Date(now.getTime() + 60000); // Add 60 seconds
+        setLocalTime(formatUTCTime(oneMinuteAhead));
+      }
     }
     onChange(updatedTimestamp);
   };
@@ -110,6 +220,27 @@ const DateTimePicker = ({
     const updatedDate = new Date(datePart);
     updatedDate.setUTCHours(hours || 0, minutes || 0, 0, 0);
     const updatedTimestamp = Math.floor(updatedDate.getTime() / 1000);
+    
+    // Check if the selected date is today and time is in the past
+    const now = new Date();
+    const isToday = isSameUTCDay(datePart, today);
+    
+    if (isToday) {
+      const oneMinuteAhead = new Date(now.getTime() + 60000); // Add 60 seconds
+      const currentTime = oneMinuteAhead.getUTCHours() * 60 + oneMinuteAhead.getUTCMinutes();
+      const selectedTime = (hours || 0) * 60 + (minutes || 0);
+      
+      if (selectedTime < currentTime) {
+        setError('Cannot set time in the past');
+        // Set to one minute ahead
+        const oneMinuteAheadDate = new Date();
+        oneMinuteAheadDate.setUTCHours(oneMinuteAhead.getUTCHours(), oneMinuteAhead.getUTCMinutes(), 0, 0);
+        onChange(Math.floor(oneMinuteAheadDate.getTime() / 1000));
+        setLocalTime(formatUTCTime(oneMinuteAhead));
+        return;
+      }
+    }
+    
     // Only perform range checks when not focused
     if (min !== undefined && updatedTimestamp < min) {
       setError('End time is before start time, setting a fallback');
@@ -126,15 +257,15 @@ const DateTimePicker = ({
   }
 
   const computeMinTime = () => {
-    if (minDate && isSameDay(currentDate, minDate)) {
-      return format(minDate, 'HH:mm');
+    if (minDate && isSameUTCDay(currentDate, minDate)) {
+      return formatUTCTime(minDate);
     }
     return undefined;
   };
 
   const computeMaxTime = () => {
-    if (maxDate && isSameDay(currentDate, maxDate)) {
-      return format(maxDate, 'HH:mm');
+    if (maxDate && isSameUTCDay(currentDate, maxDate)) {
+      return formatUTCTime(maxDate);
     }
     return undefined;
   };
@@ -154,13 +285,13 @@ const DateTimePicker = ({
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {isUnset
                   ? 'Select date'
-                  : currentDate.toISOString().slice(0, 10)}
+                  : calendarDate?.toISOString().slice(0, 10) || 'Select date'}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={isUnset ? undefined : currentDate}
+                selected={calendarDate}
                 onSelect={handleDateSelect}
                 initialFocus
                 fromDate={minDate}

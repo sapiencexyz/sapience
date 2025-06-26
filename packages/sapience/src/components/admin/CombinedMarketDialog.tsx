@@ -363,6 +363,72 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
     });
   };
 
+  // Handler for market group level changes (when copying from existing markets)
+  const handleMarketGroupChange = (field: string, value: string) => {
+    switch (field) {
+      case 'question':
+        setQuestion(value);
+        break;
+      case 'category':
+        setSelectedCategory(value);
+        break;
+      case 'resourceId':
+        if (value === 'none') {
+          setSelectedResourceId(null);
+          // Update token names for Yes/No markets
+          setBaseTokenName('Yes');
+          setQuoteTokenName('sUSDS');
+        } else {
+          setSelectedResourceId(Number(value));
+          // Clear token names for indexed markets
+          setBaseTokenName('');
+          setQuoteTokenName('');
+        }
+        break;
+      case 'baseTokenName':
+        setBaseTokenName(value);
+        break;
+      case 'quoteTokenName':
+        setQuoteTokenName(value);
+        break;
+      default:
+        console.warn(`Unknown market group field: ${field}`);
+    }
+  };
+
+  // Handler for advanced configuration changes (when copying from existing markets)
+  const handleAdvancedConfigChange = (field: string, value: string) => {
+    switch (field) {
+      case 'chainId':
+        setChainId(value);
+        break;
+      case 'factoryAddress':
+        setFactoryAddress(value);
+        break;
+      case 'owner':
+        setOwner(value);
+        break;
+      case 'collateralAsset':
+        setCollateralAsset(value);
+        break;
+      case 'minTradeSize':
+        setMinTradeSize(value);
+        break;
+      case 'feeRate':
+      case 'assertionLiveness':
+      case 'bondAmount':
+      case 'bondCurrency':
+      case 'uniswapPositionManager':
+      case 'uniswapSwapRouter':
+      case 'uniswapQuoter':
+      case 'optimisticOracleV3':
+        setMarketParams((prev) => ({ ...prev, [field]: value }));
+        break;
+      default:
+        console.warn(`Unknown advanced config field: ${field}`);
+    }
+  };
+
   const addMarket = () => {
     // Use a unique ID, e.g., timestamp or incrementing number if more robust generation is needed
     const newMarketId =
@@ -657,7 +723,95 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             />
           </div>
         )}
-        {/* Advanced Market Group Configuration Accordion - remains the same */}
+      </div>
+
+      {/* Markets Section - Refactored to use MarketFormFields */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">Markets</h3>
+          <Button type="button" variant="outline" size="sm" onClick={addMarket}>
+            <Plus className="h-4 w-4 mr-2" /> Add Market
+          </Button>
+        </div>
+
+        {markets.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            💡 New markets will copy all parameters from the previous market
+            including market question, claim statement, pricing parameters,
+            rules, and option names. You&apos;ll still need to set the end time
+            for each market.
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          {markets.map((market, index) => (
+            <button
+              key={market.id} // Use market.id for key
+              type="button"
+              className={`px-3 py-1 text-sm rounded flex items-center ${
+                activeMarketIndex === index
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary'
+              }`}
+              onClick={() => setActiveMarketIndex(index)}
+            >
+              Market {index + 1} {/* Display 1-based index for user */}
+              {marketsWithCopiedParams.has(market.id) && (
+                <span
+                  className="ml-1 text-xs opacity-70"
+                  title="Parameters copied from previous market"
+                >
+                  📋
+                </span>
+              )}
+              {markets.length > 1 && (
+                <Trash
+                  className="h-3.5 w-3.5 ml-2 cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeMarket(index);
+                  }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {markets.map((market, index) => (
+          <div
+            key={market.id}
+            className={activeMarketIndex === index ? 'block' : 'hidden'}
+          >
+            <Card>
+              <CardContent>
+                <MarketFormFields
+                  market={market}
+                  onMarketChange={(field, value) =>
+                    handleMarketChange(index, field, value)
+                  }
+                  marketIndex={index} // Pass index for unique field IDs
+                  onMarketGroupChange={handleMarketGroupChange}
+                  marketGroupQuestion={question}
+                  category={selectedCategory}
+                  resourceId={selectedResourceId?.toString()}
+                  baseTokenName={baseTokenName}
+                  quoteTokenName={quoteTokenName}
+                  chainId={chainId}
+                  factoryAddress={factoryAddress}
+                  owner={owner}
+                  collateralAsset={collateralAsset}
+                  minTradeSize={minTradeSize}
+                  marketParams={marketParams}
+                  onAdvancedConfigChange={handleAdvancedConfigChange}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        ))}
+      </div>
+
+      {/* Advanced Market Group Configuration */}
+      <div className="space-y-4">
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="details">
             <AccordionTrigger>
@@ -777,78 +931,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-      </div>
-
-      {/* Markets Section - Refactored to use MarketFormFields */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">Markets</h3>
-          <Button type="button" variant="outline" size="sm" onClick={addMarket}>
-            <Plus className="h-4 w-4 mr-2" /> Add Market
-          </Button>
-        </div>
-
-        {markets.length > 0 && (
-          <p className="text-sm text-muted-foreground">
-            💡 New markets will copy all parameters from the previous market
-            including market question, claim statement, pricing parameters,
-            rules, and option names. You&apos;ll still need to set the end time
-            for each market.
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          {markets.map((market, index) => (
-            <button
-              key={market.id} // Use market.id for key
-              type="button"
-              className={`px-3 py-1 text-sm rounded flex items-center ${
-                activeMarketIndex === index
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary'
-              }`}
-              onClick={() => setActiveMarketIndex(index)}
-            >
-              Market {index + 1} {/* Display 1-based index for user */}
-              {marketsWithCopiedParams.has(market.id) && (
-                <span
-                  className="ml-1 text-xs opacity-70"
-                  title="Parameters copied from previous market"
-                >
-                  📋
-                </span>
-              )}
-              {markets.length > 1 && (
-                <Trash
-                  className="h-3.5 w-3.5 ml-2 cursor-pointer"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeMarket(index);
-                  }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {markets.map((market, index) => (
-          <div
-            key={market.id}
-            className={activeMarketIndex === index ? 'block' : 'hidden'}
-          >
-            <Card>
-              <CardContent>
-                <MarketFormFields
-                  market={market}
-                  onMarketChange={(field, value) =>
-                    handleMarketChange(index, field, value)
-                  }
-                  marketIndex={index} // Pass index for unique field IDs
-                />
-              </CardContent>
-            </Card>
-          </div>
-        ))}
       </div>
 
       <div className="mt-6">
