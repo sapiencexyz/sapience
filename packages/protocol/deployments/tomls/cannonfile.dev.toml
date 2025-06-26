@@ -80,6 +80,7 @@ args=[
   "<%= CollateralAsset.Token.address %>",
   [],
   "<%= settings.minTradeSize %>",
+  "false",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= imports.BondCurrency.contracts.Token.address %>", bondAmount= "<%= settings.bondAmount %>",  uniswapPositionManager =  "<%= imports.Uniswap.contracts.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= imports.Uniswap.contracts.SwapRouter.address %>", uniswapQuoter = "<%= imports.Uniswap.contracts.QuoterV2.address %>", optimisticOracleV3 = "<%= imports.UMA.contracts.OptimisticOracleV3.address %>" }
 ]
 depends=["router.Sapience", "clone.BondCurrency"]

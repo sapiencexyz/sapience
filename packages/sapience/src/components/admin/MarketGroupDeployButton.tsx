@@ -225,6 +225,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
         [],
         zeroAddress,
         BigInt(group.minTradeSize),
+        false, // TODO Add bridged settlement flag
         {
           feeRate: feeRateNumber,
           assertionLiveness: BigInt(assertionLivenessNumber),

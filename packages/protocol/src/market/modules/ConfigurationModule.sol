@@ -32,6 +32,7 @@ contract ConfigurationModule is
         address collateralAsset,
         address[] calldata feeCollectors,
         uint256 minTradeSize,
+        bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams
     ) external override nonReentrant {
         address feeCollectorNFT;
@@ -50,6 +51,7 @@ contract ConfigurationModule is
             collateralAsset,
             feeCollectorNFT,
             minTradeSize,
+            bridgedSettlement,
             marketParams
         );
         emit MarketInitialized(
@@ -57,6 +59,7 @@ contract ConfigurationModule is
             collateralAsset,
             feeCollectorNFT,
             minTradeSize,
+            bridgedSettlement,
             marketParams
         );
     }

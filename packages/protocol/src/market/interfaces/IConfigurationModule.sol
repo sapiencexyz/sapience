@@ -9,6 +9,7 @@ interface IConfigurationModule {
         address collateralAsset,
         address feeCollectorNFT,
         uint256 minTradeSize,
+        bool bridgedSettlement,
         ISapienceStructs.MarketParams marketParams
     );
 
@@ -38,6 +39,7 @@ interface IConfigurationModule {
      * @param collateralAsset Address of the collateral used by the market group. This cannot be a rebase token.
      * @param feeCollectors Addresses of fee collectors
      * @param minTradeSize Minimum trade size for a position
+     * @param bridgedSettlement Whether the market group uses bridged settlement
      * @param marketParams Parameters used when new markets are created
      */
     function initializeMarketGroup(
@@ -45,6 +47,7 @@ interface IConfigurationModule {
         address collateralAsset,
         address[] calldata feeCollectors,
         uint256 minTradeSize,
+        bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams
     ) external;
 

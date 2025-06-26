@@ -64,6 +64,7 @@ contract MarketGroupFactoryTest is Test {
                 address(collateralAsset),
                 feeCollectors,
                 MIN_TRADE_SIZE,
+                false,
                 ISapienceStructs.MarketParams({
                     feeRate: 10000,
                     assertionLiveness: 21600,
@@ -83,6 +84,7 @@ contract MarketGroupFactoryTest is Test {
                 address(collateralAsset),
                 feeCollectors,
                 MIN_TRADE_SIZE,
+                false,
                 ISapienceStructs.MarketParams({
                     feeRate: 10000,
                     assertionLiveness: 21600,
@@ -111,6 +113,7 @@ contract MarketGroupFactoryTest is Test {
             address(collateralAsset),
             feeCollectors,
             MIN_TRADE_SIZE,
+            false,
             ISapienceStructs.MarketParams({
                 feeRate: 0,
                 assertionLiveness: 21600,
@@ -133,6 +136,7 @@ contract MarketGroupFactoryTest is Test {
                 address(collateralAsset),
                 feeCollectors,
                 MIN_TRADE_SIZE,
+                false,
                 ISapienceStructs.MarketParams({
                     feeRate: 10000,
                     assertionLiveness: 21600,
@@ -153,6 +157,7 @@ contract MarketGroupFactoryTest is Test {
             address(collateralAsset),
             feeCollectors,
             MIN_TRADE_SIZE,
+            false,
             ISapienceStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,

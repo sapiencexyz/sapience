@@ -76,6 +76,7 @@ contract TestMarket is TestUser {
             vm.getAddress("CollateralAsset.Token"),
             feeCollectors,
             minTradeSize,
+            false,
             ISapienceStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,
