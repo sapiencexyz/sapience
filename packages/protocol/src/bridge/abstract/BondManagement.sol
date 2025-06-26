@@ -40,6 +40,8 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         address bondToken,
         uint256 amount
     ) external virtual nonReentrant returns (MessagingReceipt memory) {
+        require(bondToken != address(0), "Bond token cannot be zero address");
+
         require(amount > 0, "Amount must be greater than 0");
 
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
@@ -69,6 +71,7 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         address bondToken,
         uint256 amount
     ) external virtual nonReentrant returns (MessagingReceipt memory) {
+        require(bondToken != address(0), "Bond token cannot be zero address");
         require(amount > 0, "Amount must be greater than 0");
         require(
             submitterBondBalances[msg.sender][bondToken] >= amount,
@@ -104,6 +107,7 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @return receipt The messaging receipt
      */
     function executeWithdrawal(address bondToken) external virtual nonReentrant returns (MessagingReceipt memory) {
+        require(bondToken != address(0), "Bond token cannot be zero address");
         BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[msg.sender][
             bondToken
         ];
