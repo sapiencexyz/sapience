@@ -133,6 +133,7 @@ const MARKETS_QUERY = gql`
       deployTimestamp
       deployTxnBlockNumber
       isCumulative
+      claimStatement
       resource {
         id
         name
@@ -169,6 +170,7 @@ const MARKETS_QUERY = gql`
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
         startingSqrtPriceX96
+        rules
         marketParams {
           feeRate
           assertionLiveness

@@ -65,7 +65,9 @@ export class MarketGroupResolver {
       }
 
       const marketGroups = await queryBuilder.getMany();
-      return marketGroups.map(mapMarketGroupToType);
+      const result = marketGroups.map(mapMarketGroupToType);
+      // console.log('result', result);
+      return result;
     } catch (error) {
       console.error('Error fetching market groups:', error);
       throw new Error('Failed to fetch market groups');
