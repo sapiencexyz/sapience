@@ -11,10 +11,10 @@ export default function CreateMarketGroupPage() {
           Launch a new market group with multiple markets
         </p>
       </header>
-      
+
       <div className="max-w-4xl">
         <CombinedMarketDialog />
       </div>
     </div>
   );
-} 
+}

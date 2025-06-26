@@ -22,13 +22,14 @@ import {
 } from '@sapience/ui/components/ui/select';
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { AlertCircle, Loader2, Plus, Trash, ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
 
 import {
   FOCUS_AREAS,
@@ -42,6 +43,8 @@ import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Impo
 const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 
 // Default values for form fields
+
+const CAT_MEOW_FILE = '/cat-meow.mp3';
 const BASE_CHAIN_ID = 8453;
 const DEFAULT_BASE_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
 const DEFAULT_BOND_CURRENCY = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -121,9 +124,7 @@ const marketParamsSchema = z.object({
   uniswapSwapRouter: z
     .string()
     .refine(isAddress, 'Invalid Uniswap Swap Router Address'),
-  uniswapQuoter: z
-    .string()
-    .refine(isAddress, 'Invalid Uniswap Quoter Address'),
+  uniswapQuoter: z.string().refine(isAddress, 'Invalid Uniswap Quoter Address'),
   optimisticOracleV3: z
     .string()
     .refine(isAddress, 'Invalid Optimistic Oracle V3 Address'),
@@ -255,16 +256,12 @@ const createMarketFromPrevious = (
   };
 };
 
-interface CombinedMarketDialogProps {
-  onClose?: () => void;
-}
-
-const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
+const CombinedMarketDialog = () => {
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
   const { signMessageAsync } = useSignMessage();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  // Remove unused queryClient
   const { data: resources } = useResources();
   const router = useRouter();
 
@@ -319,11 +316,12 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
     setIsMounted(true);
     // Generate nonce only on client side to prevent hydration mismatch
     setNonce(Math.floor(Math.random() * 1e18).toString());
-    
+
     // Set owner based on chain and connected address after mounting
-    const defaultOwner = currentChainId === BASE_CHAIN_ID
-      ? DEFAULT_BASE_OWNER
-      : connectedAddress || '';
+    const defaultOwner =
+      currentChainId === BASE_CHAIN_ID
+        ? DEFAULT_BASE_OWNER
+        : connectedAddress || '';
     setOwner(defaultOwner);
   }, [currentChainId, connectedAddress]);
 
@@ -602,23 +600,31 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       await createMarketGroup(payload);
 
       // Play success sound
-      const audio = new Audio('/cat-meow.mp3');
-      audio.play().catch((e) => {
-        console.log('Error playing success sound', e);
+      const audio = new Audio(CAT_MEOW_FILE);
+      audio.play().catch((audioError) => {
+        console.log(
+          'Error playing audio, playing a beep sound instead',
+          audioError
+        );
         // Fallback: create a simple success beep
-        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const context = new (window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext)();
         const oscillator = context.createOscillator();
         const gainNode = context.createGain();
-        
+
         oscillator.connect(gainNode);
         gainNode.connect(context.destination);
-        
+
         oscillator.frequency.setValueAtTime(1000, context.currentTime);
         oscillator.type = 'sine';
-        
+
         gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
-        
+        gainNode.gain.exponentialRampToValueAtTime(
+          0.01,
+          context.currentTime + 0.5
+        );
+
         oscillator.start(context.currentTime);
         oscillator.stop(context.currentTime + 0.5);
       });
@@ -634,7 +640,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
   };
 
   return (
-    <>
+    <div>
       {!isMounted ? (
         <div className="flex items-center justify-center p-8">
           <Loader2 className="h-6 w-6 animate-spin" />
@@ -642,10 +648,7 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
       ) : (
         <div className="relative">
           {/* Form - takes full width */}
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-6 p-1"
-          >
+          <form onSubmit={handleSubmit} className="space-y-6 p-1">
             {/* Back Button */}
             <div className="flex items-center gap-4">
               <Button
@@ -664,7 +667,9 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
               {/* Market Group Question */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="marketGroupQuestion">Market Group Question</Label>
+                  <Label htmlFor="marketGroupQuestion">
+                    Market Group Question
+                  </Label>
                   <Input
                     id="marketGroupQuestion"
                     type="text"
@@ -719,7 +724,10 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                   <SelectContent>
                     <SelectItem value="none">None (Yes/No)</SelectItem>
                     {resources?.map((resource) => (
-                      <SelectItem key={resource.id} value={resource.id.toString()}>
+                      <SelectItem
+                        key={resource.id}
+                        value={resource.id.toString()}
+                      >
                         {resource.name}
                       </SelectItem>
                     ))}
@@ -769,17 +777,22 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">Markets</h3>
-                <Button type="button" variant="outline" size="sm" onClick={addMarket}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addMarket}
+                >
                   <Plus className="h-4 w-4 mr-2" /> Add Market
                 </Button>
               </div>
 
               {markets.length > 0 && (
                 <p className="text-sm text-muted-foreground">
-                  💡 New markets will copy all parameters from the previous market
-                  including market question, claim statement, pricing parameters,
-                  rules, and option names. You&apos;ll still need to set the end time
-                  for each market.
+                  💡 New markets will copy all parameters from the previous
+                  market including market question, claim statement, pricing
+                  parameters, rules, and option names. You&apos;ll still need to
+                  set the end time for each market.
                 </p>
               )}
 
@@ -831,17 +844,6 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                         }
                         marketIndex={index} // Pass index for unique field IDs
                         onMarketGroupChange={handleMarketGroupChange}
-                        marketGroupQuestion={question}
-                        category={selectedCategory}
-                        resourceId={selectedResourceId?.toString()}
-                        baseTokenName={baseTokenName}
-                        quoteTokenName={quoteTokenName}
-                        chainId={chainId}
-                        factoryAddress={factoryAddress}
-                        owner={owner}
-                        collateralAsset={collateralAsset}
-                        minTradeSize={minTradeSize}
-                        marketParams={marketParams}
                         onAdvancedConfigChange={handleAdvancedConfigChange}
                       />
                     </CardContent>
@@ -907,9 +909,11 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                           required
                           inputMode="numeric"
                         />
-                     </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="collateralAsset">Collateral Asset</Label>
+                        <Label htmlFor="collateralAsset">
+                          Collateral Asset
+                        </Label>
                         <Input
                           id="collateralAsset"
                           type="text"
@@ -920,7 +924,9 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="minTradeSize">Min Trade Size (Units)</Label>
+                        <Label htmlFor="minTradeSize">
+                          Min Trade Size (Units)
+                        </Label>
                         <Input
                           id="minTradeSize"
                           type="text"
@@ -941,9 +947,14 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
                             key === 'assertionLiveness' ||
                             key === 'bondAmount';
                           const inputType = isNumericInput ? 'number' : 'text';
-                          const inputModeType = isNumericInput ? 'numeric' : 'text';
+                          const inputModeType = isNumericInput
+                            ? 'numeric'
+                            : 'text';
                           let placeholderText = '0x...';
-                          if (key.includes('Amount') || key.includes('Liveness'))
+                          if (
+                            key.includes('Amount') ||
+                            key.includes('Liveness')
+                          )
                             placeholderText = 'e.g., 100...';
                           else if (key.includes('Rate'))
                             placeholderText = 'e.g., 3000';
@@ -993,50 +1004,115 @@ const CombinedMarketDialog = ({ onClose }: CombinedMarketDialogProps) => {
           <div className="hidden md:block">
             <div className="fixed right-12 top-32 z-20 w-80 flex flex-col justify-center items-center">
               {showCat && (
-                <>
-                  <img
-                    src="https://freepngimg.com/thumb/cat/40-cat-png-image-download-picture-kitten.png"
+                <div>
+                  <Image
+                    src="/cat.png"
+                    width={320}
+                    height={320}
                     alt="A cute cat"
                     className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => {
                       // Using local cat meow sound file
-                      const audio = new Audio('/cat-meow.mp3');
-                      audio.play().catch((e) => {
-                        console.log('Error playing audio, playing a beep sound instead', e);
+                      const audio = new Audio(CAT_MEOW_FILE);
+                      audio.play().catch((audioError) => {
+                        console.log('Error playing audio', audioError);
                         // Fallback: create a simple beep sound
-                        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+                        const context = new (window.AudioContext ||
+                          (
+                            window as unknown as {
+                              webkitAudioContext: typeof AudioContext;
+                            }
+                          ).webkitAudioContext)();
                         const oscillator = context.createOscillator();
                         const gainNode = context.createGain();
-                        
+
                         oscillator.connect(gainNode);
                         gainNode.connect(context.destination);
-                        
-                        oscillator.frequency.setValueAtTime(800, context.currentTime);
+
+                        oscillator.frequency.setValueAtTime(
+                          800,
+                          context.currentTime
+                        );
                         oscillator.type = 'sine';
-                        
+
                         gainNode.gain.setValueAtTime(0.3, context.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
-                        
+                        gainNode.gain.exponentialRampToValueAtTime(
+                          0.01,
+                          context.currentTime + 0.3
+                        );
+
                         oscillator.start(context.currentTime);
                         oscillator.stop(context.currentTime + 0.3);
                       });
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        // Trigger the same click handler
+                        const audio = new Audio(CAT_MEOW_FILE);
+                        audio.play().catch((audioError) => {
+                          console.log('Error playing audio', audioError);
+                          // Fallback: create a simple beep sound
+                          const context = new (window.AudioContext ||
+                            (
+                              window as unknown as {
+                                webkitAudioContext: typeof AudioContext;
+                              }
+                            ).webkitAudioContext)();
+                          const oscillator = context.createOscillator();
+                          const gainNode = context.createGain();
+
+                          oscillator.connect(gainNode);
+                          gainNode.connect(context.destination);
+
+                          oscillator.frequency.setValueAtTime(
+                            800,
+                            context.currentTime
+                          );
+                          oscillator.type = 'sine';
+
+                          gainNode.gain.setValueAtTime(
+                            0.3,
+                            context.currentTime
+                          );
+                          gainNode.gain.exponentialRampToValueAtTime(
+                            0.01,
+                            context.currentTime + 0.3
+                          );
+
+                          oscillator.start(context.currentTime);
+                          oscillator.stop(context.currentTime + 0.3);
+                        });
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label="Click to hear cat meow sound"
                   />
                   <p className="text-sm text-muted-foreground mt-2 text-center">
                     🐱 Your friendly companion (pet it!)
                   </p>
-                </>
+                </div>
               )}
               {/* Show Cat Toggle always visible under the image/caption */}
               <div className="flex items-center gap-2 mt-4">
-                <Switch id="show-cat" checked={showCat} onCheckedChange={setShowCat} />
-                <label htmlFor="show-cat" className="text-sm font-medium select-none cursor-pointer">Show Cat</label>
+                <Label
+                  htmlFor="show-cat"
+                  className="text-sm font-medium select-none cursor-pointer"
+                >
+                  Show Cat
+                </Label>
+                <Switch
+                  id="show-cat"
+                  checked={showCat}
+                  onCheckedChange={setShowCat}
+                />
               </div>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 

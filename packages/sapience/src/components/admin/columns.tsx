@@ -292,8 +292,8 @@ const SettlementPriceCell = ({ group }: { group: EnrichedMarketGroup }) => {
 
   const marketToUse = currentMarket || mostRecentSettledMarket;
 
-  const marketId = Number(marketToUse.marketId);
-  const endTimestamp = marketToUse.endTimestamp ?? 0;
+  const marketId = Number(marketToUse?.marketId);
+  const endTimestamp = marketToUse?.endTimestamp ?? 0;
 
   const { indexPrice, isLoading, error, isActive } = useMarketPriceData(
     group.address!,
