@@ -105,11 +105,13 @@ contract CollateralDecimals8Test is Test {
         // Test exact division - should return same as regular denormalize
         uint256 exactAmount = 1e18; // 1 token in 18 decimals
         uint256 regular = marketGroup.denormalizeCollateralAmount(exactAmount);
-        uint256 roundedUp = marketGroup.denormalizeCollateralAmountUp(exactAmount);
+        uint256 roundedUp = marketGroup.denormalizeCollateralAmountUp(
+            exactAmount
+        );
         assertEq(regular, roundedUp, "Exact amounts should be equal");
 
         // Test amount that requires rounding
-        uint256 fractionalAmount = 1e9; // 0.000000001 in 18 decimals (less than 1 satoshi)
+        uint256 fractionalAmount = 1e9; // 0.000000001 in 18 decimals
         regular = marketGroup.denormalizeCollateralAmount(fractionalAmount);
         roundedUp = marketGroup.denormalizeCollateralAmountUp(fractionalAmount);
         assertEq(regular, 0, "Regular denormalize should round down to 0");
@@ -128,7 +130,11 @@ contract CollateralDecimals8Test is Test {
         roundedUp = marketGroup.denormalizeCollateralAmountUp(largeAmount);
         uint256 remainder = largeAmount % marketGroup.collateralScalingFactor;
         if (remainder > 0) {
-            assertEq(roundedUp, regular + 1, "Round up should be 1 unit higher when there's remainder");
+            assertEq(
+                roundedUp,
+                regular + 1,
+                "Round up should be 1 unit higher when there's remainder"
+            );
         } else {
             assertEq(roundedUp, regular, "Should be equal when no remainder");
         }

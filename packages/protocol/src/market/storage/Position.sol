@@ -89,7 +89,7 @@ library Position {
     ) internal returns (int256 deltaCollateral) {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         IERC20 collateralAsset = marketGroup.collateralAsset;
-        
+
         // Calculate delta in 18 decimals
         deltaCollateral =
             amount.toInt() -
@@ -99,19 +99,20 @@ library Position {
             return 0;
         } else if (deltaCollateral > 0) {
             // Convert to token decimals for transfer (round up to ensure protocol receives full amount)
-            uint256 transferAmount = marketGroup.denormalizeCollateralAmountUp(deltaCollateral.toUint());
+            uint256 transferAmount = marketGroup.denormalizeCollateralAmountUp(
+                deltaCollateral.toUint()
+            );
             collateralAsset.safeTransferFrom(
                 msg.sender,
                 address(this),
                 transferAmount
             );
         } else if (deltaCollateral < 0) {
-            // Convert to token decimals for transfer (round down to protect protocol)
-            uint256 transferAmount = marketGroup.denormalizeCollateralAmount((deltaCollateral * -1).toUint());
-            collateralAsset.safeTransfer(
-                msg.sender,
-                transferAmount
+            // Convert to token decimals for transfer
+            uint256 transferAmount = marketGroup.denormalizeCollateralAmount(
+                (deltaCollateral * -1).toUint()
             );
+            collateralAsset.safeTransfer(msg.sender, transferAmount);
         }
 
         self.depositedCollateralAmount = amount;
@@ -226,7 +227,9 @@ library Position {
 
         // 2- convert everything to quote tokens
         if (self.vBaseAmount > 0) {
-            self.vQuoteAmount += self.vBaseAmount.mulDecimal(settlementPriceD18);
+            self.vQuoteAmount += self.vBaseAmount.mulDecimal(
+                settlementPriceD18
+            );
             self.vBaseAmount = 0;
         }
         if (self.borrowedVBase > 0) {
