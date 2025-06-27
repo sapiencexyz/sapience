@@ -9,7 +9,7 @@ class MockTextEncoder {
   encoding = 'utf-8';
 
   static encode(input: string): Uint8Array {
-    return Buffer.from(input, 'utf-8');
+    return new Uint8Array(Buffer.from(input, 'utf-8'));
   }
 
   static encodeInto(
