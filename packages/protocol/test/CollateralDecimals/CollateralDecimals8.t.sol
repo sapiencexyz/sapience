@@ -140,6 +140,34 @@ contract CollateralDecimals8Test is Test {
         }
     }
 
+    function test_NormalizeSignedCollateralAmount() public view {
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+
+        // Test zero
+        int256 result = marketGroup.normalizeSignedCollateralAmount(0);
+        assertEq(result, 0, "Zero should remain zero");
+
+        // Test positive amount
+        int256 positiveAmount = 1e8; // 1 WBTC
+        result = marketGroup.normalizeSignedCollateralAmount(positiveAmount);
+        assertEq(result, 1e18, "1 WBTC should normalize to 1e18");
+
+        // Test negative amount
+        int256 negativeAmount = -5e7; // -0.5 WBTC
+        result = marketGroup.normalizeSignedCollateralAmount(negativeAmount);
+        assertEq(result, -5e17, "-0.5 WBTC should normalize to -0.5e18");
+
+        // Test large negative amount
+        int256 largeNegative = -1000 * 1e8; // -1000 WBTC
+        result = marketGroup.normalizeSignedCollateralAmount(largeNegative);
+        assertEq(result, -1000 * 1e18, "-1000 WBTC should normalize correctly");
+
+        // Test edge case: -1 satoshi
+        int256 negativeSatoshi = -1;
+        result = marketGroup.normalizeSignedCollateralAmount(negativeSatoshi);
+        assertEq(result, -1e10, "-1 satoshi should normalize to -1e10");
+    }
+
     function test_CompareWith6Decimals() public {
         // Test with USDC-like token (6 decimals)
         MarketGroup.Data storage marketGroup = MarketGroup.load();

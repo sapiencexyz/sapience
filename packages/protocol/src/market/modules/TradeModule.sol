@@ -189,13 +189,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // Normalize deltaCollateralLimit to 18 decimals
         MarketGroup.Data storage marketGroup = MarketGroup.load();
-        int256 normalizedDeltaCollateralLimit = deltaCollateralLimit != 0
-            ? int256(
-                marketGroup.normalizeCollateralAmount(
-                    DecimalMath.abs(deltaCollateralLimit)
-                )
-            ) * (deltaCollateralLimit < 0 ? int256(-1) : int256(1))
-            : int256(0);
+        int256 normalizedDeltaCollateralLimit = marketGroup.normalizeSignedCollateralAmount(deltaCollateralLimit);
 
         runtime.initialPrice = market.getReferencePrice();
 

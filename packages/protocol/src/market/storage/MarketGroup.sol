@@ -227,4 +227,22 @@ library MarketGroup {
         uint256 factor = self.collateralScalingFactor;
         return (amount + factor - 1) / factor;
     }
+
+    /**
+     * @notice Normalizes a signed collateral amount from token's native decimals to 18 decimals
+     * @param self MarketGroup storage
+     * @param amount The signed amount in token's native decimals
+     * @return The signed amount in 18 decimals
+     */
+    function normalizeSignedCollateralAmount(
+        Data storage self,
+        int256 amount
+    ) internal view returns (int256) {
+        if (amount == 0) {
+            return 0;
+        }
+        uint256 absAmount = amount < 0 ? uint256(-amount) : uint256(amount);
+        uint256 normalizedAbs = normalizeCollateralAmount(self, absAmount);
+        return amount < 0 ? -int256(normalizedAbs) : int256(normalizedAbs);
+    }
 }
