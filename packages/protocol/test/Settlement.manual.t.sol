@@ -3,8 +3,8 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../src/market/interfaces/IFoil.sol";
-import {IFoilStructs} from "../src/market/interfaces/IFoilStructs.sol";
+import {ISapience} from "../src/market/interfaces/ISapience.sol";
+import {ISapienceStructs} from "../src/market/interfaces/ISapienceStructs.sol";
 import {IMintableToken} from "../src/market/external/IMintableToken.sol";
 import {TickMath} from "../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "./helpers/TestTrade.sol";
@@ -16,8 +16,8 @@ import {Errors} from "../src/market/storage/Errors.sol";
 contract ManualSettlementTest is TestTrade {
     using Cannon for Vm;
 
-    IFoil foil;
-    uint256 epochId;
+    ISapience sapience;
+    uint256 marketId;
     uint256 endTime;
     uint160 SQRT_PRICE_10Eth = 250541448375047931186413801569;
 
@@ -32,30 +32,30 @@ contract ManualSettlementTest is TestTrade {
         uint160 startingSqrtPriceX96 = SQRT_PRICE_10Eth;
         int24 minTick = 16000;
         int24 maxTick = 29800;
-        (foil, ) = createEpoch(minTick, maxTick, startingSqrtPriceX96, 10_000, "wstGwei/gas");
+        (sapience, ) = createMarket(minTick, maxTick, startingSqrtPriceX96, 10_000, "wstGwei/quote");
 
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        epochId = epochData.epochId;
-        endTime = epochData.endTime;
+        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        marketId = marketData.marketId;
+        endTime = marketData.endTime;
 
         (
-            uint256 gasTokenAmount,
-            uint256 ethTokenAmount,
+            uint256 baseTokenAmount,
+            uint256 quoteTokenAmount,
 
         ) = getTokenAmountsForCollateralAmount(10 ether, minTick, maxTick);
 
         // Create initial position
         vm.startPrank(lp1);
-        (lpPositionId, , , , , , ) = foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: gasTokenAmount,
-                amountTokenB: ethTokenAmount,
+        (lpPositionId, , , , , , ) = sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: baseTokenAmount,
+                amountQuoteToken: quoteTokenAmount,
                 collateralAmount: 11 ether,
                 lowerTick: minTick,
                 upperTick: maxTick,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -64,52 +64,52 @@ contract ManualSettlementTest is TestTrade {
 
     function buyGas() internal returns (uint256 traderPositionId) {
         vm.startPrank(trader1);
-        traderPositionId = addTraderPosition(foil, epochId, int256(0.1 ether));
+        traderPositionId = addTraderPosition(sapience, marketId, int256(0.1 ether));
         vm.stopPrank();
     }
 
     function test_manual_settlement() public {
         buyGas();
-        // Get epoch duration and calculate required delay
-        uint256 epochDuration = endTime - block.timestamp;
-        uint256 requiredDelay = epochDuration * 2;
+        // Get market duration and calculate required delay
+        uint256 marketDuration = endTime - block.timestamp;
+        uint256 requiredDelay = marketDuration * 2;
 
         // Warp to after required delay
         vm.warp(endTime + requiredDelay + 1);
 
         // Get current pool price before settlement
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
+        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(marketData.pool)
             .slot0();
 
         // Call manual settlement
-        foil.__manual_setSettlementPrice();
+        sapience.__manual_setSettlementPrice();
 
         // Verify settlement occurred
-        (epochData, ) = foil.getLatestEpoch();
-        assertTrue(epochData.settled, "Epoch should be settled");
+        (marketData, ) = sapience.getLatestMarket();
+        assertTrue(marketData.settled, "Market should be settled");
         assertEq(
-            epochData.settlementPriceD18,
+            marketData.settlementPriceD18,
             DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96),
             "Settlement price should match"
         );
 
         // Attempt to settle again should revert
-        vm.expectRevert(Errors.EpochSettled.selector);
-        foil.__manual_setSettlementPrice();
+        vm.expectRevert(Errors.MarketSettled.selector);
+        sapience.__manual_setSettlementPrice();
 
         vm.prank(lp1);
-        foil.settlePosition(lpPositionId);
+        sapience.settlePosition(lpPositionId);
     }
 
     function test_manual_settlement_reverts_if_too_early() public {
-        uint256 epochDuration = endTime - block.timestamp;
-        uint256 requiredDelay = epochDuration * 2;
-        // Warp to just after epoch end but before required delay
+        uint256 marketDuration = endTime - block.timestamp;
+        uint256 requiredDelay = marketDuration * 2;
+        // Warp to just after market end but before required delay
         vm.warp(requiredDelay - 1);
 
         // Expect revert when trying to settle too early
         vm.expectRevert();
-        foil.__manual_setSettlementPrice();
+        sapience.__manual_setSettlementPrice();
     }
 }

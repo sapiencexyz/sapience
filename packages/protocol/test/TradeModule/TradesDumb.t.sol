@@ -3,17 +3,17 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {TestEpoch} from "../helpers/TestEpoch.sol";
+import {TestMarket} from "../helpers/TestMarket.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
-import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 
 import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -28,29 +28,29 @@ contract TradePositionDumb is TestTrade {
     // helper struct
     struct StateData {
         uint256 userCollateral;
-        uint256 foilCollateral;
-        uint256 borrowedVEth;
-        uint256 borrowedVGas;
-        uint256 vEthAmount;
-        uint256 vGasAmount;
+        uint256 sapienceCollateral;
+        uint256 borrowedVQuote;
+        uint256 borrowedVBase;
+        uint256 vQuoteAmount;
+        uint256 vBaseAmount;
         int256 positionSize;
         uint256 depositedCollateralAmount;
     }
 
-    IFoil foil;
+    ISapience sapience;
     IMintableToken collateralAsset;
 
     address lp1;
     address trader1;
     address trader2;
-    uint256 epochId;
+    uint256 marketId;
     address pool;
     address tokenA;
     address tokenB;
     IUniswapV3Pool uniCastedPool;
     uint256 feeRate;
-    int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
-    int24 EPOCH_UPPER_TICK = 29800; //20 (19.68488357413147)
+    int24 MARKET_LOWER_TICK = 16000; //5 (4.952636224061651)
+    int24 MARKET_UPPER_TICK = 29800; //20 (19.68488357413147)
     int24 LP_LOWER_TICK = 16000;
     int24 LP_UPPER_TICK = 29800;
     uint256 COLLATERAL_FOR_ORDERS = 10 ether;
@@ -60,7 +60,7 @@ contract TradePositionDumb is TestTrade {
     uint256 INITIAL_PRICE_MINUS_FEE_D18 = 9.9 ether;
     uint256 PLUS_FEE_MULTIPLIER_D18 = 1.01 ether;
     uint256 MINUS_FEE_MULTIPLIER_D18 = 0.99 ether;
-    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -69,28 +69,28 @@ contract TradePositionDumb is TestTrade {
 
         uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
-        (foil, ) = createEpoch(
-            EPOCH_LOWER_TICK,
-            EPOCH_UPPER_TICK,
+        (sapience, ) = createMarket(
+            MARKET_LOWER_TICK,
+            MARKET_UPPER_TICK,
             startingSqrtPriceX96,
             MIN_TRADE_SIZE,
-            "wstGwei/gas"
+            "wstGwei/quote"
         );
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
         trader2 = TestUser.createUser("Trader2", 10_000_000 ether);
 
-        // Remove allowance of collateralAsset from trader1 to foil
+        // Remove allowance of collateralAsset from trader1 to sapience
         vm.startPrank(trader1);
-        collateralAsset.approve(address(foil), 0);
+        collateralAsset.approve(address(sapience), 0);
         vm.stopPrank();
 
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        epochId = epochData.epochId;
-        pool = epochData.pool;
-        tokenA = epochData.ethToken;
-        tokenB = epochData.gasToken;
+        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        marketId = marketData.marketId;
+        pool = marketData.pool;
+        tokenA = marketData.quoteToken;
+        tokenB = marketData.baseToken;
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
@@ -98,9 +98,9 @@ contract TradePositionDumb is TestTrade {
         // Add liquidity
         vm.startPrank(lp1);
         addLiquidity(
-            foil,
+            sapience,
             pool,
-            epochId,
+            marketId,
             COLLATERAL_FOR_ORDERS * 10_000_000,
             LP_LOWER_TICK,
             LP_UPPER_TICK
@@ -114,7 +114,7 @@ contract TradePositionDumb is TestTrade {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.DeltaTradeIsZero.selector)
         );
-        foil.createTraderPosition(epochId, 0, 0, block.timestamp + 30 minutes);
+        sapience.createTraderPosition(marketId, 0, 0, block.timestamp + 30 minutes);
 
         vm.stopPrank();
     }
@@ -123,15 +123,15 @@ contract TradePositionDumb is TestTrade {
         vm.startPrank(trader1);
         int256 initialPositionSize = 1 ether;
         uint256 positionId = addTraderPosition(
-            foil,
-            epochId,
+            sapience,
+            marketId,
             initialPositionSize
         );
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.DeltaTradeIsZero.selector)
         );
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             initialPositionSize,
             0,
@@ -147,8 +147,8 @@ contract TradePositionDumb is TestTrade {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
         );
-        foil.createTraderPosition(
-            epochId,
+        sapience.createTraderPosition(
+            marketId,
             (MIN_TRADE_SIZE - 1).toInt(),
             0,
             block.timestamp + 30 minutes
@@ -163,8 +163,8 @@ contract TradePositionDumb is TestTrade {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
         );
-        foil.createTraderPosition(
-            epochId,
+        sapience.createTraderPosition(
+            marketId,
             (MIN_TRADE_SIZE - 1).toInt() * -1,
             0,
             block.timestamp + 30 minutes
@@ -177,15 +177,15 @@ contract TradePositionDumb is TestTrade {
         vm.startPrank(trader1);
         int256 initialPositionSize = 1 ether;
         uint256 positionId = addTraderPosition(
-            foil,
-            epochId,
+            sapience,
+            marketId,
             initialPositionSize
         );
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
         );
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             (MIN_TRADE_SIZE - 1).toInt(),
             0,
@@ -199,15 +199,15 @@ contract TradePositionDumb is TestTrade {
         vm.startPrank(trader1);
         int256 initialPositionSize = 1 ether;
         uint256 positionId = addTraderPosition(
-            foil,
-            epochId,
+            sapience,
+            marketId,
             initialPositionSize
         );
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
         );
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             (MIN_TRADE_SIZE - 1).toInt() * -1,
             0,
@@ -221,15 +221,15 @@ contract TradePositionDumb is TestTrade {
         vm.startPrank(trader1);
         int256 initialPositionSize = -1 ether;
         uint256 positionId = addTraderPosition(
-            foil,
-            epochId,
+            sapience,
+            marketId,
             initialPositionSize
         );
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
         );
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             (MIN_TRADE_SIZE - 1).toInt(),
             0,
@@ -243,15 +243,15 @@ contract TradePositionDumb is TestTrade {
         vm.startPrank(trader1);
         int256 initialPositionSize = -1 ether;
         uint256 positionId = addTraderPosition(
-            foil,
-            epochId,
+            sapience,
+            marketId,
             initialPositionSize
         );
 
         vm.expectRevert(
             abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
         );
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             (MIN_TRADE_SIZE - 1).toInt() * -1,
             0,
@@ -263,7 +263,7 @@ contract TradePositionDumb is TestTrade {
 
     function test_revertWhen_modifyPosition_notOwner() public {
         vm.startPrank(trader1);
-        uint256 positionId = addTraderPosition(foil, epochId, 1 ether);
+        uint256 positionId = addTraderPosition(sapience, marketId, 1 ether);
         vm.stopPrank();
 
         vm.startPrank(trader2);
@@ -274,7 +274,7 @@ contract TradePositionDumb is TestTrade {
                 trader2
             )
         );
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             0,
             0,
@@ -285,7 +285,7 @@ contract TradePositionDumb is TestTrade {
 
     function test_revertWhen_modifyPosition_wrongId() public {
         vm.startPrank(trader1);
-        addTraderPosition(foil, epochId, 1 ether);
+        addTraderPosition(sapience, marketId, 1 ether);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -294,7 +294,7 @@ contract TradePositionDumb is TestTrade {
                 trader1
             )
         );
-        foil.modifyTraderPosition(1337, 0, 0, block.timestamp + 30 minutes);
+        sapience.modifyTraderPosition(1337, 0, 0, block.timestamp + 30 minutes);
         vm.stopPrank();
     }
 
@@ -302,9 +302,9 @@ contract TradePositionDumb is TestTrade {
         // add a liquidity position as trader1
         vm.startPrank(trader2);
         uint256 positionId = addLiquidity(
-            foil,
+            sapience,
             pool,
-            epochId,
+            marketId,
             COLLATERAL_FOR_ORDERS * 1_000,
             LP_LOWER_TICK,
             LP_UPPER_TICK
@@ -314,7 +314,7 @@ contract TradePositionDumb is TestTrade {
         vm.expectRevert(
             abi.encodeWithSelector(Errors.InvalidPositionKind.selector)
         );
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             0,
             0,
@@ -331,14 +331,14 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
-            epochId,
+        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
+            marketId,
             positionSize
         );
-        collateralAsset.approve(address(foil), requiredCollateral + 2);
+        collateralAsset.approve(address(sapience), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
+        uint256 positionId = sapience.createTraderPosition(
+            marketId,
             positionSize,
             requiredCollateral + 2,
             block.timestamp + 30 minutes
@@ -348,12 +348,12 @@ contract TradePositionDumb is TestTrade {
         // Set expected data
         StateData memory expectedStateData;
         expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = 1 ether;
-        expectedStateData.borrowedVEth = INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(
+        expectedStateData.vQuoteAmount = 0;
+        expectedStateData.vBaseAmount = 1 ether;
+        expectedStateData.borrowedVQuote = INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(
             1 ether
         );
-        expectedStateData.borrowedVGas = 0;
+        expectedStateData.borrowedVBase = 0;
         expectedStateData.depositedCollateralAmount = requiredCollateral;
         expectedStateData.userCollateral =
             initialStateData.userCollateral -
@@ -370,14 +370,14 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
-            epochId,
+        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
+            marketId,
             positionSize
         );
-        collateralAsset.approve(address(foil), requiredCollateral + 2);
+        collateralAsset.approve(address(sapience), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
-        uint256 positionId = foil.createTraderPosition(
-            epochId,
+        uint256 positionId = sapience.createTraderPosition(
+            marketId,
             positionSize,
             requiredCollateral + 2,
             block.timestamp + 30 minutes
@@ -387,12 +387,12 @@ contract TradePositionDumb is TestTrade {
         // Set expected data
         StateData memory expectedStateData;
         expectedStateData.positionSize = positionSize;
-        expectedStateData.vEthAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(
+        expectedStateData.vQuoteAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(
             1 ether
         );
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = 1 ether;
+        expectedStateData.vBaseAmount = 0;
+        expectedStateData.borrowedVQuote = 0;
+        expectedStateData.borrowedVBase = 1 ether;
         expectedStateData.depositedCollateralAmount = requiredCollateral;
         expectedStateData.userCollateral =
             initialStateData.userCollateral -
@@ -412,22 +412,22 @@ contract TradePositionDumb is TestTrade {
         fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredCollateral, , , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredCollateral, , , ) = sapience.quoteModifyTraderPosition(
             positionId,
             0
         );
 
         if (requiredCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredCollateral.toUint() + 2
             );
         }
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             0,
             requiredCollateral + 2,
@@ -440,10 +440,10 @@ contract TradePositionDumb is TestTrade {
             INITIAL_PRICE_PLUS_FEE_D18.toInt()).mulDecimal(initialPositionSize);
 
         expectedStateData.positionSize = 0;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = 0;
+        expectedStateData.vQuoteAmount = 0;
+        expectedStateData.vBaseAmount = 0;
+        expectedStateData.borrowedVQuote = 0;
+        expectedStateData.borrowedVBase = 0;
         expectedStateData.depositedCollateralAmount = 0;
 
         expectedStateData.userCollateral = (initialStateData
@@ -464,22 +464,22 @@ contract TradePositionDumb is TestTrade {
         fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredCollateral, , , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredCollateral, , , ) = sapience.quoteModifyTraderPosition(
             positionId,
             0
         );
         if (requiredCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredCollateral.toUint() + 2
             );
         }
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             0,
             requiredCollateral + 2,
@@ -494,10 +494,10 @@ contract TradePositionDumb is TestTrade {
             );
 
         expectedStateData.positionSize = 0;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = 0;
+        expectedStateData.vQuoteAmount = 0;
+        expectedStateData.vBaseAmount = 0;
+        expectedStateData.borrowedVQuote = 0;
+        expectedStateData.borrowedVBase = 0;
         expectedStateData.depositedCollateralAmount = 0;
         expectedStateData.userCollateral = (initialStateData
             .userCollateral
@@ -517,24 +517,24 @@ contract TradePositionDumb is TestTrade {
 
         fillCollateralStateData(trader1, initialStateData);
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         fillCollateralStateData(trader1, initialStateData);
         fillPositionState(positionId, initialStateData);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = sapience
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredDeltaCollateral.toUint()
             );
         }
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             finalPositionSize,
             requiredDeltaCollateral + 2,
@@ -544,12 +544,12 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         expectedStateData.positionSize = finalPositionSize;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = finalPositionSize.toUint();
-        expectedStateData.borrowedVEth = finalPositionSize.toUint().mulDecimal(
+        expectedStateData.vQuoteAmount = 0;
+        expectedStateData.vBaseAmount = finalPositionSize.toUint();
+        expectedStateData.borrowedVQuote = finalPositionSize.toUint().mulDecimal(
             INITIAL_PRICE_PLUS_FEE_D18
         );
-        expectedStateData.borrowedVGas = 0;
+        expectedStateData.borrowedVBase = 0;
 
         expectedStateData.depositedCollateralAmount =
             (initialStateData.depositedCollateralAmount.toInt() +
@@ -579,21 +579,21 @@ contract TradePositionDumb is TestTrade {
         fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = sapience
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredDeltaCollateral.toUint() + 2
             );
         }
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             finalPositionSize,
             requiredDeltaCollateral + 2,
@@ -607,13 +607,13 @@ contract TradePositionDumb is TestTrade {
         );
 
         expectedStateData.positionSize = finalPositionSize;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = finalPositionSize.toUint();
-        expectedStateData.borrowedVEth =
+        expectedStateData.vQuoteAmount = 0;
+        expectedStateData.vBaseAmount = finalPositionSize.toUint();
+        expectedStateData.borrowedVQuote =
             partialVEth -
             INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(.5 ether) -
             (closePnL * -1).toUint();
-        expectedStateData.borrowedVGas = 0;
+        expectedStateData.borrowedVBase = 0;
 
         // Check position makes sense
         assertPosition(
@@ -635,23 +635,23 @@ contract TradePositionDumb is TestTrade {
         fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , ) = sapience.quoteModifyTraderPosition(
             positionId,
             finalPositionSize
         );
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredDeltaCollateral.toUint() + 2
             );
         }
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             finalPositionSize,
             requiredDeltaCollateral + 2,
@@ -661,12 +661,12 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         expectedStateData.positionSize = finalPositionSize;
-        expectedStateData.vEthAmount = (finalPositionSize * -1)
+        expectedStateData.vQuoteAmount = (finalPositionSize * -1)
             .toUint()
             .mulDecimal(INITIAL_PRICE_MINUS_FEE_D18);
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = (finalPositionSize * -1).toUint();
+        expectedStateData.vBaseAmount = 0;
+        expectedStateData.borrowedVQuote = 0;
+        expectedStateData.borrowedVBase = (finalPositionSize * -1).toUint();
 
         // Check position makes sense
         assertPosition(
@@ -688,20 +688,20 @@ contract TradePositionDumb is TestTrade {
         fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, , ) = foil
+        (int256 requiredDeltaCollateral, int256 closePnL, , ) = sapience
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredDeltaCollateral.toUint() + 2
             );
         }
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             finalPositionSize,
             requiredDeltaCollateral + 2,
@@ -715,13 +715,13 @@ contract TradePositionDumb is TestTrade {
         );
 
         expectedStateData.positionSize = finalPositionSize;
-        expectedStateData.vEthAmount =
+        expectedStateData.vQuoteAmount =
             partialVEth -
             INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(.5 ether) +
             (closePnL * -1).toUint();
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = (finalPositionSize * -1).toUint();
+        expectedStateData.vBaseAmount = 0;
+        expectedStateData.borrowedVQuote = 0;
+        expectedStateData.borrowedVBase = (finalPositionSize * -1).toUint();
 
         // Check position makes sense
         assertPosition(
@@ -743,23 +743,23 @@ contract TradePositionDumb is TestTrade {
         fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , ) = sapience.quoteModifyTraderPosition(
             positionId,
             finalPositionSize
         );
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredDeltaCollateral.toUint() + 2
             );
         }
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             finalPositionSize,
             requiredDeltaCollateral + 2,
@@ -769,12 +769,12 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         expectedStateData.positionSize = finalPositionSize;
-        expectedStateData.vEthAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(
+        expectedStateData.vQuoteAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(
             1 ether
         );
-        expectedStateData.vGasAmount = 0;
-        expectedStateData.borrowedVEth = 0;
-        expectedStateData.borrowedVGas = (finalPositionSize * -1).toUint();
+        expectedStateData.vBaseAmount = 0;
+        expectedStateData.borrowedVQuote = 0;
+        expectedStateData.borrowedVBase = (finalPositionSize * -1).toUint();
 
         // Check position makes sense
         assertPosition(
@@ -796,22 +796,22 @@ contract TradePositionDumb is TestTrade {
         fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , , ) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , ) = sapience.quoteModifyTraderPosition(
             positionId,
             finalPositionSize
         );
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredDeltaCollateral.toUint() + 2
             );
         }
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             finalPositionSize,
             requiredDeltaCollateral + 2,
@@ -821,12 +821,12 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         expectedStateData.positionSize = finalPositionSize;
-        expectedStateData.vEthAmount = 0;
-        expectedStateData.vGasAmount = (finalPositionSize).toUint();
-        expectedStateData.borrowedVEth = INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(
+        expectedStateData.vQuoteAmount = 0;
+        expectedStateData.vBaseAmount = (finalPositionSize).toUint();
+        expectedStateData.borrowedVQuote = INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(
             1 ether
         );
-        expectedStateData.borrowedVGas = 0;
+        expectedStateData.borrowedVBase = 0;
 
         // Check position makes sense
         assertPosition(
@@ -844,21 +844,21 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, , uint256 quotedPrice18DigitsAfter) = foil.quoteCreateTraderPosition(
-            epochId,
+        (uint256 requiredCollateral, , uint256 quotedPrice18DigitsAfter) = sapience.quoteCreateTraderPosition(
+            marketId,
             positionSize
         );
-        collateralAsset.approve(address(foil), requiredCollateral + 2);
+        collateralAsset.approve(address(sapience), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
-        foil.createTraderPosition(
-            epochId,
+        sapience.createTraderPosition(
+            marketId,
             positionSize,
             requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
 
-        uint256 price18DigitsAfter = foil.getReferencePrice(epochId);
+        uint256 price18DigitsAfter = sapience.getReferencePrice(marketId);
         assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
@@ -869,21 +869,21 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, , uint256 quotedPrice18DigitsAfter) = foil.quoteCreateTraderPosition(
-            epochId,
+        (uint256 requiredCollateral, , uint256 quotedPrice18DigitsAfter) = sapience.quoteCreateTraderPosition(
+            marketId,
             positionSize
         );
-        collateralAsset.approve(address(foil), requiredCollateral + 2);
+        collateralAsset.approve(address(sapience), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
-        foil.createTraderPosition(
-            epochId,
+        sapience.createTraderPosition(
+            marketId,
             positionSize,
             requiredCollateral + 2,
             block.timestamp + 30 minutes
         );
         vm.stopPrank();
 
-        uint256 price18DigitsAfter = foil.getReferencePrice(epochId);
+        uint256 price18DigitsAfter = sapience.getReferencePrice(marketId);
         assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
@@ -896,24 +896,24 @@ contract TradePositionDumb is TestTrade {
 
         fillCollateralStateData(trader1, initialStateData);
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         fillCollateralStateData(trader1, initialStateData);
         fillPositionState(positionId, initialStateData);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , , uint256 quotedPrice18DigitsAfter) = foil
+        (int256 requiredDeltaCollateral, , , uint256 quotedPrice18DigitsAfter) = sapience
             .quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredDeltaCollateral.toUint()
             );
         }
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             finalPositionSize,
             requiredDeltaCollateral + 2,
@@ -922,7 +922,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.stopPrank();
 
-        uint256 price18DigitsAfter = foil.getReferencePrice(epochId);
+        uint256 price18DigitsAfter = sapience.getReferencePrice(marketId);
         assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
@@ -936,23 +936,23 @@ contract TradePositionDumb is TestTrade {
         fillCollateralStateData(trader1, initialStateData);
 
         vm.startPrank(trader1);
-        positionId = addTraderPosition(foil, epochId, initialPositionSize);
+        positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , , uint256 quotedPrice18DigitsAfter) = foil.quoteModifyTraderPosition(
+        (int256 requiredDeltaCollateral, , , uint256 quotedPrice18DigitsAfter) = sapience.quoteModifyTraderPosition(
             positionId,
             finalPositionSize
         );
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
-                address(foil),
+                address(sapience),
                 requiredDeltaCollateral.toUint() + 2
             );
         }
 
         // Send more collateral than required, just checking the position can be created/modified
-        foil.modifyTraderPosition(
+        sapience.modifyTraderPosition(
             positionId,
             finalPositionSize,
             requiredDeltaCollateral + 2,
@@ -961,7 +961,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.stopPrank();
 
-        uint256 price18DigitsAfter = foil.getReferencePrice(epochId);
+        uint256 price18DigitsAfter = sapience.getReferencePrice(marketId);
         assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
@@ -973,14 +973,14 @@ contract TradePositionDumb is TestTrade {
         uint256 positionId,
         StateData memory stateData
     ) public {
-        Position.Data memory position = foil.getPosition(positionId);
+        Position.Data memory position = sapience.getPosition(positionId);
         stateData.depositedCollateralAmount = position
             .depositedCollateralAmount;
-        stateData.vEthAmount = position.vEthAmount;
-        stateData.vGasAmount = position.vGasAmount;
-        stateData.borrowedVEth = position.borrowedVEth;
-        stateData.borrowedVGas = position.borrowedVGas;
-        stateData.positionSize = foil.getPositionSize(positionId);
+        stateData.vQuoteAmount = position.vQuoteAmount;
+        stateData.vBaseAmount = position.vBaseAmount;
+        stateData.borrowedVQuote = position.borrowedVQuote;
+        stateData.borrowedVBase = position.borrowedVBase;
+        stateData.positionSize = sapience.getPositionSize(positionId);
     }
 
     function fillCollateralStateData(
@@ -988,7 +988,7 @@ contract TradePositionDumb is TestTrade {
         StateData memory stateData
     ) public view {
         stateData.userCollateral = collateralAsset.balanceOf(user);
-        stateData.foilCollateral = collateralAsset.balanceOf(address(foil));
+        stateData.sapienceCollateral = collateralAsset.balanceOf(address(sapience));
     }
 
     function assertPosition(
@@ -1021,28 +1021,28 @@ contract TradePositionDumb is TestTrade {
             string.concat(stage, " positionSize")
         );
         assertApproxEqRel(
-            currentStateData.vGasAmount,
-            expectedStateData.vGasAmount,
+            currentStateData.vBaseAmount,
+            expectedStateData.vBaseAmount,
             0.00001 ether,
-            string.concat(stage, " vGasAmount")
+            string.concat(stage, " vBaseAmount")
         );
         assertApproxEqRel(
-            currentStateData.borrowedVGas,
-            expectedStateData.borrowedVGas,
+            currentStateData.borrowedVBase,
+            expectedStateData.borrowedVBase,
             0.00001 ether,
-            string.concat(stage, " borrowedVGas")
+            string.concat(stage, " borrowedVBase")
         );
         assertApproxEqRel(
-            currentStateData.vEthAmount,
-            expectedStateData.vEthAmount,
+            currentStateData.vQuoteAmount,
+            expectedStateData.vQuoteAmount,
             0.0015 ether,
-            string.concat(stage, " vEthAmount")
+            string.concat(stage, " vQuoteAmount")
         );
         assertApproxEqRel(
-            currentStateData.borrowedVEth,
-            expectedStateData.borrowedVEth,
+            currentStateData.borrowedVQuote,
+            expectedStateData.borrowedVQuote,
             0.0015 ether,
-            string.concat(stage, " borrowedVEth")
+            string.concat(stage, " borrowedVQuote")
         );
     }
 }

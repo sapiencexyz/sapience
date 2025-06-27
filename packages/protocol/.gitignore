@@ -12,3 +12,6 @@ docs/
 
 # Dotenv file
 .env
+
+# Test deployment files
+deployments/test/

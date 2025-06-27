@@ -1,16 +1,9 @@
-name="foil-test"
+name="sapience-test"
 version="1.0.4"
 
 [var.settings]
 owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" #1 from anvil
 owner2 = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8" #2 from anvil
-# Vault Settings
-vaultName="Foil Vault"
-vaultSymbol = "FVLT"
-lowerBoundMultiplier = "0.5773502691896257" # sqrt(1/3) 
-upperBoundMultiplier = "1.7320508075688772" # sqrt(3)
-duration = "2419200" # 28 days in seconds
-totalVaults = "1"
 claimStatement = "<%= stringToHex('wstGwei/gas') %>"
 
 # Initialization of clonable
@@ -24,22 +17,22 @@ depends = []
 
 [clone.Uniswap]
 source="uniswap:3.0.1"
-target="foil@uniswap"
+target="sapience@uniswap"
 
 [clone.CollateralAsset]
 source="mintable-token@permissionless-mint"
-target="foil@test-collateral-asset"
+target="sapience@test-collateral-asset"
 var.symbol="wstETH"
 
 [clone.BondCurrency]
 source="mintable-token@permissionless-mint"
-target="foil@test-bond-currency"
+target="sapience@test-bond-currency"
 var.symbol="USDC"
 var.decimals = "6"
 
 [clone.UMA]
 source="uma-oov3"
-target="foil@uma-mock"
+target="sapience@uma-mock"
 options.defaultCurrency = "<%= BondCurrency.Token.address %>"
 options.minimumBond = "0"
 
@@ -70,10 +63,8 @@ artifact="SettlementModule"
 [deploy.ExposedInternalFunctions]
 artifact="ExposedInternalFunctions"
 
-[deploy.MockVault]
-artifact="MockVault"
 
-[router.Foil]
+[router.Sapience]
 from="<%= settings.owner2 %>"
 contracts=[
   "ConfigurationModule",
@@ -88,7 +79,7 @@ contracts=[
 ]
 highlight=true
 
-[router.Foil2]
+[router.SapienceClonable]
 from="<%= settings.owner2 %>"
 contracts=[
   "ConfigurationModule",
@@ -103,60 +94,24 @@ contracts=[
 ]
 highlight=true
 
-[router.Foil3]
-from="<%= settings.owner2 %>"
-contracts=[
-  "ConfigurationModule",
-  "LiquidityModule",
-  "UMASettlementModule",
-  "TradeModule",
-  "NftModule",
-  "ViewsModule",
-  "ERC165Module",
-  "ExposedInternalFunctions",
-  "SettlementModule"
-]
-highlight=true
-
-[router.FoilClonable]
-from="<%= settings.owner2 %>"
-contracts=[
-  "ConfigurationModule",
-  "LiquidityModule",
-  "UMASettlementModule",
-  "TradeModule",
-  "NftModule",
-  "ViewsModule",
-  "ERC165Module",
-  "ExposedInternalFunctions",
-  "SettlementModule"
-]
-highlight=true
-
-[deploy.Vault]
-artifact="Vault"
-from="<%= settings.owner2 %>"
-args=[ "<%= settings.vaultName %>", "<%= settings.vaultSymbol %>", "<%= Foil.address %>", "<%= CollateralAsset.Token.address %>", "<%= parseEther(settings.lowerBoundMultiplier) %>", "<%= parseEther(settings.upperBoundMultiplier) %>", "<%= settings.duration %>", "0", "<%= settings.totalVaults %>", "<%= settings.owner2 %>", "<%= settings.claimStatement %>" ]
-depends = ['router.Foil', 'clone.CollateralAsset', 'var.settings']
 
 [deploy.MarketGroupFactory]
 artifact="MarketGroupFactory"
 from="<%= settings.owner2 %>"
 args=[
-  "<%= FoilClonable.address %>",
+  "<%= SapienceClonable.address %>",
 ]
 highlight=true
-depends=["router.FoilClonable"]
+depends=["router.SapienceClonable"]
 
 [invoke.initializeMarketAsUnusable]
-target="FoilClonable"
-func="initializeMarket"
+target="SapienceClonable"
+func="initializeMarketGroup"
 args=[
   "<%= settings.nonowner %>",
   "<%= CollateralAsset.Token.address %>",
   [],
-  "<%= zeroAddress %>",
   "<%= settings.minTradeSize %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= BondCurrency.Token.address %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "<%= Uniswap.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= Uniswap.SwapRouter.address %>", uniswapQuoter = "<%= Uniswap.QuoterV2.address %>", optimisticOracleV3 = "<%= UMA.OptimisticOracleV3.address %>" }
 ]
-depends=["router.FoilClonable"]
+depends=["router.SapienceClonable"]

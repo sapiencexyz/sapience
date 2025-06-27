@@ -3,28 +3,28 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
-import {TestEpoch} from "../helpers/TestEpoch.sol";
-import {Epoch} from "../../src/market/storage/Epoch.sol";
+import {TestMarket} from "../helpers/TestMarket.sol";
+import {Market} from "../../src/market/storage/Market.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
-import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 
-contract CreateLiquidityPosition is TestEpoch {
+contract CreateLiquidityPosition is TestMarket {
     using Cannon for Vm;
 
-    IFoil foil;
+    ISapience sapience;
     IMintableToken collateralAsset;
 
     address lp1;
     address trader1;
-    uint256 epochId;
+    uint256 marketId;
     address pool;
     address tokenA;
     address tokenB;
@@ -32,45 +32,46 @@ contract CreateLiquidityPosition is TestEpoch {
     int24 constant MAX_TICK = 29800;
     uint256 constant dust = 1e8;
     uint256 constant INITIAL_LP_BALANCE = 100_000_000 ether;
-    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
 
     function setUp() public {
         collateralAsset = IMintableToken(
             vm.getAddress("CollateralAsset.Token")
         );
-        foil = IFoil(vm.getAddress("Foil"));
+        sapience = ISapience(vm.getAddress("Sapience"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (foil, ) = createEpoch(
+        (sapience, ) = createMarket(
             MIN_TICK,
             MAX_TICK,
             startingSqrtPriceX96,
             MIN_TRADE_SIZE,
-            "wstGwei/gas"
+            "wstGwei/quote"
         );
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        epochId = epochData.epochId;
-        pool = epochData.pool;
-        tokenA = epochData.ethToken;
-        tokenB = epochData.gasToken;
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
+        marketId = marketData.marketId;
+        pool = marketData.pool;
+        tokenA = marketData.quoteToken;
+        tokenB = marketData.baseToken;
     }
 
-    function test_revertWhen_invalidEpoch() public {
-        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidEpoch.selector));
+    function test_revertWhen_invalidMarket() public {
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidMarket.selector));
         vm.startPrank(lp1);
-        foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId + 1,
-                amountTokenA: 1000,
-                amountTokenB: 1000,
+        sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId + 1,
+                amountBaseToken: 1000,
+                amountQuoteToken: 1000,
                 collateralAmount: 10 ether,
                 lowerTick: 16000,
                 upperTick: 29800,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -87,16 +88,16 @@ contract CreateLiquidityPosition is TestEpoch {
             )
         );
         vm.startPrank(lp1);
-        foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: 1000,
-                amountTokenB: 1000,
+        sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: 1000,
+                amountQuoteToken: 1000,
                 collateralAmount: 10 ether,
                 lowerTick: lowerTick,
                 upperTick: MAX_TICK,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -113,38 +114,40 @@ contract CreateLiquidityPosition is TestEpoch {
             )
         );
         vm.startPrank(lp1);
-        foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: 1000,
-                amountTokenB: 1000,
+        sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: 1000,
+                amountQuoteToken: 1000,
                 collateralAmount: 10 ether,
                 lowerTick: MIN_TICK,
                 upperTick: upperTick,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
     }
 
-    function test_revertWhen_epochExpired() public {
-        // Fast forward to after the epoch end time
-        (IFoilStructs.EpochData memory epochData, ) = foil.getEpoch(epochId);
-        vm.warp(epochData.endTime + 1);
+    function test_revertWhen_marketExpired() public {
+        // Fast forward to after the market end time
+        (ISapienceStructs.MarketData memory marketData, ) = sapience.getMarket(
+            marketId
+        );
+        vm.warp(marketData.endTime + 1);
 
-        vm.expectRevert(Errors.ExpiredEpoch.selector);
+        vm.expectRevert(Errors.ExpiredMarket.selector);
         vm.prank(lp1);
-        foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: 1000,
-                amountTokenB: 1000,
+        sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: 1000,
+                amountQuoteToken: 1000,
                 collateralAmount: 10 ether,
                 lowerTick: MIN_TICK,
                 upperTick: MAX_TICK,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -165,7 +168,9 @@ contract CreateLiquidityPosition is TestEpoch {
                 UPPER_TICK
             );
 
-        uint256 foilInitialBalance = collateralAsset.balanceOf(address(foil));
+        uint256 sapienceInitialBalance = collateralAsset.balanceOf(
+            address(sapience)
+        );
         uint256 lpInitialBalance = collateralAsset.balanceOf(lp1);
 
         vm.prank(lp1);
@@ -177,16 +182,16 @@ contract CreateLiquidityPosition is TestEpoch {
             uint128 liquidity,
             uint256 addedAmount0,
             uint256 addedAmount1
-        ) = foil.createLiquidityPosition(
-                IFoilStructs.LiquidityMintParams({
-                    epochId: epochId,
-                    amountTokenA: loanAmount0,
-                    amountTokenB: loanAmount1,
+        ) = sapience.createLiquidityPosition(
+                ISapienceStructs.LiquidityMintParams({
+                    marketId: marketId,
+                    amountBaseToken: loanAmount0,
+                    amountQuoteToken: loanAmount1,
                     collateralAmount: COLLATERAL_AMOUNT + dust,
                     lowerTick: LOWER_TICK,
                     upperTick: UPPER_TICK,
-                    minAmountTokenA: 0,
-                    minAmountTokenB: 0,
+                    minAmountBaseToken: 0,
+                    minAmountQuoteToken: 0,
                     deadline: block.timestamp + 30 minutes
                 })
             );
@@ -194,13 +199,15 @@ contract CreateLiquidityPosition is TestEpoch {
         uniswapNftId;
         liquidity;
 
-        uint256 foilFinalBalance = collateralAsset.balanceOf(address(foil));
+        uint256 sapienceFinalBalance = collateralAsset.balanceOf(
+            address(sapience)
+        );
         uint256 lpFinalBalance = collateralAsset.balanceOf(lp1);
 
         assertEq(
-            foilFinalBalance,
-            foilInitialBalance + totalDepositedCollateralAmount,
-            "Foil balance should increase by the deposited collateral amount"
+            sapienceFinalBalance,
+            sapienceInitialBalance + totalDepositedCollateralAmount,
+            "Sapience balance should increase by the deposited collateral amount"
         );
         assertEq(
             lpFinalBalance,
@@ -239,20 +246,20 @@ contract CreateLiquidityPosition is TestEpoch {
         // Approve less collateral than required
         uint256 insufficientCollateral = collateralAmount - 1 ether;
         vm.startPrank(lp1);
-        collateralAsset.approve(address(foil), insufficientCollateral);
+        collateralAsset.approve(address(sapience), insufficientCollateral);
 
         // Can't check revert message without arguments.  and for argument, we'd need exact value from uniswap
         vm.expectRevert();
-        foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: loanAmount0,
-                amountTokenB: loanAmount1,
+        sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: loanAmount0,
+                amountQuoteToken: loanAmount1,
                 collateralAmount: insufficientCollateral,
                 lowerTick: lowerTick,
                 upperTick: upperTick,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -311,16 +318,16 @@ contract CreateLiquidityPosition is TestEpoch {
             uint128 liquidity,
             uint256 addedAmount0,
             uint256 addedAmount1
-        ) = foil.createLiquidityPosition(
-                IFoilStructs.LiquidityMintParams({
-                    epochId: epochId,
-                    amountTokenA: loanAmount0,
-                    amountTokenB: loanAmount1,
+        ) = sapience.createLiquidityPosition(
+                ISapienceStructs.LiquidityMintParams({
+                    marketId: marketId,
+                    amountBaseToken: loanAmount0,
+                    amountQuoteToken: loanAmount1,
                     collateralAmount: collateralAmount + dust,
                     lowerTick: lowerTick,
                     upperTick: upperTick,
-                    minAmountTokenA: 0,
-                    minAmountTokenB: 0,
+                    minAmountBaseToken: 0,
+                    minAmountQuoteToken: 0,
                     deadline: block.timestamp + 30 minutes
                 })
             );
@@ -342,14 +349,14 @@ contract CreateLiquidityPosition is TestEpoch {
             "Added amount of token B should be within dust of loan amount"
         );
 
-        // Check if collateral amount was transferred to Foil contract
-        uint256 foilCollateralBalance = collateralAsset.balanceOf(
-            address(foil)
+        // Check if collateral amount was transferred to Sapience contract
+        uint256 sapienceCollateralBalance = collateralAsset.balanceOf(
+            address(sapience)
         );
         assertEq(
-            foilCollateralBalance,
+            sapienceCollateralBalance,
             totalDepositedCollateralAmount,
-            "Collateral amount should be transferred to Foil contract"
+            "Collateral amount should be transferred to Sapience contract"
         );
 
         // Optionally, check if LP's balance decreased by the correct amount
@@ -361,16 +368,16 @@ contract CreateLiquidityPosition is TestEpoch {
         );
 
         // Check that the loan amount stored on position is equal to the added amounts
-        Position.Data memory position = foil.getPosition(id);
+        Position.Data memory position = sapience.getPosition(id);
         assertEq(
-            position.borrowedVGas,
+            position.borrowedVBase,
             addedAmount0,
-            "Borrowed vGas should equal added amount of token A"
+            "Borrowed vBase should equal added amount of token A"
         );
         assertEq(
-            position.borrowedVEth,
+            position.borrowedVQuote,
             addedAmount1,
-            "Borrowed vEth should equal added amount of token B"
+            "Borrowed vQuote should equal added amount of token B"
         );
     }
 }

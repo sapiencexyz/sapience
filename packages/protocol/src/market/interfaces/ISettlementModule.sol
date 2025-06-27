@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IFoilStructs} from "./IFoilStructs.sol";
+import {ISapienceStructs} from "./ISapienceStructs.sol";
 
 /**
  * @title Interface for the SettlementModule
- * @notice This interface defines the functions for settling positions in an epoch
+ * @notice This interface defines the functions for settling positions in an market
  */
 interface ISettlementModule {
     /**
@@ -22,5 +22,5 @@ interface ISettlementModule {
         external
         returns (uint160 settlementPriceX96);
 
-    event EpochManualSettlement(uint256 epochId, uint256 settlementPriceD18);
+    event MarketManualSettlement(uint256 marketId, uint256 settlementPriceD18);
 }

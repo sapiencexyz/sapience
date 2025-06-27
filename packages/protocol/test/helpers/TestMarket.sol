@@ -9,110 +9,74 @@ import {INonfungiblePositionManager} from "../../src/market/interfaces/external/
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
-import {IFoil} from "../../src/market/interfaces/IFoil.sol";
-import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {ISapience} from "../../src/market/interfaces/ISapience.sol";
+import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {TestUser} from "./TestUser.sol";
 
-contract TestEpoch is TestUser {
+contract TestMarket is TestUser {
     using Cannon for Vm;
 
     uint256 internal constant Q128 = 0x100000000000000000000000000000000;
-    uint256 constant CREATE_EPOCH_SALT = 4;
+    uint256 constant CREATE_MARKET_SALT = 4;
 
-    function createEpoch(
+    function createMarket(
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
         uint256 minTradeSize,
-        bytes memory epochClaimStatement
-    ) public returns (IFoil, address) {
+        bytes memory marketClaimStatement
+    ) public returns (ISapience, address) {
         address[] memory feeCollectors = new address[](0);
         return
-            createEpochWithFeeCollectors(
+            createMarketWithFeeCollectors(
                 minTick,
                 maxTick,
                 startingSqrtPriceX96,
                 feeCollectors,
                 minTradeSize,
-                epochClaimStatement
+                marketClaimStatement
             );
     }
 
-    function createEpochWithFeeCollectors(
+    function createMarketWithFeeCollectors(
         int24 minTick,
         int24 maxTick,
         uint160 startingSqrtPriceX96,
         address[] memory feeCollectors,
         uint256 minTradeSize,
         bytes memory claimStatement
-    ) public returns (IFoil, address) {
-        address owner = initializeMarket(
-            feeCollectors,
-            address(0),
-            minTradeSize
-        );
-        IFoil foil = IFoil(vm.getAddress("Foil"));
+    ) public returns (ISapience, address) {
+        address owner = initializeMarketGroup(feeCollectors, minTradeSize);
+        ISapience sapience = ISapience(vm.getAddress("Sapience"));
 
         vm.prank(owner);
-        foil.createEpoch(
+        sapience.createMarket(
             block.timestamp,
             block.timestamp + 30 days,
             startingSqrtPriceX96,
             minTick,
             maxTick,
-            CREATE_EPOCH_SALT,
+            CREATE_MARKET_SALT,
             claimStatement
         );
 
-        return (foil, owner);
+        return (sapience, owner);
     }
 
-    function createEpochWithCallback(
-        int24 minTick,
-        int24 maxTick,
-        uint160 startingSqrtPriceX96,
-        address callbackRecipient,
-        uint256 minTradeSize,
-        bytes memory claimStatement
-    ) public returns (IFoil, address) {
-        address[] memory feeCollectors = new address[](0);
-        address owner = initializeMarket(
-            feeCollectors,
-            callbackRecipient,
-            minTradeSize
-        );
-        IFoil foil = IFoil(vm.getAddress("Foil"));
-
-        vm.prank(owner);
-        foil.createEpoch(
-            block.timestamp,
-            block.timestamp + 30 days,
-            startingSqrtPriceX96,
-            minTick,
-            maxTick,
-            CREATE_EPOCH_SALT,
-            claimStatement
-        );
-
-        return (foil, owner);
-    }
-
-    function initializeMarket(
+    function initializeMarketGroup(
         address[] memory feeCollectors,
-        address callbackRecipient,
         uint256 minTradeSize
     ) public returns (address) {
         uint256 bondAmount = 5 ether;
         address owner = createUser("Owner", 10_000_000 ether);
         vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
-        IFoil(vm.getAddress("Foil")).initializeMarket(
+        ISapience(vm.getAddress("Sapience")).initializeMarketGroup(
             owner,
             vm.getAddress("CollateralAsset.Token"),
             feeCollectors,
-            callbackRecipient,
             minTradeSize,
-            IFoilStructs.MarketParams({
+            ISapienceStructs.MarketParams({
                 feeRate: 10000,
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
@@ -130,18 +94,18 @@ contract TestEpoch is TestUser {
         return owner;
     }
 
-    function settleEpoch(
-        uint256 epochId,
+    function settleMarket(
+        uint256 marketId,
         uint160 price,
         address owner
     ) internal {
-        IFoil foil = IFoil(vm.getAddress("Foil"));
-        settleEpochWithFoil(foil, epochId, price, owner);
+        ISapience sapience = ISapience(vm.getAddress("Sapience"));
+        settleMarketWithSapience(sapience, marketId, price, owner);
     }
 
-    function settleEpochWithFoil(
-        IFoil foil,
-        uint256 epochId,
+    function settleMarketWithSapience(
+        ISapience sapience,
+        uint256 marketId,
         uint160 price,
         address owner
     ) internal {
@@ -149,19 +113,23 @@ contract TestEpoch is TestUser {
             vm.getAddress("BondCurrency.Token")
         );
 
-        (, , , , IFoilStructs.MarketParams memory marketParams) = foil
-            .getMarket();
+        (, ISapienceStructs.MarketParams memory marketParams) = sapience
+            .getLatestMarket();
         uint256 bondAmount = marketParams.bondAmount;
         bondCurrency.mint(bondAmount * 2, owner);
         vm.startPrank(owner);
 
-        bondCurrency.approve(address(foil), bondAmount);
-        bytes32 assertionId = foil.submitSettlementPrice(epochId, owner, price);
+        bondCurrency.approve(address(sapience), bondAmount);
+        bytes32 assertionId = sapience.submitSettlementPrice(
+            marketId,
+            owner,
+            price
+        );
         vm.stopPrank();
 
         address optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
         vm.startPrank(optimisticOracleV3);
-        foil.assertionResolvedCallback(assertionId, true);
+        sapience.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
     }
 
@@ -175,17 +143,18 @@ contract TestEpoch is TestUser {
         view
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
-        IFoil foil = IFoil(vm.getAddress("Foil"));
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
+        ISapience sapience = ISapience(vm.getAddress("Sapience"));
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(marketData.pool)
             .slot0();
 
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
 
-        (loanAmount0, loanAmount1, liquidity) = foil
+        (loanAmount0, loanAmount1, liquidity) = sapience
             .quoteLiquidityPositionTokens(
-                epochData.epochId,
+                marketData.marketId,
                 collateralAmount,
                 sqrtPriceX96,
                 sqrtPriceAX96,
@@ -208,12 +177,12 @@ contract TestEpoch is TestUser {
             uint128 liquidity
         )
     {
-        IFoil foil = IFoil(vm.getAddress("Foil"));
+        ISapience sapience = ISapience(vm.getAddress("Sapience"));
         (
-            IFoilStructs.EpochData memory epochData,
-            IFoilStructs.MarketParams memory marketParams
-        ) = foil.getLatestEpoch();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epochData.pool)
+            ISapienceStructs.MarketData memory marketData,
+            ISapienceStructs.MarketParams memory marketParams
+        ) = sapience.getLatestMarket();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(marketData.pool)
             .slot0();
 
         (
@@ -260,12 +229,12 @@ contract TestEpoch is TestUser {
         uint256 uniswapPositionId
     ) internal view returns (uint256 owed0, uint256 owed1) {
         uniswapPositionId;
-        IFoil foil = IFoil(vm.getAddress("Foil"));
+        ISapience sapience = ISapience(vm.getAddress("Sapience"));
 
         OwedTokensData memory data;
 
-        (, , , , IFoilStructs.MarketParams memory marketParams) = foil
-            .getMarket();
+        (, ISapienceStructs.MarketParams memory marketParams) = sapience
+            .getLatestMarket();
 
         // Fetch the current fee growth global values
         data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)

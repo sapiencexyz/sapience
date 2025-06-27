@@ -1,39 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IFoilStructs} from "../interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
 import {Position} from "../storage/Position.sol";
-import {Epoch} from "../storage/Epoch.sol";
 import {Market} from "../storage/Market.sol";
+import {MarketGroup} from "../storage/MarketGroup.sol";
 import {Errors} from "../storage/Errors.sol";
 import {Pool} from "../libraries/Pool.sol";
 import {DecimalPrice} from "../libraries/DecimalPrice.sol";
 import {ERC721Storage} from "../storage/ERC721Storage.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {ISettlementModule} from "../interfaces/ISettlementModule.sol";
-import {IFoilPositionEvents} from "../interfaces/IFoilPositionEvents.sol";
+import {ISapiencePositionEvents} from "../interfaces/ISapiencePositionEvents.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
     using Position for Position.Data;
+    using MarketGroup for MarketGroup.Data;
     using Market for Market.Data;
-    using Epoch for Epoch.Data;
 
     function settlePosition(
         uint256 positionId
     ) external override nonReentrant returns (uint256 withdrawnCollateral) {
         Position.Data storage position = Position.loadValid(positionId);
-        Epoch.Data storage epoch = Epoch.loadValid(position.epochId);
-        Market.Data storage market = Market.load();
+        Market.Data storage market = Market.loadValid(position.marketId);
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
 
         if (ERC721Storage._ownerOf(positionId) != msg.sender) {
             revert Errors.NotAccountOwner(positionId, msg.sender);
         }
 
-        // Ensure the epoch has ended
-        if (!epoch.settled) {
-            revert Errors.EpochNotSettled(position.epochId);
+        // Ensure the market has ended
+        if (!market.settled) {
+            revert Errors.MarketNotSettled(position.marketId);
         }
 
         // Ensure the position hasn't been settled already
@@ -43,15 +43,15 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
         // Perform settlement logic based on position kind
         uint256 withdrawableCollateral;
-        if (position.kind == IFoilStructs.PositionKind.Liquidity) {
-            withdrawableCollateral = _settleLiquidityPosition(position, epoch);
-        } else if (position.kind == IFoilStructs.PositionKind.Trade) {
-            withdrawableCollateral = position.settle(epoch.settlementPriceD18);
+        if (position.kind == ISapienceStructs.PositionKind.Liquidity) {
+            withdrawableCollateral = _settleLiquidityPosition(position, market);
+        } else if (position.kind == ISapienceStructs.PositionKind.Trade) {
+            withdrawableCollateral = position.settle(market.settlementPriceD18);
         } else {
             revert Errors.InvalidPositionKind();
         }
 
-        withdrawnCollateral = market.withdrawCollateral(
+        withdrawnCollateral = marketGroup.withdrawCollateral(
             msg.sender,
             withdrawableCollateral
         );
@@ -60,17 +60,17 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
 
         // update position collateral. If there is more than zero deposited collateral, after this update, it means there wasn't any collateral left in the contract.
         position.depositedCollateralAmount -= withdrawnCollateral;
-        
-        emit IFoilPositionEvents.PositionSettled(
+
+        emit ISapiencePositionEvents.PositionSettled(
             positionId,
             withdrawnCollateral,
             position.depositedCollateralAmount,
-            position.vEthAmount,
-            position.vGasAmount,
-            position.borrowedVEth,
-            position.borrowedVGas,
+            position.vQuoteAmount,
+            position.vBaseAmount,
+            position.borrowedVQuote,
+            position.borrowedVBase,
             deltaCollateral,
-            position.epochId,
+            position.marketId,
             msg.sender
         );
     }
@@ -82,16 +82,16 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
     {
         uint256 DURATION_MULTIPLIER = 2;
 
-        Market.Data storage market = Market.load();
-        Epoch.Data storage epoch = Epoch.loadValid(market.lastEpochId);
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        Market.Data storage market = Market.loadValid(marketGroup.lastMarketId);
 
-        if (epoch.settled) {
-            revert Errors.EpochSettled();
+        if (market.settled) {
+            revert Errors.MarketSettled();
         }
 
-        uint256 epochDuration = epoch.endTime - epoch.startTime;
-        uint256 requiredDelay = epochDuration * DURATION_MULTIPLIER;
-        uint256 timeSinceEnd = block.timestamp - epoch.endTime;
+        uint256 marketDuration = market.endTime - market.startTime;
+        uint256 requiredDelay = marketDuration * DURATION_MULTIPLIER;
+        uint256 timeSinceEnd = block.timestamp - market.endTime;
 
         if (timeSinceEnd < requiredDelay) {
             revert Errors.ManualSettlementTooEarly(
@@ -99,36 +99,36 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             );
         }
 
-        settlementPriceX96 = epoch.getCurrentPoolPriceSqrtX96();
-        epoch.setSettlementPriceInRange(
+        settlementPriceX96 = market.getCurrentPoolPriceSqrtX96();
+        market.setSettlementPriceInRange(
             DecimalPrice.sqrtRatioX96ToPrice(settlementPriceX96)
         );
 
         // update settlement
-        epoch.settlement = Epoch.Settlement({
+        market.settlement = Market.Settlement({
             settlementPriceSqrtX96: settlementPriceX96,
             submissionTime: block.timestamp,
             disputed: false
         });
 
-        emit EpochManualSettlement(epoch.id, settlementPriceX96);
+        emit MarketManualSettlement(market.id, settlementPriceX96);
     }
 
     function _settleLiquidityPosition(
         Position.Data storage position,
-        Epoch.Data storage epoch
+        Market.Data storage market
     ) internal returns (uint256) {
         // Get current token amounts using Pool library
         (uint256 currentAmount0, uint256 currentAmount1, , , , , ) = Pool
-            .getCurrentPositionTokenAmounts(epoch, position);
+            .getCurrentPositionTokenAmounts(market, position);
 
         // Update the position's token amounts with the current values
-        position.vGasAmount += currentAmount0;
-        position.vEthAmount += currentAmount1;
+        position.vBaseAmount += currentAmount0;
+        position.vQuoteAmount += currentAmount1;
 
         // Collect fees from the Uniswap position
         (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(
-            epoch.marketParams.uniswapPositionManager
+            market.marketParams.uniswapPositionManager
         ).collect(
                 INonfungiblePositionManager.CollectParams({
                     tokenId: position.uniswapPositionId,
@@ -139,9 +139,9 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             );
 
         // Update the position's token amounts
-        position.vGasAmount += amount0;
-        position.vEthAmount += amount1;
+        position.vBaseAmount += amount0;
+        position.vQuoteAmount += amount1;
 
-        return position.settle(epoch.settlementPriceD18);
+        return position.settle(market.settlementPriceD18);
     }
 }

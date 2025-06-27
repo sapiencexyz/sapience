@@ -5,13 +5,13 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "../external/univ3/LiquidityAmounts.sol";
 import "../external/univ3/TickMath.sol";
 import "../storage/Market.sol";
-import "../storage/Epoch.sol";
+import "../storage/MarketGroup.sol";
 import "../storage/Position.sol";
 import {INonfungiblePositionManager} from "../interfaces/external/INonfungiblePositionManager.sol";
 
 library Pool {
     function getCurrentPositionTokenAmounts(
-        Epoch.Data storage epoch,
+        Market.Data storage market,
         Position.Data storage position
     )
         internal
@@ -43,9 +43,9 @@ library Pool {
             tokensOwed0U128,
             tokensOwed1U128
         ) = INonfungiblePositionManager(
-            epoch.marketParams.uniswapPositionManager
+            market.marketParams.uniswapPositionManager
         ).positions(position.uniswapPositionId);
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(epoch.pool).slot0();
+        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(market.pool).slot0();
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
 
