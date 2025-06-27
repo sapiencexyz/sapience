@@ -1,7 +1,7 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
 import prisma from '../../db';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
-import { Transaction } from '../types/PrismaTypes';
+import { Transaction } from '@generated/type-graphql';
 
 @Resolver(() => Transaction)
 export class TransactionResolver {

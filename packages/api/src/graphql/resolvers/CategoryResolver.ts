@@ -1,6 +1,6 @@
 import { Resolver, Query, Arg } from 'type-graphql';
 import prisma from '../../db';
-import { Category, MarketGroup } from '../types/PrismaTypes';
+import { Category, Market_group } from '@generated/type-graphql';
 
 @Resolver(() => Category)
 export class CategoryResolver {
@@ -24,10 +24,10 @@ export class CategoryResolver {
     }
   }
 
-  @Query(() => [MarketGroup])
+  @Query(() => [Market_group])
   async marketGroupsByCategory(
     @Arg('slug', () => String) slug: string
-  ): Promise<MarketGroup[]> {
+  ): Promise<Market_group[]> {
     try {
       const category = await prisma.category.findFirst({
         where: { slug },
@@ -45,7 +45,7 @@ export class CategoryResolver {
         throw new Error(`Category with slug ${slug} not found`);
       }
 
-      return category.market_group as MarketGroup[];
+      return category.market_group as Market_group[];
     } catch (error) {
       console.error('Error fetching markets by category:', error);
       throw new Error('Failed to fetch markets by category');

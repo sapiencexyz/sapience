@@ -1,7 +1,7 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
 import prisma from '../../db';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
-import { Position } from '../types/PrismaTypes';
+import { Position } from '@generated/type-graphql';
 import type { Prisma } from '../../../generated/prisma';
 
 @Resolver(() => Position)
