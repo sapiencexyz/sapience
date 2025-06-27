@@ -12,7 +12,6 @@ import {Errors} from "./Errors.sol";
 library MarketGroup {
     using SafeERC20 for IERC20;
 
-    uint256 constant MIN_COLLATERAL = 10_000; // 10,000 wstETH (in wei);
 
     struct Data {
         address owner;
@@ -23,6 +22,8 @@ library MarketGroup {
         ISapienceStructs.MarketParams marketParams;
         mapping(bytes32 => uint256) marketIdByAssertionId;
         uint256 minTradeSize;
+        uint256 collateralDecimals;
+        uint256 collateralScalingFactor;
     }
 
     function load() internal pure returns (Data storage marketGroup) {
@@ -42,10 +43,8 @@ library MarketGroup {
     ) internal returns (Data storage marketGroup) {
         validateMarketParams(marketParams);
 
-        require(
-            IERC20Metadata(collateralAsset).decimals() == 18,
-            "collateralAsset must have 18 decimals"
-        );
+        uint256 decimals = IERC20Metadata(collateralAsset).decimals();
+        require(decimals <= 18, "collateralAsset decimals must not exceed 18");
 
         marketGroup = load();
 
@@ -59,6 +58,10 @@ library MarketGroup {
         marketGroup.feeCollectorNFT = IERC721(feeCollectorNFT);
         marketGroup.minTradeSize = minTradeSize;
         marketGroup.marketParams = marketParams;
+        marketGroup.collateralDecimals = decimals;
+        marketGroup.collateralScalingFactor = decimals < 18
+            ? 10 ** (18 - decimals)
+            : 1;
 
         // check marketParams.bondAmount is greater than the minimum bond for the assertion currency
         uint256 minUMABond = OptimisticOracleV3Interface(
@@ -146,10 +149,21 @@ library MarketGroup {
         address user,
         uint256 amount
     ) internal returns (uint256 withdrawnAmount) {
-        uint256 balance = self.collateralAsset.balanceOf(address(this));
-        withdrawnAmount = amount > balance ? balance : amount;
+        // Convert from internal 18 decimals to token decimals
+        uint256 denormalizedAmount = denormalizeCollateralAmount(self, amount);
 
-        self.collateralAsset.safeTransfer(user, withdrawnAmount);
+        uint256 balance = self.collateralAsset.balanceOf(address(this));
+        uint256 withdrawnAmountDenormalized = denormalizedAmount > balance
+            ? balance
+            : denormalizedAmount;
+
+        self.collateralAsset.safeTransfer(user, withdrawnAmountDenormalized);
+
+        // Return the amount in 18 decimals for consistency
+        withdrawnAmount = normalizeCollateralAmount(
+            self,
+            withdrawnAmountDenormalized
+        );
     }
 
     function transferOwnership(Data storage self, address newOwner) internal {
@@ -172,5 +186,63 @@ library MarketGroup {
         return
             address(self.feeCollectorNFT) != address(0) &&
             self.feeCollectorNFT.balanceOf(user) > 0;
+    }
+
+    /**
+     * @notice Normalizes a collateral amount to 18 decimals for internal calculations
+     * @param self MarketGroup storage
+     * @param amount The amount in the collateral token's native decimals
+     * @return The amount normalized to 18 decimals
+     */
+    function normalizeCollateralAmount(
+        Data storage self,
+        uint256 amount
+    ) internal view returns (uint256) {
+        return amount * self.collateralScalingFactor;
+    }
+
+    /**
+     * @notice Denormalizes a collateral amount from 18 decimals to token's native decimals
+     * @param self MarketGroup storage
+     * @param amount The amount in 18 decimals
+     * @return The amount in the collateral token's native decimals
+     */
+    function denormalizeCollateralAmount(
+        Data storage self,
+        uint256 amount
+    ) internal view returns (uint256) {
+        return amount / self.collateralScalingFactor;
+    }
+
+    /**
+     * @notice Denormalizes a collateral amount from 18 decimals to token's native decimals, rounding up
+     * @param self MarketGroup storage
+     * @param amount The amount in 18 decimals
+     * @return The amount in the collateral token's native decimals, rounded up
+     */
+    function denormalizeCollateralAmountUp(
+        Data storage self,
+        uint256 amount
+    ) internal view returns (uint256) {
+        uint256 factor = self.collateralScalingFactor;
+        return (amount + factor - 1) / factor;
+    }
+
+    /**
+     * @notice Normalizes a signed collateral amount from token's native decimals to 18 decimals
+     * @param self MarketGroup storage
+     * @param amount The signed amount in token's native decimals
+     * @return The signed amount in 18 decimals
+     */
+    function normalizeSignedCollateralAmount(
+        Data storage self,
+        int256 amount
+    ) internal view returns (int256) {
+        if (amount == 0) {
+            return 0;
+        }
+        uint256 absAmount = amount < 0 ? uint256(-amount) : uint256(amount);
+        uint256 normalizedAbs = normalizeCollateralAmount(self, absAmount);
+        return amount < 0 ? -int256(normalizedAbs) : int256(normalizedAbs);
     }
 }

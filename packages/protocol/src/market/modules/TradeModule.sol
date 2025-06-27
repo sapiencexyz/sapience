@@ -25,6 +25,7 @@ import {ITradeModule} from "../interfaces/ITradeModule.sol";
 contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
     using Market for Market.Data;
     using Position for Position.Data;
+    using MarketGroup for MarketGroup.Data;
     using DecimalMath for uint256;
     using DecimalMath for int256;
     using SafeCastI256 for int256;
@@ -53,6 +54,12 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // check if market is not settled
         market.validateNotSettled();
+
+        // Normalize deltaCollateralLimit to 18 decimals
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        uint256 normalizedMaxCollateral = deltaCollateralLimit > 0
+            ? marketGroup.normalizeCollateralAmount(deltaCollateralLimit)
+            : 0;
 
         // Mint position NFT and initialize position
         positionId = ERC721EnumerableStorage.totalSupply() + 1;
@@ -93,14 +100,14 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         position.borrowedVBase = outputParams.position.borrowedVBase;
 
         // Check if the collateral is within the limit
-        // Notice: if deltaCollateralLimit is zero, it means no limit, so no need to check
+        // Notice: if normalizedMaxCollateral is zero, it means no limit, so no need to check
         if (
-            deltaCollateralLimit > 0 &&
-            outputParams.requiredCollateral > deltaCollateralLimit
+            normalizedMaxCollateral > 0 &&
+            outputParams.requiredCollateral > normalizedMaxCollateral
         ) {
             revert Errors.CollateralLimitReached(
                 outputParams.requiredCollateral.toInt(),
-                deltaCollateralLimit.toInt()
+                normalizedMaxCollateral.toInt()
             );
         }
 
@@ -180,6 +187,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // check if market is not settled
         market.validateNotSettled();
 
+        // Normalize deltaCollateralLimit to 18 decimals
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        int256 normalizedDeltaCollateralLimit = marketGroup.normalizeSignedCollateralAmount(deltaCollateralLimit);
+
         runtime.initialPrice = market.getReferencePrice();
 
         Trade.QuoteOrTradeInputParams memory inputParams = Trade
@@ -243,7 +254,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             // Check if the collateral is within the limit
             Trade.checkDeltaCollateralLimit(
                 runtime.deltaCollateral,
-                deltaCollateralLimit
+                normalizedDeltaCollateralLimit
             );
 
             // Now the position should be closed. All the vToken and collateral values set to zero
@@ -258,7 +269,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             // Check if the collateral is within the limit
             Trade.checkDeltaCollateralLimit(
                 runtime.deltaCollateral,
-                deltaCollateralLimit
+                normalizedDeltaCollateralLimit
             );
 
             // Validate after trading that collateral is enough
