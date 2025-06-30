@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import {Market} from "../storage/Market.sol";
 import {MarketGroup} from "../storage/MarketGroup.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
+import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
 
@@ -20,12 +21,10 @@ contract UMASettlementModule is
     using MarketGroup for MarketGroup.Data;
 
     function submitSettlementPrice(
-        uint256 marketId,
-        address asserter,
-        uint160 settlementSqrtPriceX96
+        ISapienceStructs.SettlementPriceParams memory params
     ) external nonReentrant returns (bytes32) {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
-        Market.Data storage market = Market.loadValid(marketId);
+        Market.Data storage market = Market.loadValid(params.marketId);
 
         validateSubmission(market, marketGroup, msg.sender);
 
@@ -50,7 +49,7 @@ contract UMASettlementModule is
         );
 
         uint256 decimalPrice = DecimalPrice.sqrtRatioX96ToPrice(
-            settlementSqrtPriceX96
+            params.settlementSqrtPriceX96
         );
 
         bytes memory claim = abi.encodePacked(
@@ -61,7 +60,7 @@ contract UMASettlementModule is
 
         market.assertionId = optimisticOracleV3.assertTruth(
             claim,
-            asserter,
+            params.asserter,
             address(this),
             address(0),
             marketGroup.marketParams.assertionLiveness,
@@ -71,18 +70,18 @@ contract UMASettlementModule is
             bytes32(0)
         );
 
-        marketGroup.marketIdByAssertionId[market.assertionId] = marketId;
+        marketGroup.marketIdByAssertionId[market.assertionId] = params.marketId;
 
         market.settlement = Market.Settlement({
-            settlementPriceSqrtX96: settlementSqrtPriceX96,
+            settlementPriceSqrtX96: params.settlementSqrtPriceX96,
             submissionTime: block.timestamp,
             disputed: false
         });
 
         emit SettlementSubmitted(
-            marketId,
-            asserter,
-            settlementSqrtPriceX96,
+            params.marketId,
+            params.asserter,
+            params.settlementSqrtPriceX96,
             block.timestamp
         );
 

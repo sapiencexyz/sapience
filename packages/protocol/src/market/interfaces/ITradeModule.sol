@@ -5,30 +5,18 @@ import {ISapienceStructs} from "./ISapienceStructs.sol";
 
 interface ITradeModule {
     /** @dev Create a new trader position.
-     * @param marketId The market id.
-     * @param size The position size.
-     * @param maxCollateral The maximum collateral that can be deposited. If 0, no limit.
-     * @param deadline The deadline for the transaction.
+     * @param params The parameters for creating the trader position
      * @return positionId The position id.
      */
     function createTraderPosition(
-        uint256 marketId,
-        int256 size,
-        uint256 maxCollateral,
-        uint256 deadline
+        ISapienceStructs.TraderPositionCreateParams memory params
     ) external returns (uint256 positionId);
 
     /** @dev Modify an existing trader position.
-     * @param positionId The position id.
-     * @param size The new position size.
-     * @param deltaCollateralLimit The change in the collateral limit. Positive for adding collateral, negative for reomving (closing a position means minimum profit to withdraw). If 0, no limit.
-     * @param deadline The deadline for the transaction.
+     * @param params The parameters for modifying the trader position
      */
     function modifyTraderPosition(
-        uint256 positionId,
-        int256 size,
-        int256 deltaCollateralLimit,
-        uint256 deadline
+        ISapienceStructs.TraderPositionModifyParams memory params
     ) external;
 
     /** @dev Quotes the required collateral to create a new trader position.

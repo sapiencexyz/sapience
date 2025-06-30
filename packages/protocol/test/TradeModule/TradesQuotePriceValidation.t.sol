@@ -50,7 +50,8 @@ contract TradesQuotePriceValidationTest is TestTrade {
         sapienceAddress = address(sapience);
 
         // Get the marketId
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
         marketId = marketData.marketId;
 
         lp = TestUser.createUser("RegularLP", 50 ether);
@@ -89,10 +90,12 @@ contract TradesQuotePriceValidationTest is TestTrade {
         vm.prank(trader);
         // Create the trader position
         uint256 traderPositionId = sapience.createTraderPosition(
-            marketId,
-            -0.1 ether, // Same size as quoted
-            requiredCollateral, // Use the quoted collateral amount
-            block.timestamp + 30 minutes // Set a reasonable deadline
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: -0.1 ether,
+                maxCollateral: requiredCollateral, // Same size as quoted
+                deadline: block.timestamp + 30 minutes // Use the quoted collateral amount // Set a reasonable deadline
+            })
         );
 
         // Verify the position was created successfully
@@ -121,24 +124,29 @@ contract TradesQuotePriceValidationTest is TestTrade {
         vm.startPrank(trader);
         // Create the initial trader position
         uint256 traderPositionId = sapience.createTraderPosition(
-            marketId,
-            -0.05 ether,
-            requiredCollateral,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: -0.05 ether,
+                maxCollateral: requiredCollateral,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now modify the position
-        (int256 expectedCollateralDelta, , , ) = sapience.quoteModifyTraderPosition(
-            traderPositionId,
-            -0.1 ether // Increase size from -0.05 to -0.1
-        );
+        (int256 expectedCollateralDelta, , , ) = sapience
+            .quoteModifyTraderPosition(
+                traderPositionId,
+                -0.1 ether // Increase size from -0.05 to -0.1
+            );
 
         // Modify the trader position
         sapience.modifyTraderPosition(
-            traderPositionId,
-            -0.1 ether, // New size
-            expectedCollateralDelta,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: traderPositionId,
+                size: -0.1 ether,
+                deltaCollateralLimit: expectedCollateralDelta, // New size
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -154,10 +162,12 @@ contract TradesQuotePriceValidationTest is TestTrade {
         vm.startPrank(trader);
         // Create the initial trader position
         uint256 traderPositionId = sapience.createTraderPosition(
-            marketId,
-            -0.05 ether,
-            requiredCollateral,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: -0.05 ether,
+                maxCollateral: requiredCollateral,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // This should revert with PoolPriceOutOfRange because the post-trade price would be out of range

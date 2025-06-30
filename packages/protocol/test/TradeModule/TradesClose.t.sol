@@ -80,7 +80,8 @@ contract TradePositionClose is TestTrade {
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
         trader2 = TestUser.createUser("Trader2", 10_000_000 ether);
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -113,10 +114,12 @@ contract TradePositionClose is TestTrade {
         );
         // Send more collateral than required, just checking the position can be created/modified
         sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral * 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
         movePrice(.1 ether, positionSize * -100, 1000);
@@ -146,16 +149,16 @@ contract TradePositionClose is TestTrade {
 
         for (uint256 i = 0; i < maxIterations; i++) {
             // quote and open a long
-            (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-                marketId,
-                size
-            );
+            (uint256 requiredCollateral, , ) = sapience
+                .quoteCreateTraderPosition(marketId, size);
             // Send more collateral than required, just checking the position can be created/modified
             sapience.createTraderPosition(
-                marketId,
-                size,
-                requiredCollateral * 2,
-                block.timestamp + 30 minutes
+                ISapienceStructs.TraderPositionCreateParams({
+                    marketId: marketId,
+                    size: size,
+                    maxCollateral: requiredCollateral * 2,
+                    deadline: block.timestamp + 30 minutes
+                })
             );
 
             currentPrice = sapience.getReferencePrice(marketId);
@@ -171,51 +174,7 @@ contract TradePositionClose is TestTrade {
     }
 
     function getPnl(int256 initialPositionSize) internal {
-        // uint256 trader1InitialBalance = collateralAsset.balanceOf(trader1);
-        // int256 pnl;
-        // if (initialPositionSize > 0) {
-        //     // Long: PNL = (Settlement Price - Initial Price) * Position Size
-        //     pnl = initialPositionSize.mulDecimal(
-        //         SETTLEMENT_PRICE_D18.toInt() -
-        //             INITIAL_PRICE_PLUS_FEE_D18.toInt()
-        //     );
-        // } else {
-        //     // Short: PNL = (Initial Price - Settlement Price) * Position Size * -1 (positionSize is negative for short)
-        //     pnl =
-        //         -1 *
-        //         initialPositionSize.mulDecimal(
-        //             INITIAL_PRICE_LESS_FEE_D18.toInt() -
-        //                 SETTLEMENT_PRICE_D18.toInt()
-        //         );
-        // }
-        // vm.startPrank(trader1);
-        // (uint256 requiredCollateral,) = sapience.quoteCreateTraderPosition(
-        //     marketId,
-        //     initialPositionSize
-        // );
-        // uint256 positionId = sapience.createTraderPosition(
-        //     marketId,
-        //     initialPositionSize,
-        //     requiredCollateral * 2,
-        //     block.timestamp + 30 minutes
-        // );
-        // vm.stopPrank();
-        // vm.startPrank(trader1);
-        // requiredCollateral = sapience.quoteModifyTraderPosition(positionId, 0);
-        // sapience.modifyTraderPosition(
-        //     positionId,
-        //     0,
-        //     requiredCollateral.toInt(),
-        //     block.timestamp + 30 minutes
-        // );
-        // vm.stopPrank();
-        // uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);
-        // assertApproxEqRel(
-        //     trader1FinalBalance.toInt() - trader1InitialBalance.toInt(),
-        //     pnl,
-        //     0.01 ether,
-        //     "pnl"
-        // );
+        // Function implementation commented out
     }
 
     /*
