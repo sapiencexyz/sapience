@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.22;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {GasManagement} from "./GasManagement.sol";
 import {IETHManagement} from "../interfaces/ILayerZeroBridge.sol";
 

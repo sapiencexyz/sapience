@@ -10,7 +10,7 @@ import {IGasManagement} from "../interfaces/ILayerZeroBridge.sol";
  * @dev This contract provides common functionality for:
  * - Setting and getting gas thresholds (warning and critical)
  * - Setting and getting max execution gas
- * - Emitting gas-related events
+ * - Checking gas thresholds and revert if necessary
  */
 abstract contract GasManagement is Ownable, IGasManagement {
     // Gas monitoring and execution gas
