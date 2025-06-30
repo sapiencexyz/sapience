@@ -118,6 +118,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             );
 
         bool isFeeCollector = marketGroup.isFeeCollector(msg.sender);
+
         (
             requiredCollateralAmount,
             totalDepositedCollateralAmount,
@@ -128,7 +129,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
                 liquidity: liquidity,
-                additionalCollateral: params.collateralAmount,
+                additionalCollateral: marketGroup.normalizeCollateralAmount(
+                    params.collateralAmount
+                ),
                 additionalLoanAmount0: addedAmount0,
                 additionalLoanAmount1: addedAmount1,
                 lowerTick: params.lowerTick,
@@ -438,7 +441,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             Position.UpdateLpParams({
                 uniswapNftId: position.uniswapPositionId,
                 liquidity: stack.previousLiquidity + liquidity,
-                additionalCollateral: params.collateralAmount,
+                additionalCollateral: marketGroup.normalizeCollateralAmount(
+                    params.collateralAmount
+                ),
                 additionalLoanAmount0: amount0, // these are the added tokens to the position
                 additionalLoanAmount1: amount1,
                 lowerTick: stack.lowerTick,
@@ -577,7 +582,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             sqrtPriceAX96,
             sqrtPriceBX96,
             DecimalMath.UNIT,
-            1e18
+            DecimalMath.UNIT
         );
 
         (uint256 unitAmount0, uint256 unitAmount1) = LiquidityAmounts
@@ -609,7 +614,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         return (
             FullMath.mulDiv(unitAmount0, collateralRatio, DecimalMath.UNIT),
             FullMath.mulDiv(unitAmount1, collateralRatio, DecimalMath.UNIT),
-            uint128(unitLiquidity * collateralRatio) / 1e18 // Not using UNIT here because is an uint256
+            uint128(
+                (uint256(unitLiquidity) * collateralRatio) / DecimalMath.UNIT
+            )
         );
     }
 
@@ -617,15 +624,18 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 positionId,
         uint256 collateralAmount
     ) external override {
-        if (!MarketGroup.load().isFeeCollector(msg.sender)) {
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        if (!marketGroup.isFeeCollector(msg.sender)) {
             revert Errors.OnlyFeeCollector();
         }
 
         Position.Data storage position = Position.loadValid(positionId);
         position.validateLp();
+
         // add to the collateral instead of updating
         int256 deltaCollateral = position.updateCollateral(
-            position.depositedCollateralAmount + collateralAmount
+            position.depositedCollateralAmount +
+                marketGroup.normalizeCollateralAmount(collateralAmount)
         );
 
         emit ISapiencePositionEvents.CollateralDeposited(
@@ -682,8 +692,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 })
             );
         // Burn the Uniswap position
-        INonfungiblePositionManager(marketGroup.marketParams.uniswapPositionManager)
-            .burn(position.uniswapPositionId);
+        INonfungiblePositionManager(
+            marketGroup.marketParams.uniswapPositionManager
+        ).burn(position.uniswapPositionId);
         position.uniswapPositionId = 0;
 
         // due to rounding on the uniswap side, 1 wei is left over on loan amount when opening & immediately closing position
@@ -710,7 +721,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 position.borrowedVQuote;
             position.borrowedVQuote = 0;
         } else {
-            uint256 collateralDelta = position.borrowedVQuote - collectedAmount1;
+            uint256 collateralDelta = position.borrowedVQuote -
+                collectedAmount1;
             if (position.depositedCollateralAmount < collateralDelta) {
                 position.borrowedVQuote = collateralDelta;
             } else {
@@ -760,7 +772,9 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
 
         // Notice: closing the trade position after the event is emitted to have both events show the valid intermediate state
-        if (position.kind == ISapienceStructs.PositionKind.Trade && closeTrade) {
+        if (
+            position.kind == ISapienceStructs.PositionKind.Trade && closeTrade
+        ) {
             _closeTradePosition(market, position, tradeSlippage);
         }
     }
@@ -838,7 +852,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     }
 
     function _emitLiquidityPositionCreated(
-        ISapiencePositionEvents.LiquidityPositionCreatedEventData memory eventData
+        ISapiencePositionEvents.LiquidityPositionCreatedEventData
+            memory eventData
     ) private {
         emit ISapiencePositionEvents.LiquidityPositionCreated(
             eventData.sender,
@@ -859,7 +874,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     }
 
     function _emitLiquidityPositionDecreased(
-        ISapiencePositionEvents.LiquidityPositionDecreasedEventData memory eventData
+        ISapiencePositionEvents.LiquidityPositionDecreasedEventData
+            memory eventData
     ) private {
         emit ISapiencePositionEvents.LiquidityPositionDecreased(
             eventData.sender,
@@ -881,7 +897,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     }
 
     function _emitLiquidityPositionIncreased(
-        ISapiencePositionEvents.LiquidityPositionIncreasedEventData memory eventData
+        ISapiencePositionEvents.LiquidityPositionIncreasedEventData
+            memory eventData
     ) private {
         emit ISapiencePositionEvents.LiquidityPositionIncreased(
             eventData.sender,
@@ -903,7 +920,8 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     }
 
     function _emitLiquidityPositionClosed(
-        ISapiencePositionEvents.LiquidityPositionClosedEventData memory eventData
+        ISapiencePositionEvents.LiquidityPositionClosedEventData
+            memory eventData
     ) private {
         emit ISapiencePositionEvents.LiquidityPositionClosed(
             eventData.sender,

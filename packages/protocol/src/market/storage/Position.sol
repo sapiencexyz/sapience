@@ -22,6 +22,7 @@ library Position {
     using DecimalMath for int256;
     using SafeERC20 for IERC20;
     using Market for Market.Data;
+    using MarketGroup for MarketGroup.Data;
 
     struct Data {
         // Unique identifier for the position
@@ -86,7 +87,10 @@ library Position {
         Data storage self,
         uint256 amount
     ) internal returns (int256 deltaCollateral) {
-        IERC20 collateralAsset = MarketGroup.load().collateralAsset;
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        IERC20 collateralAsset = marketGroup.collateralAsset;
+
+        // Calculate delta in 18 decimals
         deltaCollateral =
             amount.toInt() -
             self.depositedCollateralAmount.toInt();
@@ -94,16 +98,21 @@ library Position {
         if (deltaCollateral == 0) {
             return 0;
         } else if (deltaCollateral > 0) {
+            // Convert to token decimals for transfer (round up to ensure protocol receives full amount)
+            uint256 transferAmount = marketGroup.denormalizeCollateralAmountUp(
+                deltaCollateral.toUint()
+            );
             collateralAsset.safeTransferFrom(
                 msg.sender,
                 address(this),
-                deltaCollateral.toUint()
+                transferAmount
             );
         } else if (deltaCollateral < 0) {
-            collateralAsset.safeTransfer(
-                msg.sender,
+            // Convert to token decimals for transfer
+            uint256 transferAmount = marketGroup.denormalizeCollateralAmount(
                 (deltaCollateral * -1).toUint()
             );
+            collateralAsset.safeTransfer(msg.sender, transferAmount);
         }
 
         self.depositedCollateralAmount = amount;
@@ -118,10 +127,12 @@ library Position {
             self.borrowedVQuote
         );
 
-        if (self.depositedCollateralAmount < MarketGroup.MIN_COLLATERAL) {
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        // Use minTradeSize as the minimum collateral requirement (already in 18 decimals)
+        if (self.depositedCollateralAmount < marketGroup.minTradeSize) {
             revert Errors.CollateralBelowMin(
                 self.depositedCollateralAmount,
-                MarketGroup.MIN_COLLATERAL
+                marketGroup.minTradeSize
             );
         }
     }
@@ -216,7 +227,9 @@ library Position {
 
         // 2- convert everything to quote tokens
         if (self.vBaseAmount > 0) {
-            self.vQuoteAmount += self.vBaseAmount.mulDecimal(settlementPriceD18);
+            self.vQuoteAmount += self.vBaseAmount.mulDecimal(
+                settlementPriceD18
+            );
             self.vBaseAmount = 0;
         }
         if (self.borrowedVBase > 0) {
