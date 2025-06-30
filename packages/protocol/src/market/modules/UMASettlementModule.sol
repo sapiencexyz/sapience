@@ -10,6 +10,7 @@ import {MarketGroup} from "../storage/MarketGroup.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
+import {IMarketLayerZeroBridge} from "../../bridge/interfaces/ILayerZeroBridge.sol";
 
 contract UMASettlementModule is
     IUMASettlementModule,
@@ -21,7 +22,7 @@ contract UMASettlementModule is
 
     function submitSettlementPrice(
         uint256 marketId,
-        address asserter,
+        address asserter, // Notice, if we are on a bridged configuration, asserter is the address of the user that deposited the bond on the other side of the bridge (UMA Side)
         uint160 settlementSqrtPriceX96
     ) external nonReentrant returns (bytes32) {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
@@ -34,21 +35,6 @@ contract UMASettlementModule is
             "Assertion already submitted"
         );
 
-        IERC20 bondCurrency = IERC20(marketGroup.marketParams.bondCurrency);
-        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                marketGroup.marketParams.optimisticOracleV3
-            );
-
-        bondCurrency.safeTransferFrom(
-            msg.sender,
-            address(this),
-            marketGroup.marketParams.bondAmount
-        );
-        bondCurrency.approve(
-            address(optimisticOracleV3),
-            marketGroup.marketParams.bondAmount
-        );
-
         uint256 decimalPrice = DecimalPrice.sqrtRatioX96ToPrice(
             settlementSqrtPriceX96
         );
@@ -59,17 +45,51 @@ contract UMASettlementModule is
             "."
         );
 
-        market.assertionId = optimisticOracleV3.assertTruth(
-            claim,
-            asserter,
-            address(this),
-            address(0),
-            marketGroup.marketParams.assertionLiveness,
-            IERC20(marketGroup.marketParams.bondCurrency),
-            marketGroup.marketParams.bondAmount,
-            optimisticOracleV3.defaultIdentifier(),
-            bytes32(0)
-        );
+        IERC20 bondCurrency = IERC20(marketGroup.marketParams.bondCurrency);
+
+        if(marketGroup.bridgedSettlement) {
+            // TODO: Implement bridge functionality
+            // 1. Check if the submitter has enough bond balance 
+            IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(marketGroup.marketParams.optimisticOracleV3);
+
+            // 2. If yes, send to the bridge the claim data
+            market.assertionId = bridge.forwardAssertTruth(
+                address(this),
+                marketId,
+                claim,
+                asserter,
+                marketGroup.marketParams.assertionLiveness,
+                marketGroup.marketParams.bondCurrency,
+                marketGroup.marketParams.bondAmount
+            );
+            // 8. Call the bridge to process the settlement
+        } else {
+            OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
+                    marketGroup.marketParams.optimisticOracleV3
+                );
+
+            bondCurrency.safeTransferFrom(
+                msg.sender,
+                address(this),
+                marketGroup.marketParams.bondAmount
+            );
+            bondCurrency.approve(
+                address(optimisticOracleV3),
+                marketGroup.marketParams.bondAmount
+            );
+
+            market.assertionId = optimisticOracleV3.assertTruth(
+                claim,
+                asserter,
+                address(this),
+                address(0),
+                marketGroup.marketParams.assertionLiveness,
+                IERC20(marketGroup.marketParams.bondCurrency),
+                marketGroup.marketParams.bondAmount,
+                optimisticOracleV3.defaultIdentifier(),
+                bytes32(0)
+            );
+        }
 
         marketGroup.marketIdByAssertionId[market.assertionId] = marketId;
 

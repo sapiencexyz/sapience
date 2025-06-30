@@ -22,6 +22,7 @@ library MarketGroup {
         ISapienceStructs.MarketParams marketParams;
         mapping(bytes32 => uint256) marketIdByAssertionId;
         uint256 minTradeSize;
+        bool bridgedSettlement;
         uint256 collateralDecimals;
         uint256 collateralScalingFactor;
     }
@@ -39,6 +40,7 @@ library MarketGroup {
         address collateralAsset,
         address feeCollectorNFT,
         uint256 minTradeSize,
+        bool bridgedSettlement,
         ISapienceStructs.MarketParams memory marketParams
     ) internal returns (Data storage marketGroup) {
         validateMarketParams(marketParams);
@@ -58,6 +60,7 @@ library MarketGroup {
         marketGroup.feeCollectorNFT = IERC721(feeCollectorNFT);
         marketGroup.minTradeSize = minTradeSize;
         marketGroup.marketParams = marketParams;
+        marketGroup.bridgedSettlement = bridgedSettlement;
         marketGroup.collateralDecimals = decimals;
         marketGroup.collateralScalingFactor = decimals < 18
             ? 10 ** (18 - decimals)
