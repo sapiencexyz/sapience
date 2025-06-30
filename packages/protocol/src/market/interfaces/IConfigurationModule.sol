@@ -20,7 +20,8 @@ interface IConfigurationModule {
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
-        bytes claimStatement
+        bytes claimStatementYesOrNumeric,
+        bytes claimStatementNo
     );
 
     event OwnershipTransferStarted(
@@ -62,6 +63,7 @@ interface IConfigurationModule {
         int24 baseAssetMinPriceTick,
         int24 baseAssetMaxPriceTick,
         uint256 salt,
-        bytes calldata claimStatement
+        bytes calldata claimStatementYesOrNumeric,
+        bytes calldata claimStatementNo
     ) external returns (uint256 marketId);
 }

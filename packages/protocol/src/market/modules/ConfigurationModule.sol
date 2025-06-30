@@ -79,7 +79,8 @@ contract ConfigurationModule is
         int24 baseAssetMinPriceTick,
         int24 baseAssetMaxPriceTick,
         uint256 salt,
-        bytes calldata claimStatement
+        bytes calldata claimStatementYesOrNumeric,
+        bytes calldata claimStatementNo
     ) external override nonReentrant onlyOwner returns (uint256 marketId) {
         // load the market to check if it's already created
         MarketGroup.Data storage marketGroup = MarketGroup.load();
@@ -94,9 +95,10 @@ contract ConfigurationModule is
             baseAssetMinPriceTick,
             baseAssetMaxPriceTick,
             salt,
-            claimStatement
+            claimStatementYesOrNumeric,
+            claimStatementNo
         );
-        emit MarketCreated(newMarketId, startTime, endTime, startingSqrtPriceX96, claimStatement);
+        emit MarketCreated(newMarketId, startTime, endTime, startingSqrtPriceX96, claimStatementYesOrNumeric, claimStatementNo);
 
         return newMarketId;
     }

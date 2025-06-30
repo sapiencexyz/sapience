@@ -189,7 +189,8 @@ contract MarketGroupFactoryTest is Test {
             minTick,
             maxTick,
             1,
-            "claimStatement"
+            "claimStatement",
+            ""
         );
         vm.stopPrank();
 

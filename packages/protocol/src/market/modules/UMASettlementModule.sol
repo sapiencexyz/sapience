@@ -39,11 +39,7 @@ contract UMASettlementModule is
             settlementSqrtPriceX96
         );
 
-        bytes memory claim = abi.encodePacked(
-            string(market.claimStatement),
-            Strings.toString(decimalPrice),
-            "."
-        );
+        bytes memory claim = getClaim(market, decimalPrice);
 
         IERC20 bondCurrency = IERC20(marketGroup.marketParams.bondCurrency);
 
@@ -188,5 +184,25 @@ contract UMASettlementModule is
         require(!market.settled, "Market already settled");
         require(caller == address(optimisticOracleV3), "Invalid caller");
         require(assertionId == market.assertionId, "Invalid assertionId");
+    }
+
+    function getClaim(Market.Data storage market, uint256 decimalPrice) internal view returns (bytes memory) {
+        bytes memory claim;
+        if(market.claimStatementNo.length > 0) {
+            // Is Yes/No market
+            if(decimalPrice > market.minPriceD18) {
+                claim = abi.encodePacked(string(market.claimStatementYesOrNumeric));
+            } else {
+                claim = abi.encodePacked(string(market.claimStatementNo));
+            }
+        } else {
+            claim = abi.encodePacked(
+                string(market.claimStatementYesOrNumeric),
+                Strings.toString(decimalPrice),
+                "."
+            );            
+        }
+
+        return claim;
     }
 }

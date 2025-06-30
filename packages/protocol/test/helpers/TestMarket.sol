@@ -45,7 +45,8 @@ contract TestMarket is TestUser {
         uint160 startingSqrtPriceX96,
         address[] memory feeCollectors,
         uint256 minTradeSize,
-        bytes memory claimStatement
+        bytes memory claimStatementYesOrNumeric,
+        bytes memory claimStatementNo
     ) public returns (ISapience, address) {
         address owner = initializeMarketGroup(feeCollectors, minTradeSize);
         ISapience sapience = ISapience(vm.getAddress("Sapience"));
@@ -58,7 +59,8 @@ contract TestMarket is TestUser {
             minTick,
             maxTick,
             CREATE_MARKET_SALT,
-            claimStatement
+            claimStatementYesOrNumeric,
+            claimStatementNo
         );
 
         return (sapience, owner);
