@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -26,9 +26,9 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
 
     // State variables
     mapping(address => mapping(address => uint256))
-        private submitterBondBalances; // submitter => bondToken => balance
+        internal submitterBondBalances; // submitter => bondToken => balance
     mapping(address => mapping(address => BridgeTypes.WithdrawalIntent))
-        private withdrawalIntents; // submitter => bondToken => intent
+        internal withdrawalIntents; // submitter => bondToken => intent
 
     /**
      * @notice Deposit bond tokens to escrow

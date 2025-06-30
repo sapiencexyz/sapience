@@ -1,11 +1,9 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
 import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ILayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import {IUMALayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
@@ -245,8 +243,7 @@ contract UMALayerZeroBridge is
             bytes memory claim
         ) = data.decodeToUMAAssertTruth();
 
-        // TODO: Check if the assertionId is already in the mapping and send back an error message
-        // TODO: Check if the bond is enough and send back an error message
+        // Notice: assertionId and bond balance was checked from the other side of the bridge before hitting this function. We don't double check it here.
 
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
                 optimisticOracleV3Address

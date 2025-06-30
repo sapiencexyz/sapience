@@ -19,26 +19,9 @@ library BridgeTypes {
         uint256 timestamp;
     }
 
-    struct VerificationData {
-        address market;
-        uint256 epochId;
-        bytes32 assertionId;
-        bool verified;
-    }
-
-    struct MarketBondConfig {
-        address bondToken;
-        uint256 bondAmount;
-    }
-
     struct WithdrawalIntent {
         uint256 amount;
         uint256 timestamp;
         bool executed;
-    }
-
-    struct RemoteBalance {
-        uint256 amount;
-        uint256 lastUpdateTimestamp;
     }
 } 

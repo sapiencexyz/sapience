@@ -1,19 +1,15 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
 import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {ILayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {IUMASettlementModule} from "../market/interfaces/IUMASettlementModule.sol";
 import {IMarketLayerZeroBridge} from "./interfaces/ILayerZeroBridge.sol";
 import {Encoder} from "./cmdEncoder.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {BridgeTypes} from "./BridgeTypes.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import {ETHManagement} from "./abstract/ETHManagement.sol";
-import {GasManagement} from "./abstract/GasManagement.sol";
-// import {console2} from "forge-std/console2.sol";
 
 /**
  * @title MarketLayerZeroBridge
@@ -43,9 +39,6 @@ contract MarketLayerZeroBridge is
 
     mapping(uint256 => address) private assertionIdToMarketGroup; // assertionId => marketGroupAddress (where do we need to call the callback)
     uint256 private lastAssertionId; // Internal assertionId that is sent to UMA and to the marketGroup as bytes32
-
-    mapping(address => mapping(uint256 => bytes32))
-        private marketEpochToLocalId; // marketGroupAddress => marketId => localId
 
     // Constructor and initialization
     constructor(
@@ -129,10 +122,6 @@ contract MarketLayerZeroBridge is
                 bondToken
             ] -= deltaAmount;
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
-        } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_RECEIVED) {
-            (address submitter, address bondToken, , uint256 deltaAmount) = data
-                .decodeFromBalanceUpdate();
-            remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
         } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
             (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
             address marketGroup = assertionIdToMarketGroup[assertionId];
@@ -243,8 +232,6 @@ contract MarketLayerZeroBridge is
                 bond + remoteSubmitterWithdrawalIntent[asserter][currency],
             "Asserter does not have enough bond"
         );
-
-        // TODO: check if we need to verify other stuff here
 
         // Advance to next assertionId
         lastAssertionId++;

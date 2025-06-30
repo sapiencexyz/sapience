@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -10,7 +10,7 @@ import {IGasManagement} from "../interfaces/ILayerZeroBridge.sol";
  * @dev This contract provides common functionality for:
  * - Setting and getting gas thresholds (warning and critical)
  * - Setting and getting max execution gas
- * - Emitting gas-related events
+ * - Checking gas thresholds and revert if necessary
  */
 abstract contract GasManagement is Ownable, IGasManagement {
     // Gas monitoring and execution gas
@@ -70,22 +70,6 @@ abstract contract GasManagement is Ownable, IGasManagement {
         } else if (currentBalance <= WARNING_GAS_THRESHOLD) {
             emit GasReserveLow(currentBalance);
         }
-    }
-
-    /**
-     * @notice Get the warning gas threshold (internal)
-     * @return The warning gas threshold
-     */
-    function _getWarningGasThreshold() internal view returns (uint256) {
-        return WARNING_GAS_THRESHOLD;
-    }
-
-    /**
-     * @notice Get the critical gas threshold (internal)
-     * @return The critical gas threshold
-     */
-    function _getCriticalGasThreshold() internal view returns (uint256) {
-        return CRITICAL_GAS_THRESHOLD;
     }
 
     /**

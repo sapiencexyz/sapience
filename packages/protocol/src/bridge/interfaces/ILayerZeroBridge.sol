@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -10,24 +10,9 @@ import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol"
  * @notice Common interface for LayerZero bridge contracts
  */
 interface ILayerZeroBridge {
-    // Common structs
-    struct BridgeConfig {
-        uint16 remoteChainId;
-        address remoteBridge;
-    }
-
-    struct SettlementData {
-        address market;
-        uint256 epochId;
-        uint256 settlementPrice;
-        uint256 timestamp;
-    }
-
     // Common functions
     function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config) external;
     function getBridgeConfig() external view returns (BridgeTypes.BridgeConfig memory);
-
-    
 }
 
 
@@ -73,18 +58,6 @@ interface IBondManagement {
  * @notice Interface for UMA-side LayerZero bridge
  */
 interface IUMALayerZeroBridge is ILayerZeroBridge, IBondManagement {
-    // UMA-side specific structs
-    struct MarketBondConfig {
-        address bondToken;
-        uint256 bondAmount;
-    }
-
-    struct WithdrawalIntent {
-        uint256 amount;
-        uint256 timestamp;
-        bool executed;
-    }
-
     // Events
     event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
 
@@ -102,12 +75,6 @@ interface IUMALayerZeroBridge is ILayerZeroBridge, IBondManagement {
  * @notice Interface for Market-side LayerZero bridge
  */
 interface IMarketLayerZeroBridge is ILayerZeroBridge {
-    // Market-side specific structs
-    struct RemoteBalance {
-        uint256 amount;
-        uint256 lastUpdateTimestamp;
-    }
-
     // Events
     event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
     event BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount);
