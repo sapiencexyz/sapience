@@ -44,9 +44,6 @@ contract MarketLayerZeroBridge is
     mapping(uint256 => address) private assertionIdToMarketGroup; // assertionId => marketGroupAddress (where do we need to call the callback)
     uint256 private lastAssertionId; // Internal assertionId that is sent to UMA and to the marketGroup as bytes32
 
-    mapping(address => mapping(uint256 => bytes32))
-        private marketEpochToLocalId; // marketGroupAddress => marketId => localId
-
     // Constructor and initialization
     constructor(
         address _endpoint,
@@ -129,10 +126,6 @@ contract MarketLayerZeroBridge is
                 bondToken
             ] -= deltaAmount;
             emit BondWithdrawn(submitter, bondToken, deltaAmount);
-        } else if (commandType == Encoder.CMD_FROM_ESCROW_BOND_RECEIVED) {
-            (address submitter, address bondToken, , uint256 deltaAmount) = data
-                .decodeFromBalanceUpdate();
-            remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
         } else if (commandType == Encoder.CMD_FROM_UMA_RESOLVED_CALLBACK) {
             (uint256 assertionId, bool verified) = data.decodeFromUMAResolved();
             address marketGroup = assertionIdToMarketGroup[assertionId];
@@ -243,8 +236,6 @@ contract MarketLayerZeroBridge is
                 bond + remoteSubmitterWithdrawalIntent[asserter][currency],
             "Asserter does not have enough bond"
         );
-
-        // TODO: check if we need to verify other stuff here
 
         // Advance to next assertionId
         lastAssertionId++;

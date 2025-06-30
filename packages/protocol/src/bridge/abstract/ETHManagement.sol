@@ -61,20 +61,11 @@ abstract contract ETHManagement is GasManagement, IETHManagement {
     }
 
     /**
-     * @notice Check if the contract has sufficient ETH for a given fee
-     * @param requiredFee The fee amount to check against
-     * @return True if the contract has sufficient ETH, false otherwise
-     */
-    function _hasSufficientETH(uint256 requiredFee) internal view returns (bool) {
-        return address(this).balance >= requiredFee;
-    }
-
-    /**
      * @notice Require that the contract has sufficient ETH for a given fee
      * @param requiredFee The fee amount to check against
      */
     function _requireSufficientETH(uint256 requiredFee) internal view {
-        require(_hasSufficientETH(requiredFee), "Insufficient ETH balance for fee");
+        require(address(this).balance >= requiredFee, "Insufficient ETH balance for fee");
     }
 
     /**

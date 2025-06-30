@@ -73,22 +73,6 @@ abstract contract GasManagement is Ownable, IGasManagement {
     }
 
     /**
-     * @notice Get the warning gas threshold (internal)
-     * @return The warning gas threshold
-     */
-    function _getWarningGasThreshold() internal view returns (uint256) {
-        return WARNING_GAS_THRESHOLD;
-    }
-
-    /**
-     * @notice Get the critical gas threshold (internal)
-     * @return The critical gas threshold
-     */
-    function _getCriticalGasThreshold() internal view returns (uint256) {
-        return CRITICAL_GAS_THRESHOLD;
-    }
-
-    /**
      * @notice Get the max execution gas (internal)
      * @return The max execution gas
      */

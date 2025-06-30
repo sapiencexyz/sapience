@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.25 <0.9.0;
 
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-
 library Encoder {
     uint16 constant CMD_TO_UMA_ASSERT_TRUTH = 1;
     uint16 constant CMD_FROM_UMA_RESOLVED_CALLBACK = 2;
@@ -12,9 +9,6 @@ library Encoder {
     uint16 constant CMD_FROM_ESCROW_DEPOSIT = 4;
     uint16 constant CMD_FROM_ESCROW_INTENT_TO_WITHDRAW = 5;
     uint16 constant CMD_FROM_ESCROW_WITHDRAW = 6;
-    uint16 constant CMD_FROM_ESCROW_BOND_RECEIVED = 7;
-
-
 
     function encodeType(uint16 commandType, bytes memory data) internal pure returns (bytes memory) {
         return abi.encodePacked(commandType, data);
