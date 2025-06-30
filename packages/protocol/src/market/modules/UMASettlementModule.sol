@@ -22,7 +22,7 @@ contract UMASettlementModule is
 
     function submitSettlementPrice(
         uint256 marketId,
-        address asserter,
+        address asserter, // Notice, if we are on a bridged configuration, asserter is the address of the user that deposited the bond on the other side of the bridge (UMA Side)
         uint160 settlementSqrtPriceX96
     ) external nonReentrant returns (bytes32) {
         MarketGroup.Data storage marketGroup = MarketGroup.load();

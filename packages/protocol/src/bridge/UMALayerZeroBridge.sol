@@ -243,8 +243,7 @@ contract UMALayerZeroBridge is
             bytes memory claim
         ) = data.decodeToUMAAssertTruth();
 
-        // TODO: Check if the assertionId is already in the mapping and send back an error message
-        // TODO: Check if the bond is enough and send back an error message
+        // Notice: assertionId and bond balance was checked from the other side of the bridge before hitting this function. We don't double check it here.
 
         OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
                 optimisticOracleV3Address
