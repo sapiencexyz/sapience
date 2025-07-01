@@ -2,12 +2,12 @@ import 'tsconfig-paths/register';
 import prisma from '../db';
 import { PublicClient, erc20Abi } from 'viem';
 import { Decimal } from 'generated/prisma/runtime/library';
-import type { 
-  transaction, 
-  event, 
-  market_group, 
-  position, 
-  market 
+import type {
+  transaction,
+  event,
+  market_group,
+  position,
+  market,
 } from '../../generated/prisma';
 import { transaction_type_enum as TransactionType } from '../../generated/prisma';
 import {

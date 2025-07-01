@@ -9,7 +9,7 @@ import {
   Field,
 } from 'type-graphql';
 import prisma from '../../db';
-import { MarketGroup, Market } from '../types/PrismaTypes';
+import { Market_group, Market } from '@generated/type-graphql';
 import type { market_group, market, Prisma } from '../../../generated/prisma';
 
 @InputType()
@@ -27,16 +27,16 @@ export class MarketOrderInput {
   direction: 'ASC' | 'DESC';
 }
 
-@Resolver(() => MarketGroup)
+@Resolver(() => Market_group)
 export class MarketGroupResolver {
-  @Query(() => [MarketGroup])
+  @Query(() => [Market_group])
   async marketGroups(
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('collateralAsset', () => String, { nullable: true })
     collateralAsset?: string,
     @Arg('baseTokenName', () => String, { nullable: true })
     baseTokenName?: string
-  ): Promise<MarketGroup[]> {
+  ): Promise<Market_group[]> {
     try {
       const whereConditions: Prisma.market_groupWhereInput = {};
 
@@ -61,18 +61,18 @@ export class MarketGroupResolver {
         },
       });
 
-      return marketGroups as MarketGroup[];
+      return marketGroups as Market_group[];
     } catch (error) {
       console.error('Error fetching market groups:', error);
       throw new Error('Failed to fetch market groups');
     }
   }
 
-  @Query(() => MarketGroup, { nullable: true })
+  @Query(() => Market_group, { nullable: true })
   async marketGroup(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string
-  ): Promise<MarketGroup | null> {
+  ): Promise<Market_group | null> {
     try {
       const marketGroup = await prisma.market_group.findFirst({
         where: {
@@ -88,7 +88,7 @@ export class MarketGroupResolver {
 
       if (!marketGroup) return null;
 
-      return marketGroup as MarketGroup;
+      return marketGroup as Market_group;
     } catch (error) {
       console.error('Error fetching market group:', error);
       throw new Error('Failed to fetch market group');

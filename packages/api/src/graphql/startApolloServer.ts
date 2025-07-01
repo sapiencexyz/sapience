@@ -2,6 +2,7 @@ import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import { buildSchema } from 'type-graphql';
+import { SharedSchema } from './sharedSchema';
 import {
   MarketGroupResolver,
   PositionResolver,
@@ -10,28 +11,28 @@ import {
   CandleResolver,
   PnLResolver,
   VolumeResolver,
-  CategoryResolver,
   MarketResolver,
 } from './resolvers';
-import { SharedSchema } from './sharedSchema';
+
+import { ALL_GENERATED_RESOLVERS } from './resolvers/generatedResolvers';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ApolloContext {}
 
 export const initializeApolloServer = async () => {
-  // Create GraphQL schema
+ 
   const schema = await buildSchema({
     resolvers: [
-      MarketGroupResolver,
-      MarketResolver,
-      ResourceResolver,
-      PositionResolver,
-      TransactionResolver,
-      CandleResolver,
-      PnLResolver,
-      VolumeResolver,
-      CategoryResolver,
-    ],
+      MarketGroupResolver,    
+      MarketResolver,          
+      ResourceResolver,      
+      PositionResolver,        
+      TransactionResolver,     
+      CandleResolver,         
+      PnLResolver,           
+      VolumeResolver,         
+      ...ALL_GENERATED_RESOLVERS,
+    ] as const,
     emitSchemaFile: true,
     validate: false,
   });

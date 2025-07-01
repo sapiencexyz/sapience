@@ -3,6 +3,374 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
+type AggregateCache_candle {
+  _avg: Cache_candleAvgAggregate
+  _count: Cache_candleCountAggregate
+  _max: Cache_candleMaxAggregate
+  _min: Cache_candleMinAggregate
+  _sum: Cache_candleSumAggregate
+}
+
+type AggregateCategory {
+  _avg: CategoryAvgAggregate
+  _count: CategoryCountAggregate
+  _max: CategoryMaxAggregate
+  _min: CategoryMinAggregate
+  _sum: CategorySumAggregate
+}
+
+type AggregateCrypto_prices {
+  _avg: Crypto_pricesAvgAggregate
+  _count: Crypto_pricesCountAggregate
+  _max: Crypto_pricesMaxAggregate
+  _min: Crypto_pricesMinAggregate
+  _sum: Crypto_pricesSumAggregate
+}
+
+type AggregateEvent {
+  _avg: EventAvgAggregate
+  _count: EventCountAggregate
+  _max: EventMaxAggregate
+  _min: EventMinAggregate
+  _sum: EventSumAggregate
+}
+
+type AggregateMarket {
+  _avg: MarketAvgAggregate
+  _count: MarketCountAggregate
+  _max: MarketMaxAggregate
+  _min: MarketMinAggregate
+  _sum: MarketSumAggregate
+}
+
+type AggregateMarket_group {
+  _avg: Market_groupAvgAggregate
+  _count: Market_groupCountAggregate
+  _max: Market_groupMaxAggregate
+  _min: Market_groupMinAggregate
+  _sum: Market_groupSumAggregate
+}
+
+type AggregatePosition {
+  _avg: PositionAvgAggregate
+  _count: PositionCountAggregate
+  _max: PositionMaxAggregate
+  _min: PositionMinAggregate
+  _sum: PositionSumAggregate
+}
+
+type AggregateRender_job {
+  _avg: Render_jobAvgAggregate
+  _count: Render_jobCountAggregate
+  _max: Render_jobMaxAggregate
+  _min: Render_jobMinAggregate
+  _sum: Render_jobSumAggregate
+}
+
+type AggregateResource {
+  _avg: ResourceAvgAggregate
+  _count: ResourceCountAggregate
+  _max: ResourceMaxAggregate
+  _min: ResourceMinAggregate
+  _sum: ResourceSumAggregate
+}
+
+type AggregateResource_price {
+  _avg: Resource_priceAvgAggregate
+  _count: Resource_priceCountAggregate
+  _max: Resource_priceMaxAggregate
+  _min: Resource_priceMinAggregate
+  _sum: Resource_priceSumAggregate
+}
+
+type AggregateTransaction {
+  _avg: TransactionAvgAggregate
+  _count: TransactionCountAggregate
+  _max: TransactionMaxAggregate
+  _min: TransactionMinAggregate
+  _sum: TransactionSumAggregate
+}
+
+"""
+The `BigInt` scalar type represents non-fractional signed whole numeric values.
+"""
+scalar BigInt
+
+input BigIntFilter {
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  in: [BigInt!]
+  lt: BigInt
+  lte: BigInt
+  not: NestedBigIntFilter
+  notIn: [BigInt!]
+}
+
+input BigIntWithAggregatesFilter {
+  _avg: NestedFloatFilter
+  _count: NestedIntFilter
+  _max: NestedBigIntFilter
+  _min: NestedBigIntFilter
+  _sum: NestedBigIntFilter
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  in: [BigInt!]
+  lt: BigInt
+  lte: BigInt
+  not: NestedBigIntWithAggregatesFilter
+  notIn: [BigInt!]
+}
+
+input BoolFilter {
+  equals: Boolean
+  not: NestedBoolFilter
+}
+
+input BoolNullableFilter {
+  equals: Boolean
+  not: NestedBoolNullableFilter
+}
+
+input BoolNullableWithAggregatesFilter {
+  _count: NestedIntNullableFilter
+  _max: NestedBoolNullableFilter
+  _min: NestedBoolNullableFilter
+  equals: Boolean
+  not: NestedBoolNullableWithAggregatesFilter
+}
+
+input BoolWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedBoolFilter
+  _min: NestedBoolFilter
+  equals: Boolean
+  not: NestedBoolWithAggregatesFilter
+}
+
+type Cache_candle {
+  address: String
+  candleType: String!
+  chainId: Int
+  close: String!
+  createdAt: DateTimeISO!
+  endTimestamp: Int!
+  high: String!
+  id: Int!
+  interval: Int!
+  lastUpdatedTimestamp: Int!
+  low: String!
+  marketId: Int
+  marketIdx: Int
+  open: String!
+  resourceSlug: String
+  sumFeePaid: Decimal
+  sumUsed: Decimal
+  timestamp: Int!
+  trailingAvgTime: Int
+  trailingStartTimestamp: Int
+}
+
+type Cache_candleAvgAggregate {
+  chainId: Float
+  endTimestamp: Float
+  id: Float
+  interval: Float
+  lastUpdatedTimestamp: Float
+  marketId: Float
+  marketIdx: Float
+  sumFeePaid: Decimal
+  sumUsed: Decimal
+  timestamp: Float
+  trailingAvgTime: Float
+  trailingStartTimestamp: Float
+}
+
+type Cache_candleCountAggregate {
+  _all: Int!
+  address: Int!
+  candleType: Int!
+  chainId: Int!
+  close: Int!
+  createdAt: Int!
+  endTimestamp: Int!
+  high: Int!
+  id: Int!
+  interval: Int!
+  lastUpdatedTimestamp: Int!
+  low: Int!
+  marketId: Int!
+  marketIdx: Int!
+  open: Int!
+  resourceSlug: Int!
+  sumFeePaid: Int!
+  sumUsed: Int!
+  timestamp: Int!
+  trailingAvgTime: Int!
+  trailingStartTimestamp: Int!
+}
+
+type Cache_candleMaxAggregate {
+  address: String
+  candleType: String
+  chainId: Int
+  close: String
+  createdAt: DateTimeISO
+  endTimestamp: Int
+  high: String
+  id: Int
+  interval: Int
+  lastUpdatedTimestamp: Int
+  low: String
+  marketId: Int
+  marketIdx: Int
+  open: String
+  resourceSlug: String
+  sumFeePaid: Decimal
+  sumUsed: Decimal
+  timestamp: Int
+  trailingAvgTime: Int
+  trailingStartTimestamp: Int
+}
+
+type Cache_candleMinAggregate {
+  address: String
+  candleType: String
+  chainId: Int
+  close: String
+  createdAt: DateTimeISO
+  endTimestamp: Int
+  high: String
+  id: Int
+  interval: Int
+  lastUpdatedTimestamp: Int
+  low: String
+  marketId: Int
+  marketIdx: Int
+  open: String
+  resourceSlug: String
+  sumFeePaid: Decimal
+  sumUsed: Decimal
+  timestamp: Int
+  trailingAvgTime: Int
+  trailingStartTimestamp: Int
+}
+
+input Cache_candleOrderByWithRelationInput {
+  address: SortOrderInput
+  candleType: SortOrder
+  chainId: SortOrderInput
+  close: SortOrder
+  createdAt: SortOrder
+  endTimestamp: SortOrder
+  high: SortOrder
+  id: SortOrder
+  interval: SortOrder
+  lastUpdatedTimestamp: SortOrder
+  low: SortOrder
+  marketId: SortOrderInput
+  marketIdx: SortOrderInput
+  open: SortOrder
+  resourceSlug: SortOrderInput
+  sumFeePaid: SortOrderInput
+  sumUsed: SortOrderInput
+  timestamp: SortOrder
+  trailingAvgTime: SortOrderInput
+  trailingStartTimestamp: SortOrderInput
+}
+
+enum Cache_candleScalarFieldEnum {
+  address
+  candleType
+  chainId
+  close
+  createdAt
+  endTimestamp
+  high
+  id
+  interval
+  lastUpdatedTimestamp
+  low
+  marketId
+  marketIdx
+  open
+  resourceSlug
+  sumFeePaid
+  sumUsed
+  timestamp
+  trailingAvgTime
+  trailingStartTimestamp
+}
+
+type Cache_candleSumAggregate {
+  chainId: Int
+  endTimestamp: Int
+  id: Int
+  interval: Int
+  lastUpdatedTimestamp: Int
+  marketId: Int
+  marketIdx: Int
+  sumFeePaid: Decimal
+  sumUsed: Decimal
+  timestamp: Int
+  trailingAvgTime: Int
+  trailingStartTimestamp: Int
+}
+
+input Cache_candleWhereInput {
+  AND: [Cache_candleWhereInput!]
+  NOT: [Cache_candleWhereInput!]
+  OR: [Cache_candleWhereInput!]
+  address: StringNullableFilter
+  candleType: StringFilter
+  chainId: IntNullableFilter
+  close: StringFilter
+  createdAt: DateTimeFilter
+  endTimestamp: IntFilter
+  high: StringFilter
+  id: IntFilter
+  interval: IntFilter
+  lastUpdatedTimestamp: IntFilter
+  low: StringFilter
+  marketId: IntNullableFilter
+  marketIdx: IntNullableFilter
+  open: StringFilter
+  resourceSlug: StringNullableFilter
+  sumFeePaid: DecimalNullableFilter
+  sumUsed: DecimalNullableFilter
+  timestamp: IntFilter
+  trailingAvgTime: IntNullableFilter
+  trailingStartTimestamp: IntNullableFilter
+}
+
+input Cache_candleWhereUniqueInput {
+  AND: [Cache_candleWhereInput!]
+  NOT: [Cache_candleWhereInput!]
+  OR: [Cache_candleWhereInput!]
+  address: StringNullableFilter
+  candleType: StringFilter
+  candleType_interval_timestamp_resourceSlug_marketIdx_trailingAvgTime: cache_candleCandleTypeIntervalTimestampResourceSlugMarketIdxTrailingAvgTimeCompoundUniqueInput
+  chainId: IntNullableFilter
+  close: StringFilter
+  createdAt: DateTimeFilter
+  endTimestamp: IntFilter
+  high: StringFilter
+  id: Int
+  interval: IntFilter
+  lastUpdatedTimestamp: IntFilter
+  low: StringFilter
+  marketId: IntNullableFilter
+  marketIdx: IntNullableFilter
+  open: StringFilter
+  resourceSlug: StringNullableFilter
+  sumFeePaid: DecimalNullableFilter
+  sumUsed: DecimalNullableFilter
+  timestamp: IntFilter
+  trailingAvgTime: IntNullableFilter
+  trailingStartTimestamp: IntNullableFilter
+}
+
 type CandleAndTimestampType {
   data: [CandleType!]!
   lastUpdateTimestamp: Int!
@@ -17,22 +385,704 @@ type CandleType {
 }
 
 type Category {
-  id: ID!
-  marketGroups: [MarketGroup!]
+  _count: CategoryCount
+  createdAt: DateTimeISO!
+  id: Int!
   name: String!
   slug: String!
 }
 
+type CategoryAvgAggregate {
+  id: Float
+}
+
+input CategoryAvgOrderByAggregateInput {
+  id: SortOrder
+}
+
+type CategoryCount {
+  market_group(where: Market_groupWhereInput): Int!
+  resource(where: ResourceWhereInput): Int!
+}
+
+type CategoryCountAggregate {
+  _all: Int!
+  createdAt: Int!
+  id: Int!
+  name: Int!
+  slug: Int!
+}
+
+input CategoryCountOrderByAggregateInput {
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+type CategoryGroupBy {
+  _avg: CategoryAvgAggregate
+  _count: CategoryCountAggregate
+  _max: CategoryMaxAggregate
+  _min: CategoryMinAggregate
+  _sum: CategorySumAggregate
+  createdAt: DateTimeISO!
+  id: Int!
+  name: String!
+  slug: String!
+}
+
+type CategoryMaxAggregate {
+  createdAt: DateTimeISO
+  id: Int
+  name: String
+  slug: String
+}
+
+input CategoryMaxOrderByAggregateInput {
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+type CategoryMinAggregate {
+  createdAt: DateTimeISO
+  id: Int
+  name: String
+  slug: String
+}
+
+input CategoryMinOrderByAggregateInput {
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+input CategoryNullableRelationFilter {
+  is: CategoryWhereInput
+  isNot: CategoryWhereInput
+}
+
+input CategoryOrderByWithAggregationInput {
+  _avg: CategoryAvgOrderByAggregateInput
+  _count: CategoryCountOrderByAggregateInput
+  _max: CategoryMaxOrderByAggregateInput
+  _min: CategoryMinOrderByAggregateInput
+  _sum: CategorySumOrderByAggregateInput
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+input CategoryOrderByWithRelationInput {
+  createdAt: SortOrder
+  id: SortOrder
+  market_group: Market_groupOrderByRelationAggregateInput
+  name: SortOrder
+  resource: ResourceOrderByRelationAggregateInput
+  slug: SortOrder
+}
+
+enum CategoryScalarFieldEnum {
+  createdAt
+  id
+  name
+  slug
+}
+
+input CategoryScalarWhereWithAggregatesInput {
+  AND: [CategoryScalarWhereWithAggregatesInput!]
+  NOT: [CategoryScalarWhereWithAggregatesInput!]
+  OR: [CategoryScalarWhereWithAggregatesInput!]
+  createdAt: DateTimeWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  name: StringWithAggregatesFilter
+  slug: StringWithAggregatesFilter
+}
+
+type CategorySumAggregate {
+  id: Int
+}
+
+input CategorySumOrderByAggregateInput {
+  id: SortOrder
+}
+
+input CategoryWhereInput {
+  AND: [CategoryWhereInput!]
+  NOT: [CategoryWhereInput!]
+  OR: [CategoryWhereInput!]
+  createdAt: DateTimeFilter
+  id: IntFilter
+  market_group: Market_groupListRelationFilter
+  name: StringFilter
+  resource: ResourceListRelationFilter
+  slug: StringFilter
+}
+
+input CategoryWhereUniqueInput {
+  AND: [CategoryWhereInput!]
+  NOT: [CategoryWhereInput!]
+  OR: [CategoryWhereInput!]
+  createdAt: DateTimeFilter
+  id: Int
+  market_group: Market_groupListRelationFilter
+  name: String
+  resource: ResourceListRelationFilter
+  slug: String
+}
+
+input Collateral_transferNullableRelationFilter {
+  is: Collateral_transferWhereInput
+  isNot: Collateral_transferWhereInput
+}
+
+input Collateral_transferOrderByWithRelationInput {
+  collateral: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  owner: SortOrder
+  timestamp: SortOrder
+  transaction: TransactionOrderByWithRelationInput
+  transactionHash: SortOrder
+}
+
+input Collateral_transferWhereInput {
+  AND: [Collateral_transferWhereInput!]
+  NOT: [Collateral_transferWhereInput!]
+  OR: [Collateral_transferWhereInput!]
+  collateral: DecimalFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  owner: StringFilter
+  timestamp: IntFilter
+  transaction: TransactionNullableRelationFilter
+  transactionHash: StringFilter
+}
+
+type Crypto_prices {
+  id: Int!
+  price: Float!
+  ticker: String
+  timestamp: DateTimeISO!
+}
+
+type Crypto_pricesAvgAggregate {
+  id: Float
+  price: Float
+}
+
+type Crypto_pricesCountAggregate {
+  _all: Int!
+  id: Int!
+  price: Int!
+  ticker: Int!
+  timestamp: Int!
+}
+
+type Crypto_pricesMaxAggregate {
+  id: Int
+  price: Float
+  ticker: String
+  timestamp: DateTimeISO
+}
+
+type Crypto_pricesMinAggregate {
+  id: Int
+  price: Float
+  ticker: String
+  timestamp: DateTimeISO
+}
+
+input Crypto_pricesOrderByWithRelationInput {
+  id: SortOrder
+  price: SortOrder
+  ticker: SortOrderInput
+  timestamp: SortOrder
+}
+
+enum Crypto_pricesScalarFieldEnum {
+  id
+  price
+  ticker
+  timestamp
+}
+
+type Crypto_pricesSumAggregate {
+  id: Int
+  price: Float
+}
+
+input Crypto_pricesWhereInput {
+  AND: [Crypto_pricesWhereInput!]
+  NOT: [Crypto_pricesWhereInput!]
+  OR: [Crypto_pricesWhereInput!]
+  id: IntFilter
+  price: FloatFilter
+  ticker: StringNullableFilter
+  timestamp: DateTimeFilter
+}
+
+input Crypto_pricesWhereUniqueInput {
+  AND: [Crypto_pricesWhereInput!]
+  NOT: [Crypto_pricesWhereInput!]
+  OR: [Crypto_pricesWhereInput!]
+  id: Int
+  price: FloatFilter
+  ticker: StringNullableFilter
+  timestamp: DateTimeFilter
+}
+
+input DateTimeFilter {
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeFilter
+  notIn: [DateTimeISO!]
+}
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
+"""
+scalar DateTimeISO
+
+input DateTimeWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedDateTimeFilter
+  _min: NestedDateTimeFilter
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeWithAggregatesFilter
+  notIn: [DateTimeISO!]
+}
+
+"""
+GraphQL Scalar representing the Prisma.Decimal type, based on Decimal.js library.
+"""
+scalar Decimal
+
+input DecimalFilter {
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalFilter
+  notIn: [Decimal!]
+}
+
+input DecimalNullableFilter {
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalNullableFilter
+  notIn: [Decimal!]
+}
+
+input DecimalNullableWithAggregatesFilter {
+  _avg: NestedDecimalNullableFilter
+  _count: NestedIntNullableFilter
+  _max: NestedDecimalNullableFilter
+  _min: NestedDecimalNullableFilter
+  _sum: NestedDecimalNullableFilter
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalNullableWithAggregatesFilter
+  notIn: [Decimal!]
+}
+
+input DecimalWithAggregatesFilter {
+  _avg: NestedDecimalFilter
+  _count: NestedIntFilter
+  _max: NestedDecimalFilter
+  _min: NestedDecimalFilter
+  _sum: NestedDecimalFilter
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalWithAggregatesFilter
+  notIn: [Decimal!]
+}
+
+input Enumtransaction_type_enumFilter {
+  equals: transaction_type_enum
+  in: [transaction_type_enum!]
+  not: NestedEnumtransaction_type_enumFilter
+  notIn: [transaction_type_enum!]
+}
+
+input Enumtransaction_type_enumWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedEnumtransaction_type_enumFilter
+  _min: NestedEnumtransaction_type_enumFilter
+  equals: transaction_type_enum
+  in: [transaction_type_enum!]
+  not: NestedEnumtransaction_type_enumWithAggregatesFilter
+  notIn: [transaction_type_enum!]
+}
+
+type Event {
+  blockNumber: Int!
+  createdAt: DateTimeISO!
+  id: Int!
+  logData: JSON!
+  logIndex: Int!
+  marketGroupId: Int
+  timestamp: BigInt!
+  transactionHash: String!
+}
+
+type EventAvgAggregate {
+  blockNumber: Float
+  id: Float
+  logIndex: Float
+  marketGroupId: Float
+  timestamp: Float
+}
+
+input EventAvgOrderByAggregateInput {
+  blockNumber: SortOrder
+  id: SortOrder
+  logIndex: SortOrder
+  marketGroupId: SortOrder
+  timestamp: SortOrder
+}
+
+type EventCountAggregate {
+  _all: Int!
+  blockNumber: Int!
+  createdAt: Int!
+  id: Int!
+  logData: Int!
+  logIndex: Int!
+  marketGroupId: Int!
+  timestamp: Int!
+  transactionHash: Int!
+}
+
+input EventCountOrderByAggregateInput {
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  logData: SortOrder
+  logIndex: SortOrder
+  marketGroupId: SortOrder
+  timestamp: SortOrder
+  transactionHash: SortOrder
+}
+
+type EventGroupBy {
+  _avg: EventAvgAggregate
+  _count: EventCountAggregate
+  _max: EventMaxAggregate
+  _min: EventMinAggregate
+  _sum: EventSumAggregate
+  blockNumber: Int!
+  createdAt: DateTimeISO!
+  id: Int!
+  logData: JSON!
+  logIndex: Int!
+  marketGroupId: Int
+  timestamp: BigInt!
+  transactionHash: String!
+}
+
+input EventListRelationFilter {
+  every: EventWhereInput
+  none: EventWhereInput
+  some: EventWhereInput
+}
+
+type EventMaxAggregate {
+  blockNumber: Int
+  createdAt: DateTimeISO
+  id: Int
+  logIndex: Int
+  marketGroupId: Int
+  timestamp: BigInt
+  transactionHash: String
+}
+
+input EventMaxOrderByAggregateInput {
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  logIndex: SortOrder
+  marketGroupId: SortOrder
+  timestamp: SortOrder
+  transactionHash: SortOrder
+}
+
+type EventMinAggregate {
+  blockNumber: Int
+  createdAt: DateTimeISO
+  id: Int
+  logIndex: Int
+  marketGroupId: Int
+  timestamp: BigInt
+  transactionHash: String
+}
+
+input EventMinOrderByAggregateInput {
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  logIndex: SortOrder
+  marketGroupId: SortOrder
+  timestamp: SortOrder
+  transactionHash: SortOrder
+}
+
+input EventNullableRelationFilter {
+  is: EventWhereInput
+  isNot: EventWhereInput
+}
+
+input EventOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input EventOrderByWithAggregationInput {
+  _avg: EventAvgOrderByAggregateInput
+  _count: EventCountOrderByAggregateInput
+  _max: EventMaxOrderByAggregateInput
+  _min: EventMinOrderByAggregateInput
+  _sum: EventSumOrderByAggregateInput
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  logData: SortOrder
+  logIndex: SortOrder
+  marketGroupId: SortOrderInput
+  timestamp: SortOrder
+  transactionHash: SortOrder
+}
+
+input EventOrderByWithRelationInput {
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  logData: SortOrder
+  logIndex: SortOrder
+  marketGroupId: SortOrderInput
+  market_group: Market_groupOrderByWithRelationInput
+  timestamp: SortOrder
+  transaction: TransactionOrderByWithRelationInput
+  transactionHash: SortOrder
+}
+
+enum EventScalarFieldEnum {
+  blockNumber
+  createdAt
+  id
+  logData
+  logIndex
+  marketGroupId
+  timestamp
+  transactionHash
+}
+
+input EventScalarWhereWithAggregatesInput {
+  AND: [EventScalarWhereWithAggregatesInput!]
+  NOT: [EventScalarWhereWithAggregatesInput!]
+  OR: [EventScalarWhereWithAggregatesInput!]
+  blockNumber: IntWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  logData: JsonWithAggregatesFilter
+  logIndex: IntWithAggregatesFilter
+  marketGroupId: IntNullableWithAggregatesFilter
+  timestamp: BigIntWithAggregatesFilter
+  transactionHash: StringWithAggregatesFilter
+}
+
+type EventSumAggregate {
+  blockNumber: Int
+  id: Int
+  logIndex: Int
+  marketGroupId: Int
+  timestamp: BigInt
+}
+
+input EventSumOrderByAggregateInput {
+  blockNumber: SortOrder
+  id: SortOrder
+  logIndex: SortOrder
+  marketGroupId: SortOrder
+  timestamp: SortOrder
+}
+
+input EventWhereInput {
+  AND: [EventWhereInput!]
+  NOT: [EventWhereInput!]
+  OR: [EventWhereInput!]
+  blockNumber: IntFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  logData: JsonFilter
+  logIndex: IntFilter
+  marketGroupId: IntNullableFilter
+  market_group: Market_groupNullableRelationFilter
+  timestamp: BigIntFilter
+  transaction: TransactionNullableRelationFilter
+  transactionHash: StringFilter
+}
+
+input EventWhereUniqueInput {
+  AND: [EventWhereInput!]
+  NOT: [EventWhereInput!]
+  OR: [EventWhereInput!]
+  blockNumber: IntFilter
+  createdAt: DateTimeFilter
+  id: Int
+  logData: JsonFilter
+  logIndex: IntFilter
+  marketGroupId: IntNullableFilter
+  market_group: Market_groupNullableRelationFilter
+  timestamp: BigIntFilter
+  transaction: TransactionNullableRelationFilter
+  transactionHash: StringFilter
+  transactionHash_marketGroupId_blockNumber_logIndex: eventTransactionHashMarketGroupIdBlockNumberLogIndexCompoundUniqueInput
+}
+
+input FloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatFilter
+  notIn: [Float!]
+}
+
+input IntFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntFilter
+  notIn: [Int!]
+}
+
+input IntNullableFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntNullableFilter
+  notIn: [Int!]
+}
+
+input IntNullableWithAggregatesFilter {
+  _avg: NestedFloatNullableFilter
+  _count: NestedIntNullableFilter
+  _max: NestedIntNullableFilter
+  _min: NestedIntNullableFilter
+  _sum: NestedIntNullableFilter
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntNullableWithAggregatesFilter
+  notIn: [Int!]
+}
+
+input IntWithAggregatesFilter {
+  _avg: NestedFloatFilter
+  _count: NestedIntFilter
+  _max: NestedIntFilter
+  _min: NestedIntFilter
+  _sum: NestedIntFilter
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntWithAggregatesFilter
+  notIn: [Int!]
+}
+
+"""
+The `JSON` scalar type represents JSON values as specified by [ECMA-404](http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf).
+"""
+scalar JSON @specifiedBy(url: "http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-404.pdf")
+
+input JsonFilter {
+  array_contains: JSON
+  array_ends_with: JSON
+  array_starts_with: JSON
+  equals: JSON
+  gt: JSON
+  gte: JSON
+  lt: JSON
+  lte: JSON
+  not: JSON
+  path: [String!]
+  string_contains: String
+  string_ends_with: String
+  string_starts_with: String
+}
+
+input JsonWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedJsonFilter
+  _min: NestedJsonFilter
+  array_contains: JSON
+  array_ends_with: JSON
+  array_starts_with: JSON
+  equals: JSON
+  gt: JSON
+  gte: JSON
+  lt: JSON
+  lte: JSON
+  not: JSON
+  path: [String!]
+  string_contains: String
+  string_ends_with: String
+  string_starts_with: String
+}
+
 type Market {
+  _count: MarketCount
   baseAssetMaxPriceTick: Int
   baseAssetMinPriceTick: Int
+  createdAt: DateTimeISO!
   currentPrice: String
   endTimestamp: Int
-  id: ID!
-  marketGroup: MarketGroup
+  id: Int!
+  marketGroupId: Int
   marketId: Int!
-  marketParamsAssertionliveness: String
-  marketParamsBondamount: String
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
   marketParamsBondcurrency: String
   marketParamsClaimstatement: String
   marketParamsFeerate: Int
@@ -40,39 +1090,137 @@ type Market {
   marketParamsUniswappositionmanager: String
   marketParamsUniswapquoter: String
   marketParamsUniswapswaprouter: String
+  maxPriceD18: Decimal
+  minPriceD18: Decimal
   optionName: String
   poolAddress: String
-  positions: [Position!]
   public: Boolean!
   question: String
   rules: String
   settled: Boolean
-  settlementPriceD18: String
+  settlementPriceD18: Decimal
   startTimestamp: Int
-  startingSqrtPriceX96: String
+  startingSqrtPriceX96: Decimal
+}
+
+type MarketAvgAggregate {
+  baseAssetMaxPriceTick: Float
+  baseAssetMinPriceTick: Float
+  endTimestamp: Float
+  id: Float
+  marketGroupId: Float
+  marketId: Float
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsFeerate: Float
+  maxPriceD18: Decimal
+  minPriceD18: Decimal
+  settlementPriceD18: Decimal
+  startTimestamp: Float
+  startingSqrtPriceX96: Decimal
+}
+
+input MarketAvgOrderByAggregateInput {
+  baseAssetMaxPriceTick: SortOrder
+  baseAssetMinPriceTick: SortOrder
+  endTimestamp: SortOrder
+  id: SortOrder
+  marketGroupId: SortOrder
+  marketId: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsFeerate: SortOrder
+  maxPriceD18: SortOrder
+  minPriceD18: SortOrder
+  settlementPriceD18: SortOrder
+  startTimestamp: SortOrder
+  startingSqrtPriceX96: SortOrder
+}
+
+type MarketCount {
+  position(where: PositionWhereInput): Int!
+}
+
+type MarketCountAggregate {
+  _all: Int!
+  baseAssetMaxPriceTick: Int!
+  baseAssetMinPriceTick: Int!
+  createdAt: Int!
+  endTimestamp: Int!
+  id: Int!
+  marketGroupId: Int!
+  marketId: Int!
+  marketParamsAssertionliveness: Int!
+  marketParamsBondamount: Int!
+  marketParamsBondcurrency: Int!
+  marketParamsClaimstatement: Int!
+  marketParamsFeerate: Int!
+  marketParamsOptimisticoraclev3: Int!
+  marketParamsUniswappositionmanager: Int!
+  marketParamsUniswapquoter: Int!
+  marketParamsUniswapswaprouter: Int!
+  maxPriceD18: Int!
+  minPriceD18: Int!
+  optionName: Int!
+  poolAddress: Int!
+  public: Int!
+  question: Int!
+  rules: Int!
+  settled: Int!
+  settlementPriceD18: Int!
+  startTimestamp: Int!
+  startingSqrtPriceX96: Int!
+}
+
+input MarketCountOrderByAggregateInput {
+  baseAssetMaxPriceTick: SortOrder
+  baseAssetMinPriceTick: SortOrder
+  createdAt: SortOrder
+  endTimestamp: SortOrder
+  id: SortOrder
+  marketGroupId: SortOrder
+  marketId: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsBondcurrency: SortOrder
+  marketParamsClaimstatement: SortOrder
+  marketParamsFeerate: SortOrder
+  marketParamsOptimisticoraclev3: SortOrder
+  marketParamsUniswappositionmanager: SortOrder
+  marketParamsUniswapquoter: SortOrder
+  marketParamsUniswapswaprouter: SortOrder
+  maxPriceD18: SortOrder
+  minPriceD18: SortOrder
+  optionName: SortOrder
+  poolAddress: SortOrder
+  public: SortOrder
+  question: SortOrder
+  rules: SortOrder
+  settled: SortOrder
+  settlementPriceD18: SortOrder
+  startTimestamp: SortOrder
+  startingSqrtPriceX96: SortOrder
 }
 
 input MarketFilterInput {
   endTimestamp_gt: String
 }
 
-type MarketGroup {
-  address: String
-  baseTokenName: String
-  category: Category
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  factoryAddress: String
-  id: ID!
-  initializationNonce: String
-  isCumulative: Boolean!
-  isYin: Boolean!
-  marketParamsAssertionliveness: String
-  marketParamsBondamount: String
+type MarketGroupBy {
+  _avg: MarketAvgAggregate
+  _count: MarketCountAggregate
+  _max: MarketMaxAggregate
+  _min: MarketMinAggregate
+  _sum: MarketSumAggregate
+  baseAssetMaxPriceTick: Int
+  baseAssetMinPriceTick: Int
+  createdAt: DateTimeISO!
+  endTimestamp: Int
+  id: Int!
+  marketGroupId: Int
+  marketId: Int!
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
   marketParamsBondcurrency: String
   marketParamsClaimstatement: String
   marketParamsFeerate: Int
@@ -80,18 +1228,1297 @@ type MarketGroup {
   marketParamsUniswappositionmanager: String
   marketParamsUniswapquoter: String
   marketParamsUniswapswaprouter: String
-  markets(filter: MarketFilterInput, orderBy: MarketOrderInput): [Market!]
-  minTradeSize: String
-  owner: String
+  maxPriceD18: Decimal
+  minPriceD18: Decimal
+  optionName: String
+  poolAddress: String
+  public: Boolean!
   question: String
-  quoteTokenName: String
-  resource: Resource
-  vaultAddress: String
+  rules: String
+  settled: Boolean
+  settlementPriceD18: Decimal
+  startTimestamp: Int
+  startingSqrtPriceX96: Decimal
+}
+
+input MarketListRelationFilter {
+  every: MarketWhereInput
+  none: MarketWhereInput
+  some: MarketWhereInput
+}
+
+type MarketMaxAggregate {
+  baseAssetMaxPriceTick: Int
+  baseAssetMinPriceTick: Int
+  createdAt: DateTimeISO
+  endTimestamp: Int
+  id: Int
+  marketGroupId: Int
+  marketId: Int
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsBondcurrency: String
+  marketParamsClaimstatement: String
+  marketParamsFeerate: Int
+  marketParamsOptimisticoraclev3: String
+  marketParamsUniswappositionmanager: String
+  marketParamsUniswapquoter: String
+  marketParamsUniswapswaprouter: String
+  maxPriceD18: Decimal
+  minPriceD18: Decimal
+  optionName: String
+  poolAddress: String
+  public: Boolean
+  question: String
+  rules: String
+  settled: Boolean
+  settlementPriceD18: Decimal
+  startTimestamp: Int
+  startingSqrtPriceX96: Decimal
+}
+
+input MarketMaxOrderByAggregateInput {
+  baseAssetMaxPriceTick: SortOrder
+  baseAssetMinPriceTick: SortOrder
+  createdAt: SortOrder
+  endTimestamp: SortOrder
+  id: SortOrder
+  marketGroupId: SortOrder
+  marketId: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsBondcurrency: SortOrder
+  marketParamsClaimstatement: SortOrder
+  marketParamsFeerate: SortOrder
+  marketParamsOptimisticoraclev3: SortOrder
+  marketParamsUniswappositionmanager: SortOrder
+  marketParamsUniswapquoter: SortOrder
+  marketParamsUniswapswaprouter: SortOrder
+  maxPriceD18: SortOrder
+  minPriceD18: SortOrder
+  optionName: SortOrder
+  poolAddress: SortOrder
+  public: SortOrder
+  question: SortOrder
+  rules: SortOrder
+  settled: SortOrder
+  settlementPriceD18: SortOrder
+  startTimestamp: SortOrder
+  startingSqrtPriceX96: SortOrder
+}
+
+type MarketMinAggregate {
+  baseAssetMaxPriceTick: Int
+  baseAssetMinPriceTick: Int
+  createdAt: DateTimeISO
+  endTimestamp: Int
+  id: Int
+  marketGroupId: Int
+  marketId: Int
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsBondcurrency: String
+  marketParamsClaimstatement: String
+  marketParamsFeerate: Int
+  marketParamsOptimisticoraclev3: String
+  marketParamsUniswappositionmanager: String
+  marketParamsUniswapquoter: String
+  marketParamsUniswapswaprouter: String
+  maxPriceD18: Decimal
+  minPriceD18: Decimal
+  optionName: String
+  poolAddress: String
+  public: Boolean
+  question: String
+  rules: String
+  settled: Boolean
+  settlementPriceD18: Decimal
+  startTimestamp: Int
+  startingSqrtPriceX96: Decimal
+}
+
+input MarketMinOrderByAggregateInput {
+  baseAssetMaxPriceTick: SortOrder
+  baseAssetMinPriceTick: SortOrder
+  createdAt: SortOrder
+  endTimestamp: SortOrder
+  id: SortOrder
+  marketGroupId: SortOrder
+  marketId: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsBondcurrency: SortOrder
+  marketParamsClaimstatement: SortOrder
+  marketParamsFeerate: SortOrder
+  marketParamsOptimisticoraclev3: SortOrder
+  marketParamsUniswappositionmanager: SortOrder
+  marketParamsUniswapquoter: SortOrder
+  marketParamsUniswapswaprouter: SortOrder
+  maxPriceD18: SortOrder
+  minPriceD18: SortOrder
+  optionName: SortOrder
+  poolAddress: SortOrder
+  public: SortOrder
+  question: SortOrder
+  rules: SortOrder
+  settled: SortOrder
+  settlementPriceD18: SortOrder
+  startTimestamp: SortOrder
+  startingSqrtPriceX96: SortOrder
+}
+
+input MarketNullableRelationFilter {
+  is: MarketWhereInput
+  isNot: MarketWhereInput
+}
+
+input MarketOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input MarketOrderByWithAggregationInput {
+  _avg: MarketAvgOrderByAggregateInput
+  _count: MarketCountOrderByAggregateInput
+  _max: MarketMaxOrderByAggregateInput
+  _min: MarketMinOrderByAggregateInput
+  _sum: MarketSumOrderByAggregateInput
+  baseAssetMaxPriceTick: SortOrderInput
+  baseAssetMinPriceTick: SortOrderInput
+  createdAt: SortOrder
+  endTimestamp: SortOrderInput
+  id: SortOrder
+  marketGroupId: SortOrderInput
+  marketId: SortOrder
+  marketParamsAssertionliveness: SortOrderInput
+  marketParamsBondamount: SortOrderInput
+  marketParamsBondcurrency: SortOrderInput
+  marketParamsClaimstatement: SortOrderInput
+  marketParamsFeerate: SortOrderInput
+  marketParamsOptimisticoraclev3: SortOrderInput
+  marketParamsUniswappositionmanager: SortOrderInput
+  marketParamsUniswapquoter: SortOrderInput
+  marketParamsUniswapswaprouter: SortOrderInput
+  maxPriceD18: SortOrderInput
+  minPriceD18: SortOrderInput
+  optionName: SortOrderInput
+  poolAddress: SortOrderInput
+  public: SortOrder
+  question: SortOrderInput
+  rules: SortOrderInput
+  settled: SortOrderInput
+  settlementPriceD18: SortOrderInput
+  startTimestamp: SortOrderInput
+  startingSqrtPriceX96: SortOrderInput
+}
+
+input MarketOrderByWithRelationInput {
+  baseAssetMaxPriceTick: SortOrderInput
+  baseAssetMinPriceTick: SortOrderInput
+  createdAt: SortOrder
+  endTimestamp: SortOrderInput
+  id: SortOrder
+  marketGroupId: SortOrderInput
+  marketId: SortOrder
+  marketParamsAssertionliveness: SortOrderInput
+  marketParamsBondamount: SortOrderInput
+  marketParamsBondcurrency: SortOrderInput
+  marketParamsClaimstatement: SortOrderInput
+  marketParamsFeerate: SortOrderInput
+  marketParamsOptimisticoraclev3: SortOrderInput
+  marketParamsUniswappositionmanager: SortOrderInput
+  marketParamsUniswapquoter: SortOrderInput
+  marketParamsUniswapswaprouter: SortOrderInput
+  market_group: Market_groupOrderByWithRelationInput
+  maxPriceD18: SortOrderInput
+  minPriceD18: SortOrderInput
+  optionName: SortOrderInput
+  poolAddress: SortOrderInput
+  position: PositionOrderByRelationAggregateInput
+  public: SortOrder
+  question: SortOrderInput
+  rules: SortOrderInput
+  settled: SortOrderInput
+  settlementPriceD18: SortOrderInput
+  startTimestamp: SortOrderInput
+  startingSqrtPriceX96: SortOrderInput
 }
 
 input MarketOrderInput {
   direction: String!
   field: String!
+}
+
+enum MarketScalarFieldEnum {
+  baseAssetMaxPriceTick
+  baseAssetMinPriceTick
+  createdAt
+  endTimestamp
+  id
+  marketGroupId
+  marketId
+  marketParamsAssertionliveness
+  marketParamsBondamount
+  marketParamsBondcurrency
+  marketParamsClaimstatement
+  marketParamsFeerate
+  marketParamsOptimisticoraclev3
+  marketParamsUniswappositionmanager
+  marketParamsUniswapquoter
+  marketParamsUniswapswaprouter
+  maxPriceD18
+  minPriceD18
+  optionName
+  poolAddress
+  public
+  question
+  rules
+  settled
+  settlementPriceD18
+  startTimestamp
+  startingSqrtPriceX96
+}
+
+input MarketScalarWhereWithAggregatesInput {
+  AND: [MarketScalarWhereWithAggregatesInput!]
+  NOT: [MarketScalarWhereWithAggregatesInput!]
+  OR: [MarketScalarWhereWithAggregatesInput!]
+  baseAssetMaxPriceTick: IntNullableWithAggregatesFilter
+  baseAssetMinPriceTick: IntNullableWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  endTimestamp: IntNullableWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  marketGroupId: IntNullableWithAggregatesFilter
+  marketId: IntWithAggregatesFilter
+  marketParamsAssertionliveness: DecimalNullableWithAggregatesFilter
+  marketParamsBondamount: DecimalNullableWithAggregatesFilter
+  marketParamsBondcurrency: StringNullableWithAggregatesFilter
+  marketParamsClaimstatement: StringNullableWithAggregatesFilter
+  marketParamsFeerate: IntNullableWithAggregatesFilter
+  marketParamsOptimisticoraclev3: StringNullableWithAggregatesFilter
+  marketParamsUniswappositionmanager: StringNullableWithAggregatesFilter
+  marketParamsUniswapquoter: StringNullableWithAggregatesFilter
+  marketParamsUniswapswaprouter: StringNullableWithAggregatesFilter
+  maxPriceD18: DecimalNullableWithAggregatesFilter
+  minPriceD18: DecimalNullableWithAggregatesFilter
+  optionName: StringNullableWithAggregatesFilter
+  poolAddress: StringNullableWithAggregatesFilter
+  public: BoolWithAggregatesFilter
+  question: StringNullableWithAggregatesFilter
+  rules: StringNullableWithAggregatesFilter
+  settled: BoolNullableWithAggregatesFilter
+  settlementPriceD18: DecimalNullableWithAggregatesFilter
+  startTimestamp: IntNullableWithAggregatesFilter
+  startingSqrtPriceX96: DecimalNullableWithAggregatesFilter
+}
+
+type MarketSumAggregate {
+  baseAssetMaxPriceTick: Int
+  baseAssetMinPriceTick: Int
+  endTimestamp: Int
+  id: Int
+  marketGroupId: Int
+  marketId: Int
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsFeerate: Int
+  maxPriceD18: Decimal
+  minPriceD18: Decimal
+  settlementPriceD18: Decimal
+  startTimestamp: Int
+  startingSqrtPriceX96: Decimal
+}
+
+input MarketSumOrderByAggregateInput {
+  baseAssetMaxPriceTick: SortOrder
+  baseAssetMinPriceTick: SortOrder
+  endTimestamp: SortOrder
+  id: SortOrder
+  marketGroupId: SortOrder
+  marketId: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsFeerate: SortOrder
+  maxPriceD18: SortOrder
+  minPriceD18: SortOrder
+  settlementPriceD18: SortOrder
+  startTimestamp: SortOrder
+  startingSqrtPriceX96: SortOrder
+}
+
+input MarketWhereInput {
+  AND: [MarketWhereInput!]
+  NOT: [MarketWhereInput!]
+  OR: [MarketWhereInput!]
+  baseAssetMaxPriceTick: IntNullableFilter
+  baseAssetMinPriceTick: IntNullableFilter
+  createdAt: DateTimeFilter
+  endTimestamp: IntNullableFilter
+  id: IntFilter
+  marketGroupId: IntNullableFilter
+  marketId: IntFilter
+  marketParamsAssertionliveness: DecimalNullableFilter
+  marketParamsBondamount: DecimalNullableFilter
+  marketParamsBondcurrency: StringNullableFilter
+  marketParamsClaimstatement: StringNullableFilter
+  marketParamsFeerate: IntNullableFilter
+  marketParamsOptimisticoraclev3: StringNullableFilter
+  marketParamsUniswappositionmanager: StringNullableFilter
+  marketParamsUniswapquoter: StringNullableFilter
+  marketParamsUniswapswaprouter: StringNullableFilter
+  market_group: Market_groupNullableRelationFilter
+  maxPriceD18: DecimalNullableFilter
+  minPriceD18: DecimalNullableFilter
+  optionName: StringNullableFilter
+  poolAddress: StringNullableFilter
+  position: PositionListRelationFilter
+  public: BoolFilter
+  question: StringNullableFilter
+  rules: StringNullableFilter
+  settled: BoolNullableFilter
+  settlementPriceD18: DecimalNullableFilter
+  startTimestamp: IntNullableFilter
+  startingSqrtPriceX96: DecimalNullableFilter
+}
+
+input MarketWhereUniqueInput {
+  AND: [MarketWhereInput!]
+  NOT: [MarketWhereInput!]
+  OR: [MarketWhereInput!]
+  baseAssetMaxPriceTick: IntNullableFilter
+  baseAssetMinPriceTick: IntNullableFilter
+  createdAt: DateTimeFilter
+  endTimestamp: IntNullableFilter
+  id: Int
+  marketGroupId: IntNullableFilter
+  marketGroupId_marketId: marketMarketGroupIdMarketIdCompoundUniqueInput
+  marketId: IntFilter
+  marketParamsAssertionliveness: DecimalNullableFilter
+  marketParamsBondamount: DecimalNullableFilter
+  marketParamsBondcurrency: StringNullableFilter
+  marketParamsClaimstatement: StringNullableFilter
+  marketParamsFeerate: IntNullableFilter
+  marketParamsOptimisticoraclev3: StringNullableFilter
+  marketParamsUniswappositionmanager: StringNullableFilter
+  marketParamsUniswapquoter: StringNullableFilter
+  marketParamsUniswapswaprouter: StringNullableFilter
+  market_group: Market_groupNullableRelationFilter
+  maxPriceD18: DecimalNullableFilter
+  minPriceD18: DecimalNullableFilter
+  optionName: StringNullableFilter
+  poolAddress: StringNullableFilter
+  position: PositionListRelationFilter
+  public: BoolFilter
+  question: StringNullableFilter
+  rules: StringNullableFilter
+  settled: BoolNullableFilter
+  settlementPriceD18: DecimalNullableFilter
+  startTimestamp: IntNullableFilter
+  startingSqrtPriceX96: DecimalNullableFilter
+}
+
+type Market_group {
+  _count: Market_groupCount
+  address: String
+  baseTokenName: String
+  categoryId: Int
+  chainId: Int!
+  collateralAsset: String
+  collateralDecimals: Int
+  collateralSymbol: String
+  createdAt: DateTimeISO!
+  deployTimestamp: Int
+  deployTxnBlockNumber: Int
+  factoryAddress: String
+  id: Int!
+  initializationNonce: String
+  isCumulative: Boolean!
+  isYin: Boolean!
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsBondcurrency: String
+  marketParamsClaimstatement: String
+  marketParamsFeerate: Int
+  marketParamsOptimisticoraclev3: String
+  marketParamsUniswappositionmanager: String
+  marketParamsUniswapquoter: String
+  marketParamsUniswapswaprouter: String
+  markets(filter: MarketFilterInput, orderBy: MarketOrderInput): [Market!]!
+  minTradeSize: Decimal
+  owner: String
+  question: String
+  quoteTokenName: String
+  resourceId: Int
+  vaultAddress: String
+}
+
+type Market_groupAvgAggregate {
+  categoryId: Float
+  chainId: Float
+  collateralDecimals: Float
+  deployTimestamp: Float
+  deployTxnBlockNumber: Float
+  id: Float
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsFeerate: Float
+  minTradeSize: Decimal
+  resourceId: Float
+}
+
+input Market_groupAvgOrderByAggregateInput {
+  categoryId: SortOrder
+  chainId: SortOrder
+  collateralDecimals: SortOrder
+  deployTimestamp: SortOrder
+  deployTxnBlockNumber: SortOrder
+  id: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsFeerate: SortOrder
+  minTradeSize: SortOrder
+  resourceId: SortOrder
+}
+
+type Market_groupCount {
+  event(where: EventWhereInput): Int!
+  market(where: MarketWhereInput): Int!
+}
+
+type Market_groupCountAggregate {
+  _all: Int!
+  address: Int!
+  baseTokenName: Int!
+  categoryId: Int!
+  chainId: Int!
+  collateralAsset: Int!
+  collateralDecimals: Int!
+  collateralSymbol: Int!
+  createdAt: Int!
+  deployTimestamp: Int!
+  deployTxnBlockNumber: Int!
+  factoryAddress: Int!
+  id: Int!
+  initializationNonce: Int!
+  isCumulative: Int!
+  isYin: Int!
+  marketParamsAssertionliveness: Int!
+  marketParamsBondamount: Int!
+  marketParamsBondcurrency: Int!
+  marketParamsClaimstatement: Int!
+  marketParamsFeerate: Int!
+  marketParamsOptimisticoraclev3: Int!
+  marketParamsUniswappositionmanager: Int!
+  marketParamsUniswapquoter: Int!
+  marketParamsUniswapswaprouter: Int!
+  minTradeSize: Int!
+  owner: Int!
+  question: Int!
+  quoteTokenName: Int!
+  resourceId: Int!
+  vaultAddress: Int!
+}
+
+input Market_groupCountOrderByAggregateInput {
+  address: SortOrder
+  baseTokenName: SortOrder
+  categoryId: SortOrder
+  chainId: SortOrder
+  collateralAsset: SortOrder
+  collateralDecimals: SortOrder
+  collateralSymbol: SortOrder
+  createdAt: SortOrder
+  deployTimestamp: SortOrder
+  deployTxnBlockNumber: SortOrder
+  factoryAddress: SortOrder
+  id: SortOrder
+  initializationNonce: SortOrder
+  isCumulative: SortOrder
+  isYin: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsBondcurrency: SortOrder
+  marketParamsClaimstatement: SortOrder
+  marketParamsFeerate: SortOrder
+  marketParamsOptimisticoraclev3: SortOrder
+  marketParamsUniswappositionmanager: SortOrder
+  marketParamsUniswapquoter: SortOrder
+  marketParamsUniswapswaprouter: SortOrder
+  minTradeSize: SortOrder
+  owner: SortOrder
+  question: SortOrder
+  quoteTokenName: SortOrder
+  resourceId: SortOrder
+  vaultAddress: SortOrder
+}
+
+type Market_groupGroupBy {
+  _avg: Market_groupAvgAggregate
+  _count: Market_groupCountAggregate
+  _max: Market_groupMaxAggregate
+  _min: Market_groupMinAggregate
+  _sum: Market_groupSumAggregate
+  address: String
+  baseTokenName: String
+  categoryId: Int
+  chainId: Int!
+  collateralAsset: String
+  collateralDecimals: Int
+  collateralSymbol: String
+  createdAt: DateTimeISO!
+  deployTimestamp: Int
+  deployTxnBlockNumber: Int
+  factoryAddress: String
+  id: Int!
+  initializationNonce: String
+  isCumulative: Boolean!
+  isYin: Boolean!
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsBondcurrency: String
+  marketParamsClaimstatement: String
+  marketParamsFeerate: Int
+  marketParamsOptimisticoraclev3: String
+  marketParamsUniswappositionmanager: String
+  marketParamsUniswapquoter: String
+  marketParamsUniswapswaprouter: String
+  minTradeSize: Decimal
+  owner: String
+  question: String
+  quoteTokenName: String
+  resourceId: Int
+  vaultAddress: String
+}
+
+input Market_groupListRelationFilter {
+  every: Market_groupWhereInput
+  none: Market_groupWhereInput
+  some: Market_groupWhereInput
+}
+
+type Market_groupMaxAggregate {
+  address: String
+  baseTokenName: String
+  categoryId: Int
+  chainId: Int
+  collateralAsset: String
+  collateralDecimals: Int
+  collateralSymbol: String
+  createdAt: DateTimeISO
+  deployTimestamp: Int
+  deployTxnBlockNumber: Int
+  factoryAddress: String
+  id: Int
+  initializationNonce: String
+  isCumulative: Boolean
+  isYin: Boolean
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsBondcurrency: String
+  marketParamsClaimstatement: String
+  marketParamsFeerate: Int
+  marketParamsOptimisticoraclev3: String
+  marketParamsUniswappositionmanager: String
+  marketParamsUniswapquoter: String
+  marketParamsUniswapswaprouter: String
+  minTradeSize: Decimal
+  owner: String
+  question: String
+  quoteTokenName: String
+  resourceId: Int
+  vaultAddress: String
+}
+
+input Market_groupMaxOrderByAggregateInput {
+  address: SortOrder
+  baseTokenName: SortOrder
+  categoryId: SortOrder
+  chainId: SortOrder
+  collateralAsset: SortOrder
+  collateralDecimals: SortOrder
+  collateralSymbol: SortOrder
+  createdAt: SortOrder
+  deployTimestamp: SortOrder
+  deployTxnBlockNumber: SortOrder
+  factoryAddress: SortOrder
+  id: SortOrder
+  initializationNonce: SortOrder
+  isCumulative: SortOrder
+  isYin: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsBondcurrency: SortOrder
+  marketParamsClaimstatement: SortOrder
+  marketParamsFeerate: SortOrder
+  marketParamsOptimisticoraclev3: SortOrder
+  marketParamsUniswappositionmanager: SortOrder
+  marketParamsUniswapquoter: SortOrder
+  marketParamsUniswapswaprouter: SortOrder
+  minTradeSize: SortOrder
+  owner: SortOrder
+  question: SortOrder
+  quoteTokenName: SortOrder
+  resourceId: SortOrder
+  vaultAddress: SortOrder
+}
+
+type Market_groupMinAggregate {
+  address: String
+  baseTokenName: String
+  categoryId: Int
+  chainId: Int
+  collateralAsset: String
+  collateralDecimals: Int
+  collateralSymbol: String
+  createdAt: DateTimeISO
+  deployTimestamp: Int
+  deployTxnBlockNumber: Int
+  factoryAddress: String
+  id: Int
+  initializationNonce: String
+  isCumulative: Boolean
+  isYin: Boolean
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsBondcurrency: String
+  marketParamsClaimstatement: String
+  marketParamsFeerate: Int
+  marketParamsOptimisticoraclev3: String
+  marketParamsUniswappositionmanager: String
+  marketParamsUniswapquoter: String
+  marketParamsUniswapswaprouter: String
+  minTradeSize: Decimal
+  owner: String
+  question: String
+  quoteTokenName: String
+  resourceId: Int
+  vaultAddress: String
+}
+
+input Market_groupMinOrderByAggregateInput {
+  address: SortOrder
+  baseTokenName: SortOrder
+  categoryId: SortOrder
+  chainId: SortOrder
+  collateralAsset: SortOrder
+  collateralDecimals: SortOrder
+  collateralSymbol: SortOrder
+  createdAt: SortOrder
+  deployTimestamp: SortOrder
+  deployTxnBlockNumber: SortOrder
+  factoryAddress: SortOrder
+  id: SortOrder
+  initializationNonce: SortOrder
+  isCumulative: SortOrder
+  isYin: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsBondcurrency: SortOrder
+  marketParamsClaimstatement: SortOrder
+  marketParamsFeerate: SortOrder
+  marketParamsOptimisticoraclev3: SortOrder
+  marketParamsUniswappositionmanager: SortOrder
+  marketParamsUniswapquoter: SortOrder
+  marketParamsUniswapswaprouter: SortOrder
+  minTradeSize: SortOrder
+  owner: SortOrder
+  question: SortOrder
+  quoteTokenName: SortOrder
+  resourceId: SortOrder
+  vaultAddress: SortOrder
+}
+
+input Market_groupNullableRelationFilter {
+  is: Market_groupWhereInput
+  isNot: Market_groupWhereInput
+}
+
+input Market_groupOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input Market_groupOrderByWithAggregationInput {
+  _avg: Market_groupAvgOrderByAggregateInput
+  _count: Market_groupCountOrderByAggregateInput
+  _max: Market_groupMaxOrderByAggregateInput
+  _min: Market_groupMinOrderByAggregateInput
+  _sum: Market_groupSumOrderByAggregateInput
+  address: SortOrderInput
+  baseTokenName: SortOrderInput
+  categoryId: SortOrderInput
+  chainId: SortOrder
+  collateralAsset: SortOrderInput
+  collateralDecimals: SortOrderInput
+  collateralSymbol: SortOrderInput
+  createdAt: SortOrder
+  deployTimestamp: SortOrderInput
+  deployTxnBlockNumber: SortOrderInput
+  factoryAddress: SortOrderInput
+  id: SortOrder
+  initializationNonce: SortOrderInput
+  isCumulative: SortOrder
+  isYin: SortOrder
+  marketParamsAssertionliveness: SortOrderInput
+  marketParamsBondamount: SortOrderInput
+  marketParamsBondcurrency: SortOrderInput
+  marketParamsClaimstatement: SortOrderInput
+  marketParamsFeerate: SortOrderInput
+  marketParamsOptimisticoraclev3: SortOrderInput
+  marketParamsUniswappositionmanager: SortOrderInput
+  marketParamsUniswapquoter: SortOrderInput
+  marketParamsUniswapswaprouter: SortOrderInput
+  minTradeSize: SortOrderInput
+  owner: SortOrderInput
+  question: SortOrderInput
+  quoteTokenName: SortOrderInput
+  resourceId: SortOrderInput
+  vaultAddress: SortOrderInput
+}
+
+input Market_groupOrderByWithRelationInput {
+  address: SortOrderInput
+  baseTokenName: SortOrderInput
+  category: CategoryOrderByWithRelationInput
+  categoryId: SortOrderInput
+  chainId: SortOrder
+  collateralAsset: SortOrderInput
+  collateralDecimals: SortOrderInput
+  collateralSymbol: SortOrderInput
+  createdAt: SortOrder
+  deployTimestamp: SortOrderInput
+  deployTxnBlockNumber: SortOrderInput
+  event: EventOrderByRelationAggregateInput
+  factoryAddress: SortOrderInput
+  id: SortOrder
+  initializationNonce: SortOrderInput
+  isCumulative: SortOrder
+  isYin: SortOrder
+  market: MarketOrderByRelationAggregateInput
+  marketParamsAssertionliveness: SortOrderInput
+  marketParamsBondamount: SortOrderInput
+  marketParamsBondcurrency: SortOrderInput
+  marketParamsClaimstatement: SortOrderInput
+  marketParamsFeerate: SortOrderInput
+  marketParamsOptimisticoraclev3: SortOrderInput
+  marketParamsUniswappositionmanager: SortOrderInput
+  marketParamsUniswapquoter: SortOrderInput
+  marketParamsUniswapswaprouter: SortOrderInput
+  minTradeSize: SortOrderInput
+  owner: SortOrderInput
+  question: SortOrderInput
+  quoteTokenName: SortOrderInput
+  resource: ResourceOrderByWithRelationInput
+  resourceId: SortOrderInput
+  vaultAddress: SortOrderInput
+}
+
+enum Market_groupScalarFieldEnum {
+  address
+  baseTokenName
+  categoryId
+  chainId
+  collateralAsset
+  collateralDecimals
+  collateralSymbol
+  createdAt
+  deployTimestamp
+  deployTxnBlockNumber
+  factoryAddress
+  id
+  initializationNonce
+  isCumulative
+  isYin
+  marketParamsAssertionliveness
+  marketParamsBondamount
+  marketParamsBondcurrency
+  marketParamsClaimstatement
+  marketParamsFeerate
+  marketParamsOptimisticoraclev3
+  marketParamsUniswappositionmanager
+  marketParamsUniswapquoter
+  marketParamsUniswapswaprouter
+  minTradeSize
+  owner
+  question
+  quoteTokenName
+  resourceId
+  vaultAddress
+}
+
+input Market_groupScalarWhereWithAggregatesInput {
+  AND: [Market_groupScalarWhereWithAggregatesInput!]
+  NOT: [Market_groupScalarWhereWithAggregatesInput!]
+  OR: [Market_groupScalarWhereWithAggregatesInput!]
+  address: StringNullableWithAggregatesFilter
+  baseTokenName: StringNullableWithAggregatesFilter
+  categoryId: IntNullableWithAggregatesFilter
+  chainId: IntWithAggregatesFilter
+  collateralAsset: StringNullableWithAggregatesFilter
+  collateralDecimals: IntNullableWithAggregatesFilter
+  collateralSymbol: StringNullableWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  deployTimestamp: IntNullableWithAggregatesFilter
+  deployTxnBlockNumber: IntNullableWithAggregatesFilter
+  factoryAddress: StringNullableWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  initializationNonce: StringNullableWithAggregatesFilter
+  isCumulative: BoolWithAggregatesFilter
+  isYin: BoolWithAggregatesFilter
+  marketParamsAssertionliveness: DecimalNullableWithAggregatesFilter
+  marketParamsBondamount: DecimalNullableWithAggregatesFilter
+  marketParamsBondcurrency: StringNullableWithAggregatesFilter
+  marketParamsClaimstatement: StringNullableWithAggregatesFilter
+  marketParamsFeerate: IntNullableWithAggregatesFilter
+  marketParamsOptimisticoraclev3: StringNullableWithAggregatesFilter
+  marketParamsUniswappositionmanager: StringNullableWithAggregatesFilter
+  marketParamsUniswapquoter: StringNullableWithAggregatesFilter
+  marketParamsUniswapswaprouter: StringNullableWithAggregatesFilter
+  minTradeSize: DecimalNullableWithAggregatesFilter
+  owner: StringNullableWithAggregatesFilter
+  question: StringNullableWithAggregatesFilter
+  quoteTokenName: StringNullableWithAggregatesFilter
+  resourceId: IntNullableWithAggregatesFilter
+  vaultAddress: StringNullableWithAggregatesFilter
+}
+
+type Market_groupSumAggregate {
+  categoryId: Int
+  chainId: Int
+  collateralDecimals: Int
+  deployTimestamp: Int
+  deployTxnBlockNumber: Int
+  id: Int
+  marketParamsAssertionliveness: Decimal
+  marketParamsBondamount: Decimal
+  marketParamsFeerate: Int
+  minTradeSize: Decimal
+  resourceId: Int
+}
+
+input Market_groupSumOrderByAggregateInput {
+  categoryId: SortOrder
+  chainId: SortOrder
+  collateralDecimals: SortOrder
+  deployTimestamp: SortOrder
+  deployTxnBlockNumber: SortOrder
+  id: SortOrder
+  marketParamsAssertionliveness: SortOrder
+  marketParamsBondamount: SortOrder
+  marketParamsFeerate: SortOrder
+  minTradeSize: SortOrder
+  resourceId: SortOrder
+}
+
+input Market_groupWhereInput {
+  AND: [Market_groupWhereInput!]
+  NOT: [Market_groupWhereInput!]
+  OR: [Market_groupWhereInput!]
+  address: StringNullableFilter
+  baseTokenName: StringNullableFilter
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  chainId: IntFilter
+  collateralAsset: StringNullableFilter
+  collateralDecimals: IntNullableFilter
+  collateralSymbol: StringNullableFilter
+  createdAt: DateTimeFilter
+  deployTimestamp: IntNullableFilter
+  deployTxnBlockNumber: IntNullableFilter
+  event: EventListRelationFilter
+  factoryAddress: StringNullableFilter
+  id: IntFilter
+  initializationNonce: StringNullableFilter
+  isCumulative: BoolFilter
+  isYin: BoolFilter
+  market: MarketListRelationFilter
+  marketParamsAssertionliveness: DecimalNullableFilter
+  marketParamsBondamount: DecimalNullableFilter
+  marketParamsBondcurrency: StringNullableFilter
+  marketParamsClaimstatement: StringNullableFilter
+  marketParamsFeerate: IntNullableFilter
+  marketParamsOptimisticoraclev3: StringNullableFilter
+  marketParamsUniswappositionmanager: StringNullableFilter
+  marketParamsUniswapquoter: StringNullableFilter
+  marketParamsUniswapswaprouter: StringNullableFilter
+  minTradeSize: DecimalNullableFilter
+  owner: StringNullableFilter
+  question: StringNullableFilter
+  quoteTokenName: StringNullableFilter
+  resource: ResourceNullableRelationFilter
+  resourceId: IntNullableFilter
+  vaultAddress: StringNullableFilter
+}
+
+input Market_groupWhereUniqueInput {
+  AND: [Market_groupWhereInput!]
+  NOT: [Market_groupWhereInput!]
+  OR: [Market_groupWhereInput!]
+  address: StringNullableFilter
+  address_chainId: market_groupAddressChainIdCompoundUniqueInput
+  baseTokenName: StringNullableFilter
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  chainId: IntFilter
+  collateralAsset: StringNullableFilter
+  collateralDecimals: IntNullableFilter
+  collateralSymbol: StringNullableFilter
+  createdAt: DateTimeFilter
+  deployTimestamp: IntNullableFilter
+  deployTxnBlockNumber: IntNullableFilter
+  event: EventListRelationFilter
+  factoryAddress: StringNullableFilter
+  id: Int
+  initializationNonce: StringNullableFilter
+  isCumulative: BoolFilter
+  isYin: BoolFilter
+  market: MarketListRelationFilter
+  marketParamsAssertionliveness: DecimalNullableFilter
+  marketParamsBondamount: DecimalNullableFilter
+  marketParamsBondcurrency: StringNullableFilter
+  marketParamsClaimstatement: StringNullableFilter
+  marketParamsFeerate: IntNullableFilter
+  marketParamsOptimisticoraclev3: StringNullableFilter
+  marketParamsUniswappositionmanager: StringNullableFilter
+  marketParamsUniswapquoter: StringNullableFilter
+  marketParamsUniswapswaprouter: StringNullableFilter
+  minTradeSize: DecimalNullableFilter
+  owner: StringNullableFilter
+  question: StringNullableFilter
+  quoteTokenName: StringNullableFilter
+  resource: ResourceNullableRelationFilter
+  resourceId: IntNullableFilter
+  vaultAddress: StringNullableFilter
+}
+
+input Market_priceNullableRelationFilter {
+  is: Market_priceWhereInput
+  isNot: Market_priceWhereInput
+}
+
+input Market_priceOrderByWithRelationInput {
+  createdAt: SortOrder
+  id: SortOrder
+  timestamp: SortOrder
+  transaction: TransactionOrderByWithRelationInput
+  value: SortOrder
+}
+
+input Market_priceWhereInput {
+  AND: [Market_priceWhereInput!]
+  NOT: [Market_priceWhereInput!]
+  OR: [Market_priceWhereInput!]
+  createdAt: DateTimeFilter
+  id: IntFilter
+  timestamp: BigIntFilter
+  transaction: TransactionNullableRelationFilter
+  value: DecimalFilter
+}
+
+input NestedBigIntFilter {
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  in: [BigInt!]
+  lt: BigInt
+  lte: BigInt
+  not: NestedBigIntFilter
+  notIn: [BigInt!]
+}
+
+input NestedBigIntWithAggregatesFilter {
+  _avg: NestedFloatFilter
+  _count: NestedIntFilter
+  _max: NestedBigIntFilter
+  _min: NestedBigIntFilter
+  _sum: NestedBigIntFilter
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  in: [BigInt!]
+  lt: BigInt
+  lte: BigInt
+  not: NestedBigIntWithAggregatesFilter
+  notIn: [BigInt!]
+}
+
+input NestedBoolFilter {
+  equals: Boolean
+  not: NestedBoolFilter
+}
+
+input NestedBoolNullableFilter {
+  equals: Boolean
+  not: NestedBoolNullableFilter
+}
+
+input NestedBoolNullableWithAggregatesFilter {
+  _count: NestedIntNullableFilter
+  _max: NestedBoolNullableFilter
+  _min: NestedBoolNullableFilter
+  equals: Boolean
+  not: NestedBoolNullableWithAggregatesFilter
+}
+
+input NestedBoolWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedBoolFilter
+  _min: NestedBoolFilter
+  equals: Boolean
+  not: NestedBoolWithAggregatesFilter
+}
+
+input NestedDateTimeFilter {
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeFilter
+  notIn: [DateTimeISO!]
+}
+
+input NestedDateTimeWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedDateTimeFilter
+  _min: NestedDateTimeFilter
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeWithAggregatesFilter
+  notIn: [DateTimeISO!]
+}
+
+input NestedDecimalFilter {
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalFilter
+  notIn: [Decimal!]
+}
+
+input NestedDecimalNullableFilter {
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalNullableFilter
+  notIn: [Decimal!]
+}
+
+input NestedDecimalNullableWithAggregatesFilter {
+  _avg: NestedDecimalNullableFilter
+  _count: NestedIntNullableFilter
+  _max: NestedDecimalNullableFilter
+  _min: NestedDecimalNullableFilter
+  _sum: NestedDecimalNullableFilter
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalNullableWithAggregatesFilter
+  notIn: [Decimal!]
+}
+
+input NestedDecimalWithAggregatesFilter {
+  _avg: NestedDecimalFilter
+  _count: NestedIntFilter
+  _max: NestedDecimalFilter
+  _min: NestedDecimalFilter
+  _sum: NestedDecimalFilter
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalWithAggregatesFilter
+  notIn: [Decimal!]
+}
+
+input NestedEnumtransaction_type_enumFilter {
+  equals: transaction_type_enum
+  in: [transaction_type_enum!]
+  not: NestedEnumtransaction_type_enumFilter
+  notIn: [transaction_type_enum!]
+}
+
+input NestedEnumtransaction_type_enumWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedEnumtransaction_type_enumFilter
+  _min: NestedEnumtransaction_type_enumFilter
+  equals: transaction_type_enum
+  in: [transaction_type_enum!]
+  not: NestedEnumtransaction_type_enumWithAggregatesFilter
+  notIn: [transaction_type_enum!]
+}
+
+input NestedFloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatFilter
+  notIn: [Float!]
+}
+
+input NestedFloatNullableFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatNullableFilter
+  notIn: [Float!]
+}
+
+input NestedIntFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntFilter
+  notIn: [Int!]
+}
+
+input NestedIntNullableFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntNullableFilter
+  notIn: [Int!]
+}
+
+input NestedIntNullableWithAggregatesFilter {
+  _avg: NestedFloatNullableFilter
+  _count: NestedIntNullableFilter
+  _max: NestedIntNullableFilter
+  _min: NestedIntNullableFilter
+  _sum: NestedIntNullableFilter
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntNullableWithAggregatesFilter
+  notIn: [Int!]
+}
+
+input NestedIntWithAggregatesFilter {
+  _avg: NestedFloatFilter
+  _count: NestedIntFilter
+  _max: NestedIntFilter
+  _min: NestedIntFilter
+  _sum: NestedIntFilter
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntWithAggregatesFilter
+  notIn: [Int!]
+}
+
+input NestedJsonFilter {
+  array_contains: JSON
+  array_ends_with: JSON
+  array_starts_with: JSON
+  equals: JSON
+  gt: JSON
+  gte: JSON
+  lt: JSON
+  lte: JSON
+  not: JSON
+  path: [String!]
+  string_contains: String
+  string_ends_with: String
+  string_starts_with: String
+}
+
+input NestedStringFilter {
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  not: NestedStringFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input NestedStringNullableFilter {
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  not: NestedStringNullableFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input NestedStringNullableWithAggregatesFilter {
+  _count: NestedIntNullableFilter
+  _max: NestedStringNullableFilter
+  _min: NestedStringNullableFilter
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  not: NestedStringNullableWithAggregatesFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input NestedStringWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedStringFilter
+  _min: NestedStringFilter
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  not: NestedStringWithAggregatesFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+enum NullsOrder {
+  first
+  last
 }
 
 type PnLType {
@@ -106,72 +2533,1425 @@ type PnLType {
 }
 
 type Position {
-  baseToken: String
-  borrowedBaseToken: String
-  borrowedQuoteToken: String
-  collateral: String
-  highPriceTick: String
-  id: ID!
+  _count: PositionCount
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal!
+  createdAt: DateTimeISO!
+  highPriceTick: Decimal
+  id: Int!
   isLP: Boolean!
   isSettled: Boolean
-  lowPriceTick: String
-  lpBaseToken: String
-  lpQuoteToken: String
-  market: Market
+  lowPriceTick: Decimal
+  lpBaseToken: Decimal
+  lpQuoteToken: Decimal
+  marketId: Int
   owner: String
   positionId: Int!
-  quoteToken: String
-  transactions: [Transaction!]
+  quoteToken: Decimal
+}
+
+type PositionAvgAggregate {
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal
+  highPriceTick: Decimal
+  id: Float
+  lowPriceTick: Decimal
+  lpBaseToken: Decimal
+  lpQuoteToken: Decimal
+  marketId: Float
+  positionId: Float
+  quoteToken: Decimal
+}
+
+input PositionAvgOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  highPriceTick: SortOrder
+  id: SortOrder
+  lowPriceTick: SortOrder
+  lpBaseToken: SortOrder
+  lpQuoteToken: SortOrder
+  marketId: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+}
+
+type PositionCount {
+  transaction(where: TransactionWhereInput): Int!
+}
+
+type PositionCountAggregate {
+  _all: Int!
+  baseToken: Int!
+  borrowedBaseToken: Int!
+  borrowedQuoteToken: Int!
+  collateral: Int!
+  createdAt: Int!
+  highPriceTick: Int!
+  id: Int!
+  isLP: Int!
+  isSettled: Int!
+  lowPriceTick: Int!
+  lpBaseToken: Int!
+  lpQuoteToken: Int!
+  marketId: Int!
+  owner: Int!
+  positionId: Int!
+  quoteToken: Int!
+}
+
+input PositionCountOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  createdAt: SortOrder
+  highPriceTick: SortOrder
+  id: SortOrder
+  isLP: SortOrder
+  isSettled: SortOrder
+  lowPriceTick: SortOrder
+  lpBaseToken: SortOrder
+  lpQuoteToken: SortOrder
+  marketId: SortOrder
+  owner: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+}
+
+type PositionGroupBy {
+  _avg: PositionAvgAggregate
+  _count: PositionCountAggregate
+  _max: PositionMaxAggregate
+  _min: PositionMinAggregate
+  _sum: PositionSumAggregate
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal!
+  createdAt: DateTimeISO!
+  highPriceTick: Decimal
+  id: Int!
+  isLP: Boolean!
+  isSettled: Boolean
+  lowPriceTick: Decimal
+  lpBaseToken: Decimal
+  lpQuoteToken: Decimal
+  marketId: Int
+  owner: String
+  positionId: Int!
+  quoteToken: Decimal
+}
+
+input PositionListRelationFilter {
+  every: PositionWhereInput
+  none: PositionWhereInput
+  some: PositionWhereInput
+}
+
+type PositionMaxAggregate {
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal
+  createdAt: DateTimeISO
+  highPriceTick: Decimal
+  id: Int
+  isLP: Boolean
+  isSettled: Boolean
+  lowPriceTick: Decimal
+  lpBaseToken: Decimal
+  lpQuoteToken: Decimal
+  marketId: Int
+  owner: String
+  positionId: Int
+  quoteToken: Decimal
+}
+
+input PositionMaxOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  createdAt: SortOrder
+  highPriceTick: SortOrder
+  id: SortOrder
+  isLP: SortOrder
+  isSettled: SortOrder
+  lowPriceTick: SortOrder
+  lpBaseToken: SortOrder
+  lpQuoteToken: SortOrder
+  marketId: SortOrder
+  owner: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+}
+
+type PositionMinAggregate {
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal
+  createdAt: DateTimeISO
+  highPriceTick: Decimal
+  id: Int
+  isLP: Boolean
+  isSettled: Boolean
+  lowPriceTick: Decimal
+  lpBaseToken: Decimal
+  lpQuoteToken: Decimal
+  marketId: Int
+  owner: String
+  positionId: Int
+  quoteToken: Decimal
+}
+
+input PositionMinOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  createdAt: SortOrder
+  highPriceTick: SortOrder
+  id: SortOrder
+  isLP: SortOrder
+  isSettled: SortOrder
+  lowPriceTick: SortOrder
+  lpBaseToken: SortOrder
+  lpQuoteToken: SortOrder
+  marketId: SortOrder
+  owner: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+}
+
+input PositionNullableRelationFilter {
+  is: PositionWhereInput
+  isNot: PositionWhereInput
+}
+
+input PositionOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input PositionOrderByWithAggregationInput {
+  _avg: PositionAvgOrderByAggregateInput
+  _count: PositionCountOrderByAggregateInput
+  _max: PositionMaxOrderByAggregateInput
+  _min: PositionMinOrderByAggregateInput
+  _sum: PositionSumOrderByAggregateInput
+  baseToken: SortOrderInput
+  borrowedBaseToken: SortOrderInput
+  borrowedQuoteToken: SortOrderInput
+  collateral: SortOrder
+  createdAt: SortOrder
+  highPriceTick: SortOrderInput
+  id: SortOrder
+  isLP: SortOrder
+  isSettled: SortOrderInput
+  lowPriceTick: SortOrderInput
+  lpBaseToken: SortOrderInput
+  lpQuoteToken: SortOrderInput
+  marketId: SortOrderInput
+  owner: SortOrderInput
+  positionId: SortOrder
+  quoteToken: SortOrderInput
+}
+
+input PositionOrderByWithRelationInput {
+  baseToken: SortOrderInput
+  borrowedBaseToken: SortOrderInput
+  borrowedQuoteToken: SortOrderInput
+  collateral: SortOrder
+  createdAt: SortOrder
+  highPriceTick: SortOrderInput
+  id: SortOrder
+  isLP: SortOrder
+  isSettled: SortOrderInput
+  lowPriceTick: SortOrderInput
+  lpBaseToken: SortOrderInput
+  lpQuoteToken: SortOrderInput
+  market: MarketOrderByWithRelationInput
+  marketId: SortOrderInput
+  owner: SortOrderInput
+  positionId: SortOrder
+  quoteToken: SortOrderInput
+  transaction: TransactionOrderByRelationAggregateInput
+}
+
+enum PositionScalarFieldEnum {
+  baseToken
+  borrowedBaseToken
+  borrowedQuoteToken
+  collateral
+  createdAt
+  highPriceTick
+  id
+  isLP
+  isSettled
+  lowPriceTick
+  lpBaseToken
+  lpQuoteToken
+  marketId
+  owner
+  positionId
+  quoteToken
+}
+
+input PositionScalarWhereWithAggregatesInput {
+  AND: [PositionScalarWhereWithAggregatesInput!]
+  NOT: [PositionScalarWhereWithAggregatesInput!]
+  OR: [PositionScalarWhereWithAggregatesInput!]
+  baseToken: DecimalNullableWithAggregatesFilter
+  borrowedBaseToken: DecimalNullableWithAggregatesFilter
+  borrowedQuoteToken: DecimalNullableWithAggregatesFilter
+  collateral: DecimalWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  highPriceTick: DecimalNullableWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  isLP: BoolWithAggregatesFilter
+  isSettled: BoolNullableWithAggregatesFilter
+  lowPriceTick: DecimalNullableWithAggregatesFilter
+  lpBaseToken: DecimalNullableWithAggregatesFilter
+  lpQuoteToken: DecimalNullableWithAggregatesFilter
+  marketId: IntNullableWithAggregatesFilter
+  owner: StringNullableWithAggregatesFilter
+  positionId: IntWithAggregatesFilter
+  quoteToken: DecimalNullableWithAggregatesFilter
+}
+
+type PositionSumAggregate {
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal
+  highPriceTick: Decimal
+  id: Int
+  lowPriceTick: Decimal
+  lpBaseToken: Decimal
+  lpQuoteToken: Decimal
+  marketId: Int
+  positionId: Int
+  quoteToken: Decimal
+}
+
+input PositionSumOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  highPriceTick: SortOrder
+  id: SortOrder
+  lowPriceTick: SortOrder
+  lpBaseToken: SortOrder
+  lpQuoteToken: SortOrder
+  marketId: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+}
+
+input PositionWhereInput {
+  AND: [PositionWhereInput!]
+  NOT: [PositionWhereInput!]
+  OR: [PositionWhereInput!]
+  baseToken: DecimalNullableFilter
+  borrowedBaseToken: DecimalNullableFilter
+  borrowedQuoteToken: DecimalNullableFilter
+  collateral: DecimalFilter
+  createdAt: DateTimeFilter
+  highPriceTick: DecimalNullableFilter
+  id: IntFilter
+  isLP: BoolFilter
+  isSettled: BoolNullableFilter
+  lowPriceTick: DecimalNullableFilter
+  lpBaseToken: DecimalNullableFilter
+  lpQuoteToken: DecimalNullableFilter
+  market: MarketNullableRelationFilter
+  marketId: IntNullableFilter
+  owner: StringNullableFilter
+  positionId: IntFilter
+  quoteToken: DecimalNullableFilter
+  transaction: TransactionListRelationFilter
+}
+
+input PositionWhereUniqueInput {
+  AND: [PositionWhereInput!]
+  NOT: [PositionWhereInput!]
+  OR: [PositionWhereInput!]
+  baseToken: DecimalNullableFilter
+  borrowedBaseToken: DecimalNullableFilter
+  borrowedQuoteToken: DecimalNullableFilter
+  collateral: DecimalFilter
+  createdAt: DateTimeFilter
+  highPriceTick: DecimalNullableFilter
+  id: Int
+  isLP: BoolFilter
+  isSettled: BoolNullableFilter
+  lowPriceTick: DecimalNullableFilter
+  lpBaseToken: DecimalNullableFilter
+  lpQuoteToken: DecimalNullableFilter
+  market: MarketNullableRelationFilter
+  marketId: IntNullableFilter
+  owner: StringNullableFilter
+  positionId: IntFilter
+  positionId_marketId: positionPositionIdMarketIdCompoundUniqueInput
+  quoteToken: DecimalNullableFilter
+  transaction: TransactionListRelationFilter
 }
 
 type Query {
-  categories: [Category!]!
+  aggregateCache_candle(cursor: Cache_candleWhereUniqueInput, orderBy: [Cache_candleOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_candleWhereInput): AggregateCache_candle!
+  aggregateCategory(cursor: CategoryWhereUniqueInput, orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): AggregateCategory!
+  aggregateCrypto_prices(cursor: Crypto_pricesWhereUniqueInput, orderBy: [Crypto_pricesOrderByWithRelationInput!], skip: Int, take: Int, where: Crypto_pricesWhereInput): AggregateCrypto_prices!
+  aggregateEvent(cursor: EventWhereUniqueInput, orderBy: [EventOrderByWithRelationInput!], skip: Int, take: Int, where: EventWhereInput): AggregateEvent!
+  aggregateMarket(cursor: MarketWhereUniqueInput, orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): AggregateMarket!
+  aggregateMarket_group(cursor: Market_groupWhereUniqueInput, orderBy: [Market_groupOrderByWithRelationInput!], skip: Int, take: Int, where: Market_groupWhereInput): AggregateMarket_group!
+  aggregatePosition(cursor: PositionWhereUniqueInput, orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): AggregatePosition!
+  aggregateRender_job(cursor: Render_jobWhereUniqueInput, orderBy: [Render_jobOrderByWithRelationInput!], skip: Int, take: Int, where: Render_jobWhereInput): AggregateRender_job!
+  aggregateResource(cursor: ResourceWhereUniqueInput, orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): AggregateResource!
+  aggregateResource_price(cursor: Resource_priceWhereUniqueInput, orderBy: [Resource_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Resource_priceWhereInput): AggregateResource_price!
+  aggregateTransaction(cursor: TransactionWhereUniqueInput, orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): AggregateTransaction!
+  cache_candle(where: Cache_candleWhereUniqueInput!): Cache_candle
+  cache_candles(cursor: Cache_candleWhereUniqueInput, distinct: [Cache_candleScalarFieldEnum!], orderBy: [Cache_candleOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_candleWhereInput): [Cache_candle!]!
+  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
+  category(where: CategoryWhereUniqueInput!): Category
+  event(where: EventWhereUniqueInput!): Event
+  events(cursor: EventWhereUniqueInput, distinct: [EventScalarFieldEnum!], orderBy: [EventOrderByWithRelationInput!], skip: Int, take: Int, where: EventWhereInput): [Event!]!
+  findFirstCache_candle(cursor: Cache_candleWhereUniqueInput, distinct: [Cache_candleScalarFieldEnum!], orderBy: [Cache_candleOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_candleWhereInput): Cache_candle
+  findFirstCategory(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
+  findFirstCategoryOrThrow(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
+  findFirstCrypto_prices(cursor: Crypto_pricesWhereUniqueInput, distinct: [Crypto_pricesScalarFieldEnum!], orderBy: [Crypto_pricesOrderByWithRelationInput!], skip: Int, take: Int, where: Crypto_pricesWhereInput): Crypto_prices
+  findFirstEvent(cursor: EventWhereUniqueInput, distinct: [EventScalarFieldEnum!], orderBy: [EventOrderByWithRelationInput!], skip: Int, take: Int, where: EventWhereInput): Event
+  findFirstEventOrThrow(cursor: EventWhereUniqueInput, distinct: [EventScalarFieldEnum!], orderBy: [EventOrderByWithRelationInput!], skip: Int, take: Int, where: EventWhereInput): Event
+  findFirstMarket(cursor: MarketWhereUniqueInput, distinct: [MarketScalarFieldEnum!], orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): Market
+  findFirstMarketOrThrow(cursor: MarketWhereUniqueInput, distinct: [MarketScalarFieldEnum!], orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): Market
+  findFirstMarket_group(cursor: Market_groupWhereUniqueInput, distinct: [Market_groupScalarFieldEnum!], orderBy: [Market_groupOrderByWithRelationInput!], skip: Int, take: Int, where: Market_groupWhereInput): Market_group
+  findFirstMarket_groupOrThrow(cursor: Market_groupWhereUniqueInput, distinct: [Market_groupScalarFieldEnum!], orderBy: [Market_groupOrderByWithRelationInput!], skip: Int, take: Int, where: Market_groupWhereInput): Market_group
+  findFirstPosition(cursor: PositionWhereUniqueInput, distinct: [PositionScalarFieldEnum!], orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): Position
+  findFirstPositionOrThrow(cursor: PositionWhereUniqueInput, distinct: [PositionScalarFieldEnum!], orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): Position
+  findFirstRender_job(cursor: Render_jobWhereUniqueInput, distinct: [Render_jobScalarFieldEnum!], orderBy: [Render_jobOrderByWithRelationInput!], skip: Int, take: Int, where: Render_jobWhereInput): Render_job
+  findFirstResource(cursor: ResourceWhereUniqueInput, distinct: [ResourceScalarFieldEnum!], orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): Resource
+  findFirstResourceOrThrow(cursor: ResourceWhereUniqueInput, distinct: [ResourceScalarFieldEnum!], orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): Resource
+  findFirstResource_price(cursor: Resource_priceWhereUniqueInput, distinct: [Resource_priceScalarFieldEnum!], orderBy: [Resource_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Resource_priceWhereInput): Resource_price
+  findFirstResource_priceOrThrow(cursor: Resource_priceWhereUniqueInput, distinct: [Resource_priceScalarFieldEnum!], orderBy: [Resource_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Resource_priceWhereInput): Resource_price
+  findFirstTransaction(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): Transaction
+  findFirstTransactionOrThrow(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): Transaction
+  findManyCrypto_prices(cursor: Crypto_pricesWhereUniqueInput, distinct: [Crypto_pricesScalarFieldEnum!], orderBy: [Crypto_pricesOrderByWithRelationInput!], skip: Int, take: Int, where: Crypto_pricesWhereInput): [Crypto_prices!]!
+  findUniqueCrypto_prices(where: Crypto_pricesWhereUniqueInput!): Crypto_prices
+  getCategory(where: CategoryWhereUniqueInput!): Category
+  getEvent(where: EventWhereUniqueInput!): Event
+  getMarket(where: MarketWhereUniqueInput!): Market
   getMarketLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
+  getMarket_group(where: Market_groupWhereUniqueInput!): Market_group
+  getPosition(where: PositionWhereUniqueInput!): Position
+  getResource(where: ResourceWhereUniqueInput!): Resource
+  getResource_price(where: Resource_priceWhereUniqueInput!): Resource_price
+  getTransaction(where: TransactionWhereUniqueInput!): Transaction
+  groupByCategory(by: [CategoryScalarFieldEnum!]!, having: CategoryScalarWhereWithAggregatesInput, orderBy: [CategoryOrderByWithAggregationInput!], skip: Int, take: Int, where: CategoryWhereInput): [CategoryGroupBy!]!
+  groupByEvent(by: [EventScalarFieldEnum!]!, having: EventScalarWhereWithAggregatesInput, orderBy: [EventOrderByWithAggregationInput!], skip: Int, take: Int, where: EventWhereInput): [EventGroupBy!]!
+  groupByMarket(by: [MarketScalarFieldEnum!]!, having: MarketScalarWhereWithAggregatesInput, orderBy: [MarketOrderByWithAggregationInput!], skip: Int, take: Int, where: MarketWhereInput): [MarketGroupBy!]!
+  groupByMarket_group(by: [Market_groupScalarFieldEnum!]!, having: Market_groupScalarWhereWithAggregatesInput, orderBy: [Market_groupOrderByWithAggregationInput!], skip: Int, take: Int, where: Market_groupWhereInput): [Market_groupGroupBy!]!
+  groupByPosition(by: [PositionScalarFieldEnum!]!, having: PositionScalarWhereWithAggregatesInput, orderBy: [PositionOrderByWithAggregationInput!], skip: Int, take: Int, where: PositionWhereInput): [PositionGroupBy!]!
+  groupByResource(by: [ResourceScalarFieldEnum!]!, having: ResourceScalarWhereWithAggregatesInput, orderBy: [ResourceOrderByWithAggregationInput!], skip: Int, take: Int, where: ResourceWhereInput): [ResourceGroupBy!]!
+  groupByResource_price(by: [Resource_priceScalarFieldEnum!]!, having: Resource_priceScalarWhereWithAggregatesInput, orderBy: [Resource_priceOrderByWithAggregationInput!], skip: Int, take: Int, where: Resource_priceWhereInput): [Resource_priceGroupBy!]!
+  groupByTransaction(by: [TransactionScalarFieldEnum!]!, having: TransactionScalarWhereWithAggregatesInput, orderBy: [TransactionOrderByWithAggregationInput!], skip: Int, take: Int, where: TransactionWhereInput): [TransactionGroupBy!]!
   indexCandlesFromCache(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
   indexPriceAtTime(address: String!, chainId: Int!, marketId: String!, timestamp: Int!): CandleType
   legacyMarketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
+  market(where: MarketWhereUniqueInput!): Market
   marketCandlesFromCache(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
-  marketGroup(address: String!, chainId: Int!): MarketGroup
-  marketGroups(baseTokenName: String, chainId: Int, collateralAsset: String): [MarketGroup!]!
-  marketGroupsByCategory(slug: String!): [MarketGroup!]!
+  marketGroup(address: String!, chainId: Int!): Market_group
+  marketGroups(baseTokenName: String, chainId: Int, collateralAsset: String): [Market_group!]!
+  market_group(where: Market_groupWhereUniqueInput!): Market_group
+  market_groups(cursor: Market_groupWhereUniqueInput, distinct: [Market_groupScalarFieldEnum!], orderBy: [Market_groupOrderByWithRelationInput!], skip: Int, take: Int, where: Market_groupWhereInput): [Market_group!]!
   markets(chainId: Int!, marketAddress: String!, marketId: Int!): [Market!]!
+  position(where: PositionWhereUniqueInput!): Position
   positions(chainId: Int, marketAddress: String, owner: String): [Position!]!
+  render_job(where: Render_jobWhereUniqueInput!): Render_job
+  render_jobs(cursor: Render_jobWhereUniqueInput, distinct: [Render_jobScalarFieldEnum!], orderBy: [Render_jobOrderByWithRelationInput!], skip: Int, take: Int, where: Render_jobWhereInput): [Render_job!]!
   resource(slug: String!): Resource
   resourceCandlesFromCache(from: Int!, interval: Int!, slug: String!, to: Int!): CandleAndTimestampType!
-  resourcePrices: [ResourcePrice!]!
+  resourcePrices: [Resource_price!]!
   resourceTrailingAverageCandlesFromCache(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): CandleAndTimestampType!
+  resource_price(where: Resource_priceWhereUniqueInput!): Resource_price
+  resource_prices(cursor: Resource_priceWhereUniqueInput, distinct: [Resource_priceScalarFieldEnum!], orderBy: [Resource_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Resource_priceWhereInput): [Resource_price!]!
   resources(categorySlug: String): [Resource!]!
   totalVolumeByMarket(chainId: Int!, marketAddress: String!, marketId: Int!): Float!
+  transaction(where: TransactionWhereUniqueInput!): Transaction
   transactions(positionId: Int): [Transaction!]!
 }
 
+enum QueryMode {
+  default
+  insensitive
+}
+
+type Render_job {
+  createdAt: DateTimeISO!
+  id: Int!
+  jobId: String!
+  serviceId: String!
+}
+
+type Render_jobAvgAggregate {
+  id: Float
+}
+
+type Render_jobCountAggregate {
+  _all: Int!
+  createdAt: Int!
+  id: Int!
+  jobId: Int!
+  serviceId: Int!
+}
+
+type Render_jobMaxAggregate {
+  createdAt: DateTimeISO
+  id: Int
+  jobId: String
+  serviceId: String
+}
+
+type Render_jobMinAggregate {
+  createdAt: DateTimeISO
+  id: Int
+  jobId: String
+  serviceId: String
+}
+
+input Render_jobOrderByWithRelationInput {
+  createdAt: SortOrder
+  id: SortOrder
+  jobId: SortOrder
+  serviceId: SortOrder
+}
+
+enum Render_jobScalarFieldEnum {
+  createdAt
+  id
+  jobId
+  serviceId
+}
+
+type Render_jobSumAggregate {
+  id: Int
+}
+
+input Render_jobWhereInput {
+  AND: [Render_jobWhereInput!]
+  NOT: [Render_jobWhereInput!]
+  OR: [Render_jobWhereInput!]
+  createdAt: DateTimeFilter
+  id: IntFilter
+  jobId: StringFilter
+  serviceId: StringFilter
+}
+
+input Render_jobWhereUniqueInput {
+  AND: [Render_jobWhereInput!]
+  NOT: [Render_jobWhereInput!]
+  OR: [Render_jobWhereInput!]
+  createdAt: DateTimeFilter
+  id: Int
+  jobId: StringFilter
+  serviceId: StringFilter
+}
+
 type Resource {
-  category: Category
-  id: ID!
-  marketGroups: [MarketGroup!]
+  _count: ResourceCount
+  categoryId: Int
+  createdAt: DateTimeISO!
+  id: Int!
   name: String!
-  resourcePrices: [ResourcePrice!]
   slug: String!
 }
 
-type ResourcePrice {
+type ResourceAvgAggregate {
+  categoryId: Float
+  id: Float
+}
+
+input ResourceAvgOrderByAggregateInput {
+  categoryId: SortOrder
+  id: SortOrder
+}
+
+type ResourceCount {
+  market_group(where: Market_groupWhereInput): Int!
+  resource_price(where: Resource_priceWhereInput): Int!
+}
+
+type ResourceCountAggregate {
+  _all: Int!
+  categoryId: Int!
+  createdAt: Int!
+  id: Int!
+  name: Int!
+  slug: Int!
+}
+
+input ResourceCountOrderByAggregateInput {
+  categoryId: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+type ResourceGroupBy {
+  _avg: ResourceAvgAggregate
+  _count: ResourceCountAggregate
+  _max: ResourceMaxAggregate
+  _min: ResourceMinAggregate
+  _sum: ResourceSumAggregate
+  categoryId: Int
+  createdAt: DateTimeISO!
+  id: Int!
+  name: String!
+  slug: String!
+}
+
+input ResourceListRelationFilter {
+  every: ResourceWhereInput
+  none: ResourceWhereInput
+  some: ResourceWhereInput
+}
+
+type ResourceMaxAggregate {
+  categoryId: Int
+  createdAt: DateTimeISO
+  id: Int
+  name: String
+  slug: String
+}
+
+input ResourceMaxOrderByAggregateInput {
+  categoryId: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+type ResourceMinAggregate {
+  categoryId: Int
+  createdAt: DateTimeISO
+  id: Int
+  name: String
+  slug: String
+}
+
+input ResourceMinOrderByAggregateInput {
+  categoryId: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+input ResourceNullableRelationFilter {
+  is: ResourceWhereInput
+  isNot: ResourceWhereInput
+}
+
+input ResourceOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input ResourceOrderByWithAggregationInput {
+  _avg: ResourceAvgOrderByAggregateInput
+  _count: ResourceCountOrderByAggregateInput
+  _max: ResourceMaxOrderByAggregateInput
+  _min: ResourceMinOrderByAggregateInput
+  _sum: ResourceSumOrderByAggregateInput
+  categoryId: SortOrderInput
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+input ResourceOrderByWithRelationInput {
+  category: CategoryOrderByWithRelationInput
+  categoryId: SortOrderInput
+  createdAt: SortOrder
+  id: SortOrder
+  market_group: Market_groupOrderByRelationAggregateInput
+  name: SortOrder
+  resource_price: Resource_priceOrderByRelationAggregateInput
+  slug: SortOrder
+}
+
+enum ResourceScalarFieldEnum {
+  categoryId
+  createdAt
+  id
+  name
+  slug
+}
+
+input ResourceScalarWhereWithAggregatesInput {
+  AND: [ResourceScalarWhereWithAggregatesInput!]
+  NOT: [ResourceScalarWhereWithAggregatesInput!]
+  OR: [ResourceScalarWhereWithAggregatesInput!]
+  categoryId: IntNullableWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  name: StringWithAggregatesFilter
+  slug: StringWithAggregatesFilter
+}
+
+type ResourceSumAggregate {
+  categoryId: Int
+  id: Int
+}
+
+input ResourceSumOrderByAggregateInput {
+  categoryId: SortOrder
+  id: SortOrder
+}
+
+input ResourceWhereInput {
+  AND: [ResourceWhereInput!]
+  NOT: [ResourceWhereInput!]
+  OR: [ResourceWhereInput!]
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  market_group: Market_groupListRelationFilter
+  name: StringFilter
+  resource_price: Resource_priceListRelationFilter
+  slug: StringFilter
+}
+
+input ResourceWhereUniqueInput {
+  AND: [ResourceWhereInput!]
+  NOT: [ResourceWhereInput!]
+  OR: [ResourceWhereInput!]
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  createdAt: DateTimeFilter
+  id: Int
+  market_group: Market_groupListRelationFilter
+  name: String
+  resource_price: Resource_priceListRelationFilter
+  slug: String
+}
+
+type Resource_price {
   blockNumber: Int!
-  id: ID!
-  resource: Resource
+  createdAt: DateTimeISO!
+  feePaid: Decimal!
+  id: Int!
+  resourceId: Int
   timestamp: Int!
-  value: String!
+  used: Decimal!
+  value: Decimal!
+}
+
+type Resource_priceAvgAggregate {
+  blockNumber: Float
+  feePaid: Decimal
+  id: Float
+  resourceId: Float
+  timestamp: Float
+  used: Decimal
+  value: Decimal
+}
+
+input Resource_priceAvgOrderByAggregateInput {
+  blockNumber: SortOrder
+  feePaid: SortOrder
+  id: SortOrder
+  resourceId: SortOrder
+  timestamp: SortOrder
+  used: SortOrder
+  value: SortOrder
+}
+
+type Resource_priceCountAggregate {
+  _all: Int!
+  blockNumber: Int!
+  createdAt: Int!
+  feePaid: Int!
+  id: Int!
+  resourceId: Int!
+  timestamp: Int!
+  used: Int!
+  value: Int!
+}
+
+input Resource_priceCountOrderByAggregateInput {
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  feePaid: SortOrder
+  id: SortOrder
+  resourceId: SortOrder
+  timestamp: SortOrder
+  used: SortOrder
+  value: SortOrder
+}
+
+type Resource_priceGroupBy {
+  _avg: Resource_priceAvgAggregate
+  _count: Resource_priceCountAggregate
+  _max: Resource_priceMaxAggregate
+  _min: Resource_priceMinAggregate
+  _sum: Resource_priceSumAggregate
+  blockNumber: Int!
+  createdAt: DateTimeISO!
+  feePaid: Decimal!
+  id: Int!
+  resourceId: Int
+  timestamp: Int!
+  used: Decimal!
+  value: Decimal!
+}
+
+input Resource_priceListRelationFilter {
+  every: Resource_priceWhereInput
+  none: Resource_priceWhereInput
+  some: Resource_priceWhereInput
+}
+
+type Resource_priceMaxAggregate {
+  blockNumber: Int
+  createdAt: DateTimeISO
+  feePaid: Decimal
+  id: Int
+  resourceId: Int
+  timestamp: Int
+  used: Decimal
+  value: Decimal
+}
+
+input Resource_priceMaxOrderByAggregateInput {
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  feePaid: SortOrder
+  id: SortOrder
+  resourceId: SortOrder
+  timestamp: SortOrder
+  used: SortOrder
+  value: SortOrder
+}
+
+type Resource_priceMinAggregate {
+  blockNumber: Int
+  createdAt: DateTimeISO
+  feePaid: Decimal
+  id: Int
+  resourceId: Int
+  timestamp: Int
+  used: Decimal
+  value: Decimal
+}
+
+input Resource_priceMinOrderByAggregateInput {
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  feePaid: SortOrder
+  id: SortOrder
+  resourceId: SortOrder
+  timestamp: SortOrder
+  used: SortOrder
+  value: SortOrder
+}
+
+input Resource_priceOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input Resource_priceOrderByWithAggregationInput {
+  _avg: Resource_priceAvgOrderByAggregateInput
+  _count: Resource_priceCountOrderByAggregateInput
+  _max: Resource_priceMaxOrderByAggregateInput
+  _min: Resource_priceMinOrderByAggregateInput
+  _sum: Resource_priceSumOrderByAggregateInput
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  feePaid: SortOrder
+  id: SortOrder
+  resourceId: SortOrderInput
+  timestamp: SortOrder
+  used: SortOrder
+  value: SortOrder
+}
+
+input Resource_priceOrderByWithRelationInput {
+  blockNumber: SortOrder
+  createdAt: SortOrder
+  feePaid: SortOrder
+  id: SortOrder
+  resource: ResourceOrderByWithRelationInput
+  resourceId: SortOrderInput
+  timestamp: SortOrder
+  used: SortOrder
+  value: SortOrder
+}
+
+enum Resource_priceScalarFieldEnum {
+  blockNumber
+  createdAt
+  feePaid
+  id
+  resourceId
+  timestamp
+  used
+  value
+}
+
+input Resource_priceScalarWhereWithAggregatesInput {
+  AND: [Resource_priceScalarWhereWithAggregatesInput!]
+  NOT: [Resource_priceScalarWhereWithAggregatesInput!]
+  OR: [Resource_priceScalarWhereWithAggregatesInput!]
+  blockNumber: IntWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  feePaid: DecimalWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  resourceId: IntNullableWithAggregatesFilter
+  timestamp: IntWithAggregatesFilter
+  used: DecimalWithAggregatesFilter
+  value: DecimalWithAggregatesFilter
+}
+
+type Resource_priceSumAggregate {
+  blockNumber: Int
+  feePaid: Decimal
+  id: Int
+  resourceId: Int
+  timestamp: Int
+  used: Decimal
+  value: Decimal
+}
+
+input Resource_priceSumOrderByAggregateInput {
+  blockNumber: SortOrder
+  feePaid: SortOrder
+  id: SortOrder
+  resourceId: SortOrder
+  timestamp: SortOrder
+  used: SortOrder
+  value: SortOrder
+}
+
+input Resource_priceWhereInput {
+  AND: [Resource_priceWhereInput!]
+  NOT: [Resource_priceWhereInput!]
+  OR: [Resource_priceWhereInput!]
+  blockNumber: IntFilter
+  createdAt: DateTimeFilter
+  feePaid: DecimalFilter
+  id: IntFilter
+  resource: ResourceNullableRelationFilter
+  resourceId: IntNullableFilter
+  timestamp: IntFilter
+  used: DecimalFilter
+  value: DecimalFilter
+}
+
+input Resource_priceWhereUniqueInput {
+  AND: [Resource_priceWhereInput!]
+  NOT: [Resource_priceWhereInput!]
+  OR: [Resource_priceWhereInput!]
+  blockNumber: IntFilter
+  createdAt: DateTimeFilter
+  feePaid: DecimalFilter
+  id: Int
+  resource: ResourceNullableRelationFilter
+  resourceId: IntNullableFilter
+  resourceId_timestamp: resource_priceResourceIdTimestampCompoundUniqueInput
+  timestamp: IntFilter
+  used: DecimalFilter
+  value: DecimalFilter
+}
+
+enum SortOrder {
+  asc
+  desc
+}
+
+input SortOrderInput {
+  nulls: NullsOrder
+  sort: SortOrder!
+}
+
+input StringFilter {
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  mode: QueryMode
+  not: NestedStringFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input StringNullableFilter {
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  mode: QueryMode
+  not: NestedStringNullableFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input StringNullableWithAggregatesFilter {
+  _count: NestedIntNullableFilter
+  _max: NestedStringNullableFilter
+  _min: NestedStringNullableFilter
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  mode: QueryMode
+  not: NestedStringNullableWithAggregatesFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input StringWithAggregatesFilter {
+  _count: NestedIntFilter
+  _max: NestedStringFilter
+  _min: NestedStringFilter
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  mode: QueryMode
+  not: NestedStringWithAggregatesFilter
+  notIn: [String!]
+  startsWith: String
 }
 
 type Transaction {
-  baseToken: String
-  collateral: String
-  id: ID!
-  lpBaseDeltaToken: String
-  lpQuoteDeltaToken: String
-  position: Position
-  quoteToken: String
-  timestamp: Int
-  tradeRatioD18: String
-  transactionHash: String
-  type: String!
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal!
+  collateralTransferId: Int
+  createdAt: DateTimeISO!
+  eventId: Int
+  id: Int!
+  lpBaseDeltaToken: Decimal
+  lpQuoteDeltaToken: Decimal
+  marketPriceId: Int
+  positionId: Int
+  quoteToken: Decimal
+  tradeRatioD18: Decimal
+  type: transaction_type_enum!
+}
+
+type TransactionAvgAggregate {
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal
+  collateralTransferId: Float
+  eventId: Float
+  id: Float
+  lpBaseDeltaToken: Decimal
+  lpQuoteDeltaToken: Decimal
+  marketPriceId: Float
+  positionId: Float
+  quoteToken: Decimal
+  tradeRatioD18: Decimal
+}
+
+input TransactionAvgOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  collateralTransferId: SortOrder
+  eventId: SortOrder
+  id: SortOrder
+  lpBaseDeltaToken: SortOrder
+  lpQuoteDeltaToken: SortOrder
+  marketPriceId: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+  tradeRatioD18: SortOrder
+}
+
+type TransactionCountAggregate {
+  _all: Int!
+  baseToken: Int!
+  borrowedBaseToken: Int!
+  borrowedQuoteToken: Int!
+  collateral: Int!
+  collateralTransferId: Int!
+  createdAt: Int!
+  eventId: Int!
+  id: Int!
+  lpBaseDeltaToken: Int!
+  lpQuoteDeltaToken: Int!
+  marketPriceId: Int!
+  positionId: Int!
+  quoteToken: Int!
+  tradeRatioD18: Int!
+  type: Int!
+}
+
+input TransactionCountOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  collateralTransferId: SortOrder
+  createdAt: SortOrder
+  eventId: SortOrder
+  id: SortOrder
+  lpBaseDeltaToken: SortOrder
+  lpQuoteDeltaToken: SortOrder
+  marketPriceId: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+  tradeRatioD18: SortOrder
+  type: SortOrder
+}
+
+type TransactionGroupBy {
+  _avg: TransactionAvgAggregate
+  _count: TransactionCountAggregate
+  _max: TransactionMaxAggregate
+  _min: TransactionMinAggregate
+  _sum: TransactionSumAggregate
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal!
+  collateralTransferId: Int
+  createdAt: DateTimeISO!
+  eventId: Int
+  id: Int!
+  lpBaseDeltaToken: Decimal
+  lpQuoteDeltaToken: Decimal
+  marketPriceId: Int
+  positionId: Int
+  quoteToken: Decimal
+  tradeRatioD18: Decimal
+  type: transaction_type_enum!
+}
+
+input TransactionListRelationFilter {
+  every: TransactionWhereInput
+  none: TransactionWhereInput
+  some: TransactionWhereInput
+}
+
+type TransactionMaxAggregate {
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal
+  collateralTransferId: Int
+  createdAt: DateTimeISO
+  eventId: Int
+  id: Int
+  lpBaseDeltaToken: Decimal
+  lpQuoteDeltaToken: Decimal
+  marketPriceId: Int
+  positionId: Int
+  quoteToken: Decimal
+  tradeRatioD18: Decimal
+  type: transaction_type_enum
+}
+
+input TransactionMaxOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  collateralTransferId: SortOrder
+  createdAt: SortOrder
+  eventId: SortOrder
+  id: SortOrder
+  lpBaseDeltaToken: SortOrder
+  lpQuoteDeltaToken: SortOrder
+  marketPriceId: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+  tradeRatioD18: SortOrder
+  type: SortOrder
+}
+
+type TransactionMinAggregate {
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal
+  collateralTransferId: Int
+  createdAt: DateTimeISO
+  eventId: Int
+  id: Int
+  lpBaseDeltaToken: Decimal
+  lpQuoteDeltaToken: Decimal
+  marketPriceId: Int
+  positionId: Int
+  quoteToken: Decimal
+  tradeRatioD18: Decimal
+  type: transaction_type_enum
+}
+
+input TransactionMinOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  collateralTransferId: SortOrder
+  createdAt: SortOrder
+  eventId: SortOrder
+  id: SortOrder
+  lpBaseDeltaToken: SortOrder
+  lpQuoteDeltaToken: SortOrder
+  marketPriceId: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+  tradeRatioD18: SortOrder
+  type: SortOrder
+}
+
+input TransactionNullableRelationFilter {
+  is: TransactionWhereInput
+  isNot: TransactionWhereInput
+}
+
+input TransactionOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input TransactionOrderByWithAggregationInput {
+  _avg: TransactionAvgOrderByAggregateInput
+  _count: TransactionCountOrderByAggregateInput
+  _max: TransactionMaxOrderByAggregateInput
+  _min: TransactionMinOrderByAggregateInput
+  _sum: TransactionSumOrderByAggregateInput
+  baseToken: SortOrderInput
+  borrowedBaseToken: SortOrderInput
+  borrowedQuoteToken: SortOrderInput
+  collateral: SortOrder
+  collateralTransferId: SortOrderInput
+  createdAt: SortOrder
+  eventId: SortOrderInput
+  id: SortOrder
+  lpBaseDeltaToken: SortOrderInput
+  lpQuoteDeltaToken: SortOrderInput
+  marketPriceId: SortOrderInput
+  positionId: SortOrderInput
+  quoteToken: SortOrderInput
+  tradeRatioD18: SortOrderInput
+  type: SortOrder
+}
+
+input TransactionOrderByWithRelationInput {
+  baseToken: SortOrderInput
+  borrowedBaseToken: SortOrderInput
+  borrowedQuoteToken: SortOrderInput
+  collateral: SortOrder
+  collateralTransferId: SortOrderInput
+  collateral_transfer: Collateral_transferOrderByWithRelationInput
+  createdAt: SortOrder
+  event: EventOrderByWithRelationInput
+  eventId: SortOrderInput
+  id: SortOrder
+  lpBaseDeltaToken: SortOrderInput
+  lpQuoteDeltaToken: SortOrderInput
+  marketPriceId: SortOrderInput
+  market_price: Market_priceOrderByWithRelationInput
+  position: PositionOrderByWithRelationInput
+  positionId: SortOrderInput
+  quoteToken: SortOrderInput
+  tradeRatioD18: SortOrderInput
+  type: SortOrder
+}
+
+enum TransactionScalarFieldEnum {
+  baseToken
+  borrowedBaseToken
+  borrowedQuoteToken
+  collateral
+  collateralTransferId
+  createdAt
+  eventId
+  id
+  lpBaseDeltaToken
+  lpQuoteDeltaToken
+  marketPriceId
+  positionId
+  quoteToken
+  tradeRatioD18
+  type
+}
+
+input TransactionScalarWhereWithAggregatesInput {
+  AND: [TransactionScalarWhereWithAggregatesInput!]
+  NOT: [TransactionScalarWhereWithAggregatesInput!]
+  OR: [TransactionScalarWhereWithAggregatesInput!]
+  baseToken: DecimalNullableWithAggregatesFilter
+  borrowedBaseToken: DecimalNullableWithAggregatesFilter
+  borrowedQuoteToken: DecimalNullableWithAggregatesFilter
+  collateral: DecimalWithAggregatesFilter
+  collateralTransferId: IntNullableWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  eventId: IntNullableWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  lpBaseDeltaToken: DecimalNullableWithAggregatesFilter
+  lpQuoteDeltaToken: DecimalNullableWithAggregatesFilter
+  marketPriceId: IntNullableWithAggregatesFilter
+  positionId: IntNullableWithAggregatesFilter
+  quoteToken: DecimalNullableWithAggregatesFilter
+  tradeRatioD18: DecimalNullableWithAggregatesFilter
+  type: Enumtransaction_type_enumWithAggregatesFilter
+}
+
+type TransactionSumAggregate {
+  baseToken: Decimal
+  borrowedBaseToken: Decimal
+  borrowedQuoteToken: Decimal
+  collateral: Decimal
+  collateralTransferId: Int
+  eventId: Int
+  id: Int
+  lpBaseDeltaToken: Decimal
+  lpQuoteDeltaToken: Decimal
+  marketPriceId: Int
+  positionId: Int
+  quoteToken: Decimal
+  tradeRatioD18: Decimal
+}
+
+input TransactionSumOrderByAggregateInput {
+  baseToken: SortOrder
+  borrowedBaseToken: SortOrder
+  borrowedQuoteToken: SortOrder
+  collateral: SortOrder
+  collateralTransferId: SortOrder
+  eventId: SortOrder
+  id: SortOrder
+  lpBaseDeltaToken: SortOrder
+  lpQuoteDeltaToken: SortOrder
+  marketPriceId: SortOrder
+  positionId: SortOrder
+  quoteToken: SortOrder
+  tradeRatioD18: SortOrder
+}
+
+input TransactionWhereInput {
+  AND: [TransactionWhereInput!]
+  NOT: [TransactionWhereInput!]
+  OR: [TransactionWhereInput!]
+  baseToken: DecimalNullableFilter
+  borrowedBaseToken: DecimalNullableFilter
+  borrowedQuoteToken: DecimalNullableFilter
+  collateral: DecimalFilter
+  collateralTransferId: IntNullableFilter
+  collateral_transfer: Collateral_transferNullableRelationFilter
+  createdAt: DateTimeFilter
+  event: EventNullableRelationFilter
+  eventId: IntNullableFilter
+  id: IntFilter
+  lpBaseDeltaToken: DecimalNullableFilter
+  lpQuoteDeltaToken: DecimalNullableFilter
+  marketPriceId: IntNullableFilter
+  market_price: Market_priceNullableRelationFilter
+  position: PositionNullableRelationFilter
+  positionId: IntNullableFilter
+  quoteToken: DecimalNullableFilter
+  tradeRatioD18: DecimalNullableFilter
+  type: Enumtransaction_type_enumFilter
+}
+
+input TransactionWhereUniqueInput {
+  AND: [TransactionWhereInput!]
+  NOT: [TransactionWhereInput!]
+  OR: [TransactionWhereInput!]
+  baseToken: DecimalNullableFilter
+  borrowedBaseToken: DecimalNullableFilter
+  borrowedQuoteToken: DecimalNullableFilter
+  collateral: DecimalFilter
+  collateralTransferId: Int
+  collateral_transfer: Collateral_transferNullableRelationFilter
+  createdAt: DateTimeFilter
+  event: EventNullableRelationFilter
+  eventId: Int
+  id: Int
+  lpBaseDeltaToken: DecimalNullableFilter
+  lpQuoteDeltaToken: DecimalNullableFilter
+  marketPriceId: Int
+  market_price: Market_priceNullableRelationFilter
+  position: PositionNullableRelationFilter
+  positionId: IntNullableFilter
+  quoteToken: DecimalNullableFilter
+  tradeRatioD18: DecimalNullableFilter
+  type: Enumtransaction_type_enumFilter
+}
+
+input cache_candleCandleTypeIntervalTimestampResourceSlugMarketIdxTrailingAvgTimeCompoundUniqueInput {
+  candleType: String!
+  interval: Int!
+  marketIdx: Int!
+  resourceSlug: String!
+  timestamp: Int!
+  trailingAvgTime: Int!
+}
+
+input eventTransactionHashMarketGroupIdBlockNumberLogIndexCompoundUniqueInput {
+  blockNumber: Int!
+  logIndex: Int!
+  marketGroupId: Int!
+  transactionHash: String!
+}
+
+input marketMarketGroupIdMarketIdCompoundUniqueInput {
+  marketGroupId: Int!
+  marketId: Int!
+}
+
+input market_groupAddressChainIdCompoundUniqueInput {
+  address: String!
+  chainId: Int!
+}
+
+input positionPositionIdMarketIdCompoundUniqueInput {
+  marketId: Int!
+  positionId: Int!
+}
+
+input resource_priceResourceIdTimestampCompoundUniqueInput {
+  resourceId: Int!
+  timestamp: Int!
+}
+
+enum transaction_type_enum {
+  addLiquidity
+  long
+  removeLiquidity
+  settledPosition
+  short
 }
