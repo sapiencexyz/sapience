@@ -2,42 +2,42 @@
 pragma solidity ^0.8.22;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IGasManagement} from "../interfaces/ILayerZeroBridge.sol";
+import {IFeeManagement} from "../interfaces/ILayerZeroBridge.sol";
 
 /**
- * @title GasManagement
+ * @title FeeManagement
  * @notice Abstract contract for gas threshold and execution gas management
  * @dev This contract provides common functionality for:
  * - Setting and getting gas thresholds (warning and critical)
  * - Setting and getting max execution gas
  * - Checking gas thresholds and revert if necessary
  */
-abstract contract GasManagement is Ownable, IGasManagement {
+abstract contract FeeManagement is Ownable, IFeeManagement { //TODO feeManagement?
     // Gas monitoring and execution gas
     uint256 private WARNING_GAS_THRESHOLD = 0.1 ether;
     uint256 private CRITICAL_GAS_THRESHOLD = 0.05 ether;
-    uint128 private maxExecutionGas;
+    uint128 private lzReceiveCost;
 
     /**
-     * @notice Constructor for GasManagement
+     * @notice Constructor for FeeManagement
      * @param _owner The owner of the contract
      */
     constructor(address _owner) Ownable(_owner) {}
 
     /**
-     * @notice Set the maximum execution gas for LayerZero operations
-     * @param _maxExecutionGas The maximum gas to use for execution
+     * @notice Set the LayerZero receive cost for operations
+     * @param _lzReceiveCost The cost for LayerZero receive operations
      */
-    function setMaxExecutionGas(uint128 _maxExecutionGas) external onlyOwner {
-        maxExecutionGas = _maxExecutionGas;
+    function setLzReceiveCost(uint128 _lzReceiveCost) external onlyOwner {
+        lzReceiveCost = _lzReceiveCost;
     }
 
     /**
-     * @notice Get the maximum execution gas
-     * @return The maximum execution gas value
+     * @notice Get the LayerZero receive cost
+     * @return The LayerZero receive cost value
      */
-    function getMaxExecutionGas() external view returns (uint128) {
-        return maxExecutionGas;
+    function getLzReceiveCost() external view returns (uint128) {
+        return lzReceiveCost;
     }
 
     /**
@@ -73,10 +73,10 @@ abstract contract GasManagement is Ownable, IGasManagement {
     }
 
     /**
-     * @notice Get the max execution gas (internal)
-     * @return The max execution gas
+     * @notice Get the LayerZero receive cost (internal)
+     * @return The LayerZero receive cost
      */
-    function _getMaxExecutionGas() internal view returns (uint128) {
-        return maxExecutionGas;
+    function _getLzReceiveCost() internal view returns (uint128) {
+        return lzReceiveCost;
     }
 } 

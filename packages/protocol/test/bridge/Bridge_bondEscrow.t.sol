@@ -60,8 +60,8 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         umaEndpoint = address(umaBridge.endpoint());
         marketEndpoint = address(marketBridge.endpoint());
 
-        marketBridge.setMaxExecutionGas(1000000);
-        umaBridge.setMaxExecutionGas(1000000);
+        marketBridge.setLzReceiveCost(1000000);
+        umaBridge.setLzReceiveCost(1000000);
 
         marketBridge.setGasThresholds(0.01 ether, 0.005 ether);
         umaBridge.setGasThresholds(0.1 ether, 0.05 ether);
@@ -73,15 +73,13 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
-            remoteChainId: marketEiD,
-            remoteBridge: address(marketBridge),
-            settlementModule: address(0)
+            remoteEid: marketEiD,
+            remoteBridge: address(marketBridge)
         }));
 
         marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
-            remoteChainId: umaEiD,
-            remoteBridge: address(umaBridge),
-            settlementModule: address(0)
+            remoteEid: umaEiD,
+            remoteBridge: address(umaBridge)
         }));
 
     }

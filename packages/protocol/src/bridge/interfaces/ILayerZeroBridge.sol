@@ -27,15 +27,15 @@ interface IETHManagement {
     function getETHBalance() external view returns (uint256);
 }
 
-interface IGasManagement {
+interface IFeeManagement {
     // Events
     event GasReserveLow(uint256 currentBalance);
     event GasReserveCritical(uint256 currentBalance);
 
     // Functions
-    function setMaxExecutionGas(uint128 _maxExecutionGas) external;
+    function setLzReceiveCost(uint128 _lzReceiveCost) external;
     function setGasThresholds(uint256 _warningGasThreshold, uint256 _criticalGasThreshold) external;
-    function getMaxExecutionGas() external view returns (uint128);
+    function getLzReceiveCost() external view returns (uint128);
     function getGasThresholds() external view returns (uint256, uint256);
 }
 
