@@ -1,0 +1,10 @@
+export { CategoryRelationsResolver } from "./Category/CategoryRelationsResolver";
+export { Collateral_transferRelationsResolver } from "./Collateral_transfer/Collateral_transferRelationsResolver";
+export { EventRelationsResolver } from "./Event/EventRelationsResolver";
+export { MarketRelationsResolver } from "./Market/MarketRelationsResolver";
+export { Market_groupRelationsResolver } from "./Market_group/Market_groupRelationsResolver";
+export { Market_priceRelationsResolver } from "./Market_price/Market_priceRelationsResolver";
+export { PositionRelationsResolver } from "./Position/PositionRelationsResolver";
+export { ResourceRelationsResolver } from "./Resource/ResourceRelationsResolver";
+export { Resource_priceRelationsResolver } from "./Resource_price/Resource_priceRelationsResolver";
+export { TransactionRelationsResolver } from "./Transaction/TransactionRelationsResolver";

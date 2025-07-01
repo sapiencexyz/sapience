@@ -1,0 +1,15 @@
+export { AggregateCrypto_pricesArgs } from "./AggregateCrypto_pricesArgs";
+export { CreateManyAndReturnCrypto_pricesArgs } from "./CreateManyAndReturnCrypto_pricesArgs";
+export { CreateManyCrypto_pricesArgs } from "./CreateManyCrypto_pricesArgs";
+export { CreateOneCrypto_pricesArgs } from "./CreateOneCrypto_pricesArgs";
+export { DeleteManyCrypto_pricesArgs } from "./DeleteManyCrypto_pricesArgs";
+export { DeleteOneCrypto_pricesArgs } from "./DeleteOneCrypto_pricesArgs";
+export { FindFirstCrypto_pricesArgs } from "./FindFirstCrypto_pricesArgs";
+export { FindFirstCrypto_pricesOrThrowArgs } from "./FindFirstCrypto_pricesOrThrowArgs";
+export { FindManyCrypto_pricesArgs } from "./FindManyCrypto_pricesArgs";
+export { FindUniqueCrypto_pricesArgs } from "./FindUniqueCrypto_pricesArgs";
+export { FindUniqueCrypto_pricesOrThrowArgs } from "./FindUniqueCrypto_pricesOrThrowArgs";
+export { GroupByCrypto_pricesArgs } from "./GroupByCrypto_pricesArgs";
+export { UpdateManyCrypto_pricesArgs } from "./UpdateManyCrypto_pricesArgs";
+export { UpdateOneCrypto_pricesArgs } from "./UpdateOneCrypto_pricesArgs";
+export { UpsertOneCrypto_pricesArgs } from "./UpsertOneCrypto_pricesArgs";

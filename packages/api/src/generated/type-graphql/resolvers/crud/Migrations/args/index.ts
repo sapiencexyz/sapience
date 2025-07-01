@@ -1,0 +1,15 @@
+export { AggregateMigrationsArgs } from "./AggregateMigrationsArgs";
+export { CreateManyAndReturnMigrationsArgs } from "./CreateManyAndReturnMigrationsArgs";
+export { CreateManyMigrationsArgs } from "./CreateManyMigrationsArgs";
+export { CreateOneMigrationsArgs } from "./CreateOneMigrationsArgs";
+export { DeleteManyMigrationsArgs } from "./DeleteManyMigrationsArgs";
+export { DeleteOneMigrationsArgs } from "./DeleteOneMigrationsArgs";
+export { FindFirstMigrationsArgs } from "./FindFirstMigrationsArgs";
+export { FindFirstMigrationsOrThrowArgs } from "./FindFirstMigrationsOrThrowArgs";
+export { FindManyMigrationsArgs } from "./FindManyMigrationsArgs";
+export { FindUniqueMigrationsArgs } from "./FindUniqueMigrationsArgs";
+export { FindUniqueMigrationsOrThrowArgs } from "./FindUniqueMigrationsOrThrowArgs";
+export { GroupByMigrationsArgs } from "./GroupByMigrationsArgs";
+export { UpdateManyMigrationsArgs } from "./UpdateManyMigrationsArgs";
+export { UpdateOneMigrationsArgs } from "./UpdateOneMigrationsArgs";
+export { UpsertOneMigrationsArgs } from "./UpsertOneMigrationsArgs";

@@ -1,0 +1,15 @@
+export { AggregateResourceArgs } from "./AggregateResourceArgs";
+export { CreateManyAndReturnResourceArgs } from "./CreateManyAndReturnResourceArgs";
+export { CreateManyResourceArgs } from "./CreateManyResourceArgs";
+export { CreateOneResourceArgs } from "./CreateOneResourceArgs";
+export { DeleteManyResourceArgs } from "./DeleteManyResourceArgs";
+export { DeleteOneResourceArgs } from "./DeleteOneResourceArgs";
+export { FindFirstResourceArgs } from "./FindFirstResourceArgs";
+export { FindFirstResourceOrThrowArgs } from "./FindFirstResourceOrThrowArgs";
+export { FindManyResourceArgs } from "./FindManyResourceArgs";
+export { FindUniqueResourceArgs } from "./FindUniqueResourceArgs";
+export { FindUniqueResourceOrThrowArgs } from "./FindUniqueResourceOrThrowArgs";
+export { GroupByResourceArgs } from "./GroupByResourceArgs";
+export { UpdateManyResourceArgs } from "./UpdateManyResourceArgs";
+export { UpdateOneResourceArgs } from "./UpdateOneResourceArgs";
+export { UpsertOneResourceArgs } from "./UpsertOneResourceArgs";

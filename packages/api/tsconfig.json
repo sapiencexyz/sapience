@@ -15,7 +15,7 @@
       "baseUrl": ".",
       "paths": {
         "@/protocol/*": ["../protocol/*"],
-        "@generated/type-graphql": ["./src/graphql/types/generated"]
+        "@generated/type-graphql": ["./src/generated/type-graphql"]
       },
       "sourceMap": true,
       "inlineSources": true,

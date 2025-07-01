@@ -108,7 +108,7 @@ jobs:
         run: pnpm install
 
       - name: Generate Prisma client
-        run: pnpm prisma generate
+        run: SKIP_PRISMA_VERSION_CHECK=true pnpm prisma generate
         working-directory: packages/api
 
       - name: Generate GraphQL types

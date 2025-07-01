@@ -1,0 +1,15 @@
+export { AggregateCollateral_transferArgs } from "./AggregateCollateral_transferArgs";
+export { CreateManyAndReturnCollateral_transferArgs } from "./CreateManyAndReturnCollateral_transferArgs";
+export { CreateManyCollateral_transferArgs } from "./CreateManyCollateral_transferArgs";
+export { CreateOneCollateral_transferArgs } from "./CreateOneCollateral_transferArgs";
+export { DeleteManyCollateral_transferArgs } from "./DeleteManyCollateral_transferArgs";
+export { DeleteOneCollateral_transferArgs } from "./DeleteOneCollateral_transferArgs";
+export { FindFirstCollateral_transferArgs } from "./FindFirstCollateral_transferArgs";
+export { FindFirstCollateral_transferOrThrowArgs } from "./FindFirstCollateral_transferOrThrowArgs";
+export { FindManyCollateral_transferArgs } from "./FindManyCollateral_transferArgs";
+export { FindUniqueCollateral_transferArgs } from "./FindUniqueCollateral_transferArgs";
+export { FindUniqueCollateral_transferOrThrowArgs } from "./FindUniqueCollateral_transferOrThrowArgs";
+export { GroupByCollateral_transferArgs } from "./GroupByCollateral_transferArgs";
+export { UpdateManyCollateral_transferArgs } from "./UpdateManyCollateral_transferArgs";
+export { UpdateOneCollateral_transferArgs } from "./UpdateOneCollateral_transferArgs";
+export { UpsertOneCollateral_transferArgs } from "./UpsertOneCollateral_transferArgs";

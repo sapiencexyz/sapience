@@ -1,0 +1,15 @@
+export { AggregateCache_candleArgs } from "./AggregateCache_candleArgs";
+export { CreateManyAndReturnCache_candleArgs } from "./CreateManyAndReturnCache_candleArgs";
+export { CreateManyCache_candleArgs } from "./CreateManyCache_candleArgs";
+export { CreateOneCache_candleArgs } from "./CreateOneCache_candleArgs";
+export { DeleteManyCache_candleArgs } from "./DeleteManyCache_candleArgs";
+export { DeleteOneCache_candleArgs } from "./DeleteOneCache_candleArgs";
+export { FindFirstCache_candleArgs } from "./FindFirstCache_candleArgs";
+export { FindFirstCache_candleOrThrowArgs } from "./FindFirstCache_candleOrThrowArgs";
+export { FindManyCache_candleArgs } from "./FindManyCache_candleArgs";
+export { FindUniqueCache_candleArgs } from "./FindUniqueCache_candleArgs";
+export { FindUniqueCache_candleOrThrowArgs } from "./FindUniqueCache_candleOrThrowArgs";
+export { GroupByCache_candleArgs } from "./GroupByCache_candleArgs";
+export { UpdateManyCache_candleArgs } from "./UpdateManyCache_candleArgs";
+export { UpdateOneCache_candleArgs } from "./UpdateOneCache_candleArgs";
+export { UpsertOneCache_candleArgs } from "./UpsertOneCache_candleArgs";

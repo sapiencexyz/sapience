@@ -1,0 +1,15 @@
+export { AggregateResource_priceArgs } from "./AggregateResource_priceArgs";
+export { CreateManyAndReturnResource_priceArgs } from "./CreateManyAndReturnResource_priceArgs";
+export { CreateManyResource_priceArgs } from "./CreateManyResource_priceArgs";
+export { CreateOneResource_priceArgs } from "./CreateOneResource_priceArgs";
+export { DeleteManyResource_priceArgs } from "./DeleteManyResource_priceArgs";
+export { DeleteOneResource_priceArgs } from "./DeleteOneResource_priceArgs";
+export { FindFirstResource_priceArgs } from "./FindFirstResource_priceArgs";
+export { FindFirstResource_priceOrThrowArgs } from "./FindFirstResource_priceOrThrowArgs";
+export { FindManyResource_priceArgs } from "./FindManyResource_priceArgs";
+export { FindUniqueResource_priceArgs } from "./FindUniqueResource_priceArgs";
+export { FindUniqueResource_priceOrThrowArgs } from "./FindUniqueResource_priceOrThrowArgs";
+export { GroupByResource_priceArgs } from "./GroupByResource_priceArgs";
+export { UpdateManyResource_priceArgs } from "./UpdateManyResource_priceArgs";
+export { UpdateOneResource_priceArgs } from "./UpdateOneResource_priceArgs";
+export { UpsertOneResource_priceArgs } from "./UpsertOneResource_priceArgs";
