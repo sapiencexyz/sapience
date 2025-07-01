@@ -24,7 +24,7 @@ The bridge consists of two main contracts:
 
 The implementation uses several abstract contracts to share common functionality:
 
-### `GasManagement`
+### `FeeManagement`
 - Manages gas thresholds (warning and critical)
 - Sets and gets max execution gas
 - Emits gas-related events
@@ -34,7 +34,7 @@ The implementation uses several abstract contracts to share common functionality
 - Manages ETH deposits and withdrawals
 - Provides ETH balance checking
 - Implements receive function
-- Inherits from `GasManagement`
+- Inherits from `FeeManagement`
 
 ### `BondManagement`
 - Manages bond token deposits and withdrawals
@@ -48,9 +48,8 @@ The implementation uses several abstract contracts to share common functionality
 ### Bridge Configuration
 ```solidity
 struct BridgeConfig {
-    uint32 remoteChainId;    // LayerZero chain ID of the other bridge
+    uint32 remoteEid;    // LayerZero chain ID of the other bridge
     address remoteBridge;    // Address of the other bridge contract
-    address settlementModule; // Settlement module address
 }
 ```
 
@@ -267,7 +266,7 @@ Each bridge contract requires the following configuration:
 
 ```solidity
 struct BridgeConfig {
-    uint32 remoteChainId;    // LayerZero chain ID of the other bridge
+    uint32 remoteEid;    // LayerZero chain ID of the other bridge
     address remoteBridge;    // Address of the other bridge contract
     address settlementModule; // Settlement module address
 }
