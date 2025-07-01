@@ -17,6 +17,8 @@ interface IUMASettlementModule {
         uint160 settlementSqrtPriceX96
     );
 
+    // Notice, if we are on a bridged configuration, asserter is the address of the user that deposited the bond on the other side of the bridge (UMA Side)
+    // and will be the one receiving the bond back from the other side of the bridge (UMA Side) when the assertion is resolved
     function submitSettlementPrice(
         ISapienceStructs.SettlementPriceParams memory params
     ) external returns (bytes32);
