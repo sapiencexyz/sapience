@@ -135,10 +135,12 @@ contract TestTrade is TestMarket {
         }
 
         positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral * 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
     }
 
@@ -159,14 +161,19 @@ contract TestTrade is TestMarket {
         }
 
         sapience.modifyTraderPosition(
-            positionId,
-            newSize,
-            deltaCollateral * 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: newSize,
+                deltaCollateralLimit: deltaCollateral * 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
     }
 
-    function closerTraderPosition(ISapience sapience, uint256 positionId) internal {
+    function closerTraderPosition(
+        ISapience sapience,
+        uint256 positionId
+    ) internal {
         modifyTraderPosition(sapience, positionId, 0);
     }
 }

@@ -10,6 +10,7 @@ import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/inter
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
 import {MockMarketGroup} from "./mocks/mockMarketGroup.sol";
+import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
@@ -229,7 +230,13 @@ contract BridgeTestFromMarket is TestHelperOz5 {
             address(bondCurrency),
             BOND_AMOUNT
         );
-        bytes32 assertionId = mockMarketGroup.submitSettlementPrice(1, address(umaUser), 1);
+        bytes32 assertionId = mockMarketGroup.submitSettlementPrice(
+            ISapienceStructs.SettlementPriceParams({
+                marketId: 1,
+                asserter: address(umaUser),
+                settlementSqrtPriceX96: 1
+            })
+        );
 
         // Verify the balance movements (token)
         uint256 finalUmaTokenBalance = bondCurrency.balanceOf(

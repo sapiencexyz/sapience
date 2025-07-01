@@ -114,10 +114,12 @@ contract TradePositionSettlement is TestTrade {
         vm.startPrank(trader1);
         vm.expectRevert(Errors.MarketSettled.selector);
         sapience.createTraderPosition(
-            marketId,
-            1 ether,
-            100 ether,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: 1 ether,
+                maxCollateral: 100 ether,
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
     }
@@ -151,10 +153,12 @@ contract TradePositionSettlement is TestTrade {
         vm.startPrank(trader1);
         vm.expectRevert(Errors.MarketSettled.selector);
         sapience.createTraderPosition(
-            marketId,
-            -1 ether,
-            100 ether,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: -1 ether,
+                maxCollateral: 100 ether,
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
     }
@@ -193,10 +197,12 @@ contract TradePositionSettlement is TestTrade {
     ) internal {
         vm.startPrank(trader1);
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            initialPositionSize,
-            100 ether,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: initialPositionSize,
+                maxCollateral: 100 ether,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -206,10 +212,12 @@ contract TradePositionSettlement is TestTrade {
         vm.startPrank(trader1);
         vm.expectRevert(Errors.MarketSettled.selector);
         sapience.modifyTraderPosition(
-            positionId,
-            newPositionSize,
-            200 ether,
-            endTime + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: newPositionSize,
+                deltaCollateralLimit: 200 ether,
+                deadline: type(uint256).max
+            })
         );
 
         vm.stopPrank();
@@ -223,10 +231,12 @@ contract TradePositionSettlement is TestTrade {
         );
 
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            initialPositionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: initialPositionSize,
+                maxCollateral: requiredCollateral * 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -236,10 +246,12 @@ contract TradePositionSettlement is TestTrade {
         vm.startPrank(trader1);
         vm.expectRevert(Errors.MarketSettled.selector);
         sapience.modifyTraderPosition(
-            positionId,
-            0,
-            requiredCollateral.toInt(),
-            endTime + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: 0,
+                deltaCollateralLimit: requiredCollateral.toInt(),
+                deadline: type(uint256).max
+            })
         );
         vm.stopPrank();
     }
@@ -253,9 +265,11 @@ contract TradePositionSettlement is TestTrade {
             marketParams.bondAmount
         );
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            SETTLEMENT_PRICE_SQRT_D18
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: SETTLEMENT_PRICE_SQRT_D18
+            })
         );
         vm.stopPrank();
 

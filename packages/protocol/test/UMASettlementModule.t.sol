@@ -68,7 +68,13 @@ contract UmaSettleMarket is TestMarket {
     function test_only_owner_settle() public {
         vm.warp(endTime + 1);
         vm.expectRevert("Only owner can call this function");
-        sapience.submitSettlementPrice(marketId, address(0), SQRT_PRICE_11Eth);
+        sapience.submitSettlementPrice(
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: address(0),
+                settlementSqrtPriceX96: SQRT_PRICE_11Eth
+            })
+        );
     }
 
     function test_settle_in_range() public {
@@ -84,9 +90,11 @@ contract UmaSettleMarket is TestMarket {
             marketParams.bondAmount
         );
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            SQRT_PRICE_10Eth
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: SQRT_PRICE_10Eth
+            })
         );
         vm.stopPrank();
         // ISapienceStructs.MarketData memory initialMarketData;
@@ -119,9 +127,11 @@ contract UmaSettleMarket is TestMarket {
             marketParams.bondAmount
         );
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            maxPriceSqrtX96PlusOne
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: maxPriceSqrtX96PlusOne
+            })
         );
         vm.stopPrank();
 
@@ -150,9 +160,11 @@ contract UmaSettleMarket is TestMarket {
             marketParams.bondAmount
         );
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            minPriceSqrtX96MinusOne
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: minPriceSqrtX96MinusOne
+            })
         );
         vm.stopPrank();
 
@@ -177,9 +189,11 @@ contract UmaSettleMarket is TestMarket {
         );
         vm.expectRevert("Market activity is still allowed");
         sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            minPriceSqrtX96MinusOne
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: minPriceSqrtX96MinusOne
+            })
         );
         vm.stopPrank();
     }
@@ -193,9 +207,11 @@ contract UmaSettleMarket is TestMarket {
             marketParams.bondAmount
         );
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            SQRT_PRICE_10Eth
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: SQRT_PRICE_10Eth
+            })
         );
         vm.stopPrank();
 
@@ -209,7 +225,13 @@ contract UmaSettleMarket is TestMarket {
             marketParams.bondAmount
         );
         vm.expectRevert("Market already settled");
-        sapience.submitSettlementPrice(marketId, owner, SQRT_PRICE_10Eth);
+        sapience.submitSettlementPrice(
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: SQRT_PRICE_10Eth
+            })
+        );
         vm.stopPrank();
     }
 
@@ -223,9 +245,11 @@ contract UmaSettleMarket is TestMarket {
             marketParams.bondAmount
         );
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            SQRT_PRICE_10Eth
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: SQRT_PRICE_10Eth
+            })
         );
         vm.stopPrank();
 
@@ -243,9 +267,11 @@ contract UmaSettleMarket is TestMarket {
             marketParams.bondAmount
         );
         bytes32 assertionId2 = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            SQRT_PRICE_11Eth
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: SQRT_PRICE_11Eth
+            })
         );
         vm.stopPrank();
 
@@ -273,13 +299,21 @@ contract UmaSettleMarket is TestMarket {
             marketParams.bondAmount
         );
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            250541448375047946302209916928
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: 250541448375047946302209916928
+            })
         ); // 10 ether
 
         vm.expectRevert("Assertion already submitted");
-        sapience.submitSettlementPrice(marketId, owner, 10 ether);
+        sapience.submitSettlementPrice(
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: 10 ether
+            })
+        );
 
         vm.stopPrank();
 
