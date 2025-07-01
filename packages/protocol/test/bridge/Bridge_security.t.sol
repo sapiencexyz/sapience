@@ -102,24 +102,22 @@ contract BridgeSecurityTest is TestHelperOz5 {
         // Configure bridges
         umaBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteChainId: marketEiD,
-                remoteBridge: address(marketBridge),
-                settlementModule: address(0)
+                remoteEid: marketEiD,
+                remoteBridge: address(marketBridge)
             })
         );
         marketBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteChainId: umaEiD,
-                remoteBridge: address(umaBridge),
-                settlementModule: address(0)
+                remoteEid: umaEiD,
+                remoteBridge: address(umaBridge)
             })
         );
         // Link bridges to external contracts
         umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
         marketBridge.enableMarketGroup(address(mockMarketGroup));
         // Set gas thresholds
-        marketBridge.setMaxExecutionGas(1000000);
-        umaBridge.setMaxExecutionGas(1000000);
+        marketBridge.setLzReceiveCost(1000000);
+        umaBridge.setLzReceiveCost(1000000);
         marketBridge.setGasThresholds(0.01 ether, 0.005 ether);
         umaBridge.setGasThresholds(0.1 ether, 0.05 ether);
         // Transfer ownership
@@ -268,9 +266,8 @@ contract BridgeSecurityTest is TestHelperOz5 {
         );
         marketBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteChainId: maliciousEiD,
-                remoteBridge: attacker,
-                settlementModule: address(0)
+                remoteEid: maliciousEiD,
+                remoteBridge: attacker
             })
         );
         vm.stopPrank();

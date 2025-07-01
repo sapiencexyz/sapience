@@ -5,7 +5,7 @@ import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/
 import {MarketLayerZeroBridge} from "../../src/bridge/MarketLayerZeroBridge.sol";
 import {UMALayerZeroBridge} from "../../src/bridge/UMALayerZeroBridge.sol";
 import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
-import {IETHManagement, IGasManagement} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import {IETHManagement, IFeeManagement} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
@@ -92,17 +92,15 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
         umaBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteChainId: marketEiD,
-                remoteBridge: address(marketBridge),
-                settlementModule: address(0)
+                remoteEid: marketEiD,
+                remoteBridge: address(marketBridge)
             })
         );
 
         marketBridge.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteChainId: umaEiD,
-                remoteBridge: address(umaBridge),
-                settlementModule: address(0)
+                remoteEid: umaEiD,
+                remoteBridge: address(umaBridge)
             })
         );
 
@@ -110,8 +108,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
         marketBridge.enableMarketGroup(address(mockMarketGroup));
 
-        marketBridge.setMaxExecutionGas(1000000);
-        umaBridge.setMaxExecutionGas(1000000);
+        marketBridge.setLzReceiveCost(1000000);
+        umaBridge.setLzReceiveCost(1000000);
 
         marketBridge.setGasThresholds(0.01 ether, 0.005 ether);
         umaBridge.setGasThresholds(0.1 ether, 0.05 ether);

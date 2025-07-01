@@ -157,7 +157,7 @@ contract UMALayerZeroBridge is
         bytes calldata _extraData
     ) internal override {
         require(
-            _origin.srcEid == bridgeConfig.remoteChainId,
+            _origin.srcEid == bridgeConfig.remoteEid,
             "Invalid source chain"
         );
         require(
@@ -189,11 +189,11 @@ contract UMALayerZeroBridge is
 
         bytes memory options = OptionsBuilder
             .newOptions()
-            .addExecutorLzReceiveOption(_getMaxExecutionGas(), 0);
+            .addExecutorLzReceiveOption(_getLzReceiveCost(), 0);
 
         // Get quote for the message
         fee = _quote(
-            bridgeConfig.remoteChainId,
+            bridgeConfig.remoteEid,
             message,
             options, // options
             false // payInLzToken
@@ -211,7 +211,7 @@ contract UMALayerZeroBridge is
 
         // Send the message using the external send function with ETH from contract
         receipt = this._sendMessageWithETH{value: fee.nativeFee}(
-            bridgeConfig.remoteChainId,
+            bridgeConfig.remoteEid,
             message,
             options,
             fee
