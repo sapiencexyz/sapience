@@ -54,7 +54,7 @@ contract UMASettlementModule is
             // 2. If yes, send to the bridge the claim data
             market.assertionId = bridge.forwardAssertTruth(
                 address(this),
-                marketId,
+                params.marketId,
                 claim,
                 params.asserter,
                 marketGroup.marketParams.assertionLiveness,
