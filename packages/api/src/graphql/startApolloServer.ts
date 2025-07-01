@@ -21,17 +21,16 @@ import { ALL_GENERATED_RESOLVERS } from './resolvers/generatedResolvers';
 export interface ApolloContext {}
 
 export const initializeApolloServer = async () => {
- 
   const schema = await buildSchema({
     resolvers: [
-      MarketGroupResolver,    
-      MarketResolver,          
-      ResourceResolver,      
-      PositionResolver,        
-      TransactionResolver,     
-      CandleResolver,         
-      PnLResolver,           
-      VolumeResolver,         
+      MarketGroupResolver,
+      MarketResolver,
+      ResourceResolver,
+      PositionResolver,
+      TransactionResolver,
+      CandleResolver,
+      PnLResolver,
+      VolumeResolver,
       ...ALL_GENERATED_RESOLVERS,
     ] as const,
     emitSchemaFile: true,
