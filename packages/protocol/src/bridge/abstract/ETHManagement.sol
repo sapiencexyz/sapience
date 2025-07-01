@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import {GasManagement} from "./GasManagement.sol";
+import {FeeManagement} from "./FeeManagement.sol";
 import {IETHManagement} from "../interfaces/ILayerZeroBridge.sol";
 
 /**
@@ -14,13 +14,13 @@ import {IETHManagement} from "../interfaces/ILayerZeroBridge.sol";
  * - Receiving ETH via fallback
  * - Gas threshold monitoring
  */
-abstract contract ETHManagement is GasManagement, IETHManagement {
+abstract contract ETHManagement is FeeManagement, IETHManagement {
 
     /**
      * @notice Constructor for ETHManagement
      * @param _owner The owner of the contract
      */
-    constructor(address _owner) GasManagement(_owner) {}
+    constructor(address _owner) FeeManagement(_owner) {}
 
     /**
      * @notice Deposit ETH to the contract for fee payments

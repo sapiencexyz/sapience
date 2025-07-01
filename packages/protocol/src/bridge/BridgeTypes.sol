@@ -7,9 +7,8 @@ pragma solidity ^0.8.22;
  */
 library BridgeTypes {
     struct BridgeConfig {
-        uint32 remoteChainId;
+        uint32 remoteEid;
         address remoteBridge;
-        address settlementModule;
     }
 
     struct SettlementData {

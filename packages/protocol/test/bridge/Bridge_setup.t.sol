@@ -70,15 +70,13 @@ contract BridgeTestSetup is TestHelperOz5 {
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
-            remoteChainId: marketEiD,
-            remoteBridge: address(marketBridge),
-            settlementModule: address(0)
+            remoteEid: marketEiD,
+            remoteBridge: address(marketBridge)
         }));
 
         marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
-            remoteChainId: umaEiD,
-            remoteBridge: address(umaBridge),
-            settlementModule: address(0)
+            remoteEid: umaEiD,
+            remoteBridge: address(umaBridge)
         }));
     }
 
