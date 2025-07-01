@@ -107,12 +107,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Lint API
-        run: pnpm run lint
-        working-directory: packages/api
-
       - name: Generate Prisma client
         run: pnpm prisma generate
+        working-directory: packages/api
+
+      - name: Lint API
+        run: pnpm run lint
         working-directory: packages/api
 
       - name: Compile API
