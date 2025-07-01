@@ -13,7 +13,10 @@
       "strictPropertyInitialization": false,
       "resolveJsonModule": true,
       "baseUrl": ".",
-      "paths": {"@/protocol/*": ["../protocol/*"]},
+      "paths": {
+        "@/protocol/*": ["../protocol/*"],
+        "@generated/type-graphql": ["./src/graphql/types/generated"]
+      },
       "sourceMap": true,
       "inlineSources": true,
       "sourceRoot": "/"
