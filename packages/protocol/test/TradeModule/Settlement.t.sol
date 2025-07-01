@@ -209,7 +209,7 @@ contract TradePositionSettlement is TestTrade {
             positionId,
             newPositionSize,
             200 ether,
-            block.timestamp + 30 minutes
+            endTime + 30 minutes
         );
 
         vm.stopPrank();
@@ -239,7 +239,7 @@ contract TradePositionSettlement is TestTrade {
             positionId,
             0,
             requiredCollateral.toInt(),
-            block.timestamp + 30 minutes
+            endTime + 30 minutes
         );
         vm.stopPrank();
     }
