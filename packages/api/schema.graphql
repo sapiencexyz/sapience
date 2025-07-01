@@ -3,10 +3,6 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
-type AffectedRowsOutput {
-  count: Int!
-}
-
 type AggregateCache_candle {
   _avg: Cache_candleAvgAggregate
   _count: Cache_candleCountAggregate
@@ -15,28 +11,12 @@ type AggregateCache_candle {
   _sum: Cache_candleSumAggregate
 }
 
-type AggregateCache_param {
-  _avg: Cache_paramAvgAggregate
-  _count: Cache_paramCountAggregate
-  _max: Cache_paramMaxAggregate
-  _min: Cache_paramMinAggregate
-  _sum: Cache_paramSumAggregate
-}
-
 type AggregateCategory {
   _avg: CategoryAvgAggregate
   _count: CategoryCountAggregate
   _max: CategoryMaxAggregate
   _min: CategoryMinAggregate
   _sum: CategorySumAggregate
-}
-
-type AggregateCollateral_transfer {
-  _avg: Collateral_transferAvgAggregate
-  _count: Collateral_transferCountAggregate
-  _max: Collateral_transferMaxAggregate
-  _min: Collateral_transferMinAggregate
-  _sum: Collateral_transferSumAggregate
 }
 
 type AggregateCrypto_prices {
@@ -69,22 +49,6 @@ type AggregateMarket_group {
   _max: Market_groupMaxAggregate
   _min: Market_groupMinAggregate
   _sum: Market_groupSumAggregate
-}
-
-type AggregateMarket_price {
-  _avg: Market_priceAvgAggregate
-  _count: Market_priceCountAggregate
-  _max: Market_priceMaxAggregate
-  _min: Market_priceMinAggregate
-  _sum: Market_priceSumAggregate
-}
-
-type AggregateMigrations {
-  _avg: MigrationsAvgAggregate
-  _count: MigrationsCountAggregate
-  _max: MigrationsMaxAggregate
-  _min: MigrationsMinAggregate
-  _sum: MigrationsSumAggregate
 }
 
 type AggregatePosition {
@@ -132,14 +96,6 @@ The `BigInt` scalar type represents non-fractional signed whole numeric values.
 """
 scalar BigInt
 
-input BigIntFieldUpdateOperationsInput {
-  decrement: BigInt
-  divide: BigInt
-  increment: BigInt
-  multiply: BigInt
-  set: BigInt
-}
-
 input BigIntFilter {
   equals: BigInt
   gt: BigInt
@@ -165,10 +121,6 @@ input BigIntWithAggregatesFilter {
   lte: BigInt
   not: NestedBigIntWithAggregatesFilter
   notIn: [BigInt!]
-}
-
-input BoolFieldUpdateOperationsInput {
-  set: Boolean
 }
 
 input BoolFilter {
@@ -235,21 +187,6 @@ type Cache_candleAvgAggregate {
   trailingStartTimestamp: Float
 }
 
-input Cache_candleAvgOrderByAggregateInput {
-  chainId: SortOrder
-  endTimestamp: SortOrder
-  id: SortOrder
-  interval: SortOrder
-  lastUpdatedTimestamp: SortOrder
-  marketId: SortOrder
-  marketIdx: SortOrder
-  sumFeePaid: SortOrder
-  sumUsed: SortOrder
-  timestamp: SortOrder
-  trailingAvgTime: SortOrder
-  trailingStartTimestamp: SortOrder
-}
-
 type Cache_candleCountAggregate {
   _all: Int!
   address: Int!
@@ -272,102 +209,6 @@ type Cache_candleCountAggregate {
   timestamp: Int!
   trailingAvgTime: Int!
   trailingStartTimestamp: Int!
-}
-
-input Cache_candleCountOrderByAggregateInput {
-  address: SortOrder
-  candleType: SortOrder
-  chainId: SortOrder
-  close: SortOrder
-  createdAt: SortOrder
-  endTimestamp: SortOrder
-  high: SortOrder
-  id: SortOrder
-  interval: SortOrder
-  lastUpdatedTimestamp: SortOrder
-  low: SortOrder
-  marketId: SortOrder
-  marketIdx: SortOrder
-  open: SortOrder
-  resourceSlug: SortOrder
-  sumFeePaid: SortOrder
-  sumUsed: SortOrder
-  timestamp: SortOrder
-  trailingAvgTime: SortOrder
-  trailingStartTimestamp: SortOrder
-}
-
-input Cache_candleCreateInput {
-  address: String
-  candleType: String!
-  chainId: Int
-  close: String!
-  createdAt: DateTimeISO
-  endTimestamp: Int!
-  high: String!
-  interval: Int!
-  lastUpdatedTimestamp: Int!
-  low: String!
-  marketId: Int
-  marketIdx: Int
-  open: String!
-  resourceSlug: String
-  sumFeePaid: Decimal
-  sumUsed: Decimal
-  timestamp: Int!
-  trailingAvgTime: Int
-  trailingStartTimestamp: Int
-}
-
-input Cache_candleCreateManyInput {
-  address: String
-  candleType: String!
-  chainId: Int
-  close: String!
-  createdAt: DateTimeISO
-  endTimestamp: Int!
-  high: String!
-  id: Int
-  interval: Int!
-  lastUpdatedTimestamp: Int!
-  low: String!
-  marketId: Int
-  marketIdx: Int
-  open: String!
-  resourceSlug: String
-  sumFeePaid: Decimal
-  sumUsed: Decimal
-  timestamp: Int!
-  trailingAvgTime: Int
-  trailingStartTimestamp: Int
-}
-
-type Cache_candleGroupBy {
-  _avg: Cache_candleAvgAggregate
-  _count: Cache_candleCountAggregate
-  _max: Cache_candleMaxAggregate
-  _min: Cache_candleMinAggregate
-  _sum: Cache_candleSumAggregate
-  address: String
-  candleType: String!
-  chainId: Int
-  close: String!
-  createdAt: DateTimeISO!
-  endTimestamp: Int!
-  high: String!
-  id: Int!
-  interval: Int!
-  lastUpdatedTimestamp: Int!
-  low: String!
-  marketId: Int
-  marketIdx: Int
-  open: String!
-  resourceSlug: String
-  sumFeePaid: Decimal
-  sumUsed: Decimal
-  timestamp: Int!
-  trailingAvgTime: Int
-  trailingStartTimestamp: Int
 }
 
 type Cache_candleMaxAggregate {
@@ -393,29 +234,6 @@ type Cache_candleMaxAggregate {
   trailingStartTimestamp: Int
 }
 
-input Cache_candleMaxOrderByAggregateInput {
-  address: SortOrder
-  candleType: SortOrder
-  chainId: SortOrder
-  close: SortOrder
-  createdAt: SortOrder
-  endTimestamp: SortOrder
-  high: SortOrder
-  id: SortOrder
-  interval: SortOrder
-  lastUpdatedTimestamp: SortOrder
-  low: SortOrder
-  marketId: SortOrder
-  marketIdx: SortOrder
-  open: SortOrder
-  resourceSlug: SortOrder
-  sumFeePaid: SortOrder
-  sumUsed: SortOrder
-  timestamp: SortOrder
-  trailingAvgTime: SortOrder
-  trailingStartTimestamp: SortOrder
-}
-
 type Cache_candleMinAggregate {
   address: String
   candleType: String
@@ -437,57 +255,6 @@ type Cache_candleMinAggregate {
   timestamp: Int
   trailingAvgTime: Int
   trailingStartTimestamp: Int
-}
-
-input Cache_candleMinOrderByAggregateInput {
-  address: SortOrder
-  candleType: SortOrder
-  chainId: SortOrder
-  close: SortOrder
-  createdAt: SortOrder
-  endTimestamp: SortOrder
-  high: SortOrder
-  id: SortOrder
-  interval: SortOrder
-  lastUpdatedTimestamp: SortOrder
-  low: SortOrder
-  marketId: SortOrder
-  marketIdx: SortOrder
-  open: SortOrder
-  resourceSlug: SortOrder
-  sumFeePaid: SortOrder
-  sumUsed: SortOrder
-  timestamp: SortOrder
-  trailingAvgTime: SortOrder
-  trailingStartTimestamp: SortOrder
-}
-
-input Cache_candleOrderByWithAggregationInput {
-  _avg: Cache_candleAvgOrderByAggregateInput
-  _count: Cache_candleCountOrderByAggregateInput
-  _max: Cache_candleMaxOrderByAggregateInput
-  _min: Cache_candleMinOrderByAggregateInput
-  _sum: Cache_candleSumOrderByAggregateInput
-  address: SortOrderInput
-  candleType: SortOrder
-  chainId: SortOrderInput
-  close: SortOrder
-  createdAt: SortOrder
-  endTimestamp: SortOrder
-  high: SortOrder
-  id: SortOrder
-  interval: SortOrder
-  lastUpdatedTimestamp: SortOrder
-  low: SortOrder
-  marketId: SortOrderInput
-  marketIdx: SortOrderInput
-  open: SortOrder
-  resourceSlug: SortOrderInput
-  sumFeePaid: SortOrderInput
-  sumUsed: SortOrderInput
-  timestamp: SortOrder
-  trailingAvgTime: SortOrderInput
-  trailingStartTimestamp: SortOrderInput
 }
 
 input Cache_candleOrderByWithRelationInput {
@@ -536,32 +303,6 @@ enum Cache_candleScalarFieldEnum {
   trailingStartTimestamp
 }
 
-input Cache_candleScalarWhereWithAggregatesInput {
-  AND: [Cache_candleScalarWhereWithAggregatesInput!]
-  NOT: [Cache_candleScalarWhereWithAggregatesInput!]
-  OR: [Cache_candleScalarWhereWithAggregatesInput!]
-  address: StringNullableWithAggregatesFilter
-  candleType: StringWithAggregatesFilter
-  chainId: IntNullableWithAggregatesFilter
-  close: StringWithAggregatesFilter
-  createdAt: DateTimeWithAggregatesFilter
-  endTimestamp: IntWithAggregatesFilter
-  high: StringWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  interval: IntWithAggregatesFilter
-  lastUpdatedTimestamp: IntWithAggregatesFilter
-  low: StringWithAggregatesFilter
-  marketId: IntNullableWithAggregatesFilter
-  marketIdx: IntNullableWithAggregatesFilter
-  open: StringWithAggregatesFilter
-  resourceSlug: StringNullableWithAggregatesFilter
-  sumFeePaid: DecimalNullableWithAggregatesFilter
-  sumUsed: DecimalNullableWithAggregatesFilter
-  timestamp: IntWithAggregatesFilter
-  trailingAvgTime: IntNullableWithAggregatesFilter
-  trailingStartTimestamp: IntNullableWithAggregatesFilter
-}
-
 type Cache_candleSumAggregate {
   chainId: Int
   endTimestamp: Int
@@ -575,65 +316,6 @@ type Cache_candleSumAggregate {
   timestamp: Int
   trailingAvgTime: Int
   trailingStartTimestamp: Int
-}
-
-input Cache_candleSumOrderByAggregateInput {
-  chainId: SortOrder
-  endTimestamp: SortOrder
-  id: SortOrder
-  interval: SortOrder
-  lastUpdatedTimestamp: SortOrder
-  marketId: SortOrder
-  marketIdx: SortOrder
-  sumFeePaid: SortOrder
-  sumUsed: SortOrder
-  timestamp: SortOrder
-  trailingAvgTime: SortOrder
-  trailingStartTimestamp: SortOrder
-}
-
-input Cache_candleUpdateInput {
-  address: NullableStringFieldUpdateOperationsInput
-  candleType: StringFieldUpdateOperationsInput
-  chainId: NullableIntFieldUpdateOperationsInput
-  close: StringFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  endTimestamp: IntFieldUpdateOperationsInput
-  high: StringFieldUpdateOperationsInput
-  interval: IntFieldUpdateOperationsInput
-  lastUpdatedTimestamp: IntFieldUpdateOperationsInput
-  low: StringFieldUpdateOperationsInput
-  marketId: NullableIntFieldUpdateOperationsInput
-  marketIdx: NullableIntFieldUpdateOperationsInput
-  open: StringFieldUpdateOperationsInput
-  resourceSlug: NullableStringFieldUpdateOperationsInput
-  sumFeePaid: NullableDecimalFieldUpdateOperationsInput
-  sumUsed: NullableDecimalFieldUpdateOperationsInput
-  timestamp: IntFieldUpdateOperationsInput
-  trailingAvgTime: NullableIntFieldUpdateOperationsInput
-  trailingStartTimestamp: NullableIntFieldUpdateOperationsInput
-}
-
-input Cache_candleUpdateManyMutationInput {
-  address: NullableStringFieldUpdateOperationsInput
-  candleType: StringFieldUpdateOperationsInput
-  chainId: NullableIntFieldUpdateOperationsInput
-  close: StringFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  endTimestamp: IntFieldUpdateOperationsInput
-  high: StringFieldUpdateOperationsInput
-  interval: IntFieldUpdateOperationsInput
-  lastUpdatedTimestamp: IntFieldUpdateOperationsInput
-  low: StringFieldUpdateOperationsInput
-  marketId: NullableIntFieldUpdateOperationsInput
-  marketIdx: NullableIntFieldUpdateOperationsInput
-  open: StringFieldUpdateOperationsInput
-  resourceSlug: NullableStringFieldUpdateOperationsInput
-  sumFeePaid: NullableDecimalFieldUpdateOperationsInput
-  sumUsed: NullableDecimalFieldUpdateOperationsInput
-  timestamp: IntFieldUpdateOperationsInput
-  trailingAvgTime: NullableIntFieldUpdateOperationsInput
-  trailingStartTimestamp: NullableIntFieldUpdateOperationsInput
 }
 
 input Cache_candleWhereInput {
@@ -689,187 +371,6 @@ input Cache_candleWhereUniqueInput {
   trailingStartTimestamp: IntNullableFilter
 }
 
-type Cache_param {
-  createdAt: DateTimeISO!
-  id: Int!
-  paramName: String!
-  paramValueNumber: Decimal!
-  paramValueString: String
-}
-
-type Cache_paramAvgAggregate {
-  id: Float
-  paramValueNumber: Decimal
-}
-
-input Cache_paramAvgOrderByAggregateInput {
-  id: SortOrder
-  paramValueNumber: SortOrder
-}
-
-type Cache_paramCountAggregate {
-  _all: Int!
-  createdAt: Int!
-  id: Int!
-  paramName: Int!
-  paramValueNumber: Int!
-  paramValueString: Int!
-}
-
-input Cache_paramCountOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  paramName: SortOrder
-  paramValueNumber: SortOrder
-  paramValueString: SortOrder
-}
-
-input Cache_paramCreateInput {
-  createdAt: DateTimeISO
-  paramName: String!
-  paramValueNumber: Decimal!
-  paramValueString: String
-}
-
-input Cache_paramCreateManyInput {
-  createdAt: DateTimeISO
-  id: Int
-  paramName: String!
-  paramValueNumber: Decimal!
-  paramValueString: String
-}
-
-type Cache_paramGroupBy {
-  _avg: Cache_paramAvgAggregate
-  _count: Cache_paramCountAggregate
-  _max: Cache_paramMaxAggregate
-  _min: Cache_paramMinAggregate
-  _sum: Cache_paramSumAggregate
-  createdAt: DateTimeISO!
-  id: Int!
-  paramName: String!
-  paramValueNumber: Decimal!
-  paramValueString: String
-}
-
-type Cache_paramMaxAggregate {
-  createdAt: DateTimeISO
-  id: Int
-  paramName: String
-  paramValueNumber: Decimal
-  paramValueString: String
-}
-
-input Cache_paramMaxOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  paramName: SortOrder
-  paramValueNumber: SortOrder
-  paramValueString: SortOrder
-}
-
-type Cache_paramMinAggregate {
-  createdAt: DateTimeISO
-  id: Int
-  paramName: String
-  paramValueNumber: Decimal
-  paramValueString: String
-}
-
-input Cache_paramMinOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  paramName: SortOrder
-  paramValueNumber: SortOrder
-  paramValueString: SortOrder
-}
-
-input Cache_paramOrderByWithAggregationInput {
-  _avg: Cache_paramAvgOrderByAggregateInput
-  _count: Cache_paramCountOrderByAggregateInput
-  _max: Cache_paramMaxOrderByAggregateInput
-  _min: Cache_paramMinOrderByAggregateInput
-  _sum: Cache_paramSumOrderByAggregateInput
-  createdAt: SortOrder
-  id: SortOrder
-  paramName: SortOrder
-  paramValueNumber: SortOrder
-  paramValueString: SortOrderInput
-}
-
-input Cache_paramOrderByWithRelationInput {
-  createdAt: SortOrder
-  id: SortOrder
-  paramName: SortOrder
-  paramValueNumber: SortOrder
-  paramValueString: SortOrderInput
-}
-
-enum Cache_paramScalarFieldEnum {
-  createdAt
-  id
-  paramName
-  paramValueNumber
-  paramValueString
-}
-
-input Cache_paramScalarWhereWithAggregatesInput {
-  AND: [Cache_paramScalarWhereWithAggregatesInput!]
-  NOT: [Cache_paramScalarWhereWithAggregatesInput!]
-  OR: [Cache_paramScalarWhereWithAggregatesInput!]
-  createdAt: DateTimeWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  paramName: StringWithAggregatesFilter
-  paramValueNumber: DecimalWithAggregatesFilter
-  paramValueString: StringNullableWithAggregatesFilter
-}
-
-type Cache_paramSumAggregate {
-  id: Int
-  paramValueNumber: Decimal
-}
-
-input Cache_paramSumOrderByAggregateInput {
-  id: SortOrder
-  paramValueNumber: SortOrder
-}
-
-input Cache_paramUpdateInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  paramName: StringFieldUpdateOperationsInput
-  paramValueNumber: DecimalFieldUpdateOperationsInput
-  paramValueString: NullableStringFieldUpdateOperationsInput
-}
-
-input Cache_paramUpdateManyMutationInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  paramName: StringFieldUpdateOperationsInput
-  paramValueNumber: DecimalFieldUpdateOperationsInput
-  paramValueString: NullableStringFieldUpdateOperationsInput
-}
-
-input Cache_paramWhereInput {
-  AND: [Cache_paramWhereInput!]
-  NOT: [Cache_paramWhereInput!]
-  OR: [Cache_paramWhereInput!]
-  createdAt: DateTimeFilter
-  id: IntFilter
-  paramName: StringFilter
-  paramValueNumber: DecimalFilter
-  paramValueString: StringNullableFilter
-}
-
-input Cache_paramWhereUniqueInput {
-  AND: [Cache_paramWhereInput!]
-  NOT: [Cache_paramWhereInput!]
-  OR: [Cache_paramWhereInput!]
-  createdAt: DateTimeFilter
-  id: Int
-  paramName: String
-  paramValueNumber: DecimalFilter
-  paramValueString: StringNullableFilter
-}
-
 type CandleAndTimestampType {
   data: [CandleType!]!
   lastUpdateTimestamp: Int!
@@ -917,57 +418,6 @@ input CategoryCountOrderByAggregateInput {
   id: SortOrder
   name: SortOrder
   slug: SortOrder
-}
-
-input CategoryCreateInput {
-  createdAt: DateTimeISO
-  market_group: Market_groupCreateNestedManyWithoutCategoryInput
-  name: String!
-  resource: ResourceCreateNestedManyWithoutCategoryInput
-  slug: String!
-}
-
-input CategoryCreateManyInput {
-  createdAt: DateTimeISO
-  id: Int
-  name: String!
-  slug: String!
-}
-
-input CategoryCreateNestedOneWithoutMarket_groupInput {
-  connect: CategoryWhereUniqueInput
-  connectOrCreate: CategoryCreateOrConnectWithoutMarket_groupInput
-  create: CategoryCreateWithoutMarket_groupInput
-}
-
-input CategoryCreateNestedOneWithoutResourceInput {
-  connect: CategoryWhereUniqueInput
-  connectOrCreate: CategoryCreateOrConnectWithoutResourceInput
-  create: CategoryCreateWithoutResourceInput
-}
-
-input CategoryCreateOrConnectWithoutMarket_groupInput {
-  create: CategoryCreateWithoutMarket_groupInput!
-  where: CategoryWhereUniqueInput!
-}
-
-input CategoryCreateOrConnectWithoutResourceInput {
-  create: CategoryCreateWithoutResourceInput!
-  where: CategoryWhereUniqueInput!
-}
-
-input CategoryCreateWithoutMarket_groupInput {
-  createdAt: DateTimeISO
-  name: String!
-  resource: ResourceCreateNestedManyWithoutCategoryInput
-  slug: String!
-}
-
-input CategoryCreateWithoutResourceInput {
-  createdAt: DateTimeISO
-  market_group: Market_groupCreateNestedManyWithoutCategoryInput
-  name: String!
-  slug: String!
 }
 
 type CategoryGroupBy {
@@ -1061,76 +511,6 @@ input CategorySumOrderByAggregateInput {
   id: SortOrder
 }
 
-input CategoryUpdateInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  market_group: Market_groupUpdateManyWithoutCategoryNestedInput
-  name: StringFieldUpdateOperationsInput
-  resource: ResourceUpdateManyWithoutCategoryNestedInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input CategoryUpdateManyMutationInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  name: StringFieldUpdateOperationsInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input CategoryUpdateOneWithoutMarket_groupNestedInput {
-  connect: CategoryWhereUniqueInput
-  connectOrCreate: CategoryCreateOrConnectWithoutMarket_groupInput
-  create: CategoryCreateWithoutMarket_groupInput
-  delete: CategoryWhereInput
-  disconnect: CategoryWhereInput
-  update: CategoryUpdateToOneWithWhereWithoutMarket_groupInput
-  upsert: CategoryUpsertWithoutMarket_groupInput
-}
-
-input CategoryUpdateOneWithoutResourceNestedInput {
-  connect: CategoryWhereUniqueInput
-  connectOrCreate: CategoryCreateOrConnectWithoutResourceInput
-  create: CategoryCreateWithoutResourceInput
-  delete: CategoryWhereInput
-  disconnect: CategoryWhereInput
-  update: CategoryUpdateToOneWithWhereWithoutResourceInput
-  upsert: CategoryUpsertWithoutResourceInput
-}
-
-input CategoryUpdateToOneWithWhereWithoutMarket_groupInput {
-  data: CategoryUpdateWithoutMarket_groupInput!
-  where: CategoryWhereInput
-}
-
-input CategoryUpdateToOneWithWhereWithoutResourceInput {
-  data: CategoryUpdateWithoutResourceInput!
-  where: CategoryWhereInput
-}
-
-input CategoryUpdateWithoutMarket_groupInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  name: StringFieldUpdateOperationsInput
-  resource: ResourceUpdateManyWithoutCategoryNestedInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input CategoryUpdateWithoutResourceInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  market_group: Market_groupUpdateManyWithoutCategoryNestedInput
-  name: StringFieldUpdateOperationsInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input CategoryUpsertWithoutMarket_groupInput {
-  create: CategoryCreateWithoutMarket_groupInput!
-  update: CategoryUpdateWithoutMarket_groupInput!
-  where: CategoryWhereInput
-}
-
-input CategoryUpsertWithoutResourceInput {
-  create: CategoryCreateWithoutResourceInput!
-  update: CategoryUpdateWithoutResourceInput!
-  where: CategoryWhereInput
-}
-
 input CategoryWhereInput {
   AND: [CategoryWhereInput!]
   NOT: [CategoryWhereInput!]
@@ -1155,150 +535,9 @@ input CategoryWhereUniqueInput {
   slug: String
 }
 
-type Collateral_transfer {
-  collateral: Decimal!
-  createdAt: DateTimeISO!
-  id: Int!
-  owner: String!
-  timestamp: Int!
-  transactionHash: String!
-}
-
-type Collateral_transferAvgAggregate {
-  collateral: Decimal
-  id: Float
-  timestamp: Float
-}
-
-input Collateral_transferAvgOrderByAggregateInput {
-  collateral: SortOrder
-  id: SortOrder
-  timestamp: SortOrder
-}
-
-type Collateral_transferCountAggregate {
-  _all: Int!
-  collateral: Int!
-  createdAt: Int!
-  id: Int!
-  owner: Int!
-  timestamp: Int!
-  transactionHash: Int!
-}
-
-input Collateral_transferCountOrderByAggregateInput {
-  collateral: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  owner: SortOrder
-  timestamp: SortOrder
-  transactionHash: SortOrder
-}
-
-input Collateral_transferCreateInput {
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  owner: String!
-  timestamp: Int!
-  transaction: TransactionCreateNestedOneWithoutCollateral_transferInput
-  transactionHash: String!
-}
-
-input Collateral_transferCreateManyInput {
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  id: Int
-  owner: String!
-  timestamp: Int!
-  transactionHash: String!
-}
-
-input Collateral_transferCreateNestedOneWithoutTransactionInput {
-  connect: Collateral_transferWhereUniqueInput
-  connectOrCreate: Collateral_transferCreateOrConnectWithoutTransactionInput
-  create: Collateral_transferCreateWithoutTransactionInput
-}
-
-input Collateral_transferCreateOrConnectWithoutTransactionInput {
-  create: Collateral_transferCreateWithoutTransactionInput!
-  where: Collateral_transferWhereUniqueInput!
-}
-
-input Collateral_transferCreateWithoutTransactionInput {
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  owner: String!
-  timestamp: Int!
-  transactionHash: String!
-}
-
-type Collateral_transferGroupBy {
-  _avg: Collateral_transferAvgAggregate
-  _count: Collateral_transferCountAggregate
-  _max: Collateral_transferMaxAggregate
-  _min: Collateral_transferMinAggregate
-  _sum: Collateral_transferSumAggregate
-  collateral: Decimal!
-  createdAt: DateTimeISO!
-  id: Int!
-  owner: String!
-  timestamp: Int!
-  transactionHash: String!
-}
-
-type Collateral_transferMaxAggregate {
-  collateral: Decimal
-  createdAt: DateTimeISO
-  id: Int
-  owner: String
-  timestamp: Int
-  transactionHash: String
-}
-
-input Collateral_transferMaxOrderByAggregateInput {
-  collateral: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  owner: SortOrder
-  timestamp: SortOrder
-  transactionHash: SortOrder
-}
-
-type Collateral_transferMinAggregate {
-  collateral: Decimal
-  createdAt: DateTimeISO
-  id: Int
-  owner: String
-  timestamp: Int
-  transactionHash: String
-}
-
-input Collateral_transferMinOrderByAggregateInput {
-  collateral: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  owner: SortOrder
-  timestamp: SortOrder
-  transactionHash: SortOrder
-}
-
 input Collateral_transferNullableRelationFilter {
   is: Collateral_transferWhereInput
   isNot: Collateral_transferWhereInput
-}
-
-input Collateral_transferOrderByWithAggregationInput {
-  _avg: Collateral_transferAvgOrderByAggregateInput
-  _count: Collateral_transferCountOrderByAggregateInput
-  _max: Collateral_transferMaxOrderByAggregateInput
-  _min: Collateral_transferMinOrderByAggregateInput
-  _sum: Collateral_transferSumOrderByAggregateInput
-  collateral: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  owner: SortOrder
-  timestamp: SortOrder
-  transactionHash: SortOrder
 }
 
 input Collateral_transferOrderByWithRelationInput {
@@ -1309,85 +548,6 @@ input Collateral_transferOrderByWithRelationInput {
   timestamp: SortOrder
   transaction: TransactionOrderByWithRelationInput
   transactionHash: SortOrder
-}
-
-enum Collateral_transferScalarFieldEnum {
-  collateral
-  createdAt
-  id
-  owner
-  timestamp
-  transactionHash
-}
-
-input Collateral_transferScalarWhereWithAggregatesInput {
-  AND: [Collateral_transferScalarWhereWithAggregatesInput!]
-  NOT: [Collateral_transferScalarWhereWithAggregatesInput!]
-  OR: [Collateral_transferScalarWhereWithAggregatesInput!]
-  collateral: DecimalWithAggregatesFilter
-  createdAt: DateTimeWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  owner: StringWithAggregatesFilter
-  timestamp: IntWithAggregatesFilter
-  transactionHash: StringWithAggregatesFilter
-}
-
-type Collateral_transferSumAggregate {
-  collateral: Decimal
-  id: Int
-  timestamp: Int
-}
-
-input Collateral_transferSumOrderByAggregateInput {
-  collateral: SortOrder
-  id: SortOrder
-  timestamp: SortOrder
-}
-
-input Collateral_transferUpdateInput {
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  owner: StringFieldUpdateOperationsInput
-  timestamp: IntFieldUpdateOperationsInput
-  transaction: TransactionUpdateOneWithoutCollateral_transferNestedInput
-  transactionHash: StringFieldUpdateOperationsInput
-}
-
-input Collateral_transferUpdateManyMutationInput {
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  owner: StringFieldUpdateOperationsInput
-  timestamp: IntFieldUpdateOperationsInput
-  transactionHash: StringFieldUpdateOperationsInput
-}
-
-input Collateral_transferUpdateOneWithoutTransactionNestedInput {
-  connect: Collateral_transferWhereUniqueInput
-  connectOrCreate: Collateral_transferCreateOrConnectWithoutTransactionInput
-  create: Collateral_transferCreateWithoutTransactionInput
-  delete: Collateral_transferWhereInput
-  disconnect: Collateral_transferWhereInput
-  update: Collateral_transferUpdateToOneWithWhereWithoutTransactionInput
-  upsert: Collateral_transferUpsertWithoutTransactionInput
-}
-
-input Collateral_transferUpdateToOneWithWhereWithoutTransactionInput {
-  data: Collateral_transferUpdateWithoutTransactionInput!
-  where: Collateral_transferWhereInput
-}
-
-input Collateral_transferUpdateWithoutTransactionInput {
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  owner: StringFieldUpdateOperationsInput
-  timestamp: IntFieldUpdateOperationsInput
-  transactionHash: StringFieldUpdateOperationsInput
-}
-
-input Collateral_transferUpsertWithoutTransactionInput {
-  create: Collateral_transferCreateWithoutTransactionInput!
-  update: Collateral_transferUpdateWithoutTransactionInput!
-  where: Collateral_transferWhereInput
 }
 
 input Collateral_transferWhereInput {
@@ -1403,234 +563,6 @@ input Collateral_transferWhereInput {
   transactionHash: StringFilter
 }
 
-input Collateral_transferWhereUniqueInput {
-  AND: [Collateral_transferWhereInput!]
-  NOT: [Collateral_transferWhereInput!]
-  OR: [Collateral_transferWhereInput!]
-  collateral: DecimalFilter
-  createdAt: DateTimeFilter
-  id: Int
-  owner: StringFilter
-  timestamp: IntFilter
-  transaction: TransactionNullableRelationFilter
-  transactionHash: String
-}
-
-type CreateManyAndReturnCache_candle {
-  address: String
-  candleType: String!
-  chainId: Int
-  close: String!
-  createdAt: DateTimeISO!
-  endTimestamp: Int!
-  high: String!
-  id: Int!
-  interval: Int!
-  lastUpdatedTimestamp: Int!
-  low: String!
-  marketId: Int
-  marketIdx: Int
-  open: String!
-  resourceSlug: String
-  sumFeePaid: Decimal
-  sumUsed: Decimal
-  timestamp: Int!
-  trailingAvgTime: Int
-  trailingStartTimestamp: Int
-}
-
-type CreateManyAndReturnCache_param {
-  createdAt: DateTimeISO!
-  id: Int!
-  paramName: String!
-  paramValueNumber: Decimal!
-  paramValueString: String
-}
-
-type CreateManyAndReturnCategory {
-  createdAt: DateTimeISO!
-  id: Int!
-  name: String!
-  slug: String!
-}
-
-type CreateManyAndReturnCollateral_transfer {
-  collateral: Decimal!
-  createdAt: DateTimeISO!
-  id: Int!
-  owner: String!
-  timestamp: Int!
-  transactionHash: String!
-}
-
-type CreateManyAndReturnCrypto_prices {
-  id: Int!
-  price: Float!
-  ticker: String
-  timestamp: DateTimeISO!
-}
-
-type CreateManyAndReturnEvent {
-  blockNumber: Int!
-  createdAt: DateTimeISO!
-  id: Int!
-  logData: JSON!
-  logIndex: Int!
-  marketGroupId: Int
-  market_group(where: Market_groupWhereInput): Market_group
-  timestamp: BigInt!
-  transactionHash: String!
-}
-
-type CreateManyAndReturnMarket {
-  baseAssetMaxPriceTick: Int
-  baseAssetMinPriceTick: Int
-  createdAt: DateTimeISO!
-  endTimestamp: Int
-  id: Int!
-  marketGroupId: Int
-  marketId: Int!
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  market_group(where: Market_groupWhereInput): Market_group
-  maxPriceD18: Decimal
-  minPriceD18: Decimal
-  optionName: String
-  poolAddress: String
-  public: Boolean!
-  question: String
-  rules: String
-  settled: Boolean
-  settlementPriceD18: Decimal
-  startTimestamp: Int
-  startingSqrtPriceX96: Decimal
-}
-
-type CreateManyAndReturnMarket_group {
-  address: String
-  baseTokenName: String
-  category(where: CategoryWhereInput): Category
-  categoryId: Int
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO!
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  factoryAddress: String
-  id: Int!
-  initializationNonce: String
-  isCumulative: Boolean!
-  isYin: Boolean!
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  resource(where: ResourceWhereInput): Resource
-  resourceId: Int
-  vaultAddress: String
-}
-
-type CreateManyAndReturnMarket_price {
-  createdAt: DateTimeISO!
-  id: Int!
-  timestamp: BigInt!
-  value: Decimal!
-}
-
-type CreateManyAndReturnMigrations {
-  id: Int!
-  name: String!
-  timestamp: BigInt!
-}
-
-type CreateManyAndReturnPosition {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  createdAt: DateTimeISO!
-  highPriceTick: Decimal
-  id: Int!
-  isLP: Boolean!
-  isSettled: Boolean
-  lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
-  market(where: MarketWhereInput): Market
-  marketId: Int
-  owner: String
-  positionId: Int!
-  quoteToken: Decimal
-}
-
-type CreateManyAndReturnRender_job {
-  createdAt: DateTimeISO!
-  id: Int!
-  jobId: String!
-  serviceId: String!
-}
-
-type CreateManyAndReturnResource {
-  category(where: CategoryWhereInput): Category
-  categoryId: Int
-  createdAt: DateTimeISO!
-  id: Int!
-  name: String!
-  slug: String!
-}
-
-type CreateManyAndReturnResource_price {
-  blockNumber: Int!
-  createdAt: DateTimeISO!
-  feePaid: Decimal!
-  id: Int!
-  resource(where: ResourceWhereInput): Resource
-  resourceId: Int
-  timestamp: Int!
-  used: Decimal!
-  value: Decimal!
-}
-
-type CreateManyAndReturnTransaction {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  collateralTransferId: Int
-  collateral_transfer(where: Collateral_transferWhereInput): Collateral_transfer
-  createdAt: DateTimeISO!
-  event(where: EventWhereInput): Event
-  eventId: Int
-  id: Int!
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
-  marketPriceId: Int
-  market_price(where: Market_priceWhereInput): Market_price
-  position(where: PositionWhereInput): Position
-  positionId: Int
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
-  type: transaction_type_enum!
-}
-
 type Crypto_prices {
   id: Int!
   price: Float!
@@ -1643,49 +575,12 @@ type Crypto_pricesAvgAggregate {
   price: Float
 }
 
-input Crypto_pricesAvgOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-}
-
 type Crypto_pricesCountAggregate {
   _all: Int!
   id: Int!
   price: Int!
   ticker: Int!
   timestamp: Int!
-}
-
-input Crypto_pricesCountOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrder
-  timestamp: SortOrder
-}
-
-input Crypto_pricesCreateInput {
-  price: Float!
-  ticker: String
-  timestamp: DateTimeISO
-}
-
-input Crypto_pricesCreateManyInput {
-  id: Int
-  price: Float!
-  ticker: String
-  timestamp: DateTimeISO
-}
-
-type Crypto_pricesGroupBy {
-  _avg: Crypto_pricesAvgAggregate
-  _count: Crypto_pricesCountAggregate
-  _max: Crypto_pricesMaxAggregate
-  _min: Crypto_pricesMinAggregate
-  _sum: Crypto_pricesSumAggregate
-  id: Int!
-  price: Float!
-  ticker: String
-  timestamp: DateTimeISO!
 }
 
 type Crypto_pricesMaxAggregate {
@@ -1695,37 +590,11 @@ type Crypto_pricesMaxAggregate {
   timestamp: DateTimeISO
 }
 
-input Crypto_pricesMaxOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrder
-  timestamp: SortOrder
-}
-
 type Crypto_pricesMinAggregate {
   id: Int
   price: Float
   ticker: String
   timestamp: DateTimeISO
-}
-
-input Crypto_pricesMinOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrder
-  timestamp: SortOrder
-}
-
-input Crypto_pricesOrderByWithAggregationInput {
-  _avg: Crypto_pricesAvgOrderByAggregateInput
-  _count: Crypto_pricesCountOrderByAggregateInput
-  _max: Crypto_pricesMaxOrderByAggregateInput
-  _min: Crypto_pricesMinOrderByAggregateInput
-  _sum: Crypto_pricesSumOrderByAggregateInput
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrderInput
-  timestamp: SortOrder
 }
 
 input Crypto_pricesOrderByWithRelationInput {
@@ -1742,36 +611,9 @@ enum Crypto_pricesScalarFieldEnum {
   timestamp
 }
 
-input Crypto_pricesScalarWhereWithAggregatesInput {
-  AND: [Crypto_pricesScalarWhereWithAggregatesInput!]
-  NOT: [Crypto_pricesScalarWhereWithAggregatesInput!]
-  OR: [Crypto_pricesScalarWhereWithAggregatesInput!]
-  id: IntWithAggregatesFilter
-  price: FloatWithAggregatesFilter
-  ticker: StringNullableWithAggregatesFilter
-  timestamp: DateTimeWithAggregatesFilter
-}
-
 type Crypto_pricesSumAggregate {
   id: Int
   price: Float
-}
-
-input Crypto_pricesSumOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-}
-
-input Crypto_pricesUpdateInput {
-  price: FloatFieldUpdateOperationsInput
-  ticker: NullableStringFieldUpdateOperationsInput
-  timestamp: DateTimeFieldUpdateOperationsInput
-}
-
-input Crypto_pricesUpdateManyMutationInput {
-  price: FloatFieldUpdateOperationsInput
-  ticker: NullableStringFieldUpdateOperationsInput
-  timestamp: DateTimeFieldUpdateOperationsInput
 }
 
 input Crypto_pricesWhereInput {
@@ -1792,10 +634,6 @@ input Crypto_pricesWhereUniqueInput {
   price: FloatFilter
   ticker: StringNullableFilter
   timestamp: DateTimeFilter
-}
-
-input DateTimeFieldUpdateOperationsInput {
-  set: DateTimeISO
 }
 
 input DateTimeFilter {
@@ -1832,14 +670,6 @@ input DateTimeWithAggregatesFilter {
 GraphQL Scalar representing the Prisma.Decimal type, based on Decimal.js library.
 """
 scalar Decimal
-
-input DecimalFieldUpdateOperationsInput {
-  decrement: Decimal
-  divide: Decimal
-  increment: Decimal
-  multiply: Decimal
-  set: Decimal
-}
 
 input DecimalFilter {
   equals: Decimal
@@ -1893,10 +723,6 @@ input DecimalWithAggregatesFilter {
   lte: Decimal
   not: NestedDecimalWithAggregatesFilter
   notIn: [Decimal!]
-}
-
-input Enumtransaction_type_enumFieldUpdateOperationsInput {
-  set: transaction_type_enum
 }
 
 input Enumtransaction_type_enumFilter {
@@ -1964,86 +790,6 @@ input EventCountOrderByAggregateInput {
   marketGroupId: SortOrder
   timestamp: SortOrder
   transactionHash: SortOrder
-}
-
-input EventCreateInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  logData: JSON!
-  logIndex: Int!
-  market_group: Market_groupCreateNestedOneWithoutEventInput
-  timestamp: BigInt!
-  transaction: TransactionCreateNestedOneWithoutEventInput
-  transactionHash: String!
-}
-
-input EventCreateManyInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  id: Int
-  logData: JSON!
-  logIndex: Int!
-  marketGroupId: Int
-  timestamp: BigInt!
-  transactionHash: String!
-}
-
-input EventCreateManyMarket_groupInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  id: Int
-  logData: JSON!
-  logIndex: Int!
-  timestamp: BigInt!
-  transactionHash: String!
-}
-
-input EventCreateManyMarket_groupInputEnvelope {
-  data: [EventCreateManyMarket_groupInput!]!
-  skipDuplicates: Boolean
-}
-
-input EventCreateNestedManyWithoutMarket_groupInput {
-  connect: [EventWhereUniqueInput!]
-  connectOrCreate: [EventCreateOrConnectWithoutMarket_groupInput!]
-  create: [EventCreateWithoutMarket_groupInput!]
-  createMany: EventCreateManyMarket_groupInputEnvelope
-}
-
-input EventCreateNestedOneWithoutTransactionInput {
-  connect: EventWhereUniqueInput
-  connectOrCreate: EventCreateOrConnectWithoutTransactionInput
-  create: EventCreateWithoutTransactionInput
-}
-
-input EventCreateOrConnectWithoutMarket_groupInput {
-  create: EventCreateWithoutMarket_groupInput!
-  where: EventWhereUniqueInput!
-}
-
-input EventCreateOrConnectWithoutTransactionInput {
-  create: EventCreateWithoutTransactionInput!
-  where: EventWhereUniqueInput!
-}
-
-input EventCreateWithoutMarket_groupInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  logData: JSON!
-  logIndex: Int!
-  timestamp: BigInt!
-  transaction: TransactionCreateNestedOneWithoutEventInput
-  transactionHash: String!
-}
-
-input EventCreateWithoutTransactionInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  logData: JSON!
-  logIndex: Int!
-  market_group: Market_groupCreateNestedOneWithoutEventInput
-  timestamp: BigInt!
-  transactionHash: String!
 }
 
 type EventGroupBy {
@@ -2157,20 +903,6 @@ enum EventScalarFieldEnum {
   transactionHash
 }
 
-input EventScalarWhereInput {
-  AND: [EventScalarWhereInput!]
-  NOT: [EventScalarWhereInput!]
-  OR: [EventScalarWhereInput!]
-  blockNumber: IntFilter
-  createdAt: DateTimeFilter
-  id: IntFilter
-  logData: JsonFilter
-  logIndex: IntFilter
-  marketGroupId: IntNullableFilter
-  timestamp: BigIntFilter
-  transactionHash: StringFilter
-}
-
 input EventScalarWhereWithAggregatesInput {
   AND: [EventScalarWhereWithAggregatesInput!]
   NOT: [EventScalarWhereWithAggregatesInput!]
@@ -2199,97 +931,6 @@ input EventSumOrderByAggregateInput {
   logIndex: SortOrder
   marketGroupId: SortOrder
   timestamp: SortOrder
-}
-
-input EventUpdateInput {
-  blockNumber: IntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  logData: JSON
-  logIndex: IntFieldUpdateOperationsInput
-  market_group: Market_groupUpdateOneWithoutEventNestedInput
-  timestamp: BigIntFieldUpdateOperationsInput
-  transaction: TransactionUpdateOneWithoutEventNestedInput
-  transactionHash: StringFieldUpdateOperationsInput
-}
-
-input EventUpdateManyMutationInput {
-  blockNumber: IntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  logData: JSON
-  logIndex: IntFieldUpdateOperationsInput
-  timestamp: BigIntFieldUpdateOperationsInput
-  transactionHash: StringFieldUpdateOperationsInput
-}
-
-input EventUpdateManyWithWhereWithoutMarket_groupInput {
-  data: EventUpdateManyMutationInput!
-  where: EventScalarWhereInput!
-}
-
-input EventUpdateManyWithoutMarket_groupNestedInput {
-  connect: [EventWhereUniqueInput!]
-  connectOrCreate: [EventCreateOrConnectWithoutMarket_groupInput!]
-  create: [EventCreateWithoutMarket_groupInput!]
-  createMany: EventCreateManyMarket_groupInputEnvelope
-  delete: [EventWhereUniqueInput!]
-  deleteMany: [EventScalarWhereInput!]
-  disconnect: [EventWhereUniqueInput!]
-  set: [EventWhereUniqueInput!]
-  update: [EventUpdateWithWhereUniqueWithoutMarket_groupInput!]
-  updateMany: [EventUpdateManyWithWhereWithoutMarket_groupInput!]
-  upsert: [EventUpsertWithWhereUniqueWithoutMarket_groupInput!]
-}
-
-input EventUpdateOneWithoutTransactionNestedInput {
-  connect: EventWhereUniqueInput
-  connectOrCreate: EventCreateOrConnectWithoutTransactionInput
-  create: EventCreateWithoutTransactionInput
-  delete: EventWhereInput
-  disconnect: EventWhereInput
-  update: EventUpdateToOneWithWhereWithoutTransactionInput
-  upsert: EventUpsertWithoutTransactionInput
-}
-
-input EventUpdateToOneWithWhereWithoutTransactionInput {
-  data: EventUpdateWithoutTransactionInput!
-  where: EventWhereInput
-}
-
-input EventUpdateWithWhereUniqueWithoutMarket_groupInput {
-  data: EventUpdateWithoutMarket_groupInput!
-  where: EventWhereUniqueInput!
-}
-
-input EventUpdateWithoutMarket_groupInput {
-  blockNumber: IntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  logData: JSON
-  logIndex: IntFieldUpdateOperationsInput
-  timestamp: BigIntFieldUpdateOperationsInput
-  transaction: TransactionUpdateOneWithoutEventNestedInput
-  transactionHash: StringFieldUpdateOperationsInput
-}
-
-input EventUpdateWithoutTransactionInput {
-  blockNumber: IntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  logData: JSON
-  logIndex: IntFieldUpdateOperationsInput
-  market_group: Market_groupUpdateOneWithoutEventNestedInput
-  timestamp: BigIntFieldUpdateOperationsInput
-  transactionHash: StringFieldUpdateOperationsInput
-}
-
-input EventUpsertWithWhereUniqueWithoutMarket_groupInput {
-  create: EventCreateWithoutMarket_groupInput!
-  update: EventUpdateWithoutMarket_groupInput!
-  where: EventWhereUniqueInput!
-}
-
-input EventUpsertWithoutTransactionInput {
-  create: EventCreateWithoutTransactionInput!
-  update: EventUpdateWithoutTransactionInput!
-  where: EventWhereInput
 }
 
 input EventWhereInput {
@@ -2325,14 +966,6 @@ input EventWhereUniqueInput {
   transactionHash_marketGroupId_blockNumber_logIndex: eventTransactionHashMarketGroupIdBlockNumberLogIndexCompoundUniqueInput
 }
 
-input FloatFieldUpdateOperationsInput {
-  decrement: Float
-  divide: Float
-  increment: Float
-  multiply: Float
-  set: Float
-}
-
 input FloatFilter {
   equals: Float
   gt: Float
@@ -2342,30 +975,6 @@ input FloatFilter {
   lte: Float
   not: NestedFloatFilter
   notIn: [Float!]
-}
-
-input FloatWithAggregatesFilter {
-  _avg: NestedFloatFilter
-  _count: NestedIntFilter
-  _max: NestedFloatFilter
-  _min: NestedFloatFilter
-  _sum: NestedFloatFilter
-  equals: Float
-  gt: Float
-  gte: Float
-  in: [Float!]
-  lt: Float
-  lte: Float
-  not: NestedFloatWithAggregatesFilter
-  notIn: [Float!]
-}
-
-input IntFieldUpdateOperationsInput {
-  decrement: Int
-  divide: Int
-  increment: Int
-  multiply: Int
-  set: Int
 }
 
 input IntFilter {
@@ -2591,181 +1200,6 @@ input MarketCountOrderByAggregateInput {
   settlementPriceD18: SortOrder
   startTimestamp: SortOrder
   startingSqrtPriceX96: SortOrder
-}
-
-input MarketCreateInput {
-  baseAssetMaxPriceTick: Int
-  baseAssetMinPriceTick: Int
-  createdAt: DateTimeISO
-  endTimestamp: Int
-  marketId: Int!
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  market_group: Market_groupCreateNestedOneWithoutMarketInput
-  maxPriceD18: Decimal
-  minPriceD18: Decimal
-  optionName: String
-  poolAddress: String
-  position: PositionCreateNestedManyWithoutMarketInput
-  public: Boolean
-  question: String
-  rules: String
-  settled: Boolean
-  settlementPriceD18: Decimal
-  startTimestamp: Int
-  startingSqrtPriceX96: Decimal
-}
-
-input MarketCreateManyInput {
-  baseAssetMaxPriceTick: Int
-  baseAssetMinPriceTick: Int
-  createdAt: DateTimeISO
-  endTimestamp: Int
-  id: Int
-  marketGroupId: Int
-  marketId: Int!
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  maxPriceD18: Decimal
-  minPriceD18: Decimal
-  optionName: String
-  poolAddress: String
-  public: Boolean
-  question: String
-  rules: String
-  settled: Boolean
-  settlementPriceD18: Decimal
-  startTimestamp: Int
-  startingSqrtPriceX96: Decimal
-}
-
-input MarketCreateManyMarket_groupInput {
-  baseAssetMaxPriceTick: Int
-  baseAssetMinPriceTick: Int
-  createdAt: DateTimeISO
-  endTimestamp: Int
-  id: Int
-  marketId: Int!
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  maxPriceD18: Decimal
-  minPriceD18: Decimal
-  optionName: String
-  poolAddress: String
-  public: Boolean
-  question: String
-  rules: String
-  settled: Boolean
-  settlementPriceD18: Decimal
-  startTimestamp: Int
-  startingSqrtPriceX96: Decimal
-}
-
-input MarketCreateManyMarket_groupInputEnvelope {
-  data: [MarketCreateManyMarket_groupInput!]!
-  skipDuplicates: Boolean
-}
-
-input MarketCreateNestedManyWithoutMarket_groupInput {
-  connect: [MarketWhereUniqueInput!]
-  connectOrCreate: [MarketCreateOrConnectWithoutMarket_groupInput!]
-  create: [MarketCreateWithoutMarket_groupInput!]
-  createMany: MarketCreateManyMarket_groupInputEnvelope
-}
-
-input MarketCreateNestedOneWithoutPositionInput {
-  connect: MarketWhereUniqueInput
-  connectOrCreate: MarketCreateOrConnectWithoutPositionInput
-  create: MarketCreateWithoutPositionInput
-}
-
-input MarketCreateOrConnectWithoutMarket_groupInput {
-  create: MarketCreateWithoutMarket_groupInput!
-  where: MarketWhereUniqueInput!
-}
-
-input MarketCreateOrConnectWithoutPositionInput {
-  create: MarketCreateWithoutPositionInput!
-  where: MarketWhereUniqueInput!
-}
-
-input MarketCreateWithoutMarket_groupInput {
-  baseAssetMaxPriceTick: Int
-  baseAssetMinPriceTick: Int
-  createdAt: DateTimeISO
-  endTimestamp: Int
-  marketId: Int!
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  maxPriceD18: Decimal
-  minPriceD18: Decimal
-  optionName: String
-  poolAddress: String
-  position: PositionCreateNestedManyWithoutMarketInput
-  public: Boolean
-  question: String
-  rules: String
-  settled: Boolean
-  settlementPriceD18: Decimal
-  startTimestamp: Int
-  startingSqrtPriceX96: Decimal
-}
-
-input MarketCreateWithoutPositionInput {
-  baseAssetMaxPriceTick: Int
-  baseAssetMinPriceTick: Int
-  createdAt: DateTimeISO
-  endTimestamp: Int
-  marketId: Int!
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  market_group: Market_groupCreateNestedOneWithoutMarketInput
-  maxPriceD18: Decimal
-  minPriceD18: Decimal
-  optionName: String
-  poolAddress: String
-  public: Boolean
-  question: String
-  rules: String
-  settled: Boolean
-  settlementPriceD18: Decimal
-  startTimestamp: Int
-  startingSqrtPriceX96: Decimal
 }
 
 input MarketFilterInput {
@@ -3044,39 +1478,6 @@ enum MarketScalarFieldEnum {
   startingSqrtPriceX96
 }
 
-input MarketScalarWhereInput {
-  AND: [MarketScalarWhereInput!]
-  NOT: [MarketScalarWhereInput!]
-  OR: [MarketScalarWhereInput!]
-  baseAssetMaxPriceTick: IntNullableFilter
-  baseAssetMinPriceTick: IntNullableFilter
-  createdAt: DateTimeFilter
-  endTimestamp: IntNullableFilter
-  id: IntFilter
-  marketGroupId: IntNullableFilter
-  marketId: IntFilter
-  marketParamsAssertionliveness: DecimalNullableFilter
-  marketParamsBondamount: DecimalNullableFilter
-  marketParamsBondcurrency: StringNullableFilter
-  marketParamsClaimstatement: StringNullableFilter
-  marketParamsFeerate: IntNullableFilter
-  marketParamsOptimisticoraclev3: StringNullableFilter
-  marketParamsUniswappositionmanager: StringNullableFilter
-  marketParamsUniswapquoter: StringNullableFilter
-  marketParamsUniswapswaprouter: StringNullableFilter
-  maxPriceD18: DecimalNullableFilter
-  minPriceD18: DecimalNullableFilter
-  optionName: StringNullableFilter
-  poolAddress: StringNullableFilter
-  public: BoolFilter
-  question: StringNullableFilter
-  rules: StringNullableFilter
-  settled: BoolNullableFilter
-  settlementPriceD18: DecimalNullableFilter
-  startTimestamp: IntNullableFilter
-  startingSqrtPriceX96: DecimalNullableFilter
-}
-
 input MarketScalarWhereWithAggregatesInput {
   AND: [MarketScalarWhereWithAggregatesInput!]
   NOT: [MarketScalarWhereWithAggregatesInput!]
@@ -3142,173 +1543,6 @@ input MarketSumOrderByAggregateInput {
   settlementPriceD18: SortOrder
   startTimestamp: SortOrder
   startingSqrtPriceX96: SortOrder
-}
-
-input MarketUpdateInput {
-  baseAssetMaxPriceTick: NullableIntFieldUpdateOperationsInput
-  baseAssetMinPriceTick: NullableIntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  endTimestamp: NullableIntFieldUpdateOperationsInput
-  marketId: IntFieldUpdateOperationsInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  market_group: Market_groupUpdateOneWithoutMarketNestedInput
-  maxPriceD18: NullableDecimalFieldUpdateOperationsInput
-  minPriceD18: NullableDecimalFieldUpdateOperationsInput
-  optionName: NullableStringFieldUpdateOperationsInput
-  poolAddress: NullableStringFieldUpdateOperationsInput
-  position: PositionUpdateManyWithoutMarketNestedInput
-  public: BoolFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  rules: NullableStringFieldUpdateOperationsInput
-  settled: NullableBoolFieldUpdateOperationsInput
-  settlementPriceD18: NullableDecimalFieldUpdateOperationsInput
-  startTimestamp: NullableIntFieldUpdateOperationsInput
-  startingSqrtPriceX96: NullableDecimalFieldUpdateOperationsInput
-}
-
-input MarketUpdateManyMutationInput {
-  baseAssetMaxPriceTick: NullableIntFieldUpdateOperationsInput
-  baseAssetMinPriceTick: NullableIntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  endTimestamp: NullableIntFieldUpdateOperationsInput
-  marketId: IntFieldUpdateOperationsInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  maxPriceD18: NullableDecimalFieldUpdateOperationsInput
-  minPriceD18: NullableDecimalFieldUpdateOperationsInput
-  optionName: NullableStringFieldUpdateOperationsInput
-  poolAddress: NullableStringFieldUpdateOperationsInput
-  public: BoolFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  rules: NullableStringFieldUpdateOperationsInput
-  settled: NullableBoolFieldUpdateOperationsInput
-  settlementPriceD18: NullableDecimalFieldUpdateOperationsInput
-  startTimestamp: NullableIntFieldUpdateOperationsInput
-  startingSqrtPriceX96: NullableDecimalFieldUpdateOperationsInput
-}
-
-input MarketUpdateManyWithWhereWithoutMarket_groupInput {
-  data: MarketUpdateManyMutationInput!
-  where: MarketScalarWhereInput!
-}
-
-input MarketUpdateManyWithoutMarket_groupNestedInput {
-  connect: [MarketWhereUniqueInput!]
-  connectOrCreate: [MarketCreateOrConnectWithoutMarket_groupInput!]
-  create: [MarketCreateWithoutMarket_groupInput!]
-  createMany: MarketCreateManyMarket_groupInputEnvelope
-  delete: [MarketWhereUniqueInput!]
-  deleteMany: [MarketScalarWhereInput!]
-  disconnect: [MarketWhereUniqueInput!]
-  set: [MarketWhereUniqueInput!]
-  update: [MarketUpdateWithWhereUniqueWithoutMarket_groupInput!]
-  updateMany: [MarketUpdateManyWithWhereWithoutMarket_groupInput!]
-  upsert: [MarketUpsertWithWhereUniqueWithoutMarket_groupInput!]
-}
-
-input MarketUpdateOneWithoutPositionNestedInput {
-  connect: MarketWhereUniqueInput
-  connectOrCreate: MarketCreateOrConnectWithoutPositionInput
-  create: MarketCreateWithoutPositionInput
-  delete: MarketWhereInput
-  disconnect: MarketWhereInput
-  update: MarketUpdateToOneWithWhereWithoutPositionInput
-  upsert: MarketUpsertWithoutPositionInput
-}
-
-input MarketUpdateToOneWithWhereWithoutPositionInput {
-  data: MarketUpdateWithoutPositionInput!
-  where: MarketWhereInput
-}
-
-input MarketUpdateWithWhereUniqueWithoutMarket_groupInput {
-  data: MarketUpdateWithoutMarket_groupInput!
-  where: MarketWhereUniqueInput!
-}
-
-input MarketUpdateWithoutMarket_groupInput {
-  baseAssetMaxPriceTick: NullableIntFieldUpdateOperationsInput
-  baseAssetMinPriceTick: NullableIntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  endTimestamp: NullableIntFieldUpdateOperationsInput
-  marketId: IntFieldUpdateOperationsInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  maxPriceD18: NullableDecimalFieldUpdateOperationsInput
-  minPriceD18: NullableDecimalFieldUpdateOperationsInput
-  optionName: NullableStringFieldUpdateOperationsInput
-  poolAddress: NullableStringFieldUpdateOperationsInput
-  position: PositionUpdateManyWithoutMarketNestedInput
-  public: BoolFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  rules: NullableStringFieldUpdateOperationsInput
-  settled: NullableBoolFieldUpdateOperationsInput
-  settlementPriceD18: NullableDecimalFieldUpdateOperationsInput
-  startTimestamp: NullableIntFieldUpdateOperationsInput
-  startingSqrtPriceX96: NullableDecimalFieldUpdateOperationsInput
-}
-
-input MarketUpdateWithoutPositionInput {
-  baseAssetMaxPriceTick: NullableIntFieldUpdateOperationsInput
-  baseAssetMinPriceTick: NullableIntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  endTimestamp: NullableIntFieldUpdateOperationsInput
-  marketId: IntFieldUpdateOperationsInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  market_group: Market_groupUpdateOneWithoutMarketNestedInput
-  maxPriceD18: NullableDecimalFieldUpdateOperationsInput
-  minPriceD18: NullableDecimalFieldUpdateOperationsInput
-  optionName: NullableStringFieldUpdateOperationsInput
-  poolAddress: NullableStringFieldUpdateOperationsInput
-  public: BoolFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  rules: NullableStringFieldUpdateOperationsInput
-  settled: NullableBoolFieldUpdateOperationsInput
-  settlementPriceD18: NullableDecimalFieldUpdateOperationsInput
-  startTimestamp: NullableIntFieldUpdateOperationsInput
-  startingSqrtPriceX96: NullableDecimalFieldUpdateOperationsInput
-}
-
-input MarketUpsertWithWhereUniqueWithoutMarket_groupInput {
-  create: MarketCreateWithoutMarket_groupInput!
-  update: MarketUpdateWithoutMarket_groupInput!
-  where: MarketWhereUniqueInput!
-}
-
-input MarketUpsertWithoutPositionInput {
-  create: MarketCreateWithoutPositionInput!
-  update: MarketUpdateWithoutPositionInput!
-  where: MarketWhereInput
 }
 
 input MarketWhereInput {
@@ -3515,325 +1749,6 @@ input Market_groupCountOrderByAggregateInput {
   quoteTokenName: SortOrder
   resourceId: SortOrder
   vaultAddress: SortOrder
-}
-
-input Market_groupCreateInput {
-  address: String
-  baseTokenName: String
-  category: CategoryCreateNestedOneWithoutMarket_groupInput
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  event: EventCreateNestedManyWithoutMarket_groupInput
-  factoryAddress: String
-  initializationNonce: String
-  isCumulative: Boolean
-  isYin: Boolean
-  market: MarketCreateNestedManyWithoutMarket_groupInput
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  resource: ResourceCreateNestedOneWithoutMarket_groupInput
-  vaultAddress: String
-}
-
-input Market_groupCreateManyCategoryInput {
-  address: String
-  baseTokenName: String
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  factoryAddress: String
-  id: Int
-  initializationNonce: String
-  isCumulative: Boolean
-  isYin: Boolean
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  resourceId: Int
-  vaultAddress: String
-}
-
-input Market_groupCreateManyCategoryInputEnvelope {
-  data: [Market_groupCreateManyCategoryInput!]!
-  skipDuplicates: Boolean
-}
-
-input Market_groupCreateManyInput {
-  address: String
-  baseTokenName: String
-  categoryId: Int
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  factoryAddress: String
-  id: Int
-  initializationNonce: String
-  isCumulative: Boolean
-  isYin: Boolean
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  resourceId: Int
-  vaultAddress: String
-}
-
-input Market_groupCreateManyResourceInput {
-  address: String
-  baseTokenName: String
-  categoryId: Int
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  factoryAddress: String
-  id: Int
-  initializationNonce: String
-  isCumulative: Boolean
-  isYin: Boolean
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  vaultAddress: String
-}
-
-input Market_groupCreateManyResourceInputEnvelope {
-  data: [Market_groupCreateManyResourceInput!]!
-  skipDuplicates: Boolean
-}
-
-input Market_groupCreateNestedManyWithoutCategoryInput {
-  connect: [Market_groupWhereUniqueInput!]
-  connectOrCreate: [Market_groupCreateOrConnectWithoutCategoryInput!]
-  create: [Market_groupCreateWithoutCategoryInput!]
-  createMany: Market_groupCreateManyCategoryInputEnvelope
-}
-
-input Market_groupCreateNestedManyWithoutResourceInput {
-  connect: [Market_groupWhereUniqueInput!]
-  connectOrCreate: [Market_groupCreateOrConnectWithoutResourceInput!]
-  create: [Market_groupCreateWithoutResourceInput!]
-  createMany: Market_groupCreateManyResourceInputEnvelope
-}
-
-input Market_groupCreateNestedOneWithoutEventInput {
-  connect: Market_groupWhereUniqueInput
-  connectOrCreate: Market_groupCreateOrConnectWithoutEventInput
-  create: Market_groupCreateWithoutEventInput
-}
-
-input Market_groupCreateNestedOneWithoutMarketInput {
-  connect: Market_groupWhereUniqueInput
-  connectOrCreate: Market_groupCreateOrConnectWithoutMarketInput
-  create: Market_groupCreateWithoutMarketInput
-}
-
-input Market_groupCreateOrConnectWithoutCategoryInput {
-  create: Market_groupCreateWithoutCategoryInput!
-  where: Market_groupWhereUniqueInput!
-}
-
-input Market_groupCreateOrConnectWithoutEventInput {
-  create: Market_groupCreateWithoutEventInput!
-  where: Market_groupWhereUniqueInput!
-}
-
-input Market_groupCreateOrConnectWithoutMarketInput {
-  create: Market_groupCreateWithoutMarketInput!
-  where: Market_groupWhereUniqueInput!
-}
-
-input Market_groupCreateOrConnectWithoutResourceInput {
-  create: Market_groupCreateWithoutResourceInput!
-  where: Market_groupWhereUniqueInput!
-}
-
-input Market_groupCreateWithoutCategoryInput {
-  address: String
-  baseTokenName: String
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  event: EventCreateNestedManyWithoutMarket_groupInput
-  factoryAddress: String
-  initializationNonce: String
-  isCumulative: Boolean
-  isYin: Boolean
-  market: MarketCreateNestedManyWithoutMarket_groupInput
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  resource: ResourceCreateNestedOneWithoutMarket_groupInput
-  vaultAddress: String
-}
-
-input Market_groupCreateWithoutEventInput {
-  address: String
-  baseTokenName: String
-  category: CategoryCreateNestedOneWithoutMarket_groupInput
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  factoryAddress: String
-  initializationNonce: String
-  isCumulative: Boolean
-  isYin: Boolean
-  market: MarketCreateNestedManyWithoutMarket_groupInput
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  resource: ResourceCreateNestedOneWithoutMarket_groupInput
-  vaultAddress: String
-}
-
-input Market_groupCreateWithoutMarketInput {
-  address: String
-  baseTokenName: String
-  category: CategoryCreateNestedOneWithoutMarket_groupInput
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  event: EventCreateNestedManyWithoutMarket_groupInput
-  factoryAddress: String
-  initializationNonce: String
-  isCumulative: Boolean
-  isYin: Boolean
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  resource: ResourceCreateNestedOneWithoutMarket_groupInput
-  vaultAddress: String
-}
-
-input Market_groupCreateWithoutResourceInput {
-  address: String
-  baseTokenName: String
-  category: CategoryCreateNestedOneWithoutMarket_groupInput
-  chainId: Int!
-  collateralAsset: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  createdAt: DateTimeISO
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  event: EventCreateNestedManyWithoutMarket_groupInput
-  factoryAddress: String
-  initializationNonce: String
-  isCumulative: Boolean
-  isYin: Boolean
-  market: MarketCreateNestedManyWithoutMarket_groupInput
-  marketParamsAssertionliveness: Decimal
-  marketParamsBondamount: Decimal
-  marketParamsBondcurrency: String
-  marketParamsClaimstatement: String
-  marketParamsFeerate: Int
-  marketParamsOptimisticoraclev3: String
-  marketParamsUniswappositionmanager: String
-  marketParamsUniswapquoter: String
-  marketParamsUniswapswaprouter: String
-  minTradeSize: Decimal
-  owner: String
-  question: String
-  quoteTokenName: String
-  vaultAddress: String
 }
 
 type Market_groupGroupBy {
@@ -4129,42 +2044,6 @@ enum Market_groupScalarFieldEnum {
   vaultAddress
 }
 
-input Market_groupScalarWhereInput {
-  AND: [Market_groupScalarWhereInput!]
-  NOT: [Market_groupScalarWhereInput!]
-  OR: [Market_groupScalarWhereInput!]
-  address: StringNullableFilter
-  baseTokenName: StringNullableFilter
-  categoryId: IntNullableFilter
-  chainId: IntFilter
-  collateralAsset: StringNullableFilter
-  collateralDecimals: IntNullableFilter
-  collateralSymbol: StringNullableFilter
-  createdAt: DateTimeFilter
-  deployTimestamp: IntNullableFilter
-  deployTxnBlockNumber: IntNullableFilter
-  factoryAddress: StringNullableFilter
-  id: IntFilter
-  initializationNonce: StringNullableFilter
-  isCumulative: BoolFilter
-  isYin: BoolFilter
-  marketParamsAssertionliveness: DecimalNullableFilter
-  marketParamsBondamount: DecimalNullableFilter
-  marketParamsBondcurrency: StringNullableFilter
-  marketParamsClaimstatement: StringNullableFilter
-  marketParamsFeerate: IntNullableFilter
-  marketParamsOptimisticoraclev3: StringNullableFilter
-  marketParamsUniswappositionmanager: StringNullableFilter
-  marketParamsUniswapquoter: StringNullableFilter
-  marketParamsUniswapswaprouter: StringNullableFilter
-  minTradeSize: DecimalNullableFilter
-  owner: StringNullableFilter
-  question: StringNullableFilter
-  quoteTokenName: StringNullableFilter
-  resourceId: IntNullableFilter
-  vaultAddress: StringNullableFilter
-}
-
 input Market_groupScalarWhereWithAggregatesInput {
   AND: [Market_groupScalarWhereWithAggregatesInput!]
   NOT: [Market_groupScalarWhereWithAggregatesInput!]
@@ -4227,304 +2106,6 @@ input Market_groupSumOrderByAggregateInput {
   marketParamsFeerate: SortOrder
   minTradeSize: SortOrder
   resourceId: SortOrder
-}
-
-input Market_groupUpdateInput {
-  address: NullableStringFieldUpdateOperationsInput
-  baseTokenName: NullableStringFieldUpdateOperationsInput
-  category: CategoryUpdateOneWithoutMarket_groupNestedInput
-  chainId: IntFieldUpdateOperationsInput
-  collateralAsset: NullableStringFieldUpdateOperationsInput
-  collateralDecimals: NullableIntFieldUpdateOperationsInput
-  collateralSymbol: NullableStringFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  deployTimestamp: NullableIntFieldUpdateOperationsInput
-  deployTxnBlockNumber: NullableIntFieldUpdateOperationsInput
-  event: EventUpdateManyWithoutMarket_groupNestedInput
-  factoryAddress: NullableStringFieldUpdateOperationsInput
-  initializationNonce: NullableStringFieldUpdateOperationsInput
-  isCumulative: BoolFieldUpdateOperationsInput
-  isYin: BoolFieldUpdateOperationsInput
-  market: MarketUpdateManyWithoutMarket_groupNestedInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  minTradeSize: NullableDecimalFieldUpdateOperationsInput
-  owner: NullableStringFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  quoteTokenName: NullableStringFieldUpdateOperationsInput
-  resource: ResourceUpdateOneWithoutMarket_groupNestedInput
-  vaultAddress: NullableStringFieldUpdateOperationsInput
-}
-
-input Market_groupUpdateManyMutationInput {
-  address: NullableStringFieldUpdateOperationsInput
-  baseTokenName: NullableStringFieldUpdateOperationsInput
-  chainId: IntFieldUpdateOperationsInput
-  collateralAsset: NullableStringFieldUpdateOperationsInput
-  collateralDecimals: NullableIntFieldUpdateOperationsInput
-  collateralSymbol: NullableStringFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  deployTimestamp: NullableIntFieldUpdateOperationsInput
-  deployTxnBlockNumber: NullableIntFieldUpdateOperationsInput
-  factoryAddress: NullableStringFieldUpdateOperationsInput
-  initializationNonce: NullableStringFieldUpdateOperationsInput
-  isCumulative: BoolFieldUpdateOperationsInput
-  isYin: BoolFieldUpdateOperationsInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  minTradeSize: NullableDecimalFieldUpdateOperationsInput
-  owner: NullableStringFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  quoteTokenName: NullableStringFieldUpdateOperationsInput
-  vaultAddress: NullableStringFieldUpdateOperationsInput
-}
-
-input Market_groupUpdateManyWithWhereWithoutCategoryInput {
-  data: Market_groupUpdateManyMutationInput!
-  where: Market_groupScalarWhereInput!
-}
-
-input Market_groupUpdateManyWithWhereWithoutResourceInput {
-  data: Market_groupUpdateManyMutationInput!
-  where: Market_groupScalarWhereInput!
-}
-
-input Market_groupUpdateManyWithoutCategoryNestedInput {
-  connect: [Market_groupWhereUniqueInput!]
-  connectOrCreate: [Market_groupCreateOrConnectWithoutCategoryInput!]
-  create: [Market_groupCreateWithoutCategoryInput!]
-  createMany: Market_groupCreateManyCategoryInputEnvelope
-  delete: [Market_groupWhereUniqueInput!]
-  deleteMany: [Market_groupScalarWhereInput!]
-  disconnect: [Market_groupWhereUniqueInput!]
-  set: [Market_groupWhereUniqueInput!]
-  update: [Market_groupUpdateWithWhereUniqueWithoutCategoryInput!]
-  updateMany: [Market_groupUpdateManyWithWhereWithoutCategoryInput!]
-  upsert: [Market_groupUpsertWithWhereUniqueWithoutCategoryInput!]
-}
-
-input Market_groupUpdateManyWithoutResourceNestedInput {
-  connect: [Market_groupWhereUniqueInput!]
-  connectOrCreate: [Market_groupCreateOrConnectWithoutResourceInput!]
-  create: [Market_groupCreateWithoutResourceInput!]
-  createMany: Market_groupCreateManyResourceInputEnvelope
-  delete: [Market_groupWhereUniqueInput!]
-  deleteMany: [Market_groupScalarWhereInput!]
-  disconnect: [Market_groupWhereUniqueInput!]
-  set: [Market_groupWhereUniqueInput!]
-  update: [Market_groupUpdateWithWhereUniqueWithoutResourceInput!]
-  updateMany: [Market_groupUpdateManyWithWhereWithoutResourceInput!]
-  upsert: [Market_groupUpsertWithWhereUniqueWithoutResourceInput!]
-}
-
-input Market_groupUpdateOneWithoutEventNestedInput {
-  connect: Market_groupWhereUniqueInput
-  connectOrCreate: Market_groupCreateOrConnectWithoutEventInput
-  create: Market_groupCreateWithoutEventInput
-  delete: Market_groupWhereInput
-  disconnect: Market_groupWhereInput
-  update: Market_groupUpdateToOneWithWhereWithoutEventInput
-  upsert: Market_groupUpsertWithoutEventInput
-}
-
-input Market_groupUpdateOneWithoutMarketNestedInput {
-  connect: Market_groupWhereUniqueInput
-  connectOrCreate: Market_groupCreateOrConnectWithoutMarketInput
-  create: Market_groupCreateWithoutMarketInput
-  delete: Market_groupWhereInput
-  disconnect: Market_groupWhereInput
-  update: Market_groupUpdateToOneWithWhereWithoutMarketInput
-  upsert: Market_groupUpsertWithoutMarketInput
-}
-
-input Market_groupUpdateToOneWithWhereWithoutEventInput {
-  data: Market_groupUpdateWithoutEventInput!
-  where: Market_groupWhereInput
-}
-
-input Market_groupUpdateToOneWithWhereWithoutMarketInput {
-  data: Market_groupUpdateWithoutMarketInput!
-  where: Market_groupWhereInput
-}
-
-input Market_groupUpdateWithWhereUniqueWithoutCategoryInput {
-  data: Market_groupUpdateWithoutCategoryInput!
-  where: Market_groupWhereUniqueInput!
-}
-
-input Market_groupUpdateWithWhereUniqueWithoutResourceInput {
-  data: Market_groupUpdateWithoutResourceInput!
-  where: Market_groupWhereUniqueInput!
-}
-
-input Market_groupUpdateWithoutCategoryInput {
-  address: NullableStringFieldUpdateOperationsInput
-  baseTokenName: NullableStringFieldUpdateOperationsInput
-  chainId: IntFieldUpdateOperationsInput
-  collateralAsset: NullableStringFieldUpdateOperationsInput
-  collateralDecimals: NullableIntFieldUpdateOperationsInput
-  collateralSymbol: NullableStringFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  deployTimestamp: NullableIntFieldUpdateOperationsInput
-  deployTxnBlockNumber: NullableIntFieldUpdateOperationsInput
-  event: EventUpdateManyWithoutMarket_groupNestedInput
-  factoryAddress: NullableStringFieldUpdateOperationsInput
-  initializationNonce: NullableStringFieldUpdateOperationsInput
-  isCumulative: BoolFieldUpdateOperationsInput
-  isYin: BoolFieldUpdateOperationsInput
-  market: MarketUpdateManyWithoutMarket_groupNestedInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  minTradeSize: NullableDecimalFieldUpdateOperationsInput
-  owner: NullableStringFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  quoteTokenName: NullableStringFieldUpdateOperationsInput
-  resource: ResourceUpdateOneWithoutMarket_groupNestedInput
-  vaultAddress: NullableStringFieldUpdateOperationsInput
-}
-
-input Market_groupUpdateWithoutEventInput {
-  address: NullableStringFieldUpdateOperationsInput
-  baseTokenName: NullableStringFieldUpdateOperationsInput
-  category: CategoryUpdateOneWithoutMarket_groupNestedInput
-  chainId: IntFieldUpdateOperationsInput
-  collateralAsset: NullableStringFieldUpdateOperationsInput
-  collateralDecimals: NullableIntFieldUpdateOperationsInput
-  collateralSymbol: NullableStringFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  deployTimestamp: NullableIntFieldUpdateOperationsInput
-  deployTxnBlockNumber: NullableIntFieldUpdateOperationsInput
-  factoryAddress: NullableStringFieldUpdateOperationsInput
-  initializationNonce: NullableStringFieldUpdateOperationsInput
-  isCumulative: BoolFieldUpdateOperationsInput
-  isYin: BoolFieldUpdateOperationsInput
-  market: MarketUpdateManyWithoutMarket_groupNestedInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  minTradeSize: NullableDecimalFieldUpdateOperationsInput
-  owner: NullableStringFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  quoteTokenName: NullableStringFieldUpdateOperationsInput
-  resource: ResourceUpdateOneWithoutMarket_groupNestedInput
-  vaultAddress: NullableStringFieldUpdateOperationsInput
-}
-
-input Market_groupUpdateWithoutMarketInput {
-  address: NullableStringFieldUpdateOperationsInput
-  baseTokenName: NullableStringFieldUpdateOperationsInput
-  category: CategoryUpdateOneWithoutMarket_groupNestedInput
-  chainId: IntFieldUpdateOperationsInput
-  collateralAsset: NullableStringFieldUpdateOperationsInput
-  collateralDecimals: NullableIntFieldUpdateOperationsInput
-  collateralSymbol: NullableStringFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  deployTimestamp: NullableIntFieldUpdateOperationsInput
-  deployTxnBlockNumber: NullableIntFieldUpdateOperationsInput
-  event: EventUpdateManyWithoutMarket_groupNestedInput
-  factoryAddress: NullableStringFieldUpdateOperationsInput
-  initializationNonce: NullableStringFieldUpdateOperationsInput
-  isCumulative: BoolFieldUpdateOperationsInput
-  isYin: BoolFieldUpdateOperationsInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  minTradeSize: NullableDecimalFieldUpdateOperationsInput
-  owner: NullableStringFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  quoteTokenName: NullableStringFieldUpdateOperationsInput
-  resource: ResourceUpdateOneWithoutMarket_groupNestedInput
-  vaultAddress: NullableStringFieldUpdateOperationsInput
-}
-
-input Market_groupUpdateWithoutResourceInput {
-  address: NullableStringFieldUpdateOperationsInput
-  baseTokenName: NullableStringFieldUpdateOperationsInput
-  category: CategoryUpdateOneWithoutMarket_groupNestedInput
-  chainId: IntFieldUpdateOperationsInput
-  collateralAsset: NullableStringFieldUpdateOperationsInput
-  collateralDecimals: NullableIntFieldUpdateOperationsInput
-  collateralSymbol: NullableStringFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  deployTimestamp: NullableIntFieldUpdateOperationsInput
-  deployTxnBlockNumber: NullableIntFieldUpdateOperationsInput
-  event: EventUpdateManyWithoutMarket_groupNestedInput
-  factoryAddress: NullableStringFieldUpdateOperationsInput
-  initializationNonce: NullableStringFieldUpdateOperationsInput
-  isCumulative: BoolFieldUpdateOperationsInput
-  isYin: BoolFieldUpdateOperationsInput
-  market: MarketUpdateManyWithoutMarket_groupNestedInput
-  marketParamsAssertionliveness: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondamount: NullableDecimalFieldUpdateOperationsInput
-  marketParamsBondcurrency: NullableStringFieldUpdateOperationsInput
-  marketParamsClaimstatement: NullableStringFieldUpdateOperationsInput
-  marketParamsFeerate: NullableIntFieldUpdateOperationsInput
-  marketParamsOptimisticoraclev3: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswappositionmanager: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapquoter: NullableStringFieldUpdateOperationsInput
-  marketParamsUniswapswaprouter: NullableStringFieldUpdateOperationsInput
-  minTradeSize: NullableDecimalFieldUpdateOperationsInput
-  owner: NullableStringFieldUpdateOperationsInput
-  question: NullableStringFieldUpdateOperationsInput
-  quoteTokenName: NullableStringFieldUpdateOperationsInput
-  vaultAddress: NullableStringFieldUpdateOperationsInput
-}
-
-input Market_groupUpsertWithWhereUniqueWithoutCategoryInput {
-  create: Market_groupCreateWithoutCategoryInput!
-  update: Market_groupUpdateWithoutCategoryInput!
-  where: Market_groupWhereUniqueInput!
-}
-
-input Market_groupUpsertWithWhereUniqueWithoutResourceInput {
-  create: Market_groupCreateWithoutResourceInput!
-  update: Market_groupUpdateWithoutResourceInput!
-  where: Market_groupWhereUniqueInput!
-}
-
-input Market_groupUpsertWithoutEventInput {
-  create: Market_groupCreateWithoutEventInput!
-  update: Market_groupUpdateWithoutEventInput!
-  where: Market_groupWhereInput
-}
-
-input Market_groupUpsertWithoutMarketInput {
-  create: Market_groupCreateWithoutMarketInput!
-  update: Market_groupUpdateWithoutMarketInput!
-  where: Market_groupWhereInput
 }
 
 input Market_groupWhereInput {
@@ -4608,126 +2189,9 @@ input Market_groupWhereUniqueInput {
   vaultAddress: StringNullableFilter
 }
 
-type Market_price {
-  createdAt: DateTimeISO!
-  id: Int!
-  timestamp: BigInt!
-  value: Decimal!
-}
-
-type Market_priceAvgAggregate {
-  id: Float
-  timestamp: Float
-  value: Decimal
-}
-
-input Market_priceAvgOrderByAggregateInput {
-  id: SortOrder
-  timestamp: SortOrder
-  value: SortOrder
-}
-
-type Market_priceCountAggregate {
-  _all: Int!
-  createdAt: Int!
-  id: Int!
-  timestamp: Int!
-  value: Int!
-}
-
-input Market_priceCountOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  timestamp: SortOrder
-  value: SortOrder
-}
-
-input Market_priceCreateInput {
-  createdAt: DateTimeISO
-  timestamp: BigInt!
-  transaction: TransactionCreateNestedOneWithoutMarket_priceInput
-  value: Decimal!
-}
-
-input Market_priceCreateManyInput {
-  createdAt: DateTimeISO
-  id: Int
-  timestamp: BigInt!
-  value: Decimal!
-}
-
-input Market_priceCreateNestedOneWithoutTransactionInput {
-  connect: Market_priceWhereUniqueInput
-  connectOrCreate: Market_priceCreateOrConnectWithoutTransactionInput
-  create: Market_priceCreateWithoutTransactionInput
-}
-
-input Market_priceCreateOrConnectWithoutTransactionInput {
-  create: Market_priceCreateWithoutTransactionInput!
-  where: Market_priceWhereUniqueInput!
-}
-
-input Market_priceCreateWithoutTransactionInput {
-  createdAt: DateTimeISO
-  timestamp: BigInt!
-  value: Decimal!
-}
-
-type Market_priceGroupBy {
-  _avg: Market_priceAvgAggregate
-  _count: Market_priceCountAggregate
-  _max: Market_priceMaxAggregate
-  _min: Market_priceMinAggregate
-  _sum: Market_priceSumAggregate
-  createdAt: DateTimeISO!
-  id: Int!
-  timestamp: BigInt!
-  value: Decimal!
-}
-
-type Market_priceMaxAggregate {
-  createdAt: DateTimeISO
-  id: Int
-  timestamp: BigInt
-  value: Decimal
-}
-
-input Market_priceMaxOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  timestamp: SortOrder
-  value: SortOrder
-}
-
-type Market_priceMinAggregate {
-  createdAt: DateTimeISO
-  id: Int
-  timestamp: BigInt
-  value: Decimal
-}
-
-input Market_priceMinOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  timestamp: SortOrder
-  value: SortOrder
-}
-
 input Market_priceNullableRelationFilter {
   is: Market_priceWhereInput
   isNot: Market_priceWhereInput
-}
-
-input Market_priceOrderByWithAggregationInput {
-  _avg: Market_priceAvgOrderByAggregateInput
-  _count: Market_priceCountOrderByAggregateInput
-  _max: Market_priceMaxOrderByAggregateInput
-  _min: Market_priceMinOrderByAggregateInput
-  _sum: Market_priceSumOrderByAggregateInput
-  createdAt: SortOrder
-  id: SortOrder
-  timestamp: SortOrder
-  value: SortOrder
 }
 
 input Market_priceOrderByWithRelationInput {
@@ -4736,75 +2200,6 @@ input Market_priceOrderByWithRelationInput {
   timestamp: SortOrder
   transaction: TransactionOrderByWithRelationInput
   value: SortOrder
-}
-
-enum Market_priceScalarFieldEnum {
-  createdAt
-  id
-  timestamp
-  value
-}
-
-input Market_priceScalarWhereWithAggregatesInput {
-  AND: [Market_priceScalarWhereWithAggregatesInput!]
-  NOT: [Market_priceScalarWhereWithAggregatesInput!]
-  OR: [Market_priceScalarWhereWithAggregatesInput!]
-  createdAt: DateTimeWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  timestamp: BigIntWithAggregatesFilter
-  value: DecimalWithAggregatesFilter
-}
-
-type Market_priceSumAggregate {
-  id: Int
-  timestamp: BigInt
-  value: Decimal
-}
-
-input Market_priceSumOrderByAggregateInput {
-  id: SortOrder
-  timestamp: SortOrder
-  value: SortOrder
-}
-
-input Market_priceUpdateInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  timestamp: BigIntFieldUpdateOperationsInput
-  transaction: TransactionUpdateOneWithoutMarket_priceNestedInput
-  value: DecimalFieldUpdateOperationsInput
-}
-
-input Market_priceUpdateManyMutationInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  timestamp: BigIntFieldUpdateOperationsInput
-  value: DecimalFieldUpdateOperationsInput
-}
-
-input Market_priceUpdateOneWithoutTransactionNestedInput {
-  connect: Market_priceWhereUniqueInput
-  connectOrCreate: Market_priceCreateOrConnectWithoutTransactionInput
-  create: Market_priceCreateWithoutTransactionInput
-  delete: Market_priceWhereInput
-  disconnect: Market_priceWhereInput
-  update: Market_priceUpdateToOneWithWhereWithoutTransactionInput
-  upsert: Market_priceUpsertWithoutTransactionInput
-}
-
-input Market_priceUpdateToOneWithWhereWithoutTransactionInput {
-  data: Market_priceUpdateWithoutTransactionInput!
-  where: Market_priceWhereInput
-}
-
-input Market_priceUpdateWithoutTransactionInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  timestamp: BigIntFieldUpdateOperationsInput
-  value: DecimalFieldUpdateOperationsInput
-}
-
-input Market_priceUpsertWithoutTransactionInput {
-  create: Market_priceCreateWithoutTransactionInput!
-  update: Market_priceUpdateWithoutTransactionInput!
-  where: Market_priceWhereInput
 }
 
 input Market_priceWhereInput {
@@ -4816,285 +2211,6 @@ input Market_priceWhereInput {
   timestamp: BigIntFilter
   transaction: TransactionNullableRelationFilter
   value: DecimalFilter
-}
-
-input Market_priceWhereUniqueInput {
-  AND: [Market_priceWhereInput!]
-  NOT: [Market_priceWhereInput!]
-  OR: [Market_priceWhereInput!]
-  createdAt: DateTimeFilter
-  id: Int
-  timestamp: BigIntFilter
-  transaction: TransactionNullableRelationFilter
-  value: DecimalFilter
-}
-
-type Migrations {
-  id: Int!
-  name: String!
-  timestamp: BigInt!
-}
-
-type MigrationsAvgAggregate {
-  id: Float
-  timestamp: Float
-}
-
-input MigrationsAvgOrderByAggregateInput {
-  id: SortOrder
-  timestamp: SortOrder
-}
-
-type MigrationsCountAggregate {
-  _all: Int!
-  id: Int!
-  name: Int!
-  timestamp: Int!
-}
-
-input MigrationsCountOrderByAggregateInput {
-  id: SortOrder
-  name: SortOrder
-  timestamp: SortOrder
-}
-
-input MigrationsCreateInput {
-  name: String!
-  timestamp: BigInt!
-}
-
-input MigrationsCreateManyInput {
-  id: Int
-  name: String!
-  timestamp: BigInt!
-}
-
-type MigrationsGroupBy {
-  _avg: MigrationsAvgAggregate
-  _count: MigrationsCountAggregate
-  _max: MigrationsMaxAggregate
-  _min: MigrationsMinAggregate
-  _sum: MigrationsSumAggregate
-  id: Int!
-  name: String!
-  timestamp: BigInt!
-}
-
-type MigrationsMaxAggregate {
-  id: Int
-  name: String
-  timestamp: BigInt
-}
-
-input MigrationsMaxOrderByAggregateInput {
-  id: SortOrder
-  name: SortOrder
-  timestamp: SortOrder
-}
-
-type MigrationsMinAggregate {
-  id: Int
-  name: String
-  timestamp: BigInt
-}
-
-input MigrationsMinOrderByAggregateInput {
-  id: SortOrder
-  name: SortOrder
-  timestamp: SortOrder
-}
-
-input MigrationsOrderByWithAggregationInput {
-  _avg: MigrationsAvgOrderByAggregateInput
-  _count: MigrationsCountOrderByAggregateInput
-  _max: MigrationsMaxOrderByAggregateInput
-  _min: MigrationsMinOrderByAggregateInput
-  _sum: MigrationsSumOrderByAggregateInput
-  id: SortOrder
-  name: SortOrder
-  timestamp: SortOrder
-}
-
-input MigrationsOrderByWithRelationInput {
-  id: SortOrder
-  name: SortOrder
-  timestamp: SortOrder
-}
-
-enum MigrationsScalarFieldEnum {
-  id
-  name
-  timestamp
-}
-
-input MigrationsScalarWhereWithAggregatesInput {
-  AND: [MigrationsScalarWhereWithAggregatesInput!]
-  NOT: [MigrationsScalarWhereWithAggregatesInput!]
-  OR: [MigrationsScalarWhereWithAggregatesInput!]
-  id: IntWithAggregatesFilter
-  name: StringWithAggregatesFilter
-  timestamp: BigIntWithAggregatesFilter
-}
-
-type MigrationsSumAggregate {
-  id: Int
-  timestamp: BigInt
-}
-
-input MigrationsSumOrderByAggregateInput {
-  id: SortOrder
-  timestamp: SortOrder
-}
-
-input MigrationsUpdateInput {
-  name: StringFieldUpdateOperationsInput
-  timestamp: BigIntFieldUpdateOperationsInput
-}
-
-input MigrationsUpdateManyMutationInput {
-  name: StringFieldUpdateOperationsInput
-  timestamp: BigIntFieldUpdateOperationsInput
-}
-
-input MigrationsWhereInput {
-  AND: [MigrationsWhereInput!]
-  NOT: [MigrationsWhereInput!]
-  OR: [MigrationsWhereInput!]
-  id: IntFilter
-  name: StringFilter
-  timestamp: BigIntFilter
-}
-
-input MigrationsWhereUniqueInput {
-  AND: [MigrationsWhereInput!]
-  NOT: [MigrationsWhereInput!]
-  OR: [MigrationsWhereInput!]
-  id: Int
-  name: StringFilter
-  timestamp: BigIntFilter
-}
-
-type Mutation {
-  createManyAndReturnCache_candle(data: [Cache_candleCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnCache_candle!]!
-  createManyAndReturnCache_param(data: [Cache_paramCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnCache_param!]!
-  createManyAndReturnCategory(data: [CategoryCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnCategory!]!
-  createManyAndReturnCollateral_transfer(data: [Collateral_transferCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnCollateral_transfer!]!
-  createManyAndReturnCrypto_prices(data: [Crypto_pricesCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnCrypto_prices!]!
-  createManyAndReturnEvent(data: [EventCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnEvent!]!
-  createManyAndReturnMarket(data: [MarketCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnMarket!]!
-  createManyAndReturnMarket_group(data: [Market_groupCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnMarket_group!]!
-  createManyAndReturnMarket_price(data: [Market_priceCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnMarket_price!]!
-  createManyAndReturnMigrations(data: [MigrationsCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnMigrations!]!
-  createManyAndReturnPosition(data: [PositionCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnPosition!]!
-  createManyAndReturnRender_job(data: [Render_jobCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnRender_job!]!
-  createManyAndReturnResource(data: [ResourceCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnResource!]!
-  createManyAndReturnResource_price(data: [Resource_priceCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnResource_price!]!
-  createManyAndReturnTransaction(data: [TransactionCreateManyInput!]!, skipDuplicates: Boolean): [CreateManyAndReturnTransaction!]!
-  createManyCache_candle(data: [Cache_candleCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyCache_param(data: [Cache_paramCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyCategory(data: [CategoryCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyCollateral_transfer(data: [Collateral_transferCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyCrypto_prices(data: [Crypto_pricesCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyEvent(data: [EventCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyMarket(data: [MarketCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyMarket_group(data: [Market_groupCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyMarket_price(data: [Market_priceCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyMigrations(data: [MigrationsCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyPosition(data: [PositionCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyRender_job(data: [Render_jobCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyResource(data: [ResourceCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyResource_price(data: [Resource_priceCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createManyTransaction(data: [TransactionCreateManyInput!]!, skipDuplicates: Boolean): AffectedRowsOutput!
-  createOneCache_candle(data: Cache_candleCreateInput!): Cache_candle!
-  createOneCache_param(data: Cache_paramCreateInput!): Cache_param!
-  createOneCategory(data: CategoryCreateInput!): Category!
-  createOneCollateral_transfer(data: Collateral_transferCreateInput!): Collateral_transfer!
-  createOneCrypto_prices(data: Crypto_pricesCreateInput!): Crypto_prices!
-  createOneEvent(data: EventCreateInput!): Event!
-  createOneMarket(data: MarketCreateInput!): Market!
-  createOneMarket_group(data: Market_groupCreateInput!): Market_group!
-  createOneMarket_price(data: Market_priceCreateInput!): Market_price!
-  createOneMigrations(data: MigrationsCreateInput!): Migrations!
-  createOnePosition(data: PositionCreateInput!): Position!
-  createOneRender_job(data: Render_jobCreateInput!): Render_job!
-  createOneResource(data: ResourceCreateInput!): Resource!
-  createOneResource_price(data: Resource_priceCreateInput!): Resource_price!
-  createOneTransaction(data: TransactionCreateInput!): Transaction!
-  deleteManyCache_candle(where: Cache_candleWhereInput): AffectedRowsOutput!
-  deleteManyCache_param(where: Cache_paramWhereInput): AffectedRowsOutput!
-  deleteManyCategory(where: CategoryWhereInput): AffectedRowsOutput!
-  deleteManyCollateral_transfer(where: Collateral_transferWhereInput): AffectedRowsOutput!
-  deleteManyCrypto_prices(where: Crypto_pricesWhereInput): AffectedRowsOutput!
-  deleteManyEvent(where: EventWhereInput): AffectedRowsOutput!
-  deleteManyMarket(where: MarketWhereInput): AffectedRowsOutput!
-  deleteManyMarket_group(where: Market_groupWhereInput): AffectedRowsOutput!
-  deleteManyMarket_price(where: Market_priceWhereInput): AffectedRowsOutput!
-  deleteManyMigrations(where: MigrationsWhereInput): AffectedRowsOutput!
-  deleteManyPosition(where: PositionWhereInput): AffectedRowsOutput!
-  deleteManyRender_job(where: Render_jobWhereInput): AffectedRowsOutput!
-  deleteManyResource(where: ResourceWhereInput): AffectedRowsOutput!
-  deleteManyResource_price(where: Resource_priceWhereInput): AffectedRowsOutput!
-  deleteManyTransaction(where: TransactionWhereInput): AffectedRowsOutput!
-  deleteOneCache_candle(where: Cache_candleWhereUniqueInput!): Cache_candle
-  deleteOneCache_param(where: Cache_paramWhereUniqueInput!): Cache_param
-  deleteOneCategory(where: CategoryWhereUniqueInput!): Category
-  deleteOneCollateral_transfer(where: Collateral_transferWhereUniqueInput!): Collateral_transfer
-  deleteOneCrypto_prices(where: Crypto_pricesWhereUniqueInput!): Crypto_prices
-  deleteOneEvent(where: EventWhereUniqueInput!): Event
-  deleteOneMarket(where: MarketWhereUniqueInput!): Market
-  deleteOneMarket_group(where: Market_groupWhereUniqueInput!): Market_group
-  deleteOneMarket_price(where: Market_priceWhereUniqueInput!): Market_price
-  deleteOneMigrations(where: MigrationsWhereUniqueInput!): Migrations
-  deleteOnePosition(where: PositionWhereUniqueInput!): Position
-  deleteOneRender_job(where: Render_jobWhereUniqueInput!): Render_job
-  deleteOneResource(where: ResourceWhereUniqueInput!): Resource
-  deleteOneResource_price(where: Resource_priceWhereUniqueInput!): Resource_price
-  deleteOneTransaction(where: TransactionWhereUniqueInput!): Transaction
-  updateManyCache_candle(data: Cache_candleUpdateManyMutationInput!, where: Cache_candleWhereInput): AffectedRowsOutput!
-  updateManyCache_param(data: Cache_paramUpdateManyMutationInput!, where: Cache_paramWhereInput): AffectedRowsOutput!
-  updateManyCategory(data: CategoryUpdateManyMutationInput!, where: CategoryWhereInput): AffectedRowsOutput!
-  updateManyCollateral_transfer(data: Collateral_transferUpdateManyMutationInput!, where: Collateral_transferWhereInput): AffectedRowsOutput!
-  updateManyCrypto_prices(data: Crypto_pricesUpdateManyMutationInput!, where: Crypto_pricesWhereInput): AffectedRowsOutput!
-  updateManyEvent(data: EventUpdateManyMutationInput!, where: EventWhereInput): AffectedRowsOutput!
-  updateManyMarket(data: MarketUpdateManyMutationInput!, where: MarketWhereInput): AffectedRowsOutput!
-  updateManyMarket_group(data: Market_groupUpdateManyMutationInput!, where: Market_groupWhereInput): AffectedRowsOutput!
-  updateManyMarket_price(data: Market_priceUpdateManyMutationInput!, where: Market_priceWhereInput): AffectedRowsOutput!
-  updateManyMigrations(data: MigrationsUpdateManyMutationInput!, where: MigrationsWhereInput): AffectedRowsOutput!
-  updateManyPosition(data: PositionUpdateManyMutationInput!, where: PositionWhereInput): AffectedRowsOutput!
-  updateManyRender_job(data: Render_jobUpdateManyMutationInput!, where: Render_jobWhereInput): AffectedRowsOutput!
-  updateManyResource(data: ResourceUpdateManyMutationInput!, where: ResourceWhereInput): AffectedRowsOutput!
-  updateManyResource_price(data: Resource_priceUpdateManyMutationInput!, where: Resource_priceWhereInput): AffectedRowsOutput!
-  updateManyTransaction(data: TransactionUpdateManyMutationInput!, where: TransactionWhereInput): AffectedRowsOutput!
-  updateOneCache_candle(data: Cache_candleUpdateInput!, where: Cache_candleWhereUniqueInput!): Cache_candle
-  updateOneCache_param(data: Cache_paramUpdateInput!, where: Cache_paramWhereUniqueInput!): Cache_param
-  updateOneCategory(data: CategoryUpdateInput!, where: CategoryWhereUniqueInput!): Category
-  updateOneCollateral_transfer(data: Collateral_transferUpdateInput!, where: Collateral_transferWhereUniqueInput!): Collateral_transfer
-  updateOneCrypto_prices(data: Crypto_pricesUpdateInput!, where: Crypto_pricesWhereUniqueInput!): Crypto_prices
-  updateOneEvent(data: EventUpdateInput!, where: EventWhereUniqueInput!): Event
-  updateOneMarket(data: MarketUpdateInput!, where: MarketWhereUniqueInput!): Market
-  updateOneMarket_group(data: Market_groupUpdateInput!, where: Market_groupWhereUniqueInput!): Market_group
-  updateOneMarket_price(data: Market_priceUpdateInput!, where: Market_priceWhereUniqueInput!): Market_price
-  updateOneMigrations(data: MigrationsUpdateInput!, where: MigrationsWhereUniqueInput!): Migrations
-  updateOnePosition(data: PositionUpdateInput!, where: PositionWhereUniqueInput!): Position
-  updateOneRender_job(data: Render_jobUpdateInput!, where: Render_jobWhereUniqueInput!): Render_job
-  updateOneResource(data: ResourceUpdateInput!, where: ResourceWhereUniqueInput!): Resource
-  updateOneResource_price(data: Resource_priceUpdateInput!, where: Resource_priceWhereUniqueInput!): Resource_price
-  updateOneTransaction(data: TransactionUpdateInput!, where: TransactionWhereUniqueInput!): Transaction
-  upsertOneCache_candle(create: Cache_candleCreateInput!, update: Cache_candleUpdateInput!, where: Cache_candleWhereUniqueInput!): Cache_candle!
-  upsertOneCache_param(create: Cache_paramCreateInput!, update: Cache_paramUpdateInput!, where: Cache_paramWhereUniqueInput!): Cache_param!
-  upsertOneCategory(create: CategoryCreateInput!, update: CategoryUpdateInput!, where: CategoryWhereUniqueInput!): Category!
-  upsertOneCollateral_transfer(create: Collateral_transferCreateInput!, update: Collateral_transferUpdateInput!, where: Collateral_transferWhereUniqueInput!): Collateral_transfer!
-  upsertOneCrypto_prices(create: Crypto_pricesCreateInput!, update: Crypto_pricesUpdateInput!, where: Crypto_pricesWhereUniqueInput!): Crypto_prices!
-  upsertOneEvent(create: EventCreateInput!, update: EventUpdateInput!, where: EventWhereUniqueInput!): Event!
-  upsertOneMarket(create: MarketCreateInput!, update: MarketUpdateInput!, where: MarketWhereUniqueInput!): Market!
-  upsertOneMarket_group(create: Market_groupCreateInput!, update: Market_groupUpdateInput!, where: Market_groupWhereUniqueInput!): Market_group!
-  upsertOneMarket_price(create: Market_priceCreateInput!, update: Market_priceUpdateInput!, where: Market_priceWhereUniqueInput!): Market_price!
-  upsertOneMigrations(create: MigrationsCreateInput!, update: MigrationsUpdateInput!, where: MigrationsWhereUniqueInput!): Migrations!
-  upsertOnePosition(create: PositionCreateInput!, update: PositionUpdateInput!, where: PositionWhereUniqueInput!): Position!
-  upsertOneRender_job(create: Render_jobCreateInput!, update: Render_jobUpdateInput!, where: Render_jobWhereUniqueInput!): Render_job!
-  upsertOneResource(create: ResourceCreateInput!, update: ResourceUpdateInput!, where: ResourceWhereUniqueInput!): Resource!
-  upsertOneResource_price(create: Resource_priceCreateInput!, update: Resource_priceUpdateInput!, where: Resource_priceWhereUniqueInput!): Resource_price!
-  upsertOneTransaction(create: TransactionCreateInput!, update: TransactionUpdateInput!, where: TransactionWhereUniqueInput!): Transaction!
 }
 
 input NestedBigIntFilter {
@@ -5268,22 +2384,6 @@ input NestedFloatNullableFilter {
   notIn: [Float!]
 }
 
-input NestedFloatWithAggregatesFilter {
-  _avg: NestedFloatFilter
-  _count: NestedIntFilter
-  _max: NestedFloatFilter
-  _min: NestedFloatFilter
-  _sum: NestedFloatFilter
-  equals: Float
-  gt: Float
-  gte: Float
-  in: [Float!]
-  lt: Float
-  lte: Float
-  not: NestedFloatWithAggregatesFilter
-  notIn: [Float!]
-}
-
 input NestedIntFilter {
   equals: Int
   gt: Int
@@ -5416,30 +2516,6 @@ input NestedStringWithAggregatesFilter {
   startsWith: String
 }
 
-input NullableBoolFieldUpdateOperationsInput {
-  set: Boolean
-}
-
-input NullableDecimalFieldUpdateOperationsInput {
-  decrement: Decimal
-  divide: Decimal
-  increment: Decimal
-  multiply: Decimal
-  set: Decimal
-}
-
-input NullableIntFieldUpdateOperationsInput {
-  decrement: Int
-  divide: Int
-  increment: Int
-  multiply: Int
-  set: Int
-}
-
-input NullableStringFieldUpdateOperationsInput {
-  set: String
-}
-
 enum NullsOrder {
   first
   last
@@ -5547,126 +2623,6 @@ input PositionCountOrderByAggregateInput {
   owner: SortOrder
   positionId: SortOrder
   quoteToken: SortOrder
-}
-
-input PositionCreateInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  highPriceTick: Decimal
-  isLP: Boolean!
-  isSettled: Boolean
-  lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
-  market: MarketCreateNestedOneWithoutPositionInput
-  owner: String
-  positionId: Int!
-  quoteToken: Decimal
-  transaction: TransactionCreateNestedManyWithoutPositionInput
-}
-
-input PositionCreateManyInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  highPriceTick: Decimal
-  id: Int
-  isLP: Boolean!
-  isSettled: Boolean
-  lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
-  marketId: Int
-  owner: String
-  positionId: Int!
-  quoteToken: Decimal
-}
-
-input PositionCreateManyMarketInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  highPriceTick: Decimal
-  id: Int
-  isLP: Boolean!
-  isSettled: Boolean
-  lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
-  owner: String
-  positionId: Int!
-  quoteToken: Decimal
-}
-
-input PositionCreateManyMarketInputEnvelope {
-  data: [PositionCreateManyMarketInput!]!
-  skipDuplicates: Boolean
-}
-
-input PositionCreateNestedManyWithoutMarketInput {
-  connect: [PositionWhereUniqueInput!]
-  connectOrCreate: [PositionCreateOrConnectWithoutMarketInput!]
-  create: [PositionCreateWithoutMarketInput!]
-  createMany: PositionCreateManyMarketInputEnvelope
-}
-
-input PositionCreateNestedOneWithoutTransactionInput {
-  connect: PositionWhereUniqueInput
-  connectOrCreate: PositionCreateOrConnectWithoutTransactionInput
-  create: PositionCreateWithoutTransactionInput
-}
-
-input PositionCreateOrConnectWithoutMarketInput {
-  create: PositionCreateWithoutMarketInput!
-  where: PositionWhereUniqueInput!
-}
-
-input PositionCreateOrConnectWithoutTransactionInput {
-  create: PositionCreateWithoutTransactionInput!
-  where: PositionWhereUniqueInput!
-}
-
-input PositionCreateWithoutMarketInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  highPriceTick: Decimal
-  isLP: Boolean!
-  isSettled: Boolean
-  lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
-  owner: String
-  positionId: Int!
-  quoteToken: Decimal
-  transaction: TransactionCreateNestedManyWithoutPositionInput
-}
-
-input PositionCreateWithoutTransactionInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  highPriceTick: Decimal
-  isLP: Boolean!
-  isSettled: Boolean
-  lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
-  market: MarketCreateNestedOneWithoutPositionInput
-  owner: String
-  positionId: Int!
-  quoteToken: Decimal
 }
 
 type PositionGroupBy {
@@ -5848,28 +2804,6 @@ enum PositionScalarFieldEnum {
   quoteToken
 }
 
-input PositionScalarWhereInput {
-  AND: [PositionScalarWhereInput!]
-  NOT: [PositionScalarWhereInput!]
-  OR: [PositionScalarWhereInput!]
-  baseToken: DecimalNullableFilter
-  borrowedBaseToken: DecimalNullableFilter
-  borrowedQuoteToken: DecimalNullableFilter
-  collateral: DecimalFilter
-  createdAt: DateTimeFilter
-  highPriceTick: DecimalNullableFilter
-  id: IntFilter
-  isLP: BoolFilter
-  isSettled: BoolNullableFilter
-  lowPriceTick: DecimalNullableFilter
-  lpBaseToken: DecimalNullableFilter
-  lpQuoteToken: DecimalNullableFilter
-  marketId: IntNullableFilter
-  owner: StringNullableFilter
-  positionId: IntFilter
-  quoteToken: DecimalNullableFilter
-}
-
 input PositionScalarWhereWithAggregatesInput {
   AND: [PositionScalarWhereWithAggregatesInput!]
   NOT: [PositionScalarWhereWithAggregatesInput!]
@@ -5920,129 +2854,6 @@ input PositionSumOrderByAggregateInput {
   marketId: SortOrder
   positionId: SortOrder
   quoteToken: SortOrder
-}
-
-input PositionUpdateInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  highPriceTick: NullableDecimalFieldUpdateOperationsInput
-  isLP: BoolFieldUpdateOperationsInput
-  isSettled: NullableBoolFieldUpdateOperationsInput
-  lowPriceTick: NullableDecimalFieldUpdateOperationsInput
-  lpBaseToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  market: MarketUpdateOneWithoutPositionNestedInput
-  owner: NullableStringFieldUpdateOperationsInput
-  positionId: IntFieldUpdateOperationsInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-  transaction: TransactionUpdateManyWithoutPositionNestedInput
-}
-
-input PositionUpdateManyMutationInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  highPriceTick: NullableDecimalFieldUpdateOperationsInput
-  isLP: BoolFieldUpdateOperationsInput
-  isSettled: NullableBoolFieldUpdateOperationsInput
-  lowPriceTick: NullableDecimalFieldUpdateOperationsInput
-  lpBaseToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  owner: NullableStringFieldUpdateOperationsInput
-  positionId: IntFieldUpdateOperationsInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-}
-
-input PositionUpdateManyWithWhereWithoutMarketInput {
-  data: PositionUpdateManyMutationInput!
-  where: PositionScalarWhereInput!
-}
-
-input PositionUpdateManyWithoutMarketNestedInput {
-  connect: [PositionWhereUniqueInput!]
-  connectOrCreate: [PositionCreateOrConnectWithoutMarketInput!]
-  create: [PositionCreateWithoutMarketInput!]
-  createMany: PositionCreateManyMarketInputEnvelope
-  delete: [PositionWhereUniqueInput!]
-  deleteMany: [PositionScalarWhereInput!]
-  disconnect: [PositionWhereUniqueInput!]
-  set: [PositionWhereUniqueInput!]
-  update: [PositionUpdateWithWhereUniqueWithoutMarketInput!]
-  updateMany: [PositionUpdateManyWithWhereWithoutMarketInput!]
-  upsert: [PositionUpsertWithWhereUniqueWithoutMarketInput!]
-}
-
-input PositionUpdateOneWithoutTransactionNestedInput {
-  connect: PositionWhereUniqueInput
-  connectOrCreate: PositionCreateOrConnectWithoutTransactionInput
-  create: PositionCreateWithoutTransactionInput
-  delete: PositionWhereInput
-  disconnect: PositionWhereInput
-  update: PositionUpdateToOneWithWhereWithoutTransactionInput
-  upsert: PositionUpsertWithoutTransactionInput
-}
-
-input PositionUpdateToOneWithWhereWithoutTransactionInput {
-  data: PositionUpdateWithoutTransactionInput!
-  where: PositionWhereInput
-}
-
-input PositionUpdateWithWhereUniqueWithoutMarketInput {
-  data: PositionUpdateWithoutMarketInput!
-  where: PositionWhereUniqueInput!
-}
-
-input PositionUpdateWithoutMarketInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  highPriceTick: NullableDecimalFieldUpdateOperationsInput
-  isLP: BoolFieldUpdateOperationsInput
-  isSettled: NullableBoolFieldUpdateOperationsInput
-  lowPriceTick: NullableDecimalFieldUpdateOperationsInput
-  lpBaseToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  owner: NullableStringFieldUpdateOperationsInput
-  positionId: IntFieldUpdateOperationsInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-  transaction: TransactionUpdateManyWithoutPositionNestedInput
-}
-
-input PositionUpdateWithoutTransactionInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  highPriceTick: NullableDecimalFieldUpdateOperationsInput
-  isLP: BoolFieldUpdateOperationsInput
-  isSettled: NullableBoolFieldUpdateOperationsInput
-  lowPriceTick: NullableDecimalFieldUpdateOperationsInput
-  lpBaseToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  market: MarketUpdateOneWithoutPositionNestedInput
-  owner: NullableStringFieldUpdateOperationsInput
-  positionId: IntFieldUpdateOperationsInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-}
-
-input PositionUpsertWithWhereUniqueWithoutMarketInput {
-  create: PositionCreateWithoutMarketInput!
-  update: PositionUpdateWithoutMarketInput!
-  where: PositionWhereUniqueInput!
-}
-
-input PositionUpsertWithoutTransactionInput {
-  create: PositionCreateWithoutTransactionInput!
-  update: PositionUpdateWithoutTransactionInput!
-  where: PositionWhereInput
 }
 
 input PositionWhereInput {
@@ -6096,15 +2907,11 @@ input PositionWhereUniqueInput {
 
 type Query {
   aggregateCache_candle(cursor: Cache_candleWhereUniqueInput, orderBy: [Cache_candleOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_candleWhereInput): AggregateCache_candle!
-  aggregateCache_param(cursor: Cache_paramWhereUniqueInput, orderBy: [Cache_paramOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_paramWhereInput): AggregateCache_param!
   aggregateCategory(cursor: CategoryWhereUniqueInput, orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): AggregateCategory!
-  aggregateCollateral_transfer(cursor: Collateral_transferWhereUniqueInput, orderBy: [Collateral_transferOrderByWithRelationInput!], skip: Int, take: Int, where: Collateral_transferWhereInput): AggregateCollateral_transfer!
   aggregateCrypto_prices(cursor: Crypto_pricesWhereUniqueInput, orderBy: [Crypto_pricesOrderByWithRelationInput!], skip: Int, take: Int, where: Crypto_pricesWhereInput): AggregateCrypto_prices!
   aggregateEvent(cursor: EventWhereUniqueInput, orderBy: [EventOrderByWithRelationInput!], skip: Int, take: Int, where: EventWhereInput): AggregateEvent!
   aggregateMarket(cursor: MarketWhereUniqueInput, orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): AggregateMarket!
   aggregateMarket_group(cursor: Market_groupWhereUniqueInput, orderBy: [Market_groupOrderByWithRelationInput!], skip: Int, take: Int, where: Market_groupWhereInput): AggregateMarket_group!
-  aggregateMarket_price(cursor: Market_priceWhereUniqueInput, orderBy: [Market_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Market_priceWhereInput): AggregateMarket_price!
-  aggregateMigrations(cursor: MigrationsWhereUniqueInput, orderBy: [MigrationsOrderByWithRelationInput!], skip: Int, take: Int, where: MigrationsWhereInput): AggregateMigrations!
   aggregatePosition(cursor: PositionWhereUniqueInput, orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): AggregatePosition!
   aggregateRender_job(cursor: Render_jobWhereUniqueInput, orderBy: [Render_jobOrderByWithRelationInput!], skip: Int, take: Int, where: Render_jobWhereInput): AggregateRender_job!
   aggregateResource(cursor: ResourceWhereUniqueInput, orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): AggregateResource!
@@ -6112,38 +2919,23 @@ type Query {
   aggregateTransaction(cursor: TransactionWhereUniqueInput, orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): AggregateTransaction!
   cache_candle(where: Cache_candleWhereUniqueInput!): Cache_candle
   cache_candles(cursor: Cache_candleWhereUniqueInput, distinct: [Cache_candleScalarFieldEnum!], orderBy: [Cache_candleOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_candleWhereInput): [Cache_candle!]!
-  cache_param(where: Cache_paramWhereUniqueInput!): Cache_param
-  cache_params(cursor: Cache_paramWhereUniqueInput, distinct: [Cache_paramScalarFieldEnum!], orderBy: [Cache_paramOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_paramWhereInput): [Cache_param!]!
-  categories: [Category!]!
+  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
   category(where: CategoryWhereUniqueInput!): Category
-  collateral_transfer(where: Collateral_transferWhereUniqueInput!): Collateral_transfer
-  collateral_transfers(cursor: Collateral_transferWhereUniqueInput, distinct: [Collateral_transferScalarFieldEnum!], orderBy: [Collateral_transferOrderByWithRelationInput!], skip: Int, take: Int, where: Collateral_transferWhereInput): [Collateral_transfer!]!
   event(where: EventWhereUniqueInput!): Event
   events(cursor: EventWhereUniqueInput, distinct: [EventScalarFieldEnum!], orderBy: [EventOrderByWithRelationInput!], skip: Int, take: Int, where: EventWhereInput): [Event!]!
   findFirstCache_candle(cursor: Cache_candleWhereUniqueInput, distinct: [Cache_candleScalarFieldEnum!], orderBy: [Cache_candleOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_candleWhereInput): Cache_candle
-  findFirstCache_candleOrThrow(cursor: Cache_candleWhereUniqueInput, distinct: [Cache_candleScalarFieldEnum!], orderBy: [Cache_candleOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_candleWhereInput): Cache_candle
-  findFirstCache_param(cursor: Cache_paramWhereUniqueInput, distinct: [Cache_paramScalarFieldEnum!], orderBy: [Cache_paramOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_paramWhereInput): Cache_param
-  findFirstCache_paramOrThrow(cursor: Cache_paramWhereUniqueInput, distinct: [Cache_paramScalarFieldEnum!], orderBy: [Cache_paramOrderByWithRelationInput!], skip: Int, take: Int, where: Cache_paramWhereInput): Cache_param
   findFirstCategory(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
   findFirstCategoryOrThrow(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
-  findFirstCollateral_transfer(cursor: Collateral_transferWhereUniqueInput, distinct: [Collateral_transferScalarFieldEnum!], orderBy: [Collateral_transferOrderByWithRelationInput!], skip: Int, take: Int, where: Collateral_transferWhereInput): Collateral_transfer
-  findFirstCollateral_transferOrThrow(cursor: Collateral_transferWhereUniqueInput, distinct: [Collateral_transferScalarFieldEnum!], orderBy: [Collateral_transferOrderByWithRelationInput!], skip: Int, take: Int, where: Collateral_transferWhereInput): Collateral_transfer
   findFirstCrypto_prices(cursor: Crypto_pricesWhereUniqueInput, distinct: [Crypto_pricesScalarFieldEnum!], orderBy: [Crypto_pricesOrderByWithRelationInput!], skip: Int, take: Int, where: Crypto_pricesWhereInput): Crypto_prices
-  findFirstCrypto_pricesOrThrow(cursor: Crypto_pricesWhereUniqueInput, distinct: [Crypto_pricesScalarFieldEnum!], orderBy: [Crypto_pricesOrderByWithRelationInput!], skip: Int, take: Int, where: Crypto_pricesWhereInput): Crypto_prices
   findFirstEvent(cursor: EventWhereUniqueInput, distinct: [EventScalarFieldEnum!], orderBy: [EventOrderByWithRelationInput!], skip: Int, take: Int, where: EventWhereInput): Event
   findFirstEventOrThrow(cursor: EventWhereUniqueInput, distinct: [EventScalarFieldEnum!], orderBy: [EventOrderByWithRelationInput!], skip: Int, take: Int, where: EventWhereInput): Event
   findFirstMarket(cursor: MarketWhereUniqueInput, distinct: [MarketScalarFieldEnum!], orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): Market
   findFirstMarketOrThrow(cursor: MarketWhereUniqueInput, distinct: [MarketScalarFieldEnum!], orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): Market
   findFirstMarket_group(cursor: Market_groupWhereUniqueInput, distinct: [Market_groupScalarFieldEnum!], orderBy: [Market_groupOrderByWithRelationInput!], skip: Int, take: Int, where: Market_groupWhereInput): Market_group
   findFirstMarket_groupOrThrow(cursor: Market_groupWhereUniqueInput, distinct: [Market_groupScalarFieldEnum!], orderBy: [Market_groupOrderByWithRelationInput!], skip: Int, take: Int, where: Market_groupWhereInput): Market_group
-  findFirstMarket_price(cursor: Market_priceWhereUniqueInput, distinct: [Market_priceScalarFieldEnum!], orderBy: [Market_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Market_priceWhereInput): Market_price
-  findFirstMarket_priceOrThrow(cursor: Market_priceWhereUniqueInput, distinct: [Market_priceScalarFieldEnum!], orderBy: [Market_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Market_priceWhereInput): Market_price
-  findFirstMigrations(cursor: MigrationsWhereUniqueInput, distinct: [MigrationsScalarFieldEnum!], orderBy: [MigrationsOrderByWithRelationInput!], skip: Int, take: Int, where: MigrationsWhereInput): Migrations
-  findFirstMigrationsOrThrow(cursor: MigrationsWhereUniqueInput, distinct: [MigrationsScalarFieldEnum!], orderBy: [MigrationsOrderByWithRelationInput!], skip: Int, take: Int, where: MigrationsWhereInput): Migrations
   findFirstPosition(cursor: PositionWhereUniqueInput, distinct: [PositionScalarFieldEnum!], orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): Position
   findFirstPositionOrThrow(cursor: PositionWhereUniqueInput, distinct: [PositionScalarFieldEnum!], orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): Position
   findFirstRender_job(cursor: Render_jobWhereUniqueInput, distinct: [Render_jobScalarFieldEnum!], orderBy: [Render_jobOrderByWithRelationInput!], skip: Int, take: Int, where: Render_jobWhereInput): Render_job
-  findFirstRender_jobOrThrow(cursor: Render_jobWhereUniqueInput, distinct: [Render_jobScalarFieldEnum!], orderBy: [Render_jobOrderByWithRelationInput!], skip: Int, take: Int, where: Render_jobWhereInput): Render_job
   findFirstResource(cursor: ResourceWhereUniqueInput, distinct: [ResourceScalarFieldEnum!], orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): Resource
   findFirstResourceOrThrow(cursor: ResourceWhereUniqueInput, distinct: [ResourceScalarFieldEnum!], orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): Resource
   findFirstResource_price(cursor: Resource_priceWhereUniqueInput, distinct: [Resource_priceScalarFieldEnum!], orderBy: [Resource_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Resource_priceWhereInput): Resource_price
@@ -6151,37 +2943,21 @@ type Query {
   findFirstTransaction(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): Transaction
   findFirstTransactionOrThrow(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): Transaction
   findManyCrypto_prices(cursor: Crypto_pricesWhereUniqueInput, distinct: [Crypto_pricesScalarFieldEnum!], orderBy: [Crypto_pricesOrderByWithRelationInput!], skip: Int, take: Int, where: Crypto_pricesWhereInput): [Crypto_prices!]!
-  findManyMigrations(cursor: MigrationsWhereUniqueInput, distinct: [MigrationsScalarFieldEnum!], orderBy: [MigrationsOrderByWithRelationInput!], skip: Int, take: Int, where: MigrationsWhereInput): [Migrations!]!
   findUniqueCrypto_prices(where: Crypto_pricesWhereUniqueInput!): Crypto_prices
-  findUniqueCrypto_pricesOrThrow(where: Crypto_pricesWhereUniqueInput!): Crypto_prices
-  findUniqueMigrations(where: MigrationsWhereUniqueInput!): Migrations
-  findUniqueMigrationsOrThrow(where: MigrationsWhereUniqueInput!): Migrations
-  getCache_candle(where: Cache_candleWhereUniqueInput!): Cache_candle
-  getCache_param(where: Cache_paramWhereUniqueInput!): Cache_param
   getCategory(where: CategoryWhereUniqueInput!): Category
-  getCollateral_transfer(where: Collateral_transferWhereUniqueInput!): Collateral_transfer
   getEvent(where: EventWhereUniqueInput!): Event
   getMarket(where: MarketWhereUniqueInput!): Market
   getMarketLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
   getMarket_group(where: Market_groupWhereUniqueInput!): Market_group
-  getMarket_price(where: Market_priceWhereUniqueInput!): Market_price
   getPosition(where: PositionWhereUniqueInput!): Position
-  getRender_job(where: Render_jobWhereUniqueInput!): Render_job
   getResource(where: ResourceWhereUniqueInput!): Resource
   getResource_price(where: Resource_priceWhereUniqueInput!): Resource_price
   getTransaction(where: TransactionWhereUniqueInput!): Transaction
-  groupByCache_candle(by: [Cache_candleScalarFieldEnum!]!, having: Cache_candleScalarWhereWithAggregatesInput, orderBy: [Cache_candleOrderByWithAggregationInput!], skip: Int, take: Int, where: Cache_candleWhereInput): [Cache_candleGroupBy!]!
-  groupByCache_param(by: [Cache_paramScalarFieldEnum!]!, having: Cache_paramScalarWhereWithAggregatesInput, orderBy: [Cache_paramOrderByWithAggregationInput!], skip: Int, take: Int, where: Cache_paramWhereInput): [Cache_paramGroupBy!]!
   groupByCategory(by: [CategoryScalarFieldEnum!]!, having: CategoryScalarWhereWithAggregatesInput, orderBy: [CategoryOrderByWithAggregationInput!], skip: Int, take: Int, where: CategoryWhereInput): [CategoryGroupBy!]!
-  groupByCollateral_transfer(by: [Collateral_transferScalarFieldEnum!]!, having: Collateral_transferScalarWhereWithAggregatesInput, orderBy: [Collateral_transferOrderByWithAggregationInput!], skip: Int, take: Int, where: Collateral_transferWhereInput): [Collateral_transferGroupBy!]!
-  groupByCrypto_prices(by: [Crypto_pricesScalarFieldEnum!]!, having: Crypto_pricesScalarWhereWithAggregatesInput, orderBy: [Crypto_pricesOrderByWithAggregationInput!], skip: Int, take: Int, where: Crypto_pricesWhereInput): [Crypto_pricesGroupBy!]!
   groupByEvent(by: [EventScalarFieldEnum!]!, having: EventScalarWhereWithAggregatesInput, orderBy: [EventOrderByWithAggregationInput!], skip: Int, take: Int, where: EventWhereInput): [EventGroupBy!]!
   groupByMarket(by: [MarketScalarFieldEnum!]!, having: MarketScalarWhereWithAggregatesInput, orderBy: [MarketOrderByWithAggregationInput!], skip: Int, take: Int, where: MarketWhereInput): [MarketGroupBy!]!
   groupByMarket_group(by: [Market_groupScalarFieldEnum!]!, having: Market_groupScalarWhereWithAggregatesInput, orderBy: [Market_groupOrderByWithAggregationInput!], skip: Int, take: Int, where: Market_groupWhereInput): [Market_groupGroupBy!]!
-  groupByMarket_price(by: [Market_priceScalarFieldEnum!]!, having: Market_priceScalarWhereWithAggregatesInput, orderBy: [Market_priceOrderByWithAggregationInput!], skip: Int, take: Int, where: Market_priceWhereInput): [Market_priceGroupBy!]!
-  groupByMigrations(by: [MigrationsScalarFieldEnum!]!, having: MigrationsScalarWhereWithAggregatesInput, orderBy: [MigrationsOrderByWithAggregationInput!], skip: Int, take: Int, where: MigrationsWhereInput): [MigrationsGroupBy!]!
   groupByPosition(by: [PositionScalarFieldEnum!]!, having: PositionScalarWhereWithAggregatesInput, orderBy: [PositionOrderByWithAggregationInput!], skip: Int, take: Int, where: PositionWhereInput): [PositionGroupBy!]!
-  groupByRender_job(by: [Render_jobScalarFieldEnum!]!, having: Render_jobScalarWhereWithAggregatesInput, orderBy: [Render_jobOrderByWithAggregationInput!], skip: Int, take: Int, where: Render_jobWhereInput): [Render_jobGroupBy!]!
   groupByResource(by: [ResourceScalarFieldEnum!]!, having: ResourceScalarWhereWithAggregatesInput, orderBy: [ResourceOrderByWithAggregationInput!], skip: Int, take: Int, where: ResourceWhereInput): [ResourceGroupBy!]!
   groupByResource_price(by: [Resource_priceScalarFieldEnum!]!, having: Resource_priceScalarWhereWithAggregatesInput, orderBy: [Resource_priceOrderByWithAggregationInput!], skip: Int, take: Int, where: Resource_priceWhereInput): [Resource_priceGroupBy!]!
   groupByTransaction(by: [TransactionScalarFieldEnum!]!, having: TransactionScalarWhereWithAggregatesInput, orderBy: [TransactionOrderByWithAggregationInput!], skip: Int, take: Int, where: TransactionWhereInput): [TransactionGroupBy!]!
@@ -6192,11 +2968,8 @@ type Query {
   marketCandlesFromCache(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
   marketGroup(address: String!, chainId: Int!): Market_group
   marketGroups(baseTokenName: String, chainId: Int, collateralAsset: String): [Market_group!]!
-  marketGroupsByCategory(slug: String!): [Market_group!]!
   market_group(where: Market_groupWhereUniqueInput!): Market_group
   market_groups(cursor: Market_groupWhereUniqueInput, distinct: [Market_groupScalarFieldEnum!], orderBy: [Market_groupOrderByWithRelationInput!], skip: Int, take: Int, where: Market_groupWhereInput): [Market_group!]!
-  market_price(where: Market_priceWhereUniqueInput!): Market_price
-  market_prices(cursor: Market_priceWhereUniqueInput, distinct: [Market_priceScalarFieldEnum!], orderBy: [Market_priceOrderByWithRelationInput!], skip: Int, take: Int, where: Market_priceWhereInput): [Market_price!]!
   markets(chainId: Int!, marketAddress: String!, marketId: Int!): [Market!]!
   position(where: PositionWhereUniqueInput!): Position
   positions(chainId: Int, marketAddress: String, owner: String): [Position!]!
@@ -6230,48 +3003,12 @@ type Render_jobAvgAggregate {
   id: Float
 }
 
-input Render_jobAvgOrderByAggregateInput {
-  id: SortOrder
-}
-
 type Render_jobCountAggregate {
   _all: Int!
   createdAt: Int!
   id: Int!
   jobId: Int!
   serviceId: Int!
-}
-
-input Render_jobCountOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  jobId: SortOrder
-  serviceId: SortOrder
-}
-
-input Render_jobCreateInput {
-  createdAt: DateTimeISO
-  jobId: String!
-  serviceId: String!
-}
-
-input Render_jobCreateManyInput {
-  createdAt: DateTimeISO
-  id: Int
-  jobId: String!
-  serviceId: String!
-}
-
-type Render_jobGroupBy {
-  _avg: Render_jobAvgAggregate
-  _count: Render_jobCountAggregate
-  _max: Render_jobMaxAggregate
-  _min: Render_jobMinAggregate
-  _sum: Render_jobSumAggregate
-  createdAt: DateTimeISO!
-  id: Int!
-  jobId: String!
-  serviceId: String!
 }
 
 type Render_jobMaxAggregate {
@@ -6281,37 +3018,11 @@ type Render_jobMaxAggregate {
   serviceId: String
 }
 
-input Render_jobMaxOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  jobId: SortOrder
-  serviceId: SortOrder
-}
-
 type Render_jobMinAggregate {
   createdAt: DateTimeISO
   id: Int
   jobId: String
   serviceId: String
-}
-
-input Render_jobMinOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  jobId: SortOrder
-  serviceId: SortOrder
-}
-
-input Render_jobOrderByWithAggregationInput {
-  _avg: Render_jobAvgOrderByAggregateInput
-  _count: Render_jobCountOrderByAggregateInput
-  _max: Render_jobMaxOrderByAggregateInput
-  _min: Render_jobMinOrderByAggregateInput
-  _sum: Render_jobSumOrderByAggregateInput
-  createdAt: SortOrder
-  id: SortOrder
-  jobId: SortOrder
-  serviceId: SortOrder
 }
 
 input Render_jobOrderByWithRelationInput {
@@ -6328,34 +3039,8 @@ enum Render_jobScalarFieldEnum {
   serviceId
 }
 
-input Render_jobScalarWhereWithAggregatesInput {
-  AND: [Render_jobScalarWhereWithAggregatesInput!]
-  NOT: [Render_jobScalarWhereWithAggregatesInput!]
-  OR: [Render_jobScalarWhereWithAggregatesInput!]
-  createdAt: DateTimeWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  jobId: StringWithAggregatesFilter
-  serviceId: StringWithAggregatesFilter
-}
-
 type Render_jobSumAggregate {
   id: Int
-}
-
-input Render_jobSumOrderByAggregateInput {
-  id: SortOrder
-}
-
-input Render_jobUpdateInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  jobId: StringFieldUpdateOperationsInput
-  serviceId: StringFieldUpdateOperationsInput
-}
-
-input Render_jobUpdateManyMutationInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  jobId: StringFieldUpdateOperationsInput
-  serviceId: StringFieldUpdateOperationsInput
 }
 
 input Render_jobWhereInput {
@@ -6417,93 +3102,6 @@ input ResourceCountOrderByAggregateInput {
   id: SortOrder
   name: SortOrder
   slug: SortOrder
-}
-
-input ResourceCreateInput {
-  category: CategoryCreateNestedOneWithoutResourceInput
-  createdAt: DateTimeISO
-  market_group: Market_groupCreateNestedManyWithoutResourceInput
-  name: String!
-  resource_price: Resource_priceCreateNestedManyWithoutResourceInput
-  slug: String!
-}
-
-input ResourceCreateManyCategoryInput {
-  createdAt: DateTimeISO
-  id: Int
-  name: String!
-  slug: String!
-}
-
-input ResourceCreateManyCategoryInputEnvelope {
-  data: [ResourceCreateManyCategoryInput!]!
-  skipDuplicates: Boolean
-}
-
-input ResourceCreateManyInput {
-  categoryId: Int
-  createdAt: DateTimeISO
-  id: Int
-  name: String!
-  slug: String!
-}
-
-input ResourceCreateNestedManyWithoutCategoryInput {
-  connect: [ResourceWhereUniqueInput!]
-  connectOrCreate: [ResourceCreateOrConnectWithoutCategoryInput!]
-  create: [ResourceCreateWithoutCategoryInput!]
-  createMany: ResourceCreateManyCategoryInputEnvelope
-}
-
-input ResourceCreateNestedOneWithoutMarket_groupInput {
-  connect: ResourceWhereUniqueInput
-  connectOrCreate: ResourceCreateOrConnectWithoutMarket_groupInput
-  create: ResourceCreateWithoutMarket_groupInput
-}
-
-input ResourceCreateNestedOneWithoutResource_priceInput {
-  connect: ResourceWhereUniqueInput
-  connectOrCreate: ResourceCreateOrConnectWithoutResource_priceInput
-  create: ResourceCreateWithoutResource_priceInput
-}
-
-input ResourceCreateOrConnectWithoutCategoryInput {
-  create: ResourceCreateWithoutCategoryInput!
-  where: ResourceWhereUniqueInput!
-}
-
-input ResourceCreateOrConnectWithoutMarket_groupInput {
-  create: ResourceCreateWithoutMarket_groupInput!
-  where: ResourceWhereUniqueInput!
-}
-
-input ResourceCreateOrConnectWithoutResource_priceInput {
-  create: ResourceCreateWithoutResource_priceInput!
-  where: ResourceWhereUniqueInput!
-}
-
-input ResourceCreateWithoutCategoryInput {
-  createdAt: DateTimeISO
-  market_group: Market_groupCreateNestedManyWithoutResourceInput
-  name: String!
-  resource_price: Resource_priceCreateNestedManyWithoutResourceInput
-  slug: String!
-}
-
-input ResourceCreateWithoutMarket_groupInput {
-  category: CategoryCreateNestedOneWithoutResourceInput
-  createdAt: DateTimeISO
-  name: String!
-  resource_price: Resource_priceCreateNestedManyWithoutResourceInput
-  slug: String!
-}
-
-input ResourceCreateWithoutResource_priceInput {
-  category: CategoryCreateNestedOneWithoutResourceInput
-  createdAt: DateTimeISO
-  market_group: Market_groupCreateNestedManyWithoutResourceInput
-  name: String!
-  slug: String!
 }
 
 type ResourceGroupBy {
@@ -6598,17 +3196,6 @@ enum ResourceScalarFieldEnum {
   slug
 }
 
-input ResourceScalarWhereInput {
-  AND: [ResourceScalarWhereInput!]
-  NOT: [ResourceScalarWhereInput!]
-  OR: [ResourceScalarWhereInput!]
-  categoryId: IntNullableFilter
-  createdAt: DateTimeFilter
-  id: IntFilter
-  name: StringFilter
-  slug: StringFilter
-}
-
 input ResourceScalarWhereWithAggregatesInput {
   AND: [ResourceScalarWhereWithAggregatesInput!]
   NOT: [ResourceScalarWhereWithAggregatesInput!]
@@ -6628,117 +3215,6 @@ type ResourceSumAggregate {
 input ResourceSumOrderByAggregateInput {
   categoryId: SortOrder
   id: SortOrder
-}
-
-input ResourceUpdateInput {
-  category: CategoryUpdateOneWithoutResourceNestedInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  market_group: Market_groupUpdateManyWithoutResourceNestedInput
-  name: StringFieldUpdateOperationsInput
-  resource_price: Resource_priceUpdateManyWithoutResourceNestedInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input ResourceUpdateManyMutationInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  name: StringFieldUpdateOperationsInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input ResourceUpdateManyWithWhereWithoutCategoryInput {
-  data: ResourceUpdateManyMutationInput!
-  where: ResourceScalarWhereInput!
-}
-
-input ResourceUpdateManyWithoutCategoryNestedInput {
-  connect: [ResourceWhereUniqueInput!]
-  connectOrCreate: [ResourceCreateOrConnectWithoutCategoryInput!]
-  create: [ResourceCreateWithoutCategoryInput!]
-  createMany: ResourceCreateManyCategoryInputEnvelope
-  delete: [ResourceWhereUniqueInput!]
-  deleteMany: [ResourceScalarWhereInput!]
-  disconnect: [ResourceWhereUniqueInput!]
-  set: [ResourceWhereUniqueInput!]
-  update: [ResourceUpdateWithWhereUniqueWithoutCategoryInput!]
-  updateMany: [ResourceUpdateManyWithWhereWithoutCategoryInput!]
-  upsert: [ResourceUpsertWithWhereUniqueWithoutCategoryInput!]
-}
-
-input ResourceUpdateOneWithoutMarket_groupNestedInput {
-  connect: ResourceWhereUniqueInput
-  connectOrCreate: ResourceCreateOrConnectWithoutMarket_groupInput
-  create: ResourceCreateWithoutMarket_groupInput
-  delete: ResourceWhereInput
-  disconnect: ResourceWhereInput
-  update: ResourceUpdateToOneWithWhereWithoutMarket_groupInput
-  upsert: ResourceUpsertWithoutMarket_groupInput
-}
-
-input ResourceUpdateOneWithoutResource_priceNestedInput {
-  connect: ResourceWhereUniqueInput
-  connectOrCreate: ResourceCreateOrConnectWithoutResource_priceInput
-  create: ResourceCreateWithoutResource_priceInput
-  delete: ResourceWhereInput
-  disconnect: ResourceWhereInput
-  update: ResourceUpdateToOneWithWhereWithoutResource_priceInput
-  upsert: ResourceUpsertWithoutResource_priceInput
-}
-
-input ResourceUpdateToOneWithWhereWithoutMarket_groupInput {
-  data: ResourceUpdateWithoutMarket_groupInput!
-  where: ResourceWhereInput
-}
-
-input ResourceUpdateToOneWithWhereWithoutResource_priceInput {
-  data: ResourceUpdateWithoutResource_priceInput!
-  where: ResourceWhereInput
-}
-
-input ResourceUpdateWithWhereUniqueWithoutCategoryInput {
-  data: ResourceUpdateWithoutCategoryInput!
-  where: ResourceWhereUniqueInput!
-}
-
-input ResourceUpdateWithoutCategoryInput {
-  createdAt: DateTimeFieldUpdateOperationsInput
-  market_group: Market_groupUpdateManyWithoutResourceNestedInput
-  name: StringFieldUpdateOperationsInput
-  resource_price: Resource_priceUpdateManyWithoutResourceNestedInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input ResourceUpdateWithoutMarket_groupInput {
-  category: CategoryUpdateOneWithoutResourceNestedInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  name: StringFieldUpdateOperationsInput
-  resource_price: Resource_priceUpdateManyWithoutResourceNestedInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input ResourceUpdateWithoutResource_priceInput {
-  category: CategoryUpdateOneWithoutResourceNestedInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  market_group: Market_groupUpdateManyWithoutResourceNestedInput
-  name: StringFieldUpdateOperationsInput
-  slug: StringFieldUpdateOperationsInput
-}
-
-input ResourceUpsertWithWhereUniqueWithoutCategoryInput {
-  create: ResourceCreateWithoutCategoryInput!
-  update: ResourceUpdateWithoutCategoryInput!
-  where: ResourceWhereUniqueInput!
-}
-
-input ResourceUpsertWithoutMarket_groupInput {
-  create: ResourceCreateWithoutMarket_groupInput!
-  update: ResourceUpdateWithoutMarket_groupInput!
-  where: ResourceWhereInput
-}
-
-input ResourceUpsertWithoutResource_priceInput {
-  create: ResourceCreateWithoutResource_priceInput!
-  update: ResourceUpdateWithoutResource_priceInput!
-  where: ResourceWhereInput
 }
 
 input ResourceWhereInput {
@@ -6821,63 +3297,6 @@ input Resource_priceCountOrderByAggregateInput {
   timestamp: SortOrder
   used: SortOrder
   value: SortOrder
-}
-
-input Resource_priceCreateInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  feePaid: Decimal!
-  resource: ResourceCreateNestedOneWithoutResource_priceInput
-  timestamp: Int!
-  used: Decimal!
-  value: Decimal!
-}
-
-input Resource_priceCreateManyInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  feePaid: Decimal!
-  id: Int
-  resourceId: Int
-  timestamp: Int!
-  used: Decimal!
-  value: Decimal!
-}
-
-input Resource_priceCreateManyResourceInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  feePaid: Decimal!
-  id: Int
-  timestamp: Int!
-  used: Decimal!
-  value: Decimal!
-}
-
-input Resource_priceCreateManyResourceInputEnvelope {
-  data: [Resource_priceCreateManyResourceInput!]!
-  skipDuplicates: Boolean
-}
-
-input Resource_priceCreateNestedManyWithoutResourceInput {
-  connect: [Resource_priceWhereUniqueInput!]
-  connectOrCreate: [Resource_priceCreateOrConnectWithoutResourceInput!]
-  create: [Resource_priceCreateWithoutResourceInput!]
-  createMany: Resource_priceCreateManyResourceInputEnvelope
-}
-
-input Resource_priceCreateOrConnectWithoutResourceInput {
-  create: Resource_priceCreateWithoutResourceInput!
-  where: Resource_priceWhereUniqueInput!
-}
-
-input Resource_priceCreateWithoutResourceInput {
-  blockNumber: Int!
-  createdAt: DateTimeISO
-  feePaid: Decimal!
-  timestamp: Int!
-  used: Decimal!
-  value: Decimal!
 }
 
 type Resource_priceGroupBy {
@@ -6989,20 +3408,6 @@ enum Resource_priceScalarFieldEnum {
   value
 }
 
-input Resource_priceScalarWhereInput {
-  AND: [Resource_priceScalarWhereInput!]
-  NOT: [Resource_priceScalarWhereInput!]
-  OR: [Resource_priceScalarWhereInput!]
-  blockNumber: IntFilter
-  createdAt: DateTimeFilter
-  feePaid: DecimalFilter
-  id: IntFilter
-  resourceId: IntNullableFilter
-  timestamp: IntFilter
-  used: DecimalFilter
-  value: DecimalFilter
-}
-
 input Resource_priceScalarWhereWithAggregatesInput {
   AND: [Resource_priceScalarWhereWithAggregatesInput!]
   NOT: [Resource_priceScalarWhereWithAggregatesInput!]
@@ -7035,64 +3440,6 @@ input Resource_priceSumOrderByAggregateInput {
   timestamp: SortOrder
   used: SortOrder
   value: SortOrder
-}
-
-input Resource_priceUpdateInput {
-  blockNumber: IntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  feePaid: DecimalFieldUpdateOperationsInput
-  resource: ResourceUpdateOneWithoutResource_priceNestedInput
-  timestamp: IntFieldUpdateOperationsInput
-  used: DecimalFieldUpdateOperationsInput
-  value: DecimalFieldUpdateOperationsInput
-}
-
-input Resource_priceUpdateManyMutationInput {
-  blockNumber: IntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  feePaid: DecimalFieldUpdateOperationsInput
-  timestamp: IntFieldUpdateOperationsInput
-  used: DecimalFieldUpdateOperationsInput
-  value: DecimalFieldUpdateOperationsInput
-}
-
-input Resource_priceUpdateManyWithWhereWithoutResourceInput {
-  data: Resource_priceUpdateManyMutationInput!
-  where: Resource_priceScalarWhereInput!
-}
-
-input Resource_priceUpdateManyWithoutResourceNestedInput {
-  connect: [Resource_priceWhereUniqueInput!]
-  connectOrCreate: [Resource_priceCreateOrConnectWithoutResourceInput!]
-  create: [Resource_priceCreateWithoutResourceInput!]
-  createMany: Resource_priceCreateManyResourceInputEnvelope
-  delete: [Resource_priceWhereUniqueInput!]
-  deleteMany: [Resource_priceScalarWhereInput!]
-  disconnect: [Resource_priceWhereUniqueInput!]
-  set: [Resource_priceWhereUniqueInput!]
-  update: [Resource_priceUpdateWithWhereUniqueWithoutResourceInput!]
-  updateMany: [Resource_priceUpdateManyWithWhereWithoutResourceInput!]
-  upsert: [Resource_priceUpsertWithWhereUniqueWithoutResourceInput!]
-}
-
-input Resource_priceUpdateWithWhereUniqueWithoutResourceInput {
-  data: Resource_priceUpdateWithoutResourceInput!
-  where: Resource_priceWhereUniqueInput!
-}
-
-input Resource_priceUpdateWithoutResourceInput {
-  blockNumber: IntFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  feePaid: DecimalFieldUpdateOperationsInput
-  timestamp: IntFieldUpdateOperationsInput
-  used: DecimalFieldUpdateOperationsInput
-  value: DecimalFieldUpdateOperationsInput
-}
-
-input Resource_priceUpsertWithWhereUniqueWithoutResourceInput {
-  create: Resource_priceCreateWithoutResourceInput!
-  update: Resource_priceUpdateWithoutResourceInput!
-  where: Resource_priceWhereUniqueInput!
 }
 
 input Resource_priceWhereInput {
@@ -7134,10 +3481,6 @@ enum SortOrder {
 input SortOrderInput {
   nulls: NullsOrder
   sort: SortOrder!
-}
-
-input StringFieldUpdateOperationsInput {
-  set: String
 }
 
 input StringFilter {
@@ -7291,172 +3634,6 @@ input TransactionCountOrderByAggregateInput {
   quoteToken: SortOrder
   tradeRatioD18: SortOrder
   type: SortOrder
-}
-
-input TransactionCreateInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  collateral_transfer: Collateral_transferCreateNestedOneWithoutTransactionInput
-  createdAt: DateTimeISO
-  event: EventCreateNestedOneWithoutTransactionInput
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
-  market_price: Market_priceCreateNestedOneWithoutTransactionInput
-  position: PositionCreateNestedOneWithoutTransactionInput
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
-  type: transaction_type_enum!
-}
-
-input TransactionCreateManyInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  collateralTransferId: Int
-  createdAt: DateTimeISO
-  eventId: Int
-  id: Int
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
-  marketPriceId: Int
-  positionId: Int
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
-  type: transaction_type_enum!
-}
-
-input TransactionCreateManyPositionInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  collateralTransferId: Int
-  createdAt: DateTimeISO
-  eventId: Int
-  id: Int
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
-  marketPriceId: Int
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
-  type: transaction_type_enum!
-}
-
-input TransactionCreateManyPositionInputEnvelope {
-  data: [TransactionCreateManyPositionInput!]!
-  skipDuplicates: Boolean
-}
-
-input TransactionCreateNestedManyWithoutPositionInput {
-  connect: [TransactionWhereUniqueInput!]
-  connectOrCreate: [TransactionCreateOrConnectWithoutPositionInput!]
-  create: [TransactionCreateWithoutPositionInput!]
-  createMany: TransactionCreateManyPositionInputEnvelope
-}
-
-input TransactionCreateNestedOneWithoutCollateral_transferInput {
-  connect: TransactionWhereUniqueInput
-  connectOrCreate: TransactionCreateOrConnectWithoutCollateral_transferInput
-  create: TransactionCreateWithoutCollateral_transferInput
-}
-
-input TransactionCreateNestedOneWithoutEventInput {
-  connect: TransactionWhereUniqueInput
-  connectOrCreate: TransactionCreateOrConnectWithoutEventInput
-  create: TransactionCreateWithoutEventInput
-}
-
-input TransactionCreateNestedOneWithoutMarket_priceInput {
-  connect: TransactionWhereUniqueInput
-  connectOrCreate: TransactionCreateOrConnectWithoutMarket_priceInput
-  create: TransactionCreateWithoutMarket_priceInput
-}
-
-input TransactionCreateOrConnectWithoutCollateral_transferInput {
-  create: TransactionCreateWithoutCollateral_transferInput!
-  where: TransactionWhereUniqueInput!
-}
-
-input TransactionCreateOrConnectWithoutEventInput {
-  create: TransactionCreateWithoutEventInput!
-  where: TransactionWhereUniqueInput!
-}
-
-input TransactionCreateOrConnectWithoutMarket_priceInput {
-  create: TransactionCreateWithoutMarket_priceInput!
-  where: TransactionWhereUniqueInput!
-}
-
-input TransactionCreateOrConnectWithoutPositionInput {
-  create: TransactionCreateWithoutPositionInput!
-  where: TransactionWhereUniqueInput!
-}
-
-input TransactionCreateWithoutCollateral_transferInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  createdAt: DateTimeISO
-  event: EventCreateNestedOneWithoutTransactionInput
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
-  market_price: Market_priceCreateNestedOneWithoutTransactionInput
-  position: PositionCreateNestedOneWithoutTransactionInput
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
-  type: transaction_type_enum!
-}
-
-input TransactionCreateWithoutEventInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  collateral_transfer: Collateral_transferCreateNestedOneWithoutTransactionInput
-  createdAt: DateTimeISO
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
-  market_price: Market_priceCreateNestedOneWithoutTransactionInput
-  position: PositionCreateNestedOneWithoutTransactionInput
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
-  type: transaction_type_enum!
-}
-
-input TransactionCreateWithoutMarket_priceInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  collateral_transfer: Collateral_transferCreateNestedOneWithoutTransactionInput
-  createdAt: DateTimeISO
-  event: EventCreateNestedOneWithoutTransactionInput
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
-  position: PositionCreateNestedOneWithoutTransactionInput
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
-  type: transaction_type_enum!
-}
-
-input TransactionCreateWithoutPositionInput {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
-  collateral_transfer: Collateral_transferCreateNestedOneWithoutTransactionInput
-  createdAt: DateTimeISO
-  event: EventCreateNestedOneWithoutTransactionInput
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
-  market_price: Market_priceCreateNestedOneWithoutTransactionInput
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
-  type: transaction_type_enum!
 }
 
 type TransactionGroupBy {
@@ -7632,27 +3809,6 @@ enum TransactionScalarFieldEnum {
   type
 }
 
-input TransactionScalarWhereInput {
-  AND: [TransactionScalarWhereInput!]
-  NOT: [TransactionScalarWhereInput!]
-  OR: [TransactionScalarWhereInput!]
-  baseToken: DecimalNullableFilter
-  borrowedBaseToken: DecimalNullableFilter
-  borrowedQuoteToken: DecimalNullableFilter
-  collateral: DecimalFilter
-  collateralTransferId: IntNullableFilter
-  createdAt: DateTimeFilter
-  eventId: IntNullableFilter
-  id: IntFilter
-  lpBaseDeltaToken: DecimalNullableFilter
-  lpQuoteDeltaToken: DecimalNullableFilter
-  marketPriceId: IntNullableFilter
-  positionId: IntNullableFilter
-  quoteToken: DecimalNullableFilter
-  tradeRatioD18: DecimalNullableFilter
-  type: Enumtransaction_type_enumFilter
-}
-
 input TransactionScalarWhereWithAggregatesInput {
   AND: [TransactionScalarWhereWithAggregatesInput!]
   NOT: [TransactionScalarWhereWithAggregatesInput!]
@@ -7704,193 +3860,6 @@ input TransactionSumOrderByAggregateInput {
   positionId: SortOrder
   quoteToken: SortOrder
   tradeRatioD18: SortOrder
-}
-
-input TransactionUpdateInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  collateral_transfer: Collateral_transferUpdateOneWithoutTransactionNestedInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  event: EventUpdateOneWithoutTransactionNestedInput
-  lpBaseDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  market_price: Market_priceUpdateOneWithoutTransactionNestedInput
-  position: PositionUpdateOneWithoutTransactionNestedInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-  tradeRatioD18: NullableDecimalFieldUpdateOperationsInput
-  type: Enumtransaction_type_enumFieldUpdateOperationsInput
-}
-
-input TransactionUpdateManyMutationInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  lpBaseDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-  tradeRatioD18: NullableDecimalFieldUpdateOperationsInput
-  type: Enumtransaction_type_enumFieldUpdateOperationsInput
-}
-
-input TransactionUpdateManyWithWhereWithoutPositionInput {
-  data: TransactionUpdateManyMutationInput!
-  where: TransactionScalarWhereInput!
-}
-
-input TransactionUpdateManyWithoutPositionNestedInput {
-  connect: [TransactionWhereUniqueInput!]
-  connectOrCreate: [TransactionCreateOrConnectWithoutPositionInput!]
-  create: [TransactionCreateWithoutPositionInput!]
-  createMany: TransactionCreateManyPositionInputEnvelope
-  delete: [TransactionWhereUniqueInput!]
-  deleteMany: [TransactionScalarWhereInput!]
-  disconnect: [TransactionWhereUniqueInput!]
-  set: [TransactionWhereUniqueInput!]
-  update: [TransactionUpdateWithWhereUniqueWithoutPositionInput!]
-  updateMany: [TransactionUpdateManyWithWhereWithoutPositionInput!]
-  upsert: [TransactionUpsertWithWhereUniqueWithoutPositionInput!]
-}
-
-input TransactionUpdateOneWithoutCollateral_transferNestedInput {
-  connect: TransactionWhereUniqueInput
-  connectOrCreate: TransactionCreateOrConnectWithoutCollateral_transferInput
-  create: TransactionCreateWithoutCollateral_transferInput
-  delete: TransactionWhereInput
-  disconnect: TransactionWhereInput
-  update: TransactionUpdateToOneWithWhereWithoutCollateral_transferInput
-  upsert: TransactionUpsertWithoutCollateral_transferInput
-}
-
-input TransactionUpdateOneWithoutEventNestedInput {
-  connect: TransactionWhereUniqueInput
-  connectOrCreate: TransactionCreateOrConnectWithoutEventInput
-  create: TransactionCreateWithoutEventInput
-  delete: TransactionWhereInput
-  disconnect: TransactionWhereInput
-  update: TransactionUpdateToOneWithWhereWithoutEventInput
-  upsert: TransactionUpsertWithoutEventInput
-}
-
-input TransactionUpdateOneWithoutMarket_priceNestedInput {
-  connect: TransactionWhereUniqueInput
-  connectOrCreate: TransactionCreateOrConnectWithoutMarket_priceInput
-  create: TransactionCreateWithoutMarket_priceInput
-  delete: TransactionWhereInput
-  disconnect: TransactionWhereInput
-  update: TransactionUpdateToOneWithWhereWithoutMarket_priceInput
-  upsert: TransactionUpsertWithoutMarket_priceInput
-}
-
-input TransactionUpdateToOneWithWhereWithoutCollateral_transferInput {
-  data: TransactionUpdateWithoutCollateral_transferInput!
-  where: TransactionWhereInput
-}
-
-input TransactionUpdateToOneWithWhereWithoutEventInput {
-  data: TransactionUpdateWithoutEventInput!
-  where: TransactionWhereInput
-}
-
-input TransactionUpdateToOneWithWhereWithoutMarket_priceInput {
-  data: TransactionUpdateWithoutMarket_priceInput!
-  where: TransactionWhereInput
-}
-
-input TransactionUpdateWithWhereUniqueWithoutPositionInput {
-  data: TransactionUpdateWithoutPositionInput!
-  where: TransactionWhereUniqueInput!
-}
-
-input TransactionUpdateWithoutCollateral_transferInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  event: EventUpdateOneWithoutTransactionNestedInput
-  lpBaseDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  market_price: Market_priceUpdateOneWithoutTransactionNestedInput
-  position: PositionUpdateOneWithoutTransactionNestedInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-  tradeRatioD18: NullableDecimalFieldUpdateOperationsInput
-  type: Enumtransaction_type_enumFieldUpdateOperationsInput
-}
-
-input TransactionUpdateWithoutEventInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  collateral_transfer: Collateral_transferUpdateOneWithoutTransactionNestedInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  lpBaseDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  market_price: Market_priceUpdateOneWithoutTransactionNestedInput
-  position: PositionUpdateOneWithoutTransactionNestedInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-  tradeRatioD18: NullableDecimalFieldUpdateOperationsInput
-  type: Enumtransaction_type_enumFieldUpdateOperationsInput
-}
-
-input TransactionUpdateWithoutMarket_priceInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  collateral_transfer: Collateral_transferUpdateOneWithoutTransactionNestedInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  event: EventUpdateOneWithoutTransactionNestedInput
-  lpBaseDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  position: PositionUpdateOneWithoutTransactionNestedInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-  tradeRatioD18: NullableDecimalFieldUpdateOperationsInput
-  type: Enumtransaction_type_enumFieldUpdateOperationsInput
-}
-
-input TransactionUpdateWithoutPositionInput {
-  baseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedBaseToken: NullableDecimalFieldUpdateOperationsInput
-  borrowedQuoteToken: NullableDecimalFieldUpdateOperationsInput
-  collateral: DecimalFieldUpdateOperationsInput
-  collateral_transfer: Collateral_transferUpdateOneWithoutTransactionNestedInput
-  createdAt: DateTimeFieldUpdateOperationsInput
-  event: EventUpdateOneWithoutTransactionNestedInput
-  lpBaseDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  lpQuoteDeltaToken: NullableDecimalFieldUpdateOperationsInput
-  market_price: Market_priceUpdateOneWithoutTransactionNestedInput
-  quoteToken: NullableDecimalFieldUpdateOperationsInput
-  tradeRatioD18: NullableDecimalFieldUpdateOperationsInput
-  type: Enumtransaction_type_enumFieldUpdateOperationsInput
-}
-
-input TransactionUpsertWithWhereUniqueWithoutPositionInput {
-  create: TransactionCreateWithoutPositionInput!
-  update: TransactionUpdateWithoutPositionInput!
-  where: TransactionWhereUniqueInput!
-}
-
-input TransactionUpsertWithoutCollateral_transferInput {
-  create: TransactionCreateWithoutCollateral_transferInput!
-  update: TransactionUpdateWithoutCollateral_transferInput!
-  where: TransactionWhereInput
-}
-
-input TransactionUpsertWithoutEventInput {
-  create: TransactionCreateWithoutEventInput!
-  update: TransactionUpdateWithoutEventInput!
-  where: TransactionWhereInput
-}
-
-input TransactionUpsertWithoutMarket_priceInput {
-  create: TransactionCreateWithoutMarket_priceInput!
-  update: TransactionUpdateWithoutMarket_priceInput!
-  where: TransactionWhereInput
 }
 
 input TransactionWhereInput {
