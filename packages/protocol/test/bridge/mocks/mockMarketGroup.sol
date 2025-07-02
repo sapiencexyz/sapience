@@ -3,7 +3,8 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import {IMarketLayerZeroBridge} from "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
 import {IUMASettlementModule} from "../../../src/market/interfaces/IUMASettlementModule.sol";
-import {console2} from "forge-std/console2.sol";
+import {ISapienceStructs} from "../../../src/market/interfaces/ISapienceStructs.sol";
+// import {console2} from "forge-std/console2.sol";
 
 
 /**
@@ -58,21 +59,17 @@ contract MockMarketGroup is IUMASettlementModule{
 
     /**
      * @notice Mock implementation of submitSettlementPrice
-     * @param epochId The epoch ID
-     * @param asserter The address of the asserter
-     * @param settlementSqrtPriceX96 The settlement price in sqrt ratio X96 format
+     * @param params The settlement price params
      * @return assertionId A mock assertion ID
      */
     function submitSettlementPrice(
-        uint256 epochId,
-        address asserter,
-        uint160 settlementSqrtPriceX96
+        ISapienceStructs.SettlementPriceParams memory params
     ) external returns (bytes32 assertionId) {
         assertionId = bridge.forwardAssertTruth(
             address(this),
-            epochId,
+            params.marketId,
             claim,
-            asserter,
+            params.asserter,
             assertionLiveness,
             bondCurrency,
             bondAmount
@@ -99,7 +96,7 @@ contract MockMarketGroup is IUMASettlementModule{
         bytes32 assertionId,
         bool assertedTruthfully
     ) external {
-      console2.log("assertionResolvedCallback");
+    //   console2.log("assertionResolvedCallback");
         // Mark the assertion as resolved
         assertionData[assertionId].resolved = true;
         assertionData[assertionId].assertedTruthfully = assertedTruthfully;

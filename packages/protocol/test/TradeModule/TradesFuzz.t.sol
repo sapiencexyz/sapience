@@ -80,7 +80,8 @@ contract TradePositionBasicFuzz is TestTrade {
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -121,10 +122,12 @@ contract TradePositionBasicFuzz is TestTrade {
         );
         // Send more collateral than required, just checking the position can be created/modified
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral * 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
 
@@ -171,10 +174,12 @@ contract TradePositionBasicFuzz is TestTrade {
         );
         // Send more collateral than required, just checking the position can be created/modified
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral * 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
 
@@ -239,10 +244,12 @@ contract TradePositionBasicFuzz is TestTrade {
 
         // Send more collateral than required, just checking the position can be created/modified
         sapience.modifyTraderPosition(
-            positionId,
-            positionSize,
-            requiredDeltaCollateral,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: positionSize,
+                deltaCollateralLimit: requiredDeltaCollateral,
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
 
@@ -318,10 +325,12 @@ contract TradePositionBasicFuzz is TestTrade {
 
         // Send more collateral than required, just checking the position can be created/modified
         sapience.modifyTraderPosition(
-            positionId,
-            positionSize,
-            requiredDeltaCollateral,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: positionSize,
+                deltaCollateralLimit: requiredDeltaCollateral,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -397,10 +406,12 @@ contract TradePositionBasicFuzz is TestTrade {
 
         // Send more collateral than required, just checking the position can be created/modified
         sapience.modifyTraderPosition(
-            positionId,
-            positionSize,
-            requiredDeltaCollateral + 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: positionSize,
+                deltaCollateralLimit: requiredDeltaCollateral + 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -476,10 +487,12 @@ contract TradePositionBasicFuzz is TestTrade {
 
         // Send more collateral than required, just checking the position can be created/modified
         sapience.modifyTraderPosition(
-            positionId,
-            positionSize,
-            requiredDeltaCollateral + 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: positionSize,
+                deltaCollateralLimit: requiredDeltaCollateral + 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -530,10 +543,8 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, , , ) = sapience.quoteModifyTraderPosition(
-            positionId,
-            0
-        );
+        (int256 requiredDeltaCollateral, , , ) = sapience
+            .quoteModifyTraderPosition(positionId, 0);
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
@@ -544,10 +555,12 @@ contract TradePositionBasicFuzz is TestTrade {
 
         // Send more collateral than required, just checking the position can be created/modified
         sapience.modifyTraderPosition(
-            positionId,
-            0,
-            requiredDeltaCollateral + 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: 0,
+                deltaCollateralLimit: requiredDeltaCollateral + 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -594,10 +607,8 @@ contract TradePositionBasicFuzz is TestTrade {
         fillPositionState(positionId, latestStateData);
 
         // quote and open a long
-        (int256 requiredDeltaCollateral, , , ) = sapience.quoteModifyTraderPosition(
-            positionId,
-            0
-        );
+        (int256 requiredDeltaCollateral, , , ) = sapience
+            .quoteModifyTraderPosition(positionId, 0);
 
         if (requiredDeltaCollateral > 0) {
             collateralAsset.approve(
@@ -608,10 +619,12 @@ contract TradePositionBasicFuzz is TestTrade {
 
         // Send more collateral than required, just checking the position can be created/modified
         sapience.modifyTraderPosition(
-            positionId,
-            0,
-            requiredDeltaCollateral + 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: 0,
+                deltaCollateralLimit: requiredDeltaCollateral + 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
 
@@ -739,7 +752,9 @@ contract TradePositionBasicFuzz is TestTrade {
         StateData memory stateData
     ) public view {
         stateData.userCollateral = collateralAsset.balanceOf(user);
-        stateData.sapienceCollateral = collateralAsset.balanceOf(address(sapience));
+        stateData.sapienceCollateral = collateralAsset.balanceOf(
+            address(sapience)
+        );
     }
 
     function assertPosition(

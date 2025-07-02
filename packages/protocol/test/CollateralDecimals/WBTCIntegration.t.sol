@@ -221,20 +221,24 @@ contract WBTCIntegrationTest is TestMarket {
 
         // Create a small long position
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            10 * 1e18, // 10 vBase long
-            100 * (10 ** collateralDecimals), // Max 100 collateral
-            block.timestamp + 1 hours
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: 10 * 1e18, // 10 vBase long
+                maxCollateral: 100 * (10 ** collateralDecimals), // Max 100 collateral
+                deadline: block.timestamp + 1 hours
+            })
         );
 
         uint256 balanceAfterOpen = collateralAsset.balanceOf(trader1);
 
         // Close the position
         sapience.modifyTraderPosition(
-            positionId,
-            0, // Close to 0
-            0, // No collateral limit
-            block.timestamp + 1 hours
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: 0, // Close to 0
+                deltaCollateralLimit: 0, // No collateral limit
+                deadline: block.timestamp + 1 hours
+            })
         );
 
         uint256 balanceAfterClose = collateralAsset.balanceOf(trader1);

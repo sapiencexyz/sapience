@@ -145,10 +145,12 @@ contract SettleTradeTest is TestTrade {
         );
 
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            initialPositionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: initialPositionSize,
+                maxCollateral: requiredCollateral * 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -178,9 +180,11 @@ contract SettleTradeTest is TestTrade {
             marketParams.bondAmount
         );
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            SETTLEMENT_PRICE_SQRT_D18
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: SETTLEMENT_PRICE_SQRT_D18
+            })
         );
         vm.stopPrank();
 

@@ -73,13 +73,7 @@ contract ConfigurationModule is
     }
 
     function createMarket(
-        uint256 startTime,
-        uint256 endTime,
-        uint160 startingSqrtPriceX96,
-        int24 baseAssetMinPriceTick,
-        int24 baseAssetMaxPriceTick,
-        uint256 salt,
-        bytes calldata claimStatement
+        ISapienceStructs.MarketCreationParams memory params
     ) external override nonReentrant onlyOwner returns (uint256 marketId) {
         // load the market to check if it's already created
         MarketGroup.Data storage marketGroup = MarketGroup.load();
@@ -88,15 +82,21 @@ contract ConfigurationModule is
 
         Market.createValid(
             newMarketId,
-            startTime,
-            endTime,
-            startingSqrtPriceX96,
-            baseAssetMinPriceTick,
-            baseAssetMaxPriceTick,
-            salt,
-            claimStatement
+            params.startTime,
+            params.endTime,
+            params.startingSqrtPriceX96,
+            params.baseAssetMinPriceTick,
+            params.baseAssetMaxPriceTick,
+            params.salt,
+            params.claimStatement
         );
-        emit MarketCreated(newMarketId, startTime, endTime, startingSqrtPriceX96, claimStatement);
+        emit MarketCreated(
+            newMarketId,
+            params.startTime,
+            params.endTime,
+            params.startingSqrtPriceX96,
+            params.claimStatement
+        );
 
         return newMarketId;
     }

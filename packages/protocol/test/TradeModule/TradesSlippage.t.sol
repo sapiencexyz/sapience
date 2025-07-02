@@ -82,7 +82,8 @@ contract TradePositionSlippage is TestTrade {
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -116,20 +117,24 @@ contract TradePositionSlippage is TestTrade {
         // Expect revert
         vm.expectPartialRevert(Errors.CollateralLimitReached.selector);
         sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral - 100,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral - 100,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now attempt to create the position without reverting
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE.toUint()
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE.toUint()
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
 
@@ -148,20 +153,24 @@ contract TradePositionSlippage is TestTrade {
         // Expect revert
         vm.expectPartialRevert(Errors.CollateralLimitReached.selector);
         sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral - 100,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral - 100,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now attempt to create the position without reverting
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE.toUint()
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE.toUint()
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
 
@@ -179,12 +188,14 @@ contract TradePositionSlippage is TestTrade {
         );
 
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE.toUint()
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE.toUint()
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         (int256 requiredCollateralForUpdate, , , ) = sapience
@@ -193,20 +204,24 @@ contract TradePositionSlippage is TestTrade {
         // Expect revert
         vm.expectPartialRevert(Errors.CollateralLimitReached.selector);
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate - 100,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate - 100,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now attempt to create the position without reverting
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -225,12 +240,14 @@ contract TradePositionSlippage is TestTrade {
         );
 
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE.toUint()
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE.toUint()
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         (int256 requiredCollateralForUpdate, , , ) = sapience
@@ -239,20 +256,24 @@ contract TradePositionSlippage is TestTrade {
         // Expect revert
         vm.expectPartialRevert(Errors.CollateralLimitReached.selector);
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate - 100,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate - 100,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now attempt to create the position without reverting
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate.mulDecimal(
-                SLIPPAGE_MULTIPLIER_DECREASE
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_DECREASE
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -271,12 +292,14 @@ contract TradePositionSlippage is TestTrade {
         );
 
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE.toUint()
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE.toUint()
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         (int256 requiredCollateralForUpdate, , , ) = sapience
@@ -285,20 +308,24 @@ contract TradePositionSlippage is TestTrade {
         // Expect revert
         vm.expectPartialRevert(Errors.CollateralLimitReached.selector);
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate - 100,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate - 100,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now attempt to create the position without reverting
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -317,12 +344,14 @@ contract TradePositionSlippage is TestTrade {
         );
 
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE.toUint()
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE.toUint()
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         (int256 requiredCollateralForUpdate, , , ) = sapience
@@ -331,20 +360,24 @@ contract TradePositionSlippage is TestTrade {
         // Expect revert
         vm.expectPartialRevert(Errors.CollateralLimitReached.selector);
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate - 100,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate - 100,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now attempt to create the position without reverting
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate.mulDecimal(
-                SLIPPAGE_MULTIPLIER_DECREASE
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_DECREASE
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -363,12 +396,14 @@ contract TradePositionSlippage is TestTrade {
         );
 
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE.toUint()
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE.toUint()
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         (int256 requiredCollateralForUpdate, , , ) = sapience
@@ -377,20 +412,24 @@ contract TradePositionSlippage is TestTrade {
         // Expect revert
         vm.expectPartialRevert(Errors.CollateralLimitReached.selector);
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate - 100,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate - 100,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now attempt to create the position without reverting
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate.mulDecimal(
-                SLIPPAGE_MULTIPLIER_DECREASE
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_DECREASE
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -409,12 +448,14 @@ contract TradePositionSlippage is TestTrade {
         );
 
         uint256 positionId = sapience.createTraderPosition(
-            marketId,
-            positionSize,
-            requiredCollateral.mulDecimal(
-                SLIPPAGE_MULTIPLIER_INCREASE.toUint()
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_INCREASE.toUint()
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         (int256 requiredCollateralForUpdate, , , ) = sapience
@@ -423,20 +464,24 @@ contract TradePositionSlippage is TestTrade {
         // Expect revert
         vm.expectPartialRevert(Errors.CollateralLimitReached.selector);
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate - 100,
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate - 100,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now attempt to create the position without reverting
         sapience.modifyTraderPosition(
-            positionId,
-            updatedPositionSize,
-            requiredCollateralForUpdate.mulDecimal(
-                SLIPPAGE_MULTIPLIER_DECREASE
-            ),
-            block.timestamp + 30 minutes
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: positionId,
+                size: updatedPositionSize,
+                deltaCollateralLimit: requiredCollateralForUpdate.mulDecimal(
+                    SLIPPAGE_MULTIPLIER_DECREASE
+                ),
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
