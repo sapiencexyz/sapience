@@ -6,8 +6,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "compile": "pnpm lint && tsc",
-    "build": "pnpm lint && tsc && npm run sentry:sourcemaps",
+    "compile": "pnpm lint:fix && tsc",
+    "build": "pnpm lint:fix && tsc && npm run sentry:sourcemaps",
     "dev": "pnpm prisma:deploy && concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\" \"pnpm run dev:codegen\"",
     "dev:service": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/workers/worker.ts",
