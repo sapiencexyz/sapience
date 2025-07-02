@@ -1,5 +1,6 @@
 'use client';
 
+import { gql } from '@apollo/client';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
@@ -10,15 +11,18 @@ import {
   DialogTrigger,
 } from '@sapience/ui/components/ui/dialog';
 import type { MarketType } from '@sapience/ui/types';
+import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
+import { print } from 'graphql';
 import { Pencil } from 'lucide-react';
 import { useState } from 'react';
 import type { Address } from 'viem';
+import { formatEther } from 'viem';
 
 import { useMarketGroupLatestEpoch } from '~/hooks/contract/useMarketGroupLatestEpoch';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
-import { shortenAddress } from '~/lib/utils/util';
+import { shortenAddress, foilApi } from '~/lib/utils/util';
 
 import AddMarketDialog from './AddMarketDialog';
 import MarketDeployButton from './MarketDeployButton';
@@ -26,6 +30,107 @@ import MarketGroupDeployButton from './MarketGroupDeployButton';
 import OwnershipDialog from './OwnershipDialog';
 import ReindexMarketButton from './ReindexMarketButton';
 import SettleMarketDialog from './SettleMarketDialog';
+
+// GraphQL query for index price at time
+const INDEX_PRICE_AT_TIME_QUERY = gql`
+  query IndexPriceAtTime(
+    $address: String!
+    $chainId: Int!
+    $marketId: String!
+    $timestamp: Int!
+  ) {
+    indexPriceAtTime(
+      address: $address
+      chainId: $chainId
+      marketId: $marketId
+      timestamp: $timestamp
+    ) {
+      timestamp
+      close
+    }
+  }
+`;
+
+// Helper function to convert gwei to ether
+const gweiToEther = (value: bigint): string => {
+  return formatEther(value * BigInt(1e9));
+};
+
+// Hook to get market price data
+function useMarketPriceData(
+  marketAddress: string,
+  chainId: number,
+  marketId: number,
+  endTimestamp: number
+) {
+  const now = Math.floor(Date.now() / 1000);
+  // Determine if the market is active *before* calculating the timestamp
+  const isActive = now < endTimestamp;
+  // Use (current time - 60 seconds) if active, otherwise use current time
+  const timestampToUse = isActive ? now - 60 : now;
+  // Use the lesser of the calculated time (or now-60) and the end time.
+  // This ensures settled markets still use endTimestamp.
+  // Rename this timestamp as it's used for the API call.
+  const timestampForApi = Math.min(timestampToUse, endTimestamp);
+
+  // Calculate a stable timestamp for the queryKey when the market is active.
+  // Round down to the nearest 5 minutes (300 seconds) to prevent rapid key changes.
+  const queryKeyTimestampInterval = 300;
+  const timestampForKey = isActive
+    ? Math.floor(timestampForApi / queryKeyTimestampInterval) *
+      queryKeyTimestampInterval
+    : timestampForApi; // Use the precise timestamp for the key if not active
+
+  const { data, isLoading, error } = useQuery({
+    // Use the stabilized timestamp in the query key
+    queryKey: [
+      'marketPriceData',
+      `${chainId}:${marketAddress}`,
+      marketId,
+      timestampForKey,
+    ],
+    queryFn: async () => {
+      // Use the API timestamp for the enabled check
+      if (!marketAddress || !chainId || !marketId || !timestampForApi) {
+        return null;
+      }
+
+      const response = await foilApi.post('/graphql', {
+        query: print(INDEX_PRICE_AT_TIME_QUERY),
+        variables: {
+          address: marketAddress,
+          chainId,
+          marketId: marketId.toString(),
+          timestamp: timestampForApi,
+        },
+      });
+
+      const priceData = response.data?.indexPriceAtTime;
+      if (!priceData) {
+        return null;
+      }
+
+      const indexPrice = Number(gweiToEther(BigInt(priceData.close)));
+
+      return {
+        timestamp: priceData.timestamp,
+        indexPrice,
+      };
+    },
+    // Use the API timestamp for the enabled check
+    enabled: !!marketAddress && !!chainId && !!marketId && !!timestampForApi,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  return {
+    indexPrice: data?.indexPrice,
+    timestamp: data?.timestamp,
+    isLoading,
+    error,
+    isActive,
+  };
+}
 
 const getChainShortName = (chainId: number): string => {
   switch (chainId) {
@@ -167,6 +272,62 @@ const OwnerCell = ({ group }: { group: EnrichedMarketGroup }) => {
           />
         </>
       )}
+    </div>
+  );
+};
+
+// Settlement Price Cell Component
+const SettlementPriceCell = ({ group }: { group: EnrichedMarketGroup }) => {
+  // Find the current/active market or the most recent settled market
+  const now = Math.floor(Date.now() / 1000);
+  const currentMarket = group.markets.find((m) => {
+    const start = m.startTimestamp ?? 0;
+    const end = m.endTimestamp ?? 0;
+    return start <= now && now <= end;
+  });
+
+  const mostRecentSettledMarket = group.markets
+    .filter((m) => (m.endTimestamp ?? 0) < now)
+    .sort((a, b) => (b.endTimestamp ?? 0) - (a.endTimestamp ?? 0))[0];
+
+  const marketToUse = currentMarket || mostRecentSettledMarket;
+
+  const marketId = Number(marketToUse?.marketId);
+  const endTimestamp = marketToUse?.endTimestamp ?? 0;
+
+  const { indexPrice, isLoading, error, isActive } = useMarketPriceData(
+    group.address!,
+    group.chainId,
+    marketId,
+    endTimestamp
+  );
+
+  if (!group.address) {
+    return <span className="text-muted-foreground">N/A</span>;
+  }
+
+  if (!marketToUse) {
+    return <span className="text-muted-foreground">No markets</span>;
+  }
+
+  if (isLoading) {
+    return <span className="text-muted-foreground">Loading...</span>;
+  }
+
+  if (error) {
+    return <span className="text-red-500">Error</span>;
+  }
+
+  if (indexPrice === undefined || indexPrice === null) {
+    return <span className="text-muted-foreground">N/A</span>;
+  }
+
+  return (
+    <div className="flex flex-col">
+      <span className="font-mono text-sm">{indexPrice.toFixed(4)}</span>
+      <span className="text-xs text-muted-foreground">
+        {isActive ? 'Current' : 'Settlement'}
+      </span>
     </div>
   );
 };
@@ -374,6 +535,11 @@ const columns: ColumnDef<EnrichedMarketGroup>[] = [
         </div>
       );
     },
+  },
+  {
+    id: 'settlementPrice',
+    header: 'Settlement Price',
+    cell: ({ row }) => <SettlementPriceCell group={row.original} />,
   },
   {
     accessorKey: 'owner',

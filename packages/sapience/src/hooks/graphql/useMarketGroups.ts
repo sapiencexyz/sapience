@@ -133,6 +133,7 @@ const MARKETS_QUERY = gql`
       deployTimestamp
       deployTxnBlockNumber
       isCumulative
+      claimStatement
       resource {
         id
         name
