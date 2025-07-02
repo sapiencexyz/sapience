@@ -7,3 +7,5 @@ data
 /storage
 
 /generated/prisma
+
+/tsconfig.tsbuildinfo
