@@ -42,12 +42,12 @@ contract UMASettlementModule is
 
         IERC20 bondCurrency = IERC20(marketGroup.marketParams.bondCurrency);
 
-        if(marketGroup.bridgedSettlement) {
-            // TODO: Implement bridge functionality
-            // 1. Check if the submitter has enough bond balance 
-            IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(marketGroup.marketParams.optimisticOracleV3);
+        // If the market is bridged, use the bridge to assert truth
+        if (marketGroup.bridgedSettlement) {
+            IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(
+                marketGroup.marketParams.optimisticOracleV3
+            );
 
-            // 2. If yes, send to the bridge the claim data
             market.assertionId = bridge.forwardAssertTruth(
                 address(this),
                 params.marketId,
@@ -57,8 +57,8 @@ contract UMASettlementModule is
                 marketGroup.marketParams.bondCurrency,
                 marketGroup.marketParams.bondAmount
             );
-            // 8. Call the bridge to process the settlement
         } else {
+            // If the market is not bridged, use the optimistic oracle to assert truth and send the bond to the oracle
             OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
                     marketGroup.marketParams.optimisticOracleV3
                 );
@@ -185,21 +185,22 @@ contract UMASettlementModule is
         require(assertionId == market.assertionId, "Invalid assertionId");
     }
 
-    function getClaim(Market.Data storage market, uint256 decimalPrice) internal view returns (bytes memory) {
+    function getClaim(
+        Market.Data storage market,
+        uint256 decimalPrice
+    ) internal view returns (bytes memory) {
         bytes memory claim;
-        if(market.claimStatementNo.length > 0) {
-            // Is Yes/No market
-            if(decimalPrice > market.minPriceD18) {
-                claim = abi.encodePacked(string(market.claimStatementYesOrNumeric));
-            } else {
-                claim = abi.encodePacked(string(market.claimStatementNo));
-            }
+        // Check if the market is a Yes/No market
+        if (market.claimStatementNo.length > 0) {
+            claim = decimalPrice > market.minPriceD18
+                ? abi.encodePacked(string(market.claimStatementYesOrNumeric))
+                : abi.encodePacked(string(market.claimStatementNo));
         } else {
             claim = abi.encodePacked(
                 string(market.claimStatementYesOrNumeric),
                 Strings.toString(decimalPrice),
                 "."
-            );            
+            );
         }
 
         return claim;
