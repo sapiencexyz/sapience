@@ -65,7 +65,7 @@ library MarketGroup {
         marketGroup.collateralScalingFactor = decimals < 18
             ? 10 ** (18 - decimals)
             : 1;
-
+/*
         // check marketParams.bondAmount is greater than the minimum bond for the assertion currency
         uint256 minUMABond = OptimisticOracleV3Interface(
             marketParams.optimisticOracleV3
@@ -76,6 +76,7 @@ library MarketGroup {
                 minUMABond
             );
         }
+*/
     }
 
     function loadValid() internal view returns (Data storage marketGroup) {

@@ -12,7 +12,7 @@ uniswapQuoter = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a" # Uniswap V3 Quoter
 minTradeSize = "10000"
 feeRate = "10000" # 1%
 assertionLiveness = "21600"
-bridgedSettlement = true
+bridgedSettlement = "true"
 bondCurrency = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" # sUSDS Bond address is used on Arbitrum One where UMA is using the bond
 optimisticOracleV3 = "0xee6832F73862ABac4CC87bE58B4A949edd8533F7" # Bridge on Base to Arb's UMA Optimistic Oracle V3 
 bondAmount = "500000000"
@@ -69,9 +69,8 @@ args=[
   "<%= settings.nonowner %>",
   "<%= settings.collateralCurrency %>",
   [],
-  "<%= zeroAddress %>",
   "<%= settings.minTradeSize %>",
-  "<%= settings.bridgedSettlement %>,
+  "<%= settings.bridgedSettlement %>",
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.bondCurrency %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
 ]
 depends=["router.Sapience"]
