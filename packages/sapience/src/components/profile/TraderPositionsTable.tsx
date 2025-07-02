@@ -275,8 +275,6 @@ export default function TraderPositionsTable({
                 return null;
               }
 
-
-
               const isClosed = Number(position.collateral) === 0;
               const chainShortName = getChainShortName(
                 position.market.marketGroup?.chainId || 0
@@ -318,7 +316,8 @@ export default function TraderPositionsTable({
                             formatEther(BigInt(position.collateral || '0'))
                           )}
                         />{' '}
-                        {position.market.marketGroup?.collateralSymbol || 'Unknown'}
+                        {position.market.marketGroup?.collateralSymbol ||
+                          'Unknown'}
                       </TableCell>
                       <TableCell>
                         <PositionValueCell position={position} />
