@@ -91,9 +91,6 @@ export class MarketGroupType {
   question: string | null;
 
   @Field(() => String, { nullable: true })
-  claimStatement: string | null;
-
-  @Field(() => String, { nullable: true })
   baseTokenName: string | null;
 
   @Field(() => String, { nullable: true })

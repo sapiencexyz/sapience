@@ -217,12 +217,10 @@ export default function TraderPositionsTable({
   }
 
   const validPositions = positions.filter(
-    (p) => p && p.market && p.market?.marketGroup && p.id && !p.isLP // Added !isLP check
+    (p) => p && p.market && p.id && !p.isLP
   );
 
   if (validPositions.length === 0) {
-    // Optionally return null or a message if only LP positions were passed
-    // return <p className="text-muted-foreground text-sm">No non-LP positions found.</p>;
     return null;
   }
 
@@ -269,7 +267,7 @@ export default function TraderPositionsTable({
                 position.owner &&
                 connectedAddress.toLowerCase() === position.owner.toLowerCase();
 
-              if (!position.market?.marketGroup) {
+              if (!position.market) {
                 console.warn(
                   'Skipping position render due to missing market data:',
                   position.positionId
@@ -277,11 +275,13 @@ export default function TraderPositionsTable({
                 return null;
               }
 
+
+
               const isClosed = Number(position.collateral) === 0;
               const chainShortName = getChainShortName(
-                position.market.marketGroup.chainId || 0
+                position.market.marketGroup?.chainId || 0
               );
-              const marketAddress = position.market.marketGroup.address || '';
+              const marketAddress = position.market.marketGroup?.address || '';
 
               // Determine if the position is expired and settled
               const endTimestamp = position.market?.endTimestamp;
@@ -318,7 +318,7 @@ export default function TraderPositionsTable({
                             formatEther(BigInt(position.collateral || '0'))
                           )}
                         />{' '}
-                        {position.market.marketGroup.collateralSymbol}
+                        {position.market.marketGroup?.collateralSymbol || 'Unknown'}
                       </TableCell>
                       <TableCell>
                         <PositionValueCell position={position} />
@@ -334,7 +334,7 @@ export default function TraderPositionsTable({
                                 positionId={position.positionId.toString()}
                                 marketAddress={marketAddress}
                                 chainId={
-                                  position.market.marketGroup.chainId || 0
+                                  position.market.marketGroup?.chainId || 0
                                 }
                                 onSuccess={() => {
                                   console.log(
