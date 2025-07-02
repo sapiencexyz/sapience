@@ -1,16 +1,38 @@
-import { formatDbBigInt } from 'src/utils/utils';
-import { Transaction } from '../models/Transaction';
-import { Position } from 'src/models/Position';
+import { formatDbBigInt } from '../utils/utils';
+import { Prisma } from '../../generated/prisma';
 
-export type HydratedTransaction = Transaction & {
-  position: Position;
+// Prisma transaction type with all necessary includes
+export type PrismaTransactionWithIncludes = Prisma.transactionGetPayload<{
+  include: {
+    position: {
+      include: {
+        market: {
+          include: {
+            market_group: {
+              include: {
+                resource: true;
+              };
+            };
+          };
+        };
+      };
+    };
+    event: true;
+  };
+}>;
+
+export type HydratedTransaction = Omit<
+  PrismaTransactionWithIncludes,
+  'tradeRatioD18'
+> & {
+  tradeRatioD18: string | null;
   collateralDelta: string;
   baseTokenDelta: string;
   quoteTokenDelta: string;
 };
 
 export const hydrateTransactions = (
-  transactions: Transaction[],
+  transactions: PrismaTransactionWithIncludes[],
   shouldFormatUnits: boolean = true
 ): HydratedTransaction[] => {
   const hydratedTrasactions: HydratedTransaction[] = [];
@@ -21,20 +43,15 @@ export const hydrateTransactions = (
   let lastQuoteToken = BigInt(0);
   let lastCollateral = BigInt(0);
   for (const transaction of transactions) {
-    transaction.tradeRatioD18 = formatDbBigInt(transaction.tradeRatioD18);
+    // Convert Prisma Decimal to string for formatDbBigInt
+    const tradeRatioD18Str = transaction.tradeRatioD18?.toString() || null;
+    const formattedTradeRatio = tradeRatioD18Str
+      ? formatDbBigInt(tradeRatioD18Str)
+      : null;
 
-    const hydratedTransaction = {
+    const hydratedTransaction: HydratedTransaction = {
       ...transaction,
-      position: {
-        ...transaction.position,
-        market: {
-          ...transaction.position?.market,
-          marketGroup: {
-            ...transaction.position?.market?.marketGroup,
-            resource: transaction.position?.market?.marketGroup?.resource,
-          },
-        },
-      },
+      tradeRatioD18: formattedTradeRatio,
       collateralDelta: '0',
       baseTokenDelta: '0',
       quoteTokenDelta: '0',
@@ -51,16 +68,28 @@ export const hydrateTransactions = (
       lastPositionId = transaction.position.positionId;
     }
 
+    // Convert Prisma Decimal values to BigInt for calculations
+    const baseTokenBigInt = transaction.baseToken
+      ? BigInt(transaction.baseToken.toString())
+      : BigInt(0);
+    const quoteTokenBigInt = transaction.quoteToken
+      ? BigInt(transaction.quoteToken.toString())
+      : BigInt(0);
+    const collateralBigInt = BigInt(transaction.collateral.toString());
+    const lpBaseDeltaBigInt = transaction.lpBaseDeltaToken
+      ? BigInt(transaction.lpBaseDeltaToken.toString())
+      : null;
+    const lpQuoteDeltaBigInt = transaction.lpQuoteDeltaToken
+      ? BigInt(transaction.lpQuoteDeltaToken.toString())
+      : null;
+
     // If the transaction is from a liquidity position, use the lpDeltaToken values
     // Otherwise, use the baseToken and quoteToken values from the previous transaction (trade with history)
     const currentBaseTokenBalance =
-      transaction.lpBaseDeltaToken ||
-      BigInt(transaction.baseToken) - lastBaseToken;
+      lpBaseDeltaBigInt || baseTokenBigInt - lastBaseToken;
     const currentQuoteTokenBalance =
-      transaction.lpQuoteDeltaToken ||
-      BigInt(transaction.quoteToken) - lastQuoteToken;
-    const currentCollateralBalance =
-      BigInt(transaction.collateral) - lastCollateral;
+      lpQuoteDeltaBigInt || quoteTokenBigInt - lastQuoteToken;
+    const currentCollateralBalance = collateralBigInt - lastCollateral;
 
     hydratedTransaction.baseTokenDelta = shouldFormatUnits
       ? formatDbBigInt(currentBaseTokenBalance.toString())
@@ -75,9 +104,9 @@ export const hydrateTransactions = (
     hydratedTrasactions.push(hydratedTransaction);
 
     // set up for next transaction
-    lastBaseToken = BigInt(transaction.baseToken);
-    lastQuoteToken = BigInt(transaction.quoteToken);
-    lastCollateral = BigInt(transaction.collateral);
+    lastBaseToken = baseTokenBigInt;
+    lastQuoteToken = quoteTokenBigInt;
+    lastCollateral = collateralBigInt;
   }
   return hydratedTrasactions;
 };

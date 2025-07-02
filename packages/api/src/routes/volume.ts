@@ -51,7 +51,10 @@ router.get(
           // Convert baseTokenDelta to BigNumber and get its absolute value
           const absBaseTokenDelta = Math.abs(
             parseFloat(
-              formatUnits(BigInt(transaction.baseToken), TOKEN_PRECISION)
+              formatUnits(
+                BigInt(transaction.baseToken?.toString() || '0'),
+                TOKEN_PRECISION
+              )
             )
           );
 

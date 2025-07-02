@@ -7,7 +7,7 @@ import {
 import { Button } from '@sapience/ui/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { ChartType, LineType, TimeInterval } from '@sapience/ui/types/charts';
-import type { MarketType as GqlMarketType } from '@sapience/ui/types/graphql';
+import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, LineChart, BarChart2, DatabaseIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -245,12 +245,12 @@ const ForecastContent = () => {
                       {marketData.marketGroup.markets
                         .filter(
                           (
-                            market // market.id is string, numericMarketId is number | null, market.marketId is number
+                            market: GqlMarketType // market.id is string, numericMarketId is number | null, market.marketId is number
                           ) =>
                             market.endTimestamp &&
                             market.endTimestamp * 1000 > Date.now()
                         )
-                        .map((market) => {
+                        .map((market: GqlMarketType) => {
                           const buttonText =
                             market.optionName ||
                             market.question ||

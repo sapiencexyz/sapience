@@ -1,53 +1,51 @@
 import { Resolver, Query, Arg } from 'type-graphql';
-import dataSource from '../../db';
-import { Category } from '../../models/Category';
-import { CategoryType } from '../types';
-import { MarketGroupType } from '../types';
-import { mapMarketGroupToType } from './mappers';
+import prisma from '../../db';
+import { Category, MarketGroup } from '../types/PrismaTypes';
 
-@Resolver(() => CategoryType)
+@Resolver(() => Category)
 export class CategoryResolver {
-  @Query(() => [CategoryType])
-  async categories(): Promise<CategoryType[]> {
+  @Query(() => [Category])
+  async categories(): Promise<Category[]> {
     try {
-      const categories = await dataSource.getRepository(Category).find({
-        relations: [
-          'marketGroups',
-          'marketGroups.markets',
-          'marketGroups.resource',
-        ],
+      const categories = await prisma.category.findMany({
+        include: {
+          market_group: {
+            include: {
+              market: true,
+              resource: true,
+            },
+          },
+        },
       });
-      return categories.map((category) => ({
-        id: category.id,
-        name: category.name,
-        slug: category.slug,
-        marketGroups: category.marketGroups?.map(mapMarketGroupToType) || [],
-      }));
+      return categories as Category[];
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw new Error('Failed to fetch categories');
     }
   }
 
-  @Query(() => [MarketGroupType])
+  @Query(() => [MarketGroup])
   async marketGroupsByCategory(
     @Arg('slug', () => String) slug: string
-  ): Promise<MarketGroupType[]> {
+  ): Promise<MarketGroup[]> {
     try {
-      const category = await dataSource.getRepository(Category).findOne({
+      const category = await prisma.category.findFirst({
         where: { slug },
-        relations: [
-          'marketGroups',
-          'marketGroups.markets',
-          'marketGroups.resource',
-        ],
+        include: {
+          market_group: {
+            include: {
+              market: true,
+              resource: true,
+            },
+          },
+        },
       });
 
       if (!category) {
         throw new Error(`Category with slug ${slug} not found`);
       }
 
-      return category.marketGroups.map(mapMarketGroupToType);
+      return category.market_group as MarketGroup[];
     } catch (error) {
       console.error('Error fetching markets by category:', error);
       throw new Error('Failed to fetch markets by category');

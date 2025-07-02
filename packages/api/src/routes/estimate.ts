@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { getMarketGroupAndMarket } from '../helpers/getMarketAndEpoch';
-import { marketGroupRepository, marketRepository } from '../db';
 
 interface Transaction {
   timeStamp: string;
@@ -16,14 +15,17 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { walletAddress, chainId, marketAddress, epochId } = req.body;
 
-    const { market } = await getMarketGroupAndMarket(
-      marketGroupRepository,
-      marketRepository,
+    const result = await getMarketGroupAndMarket(
       chainId,
       marketAddress.toLowerCase(),
       epochId
     );
 
+    if (!result) {
+      throw new Error('Market not found');
+    }
+
+    const { market } = result;
     const duration =
       Number(market.endTimestamp) - Number(market.startTimestamp);
     const startTime = Math.floor(Date.now() / 1000) - duration;

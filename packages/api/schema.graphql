@@ -16,23 +16,51 @@ type CandleType {
   timestamp: Int!
 }
 
-type CategoryType {
+type Category {
   id: ID!
-  marketGroups: [MarketGroupType!]!
+  marketGroups: [MarketGroup!]
   name: String!
   slug: String!
+}
+
+type Market {
+  baseAssetMaxPriceTick: Int
+  baseAssetMinPriceTick: Int
+  currentPrice: String
+  endTimestamp: Int
+  id: ID!
+  marketGroup: MarketGroup
+  marketId: Int!
+  marketParamsAssertionliveness: String
+  marketParamsBondamount: String
+  marketParamsBondcurrency: String
+  marketParamsClaimstatement: String
+  marketParamsFeerate: Int
+  marketParamsOptimisticoraclev3: String
+  marketParamsUniswappositionmanager: String
+  marketParamsUniswapquoter: String
+  marketParamsUniswapswaprouter: String
+  optionName: String
+  poolAddress: String
+  positions: [Position!]
+  public: Boolean!
+  question: String
+  rules: String
+  settled: Boolean
+  settlementPriceD18: String
+  startTimestamp: Int
+  startingSqrtPriceX96: String
 }
 
 input MarketFilterInput {
   endTimestamp_gt: String
 }
 
-type MarketGroupType {
+type MarketGroup {
   address: String
   baseTokenName: String
-  category: CategoryType
+  category: Category
   chainId: Int!
-  claimStatement: String
   collateralAsset: String
   collateralDecimals: Int
   collateralSymbol: String
@@ -43,52 +71,27 @@ type MarketGroupType {
   initializationNonce: String
   isCumulative: Boolean!
   isYin: Boolean!
-  marketParams: MarketParamsType
-  markets(filter: MarketFilterInput, orderBy: MarketOrderInput): [MarketType!]!
+  marketParamsAssertionliveness: String
+  marketParamsBondamount: String
+  marketParamsBondcurrency: String
+  marketParamsClaimstatement: String
+  marketParamsFeerate: Int
+  marketParamsOptimisticoraclev3: String
+  marketParamsUniswappositionmanager: String
+  marketParamsUniswapquoter: String
+  marketParamsUniswapswaprouter: String
+  markets(filter: MarketFilterInput, orderBy: MarketOrderInput): [Market!]
   minTradeSize: String
   owner: String
   question: String
   quoteTokenName: String
-  resource: ResourceType
+  resource: Resource
   vaultAddress: String
 }
 
 input MarketOrderInput {
   direction: String!
   field: String!
-}
-
-type MarketParamsType {
-  assertionLiveness: String
-  bondAmount: String
-  bondCurrency: String
-  claimStatement: String
-  feeRate: Int
-  optimisticOracleV3: String
-  uniswapPositionManager: String
-  uniswapQuoter: String
-  uniswapSwapRouter: String
-}
-
-type MarketType {
-  baseAssetMaxPriceTick: Int
-  baseAssetMinPriceTick: Int
-  currentPrice: String
-  endTimestamp: Int
-  id: ID!
-  marketGroup: MarketGroupType
-  marketId: Int!
-  marketParams: MarketParamsType
-  optionName: String
-  poolAddress: String
-  positions: [PositionType!]!
-  public: Boolean!
-  question: String
-  rules: String
-  settled: Boolean
-  settlementPriceD18: String
-  startTimestamp: Int
-  startingSqrtPriceX96: String
 }
 
 type PnLType {
@@ -102,11 +105,11 @@ type PnLType {
   totalWithdrawals: String!
 }
 
-type PositionType {
-  baseToken: String!
+type Position {
+  baseToken: String
   borrowedBaseToken: String
   borrowedQuoteToken: String
-  collateral: String!
+  collateral: String
   highPriceTick: String
   id: ID!
   isLP: Boolean!
@@ -114,63 +117,60 @@ type PositionType {
   lowPriceTick: String
   lpBaseToken: String
   lpQuoteToken: String
-  market: MarketType!
-  owner: String!
+  market: Market
+  owner: String
   positionId: Int!
-  quoteToken: String!
-  transactions: [TransactionType!]!
+  quoteToken: String
+  transactions: [Transaction!]
 }
 
 type Query {
-  categories: [CategoryType!]!
+  categories: [Category!]!
   getMarketLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
   indexCandlesFromCache(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
   indexPriceAtTime(address: String!, chainId: Int!, marketId: String!, timestamp: Int!): CandleType
   legacyMarketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
   marketCandlesFromCache(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
-  marketGroup(address: String!, chainId: Int!): MarketGroupType
-  marketGroups(baseTokenName: String, chainId: Int, collateralAsset: String): [MarketGroupType!]!
-  marketGroupsByCategory(slug: String!): [MarketGroupType!]!
-  markets(chainId: Int!, marketAddress: String!, marketId: Int!): [MarketType!]!
-  positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
-  resource(slug: String!): ResourceType
+  marketGroup(address: String!, chainId: Int!): MarketGroup
+  marketGroups(baseTokenName: String, chainId: Int, collateralAsset: String): [MarketGroup!]!
+  marketGroupsByCategory(slug: String!): [MarketGroup!]!
+  markets(chainId: Int!, marketAddress: String!, marketId: Int!): [Market!]!
+  positions(chainId: Int, marketAddress: String, owner: String): [Position!]!
+  resource(slug: String!): Resource
   resourceCandlesFromCache(from: Int!, interval: Int!, slug: String!, to: Int!): CandleAndTimestampType!
-  resourcePrices: [ResourcePriceType!]!
+  resourcePrices: [ResourcePrice!]!
   resourceTrailingAverageCandlesFromCache(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): CandleAndTimestampType!
-  resources(categorySlug: String): [ResourceType!]!
+  resources(categorySlug: String): [Resource!]!
   totalVolumeByMarket(chainId: Int!, marketAddress: String!, marketId: Int!): Float!
-  transactions(positionId: Int): [TransactionType!]!
+  transactions(positionId: Int): [Transaction!]!
 }
 
-type ResourcePriceType {
+type Resource {
+  category: Category
+  id: ID!
+  marketGroups: [MarketGroup!]
+  name: String!
+  resourcePrices: [ResourcePrice!]
+  slug: String!
+}
+
+type ResourcePrice {
   blockNumber: Int!
   id: ID!
-  resource: ResourceType
+  resource: Resource
   timestamp: Int!
   value: String!
 }
 
-type ResourceType {
-  category: CategoryType
-  id: ID!
-  marketGroups: [MarketGroupType!]!
-  name: String!
-  resourcePrices: [ResourcePriceType!]!
-  slug: String!
-}
-
-type TransactionType {
+type Transaction {
   baseToken: String
-  baseTokenDelta: String
   collateral: String
-  collateralDelta: String
   id: ID!
   lpBaseDeltaToken: String
   lpQuoteDeltaToken: String
-  position: PositionType
+  position: Position
   quoteToken: String
-  quoteTokenDelta: String
-  timestamp: Int!
+  timestamp: Int
   tradeRatioD18: String
   transactionHash: String
   type: String!

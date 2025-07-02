@@ -1,5 +1,5 @@
 import { TIME_INTERVALS } from 'src/fixtures';
-import { marketRepository, positionRepository } from 'src/db';
+import prisma from 'src/db';
 import { startOfInterval } from 'src/candle-cache/candleUtils';
 
 interface PnLData {
@@ -75,21 +75,26 @@ export class EpochPnL {
   private async buildPnlData(epochData: EpochData): Promise<PnLData[]> {
     try {
       // 1. Fetch positions for the epoch
-      const positions = await positionRepository.find({
+      const positions = await prisma.position.findMany({
         where: {
-          market: { id: epochData.id },
+          marketId: epochData.id,
         },
-        relations: [
-          'transactions',
-          'transactions.collateralTransfer',
-          'market',
-        ],
+        include: {
+          transaction: {
+            include: {
+              collateral_transfer: true,
+            },
+          },
+          market: true,
+        },
       });
 
       // 2 & 3. Group positions by owner and create PnL entries
       const pnlByOwner = new Map<string, PnLData>();
 
       for (const position of positions) {
+        if (!position.owner) continue; // Skip positions without owner
+
         const ownerId = position.owner.toLowerCase();
 
         if (!pnlByOwner.has(ownerId)) {
@@ -110,11 +115,11 @@ export class EpochPnL {
           ownerPnl.positionIds.add(position.positionId);
         }
         // 4. Account for collateral changes
-        if (position.transactions.length > 0) {
-          for (const transaction of position.transactions) {
-            if (transaction.collateralTransfer) {
+        if (position.transaction.length > 0) {
+          for (const transaction of position.transaction) {
+            if (transaction.collateral_transfer) {
               const collateral = BigInt(
-                transaction.collateralTransfer.collateral
+                transaction.collateral_transfer.collateral.toString()
               );
               if (collateral > BigInt(0)) {
                 ownerPnl.totalDeposits += collateral;
@@ -141,9 +146,9 @@ export class EpochPnL {
     marketId: number
   ): Promise<EpochPnLData | undefined> {
     try {
-      const epoch = await marketRepository.findOne({
+      const epoch = await prisma.market.findFirst({
         where: {
-          marketGroup: {
+          market_group: {
             chainId,
             address: address.toLowerCase(),
           },

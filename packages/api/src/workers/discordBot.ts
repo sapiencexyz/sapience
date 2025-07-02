@@ -2,7 +2,7 @@ import { EmbedBuilder, WebhookClient } from 'discord.js';
 import { LogData } from '../interfaces';
 import { EventType } from '../interfaces';
 import { formatUnits } from 'viem';
-import { marketGroupRepository } from '../db';
+import prisma from '../db';
 import {
   truncateAddress,
   formatToFirstSignificantDecimal,
@@ -51,9 +51,9 @@ export const alertEvent = async (
         let questionName = 'Unknown Market';
         let collateralSymbol = 'token';
         try {
-          const marketObj = await marketGroupRepository.findOne({
+          const marketObj = await prisma.market_group.findFirst({
             where: { address: address.toLowerCase(), chainId },
-            relations: ['resource'],
+            include: { resource: true },
           });
 
           if (marketObj) {
@@ -88,9 +88,9 @@ export const alertEvent = async (
         let questionName = 'Unknown Market';
         let collateralSymbol = 'token';
         try {
-          const marketObj = await marketGroupRepository.findOne({
+          const marketObj = await prisma.market_group.findFirst({
             where: { address: address.toLowerCase(), chainId },
-            relations: ['resource'],
+            include: { resource: true },
           });
 
           if (marketObj) {

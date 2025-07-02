@@ -1,28 +1,37 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
-import dataSource from '../../db';
-import { Transaction } from '../../models/Transaction';
-import { TransactionType } from '../types';
+import prisma from '../../db';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
-import { mapTransactionToType } from './mappers';
-@Resolver(() => TransactionType)
+import { Transaction } from '../types/PrismaTypes';
+
+@Resolver(() => Transaction)
 export class TransactionResolver {
-  @Query(() => [TransactionType])
+  @Query(() => [Transaction])
   async transactions(
     @Arg('positionId', () => Int, { nullable: true }) positionId?: number
-  ): Promise<TransactionType[]> {
+  ): Promise<Transaction[]> {
     try {
-      const where: { position?: { id: number } } = {};
-      if (positionId) {
-        where.position = { id: positionId };
-      }
-
-      const transactions = await dataSource.getRepository(Transaction).find({
-        where,
-        relations: ['event', 'position'],
+      const transactions = await prisma.transaction.findMany({
+        where: positionId ? { positionId: positionId } : {},
+        include: {
+          position: {
+            include: {
+              market: {
+                include: {
+                  market_group: {
+                    include: {
+                      resource: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+          event: true,
+        },
       });
 
       const hydratedTransactions = hydrateTransactions(transactions, false);
-      return hydratedTransactions.map(mapTransactionToType);
+      return hydratedTransactions as unknown as Transaction[];
     } catch (error) {
       console.error('Error fetching transactions:', error);
       throw new Error('Failed to fetch transactions');

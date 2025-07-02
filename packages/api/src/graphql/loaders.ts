@@ -1,17 +1,15 @@
 import DataLoader from 'dataloader';
-import { In } from 'typeorm';
-import dataSource from '../db';
-import { MarketGroup } from '../models/MarketGroup';
-import { Resource } from '../models/Resource';
-import { Position } from '../models/Position';
-import { Transaction } from '../models/Transaction';
-import { Market } from '../models/Market';
+import prisma from '../db';
+import type { transaction } from '../../generated/prisma';
 
-// Batch function to load markets by IDs
+// Batch function to load market groups by IDs
 const batchMarketGroups = async (ids: readonly number[]) => {
-  const marketGroups = await dataSource.getRepository(MarketGroup).find({
-    where: { id: In([...ids]) },
-    relations: ['markets', 'resource'],
+  const marketGroups = await prisma.market_group.findMany({
+    where: { id: { in: [...ids] } },
+    include: {
+      market: true,
+      resource: true,
+    },
   });
 
   const marketMap = new Map(marketGroups.map((market) => [market.id, market]));
@@ -20,9 +18,12 @@ const batchMarketGroups = async (ids: readonly number[]) => {
 
 // Batch function to load resources by IDs
 const batchResources = async (ids: readonly number[]) => {
-  const resources = await dataSource.getRepository(Resource).find({
-    where: { id: In([...ids]) },
-    relations: ['marketGroups', 'resourcePrices'],
+  const resources = await prisma.resource.findMany({
+    where: { id: { in: [...ids] } },
+    include: {
+      market_group: true,
+      resource_price: true,
+    },
   });
 
   const resourceMap = new Map(
@@ -33,9 +34,16 @@ const batchResources = async (ids: readonly number[]) => {
 
 // Batch function to load positions by IDs
 const batchPositions = async (ids: readonly number[]) => {
-  const positions = await dataSource.getRepository(Position).find({
-    where: { id: In([...ids]) },
-    relations: ['market', 'market.marketGroup', 'transactions'],
+  const positions = await prisma.position.findMany({
+    where: { id: { in: [...ids] } },
+    include: {
+      market: {
+        include: {
+          market_group: true,
+        },
+      },
+      transaction: true,
+    },
   });
 
   const positionMap = new Map(
@@ -44,11 +52,14 @@ const batchPositions = async (ids: readonly number[]) => {
   return ids.map((id) => positionMap.get(id));
 };
 
-// Batch function to load epochs by IDs
+// Batch function to load markets by IDs
 const batchMarkets = async (ids: readonly number[]) => {
-  const markets = await dataSource.getRepository(Market).find({
-    where: { id: In([...ids]) },
-    relations: ['marketGroup', 'positions'],
+  const markets = await prisma.market.findMany({
+    where: { id: { in: [...ids] } },
+    include: {
+      market_group: true,
+      position: true,
+    },
   });
 
   const epochMap = new Map(markets.map((epoch) => [epoch.id, epoch]));
@@ -57,18 +68,30 @@ const batchMarkets = async (ids: readonly number[]) => {
 
 // Batch function to load transactions by position IDs
 const batchTransactionsByPosition = async (positionIds: readonly number[]) => {
-  const transactions = await dataSource.getRepository(Transaction).find({
-    where: { position: { id: In([...positionIds]) } },
-    relations: ['position', 'position.market', 'position.market.marketGroup'],
+  const transactions = await prisma.transaction.findMany({
+    where: { positionId: { in: [...positionIds] } },
+    include: {
+      position: {
+        include: {
+          market: {
+            include: {
+              market_group: true,
+            },
+          },
+        },
+      },
+    },
   });
 
-  const transactionMap = new Map<number, Transaction[]>();
+  const transactionMap = new Map<number, transaction[]>();
   transactions.forEach((transaction) => {
-    const positionId = transaction.position.id;
-    if (!transactionMap.has(positionId)) {
+    const positionId = transaction.positionId;
+    if (positionId && !transactionMap.has(positionId)) {
       transactionMap.set(positionId, []);
     }
-    transactionMap.get(positionId)!.push(transaction);
+    if (positionId) {
+      transactionMap.get(positionId)!.push(transaction);
+    }
   });
 
   return positionIds.map((id) => transactionMap.get(id) || []);

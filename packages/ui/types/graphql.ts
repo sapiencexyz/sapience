@@ -29,25 +29,54 @@ export type CandleType = {
   timestamp: Scalars['Int']['output'];
 };
 
-export type CategoryType = {
-  __typename?: 'CategoryType';
+export type Category = {
+  __typename?: 'Category';
   id: Scalars['ID']['output'];
-  marketGroups: Array<MarketGroupType>;
+  marketGroups?: Maybe<Array<MarketGroup>>;
   name: Scalars['String']['output'];
   slug: Scalars['String']['output'];
+};
+
+export type Market = {
+  __typename?: 'Market';
+  baseAssetMaxPriceTick?: Maybe<Scalars['Int']['output']>;
+  baseAssetMinPriceTick?: Maybe<Scalars['Int']['output']>;
+  currentPrice?: Maybe<Scalars['String']['output']>;
+  endTimestamp?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['ID']['output'];
+  marketGroup?: Maybe<MarketGroup>;
+  marketId: Scalars['Int']['output'];
+  marketParamsAssertionliveness?: Maybe<Scalars['String']['output']>;
+  marketParamsBondamount?: Maybe<Scalars['String']['output']>;
+  marketParamsBondcurrency?: Maybe<Scalars['String']['output']>;
+  marketParamsClaimstatement?: Maybe<Scalars['String']['output']>;
+  marketParamsFeerate?: Maybe<Scalars['Int']['output']>;
+  marketParamsOptimisticoraclev3?: Maybe<Scalars['String']['output']>;
+  marketParamsUniswappositionmanager?: Maybe<Scalars['String']['output']>;
+  marketParamsUniswapquoter?: Maybe<Scalars['String']['output']>;
+  marketParamsUniswapswaprouter?: Maybe<Scalars['String']['output']>;
+  optionName?: Maybe<Scalars['String']['output']>;
+  poolAddress?: Maybe<Scalars['String']['output']>;
+  positions?: Maybe<Array<Position>>;
+  public: Scalars['Boolean']['output'];
+  question?: Maybe<Scalars['String']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
+  settled?: Maybe<Scalars['Boolean']['output']>;
+  settlementPriceD18?: Maybe<Scalars['String']['output']>;
+  startTimestamp?: Maybe<Scalars['Int']['output']>;
+  startingSqrtPriceX96?: Maybe<Scalars['String']['output']>;
 };
 
 export type MarketFilterInput = {
   endTimestamp_gt?: InputMaybe<Scalars['String']['input']>;
 };
 
-export type MarketGroupType = {
-  __typename?: 'MarketGroupType';
+export type MarketGroup = {
+  __typename?: 'MarketGroup';
   address?: Maybe<Scalars['String']['output']>;
   baseTokenName?: Maybe<Scalars['String']['output']>;
-  category?: Maybe<CategoryType>;
+  category?: Maybe<Category>;
   chainId: Scalars['Int']['output'];
-  claimStatement?: Maybe<Scalars['String']['output']>;
   collateralAsset?: Maybe<Scalars['String']['output']>;
   collateralDecimals?: Maybe<Scalars['Int']['output']>;
   collateralSymbol?: Maybe<Scalars['String']['output']>;
@@ -58,18 +87,26 @@ export type MarketGroupType = {
   initializationNonce?: Maybe<Scalars['String']['output']>;
   isCumulative: Scalars['Boolean']['output'];
   isYin: Scalars['Boolean']['output'];
-  marketParams?: Maybe<MarketParamsType>;
-  markets: Array<MarketType>;
+  marketParamsAssertionliveness?: Maybe<Scalars['String']['output']>;
+  marketParamsBondamount?: Maybe<Scalars['String']['output']>;
+  marketParamsBondcurrency?: Maybe<Scalars['String']['output']>;
+  marketParamsClaimstatement?: Maybe<Scalars['String']['output']>;
+  marketParamsFeerate?: Maybe<Scalars['Int']['output']>;
+  marketParamsOptimisticoraclev3?: Maybe<Scalars['String']['output']>;
+  marketParamsUniswappositionmanager?: Maybe<Scalars['String']['output']>;
+  marketParamsUniswapquoter?: Maybe<Scalars['String']['output']>;
+  marketParamsUniswapswaprouter?: Maybe<Scalars['String']['output']>;
+  markets?: Maybe<Array<Market>>;
   minTradeSize?: Maybe<Scalars['String']['output']>;
   owner?: Maybe<Scalars['String']['output']>;
   question?: Maybe<Scalars['String']['output']>;
   quoteTokenName?: Maybe<Scalars['String']['output']>;
-  resource?: Maybe<ResourceType>;
+  resource?: Maybe<Resource>;
   vaultAddress?: Maybe<Scalars['String']['output']>;
 };
 
 
-export type MarketGroupTypeMarketsArgs = {
+export type MarketGroupMarketsArgs = {
   filter?: InputMaybe<MarketFilterInput>;
   orderBy?: InputMaybe<MarketOrderInput>;
 };
@@ -77,41 +114,6 @@ export type MarketGroupTypeMarketsArgs = {
 export type MarketOrderInput = {
   direction: Scalars['String']['input'];
   field: Scalars['String']['input'];
-};
-
-export type MarketParamsType = {
-  __typename?: 'MarketParamsType';
-  assertionLiveness?: Maybe<Scalars['String']['output']>;
-  bondAmount?: Maybe<Scalars['String']['output']>;
-  bondCurrency?: Maybe<Scalars['String']['output']>;
-  claimStatement?: Maybe<Scalars['String']['output']>;
-  feeRate?: Maybe<Scalars['Int']['output']>;
-  optimisticOracleV3?: Maybe<Scalars['String']['output']>;
-  uniswapPositionManager?: Maybe<Scalars['String']['output']>;
-  uniswapQuoter?: Maybe<Scalars['String']['output']>;
-  uniswapSwapRouter?: Maybe<Scalars['String']['output']>;
-};
-
-export type MarketType = {
-  __typename?: 'MarketType';
-  baseAssetMaxPriceTick?: Maybe<Scalars['Int']['output']>;
-  baseAssetMinPriceTick?: Maybe<Scalars['Int']['output']>;
-  currentPrice?: Maybe<Scalars['String']['output']>;
-  endTimestamp?: Maybe<Scalars['Int']['output']>;
-  id: Scalars['ID']['output'];
-  marketGroup?: Maybe<MarketGroupType>;
-  marketId: Scalars['Int']['output'];
-  marketParams?: Maybe<MarketParamsType>;
-  optionName?: Maybe<Scalars['String']['output']>;
-  poolAddress?: Maybe<Scalars['String']['output']>;
-  positions: Array<PositionType>;
-  public: Scalars['Boolean']['output'];
-  question?: Maybe<Scalars['String']['output']>;
-  rules?: Maybe<Scalars['String']['output']>;
-  settled?: Maybe<Scalars['Boolean']['output']>;
-  settlementPriceD18?: Maybe<Scalars['String']['output']>;
-  startTimestamp?: Maybe<Scalars['Int']['output']>;
-  startingSqrtPriceX96?: Maybe<Scalars['String']['output']>;
 };
 
 export type PnLType = {
@@ -126,12 +128,12 @@ export type PnLType = {
   totalWithdrawals: Scalars['String']['output'];
 };
 
-export type PositionType = {
-  __typename?: 'PositionType';
-  baseToken: Scalars['String']['output'];
+export type Position = {
+  __typename?: 'Position';
+  baseToken?: Maybe<Scalars['String']['output']>;
   borrowedBaseToken?: Maybe<Scalars['String']['output']>;
   borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
-  collateral: Scalars['String']['output'];
+  collateral?: Maybe<Scalars['String']['output']>;
   highPriceTick?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   isLP: Scalars['Boolean']['output'];
@@ -139,33 +141,33 @@ export type PositionType = {
   lowPriceTick?: Maybe<Scalars['String']['output']>;
   lpBaseToken?: Maybe<Scalars['String']['output']>;
   lpQuoteToken?: Maybe<Scalars['String']['output']>;
-  market: MarketType;
-  owner: Scalars['String']['output'];
+  market?: Maybe<Market>;
+  owner?: Maybe<Scalars['String']['output']>;
   positionId: Scalars['Int']['output'];
-  quoteToken: Scalars['String']['output'];
-  transactions: Array<TransactionType>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
+  transactions?: Maybe<Array<Transaction>>;
 };
 
 export type Query = {
   __typename?: 'Query';
-  categories: Array<CategoryType>;
+  categories: Array<Category>;
   getMarketLeaderboard: Array<PnLType>;
   indexCandlesFromCache: CandleAndTimestampType;
   indexPriceAtTime?: Maybe<CandleType>;
   legacyMarketCandles: Array<CandleType>;
   marketCandlesFromCache: CandleAndTimestampType;
-  marketGroup?: Maybe<MarketGroupType>;
-  marketGroups: Array<MarketGroupType>;
-  marketGroupsByCategory: Array<MarketGroupType>;
-  markets: Array<MarketType>;
-  positions: Array<PositionType>;
-  resource?: Maybe<ResourceType>;
+  marketGroup?: Maybe<MarketGroup>;
+  marketGroups: Array<MarketGroup>;
+  marketGroupsByCategory: Array<MarketGroup>;
+  markets: Array<Market>;
+  positions: Array<Position>;
+  resource?: Maybe<Resource>;
   resourceCandlesFromCache: CandleAndTimestampType;
-  resourcePrices: Array<ResourcePriceType>;
+  resourcePrices: Array<ResourcePrice>;
   resourceTrailingAverageCandlesFromCache: CandleAndTimestampType;
-  resources: Array<ResourceType>;
+  resources: Array<Resource>;
   totalVolumeByMarket: Scalars['Float']['output'];
-  transactions: Array<TransactionType>;
+  transactions: Array<Transaction>;
 };
 
 
@@ -284,38 +286,35 @@ export type QueryTransactionsArgs = {
   positionId?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type ResourcePriceType = {
-  __typename?: 'ResourcePriceType';
+export type Resource = {
+  __typename?: 'Resource';
+  category?: Maybe<Category>;
+  id: Scalars['ID']['output'];
+  marketGroups?: Maybe<Array<MarketGroup>>;
+  name: Scalars['String']['output'];
+  resourcePrices?: Maybe<Array<ResourcePrice>>;
+  slug: Scalars['String']['output'];
+};
+
+export type ResourcePrice = {
+  __typename?: 'ResourcePrice';
   blockNumber: Scalars['Int']['output'];
   id: Scalars['ID']['output'];
-  resource?: Maybe<ResourceType>;
+  resource?: Maybe<Resource>;
   timestamp: Scalars['Int']['output'];
   value: Scalars['String']['output'];
 };
 
-export type ResourceType = {
-  __typename?: 'ResourceType';
-  category?: Maybe<CategoryType>;
-  id: Scalars['ID']['output'];
-  marketGroups: Array<MarketGroupType>;
-  name: Scalars['String']['output'];
-  resourcePrices: Array<ResourcePriceType>;
-  slug: Scalars['String']['output'];
-};
-
-export type TransactionType = {
-  __typename?: 'TransactionType';
+export type Transaction = {
+  __typename?: 'Transaction';
   baseToken?: Maybe<Scalars['String']['output']>;
-  baseTokenDelta?: Maybe<Scalars['String']['output']>;
   collateral?: Maybe<Scalars['String']['output']>;
-  collateralDelta?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   lpBaseDeltaToken?: Maybe<Scalars['String']['output']>;
   lpQuoteDeltaToken?: Maybe<Scalars['String']['output']>;
-  position?: Maybe<PositionType>;
+  position?: Maybe<Position>;
   quoteToken?: Maybe<Scalars['String']['output']>;
-  quoteTokenDelta?: Maybe<Scalars['String']['output']>;
-  timestamp: Scalars['Int']['output'];
+  timestamp?: Maybe<Scalars['Int']['output']>;
   tradeRatioD18?: Maybe<Scalars['String']['output']>;
   transactionHash?: Maybe<Scalars['String']['output']>;
   type: Scalars['String']['output'];
