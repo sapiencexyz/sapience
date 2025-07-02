@@ -6,10 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
+import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
-import { Switch } from '@sapience/ui/components/ui/switch';
+import Slider from '@sapience/ui/components/ui/slider';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Search } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
@@ -19,6 +20,8 @@ import { useAccount } from 'wagmi';
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
+import PredictionDisplay from '~/components/shared/PredictionDisplay';
+import PositionValueDisplay from '~/components/shared/PositionValueDisplay';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
@@ -30,6 +33,7 @@ import {
 } from '~/lib/context/MarketGroupPageProvider';
 import type { MarketGroupClassification } from '~/lib/types';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
+import { formatRelativeTime } from '~/lib/utils/timeUtils';
 
 export type ActiveTab = 'predict' | 'wager';
 
@@ -40,6 +44,7 @@ const mockComments = [
     address: '0x742d35Cc6Ab4b8c0e5d5b7a1aebd2C7B4e37Ca2D',
     timestamp: Date.now() - 1000 * 60 * 30, // 30 minutes ago
     comment: 'This market looks really promising. I think the price will continue to trend upward based on recent economic indicators.',
+    prediction: { value: '1.50', side: 'yes' as const },
     positions: [
       {
         id: 'pos1',
@@ -67,6 +72,7 @@ const mockComments = [
     address: '0x8ba1f109551bD432803012645Hac136c22C5FfFF',
     timestamp: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
     comment: 'Not sure about this one. The volatility has been crazy lately and I think we might see a correction soon.',
+    prediction: { value: '0.75', side: 'no' as const },
     positions: [
       {
         id: 'pos2',
@@ -94,6 +100,7 @@ const mockComments = [
     address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
     timestamp: Date.now() - 1000 * 60 * 60 * 6, // 6 hours ago
     comment: 'Just placed a large wager on YES. The fundamentals look strong and I expect this to resolve positively.',
+    prediction: { value: '2.25', side: 'yes' as const },
     positions: [
       {
         id: 'pos3',
@@ -255,6 +262,8 @@ const MarketGroupPageContent = () => {
   const pathname = usePathname();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
+  const [minSize, setMinSize] = useState([0]);
+  const [addressFilter, setAddressFilter] = useState('');
 
   // Local trigger that will be bumped whenever the user submits a new wager
   const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
@@ -417,12 +426,37 @@ const MarketGroupPageContent = () => {
           {/* Row 4: Comments Section */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-2xl font-medium">Comments</h3>
-              <div className="flex items-center space-x-2">
-                <Switch id="only-with-positions" />
-                <Label htmlFor="only-with-positions" className="text-sm">
-                  Only accounts with positions
-                </Label>
+              <h3 className="text-2xl font-medium">Forecasts</h3>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-1">
+                  <Label htmlFor="min-size" className="text-sm whitespace-nowrap text-muted-foreground font-light">
+                    Min Size:
+                  </Label>
+                  <span className="text-sm text-muted-foreground min-w-[2rem]">
+                    {minSize[0]}
+                  </span>
+                  <div className="w-32">
+                    <Slider
+                      id="min-size"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={minSize}
+                      onValueChange={setMinSize}
+                      className="cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Filter by address..."
+                    value={addressFilter}
+                    onChange={(e) => setAddressFilter(e.target.value)}
+                    className="pl-10 w-48 bg-transparent border-input"
+                  />
+                </div>
               </div>
             </div>
             <div className="bg-card border border-border rounded shadow-sm">
@@ -431,14 +465,22 @@ const MarketGroupPageContent = () => {
                 <div key={comment.id} className="p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <AddressDisplay address={comment.address} />
-                      <PositionBadge positions={comment.positions} />
+                      <PredictionDisplay 
+                        prediction={comment.prediction.side} 
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {formatRelativeTime(comment.timestamp)}
+                      </span>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(comment.timestamp).toLocaleString()}
-                    </span>
+                    <div className="flex items-center gap-6 ml-8">
+                      <PositionValueDisplay 
+                        value={comment.prediction.value}
+                        prediction={comment.prediction.side}
+                      />
+                      <AddressDisplay address={comment.address} />
+                    </div>
                   </div>
-                  <p className="leading-relaxed">{comment.comment}</p>
+                  <p className="text-lg leading-relaxed">{comment.comment}</p>
                 </div>
               ))}
               </div>
