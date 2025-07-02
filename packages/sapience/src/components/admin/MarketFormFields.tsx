@@ -766,12 +766,10 @@ const MarketFormFields = ({
       // Copy claim statement - try multiple sources
       let claimStatement = '';
 
-      if (selectedMarketGroup.claimStatement) {
-        claimStatement = selectedMarketGroup.claimStatement;
-      } else if (selectedMarketGroup.marketParams?.claimStatement) {
-        claimStatement = selectedMarketGroup.marketParams.claimStatement;
-      } else if (selectedMarket.marketParams?.claimStatement) {
-        claimStatement = selectedMarket.marketParams.claimStatement;
+      if (selectedMarketGroup.marketParamsClaimstatement) {
+        claimStatement = selectedMarketGroup.marketParamsClaimstatement;
+      } else if (selectedMarket.marketParamsClaimstatement) {
+        claimStatement = selectedMarket.marketParamsClaimstatement;
       }
 
       if (claimStatement) {
