@@ -35,30 +35,27 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
      * @inheritdoc ITradeModule
      */
     function createTraderPosition(
-        uint256 marketId,
-        int256 size,
-        uint256 deltaCollateralLimit,
-        uint256 deadline
+        ISapienceStructs.TraderPositionCreateParams memory params
     ) external nonReentrant returns (uint256 positionId) {
-        if (block.timestamp > deadline) {
-            revert Errors.TransactionExpired(deadline, block.timestamp);
+        if (block.timestamp > params.deadline) {
+            revert Errors.TransactionExpired(params.deadline, block.timestamp);
         }
 
-        if (size == 0) {
+        if (params.size == 0) {
             revert Errors.DeltaTradeIsZero();
         }
 
-        _checkTradeSize(size);
+        _checkTradeSize(params.size);
 
-        Market.Data storage market = Market.load(marketId);
+        Market.Data storage market = Market.load(params.marketId);
 
         // check if market is not settled
         market.validateNotSettled();
 
-        // Normalize deltaCollateralLimit to 18 decimals
+        // Normalize maxCollateral to 18 decimals
         MarketGroup.Data storage marketGroup = MarketGroup.load();
-        uint256 normalizedMaxCollateral = deltaCollateralLimit > 0
-            ? marketGroup.normalizeCollateralAmount(deltaCollateralLimit)
+        uint256 normalizedMaxCollateral = params.maxCollateral > 0
+            ? marketGroup.normalizeCollateralAmount(params.maxCollateral)
             : 0;
 
         // Mint position NFT and initialize position
@@ -76,7 +73,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidTransferRecipient(msg.sender);
         }
         ERC721Storage._mint(msg.sender, positionId);
-        position.marketId = marketId;
+        position.marketId = params.marketId;
         position.kind = ISapienceStructs.PositionKind.Trade;
 
         uint256 initialPrice = market.getReferencePrice();
@@ -85,8 +82,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             .QuoteOrTradeInputParams({
                 oldPosition: position,
                 initialSize: 0,
-                targetSize: size,
-                deltaSize: size,
+                targetSize: params.size,
+                deltaSize: params.size,
                 isQuote: false
             });
 
@@ -126,7 +123,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         _emitTraderPositionCreated(
             ISapiencePositionEvents.TraderPositionCreatedEventData({
                 sender: msg.sender,
-                marketId: marketId,
+                marketId: params.marketId,
                 positionId: positionId,
                 requiredCollateral: outputParams.requiredCollateral,
                 initialPrice: initialPrice,
@@ -153,33 +150,30 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
      * @inheritdoc ITradeModule
      */
     function modifyTraderPosition(
-        uint256 positionId,
-        int256 size,
-        int256 deltaCollateralLimit,
-        uint256 deadline
+        ISapienceStructs.TraderPositionModifyParams memory params
     ) external nonReentrant {
         ModifyTraderPositionRuntime memory runtime;
-        if (block.timestamp > deadline) {
-            revert Errors.TransactionExpired(deadline, block.timestamp);
+        if (block.timestamp > params.deadline) {
+            revert Errors.TransactionExpired(params.deadline, block.timestamp);
         }
 
-        if (ERC721Storage._ownerOf(positionId) != msg.sender) {
-            revert Errors.NotAccountOwner(positionId, msg.sender);
+        if (ERC721Storage._ownerOf(params.positionId) != msg.sender) {
+            revert Errors.NotAccountOwner(params.positionId, msg.sender);
         }
 
-        Position.Data storage position = Position.loadValid(positionId);
+        Position.Data storage position = Position.loadValid(params.positionId);
 
         if (position.kind != ISapienceStructs.PositionKind.Trade) {
             revert Errors.InvalidPositionKind();
         }
 
-        runtime.deltaSize = size - position.positionSize();
+        runtime.deltaSize = params.size - position.positionSize();
         if (runtime.deltaSize == 0) {
             revert Errors.DeltaTradeIsZero();
         }
 
         // Checking both the new size and the delta size to avoid small trades that can mess with rounding errors
-        _checkTradeSize(size);
+        _checkTradeSize(params.size);
         _checkTradeSize(runtime.deltaSize);
 
         Market.Data storage market = Market.load(position.marketId);
@@ -189,7 +183,8 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
 
         // Normalize deltaCollateralLimit to 18 decimals
         MarketGroup.Data storage marketGroup = MarketGroup.load();
-        int256 normalizedDeltaCollateralLimit = marketGroup.normalizeSignedCollateralAmount(deltaCollateralLimit);
+        int256 normalizedDeltaCollateralLimit = marketGroup
+            .normalizeSignedCollateralAmount(params.deltaCollateralLimit);
 
         runtime.initialPrice = market.getReferencePrice();
 
@@ -197,7 +192,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             .QuoteOrTradeInputParams({
                 oldPosition: position,
                 initialSize: position.positionSize(),
-                targetSize: size,
+                targetSize: params.size,
                 deltaSize: runtime.deltaSize,
                 isQuote: false
             });
@@ -212,7 +207,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         // Ensures that the position only have single side tokens
         position.rebalanceVirtualTokens();
 
-        if (size == 0) {
+        if (params.size == 0) {
             // Closing the position. No need to check collateral limit
             // We need to:
 
@@ -284,7 +279,7 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
             ISapiencePositionEvents.TraderPositionModifiedEventData({
                 sender: msg.sender,
                 marketId: position.marketId,
-                positionId: positionId,
+                positionId: params.positionId,
                 requiredCollateral: outputParams.requiredCollateral,
                 initialPrice: runtime.initialPrice,
                 finalPrice: runtime.finalPrice,

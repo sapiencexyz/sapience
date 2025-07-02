@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
+import {ISapienceStructs} from "./ISapienceStructs.sol";
+
 interface IUMASettlementModule {
     event SettlementSubmitted(
         uint256 marketId,
@@ -18,9 +20,7 @@ interface IUMASettlementModule {
     // Notice, if we are on a bridged configuration, asserter is the address of the user that deposited the bond on the other side of the bridge (UMA Side)
     // and will be the one receiving the bond back from the other side of the bridge (UMA Side) when the assertion is resolved
     function submitSettlementPrice(
-        uint256 marketId,
-        address asserter,
-        uint160 settlementSqrtPriceX96
+        ISapienceStructs.SettlementPriceParams memory params
     ) external returns (bytes32);
 
     function assertionResolvedCallback(

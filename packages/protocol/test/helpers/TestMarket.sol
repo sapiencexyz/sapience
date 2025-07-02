@@ -53,14 +53,16 @@ contract TestMarket is TestUser {
 
         vm.prank(owner);
         sapience.createMarket(
-            block.timestamp,
-            block.timestamp + 30 days,
-            startingSqrtPriceX96,
-            minTick,
-            maxTick,
-            CREATE_MARKET_SALT,
-            claimStatementYesOrNumeric,
-            claimStatementNo
+            ISapienceStructs.MarketCreationParams({
+                startTime: block.timestamp,
+                endTime: block.timestamp + 30 days,
+                startingSqrtPriceX96: startingSqrtPriceX96,
+                baseAssetMinPriceTick: minTick,
+                baseAssetMaxPriceTick: maxTick,
+                salt: CREATE_MARKET_SALT,
+                claimStatementYesOrNumeric: claimStatementYesOrNumeric,
+                claimStatementNo: claimStatementNo
+            })
         );
 
         return (sapience, owner);
@@ -124,9 +126,11 @@ contract TestMarket is TestUser {
 
         bondCurrency.approve(address(sapience), bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
-            marketId,
-            owner,
-            price
+            ISapienceStructs.SettlementPriceParams({
+                marketId: marketId,
+                asserter: owner,
+                settlementSqrtPriceX96: price
+            })
         );
         vm.stopPrank();
 

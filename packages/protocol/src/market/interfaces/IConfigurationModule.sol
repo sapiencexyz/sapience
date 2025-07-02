@@ -57,13 +57,6 @@ interface IConfigurationModule {
     ) external;
 
     function createMarket(
-        uint256 startTime,
-        uint256 endTime,
-        uint160 startingSqrtPriceX96,
-        int24 baseAssetMinPriceTick,
-        int24 baseAssetMaxPriceTick,
-        uint256 salt,
-        bytes calldata claimStatementYesOrNumeric,
-        bytes calldata claimStatementNo
+        ISapienceStructs.MarketCreationParams memory params
     ) external returns (uint256 marketId);
 }

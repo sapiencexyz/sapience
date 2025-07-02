@@ -73,4 +73,34 @@ interface ISapienceStructs {
         bytes claimStatementYesOrNumeric;
         bytes claimStatementNo;
     }
+
+    struct TraderPositionCreateParams {
+        uint256 marketId;
+        int256 size;
+        uint256 maxCollateral;
+        uint256 deadline;
+    }
+
+    struct TraderPositionModifyParams {
+        uint256 positionId;
+        int256 size;
+        int256 deltaCollateralLimit;
+        uint256 deadline;
+    }
+
+    struct MarketCreationParams {
+        uint256 startTime;
+        uint256 endTime;
+        uint160 startingSqrtPriceX96;
+        int24 baseAssetMinPriceTick;
+        int24 baseAssetMaxPriceTick;
+        uint256 salt;
+        bytes claimStatement;
+    }
+
+    struct SettlementPriceParams {
+        uint256 marketId;
+        address asserter;
+        uint160 settlementSqrtPriceX96;
+    }
 }
