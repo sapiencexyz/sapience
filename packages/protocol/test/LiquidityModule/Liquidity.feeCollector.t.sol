@@ -62,7 +62,8 @@ contract LiquidityFeeCollectorTest is TestTrade {
             startingSqrtPriceX96,
             feeCollectors,
             MIN_TRADE_SIZE,
-            "wstGwei/quote"
+            "wstGwei/quote",
+            ""
         );
 
         (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
