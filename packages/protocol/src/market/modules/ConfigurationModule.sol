@@ -82,16 +82,23 @@ contract ConfigurationModule is
 
         Market.createValid(
             newMarketId,
-            startTime,
-            endTime,
-            startingSqrtPriceX96,
-            baseAssetMinPriceTick,
-            baseAssetMaxPriceTick,
-            salt,
-            claimStatementYesOrNumeric,
-            claimStatementNo
+            params.startTime,
+            params.endTime,
+            params.startingSqrtPriceX96,
+            params.baseAssetMinPriceTick,
+            params.baseAssetMaxPriceTick,
+            params.salt,
+            params.claimStatementYesOrNumeric,
+            params.claimStatementNo
         );
-        emit MarketCreated(newMarketId, startTime, endTime, startingSqrtPriceX96, claimStatementYesOrNumeric, claimStatementNo);
+        emit MarketCreated(
+            newMarketId,
+            params.startTime,
+            params.endTime,
+            params.startingSqrtPriceX96,
+            params.claimStatementYesOrNumeric,
+            params.claimStatementNo
+        );
 
         return newMarketId;
     }

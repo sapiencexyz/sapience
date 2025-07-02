@@ -35,7 +35,8 @@ contract TestMarket is TestUser {
                 startingSqrtPriceX96,
                 feeCollectors,
                 minTradeSize,
-                marketClaimStatement
+                marketClaimStatement,
+                ""
             );
     }
 

@@ -67,8 +67,8 @@ library Market {
         int24 baseAssetMinPriceTick,
         int24 baseAssetMaxPriceTick,
         uint256 salt,
-        bytes calldata claimStatementYesOrNumeric,
-        bytes calldata claimStatementNo
+        bytes memory claimStatementYesOrNumeric,
+        bytes memory claimStatementNo
     ) internal returns (Data storage market) {
         MarketGroup.Data storage marketGroup = MarketGroup.loadValid();
         ISapienceStructs.MarketParams storage marketParams = marketGroup

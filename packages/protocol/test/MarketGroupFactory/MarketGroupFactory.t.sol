@@ -190,7 +190,8 @@ contract MarketGroupFactoryTest is Test {
                 baseAssetMinPriceTick: minTick,
                 baseAssetMaxPriceTick: maxTick,
                 salt: 1,
-                claimStatement: "claimStatement"
+                claimStatementYesOrNumeric: "claimStatementYes",
+                claimStatementNo: ""
             })
         );
         vm.stopPrank();
