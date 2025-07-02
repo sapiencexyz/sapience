@@ -8,4 +8,4 @@ data
 
 /generated/prisma
 
-packages/api/tsconfig.tsbuildinfo
+tsconfig.tsbuildinfo
