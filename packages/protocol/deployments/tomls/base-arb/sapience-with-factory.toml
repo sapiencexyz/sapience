@@ -1,0 +1,77 @@
+name="sapience"
+version="1.1.0"
+preset="test"
+
+# Fake initialization to make it unusable, intended to be cloned via factory
+[var.settings]
+nonowner="0x0000000000000000000013370000000000000000"
+collateralCurrency = "0x5875eee11cf8398102fdad704c9e96607675467a" # sUSDS Collateral on Base
+uniswapPositionManager = "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1" # Uniswap V3 NonfungiblePositionManager 
+uniswapSwapRouter = "0xAf5ead464aFFB12dD4CDFB98c9D2C490194FE5d0" # Using our deployed SwapRouter // "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45" # Uniswap V3 SwapRouter 
+uniswapQuoter = "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a" # Uniswap V3 QuoterV2 
+minTradeSize = "10000"
+feeRate = "10000" # 1%
+assertionLiveness = "21600"
+bridgedSettlement = true
+bondCurrency = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" # sUSDS Bond address is used on Arbitrum One where UMA is using the bond
+optimisticOracleV3 = "0xee6832F73862ABac4CC87bE58B4A949edd8533F7" # Bridge on Base to Arb's UMA Optimistic Oracle V3 
+bondAmount = "500000000"
+
+[deploy.ConfigurationModule]
+artifact="ConfigurationModule"
+
+[deploy.LiquidityModule]
+artifact="LiquidityModule"
+
+[deploy.UMASettlementModule]
+artifact="UMASettlementModule"
+
+[deploy.TradeModule]
+artifact="TradeModule"
+
+[deploy.NftModule]
+artifact="NftModule"
+
+[deploy.ViewsModule]
+artifact="ViewsModule"
+
+[deploy.ERC165Module]
+artifact="ERC165Module"
+
+[deploy.SettlementModule]
+artifact="SettlementModule"
+
+[router.Sapience]
+contracts=[
+  "ConfigurationModule",
+  "LiquidityModule",
+  "UMASettlementModule",
+  "TradeModule",
+  "NftModule",
+  "ViewsModule",
+  "ERC165Module",
+  "SettlementModule"
+]
+highlight=true
+
+[deploy.MarketGroupFactory]
+artifact="MarketGroupFactory"
+args=[
+  "<%= Sapience.address %>"
+]
+highlight=true
+depends=["router.Sapience"]
+
+[invoke.initializeMarketGroupAsUnusable]
+target="Sapience"
+func="initializeMarketGroup"
+args=[
+  "<%= settings.nonowner %>",
+  "<%= settings.collateralCurrency %>",
+  [],
+  "<%= zeroAddress %>",
+  "<%= settings.minTradeSize %>",
+  "<%= settings.bridgedSettlement %>,
+  { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= settings.bondCurrency %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "<%= settings.uniswapPositionManager %>", uniswapSwapRouter = "<%= settings.uniswapSwapRouter %>", uniswapQuoter = "<%= settings.uniswapQuoter %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>" }
+]
+depends=["router.Sapience"]
