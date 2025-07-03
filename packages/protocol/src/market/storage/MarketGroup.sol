@@ -65,18 +65,19 @@ library MarketGroup {
         marketGroup.collateralScalingFactor = decimals < 18
             ? 10 ** (18 - decimals)
             : 1;
-/*
-        // check marketParams.bondAmount is greater than the minimum bond for the assertion currency
-        uint256 minUMABond = OptimisticOracleV3Interface(
-            marketParams.optimisticOracleV3
-        ).getMinimumBond(marketParams.bondCurrency);
-        if (marketParams.bondAmount < minUMABond) {
-            revert Errors.InvalidBondAmount(
-                marketParams.bondAmount,
-                minUMABond
-            );
+
+        if(!bridgedSettlement) {
+            // check marketParams.bondAmount is greater than the minimum bond for the assertion currency
+            uint256 minUMABond = OptimisticOracleV3Interface(
+                marketParams.optimisticOracleV3
+            ).getMinimumBond(marketParams.bondCurrency);
+            if (marketParams.bondAmount < minUMABond) {
+                revert Errors.InvalidBondAmount(
+                    marketParams.bondAmount,
+                    minUMABond
+                );
+            }
         }
-*/
     }
 
     function loadValid() internal view returns (Data storage marketGroup) {
