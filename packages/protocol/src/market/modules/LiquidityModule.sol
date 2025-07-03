@@ -56,6 +56,18 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         uint256 loanAmount1;
     }
 
+    struct CreateLpStack {
+        uint256 id;
+        uint256 requiredCollateralAmount;
+        uint256 totalDepositedCollateralAmount;
+        uint256 uniswapNftId;
+        uint128 liquidity;
+        uint256 addedAmount0;
+        uint256 addedAmount1;
+        bool isFeeCollector;
+        int256 deltaCollateral;
+    }
+
     function createLiquidityPosition(
         ISapienceStructs.LiquidityMintParams calldata params
     )
@@ -72,34 +84,103 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             uint256 addedAmount1
         )
     {
+        CreateLpStack memory stack;
+
         if (params.deadline < block.timestamp) {
             revert Errors.TransactionExpired(params.deadline, block.timestamp);
         }
 
-        id = ERC721EnumerableStorage.totalSupply() + 1;
-        Position.Data storage position = Position.createValid(id);
+        stack.id = ERC721EnumerableStorage.totalSupply() + 1;
+        Position.Data storage position = Position.createValid(stack.id);
         if (
             !ERC721Storage._checkOnERC721Received(
                 address(this),
                 msg.sender,
-                id,
+                stack.id,
                 ""
             )
         ) {
             revert Errors.InvalidTransferRecipient(msg.sender);
         }
-        ERC721Storage._mint(msg.sender, id);
+        ERC721Storage._mint(msg.sender, stack.id);
 
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         Market.Data storage market = Market.loadValid(params.marketId);
         market.validateLpRequirements(params.lowerTick, params.upperTick);
 
         (
-            uniswapNftId,
-            liquidity,
-            addedAmount0,
-            addedAmount1
-        ) = INonfungiblePositionManager(
+            stack.uniswapNftId,
+            stack.liquidity,
+            stack.addedAmount0,
+            stack.addedAmount1
+        ) = _mintUniswapPosition(marketGroup, market, params);
+
+        stack.isFeeCollector = marketGroup.isFeeCollector(msg.sender);
+
+        Position.UpdateLpParams memory updateParams = Position.UpdateLpParams({
+            uniswapNftId: stack.uniswapNftId,
+            liquidity: stack.liquidity,
+            additionalCollateral: marketGroup.normalizeCollateralAmount(
+                params.collateralAmount
+            ),
+            additionalLoanAmount0: stack.addedAmount0,
+            additionalLoanAmount1: stack.addedAmount1,
+            lowerTick: params.lowerTick,
+            upperTick: params.upperTick,
+            tokensOwed0: 0,
+            tokensOwed1: 0,
+            isFeeCollector: stack.isFeeCollector
+        });
+
+        (
+            stack.requiredCollateralAmount,
+            stack.totalDepositedCollateralAmount,
+            ,
+        ) = position.updateValidLp(
+            market,
+            updateParams
+        );
+
+        stack.deltaCollateral = position.updateCollateral(
+            stack.totalDepositedCollateralAmount
+        );
+
+        ISapiencePositionEvents.LiquidityPositionCreatedEventData memory eventData = ISapiencePositionEvents.LiquidityPositionCreatedEventData({
+            sender: msg.sender,
+            marketId: market.id,
+            positionId: stack.id,
+            liquidity: stack.liquidity,
+            addedAmount0: stack.addedAmount0,
+            addedAmount1: stack.addedAmount1,
+            lowerTick: params.lowerTick,
+            upperTick: params.upperTick,
+            positionCollateralAmount: position.depositedCollateralAmount,
+            positionVquoteAmount: position.vQuoteAmount,
+            positionVbaseAmount: position.vBaseAmount,
+            positionBorrowedVquote: position.borrowedVQuote,
+            positionBorrowedVbase: position.borrowedVBase,
+            deltaCollateral: stack.deltaCollateral
+        });
+
+        _emitLiquidityPositionCreated(eventData);
+
+        return (
+            stack.id,
+            stack.requiredCollateralAmount,
+            stack.totalDepositedCollateralAmount,
+            stack.uniswapNftId,
+            stack.liquidity,
+            stack.addedAmount0,
+            stack.addedAmount1
+        );
+    }
+
+    function _mintUniswapPosition(
+        MarketGroup.Data storage marketGroup,
+        Market.Data storage market,
+        ISapienceStructs.LiquidityMintParams calldata params
+    ) private returns (uint256 uniswapNftId, uint128 liquidity, uint256 addedAmount0, uint256 addedAmount1) {
+        return INonfungiblePositionManager(
             marketGroup.marketParams.uniswapPositionManager
         ).mint(
                 INonfungiblePositionManager.MintParams({
@@ -116,54 +197,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                     deadline: params.deadline
                 })
             );
-
-        bool isFeeCollector = marketGroup.isFeeCollector(msg.sender);
-
-        (
-            requiredCollateralAmount,
-            totalDepositedCollateralAmount,
-            ,
-
-        ) = position.updateValidLp(
-            market,
-            Position.UpdateLpParams({
-                uniswapNftId: uniswapNftId,
-                liquidity: liquidity,
-                additionalCollateral: marketGroup.normalizeCollateralAmount(
-                    params.collateralAmount
-                ),
-                additionalLoanAmount0: addedAmount0,
-                additionalLoanAmount1: addedAmount1,
-                lowerTick: params.lowerTick,
-                upperTick: params.upperTick,
-                tokensOwed0: 0,
-                tokensOwed1: 0,
-                isFeeCollector: isFeeCollector
-            })
-        );
-
-        int256 deltaCollateral = position.updateCollateral(
-            totalDepositedCollateralAmount
-        );
-
-        _emitLiquidityPositionCreated(
-            ISapiencePositionEvents.LiquidityPositionCreatedEventData({
-                sender: msg.sender,
-                marketId: market.id,
-                positionId: id,
-                liquidity: liquidity,
-                addedAmount0: addedAmount0,
-                addedAmount1: addedAmount1,
-                lowerTick: params.lowerTick,
-                upperTick: params.upperTick,
-                positionCollateralAmount: position.depositedCollateralAmount,
-                positionVquoteAmount: position.vQuoteAmount,
-                positionVbaseAmount: position.vBaseAmount,
-                positionBorrowedVquote: position.borrowedVQuote,
-                positionBorrowedVbase: position.borrowedVBase,
-                deltaCollateral: deltaCollateral
-            })
-        );
     }
 
     function decreaseLiquidityPosition(
@@ -852,8 +885,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
     }
 
     function _emitLiquidityPositionCreated(
-        ISapiencePositionEvents.LiquidityPositionCreatedEventData
-            memory eventData
+        ISapiencePositionEvents.LiquidityPositionCreatedEventData memory eventData
     ) private {
         emit ISapiencePositionEvents.LiquidityPositionCreated(
             eventData.sender,
