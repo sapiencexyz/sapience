@@ -94,6 +94,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         Market.Data storage market = Market.loadValid(params.marketId);
         market.validateLpRequirements(params.lowerTick, params.upperTick);
 
+        uint256 normalizedCollateral = marketGroup.normalizeCollateralAmount(
+            params.collateralAmount
+        );
+
         (
             uniswapNftId,
             liquidity,
@@ -117,8 +121,6 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
                 })
             );
 
-        bool isFeeCollector = marketGroup.isFeeCollector(msg.sender);
-
         (
             requiredCollateralAmount,
             totalDepositedCollateralAmount,
@@ -129,16 +131,14 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             Position.UpdateLpParams({
                 uniswapNftId: uniswapNftId,
                 liquidity: liquidity,
-                additionalCollateral: marketGroup.normalizeCollateralAmount(
-                    params.collateralAmount
-                ),
+                additionalCollateral: normalizedCollateral,
                 additionalLoanAmount0: addedAmount0,
                 additionalLoanAmount1: addedAmount1,
                 lowerTick: params.lowerTick,
                 upperTick: params.upperTick,
                 tokensOwed0: 0,
                 tokensOwed1: 0,
-                isFeeCollector: isFeeCollector
+                isFeeCollector: marketGroup.isFeeCollector(msg.sender)
             })
         );
 
@@ -150,7 +150,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             ISapiencePositionEvents.LiquidityPositionCreatedEventData({
                 sender: msg.sender,
                 marketId: market.id,
-                positionId: id,
+                positionId: position.id,
                 liquidity: liquidity,
                 addedAmount0: addedAmount0,
                 addedAmount1: addedAmount1,
