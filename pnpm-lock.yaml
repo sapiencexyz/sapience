@@ -324,8 +324,8 @@ importers:
         specifier: ^1.4.4
         version: 1.4.4
       '@usecannon/cli':
-        specifier: 2.23.0
-        version: 2.23.0(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
+        specifier: 2.24.1
+        version: 2.24.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
     devDependencies:
       '@layerzerolabs/lz-evm-messagelib-v2':
         specifier: ^3.0.104
@@ -7059,12 +7059,12 @@ packages:
     engines: {node: '>=10'}
     deprecated: Please upgrade to 1.0.1
 
-  '@usecannon/builder@2.23.0':
-    resolution: {integrity: sha512-a0WwHNM+RYvs4DTnKTagWsPLB/XVySeTFs/DofoJAVhKN2cKSyhhr9i41KcsPHN1pVt3+49VvRhZJm1eyAIq4g==}
+  '@usecannon/builder@2.24.1':
+    resolution: {integrity: sha512-ATQlBYbbGpfOZpRD/vx0/gnCJLiybt7RzZSH6qXduzh4lpwnYOfHTtt+khn76nXn/yga9M/+/mPs3m04hc4Eww==}
     engines: {node: '>=16.0.0'}
 
-  '@usecannon/cli@2.23.0':
-    resolution: {integrity: sha512-XP+GP4zi8kxJOifqFg1JijbEjvTMH9KbtBRWrOcFkEuqJ3M4TO++vkkkEMue36loMnAaThV2RAxm4j21TjSggg==}
+  '@usecannon/cli@2.24.1':
+    resolution: {integrity: sha512-KnbG6DoRfbEKtXCVB3/6N2iYimY1Ejrzjde2EGm2dIeOPGxWyMWUIMOSnTcGRT7wsrDU4uJCU6x2xcaDyGXuiw==}
     hasBin: true
 
   '@usecannon/router@4.1.3':
@@ -17392,9 +17392,6 @@ packages:
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
 
-  web-solc@0.5.1:
-    resolution: {integrity: sha512-Z/hBplZq1+4i4bYeIeD9N3vP1BLUBXpSDa4h0Ipm2Z2cHv7x7DtZ2zFb0E1L1VZo4BF+OJGVtGlT+nTUXGgncQ==}
-
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
     engines: {node: '>= 8'}
@@ -18541,7 +18538,7 @@ snapshots:
       '@babel/traverse': 7.26.10
       '@babel/types': 7.26.10
       convert-source-map: 2.0.0
-      debug: 4.4.0
+      debug: 4.4.1(supports-color@8.1.1)
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -19491,7 +19488,7 @@ snapshots:
       '@babel/parser': 7.26.10
       '@babel/template': 7.26.9
       '@babel/types': 7.26.10
-      debug: 4.4.0
+      debug: 4.4.1(supports-color@8.1.1)
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -25455,7 +25452,7 @@ snapshots:
 
   '@solana/wallet-standard-util@1.1.2':
     dependencies:
-      '@noble/curves': 1.8.2
+      '@noble/curves': 1.9.1
       '@solana/wallet-standard-chains': 1.1.1
       '@solana/wallet-standard-features': 1.3.0
 
@@ -26550,7 +26547,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/typescript-estree': 8.21.0(typescript@5.7.2)
       '@typescript-eslint/utils': 8.21.0(eslint@9.15.0(jiti@2.4.2))(typescript@5.7.2)
-      debug: 4.4.0
+      debug: 4.4.1(supports-color@8.1.1)
       eslint: 9.15.0(jiti@2.4.2)
       ts-api-utils: 2.0.0(typescript@5.7.2)
       typescript: 5.7.2
@@ -26595,7 +26592,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.21.0
       '@typescript-eslint/visitor-keys': 8.21.0
-      debug: 4.4.0
+      debug: 4.4.1(supports-color@8.1.1)
       fast-glob: 3.3.2
       is-glob: 4.0.3
       minimatch: 9.0.5
@@ -26942,7 +26939,7 @@ snapshots:
       '@uniswap/v3-core': 1.0.0
       '@uniswap/v3-periphery': 1.4.4
 
-  '@usecannon/builder@2.23.0(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
+  '@usecannon/builder@2.24.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@usecannon/router': 4.1.3
       '@usecannon/web-solc': 0.5.1
@@ -26970,10 +26967,10 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@usecannon/cli@2.23.0(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
+  '@usecannon/cli@2.24.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@iarna/toml': 3.0.0
-      '@usecannon/builder': 2.23.0(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
+      '@usecannon/builder': 2.24.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.6.2)(utf-8-validate@5.0.10)
       abitype: 1.0.8(typescript@5.6.2)(zod@3.24.2)
       chalk: 4.1.2
       commander: 12.1.0
@@ -27006,9 +27003,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@usecannon/web-solc@0.5.1':
-    dependencies:
-      web-solc: 0.5.1
+  '@usecannon/web-solc@0.5.1': {}
 
   '@vanilla-extract/babel-plugin-debug-ids@1.2.0':
     dependencies:
@@ -27995,7 +27990,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.4.0
+      debug: 4.4.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -30644,7 +30639,7 @@ snapshots:
     dependencies:
       '@ecies/ciphers': 0.2.3(@noble/ciphers@1.2.1)
       '@noble/ciphers': 1.2.1
-      '@noble/curves': 1.8.2
+      '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
 
   ee-first@1.1.1: {}
@@ -37124,7 +37119,7 @@ snapshots:
   ox@0.6.9(typescript@5.6.2)(zod@3.24.2):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
-      '@noble/curves': 1.8.1
+      '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4
@@ -37138,7 +37133,7 @@ snapshots:
   ox@0.6.9(typescript@5.7.2)(zod@3.22.4):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
-      '@noble/curves': 1.8.1
+      '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4
@@ -37152,7 +37147,7 @@ snapshots:
   ox@0.6.9(typescript@5.7.2)(zod@3.23.6):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
-      '@noble/curves': 1.8.1
+      '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4
@@ -37166,7 +37161,7 @@ snapshots:
   ox@0.6.9(typescript@5.7.2)(zod@3.23.8):
     dependencies:
       '@adraffy/ens-normalize': 1.11.0
-      '@noble/curves': 1.8.1
+      '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0
       '@scure/bip32': 1.6.2
       '@scure/bip39': 1.5.4
@@ -41401,10 +41396,6 @@ snapshots:
       '@zxing/text-encoding': 0.9.0
 
   web-namespaces@2.0.1: {}
-
-  web-solc@0.5.1:
-    dependencies:
-      semver: 7.7.2
 
   web-streams-polyfill@3.3.3: {}
 

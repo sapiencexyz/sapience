@@ -20,7 +20,8 @@ interface IConfigurationModule {
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
-        bytes claimStatement
+        bytes claimStatementYesOrNumeric,
+        bytes claimStatementNo
     );
 
     event OwnershipTransferStarted(

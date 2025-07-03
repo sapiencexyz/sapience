@@ -1,5 +1,5 @@
 name="sapience"
-version="1.0.4"
+version="1.0.5"
 
 [var.settings]
 owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
@@ -96,7 +96,8 @@ args=[
   "<%= settings.baseAssetMinPriceTick %>",
   "<%= settings.baseAssetMaxPriceTick %>",
   "1",
-  "<%= settings.claimStatement %>"
+  "<%= settings.claimStatement %>",
+  ""
 ]
 depends=["invoke.initializeMarketGroup"]
 

@@ -47,7 +47,8 @@ library Market {
         uint256 maxPriceD18;
         uint256 feeRateD18;
         uint256 id;
-        bytes claimStatement;
+        bytes claimStatementYesOrNumeric;
+        bytes claimStatementNo;
     }
 
     function load(uint256 id) internal pure returns (Data storage market) {
@@ -66,7 +67,8 @@ library Market {
         int24 baseAssetMinPriceTick,
         int24 baseAssetMaxPriceTick,
         uint256 salt,
-        bytes memory claimStatement
+        bytes memory claimStatementYesOrNumeric,
+        bytes memory claimStatementNo
     ) internal returns (Data storage market) {
         MarketGroup.Data storage marketGroup = MarketGroup.loadValid();
         ISapienceStructs.MarketParams storage marketParams = marketGroup
@@ -74,7 +76,7 @@ library Market {
 
         market = load(id);
 
-        require(claimStatement.length > 0, "claimStatement must be non-empty");
+        require(claimStatementYesOrNumeric.length > 0, "claimStatementYesOrNumeric must be non-empty");
 
         // can only be called once
         if (market.startTime != 0) {
@@ -103,7 +105,8 @@ library Market {
         market.endTime = endTime;
 
         // claim statement is the statement that will be used to assert the truth of the market
-        market.claimStatement = claimStatement;
+        market.claimStatementYesOrNumeric = claimStatementYesOrNumeric;
+        market.claimStatementNo = claimStatementNo;
 
         // copy over market parameters into market (clone them to prevent any changes to marketGroup marketParams)
         market.marketParams.feeRate = marketParams.feeRate;

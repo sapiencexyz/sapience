@@ -64,7 +64,8 @@ contract ViewsModule is IViewsModule {
             settled: market.settled,
             settlementPriceD18: market.settlementPriceD18,
             assertionId: market.assertionId,
-            claimStatement: market.claimStatement
+            claimStatementYesOrNumeric: market.claimStatementYesOrNumeric,
+            claimStatementNo: market.claimStatementNo
         });
 
         return (marketData, market.marketParams);
@@ -99,7 +100,8 @@ contract ViewsModule is IViewsModule {
             settled: market.settled,
             settlementPriceD18: market.settlementPriceD18,
             assertionId: market.assertionId,
-            claimStatement: market.claimStatement
+            claimStatementYesOrNumeric: market.claimStatementYesOrNumeric,
+            claimStatementNo: market.claimStatementNo
         });
 
         return (marketData, market.marketParams);

@@ -88,14 +88,16 @@ contract ConfigurationModule is
             params.baseAssetMinPriceTick,
             params.baseAssetMaxPriceTick,
             params.salt,
-            params.claimStatement
+            params.claimStatementYesOrNumeric,
+            params.claimStatementNo
         );
         emit MarketCreated(
             newMarketId,
             params.startTime,
             params.endTime,
             params.startingSqrtPriceX96,
-            params.claimStatement
+            params.claimStatementYesOrNumeric,
+            params.claimStatementNo
         );
 
         return newMarketId;
