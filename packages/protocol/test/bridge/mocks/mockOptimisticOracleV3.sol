@@ -3,7 +3,6 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import {IUMALayerZeroBridge} from "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {console2} from "forge-std/console2.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OptimisticOracleV3Interface} from
     "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";

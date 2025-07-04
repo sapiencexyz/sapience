@@ -5,9 +5,7 @@ import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/
 import {MarketLayerZeroBridge} from "../../src/bridge/MarketLayerZeroBridge.sol";
 import {UMALayerZeroBridge} from "../../src/bridge/UMALayerZeroBridge.sol";
 import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
-import {IETHManagement, IFeeManagement} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
-import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {IETHManagement} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
 import {MockMarketGroup} from "./mocks/mockMarketGroup.sol";

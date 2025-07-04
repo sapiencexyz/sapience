@@ -5,7 +5,7 @@ import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/
 import {MarketLayerZeroBridgeTest} from "./mocks/MarketLayerZeroBridgeTest.sol";
 import {UMALayerZeroBridgeTest} from "./mocks/UMALayerZeroBridgeTest.sol";
 import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
-import {MessagingReceipt, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {Origin} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
