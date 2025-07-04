@@ -1,6 +1,7 @@
 'use client';
 
 import type { Row, Table } from '@tanstack/react-table';
+import type React from 'react';
 
 // Helper component for displaying the formatted PnL value
 const PnLDisplay = ({
@@ -43,9 +44,24 @@ interface ProfitCellProps<TData> {
   };
 }
 
-const ProfitCell = <TData,>({ row, table }: ProfitCellProps<TData>) => {
+const ProfitCell = <TData,>({
+  row,
+  table,
+}: ProfitCellProps<TData>): React.ReactElement => {
   // Ensure the correct column ID is used, assumed to be 'totalPnL' based on previous context
-  const value = row.getValue('totalPnL') as number;
+  const rawValue = row.getValue('totalPnL');
+  // Convert bigint to number if needed, with additional safety checks
+  let value: number;
+  if (typeof rawValue === 'bigint') {
+    value = Number(rawValue);
+  } else if (typeof rawValue === 'string') {
+    value = parseFloat(rawValue);
+  } else if (typeof rawValue === 'number') {
+    value = rawValue;
+  } else {
+    value = 0; // fallback for any other type
+  }
+
   const wstEthPriceUsd = table.options.meta?.wstEthPriceUsd ?? null; // Provide null as default
 
   // Render the display component with the extracted value and price

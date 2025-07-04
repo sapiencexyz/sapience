@@ -1,6 +1,5 @@
 import { IResourcePriceIndexer } from '../../interfaces';
-import { resourcePriceRepository } from '../../db';
-import { Resource } from '../../models/Resource';
+import prisma from '../../db';
 import axios from 'axios';
 import Sentry from '../../instrument';
 
@@ -16,6 +15,11 @@ interface BlockData {
   size: number;
   weight: number;
   difficulty: bigint;
+}
+
+interface Resource {
+  id: number;
+  slug: string;
 }
 
 interface HashrateData {
@@ -99,7 +103,7 @@ class BtcHashIndexer implements IResourcePriceIndexer {
 
       timestamp = Math.floor(priceData.timestamp.getTime() / 1000);
       const price = {
-        resource: { id: resource.id },
+        resourceId: resource.id,
         timestamp,
         value: priceData.average_fee.toString(),
         used: '1', // Set to 1 as requested
@@ -107,7 +111,16 @@ class BtcHashIndexer implements IResourcePriceIndexer {
         blockNumber: timestamp,
       };
 
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      await prisma.resource_price.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: timestamp,
+          },
+        },
+        update: price,
+        create: price,
+      });
       console.log(
         `[BtcIndexer] Stored price and hashrate for timestamp ${timestamp}`
       );
@@ -493,9 +506,9 @@ class BtcHashIndexer implements IResourcePriceIndexer {
       const endTimestamp = Math.floor(targetTimestamp / 1000);
       const startTimestamp = endTimestamp - 7 * 24 * 60 * 60; // 7 days before target date
 
-      const existingPrice = await resourcePriceRepository.findOne({
+      const existingPrice = await prisma.resource_price.findFirst({
         where: {
-          resource: { id: resource.id },
+          resourceId: resource.id,
           timestamp: endTimestamp,
         },
       });

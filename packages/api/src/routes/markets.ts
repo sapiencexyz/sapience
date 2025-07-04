@@ -1,23 +1,23 @@
 import { Response, Router } from 'express';
-import { MarketGroup } from '../models/MarketGroup';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-import dataSource from '../db';
-import { Market } from '../models/Market';
+import prisma from '../db';
 
 const router = Router();
-
-const marketRepository = dataSource.getRepository(MarketGroup);
 
 router.get(
   '/',
   handleAsyncErrors(async (_, res: Response) => {
-    const markets = await marketRepository.find({
-      relations: ['markets', 'resource', 'category'],
+    const markets = await prisma.market_group.findMany({
+      include: {
+        market: true,
+        resource: true,
+        category: true,
+      },
     });
 
-    const formattedMarkets = markets.map((market: MarketGroup) => ({
-      ...market,
-      markets: market.markets.map((market: Market) => ({
+    const formattedMarkets = markets.map((marketGroup) => ({
+      ...marketGroup,
+      markets: marketGroup.market.map((market) => ({
         ...market,
         startTimestamp: Number(market.startTimestamp),
         endTimestamp: Number(market.endTimestamp),

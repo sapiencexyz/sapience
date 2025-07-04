@@ -1,60 +1,63 @@
 import { Resolver, Query, Arg, Int } from 'type-graphql';
-import dataSource from '../../db';
-import { Position } from '../../models/Position';
-import { PositionType } from '../types';
+import prisma from '../../db';
 import { hydrateTransactions } from '../../helpers/hydrateTransactions';
-import { mapPositionToType } from './mappers';
+import { Position } from '../types/PrismaTypes';
+import type { Prisma } from '../../../generated/prisma';
 
-@Resolver(() => PositionType)
+@Resolver(() => Position)
 export class PositionResolver {
-  @Query(() => [PositionType])
+  @Query(() => [Position])
   async positions(
     @Arg('owner', () => String, { nullable: true }) owner?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('marketAddress', () => String, { nullable: true })
     marketAddress?: string
-  ): Promise<PositionType[]> {
+  ): Promise<Position[]> {
     try {
-      let positionsQuery = await dataSource
-        .getRepository(Position)
-        .createQueryBuilder('position')
-        .leftJoinAndSelect('position.market', 'market')
-        .leftJoinAndSelect('market.marketGroup', 'marketGroup')
-        .leftJoinAndSelect('marketGroup.resource', 'resource')
-        .leftJoinAndSelect('marketGroup.markets', 'markets')
-        .leftJoinAndSelect('position.transactions', 'transactions')
-        .leftJoinAndSelect('transactions.event', 'event');
+      const whereConditions: Prisma.positionWhereInput = {};
 
       if (owner) {
-        positionsQuery = positionsQuery.where(
-          'LOWER(position.owner) = :owner',
-          {
-            owner: owner?.toLowerCase(),
-          }
-        );
+        whereConditions.owner = owner.toLowerCase();
       }
 
       if (chainId && marketAddress) {
-        positionsQuery.andWhere(
-          'marketGroup.chainId = :chainId AND LOWER(marketGroup.address) = :marketAddress',
-          {
-            chainId,
-            marketAddress: marketAddress.toLowerCase(),
-          }
-        );
+        whereConditions.market = {
+          market_group: {
+            chainId: chainId,
+            address: marketAddress.toLowerCase(),
+          },
+        };
       }
 
-      const positionsResult = await positionsQuery.getMany();
+      const positionsResult = await prisma.position.findMany({
+        where: whereConditions,
+        include: {
+          market: {
+            include: {
+              market_group: {
+                include: {
+                  resource: true,
+                },
+              },
+            },
+          },
+          transaction: {
+            include: {
+              event: true,
+            },
+          },
+        },
+      });
 
       const hydratedPositions = positionsResult.map((position) => {
         const hydratedTransactions = hydrateTransactions(
-          position.transactions,
+          position.transaction as Parameters<typeof hydrateTransactions>[0],
           false
         );
         return { ...position, transactions: hydratedTransactions };
       });
 
-      return hydratedPositions.map(mapPositionToType);
+      return hydratedPositions as unknown as Position[];
     } catch (error) {
       console.error('Error fetching positions:', error);
       throw new Error('Failed to fetch positions');

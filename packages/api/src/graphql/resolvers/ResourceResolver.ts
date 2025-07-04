@@ -1,76 +1,98 @@
 import { Resolver, Query, Arg } from 'type-graphql';
-import { FindManyOptions } from 'typeorm';
-import dataSource from '../../db';
-import { Resource } from '../../models/Resource';
-import { ResourceType } from '../types';
-import { mapResourceToType } from './mappers';
-import { ResourcePrice } from '../../models/ResourcePrice';
-import { ResourcePriceType } from '../types';
+import prisma from '../../db';
+import { Resource, ResourcePrice } from '../types/PrismaTypes';
+import type {
+  resource,
+  resource_price,
+  market_group,
+  category,
+  Prisma,
+} from '../../../generated/prisma';
 
-@Resolver(() => ResourceType)
+@Resolver(() => Resource)
 export class ResourceResolver {
-  @Query(() => [ResourceType])
+  @Query(() => [Resource])
   async resources(
     @Arg('categorySlug', () => String, { nullable: true }) categorySlug?: string
-  ): Promise<ResourceType[]> {
+  ): Promise<Resource[]> {
     try {
-      const findOptions: FindManyOptions<Resource> = {
-        relations: [
-          'marketGroups',
-          'marketGroups.markets',
-          'marketGroups.category',
-          'category',
-        ],
-      };
+      const whereConditions: Prisma.resourceWhereInput = {};
 
       if (categorySlug) {
-        findOptions.where = {
-          category: {
-            slug: categorySlug,
-          },
+        whereConditions.category = {
+          slug: categorySlug,
         };
       }
 
-      const resources = await dataSource
-        .getRepository(Resource)
-        .find(findOptions);
-      return resources.map(mapResourceToType);
+      const resources = await prisma.resource.findMany({
+        where: whereConditions,
+        include: {
+          market_group: {
+            include: {
+              market: true,
+              category: true,
+            },
+          },
+          category: true,
+        },
+      });
+      return resources as Resource[];
     } catch (error) {
       console.error('Error fetching resources:', error);
       throw new Error('Failed to fetch resources');
     }
   }
 
-  @Query(() => ResourceType, { nullable: true })
+  @Query(() => Resource, { nullable: true })
   async resource(
     @Arg('slug', () => String) slug: string
-  ): Promise<ResourceType | null> {
+  ): Promise<Resource | null> {
     try {
-      const resource = await dataSource.getRepository(Resource).findOne({
+      const resource:
+        | (resource & {
+            market_group: (market_group & { category: category | null })[];
+            category: category | null;
+          })
+        | null = await prisma.resource.findFirst({
         where: { slug },
-        relations: ['marketGroups', 'marketGroups.category', 'category'],
+        include: {
+          market_group: {
+            include: {
+              category: true,
+            },
+          },
+          category: true,
+        },
       });
 
       if (!resource) return null;
 
-      return mapResourceToType(resource);
+      return resource as Resource;
     } catch (error) {
       console.error('Error fetching resource:', error);
       throw new Error('Failed to fetch resource');
     }
   }
 
-  @Query(() => [ResourcePriceType])
-  async resourcePrices(): Promise<ResourcePriceType[]> {
+  @Query(() => [ResourcePrice])
+  async resourcePrices(): Promise<ResourcePrice[]> {
     try {
-      const prices = await dataSource.getRepository(ResourcePrice).find({
-        relations: ['resource'],
-      });
+      const prices: (resource_price & { resource: resource | null })[] =
+        await prisma.resource_price.findMany({
+          include: {
+            resource: true,
+          },
+        });
 
-      return prices.map((price) => ({
-        ...price,
-        resource: mapResourceToType(price.resource),
-      }));
+      return prices.map(
+        (price: resource_price & { resource: resource | null }) => ({
+          id: price.id,
+          timestamp: price.timestamp,
+          value: price.value.toString(),
+          blockNumber: price.blockNumber,
+          resource: price.resource ? (price.resource as Resource) : null,
+        })
+      ) as ResourcePrice[];
     } catch (error) {
       console.error('Error fetching resource prices:', error);
       throw new Error('Failed to fetch resource prices');

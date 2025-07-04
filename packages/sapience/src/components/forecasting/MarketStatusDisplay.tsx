@@ -23,7 +23,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
   marketGroupData,
   marketClassification,
 }) => {
-  const firstMarket = marketGroupData.markets[0] as MarketType | undefined;
+  const firstMarket = marketGroupData.markets?.[0] as MarketType | undefined;
 
   if (!firstMarket) {
     return null;
@@ -63,7 +63,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
 
     if (marketClassification === MarketGroupClassification.MULTIPLE_CHOICE) {
       // For single choice markets, find the option with settlement price of 1
-      const settledMarket = marketGroupData.markets.find(
+      const settledMarket = (marketGroupData.markets || []).find(
         (market) => market.settlementPriceD18 === '1000000000000000000' // 1 with 18 decimals
       );
 

@@ -1,8 +1,12 @@
 import { IResourcePriceIndexer } from '../../interfaces';
-import { resourcePriceRepository } from '../../db';
+import prisma from '../../db';
 import { CELENIUM_API_KEY, sleep } from '../../utils/utils';
-import { Resource } from '../../models/Resource';
 // import Sentry from "../sentry";
+
+interface Resource {
+  id: number;
+  slug: string;
+}
 
 const headers: HeadersInit = {};
 if (CELENIUM_API_KEY) {
@@ -165,12 +169,12 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     }
 
     // If we don't have a next timestamp, find the latest resource price and use it as the initial timestamp
-    const latestResourcePrice = await resourcePriceRepository.findOne({
-      order: {
-        blockNumber: 'DESC',
+    const latestResourcePrice = await prisma.resource_price.findFirst({
+      orderBy: {
+        blockNumber: 'desc',
       },
       where: {
-        resource: { id: resource.id },
+        resourceId: resource.id,
       },
     });
 
@@ -228,15 +232,28 @@ class CelestiaIndexer implements IResourcePriceIndexer {
     const value = used > 0 ? fee / used : 0;
 
     try {
-      const price = {
-        resource: { id: resource.id },
-        timestamp: Math.floor(block.timeMs / 1000),
-        value: value.toString(),
-        used: used.toString(),
-        feePaid: fee.toString(),
-        blockNumber: Number(block.height),
-      };
-      await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
+      await prisma.resource_price.upsert({
+        where: {
+          resourceId_timestamp: {
+            resourceId: resource.id,
+            timestamp: Math.floor(block.timeMs / 1000),
+          },
+        },
+        create: {
+          resourceId: resource.id,
+          timestamp: Math.floor(block.timeMs / 1000),
+          value: value.toString(),
+          used: used.toString(),
+          feePaid: fee.toString(),
+          blockNumber: Number(block.height),
+        },
+        update: {
+          value: value.toString(),
+          used: used.toString(),
+          feePaid: fee.toString(),
+          blockNumber: Number(block.height),
+        },
+      });
     } catch (error) {
       console.error('[CelestiaIndexer]Error storing block price:', error);
     }
@@ -352,9 +369,9 @@ class CelestiaIndexer implements IResourcePriceIndexer {
       blockNumber--
     ) {
       try {
-        const resourcePrice = await resourcePriceRepository.findOne({
+        const resourcePrice = await prisma.resource_price.findFirst({
           where: {
-            resource: { id: resource.id },
+            resourceId: resource.id,
             blockNumber: blockNumber,
           },
         });
@@ -405,9 +422,9 @@ class CelestiaIndexer implements IResourcePriceIndexer {
           blockNumber
         );
 
-        const resourcePrice = await resourcePriceRepository.findOne({
+        const resourcePrice = await prisma.resource_price.findFirst({
           where: {
-            resource: { id: resource.id },
+            resourceId: resource.id,
             blockNumber: blockNumber,
           },
         });

@@ -2,12 +2,10 @@ import { Request, Response, Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import { parseContractId } from '../helpers/parseContractId';
 import { validateRequestParams } from '../helpers/validateRequestParams';
-import dataSource from '../db';
-import { MarketGroup } from '../models/MarketGroup';
-import { Position } from '../models/Position';
+import prisma from '../db';
 import { formatDbBigInt } from '../utils/utils';
-const marketGroupRepository = dataSource.getRepository(MarketGroup);
-const positionRepository = dataSource.getRepository(Position);
+import type { Prisma } from '../../generated/prisma';
+
 const router = Router();
 
 router.get(
@@ -21,7 +19,7 @@ router.get(
 
     const { chainId, address } = parseContractId(contractId);
 
-    const marketGroup = await marketGroupRepository.findOne({
+    const marketGroup = await prisma.market_group.findFirst({
       where: {
         chainId: Number(chainId),
         address: String(address).toLowerCase(),
@@ -34,32 +32,56 @@ router.get(
     }
 
     // Query for positions related to any epoch of this market
-    const where = {
-      isLP: isLP === 'true' ? true : undefined,
-      market: { marketGroup: { id: marketGroup.id } },
+    const whereCondition: Prisma.positionWhereInput = {
+      market: {
+        marketGroupId: marketGroup.id,
+      },
     };
 
-    const positions = await positionRepository.find({
-      where,
-      relations: [
-        'market',
-        'market.marketGroup',
-        'market.marketGroup.resource',
-      ],
-      order: { positionId: 'ASC' },
+    if (isLP === 'true') {
+      whereCondition.isLP = true;
+    }
+
+    const positions = await prisma.position.findMany({
+      where: whereCondition,
+      include: {
+        market: {
+          include: {
+            market_group: {
+              include: {
+                resource: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { positionId: 'asc' },
     });
 
     // Format the data
-    for (const position of positions) {
-      position.baseToken = formatDbBigInt(position.baseToken);
-      position.quoteToken = formatDbBigInt(position.quoteToken);
-      position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
-      position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
-      position.collateral = formatDbBigInt(position.collateral);
-      position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
-      position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
-    }
-    res.json(positions);
+    const formattedPositions = positions.map((position) => ({
+      ...position,
+      baseToken: position.baseToken
+        ? formatDbBigInt(position.baseToken.toString())
+        : null,
+      quoteToken: position.quoteToken
+        ? formatDbBigInt(position.quoteToken.toString())
+        : null,
+      borrowedBaseToken: position.borrowedBaseToken
+        ? formatDbBigInt(position.borrowedBaseToken.toString())
+        : null,
+      borrowedQuoteToken: position.borrowedQuoteToken
+        ? formatDbBigInt(position.borrowedQuoteToken.toString())
+        : null,
+      collateral: formatDbBigInt(position.collateral.toString()),
+      lpBaseToken: position.lpBaseToken
+        ? formatDbBigInt(position.lpBaseToken.toString())
+        : null,
+      lpQuoteToken: position.lpQuoteToken
+        ? formatDbBigInt(position.lpQuoteToken.toString())
+        : null,
+    }));
+    res.json(formattedPositions);
   })
 );
 
@@ -72,7 +94,7 @@ router.get(
 
     const { chainId, address } = parseContractId(contractId);
 
-    const marketGroup = await marketGroupRepository.findOne({
+    const marketGroup = await prisma.market_group.findFirst({
       where: {
         chainId: Number(chainId),
         address: String(address).toLowerCase(),
@@ -84,16 +106,24 @@ router.get(
       return;
     }
 
-    const position = await positionRepository.findOne({
+    const position = await prisma.position.findFirst({
       where: {
         positionId: Number(positionId),
-        market: { marketGroup: { id: marketGroup.id } },
+        market: {
+          marketGroupId: marketGroup.id,
+        },
       },
-      relations: [
-        'market',
-        'market.marketGroup',
-        'market.marketGroup.resource',
-      ],
+      include: {
+        market: {
+          include: {
+            market_group: {
+              include: {
+                resource: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!position) {
@@ -102,15 +132,30 @@ router.get(
     }
 
     // Format the data
-    position.baseToken = formatDbBigInt(position.baseToken);
-    position.quoteToken = formatDbBigInt(position.quoteToken);
-    position.borrowedBaseToken = formatDbBigInt(position.borrowedBaseToken);
-    position.borrowedQuoteToken = formatDbBigInt(position.borrowedQuoteToken);
-    position.collateral = formatDbBigInt(position.collateral);
-    position.lpBaseToken = formatDbBigInt(position.lpBaseToken);
-    position.lpQuoteToken = formatDbBigInt(position.lpQuoteToken);
+    const formattedPosition = {
+      ...position,
+      baseToken: position.baseToken
+        ? formatDbBigInt(position.baseToken.toString())
+        : null,
+      quoteToken: position.quoteToken
+        ? formatDbBigInt(position.quoteToken.toString())
+        : null,
+      borrowedBaseToken: position.borrowedBaseToken
+        ? formatDbBigInt(position.borrowedBaseToken.toString())
+        : null,
+      borrowedQuoteToken: position.borrowedQuoteToken
+        ? formatDbBigInt(position.borrowedQuoteToken.toString())
+        : null,
+      collateral: formatDbBigInt(position.collateral.toString()),
+      lpBaseToken: position.lpBaseToken
+        ? formatDbBigInt(position.lpBaseToken.toString())
+        : null,
+      lpQuoteToken: position.lpQuoteToken
+        ? formatDbBigInt(position.lpQuoteToken.toString())
+        : null,
+    };
 
-    res.json(position);
+    res.json(formattedPosition);
   })
 );
 

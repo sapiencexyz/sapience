@@ -1,10 +1,10 @@
 import { gql } from '@apollo/client';
 import type {
-  MarketType,
-  MarketGroupType,
-  CategoryType,
-  PositionType,
-} from '@sapience/ui/types';
+  Market as MarketType,
+  MarketGroup as MarketGroupType,
+  Category as CategoryType,
+  Position as PositionType,
+} from '@sapience/ui/types/graphql';
 import { useQuery } from '@tanstack/react-query';
 import { print } from 'graphql';
 import { formatUnits } from 'viem';
@@ -139,17 +139,15 @@ const MARKETS_QUERY = gql`
         name
         slug
       }
-      marketParams {
-        feeRate
-        assertionLiveness
-        bondCurrency
-        bondAmount
-        claimStatement
-        uniswapPositionManager
-        uniswapSwapRouter
-        uniswapQuoter
-        optimisticOracleV3
-      }
+      marketParamsFeerate
+      marketParamsAssertionliveness
+      marketParamsBondcurrency
+      marketParamsBondamount
+      marketParamsClaimstatement
+      marketParamsUniswappositionmanager
+      marketParamsUniswapswaprouter
+      marketParamsUniswapquoter
+      marketParamsOptimisticoraclev3
       category {
         id
         name
@@ -170,18 +168,15 @@ const MARKETS_QUERY = gql`
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
         startingSqrtPriceX96
-        rules
-        marketParams {
-          feeRate
-          assertionLiveness
-          bondCurrency
-          bondAmount
-          claimStatement
-          uniswapPositionManager
-          uniswapSwapRouter
-          uniswapQuoter
-          optimisticOracleV3
-        }
+        marketParamsFeerate
+        marketParamsAssertionliveness
+        marketParamsBondcurrency
+        marketParamsBondamount
+        marketParamsClaimstatement
+        marketParamsUniswappositionmanager
+        marketParamsUniswapswaprouter
+        marketParamsUniswapquoter
+        marketParamsOptimisticoraclev3
       }
     }
   }
@@ -308,7 +303,7 @@ export const useEnrichedMarketGroups = () => {
             };
           }
 
-          const mappedMarkets = marketGroup.markets.map(
+          const mappedMarkets = (marketGroup.markets || []).map(
             (market): MarketType => ({
               ...market,
               id: market.id.toString(),
@@ -517,7 +512,7 @@ export const useOpenInterest = (market: {
         // Filter positions for this specific market and sum collateral for unsettled positions
         const marketPositions = data.positions.filter(
           (position: PositionType) =>
-            position.market.marketId === market.marketId
+            position.market && position.market.marketId === market.marketId
         );
 
         const unsettledPositions = marketPositions.filter(
@@ -535,6 +530,9 @@ export const useOpenInterest = (market: {
           (total: number, position: PositionType) => {
             try {
               // Convert from smallest unit to human readable using formatUnits
+              if (!position.collateral) {
+                return total;
+              }
               const collateralBigInt = BigInt(position.collateral);
               const collateralValue = Number(
                 formatUnits(collateralBigInt, collateralDecimals)

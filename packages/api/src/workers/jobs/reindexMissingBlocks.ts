@@ -1,14 +1,9 @@
-import {
-  initializeDataSource,
-  resourcePriceRepository,
-  marketGroupRepository,
-} from '../../db';
+import prisma from '../../db';
 import { initializeMarket } from '../../controllers/market';
 import { getMarketStartEndBlock } from '../../controllers/marketHelpers';
-import { Between } from 'typeorm';
 import * as Sentry from '@sentry/node';
 import { INDEXERS } from '../../fixtures';
-import { Resource } from 'src/models/Resource';
+import type { resource } from '../../../generated/prisma';
 
 export async function reindexMissingBlocks(
   chainId: number,
@@ -20,14 +15,12 @@ export async function reindexMissingBlocks(
       `Starting reindex of missing resource blocks for market ${chainId}:${address}, epoch ${epochId}`
     );
 
-    await initializeDataSource();
-
-    const marketEntity = await marketGroupRepository.findOne({
+    const marketEntity = await prisma.market_group.findFirst({
       where: {
         chainId,
         address: address.toLowerCase(),
       },
-      relations: ['resource'],
+      include: { resource: true },
     });
 
     if (!marketEntity) {
@@ -39,7 +32,7 @@ export async function reindexMissingBlocks(
     const marketInfo = {
       marketChainId: marketEntity.chainId,
       deployment: {
-        address: marketEntity.address.toLowerCase(),
+        address: marketEntity.address?.toLowerCase() || '',
         deployTxnBlockNumber: marketEntity.deployTxnBlockNumber,
         deployTimestamp: marketEntity.deployTimestamp,
       },
@@ -73,12 +66,15 @@ export async function reindexMissingBlocks(
         return { missingBlockNumbers: null, error };
       }
 
-      const resourcePrices = await resourcePriceRepository.find({
+      const resourcePrices = await prisma.resource_price.findMany({
         where: {
-          resource: { id: market.resource?.id },
-          blockNumber: Between(startBlockNumber, endBlockNumber),
+          resourceId: market.resource?.id,
+          blockNumber: {
+            gte: startBlockNumber,
+            lte: endBlockNumber,
+          },
         },
-        select: ['blockNumber'],
+        select: { blockNumber: true },
       });
 
       const existingBlockNumbersSet = new Set(
@@ -100,7 +96,7 @@ export async function reindexMissingBlocks(
 
     if (marketInfo.resource && marketInfo.resource?.priceIndexer) {
       await marketInfo.resource.priceIndexer.indexBlocks(
-        market.resource as Resource,
+        market.resource as resource,
         missingBlockNumbers
       );
     }

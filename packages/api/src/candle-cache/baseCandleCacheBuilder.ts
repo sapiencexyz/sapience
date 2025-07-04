@@ -20,7 +20,18 @@ import { ResourceCandleProcessor } from './processors/resourceCandleProcessor';
 import { IndexCandleProcessor } from './processors/indexCandleProcessor';
 import { TrailingAvgCandleProcessor } from './processors/trailingAvgCandleProcessor';
 import { MarketCandleProcessor } from './processors/marketCandleProcessor';
-import { ResourcePrice } from 'src/models/ResourcePrice';
+import type { resource_price, resource } from '../../generated/prisma';
+import type { Prisma } from '../../generated/prisma';
+
+type ResourcePriceWithResource = resource_price & { resource: resource };
+
+// Type for what getMarketGroups returns
+type MarketGroupWithRelations = Prisma.market_groupGetPayload<{
+  include: {
+    resource: true;
+    market: true;
+  };
+}>;
 
 export interface ResourcePriceParams {
   initialTimestamp: number;
@@ -64,8 +75,10 @@ export abstract class BaseCandleCacheBuilder {
   ) => Promise<number> = getResourcePricesCount;
   protected getResourcePricesFn: (
     params: ResourcePriceParams
-  ) => Promise<{ prices: ResourcePrice[]; hasMore: boolean }> =
-    getResourcePrices;
+  ) => Promise<{ prices: ResourcePriceWithResource[]; hasMore: boolean }> =
+    getResourcePrices as unknown as (
+      params: ResourcePriceParams
+    ) => Promise<{ prices: ResourcePriceWithResource[]; hasMore: boolean }>;
 
   // Abstract method that derived classes must implement to specify their IPC key
   protected abstract getStatusIPCKey(): string;
@@ -144,7 +157,9 @@ export abstract class BaseCandleCacheBuilder {
 
   protected async getUpdatedMarketsAndMarketGroups() {
     const marketGroups = await getMarketGroups();
-    await this.marketInfoStore.updateMarketInfo(marketGroups);
+    await this.marketInfoStore.updateMarketInfo(
+      marketGroups as unknown as MarketGroupWithRelations[]
+    );
   }
 
   protected async processResourcePrices(initialTimestamp: number = 0) {
@@ -243,8 +258,8 @@ export abstract class BaseCandleCacheBuilder {
           price.resource.slug,
           {
             timestamp: price.timestamp,
-            used: price.used,
-            fee: price.feePaid,
+            used: price.used.toString(),
+            fee: price.feePaid.toString(),
           },
           CANDLE_CACHE_CONFIG.trailingAvgTime
         );
