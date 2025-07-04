@@ -43,9 +43,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         sapience = ISapience(vm.getAddress("Sapience"));
 
         feeCollector = TestUser.createUser("FeeCollector", 0); // no balance
@@ -56,36 +54,23 @@ contract LiquidityFeeCollectorTest is TestTrade {
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
         address[] memory feeCollectors = new address[](1);
         feeCollectors[0] = feeCollector;
-        (sapience, ) = createMarketWithFeeCollectors(
-            MIN_TICK,
-            MAX_TICK,
-            startingSqrtPriceX96,
-            feeCollectors,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote",
-            ""
+        (sapience,) = createMarketWithFeeCollectors(
+            MIN_TICK, MAX_TICK, startingSqrtPriceX96, feeCollectors, MIN_TRADE_SIZE, "wstGwei/quote", ""
         );
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
         tokenB = marketData.baseToken;
 
         // create liquidity position
-        (
-            uint256 loanAmount0,
-            uint256 loanAmount1,
-
-        ) = getTokenAmountsForCollateralAmount(
-                COLLATERAL_AMOUNT,
-                LOWER_TICK,
-                UPPER_TICK
-            );
+        (uint256 loanAmount0, uint256 loanAmount1,) =
+            getTokenAmountsForCollateralAmount(COLLATERAL_AMOUNT, LOWER_TICK, UPPER_TICK);
 
         // Fee collector opens position
         vm.startPrank(feeCollector);
-        (feeCollectorId, , , , , , ) = sapience.createLiquidityPosition(
+        (feeCollectorId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: loanAmount0,
@@ -102,7 +87,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
 
         // Regular LP opens position
         vm.startPrank(regularLp);
-        (regularLpId, , , , , , ) = sapience.createLiquidityPosition(
+        (regularLpId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: loanAmount0,
@@ -120,40 +105,22 @@ contract LiquidityFeeCollectorTest is TestTrade {
 
     function test_newPosition_feeCollectorNoCollateralRequired() public {
         // Get the position for the fee collector
-        Position.Data memory feeCollectorPosition = sapience.getPosition(
-            feeCollectorId
-        );
+        Position.Data memory feeCollectorPosition = sapience.getPosition(feeCollectorId);
 
         // Check that deposited collateral is 0
-        assertEq(
-            feeCollectorPosition.depositedCollateralAmount,
-            0,
-            "Fee collector's deposited collateral should be 0"
-        );
+        assertEq(feeCollectorPosition.depositedCollateralAmount, 0, "Fee collector's deposited collateral should be 0");
 
         // Check that loan amounts are greater than 0
-        assertTrue(
-            feeCollectorPosition.borrowedVBase > 0,
-            "Fee collector's borrowed vBase should be greater than 0"
-        );
-        assertTrue(
-            feeCollectorPosition.borrowedVQuote > 0,
-            "Fee collector's borrowed vQuote should be greater than 0"
-        );
+        assertTrue(feeCollectorPosition.borrowedVBase > 0, "Fee collector's borrowed vBase should be greater than 0");
+        assertTrue(feeCollectorPosition.borrowedVQuote > 0, "Fee collector's borrowed vQuote should be greater than 0");
     }
 
     function test_feeCollectorDecreaseLiquidity_noCollateralRequired() public {
         // Get the current liquidity for the fee collector's position
-        Position.Data memory feeCollectorPosition = sapience.getPosition(
-            feeCollectorId
-        );
+        Position.Data memory feeCollectorPosition = sapience.getPosition(feeCollectorId);
         uint256 uniswapNftId = feeCollectorPosition.uniswapPositionId;
 
-        (, , , , uint128 initialLiquidity) = getCurrentPositionTokenAmounts(
-            uniswapNftId,
-            MIN_TICK,
-            MAX_TICK
-        );
+        (,,,, uint128 initialLiquidity) = getCurrentPositionTokenAmounts(uniswapNftId, MIN_TICK, MAX_TICK);
 
         // Calculate the liquidity to decrease (25% of current liquidity)
         uint128 liquidityToDecrease = initialLiquidity / 4;
@@ -170,9 +137,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
         vm.stopPrank();
 
         // Get the updated position for the fee collector
-        Position.Data memory updatedFeeCollectorPosition = sapience.getPosition(
-            feeCollectorId
-        );
+        Position.Data memory updatedFeeCollectorPosition = sapience.getPosition(feeCollectorId);
 
         // Assert that the deposited collateral is still 0
         assertEq(
@@ -194,18 +159,11 @@ contract LiquidityFeeCollectorTest is TestTrade {
 
     function test_feeCollectorIncreaseLiquidity_noCollateralRequired() public {
         // Get the current liquidity for the fee collector's position
-        Position.Data memory feeCollectorPosition = sapience.getPosition(
-            feeCollectorId
-        );
+        Position.Data memory feeCollectorPosition = sapience.getPosition(feeCollectorId);
         uint256 uniswapNftId = feeCollectorPosition.uniswapPositionId;
 
-        (
-            uint256 initialGasTokenAmount,
-            uint256 initialEthTokenAmount,
-            ,
-            ,
-
-        ) = getCurrentPositionTokenAmounts(uniswapNftId, MIN_TICK, MAX_TICK);
+        (uint256 initialGasTokenAmount, uint256 initialEthTokenAmount,,,) =
+            getCurrentPositionTokenAmounts(uniswapNftId, MIN_TICK, MAX_TICK);
 
         // Calculate the token amounts to increase (double the initial amounts)
         uint256 baseTokenAmountToAdd = initialGasTokenAmount * 2;
@@ -226,9 +184,7 @@ contract LiquidityFeeCollectorTest is TestTrade {
         vm.stopPrank();
 
         // Get the updated position for the fee collector
-        Position.Data memory updatedFeeCollectorPosition = sapience.getPosition(
-            feeCollectorId
-        );
+        Position.Data memory updatedFeeCollectorPosition = sapience.getPosition(feeCollectorId);
 
         // Assert that the deposited collateral is still 0
         assertEq(
@@ -239,13 +195,11 @@ contract LiquidityFeeCollectorTest is TestTrade {
 
         // Assert that the borrowed token amounts have increased
         assertTrue(
-            updatedFeeCollectorPosition.borrowedVBase >
-                feeCollectorPosition.borrowedVBase,
+            updatedFeeCollectorPosition.borrowedVBase > feeCollectorPosition.borrowedVBase,
             "Fee collector's borrowed vBase should increase after increasing liquidity"
         );
         assertTrue(
-            updatedFeeCollectorPosition.borrowedVQuote >
-                feeCollectorPosition.borrowedVQuote,
+            updatedFeeCollectorPosition.borrowedVQuote > feeCollectorPosition.borrowedVQuote,
             "Fee collector's borrowed vQuote should increase after increasing liquidity"
         );
     }

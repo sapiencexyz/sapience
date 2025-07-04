@@ -15,7 +15,6 @@ import {IETHManagement} from "../interfaces/ILayerZeroBridge.sol";
  * - Gas threshold monitoring
  */
 abstract contract ETHManagement is FeeManagement, IETHManagement {
-
     /**
      * @notice Constructor for ETHManagement
      * @param _owner The owner of the contract
@@ -38,7 +37,7 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
         require(amount <= address(this).balance, "Insufficient balance");
         payable(owner()).transfer(amount);
         emit ETHWithdrawn(owner(), amount);
-        
+
         // Check gas thresholds after withdrawal
         _checkGasThresholds(address(this).balance);
     }
@@ -55,7 +54,7 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      * @notice Receive function to accept ETH
      * @dev This function is called when ETH is sent to the contract
      */
-    receive() external virtual payable {
+    receive() external payable virtual {
         emit ETHDeposited(msg.sender, msg.value);
     }
 
@@ -73,4 +72,4 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
     function _checkGasThresholds() internal {
         _checkGasThresholds(address(this).balance);
     }
-} 
+}

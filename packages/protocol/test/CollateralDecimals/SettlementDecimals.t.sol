@@ -65,24 +65,14 @@ contract SettlementDecimalsTest is Test {
         // The withdrawal should transfer correct 8-decimal amount
         uint256 expectedTransfer8 = 20010 * 1e8; // 20,010 WBTC
         vm.mockCall(
-            MOCK_TOKEN,
-            abi.encodeWithSelector(
-                IERC20.transfer.selector,
-                USER,
-                expectedTransfer8
-            ),
-            abi.encode(true)
+            MOCK_TOKEN, abi.encodeWithSelector(IERC20.transfer.selector, USER, expectedTransfer8), abi.encode(true)
         );
 
         // Test withdrawal
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         uint256 withdrawn = marketGroup.withdrawCollateral(USER, withdrawable);
 
-        assertEq(
-            withdrawn,
-            withdrawable,
-            "Should return amount in 18 decimals"
-        );
+        assertEq(withdrawn, withdrawable, "Should return amount in 18 decimals");
     }
 
     function test_SettleTradePosition_LossWithCorrectDecimals() public {
@@ -103,11 +93,7 @@ contract SettlementDecimalsTest is Test {
         // Loss: Need 50,000 quote to buy back 1 base, but only have 40,000
         // Deficit: 10,000 quote
         // Remaining collateral: 20,000 - 10,000 = 10,000
-        assertEq(
-            withdrawable,
-            10000 * 1e18,
-            "Should have 10,000 remaining after loss"
-        );
+        assertEq(withdrawable, 10000 * 1e18, "Should have 10,000 remaining after loss");
         assertEq(position.isSettled, true, "Position should be settled");
     }
 
@@ -130,11 +116,7 @@ contract SettlementDecimalsTest is Test {
         // Net quote: 500,000 - 250,000 = 250,000 quote
         // Total value: 250,000 + 250,000 = 500,000 quote
         // Plus collateral: 100 + 500,000 = 500,100
-        assertEq(
-            withdrawable,
-            500100 * 1e18,
-            "LP should have profit from fees"
-        );
+        assertEq(withdrawable, 500100 * 1e18, "LP should have profit from fees");
     }
 
     function test_WithdrawCollateral_PrecisionHandling() public {
@@ -147,25 +129,15 @@ contract SettlementDecimalsTest is Test {
         uint256 expected8 = 12345678;
 
         vm.mockCall(
-            MOCK_TOKEN,
-            abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)),
-            abi.encode(1000 * 1e8)
+            MOCK_TOKEN, abi.encodeWithSelector(IERC20.balanceOf.selector, address(this)), abi.encode(1000 * 1e8)
         );
 
-        vm.mockCall(
-            MOCK_TOKEN,
-            abi.encodeWithSelector(IERC20.transfer.selector, USER, expected8),
-            abi.encode(true)
-        );
+        vm.mockCall(MOCK_TOKEN, abi.encodeWithSelector(IERC20.transfer.selector, USER, expected8), abi.encode(true));
 
         uint256 withdrawn = marketGroup.withdrawCollateral(USER, withdraw18);
 
         // Due to truncation, actual withdrawn in 18 decimals
-        assertEq(
-            withdrawn,
-            123456780000000000,
-            "Should return truncated amount"
-        );
+        assertEq(withdrawn, 123456780000000000, "Should return truncated amount");
     }
 
     function test_CollateralScalingWithDifferentDecimals() public {
@@ -192,10 +164,6 @@ contract SettlementDecimalsTest is Test {
 
         uint256 amount0 = 100; // 100 tokens
         normalized = marketGroup.normalizeCollateralAmount(amount0);
-        assertEq(
-            normalized,
-            100 * 1e18,
-            "100 tokens should be 100e18 internally"
-        );
+        assertEq(normalized, 100 * 1e18, "100 tokens should be 100e18 internally");
     }
 }

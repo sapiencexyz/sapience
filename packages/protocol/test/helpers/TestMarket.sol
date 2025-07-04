@@ -11,7 +11,7 @@ import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
+
 import {TestUser} from "./TestUser.sol";
 
 contract TestMarket is TestUser {
@@ -28,16 +28,9 @@ contract TestMarket is TestUser {
         bytes memory marketClaimStatement
     ) public returns (ISapience, address) {
         address[] memory feeCollectors = new address[](0);
-        return
-            createMarketWithFeeCollectors(
-                minTick,
-                maxTick,
-                startingSqrtPriceX96,
-                feeCollectors,
-                minTradeSize,
-                marketClaimStatement,
-                ""
-            );
+        return createMarketWithFeeCollectors(
+            minTick, maxTick, startingSqrtPriceX96, feeCollectors, minTradeSize, marketClaimStatement, ""
+        );
     }
 
     function createMarketWithFeeCollectors(
@@ -69,10 +62,7 @@ contract TestMarket is TestUser {
         return (sapience, owner);
     }
 
-    function initializeMarketGroup(
-        address[] memory feeCollectors,
-        uint256 minTradeSize
-    ) public returns (address) {
+    function initializeMarketGroup(address[] memory feeCollectors, uint256 minTradeSize) public returns (address) {
         uint256 bondAmount = 5 ether;
         address owner = createUser("Owner", 10_000_000 ether);
         vm.startPrank(0x70997970C51812dc3A010C7d01b50e0d17dc79C8);
@@ -87,9 +77,7 @@ contract TestMarket is TestUser {
                 assertionLiveness: 21600,
                 bondCurrency: vm.getAddress("BondCurrency.Token"),
                 bondAmount: bondAmount,
-                uniswapPositionManager: vm.getAddress(
-                    "Uniswap.NonfungiblePositionManager"
-                ),
+                uniswapPositionManager: vm.getAddress("Uniswap.NonfungiblePositionManager"),
                 uniswapSwapRouter: vm.getAddress("Uniswap.SwapRouter"),
                 uniswapQuoter: vm.getAddress("Uniswap.QuoterV2"),
                 optimisticOracleV3: vm.getAddress("UMA.OptimisticOracleV3")
@@ -100,38 +88,22 @@ contract TestMarket is TestUser {
         return owner;
     }
 
-    function settleMarket(
-        uint256 marketId,
-        uint160 price,
-        address owner
-    ) internal {
+    function settleMarket(uint256 marketId, uint160 price, address owner) internal {
         ISapience sapience = ISapience(vm.getAddress("Sapience"));
         settleMarketWithSapience(sapience, marketId, price, owner);
     }
 
-    function settleMarketWithSapience(
-        ISapience sapience,
-        uint256 marketId,
-        uint160 price,
-        address owner
-    ) internal {
-        IMintableToken bondCurrency = IMintableToken(
-            vm.getAddress("BondCurrency.Token")
-        );
+    function settleMarketWithSapience(ISapience sapience, uint256 marketId, uint160 price, address owner) internal {
+        IMintableToken bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
-        (, ISapienceStructs.MarketParams memory marketParams) = sapience
-            .getLatestMarket();
+        (, ISapienceStructs.MarketParams memory marketParams) = sapience.getLatestMarket();
         uint256 bondAmount = marketParams.bondAmount;
         bondCurrency.mint(bondAmount * 2, owner);
         vm.startPrank(owner);
 
         bondCurrency.approve(address(sapience), bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
-            ISapienceStructs.SettlementPriceParams({
-                marketId: marketId,
-                asserter: owner,
-                settlementSqrtPriceX96: price
-            })
+            ISapienceStructs.SettlementPriceParams({marketId: marketId, asserter: owner, settlementSqrtPriceX96: price})
         );
         vm.stopPrank();
 
@@ -142,78 +114,38 @@ contract TestMarket is TestUser {
     }
 
     // helpers
-    function getTokenAmountsForCollateralAmount(
-        uint256 collateralAmount,
-        int24 lowerTick,
-        int24 upperTick
-    )
+    function getTokenAmountsForCollateralAmount(uint256 collateralAmount, int24 lowerTick, int24 upperTick)
         internal
         view
         returns (uint256 loanAmount0, uint256 loanAmount1, uint256 liquidity)
     {
         ISapience sapience = ISapience(vm.getAddress("Sapience"));
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(marketData.pool)
-            .slot0();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
+        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(marketData.pool).slot0();
 
         uint160 sqrtPriceAX96 = uint160(TickMath.getSqrtRatioAtTick(lowerTick));
         uint160 sqrtPriceBX96 = uint160(TickMath.getSqrtRatioAtTick(upperTick));
 
-        (loanAmount0, loanAmount1, liquidity) = sapience
-            .quoteLiquidityPositionTokens(
-                marketData.marketId,
-                collateralAmount,
-                sqrtPriceX96,
-                sqrtPriceAX96,
-                sqrtPriceBX96
-            );
+        (loanAmount0, loanAmount1, liquidity) = sapience.quoteLiquidityPositionTokens(
+            marketData.marketId, collateralAmount, sqrtPriceX96, sqrtPriceAX96, sqrtPriceBX96
+        );
     }
 
-    function getCurrentPositionTokenAmounts(
-        uint256 uniswapPositionId,
-        int24 lowerTick,
-        int24 upperTick
-    )
+    function getCurrentPositionTokenAmounts(uint256 uniswapPositionId, int24 lowerTick, int24 upperTick)
         internal
         view
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint256 tokensOwed0,
-            uint256 tokensOwed1,
-            uint128 liquidity
-        )
+        returns (uint256 amount0, uint256 amount1, uint256 tokensOwed0, uint256 tokensOwed1, uint128 liquidity)
     {
         ISapience sapience = ISapience(vm.getAddress("Sapience"));
-        (
-            ISapienceStructs.MarketData memory marketData,
-            ISapienceStructs.MarketParams memory marketParams
-        ) = sapience.getLatestMarket();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(marketData.pool)
-            .slot0();
+        (ISapienceStructs.MarketData memory marketData, ISapienceStructs.MarketParams memory marketParams) =
+            sapience.getLatestMarket();
+        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(marketData.pool).slot0();
 
-        (
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            ,
-            liquidity,
-            ,
-            ,
-            tokensOwed0,
-            tokensOwed1
-        ) = INonfungiblePositionManager(marketParams.uniswapPositionManager)
-            .positions(uniswapPositionId);
+        (,,,,,,, liquidity,,, tokensOwed0, tokensOwed1) =
+            INonfungiblePositionManager(marketParams.uniswapPositionManager).positions(uniswapPositionId);
 
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
-            sqrtPriceX96,
-            TickMath.getSqrtRatioAtTick(lowerTick),
-            TickMath.getSqrtRatioAtTick(upperTick),
-            liquidity
+            sqrtPriceX96, TickMath.getSqrtRatioAtTick(lowerTick), TickMath.getSqrtRatioAtTick(upperTick), liquidity
         );
     }
 
@@ -233,48 +165,26 @@ contract TestMarket is TestUser {
         uint256 feeGrowthGlobal1X128;
     }
 
-    function getOwedTokens(
-        uint256 uniswapPositionId
-    ) internal view returns (uint256 owed0, uint256 owed1) {
+    function getOwedTokens(uint256 uniswapPositionId) internal view returns (uint256 owed0, uint256 owed1) {
         uniswapPositionId;
         ISapience sapience = ISapience(vm.getAddress("Sapience"));
 
         OwedTokensData memory data;
 
-        (, ISapienceStructs.MarketParams memory marketParams) = sapience
-            .getLatestMarket();
+        (, ISapienceStructs.MarketParams memory marketParams) = sapience.getLatestMarket();
 
         // Fetch the current fee growth global values
-        data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool)
-            .feeGrowthGlobal0X128();
-        data.feeGrowthGlobal1X128 = IUniswapV3Pool(data.pool)
-            .feeGrowthGlobal1X128();
+        data.feeGrowthGlobal0X128 = IUniswapV3Pool(data.pool).feeGrowthGlobal0X128();
+        data.feeGrowthGlobal1X128 = IUniswapV3Pool(data.pool).feeGrowthGlobal1X128();
 
-        bytes32 positionKey = keccak256(
-            abi.encodePacked(
-                address(marketParams.uniswapPositionManager),
-                data.tickLower,
-                data.tickUpper
-            )
-        );
-        (
-            ,
-            data.feeGrowthInside0X128,
-            data.feeGrowthInside1X128,
-            ,
+        bytes32 positionKey =
+            keccak256(abi.encodePacked(address(marketParams.uniswapPositionManager), data.tickLower, data.tickUpper));
+        (, data.feeGrowthInside0X128, data.feeGrowthInside1X128,,) = IUniswapV3Pool(data.pool).positions(positionKey);
 
-        ) = IUniswapV3Pool(data.pool).positions(positionKey);
-
-        uint256 tokensOwed0Additional = FullMath.mulDiv(
-            data.feeGrowthGlobal0X128 - data.feeGrowthInside0LastX128,
-            data.liquidity,
-            Q128
-        );
-        uint256 tokensOwed1Additional = FullMath.mulDiv(
-            data.feeGrowthGlobal1X128 - data.feeGrowthInside1LastX128,
-            data.liquidity,
-            Q128
-        );
+        uint256 tokensOwed0Additional =
+            FullMath.mulDiv(data.feeGrowthGlobal0X128 - data.feeGrowthInside0LastX128, data.liquidity, Q128);
+        uint256 tokensOwed1Additional =
+            FullMath.mulDiv(data.feeGrowthGlobal1X128 - data.feeGrowthInside1LastX128, data.liquidity, Q128);
 
         owed0 = uint256(data.tokensOwed0) + tokensOwed0Additional;
         owed1 = uint256(data.tokensOwed1) + tokensOwed1Additional;

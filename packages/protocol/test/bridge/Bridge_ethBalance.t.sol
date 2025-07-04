@@ -5,9 +5,7 @@ import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/
 import {MarketLayerZeroBridge} from "../../src/bridge/MarketLayerZeroBridge.sol";
 import {UMALayerZeroBridge} from "../../src/bridge/UMALayerZeroBridge.sol";
 import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
-import {IETHManagement, IFeeManagement} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
-import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {IETHManagement} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
 import {MockMarketGroup} from "./mocks/mockMarketGroup.sol";
@@ -59,8 +57,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         marketBridge = MarketLayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(MarketLayerZeroBridge).creationCode,
-                    abi.encode(address(endpoints[marketEiD]), address(this))
+                    type(MarketLayerZeroBridge).creationCode, abi.encode(address(endpoints[marketEiD]), address(this))
                 )
             )
         );
@@ -68,8 +65,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         umaBridge = UMALayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(UMALayerZeroBridge).creationCode,
-                    abi.encode(address(endpoints[umaEiD]), address(this))
+                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
                 )
             )
         );
@@ -90,19 +86,9 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
-        umaBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: marketEiD,
-                remoteBridge: address(marketBridge)
-            })
-        );
+        umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
 
-        marketBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: umaEiD,
-                remoteBridge: address(umaBridge)
-            })
-        );
+        marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaBridge)}));
 
         // Link bridges to the external contracts
         umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
@@ -124,19 +110,10 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
 
         // Create a claim
-        mockMarketGroup.setAssertThruthData(
-            "some claim message",
-            3600,
-            address(bondCurrency),
-            BOND_AMOUNT
-        );
+        mockMarketGroup.setAssertThruthData("some claim message", 3600, address(bondCurrency), BOND_AMOUNT);
         marketAssertionId = mockMarketGroup.submitSettlementPrice(
-            ISapienceStructs.SettlementPriceParams({
-                marketId: 1,
-                asserter: address(umaUser),
-                settlementSqrtPriceX96: 1
-            })
-        );    
+            ISapienceStructs.SettlementPriceParams({marketId: 1, asserter: address(umaUser), settlementSqrtPriceX96: 1})
+        );
 
         verifyPackets(umaEiD, addressToBytes32(address(umaBridge)));
         umaAssertionId = mockOptimisticOracleV3.getLastAssertionId();
@@ -152,21 +129,21 @@ contract BridgeTestEthBalance is TestHelperOz5 {
     function test_MarketBridge_depositETH() public {
         uint256 initialBalance = address(marketBridge).balance;
         uint256 depositAmount = 10 ether;
-        
+
         vm.deal(marketUser, depositAmount);
         vm.startPrank(marketUser);
-        
+
         marketBridge.depositETH{value: depositAmount}();
-        
+
         vm.stopPrank();
-        
+
         assertEq(address(marketBridge).balance, initialBalance + depositAmount);
     }
 
     function test_MarketBridge_depositETH_emitsEvent() public {
         uint256 depositAmount = 5 ether;
         vm.deal(marketUser, depositAmount);
-        
+
         vm.startPrank(marketUser);
         vm.expectEmit(true, true, false, true);
         emit IETHManagement.ETHDeposited(marketUser, depositAmount);
@@ -178,18 +155,18 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 withdrawAmount = 20 ether;
         uint256 initialOwnerBalance = owner.balance;
         uint256 initialBridgeBalance = address(marketBridge).balance;
-        
+
         vm.startPrank(owner);
         marketBridge.withdrawETH(withdrawAmount);
         vm.stopPrank();
-        
+
         assertEq(address(marketBridge).balance, initialBridgeBalance - withdrawAmount);
         assertEq(owner.balance, initialOwnerBalance + withdrawAmount);
     }
 
     function test_MarketBridge_withdrawETH_emitsEvent() public {
         uint256 withdrawAmount = 15 ether;
-        
+
         vm.startPrank(owner);
         vm.expectEmit(true, true, false, true);
         emit IETHManagement.ETHWithdrawn(owner, withdrawAmount);
@@ -199,7 +176,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
     function test_MarketBridge_withdrawETH_revertsInsufficientBalance() public {
         uint256 excessiveAmount = address(marketBridge).balance + 1 ether;
-        
+
         vm.startPrank(owner);
         vm.expectRevert("Insufficient balance");
         marketBridge.withdrawETH(excessiveAmount);
@@ -208,39 +185,39 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
     function test_MarketBridge_withdrawETH_revertsNonOwner() public {
         uint256 withdrawAmount = 10 ether;
-        
+
         vm.startPrank(marketUser);
         vm.expectRevert();
         marketBridge.withdrawETH(withdrawAmount);
         vm.stopPrank();
     }
 
-    function test_MarketBridge_getETHBalance() public {
+    function test_MarketBridge_getETHBalance() public view {
         uint256 expectedBalance = address(marketBridge).balance;
         uint256 actualBalance = marketBridge.getETHBalance();
-        
+
         assertEq(actualBalance, expectedBalance);
     }
 
     function test_MarketBridge_receive() public {
         uint256 initialBalance = address(marketBridge).balance;
         uint256 sendAmount = 7 ether;
-        
+
         vm.deal(marketUser, sendAmount);
         vm.startPrank(marketUser);
-        
+
         (bool success,) = address(marketBridge).call{value: sendAmount}("");
         assertTrue(success);
-        
+
         vm.stopPrank();
-        
+
         assertEq(address(marketBridge).balance, initialBalance + sendAmount);
     }
 
     function test_MarketBridge_receive_emitsEvent() public {
         uint256 sendAmount = 3 ether;
         vm.deal(marketUser, sendAmount);
-        
+
         vm.startPrank(marketUser);
         vm.expectEmit(true, true, false, true);
         emit IETHManagement.ETHDeposited(marketUser, sendAmount);
@@ -253,21 +230,21 @@ contract BridgeTestEthBalance is TestHelperOz5 {
     function test_UMABridge_depositETH() public {
         uint256 initialBalance = address(umaBridge).balance;
         uint256 depositAmount = 12 ether;
-        
+
         vm.deal(umaUser, depositAmount);
         vm.startPrank(umaUser);
-        
+
         umaBridge.depositETH{value: depositAmount}();
-        
+
         vm.stopPrank();
-        
+
         assertEq(address(umaBridge).balance, initialBalance + depositAmount);
     }
 
     function test_UMABridge_depositETH_emitsEvent() public {
         uint256 depositAmount = 8 ether;
         vm.deal(umaUser, depositAmount);
-        
+
         vm.startPrank(umaUser);
         vm.expectEmit(true, true, false, true);
         emit IETHManagement.ETHDeposited(umaUser, depositAmount);
@@ -279,18 +256,18 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 withdrawAmount = 25 ether;
         uint256 initialOwnerBalance = owner.balance;
         uint256 initialBridgeBalance = address(umaBridge).balance;
-        
+
         vm.startPrank(owner);
         umaBridge.withdrawETH(withdrawAmount);
         vm.stopPrank();
-        
+
         assertEq(address(umaBridge).balance, initialBridgeBalance - withdrawAmount);
         assertEq(owner.balance, initialOwnerBalance + withdrawAmount);
     }
 
     function test_UMABridge_withdrawETH_emitsEvent() public {
         uint256 withdrawAmount = 18 ether;
-        
+
         vm.startPrank(owner);
         vm.expectEmit(true, true, false, true);
         emit IETHManagement.ETHWithdrawn(owner, withdrawAmount);
@@ -300,7 +277,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
     function test_UMABridge_withdrawETH_revertsInsufficientBalance() public {
         uint256 excessiveAmount = address(umaBridge).balance + 1 ether;
-        
+
         vm.startPrank(owner);
         vm.expectRevert("Insufficient balance");
         umaBridge.withdrawETH(excessiveAmount);
@@ -309,39 +286,39 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
     function test_UMABridge_withdrawETH_revertsNonOwner() public {
         uint256 withdrawAmount = 10 ether;
-        
+
         vm.startPrank(umaUser);
         vm.expectRevert();
         umaBridge.withdrawETH(withdrawAmount);
         vm.stopPrank();
     }
 
-    function test_UMABridge_getETHBalance() public {
+    function test_UMABridge_getETHBalance() public view {
         uint256 expectedBalance = address(umaBridge).balance;
         uint256 actualBalance = umaBridge.getETHBalance();
-        
+
         assertEq(actualBalance, expectedBalance);
     }
 
     function test_UMABridge_receive() public {
         uint256 initialBalance = address(umaBridge).balance;
         uint256 sendAmount = 9 ether;
-        
+
         vm.deal(umaUser, sendAmount);
         vm.startPrank(marketUser);
-        
+
         (bool success,) = address(umaBridge).call{value: sendAmount}("");
         assertTrue(success);
-        
+
         vm.stopPrank();
-        
+
         assertEq(address(umaBridge).balance, initialBalance + sendAmount);
     }
 
     function test_UMABridge_receive_emitsEvent() public {
         uint256 sendAmount = 4 ether;
         vm.deal(umaUser, sendAmount);
-        
+
         vm.startPrank(umaUser);
         vm.expectEmit(true, true, false, true);
         emit IETHManagement.ETHDeposited(umaUser, sendAmount);
@@ -357,14 +334,14 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.startPrank(owner);
         marketBridge.withdrawETH(withdrawAmount);
         vm.stopPrank();
-        
+
         // Now withdraw a bit more to trigger critical
         vm.startPrank(owner);
         marketBridge.withdrawETH(0.003 ether);
         vm.stopPrank();
-        
+
         // Should be below critical threshold now
-        (uint256 warningGasThreshold, uint256 criticalGasThreshold) = marketBridge.getGasThresholds();
+        (, uint256 criticalGasThreshold) = marketBridge.getGasThresholds();
         assertTrue(address(marketBridge).balance <= criticalGasThreshold);
     }
 
@@ -374,21 +351,21 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.startPrank(owner);
         umaBridge.withdrawETH(withdrawAmount);
         vm.stopPrank();
-        
+
         // Now withdraw a bit more to trigger critical
         vm.startPrank(owner);
         umaBridge.withdrawETH(0.02 ether);
         vm.stopPrank();
-        
+
         // Should be below critical threshold now
-        (uint256 warningGasThreshold, uint256 criticalGasThreshold) = umaBridge.getGasThresholds();
+        (, uint256 criticalGasThreshold) = umaBridge.getGasThresholds();
         assertTrue(address(umaBridge).balance <= criticalGasThreshold);
     }
 
     // Multiple deposits and withdrawals
     function test_MarketBridge_multipleDepositsAndWithdrawals() public {
         uint256 initialBalance = address(marketBridge).balance;
-        
+
         // Multiple deposits
         vm.deal(marketUser, 50 ether);
         vm.startPrank(marketUser);
@@ -396,21 +373,21 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         marketBridge.depositETH{value: 15 ether}();
         marketBridge.depositETH{value: 25 ether}();
         vm.stopPrank();
-        
+
         assertEq(address(marketBridge).balance, initialBalance + 50 ether);
-        
+
         // Multiple withdrawals
         vm.startPrank(owner);
         marketBridge.withdrawETH(20 ether);
         marketBridge.withdrawETH(15 ether);
         vm.stopPrank();
-        
+
         assertEq(address(marketBridge).balance, initialBalance + 15 ether);
     }
 
     function test_UMABridge_multipleDepositsAndWithdrawals() public {
         uint256 initialBalance = address(umaBridge).balance;
-        
+
         // Multiple deposits
         vm.deal(umaUser, 60 ether);
         vm.startPrank(umaUser);
@@ -418,52 +395,52 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         umaBridge.depositETH{value: 25 ether}();
         umaBridge.depositETH{value: 15 ether}();
         vm.stopPrank();
-        
+
         assertEq(address(umaBridge).balance, initialBalance + 60 ether);
-        
+
         // Multiple withdrawals
         vm.startPrank(owner);
         umaBridge.withdrawETH(30 ether);
         umaBridge.withdrawETH(20 ether);
         vm.stopPrank();
-        
+
         assertEq(address(umaBridge).balance, initialBalance + 10 ether);
     }
 
     // Zero value tests
     function test_MarketBridge_depositETH_zeroValue() public {
         uint256 initialBalance = address(marketBridge).balance;
-        
+
         marketBridge.depositETH{value: 0}();
-        
+
         assertEq(address(marketBridge).balance, initialBalance);
     }
 
     function test_UMABridge_depositETH_zeroValue() public {
         uint256 initialBalance = address(umaBridge).balance;
-        
+
         umaBridge.depositETH{value: 0}();
-        
+
         assertEq(address(umaBridge).balance, initialBalance);
     }
 
     function test_MarketBridge_withdrawETH_zeroValue() public {
         uint256 initialBalance = address(marketBridge).balance;
-        
+
         vm.startPrank(owner);
         marketBridge.withdrawETH(0);
         vm.stopPrank();
-        
+
         assertEq(address(marketBridge).balance, initialBalance);
     }
 
     function test_UMABridge_withdrawETH_zeroValue() public {
         uint256 initialBalance = address(umaBridge).balance;
-        
+
         vm.startPrank(owner);
         umaBridge.withdrawETH(0);
         vm.stopPrank();
-        
+
         assertEq(address(umaBridge).balance, initialBalance);
     }
 }

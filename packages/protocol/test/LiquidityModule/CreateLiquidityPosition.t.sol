@@ -35,24 +35,15 @@ contract CreateLiquidityPosition is TestMarket {
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         sapience = ISapience(vm.getAddress("Sapience"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (sapience, ) = createMarket(
-            MIN_TICK,
-            MAX_TICK,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote"
-        );
+        (sapience,) = createMarket(MIN_TICK, MAX_TICK, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote");
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -80,13 +71,7 @@ contract CreateLiquidityPosition is TestMarket {
     function test_revertWhen_tickUnderMin() public {
         int24 lowerTick = 16000 - 200;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InvalidRange.selector,
-                lowerTick,
-                MIN_TICK
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRange.selector, lowerTick, MIN_TICK));
         vm.startPrank(lp1);
         sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
@@ -106,13 +91,7 @@ contract CreateLiquidityPosition is TestMarket {
     function test_revertWhen_tickOverMax() public {
         int24 upperTick = MAX_TICK + 200;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InvalidRange.selector,
-                upperTick,
-                MAX_TICK
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidRange.selector, upperTick, MAX_TICK));
         vm.startPrank(lp1);
         sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
@@ -131,9 +110,7 @@ contract CreateLiquidityPosition is TestMarket {
 
     function test_revertWhen_marketExpired() public {
         // Fast forward to after the market end time
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getMarket(
-            marketId
-        );
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getMarket(marketId);
         vm.warp(marketData.endTime + 1);
 
         vm.expectRevert(Errors.ExpiredMarket.selector);
@@ -158,19 +135,10 @@ contract CreateLiquidityPosition is TestMarket {
     int24 constant UPPER_TICK = 24800;
 
     function test_newPosition_withinRange() public {
-        (
-            uint256 loanAmount0,
-            uint256 loanAmount1,
+        (uint256 loanAmount0, uint256 loanAmount1,) =
+            getTokenAmountsForCollateralAmount(COLLATERAL_AMOUNT, LOWER_TICK, UPPER_TICK);
 
-        ) = getTokenAmountsForCollateralAmount(
-                COLLATERAL_AMOUNT,
-                LOWER_TICK,
-                UPPER_TICK
-            );
-
-        uint256 sapienceInitialBalance = collateralAsset.balanceOf(
-            address(sapience)
-        );
+        uint256 sapienceInitialBalance = collateralAsset.balanceOf(address(sapience));
         uint256 lpInitialBalance = collateralAsset.balanceOf(lp1);
 
         vm.prank(lp1);
@@ -183,25 +151,23 @@ contract CreateLiquidityPosition is TestMarket {
             uint256 addedAmount0,
             uint256 addedAmount1
         ) = sapience.createLiquidityPosition(
-                ISapienceStructs.LiquidityMintParams({
-                    marketId: marketId,
-                    amountBaseToken: loanAmount0,
-                    amountQuoteToken: loanAmount1,
-                    collateralAmount: COLLATERAL_AMOUNT + dust,
-                    lowerTick: LOWER_TICK,
-                    upperTick: UPPER_TICK,
-                    minAmountBaseToken: 0,
-                    minAmountQuoteToken: 0,
-                    deadline: block.timestamp + 30 minutes
-                })
-            );
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: loanAmount0,
+                amountQuoteToken: loanAmount1,
+                collateralAmount: COLLATERAL_AMOUNT + dust,
+                lowerTick: LOWER_TICK,
+                upperTick: UPPER_TICK,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
         id;
         uniswapNftId;
         liquidity;
 
-        uint256 sapienceFinalBalance = collateralAsset.balanceOf(
-            address(sapience)
-        );
+        uint256 sapienceFinalBalance = collateralAsset.balanceOf(address(sapience));
         uint256 lpFinalBalance = collateralAsset.balanceOf(lp1);
 
         assertEq(
@@ -216,16 +182,10 @@ contract CreateLiquidityPosition is TestMarket {
         );
 
         assertApproxEqAbs(
-            addedAmount0,
-            loanAmount0,
-            dust,
-            "Added amount of token A should be within 0.00001 of loan amount"
+            addedAmount0, loanAmount0, dust, "Added amount of token A should be within 0.00001 of loan amount"
         );
         assertApproxEqAbs(
-            addedAmount1,
-            loanAmount1,
-            dust,
-            "Added amount of token B should be within 0.00001 of loan amount"
+            addedAmount1, loanAmount1, dust, "Added amount of token B should be within 0.00001 of loan amount"
         );
     }
 
@@ -233,15 +193,8 @@ contract CreateLiquidityPosition is TestMarket {
         uint256 collateralAmount = 100 ether;
         int24 lowerTick = 19400;
         int24 upperTick = 24800;
-        (
-            uint256 loanAmount0,
-            uint256 loanAmount1,
-
-        ) = getTokenAmountsForCollateralAmount(
-                collateralAmount,
-                lowerTick,
-                upperTick
-            );
+        (uint256 loanAmount0, uint256 loanAmount1,) =
+            getTokenAmountsForCollateralAmount(collateralAmount, lowerTick, upperTick);
 
         // Approve less collateral than required
         uint256 insufficientCollateral = collateralAmount - 1 ether;
@@ -266,30 +219,10 @@ contract CreateLiquidityPosition is TestMarket {
         vm.stopPrank();
     }
 
-    function test_fuzz_newPosition_withinRange(
-        int24 lowerTick,
-        int24 upperTick,
-        uint256 collateralAmount
-    ) public {
+    function test_fuzz_newPosition_withinRange(int24 lowerTick, int24 upperTick, uint256 collateralAmount) public {
         // Limit the range of ticks to reduce possibilities
-        lowerTick = int24(
-            int256(
-                bound(
-                    uint24(lowerTick),
-                    uint24(MIN_TICK),
-                    uint24(MAX_TICK - 400)
-                )
-            )
-        );
-        upperTick = int24(
-            int256(
-                bound(
-                    uint24(upperTick),
-                    uint24(lowerTick + 400),
-                    uint24(MAX_TICK)
-                )
-            )
-        );
+        lowerTick = int24(int256(bound(uint24(lowerTick), uint24(MIN_TICK), uint24(MAX_TICK - 400))));
+        upperTick = int24(int256(bound(uint24(upperTick), uint24(lowerTick + 400), uint24(MAX_TICK))));
 
         // Ensure ticks are multiples of 400 to further reduce possibilities
         lowerTick = lowerTick - (lowerTick % 400);
@@ -299,15 +232,8 @@ contract CreateLiquidityPosition is TestMarket {
         collateralAmount = bound(collateralAmount, 1 ether, 100 ether);
         collateralAmount = collateralAmount - (collateralAmount % 1 ether);
 
-        (
-            uint256 loanAmount0,
-            uint256 loanAmount1,
-
-        ) = getTokenAmountsForCollateralAmount(
-                collateralAmount,
-                lowerTick,
-                upperTick
-            );
+        (uint256 loanAmount0, uint256 loanAmount1,) =
+            getTokenAmountsForCollateralAmount(collateralAmount, lowerTick, upperTick);
 
         vm.startPrank(lp1);
         (
@@ -319,40 +245,32 @@ contract CreateLiquidityPosition is TestMarket {
             uint256 addedAmount0,
             uint256 addedAmount1
         ) = sapience.createLiquidityPosition(
-                ISapienceStructs.LiquidityMintParams({
-                    marketId: marketId,
-                    amountBaseToken: loanAmount0,
-                    amountQuoteToken: loanAmount1,
-                    collateralAmount: collateralAmount + dust,
-                    lowerTick: lowerTick,
-                    upperTick: upperTick,
-                    minAmountBaseToken: 0,
-                    minAmountQuoteToken: 0,
-                    deadline: block.timestamp + 30 minutes
-                })
-            );
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: loanAmount0,
+                amountQuoteToken: loanAmount1,
+                collateralAmount: collateralAmount + dust,
+                lowerTick: lowerTick,
+                upperTick: upperTick,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
         vm.stopPrank();
 
         assertGt(id, 0, "Position ID should be greater than 0");
         assertGt(uniswapNftId, 0, "Uniswap NFT ID should be greater than 0");
         assertGt(liquidity, 0, "Liquidity should be greater than 0");
         assertApproxEqAbs(
-            addedAmount0,
-            loanAmount0,
-            dust,
-            "Added amount of token A should be within dust of loan amount"
+            addedAmount0, loanAmount0, dust, "Added amount of token A should be within dust of loan amount"
         );
         assertApproxEqAbs(
-            addedAmount1,
-            loanAmount1,
-            dust,
-            "Added amount of token B should be within dust of loan amount"
+            addedAmount1, loanAmount1, dust, "Added amount of token B should be within dust of loan amount"
         );
 
         // Check if collateral amount was transferred to Sapience contract
-        uint256 sapienceCollateralBalance = collateralAsset.balanceOf(
-            address(sapience)
-        );
+        uint256 sapienceCollateralBalance = collateralAsset.balanceOf(address(sapience));
         assertEq(
             sapienceCollateralBalance,
             totalDepositedCollateralAmount,
@@ -369,15 +287,7 @@ contract CreateLiquidityPosition is TestMarket {
 
         // Check that the loan amount stored on position is equal to the added amounts
         Position.Data memory position = sapience.getPosition(id);
-        assertEq(
-            position.borrowedVBase,
-            addedAmount0,
-            "Borrowed vBase should equal added amount of token A"
-        );
-        assertEq(
-            position.borrowedVQuote,
-            addedAmount1,
-            "Borrowed vQuote should equal added amount of token B"
-        );
+        assertEq(position.borrowedVBase, addedAmount0, "Borrowed vBase should equal added amount of token A");
+        assertEq(position.borrowedVQuote, addedAmount1, "Borrowed vQuote should equal added amount of token B");
     }
 }

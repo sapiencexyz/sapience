@@ -7,11 +7,7 @@ import {TestTrade} from "../helpers/TestTrade.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
-import {SettlementModule} from "../../src/market/modules/SettlementModule.sol";
-import {TradeModule} from "../../src/market/modules/TradeModule.sol";
-import {Market} from "../../src/market/storage/Market.sol";
 import {Position} from "../../src/market/storage/Position.sol";
-import {Market} from "../../src/market/storage/Market.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 
@@ -39,25 +35,16 @@ contract SettleLPTest is TestTrade {
     uint256 constant BOND_AMOUNT = 5 ether;
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         // Create users
         lp1 = createUser("lp", 1000 ether);
         trader1 = createUser("trader1", 1000 ether);
         trader2 = createUser("trader2", 1000 ether);
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (sapience, owner) = createMarket(
-            MIN_TICK,
-            MAX_TICK,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote"
-        );
+        (sapience, owner) = createMarket(MIN_TICK, MAX_TICK, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote");
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -71,19 +58,12 @@ contract SettleLPTest is TestTrade {
 
     function provideLiquidity(address user, uint256 collateralAmount) internal {
         // Get token amounts for collateral using TestMarket's method
-        (
-            uint256 baseTokenAmount,
-            uint256 quoteTokenAmount,
-
-        ) = getTokenAmountsForCollateralAmount(
-                collateralAmount,
-                MIN_TICK,
-                MAX_TICK
-            );
+        (uint256 baseTokenAmount, uint256 quoteTokenAmount,) =
+            getTokenAmountsForCollateralAmount(collateralAmount, MIN_TICK, MAX_TICK);
 
         // Create initial position
         vm.startPrank(user);
-        (lpPositionId, , , , , , ) = sapience.createLiquidityPosition(
+        (lpPositionId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: baseTokenAmount,
@@ -99,69 +79,41 @@ contract SettleLPTest is TestTrade {
         vm.stopPrank();
     }
 
-    function traderBuysGas(
-        address trader,
-        uint256 amount
-    ) internal returns (uint256 traderPositionId) {
+    function traderBuysGas(address trader, uint256 amount) internal returns (uint256 traderPositionId) {
         vm.startPrank(trader);
-        traderPositionId = addTraderPosition(
-            sapience,
-            marketId,
-            int256(amount)
-        );
+        traderPositionId = addTraderPosition(sapience, marketId, int256(amount));
         vm.stopPrank();
     }
 
-    function traderSellsGas(
-        address trader,
-        uint256 amount
-    ) internal returns (uint256 traderPositionId) {
+    function traderSellsGas(address trader, uint256 amount) internal returns (uint256 traderPositionId) {
         vm.startPrank(trader);
-        traderPositionId = addTraderPosition(
-            sapience,
-            marketId,
-            -int256(amount)
-        );
+        traderPositionId = addTraderPosition(sapience, marketId, -int256(amount));
         vm.stopPrank();
     }
 
     function test_revertWhen_invalidPositionId() public {
         uint256 invalidPositionId = 999; // An ID that doesn't exist
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InvalidPositionId.selector,
-                invalidPositionId
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidPositionId.selector, invalidPositionId));
         vm.prank(lp1);
         sapience.settlePosition(invalidPositionId);
     }
 
     function test_revertWhen_notOwner() public {
         address randomUser = address(0x1234);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.NotAccountOwner.selector,
-                lpPositionId,
-                randomUser
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAccountOwner.selector, lpPositionId, randomUser));
         vm.prank(randomUser);
         sapience.settlePosition(lpPositionId);
     }
 
     function test_revertWhen_marketNotSettled() public {
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.MarketNotSettled.selector, marketId)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.MarketNotSettled.selector, marketId));
         vm.prank(lp1);
         sapience.settlePosition(lpPositionId);
     }
 
     function test_settleLp() public {
         // Warp to end of market
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         vm.warp(marketData.endTime + 1);
 
         // Set settlement price
@@ -172,9 +124,7 @@ contract SettleLPTest is TestTrade {
         sapience.settlePosition(lpPositionId);
 
         // Assert position is settled
-        Position.Data memory updatedPosition = sapience.getPosition(
-            lpPositionId
-        );
+        Position.Data memory updatedPosition = sapience.getPosition(lpPositionId);
         bool isSettled = updatedPosition.isSettled;
         assertTrue(isSettled, "Position should be settled");
 

@@ -5,16 +5,11 @@ import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
-import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {TestMarket} from "../helpers/TestMarket.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {Errors} from "../../src/market/storage/Errors.sol";
-import {Position} from "../../src/market/storage/Position.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 
 contract SettleTradeTest is TestTrade {
@@ -57,26 +52,16 @@ contract SettleTradeTest is TestTrade {
     ISapienceStructs.MarketParams marketParams;
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
-        (sapience, ) = createMarket(
-            5200,
-            28200,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote"
-        ); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
+        (sapience,) = createMarket(5200, 28200, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote"); // 1.709 to 17.09 (1.6819839204636384 to 16.774485460620674)
 
         lp1 = TestUser.createUser("LP1", 20_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 20_000_000 ether);
 
-        (
-            ISapienceStructs.MarketData memory marketData,
-            ISapienceStructs.MarketParams memory _marketParams
-        ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData, ISapienceStructs.MarketParams memory _marketParams) =
+            sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -90,21 +75,14 @@ contract SettleTradeTest is TestTrade {
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
 
         vm.startPrank(lp1);
-        addLiquidity(
-            sapience,
-            pool,
-            marketId,
-            COLLATERAL_FOR_ORDERS * 100_000,
-            LP_LOWER_TICK,
-            LP_UPPER_TICK
-        ); // enough to keep price stable (no slippage)
+        addLiquidity(sapience, pool, marketId, COLLATERAL_FOR_ORDERS * 100_000, LP_LOWER_TICK, LP_UPPER_TICK); // enough to keep price stable (no slippage)
         vm.stopPrank();
 
         // Settle the market
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
-        (owner, , , ) = sapience.getMarketGroup();
+        (owner,,,) = sapience.getMarketGroup();
 
         bondCurrency.mint(marketParams.bondAmount * 2, owner);
     }
@@ -112,9 +90,8 @@ contract SettleTradeTest is TestTrade {
     function test_modifyTraderPosition_long_close_UsesSettlementPrice() public {
         settleAndSucced(1 ether);
     }
-    function test_modifyTraderPosition_short_close_UsesSettlementPrice()
-        public
-    {
+
+    function test_modifyTraderPosition_short_close_UsesSettlementPrice() public {
         settleAndSucced(-1 ether);
     }
 
@@ -124,25 +101,14 @@ contract SettleTradeTest is TestTrade {
         int256 pnl;
         if (initialPositionSize > 0) {
             // Long: PNL = (Settlement Price - Initial Price) * Position Size
-            pnl = initialPositionSize.mulDecimal(
-                SETTLEMENT_PRICE_D18.toInt() -
-                    INITIAL_PRICE_PLUS_FEE_D18.toInt()
-            );
+            pnl = initialPositionSize.mulDecimal(SETTLEMENT_PRICE_D18.toInt() - INITIAL_PRICE_PLUS_FEE_D18.toInt());
         } else {
             // Short: PNL = (Initial Price - Settlement Price) * Position Size * -1 (positionSize is negative for short)
-            pnl =
-                -1 *
-                initialPositionSize.mulDecimal(
-                    INITIAL_PRICE_LESS_FEE_D18.toInt() -
-                        SETTLEMENT_PRICE_D18.toInt()
-                );
+            pnl = -1 * initialPositionSize.mulDecimal(INITIAL_PRICE_LESS_FEE_D18.toInt() - SETTLEMENT_PRICE_D18.toInt());
         }
 
         vm.startPrank(trader1);
-        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-            marketId,
-            initialPositionSize
-        );
+        (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, initialPositionSize);
 
         uint256 positionId = sapience.createTraderPosition(
             ISapienceStructs.TraderPositionCreateParams({
@@ -163,22 +129,14 @@ contract SettleTradeTest is TestTrade {
 
         uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);
 
-        assertApproxEqRel(
-            trader1FinalBalance.toInt() - trader1InitialBalance.toInt(),
-            pnl,
-            0.01 ether,
-            "pnl"
-        );
+        assertApproxEqRel(trader1FinalBalance.toInt() - trader1InitialBalance.toInt(), pnl, 0.01 ether, "pnl");
     }
 
     function settle() internal {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,

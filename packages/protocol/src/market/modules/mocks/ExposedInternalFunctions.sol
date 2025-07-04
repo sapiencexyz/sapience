@@ -6,6 +6,7 @@ import {Market} from "../../storage/Market.sol";
 
 contract ExposedInternalFunctions is IExposedInternalFunctions {
     using Market for Market.Data;
+
     function requiredCollateralForLiquidity(
         uint256 marketId,
         uint128 liquidity,
@@ -18,13 +19,7 @@ contract ExposedInternalFunctions is IExposedInternalFunctions {
     ) external view returns (uint256) {
         Market.Data storage market = Market.load(marketId);
         return market.requiredCollateralForLiquidity(
-            liquidity,
-            loanAmount0,
-            loanAmount1,
-            tokensOwed0,
-            tokensOwed1,
-            sqrtPriceAX96,
-            sqrtPriceBX96
+            liquidity, loanAmount0, loanAmount1, tokensOwed0, tokensOwed1, sqrtPriceAX96, sqrtPriceBX96
         );
     }
 }

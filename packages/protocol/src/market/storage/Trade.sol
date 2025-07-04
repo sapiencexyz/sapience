@@ -24,14 +24,7 @@ library Trade {
         uint256 amountInVQuote,
         uint256 amountInVBase,
         bool isQuote
-    )
-        internal
-        returns (
-            uint256 amountOutVQuote,
-            uint256 amountOutVBase,
-            uint160 sqrtPriceX96After
-        )
-    {
+    ) internal returns (uint256 amountOutVQuote, uint256 amountOutVBase, uint160 sqrtPriceX96After) {
         if (amountInVQuote > 0 && amountInVBase > 0) {
             revert Errors.InvalidData("Only one token can be traded at a time");
         }
@@ -41,7 +34,7 @@ library Trade {
         }
 
         MarketGroup.Data storage marketGroup = MarketGroup.load();
-        
+
         address tokenIn;
         address tokenOut;
         uint256 amountIn;
@@ -58,33 +51,29 @@ library Trade {
         }
 
         if (isQuote) {
-            IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2
-                .QuoteExactInputSingleParams({
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    amountIn: amountIn,
-                    fee: marketGroup.marketParams.feeRate,
-                    sqrtPriceLimitX96: 0
-                });
-            (amountOut, sqrtPriceX96After, , ) = IQuoterV2(
-                marketGroup.marketParams.uniswapQuoter
-            ).quoteExactInputSingle(params);
+            IQuoterV2.QuoteExactInputSingleParams memory params = IQuoterV2.QuoteExactInputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountIn: amountIn,
+                fee: marketGroup.marketParams.feeRate,
+                sqrtPriceLimitX96: 0
+            });
+            (amountOut, sqrtPriceX96After,,) =
+                IQuoterV2(marketGroup.marketParams.uniswapQuoter).quoteExactInputSingle(params);
         } else {
-            ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter
-                .ExactInputSingleParams({
-                    fee: marketGroup.marketParams.feeRate,
-                    recipient: address(this),
-                    deadline: block.timestamp,
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    amountIn: amountIn,
-                    // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
-                    amountOutMinimum: 0,
-                    sqrtPriceLimitX96: 0
-                });
+            ISwapRouter.ExactInputSingleParams memory swapParams = ISwapRouter.ExactInputSingleParams({
+                fee: marketGroup.marketParams.feeRate,
+                recipient: address(this),
+                deadline: block.timestamp,
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountIn: amountIn,
+                // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0
+            });
 
-            amountOut = ISwapRouter(marketGroup.marketParams.uniswapSwapRouter)
-                .exactInputSingle(swapParams);
+            amountOut = ISwapRouter(marketGroup.marketParams.uniswapSwapRouter).exactInputSingle(swapParams);
         }
 
         if (amountInVQuote > 0) {
@@ -99,14 +88,7 @@ library Trade {
         uint256 expectedAmountOutVQuote,
         uint256 expectedAmountOutVBase,
         bool isQuote
-    )
-        internal
-        returns (
-            uint256 requiredAmountInVQuote,
-            uint256 requiredAmountInVBase,
-            uint160 sqrtPriceX96After
-        )
-    {
+    ) internal returns (uint256 requiredAmountInVQuote, uint256 requiredAmountInVBase, uint160 sqrtPriceX96After) {
         if (expectedAmountOutVQuote > 0 && expectedAmountOutVBase > 0) {
             revert Errors.InvalidData("Only one token can be traded at a time");
         }
@@ -116,7 +98,7 @@ library Trade {
         }
 
         MarketGroup.Data storage marketGroup = MarketGroup.load();
-        
+
         address tokenIn;
         address tokenOut;
         uint256 amountOut;
@@ -133,34 +115,30 @@ library Trade {
         }
 
         if (isQuote) {
-            IQuoterV2.QuoteExactOutputSingleParams memory params = IQuoterV2
-                .QuoteExactOutputSingleParams({
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    amount: amountOut,
-                    fee: marketGroup.marketParams.feeRate,
-                    sqrtPriceLimitX96: 0
-                });
+            IQuoterV2.QuoteExactOutputSingleParams memory params = IQuoterV2.QuoteExactOutputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amount: amountOut,
+                fee: marketGroup.marketParams.feeRate,
+                sqrtPriceLimitX96: 0
+            });
 
-            (amountIn, sqrtPriceX96After, , ) = IQuoterV2(
-                marketGroup.marketParams.uniswapQuoter
-            ).quoteExactOutputSingle(params);
+            (amountIn, sqrtPriceX96After,,) =
+                IQuoterV2(marketGroup.marketParams.uniswapQuoter).quoteExactOutputSingle(params);
         } else {
-            ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter
-                .ExactOutputSingleParams({
-                    tokenIn: tokenIn,
-                    tokenOut: tokenOut,
-                    amountOut: amountOut,
-                    fee: marketGroup.marketParams.feeRate,
-                    recipient: address(this),
-                    deadline: block.timestamp,
-                    // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
-                    sqrtPriceLimitX96: 0,
-                    amountInMaximum: type(uint256).max
-                });
+            ISwapRouter.ExactOutputSingleParams memory swapParams = ISwapRouter.ExactOutputSingleParams({
+                tokenIn: tokenIn,
+                tokenOut: tokenOut,
+                amountOut: amountOut,
+                fee: marketGroup.marketParams.feeRate,
+                recipient: address(this),
+                deadline: block.timestamp,
+                // Notice, not limiting the trade in any way since we are limiting the collateral required afterwards.
+                sqrtPriceLimitX96: 0,
+                amountInMaximum: type(uint256).max
+            });
 
-            amountIn = ISwapRouter(marketGroup.marketParams.uniswapSwapRouter)
-                .exactOutputSingle(swapParams);
+            amountIn = ISwapRouter(marketGroup.marketParams.uniswapSwapRouter).exactOutputSingle(swapParams);
         }
         if (expectedAmountOutVQuote > 0) {
             requiredAmountInVBase = amountIn;
@@ -197,40 +175,29 @@ library Trade {
         uint160 sqrtPriceX96After;
     }
 
-    function quoteOrTrade(
-        QuoteOrTradeInputParams memory params
-    ) internal returns (QuoteOrTradeOutputParams memory output) {
+    function quoteOrTrade(QuoteOrTradeInputParams memory params)
+        internal
+        returns (QuoteOrTradeOutputParams memory output)
+    {
         QuoteRuntime memory runtime;
         Market.Data storage market = Market.load(params.oldPosition.marketId);
 
         runtime.isLongDirection = params.deltaSize > 0;
 
-        output.position.depositedCollateralAmount = params
-            .oldPosition
-            .depositedCollateralAmount;
+        output.position.depositedCollateralAmount = params.oldPosition.depositedCollateralAmount;
 
         // 1- Get or quote the transacted tokens (vQuote and vBase)
         runtime.signedTradedVBase = params.deltaSize;
         runtime.tradedVBase = params.deltaSize.abs();
         if (runtime.isLongDirection) {
             // Long direction; Quote or Trade
-            (runtime.tradedVQuote, , output.sqrtPriceX96After) = Trade
-                .swapOrQuoteTokensExactOut(
-                    market,
-                    0,
-                    runtime.tradedVBase,
-                    params.isQuote
-                );
+            (runtime.tradedVQuote,, output.sqrtPriceX96After) =
+                Trade.swapOrQuoteTokensExactOut(market, 0, runtime.tradedVBase, params.isQuote);
             runtime.signedTradedVQuote = runtime.tradedVQuote.toInt();
         } else {
             // Short direction; Quote or Trade
-            (runtime.tradedVQuote, , output.sqrtPriceX96After) = Trade
-                .swapOrQuoteTokensExactIn(
-                    market,
-                    0,
-                    runtime.tradedVBase,
-                    params.isQuote
-                );
+            (runtime.tradedVQuote,, output.sqrtPriceX96After) =
+                Trade.swapOrQuoteTokensExactIn(market, 0, runtime.tradedVBase, params.isQuote);
             runtime.signedTradedVQuote = runtime.tradedVQuote.toInt() * -1;
         }
 
@@ -240,12 +207,8 @@ library Trade {
         }
 
         // 2- Get PnL and vQuote involved in the transaction from initial size to zero (intermediate close the position).
-        (
-            runtime.tradeRatioD18RoundDown,
-            runtime.tradeRatioD18RoundUp,
-            output.closePnL,
-            runtime.vQuoteFromZero
-        ) = calculateCloseQuoteAndPnl(
+        (runtime.tradeRatioD18RoundDown, runtime.tradeRatioD18RoundUp, output.closePnL, runtime.vQuoteFromZero) =
+        calculateCloseQuoteAndPnl(
             runtime.tradedVQuote,
             runtime.tradedVBase,
             runtime.signedTradedVQuote,
@@ -256,19 +219,11 @@ library Trade {
 
         // Check if the tradeRatioD18 is within the bounds
         if (runtime.tradeRatioD18RoundDown < market.minPriceD18) {
-            revert Errors.TradePriceOutOfBounds(
-                runtime.tradeRatioD18RoundDown,
-                market.minPriceD18,
-                market.maxPriceD18
-            );
+            revert Errors.TradePriceOutOfBounds(runtime.tradeRatioD18RoundDown, market.minPriceD18, market.maxPriceD18);
         }
 
         if (runtime.tradeRatioD18RoundUp > market.maxPriceD18) {
-            revert Errors.TradePriceOutOfBounds(
-                runtime.tradeRatioD18RoundUp,
-                market.minPriceD18,
-                market.maxPriceD18
-            );
+            revert Errors.TradePriceOutOfBounds(runtime.tradeRatioD18RoundUp, market.minPriceD18, market.maxPriceD18);
         }
 
         // Use the truncated value as the tradeRatioD18 (used later in the event, the difference between roundDown and roundUp is not important in the event and quote functions as it is informative)
@@ -297,8 +252,7 @@ library Trade {
         uint256 extraCollateralRequired;
         if (output.closePnL >= 0) {
             output.position.depositedCollateralAmount =
-                params.oldPosition.depositedCollateralAmount +
-                output.closePnL.toUint();
+                params.oldPosition.depositedCollateralAmount + output.closePnL.toUint();
         } else {
             // If closePnL is negative, it means that the position is in a loss
             // and the collateral should be reduced
@@ -308,32 +262,25 @@ library Trade {
                 // If the collateral to return is more than the deposited collateral, then the position is in a loss
                 // and the collateral should be reduced to zero
                 output.position.depositedCollateralAmount = 0;
-                extraCollateralRequired =
-                    collateralLoss -
-                    params.oldPosition.depositedCollateralAmount;
+                extraCollateralRequired = collateralLoss - params.oldPosition.depositedCollateralAmount;
             } else {
                 output.position.depositedCollateralAmount =
-                    params.oldPosition.depositedCollateralAmount -
-                    collateralLoss;
+                    params.oldPosition.depositedCollateralAmount - collateralLoss;
             }
         }
 
         // 5- Get the required collateral for the trade\quote
-        uint256 newPositionCollateralRequired = market
-            .getCollateralRequirementsForTrade(
-                output.position.vBaseAmount,
-                output.position.vQuoteAmount,
-                output.position.borrowedVBase,
-                output.position.borrowedVQuote
-            );
+        uint256 newPositionCollateralRequired = market.getCollateralRequirementsForTrade(
+            output.position.vBaseAmount,
+            output.position.vQuoteAmount,
+            output.position.borrowedVBase,
+            output.position.borrowedVQuote
+        );
 
-        output.requiredCollateral =
-            newPositionCollateralRequired +
-            extraCollateralRequired;
+        output.requiredCollateral = newPositionCollateralRequired + extraCollateralRequired;
 
         output.expectedDeltaCollateral =
-            output.requiredCollateral.toInt() -
-            output.position.depositedCollateralAmount.toInt();
+            output.requiredCollateral.toInt() - output.position.depositedCollateralAmount.toInt();
     }
 
     function calculateCloseQuoteAndPnl(
@@ -346,12 +293,7 @@ library Trade {
     )
         internal
         pure
-        returns (
-            uint256 tradeRatioD18RoundDown,
-            uint256 tradeRatioD18RoundUp,
-            int256 closePnL,
-            uint256 vQuoteFromZero
-        )
+        returns (uint256 tradeRatioD18RoundDown, uint256 tradeRatioD18RoundUp, int256 closePnL, uint256 vQuoteFromZero)
     {
         // Notice: This function will use rounding up/low depending on the direction of the trade and the initial/final position size
         // This is to avoid rounding errors when the position is closed
@@ -365,19 +307,13 @@ library Trade {
 
         // get both versions of vQuoteToZero using both tradeRatioD18
         // vQuote to compensate the base (either to pay borrowedVBase or borrowedVQuote tokens from the close trade)
-        int256 vQuoteToZeroRoundDown = (initialSize * -1).mulDecimal(
-            tradeRatioD18RoundDown.toInt()
-        );
-        int256 vQuoteToZeroRoundUp = (initialSize * -1).mulDecimal(
-            tradeRatioD18RoundUp.toInt()
-        );
+        int256 vQuoteToZeroRoundDown = (initialSize * -1).mulDecimal(tradeRatioD18RoundDown.toInt());
+        int256 vQuoteToZeroRoundUp = (initialSize * -1).mulDecimal(tradeRatioD18RoundUp.toInt());
 
         // Calculate the closePnL as net vQuote from original positon minus the vQuote to zero
         // net vQuote from original positon minus the vQuote to zero (closing Profit based on the new trade ratio. Using the worst case scenario)
-        closePnL =
-            oldPosition.vQuoteAmount.toInt() -
-            oldPosition.borrowedVQuote.toInt() -
-            (initialSize > 0 ? vQuoteToZeroRoundDown : vQuoteToZeroRoundUp);
+        closePnL = oldPosition.vQuoteAmount.toInt() - oldPosition.borrowedVQuote.toInt()
+            - (initialSize > 0 ? vQuoteToZeroRoundDown : vQuoteToZeroRoundUp);
 
         // vQuote from the trade that wasn't used to close the initial position (should be same as targetSize*tradeRatio, but there can be some rounding errors)
         // vQuoteFromZero = signedTradedVQuote - vQuoteToZero
@@ -388,35 +324,23 @@ library Trade {
             vQuoteFromZero = 0;
             // Skip the rest since is just for getting the vQuoteFromZero with the proper rounding
         } else {
-            uint256 vQuoteFromZeroFromRoundDown = (signedTradedVQuote -
-                vQuoteToZeroRoundDown).abs();
-            uint256 vQuoteFromZeroFromRoundUp = (signedTradedVQuote -
-                vQuoteToZeroRoundUp).abs();
+            uint256 vQuoteFromZeroFromRoundDown = (signedTradedVQuote - vQuoteToZeroRoundDown).abs();
+            uint256 vQuoteFromZeroFromRoundUp = (signedTradedVQuote - vQuoteToZeroRoundUp).abs();
             if (targetSize > 0) {
-                vQuoteFromZero = vQuoteFromZeroFromRoundDown >
-                    vQuoteFromZeroFromRoundUp
+                vQuoteFromZero = vQuoteFromZeroFromRoundDown > vQuoteFromZeroFromRoundUp
                     ? vQuoteFromZeroFromRoundDown
                     : vQuoteFromZeroFromRoundUp;
             } else {
-                vQuoteFromZero = vQuoteFromZeroFromRoundDown <
-                    vQuoteFromZeroFromRoundUp
+                vQuoteFromZero = vQuoteFromZeroFromRoundDown < vQuoteFromZeroFromRoundUp
                     ? vQuoteFromZeroFromRoundDown
                     : vQuoteFromZeroFromRoundUp;
             }
         }
 
-        return (
-            tradeRatioD18RoundDown,
-            tradeRatioD18RoundUp,
-            closePnL,
-            vQuoteFromZero
-        );
+        return (tradeRatioD18RoundDown, tradeRatioD18RoundUp, closePnL, vQuoteFromZero);
     }
 
-    function checkDeltaCollateralLimit(
-        int256 deltaCollateral,
-        int256 deltaCollateralLimit
-    ) internal pure {
+    function checkDeltaCollateralLimit(int256 deltaCollateral, int256 deltaCollateralLimit) internal pure {
         // limit is 1.01, deltaCollateral is 1.02 => revert
         if (deltaCollateralLimit == 0) {
             // no limit, so no need to check
@@ -427,11 +351,7 @@ library Trade {
         // For positive limit (deposit), deltaCollateral > deltaCollateralLimit revert (i.e. collateral limit is 1.02, deltaCollateral is 1.03 => revert)
         // For negative limit (withdrawal), deltaCollateral < deltaCollateralLimit revert (i.e. collateral limit is -1.02, deltaCollateral is -1.01 => revert)
         if (deltaCollateral > deltaCollateralLimit) {
-            revert Errors.CollateralLimitReached(
-                deltaCollateral,
-                deltaCollateralLimit
-            );
+            revert Errors.CollateralLimitReached(deltaCollateral, deltaCollateralLimit);
         }
     }
-
 }

@@ -9,34 +9,29 @@ import {Market} from "../storage/Market.sol";
 import {MarketGroup} from "../storage/MarketGroup.sol";
 import {IUMASettlementModule} from "../interfaces/IUMASettlementModule.sol";
 import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
-import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import {OptimisticOracleV3Interface} from
+    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
 import "../libraries/DecimalPrice.sol";
 import {IMarketLayerZeroBridge} from "../../bridge/interfaces/ILayerZeroBridge.sol";
 
-contract UMASettlementModule is
-    IUMASettlementModule,
-    ReentrancyGuardUpgradeable
-{
+contract UMASettlementModule is IUMASettlementModule, ReentrancyGuardUpgradeable {
     using SafeERC20 for IERC20;
     using Market for Market.Data;
     using MarketGroup for MarketGroup.Data;
 
-    function submitSettlementPrice(
-        ISapienceStructs.SettlementPriceParams memory params
-    ) external nonReentrant returns (bytes32) {
+    function submitSettlementPrice(ISapienceStructs.SettlementPriceParams memory params)
+        external
+        nonReentrant
+        returns (bytes32)
+    {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         Market.Data storage market = Market.loadValid(params.marketId);
 
         validateSubmission(market, marketGroup, msg.sender);
 
-        require(
-            market.assertionId == bytes32(0),
-            "Assertion already submitted"
-        );
+        require(market.assertionId == bytes32(0), "Assertion already submitted");
 
-        uint256 decimalPrice = DecimalPrice.sqrtRatioX96ToPrice(
-            params.settlementSqrtPriceX96
-        );
+        uint256 decimalPrice = DecimalPrice.sqrtRatioX96ToPrice(params.settlementSqrtPriceX96);
 
         bytes memory claim = getClaim(market, decimalPrice);
 
@@ -44,9 +39,7 @@ contract UMASettlementModule is
 
         // If the market is bridged, use the bridge to assert truth
         if (marketGroup.bridgedSettlement) {
-            IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(
-                marketGroup.marketParams.optimisticOracleV3
-            );
+            IMarketLayerZeroBridge bridge = IMarketLayerZeroBridge(marketGroup.marketParams.optimisticOracleV3);
 
             market.assertionId = bridge.forwardAssertTruth(
                 address(this),
@@ -59,19 +52,11 @@ contract UMASettlementModule is
             );
         } else {
             // If the market is not bridged, use the optimistic oracle to assert truth and send the bond to the oracle
-            OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                    marketGroup.marketParams.optimisticOracleV3
-                );
+            OptimisticOracleV3Interface optimisticOracleV3 =
+                OptimisticOracleV3Interface(marketGroup.marketParams.optimisticOracleV3);
 
-            bondCurrency.safeTransferFrom(
-                msg.sender,
-                address(this),
-                marketGroup.marketParams.bondAmount
-            );
-            bondCurrency.approve(
-                address(optimisticOracleV3),
-                marketGroup.marketParams.bondAmount
-            );
+            bondCurrency.safeTransferFrom(msg.sender, address(this), marketGroup.marketParams.bondAmount);
+            bondCurrency.approve(address(optimisticOracleV3), marketGroup.marketParams.bondAmount);
 
             market.assertionId = optimisticOracleV3.assertTruth(
                 claim,
@@ -94,21 +79,12 @@ contract UMASettlementModule is
             disputed: false
         });
 
-        emit SettlementSubmitted(
-            params.marketId,
-            params.asserter,
-            params.settlementSqrtPriceX96,
-            block.timestamp
-        );
+        emit SettlementSubmitted(params.marketId, params.asserter, params.settlementSqrtPriceX96, block.timestamp);
 
         return market.assertionId;
     }
 
-    function assertionResolvedCallback(
-        bytes32 assertionId,
-        bool assertedTruthfully
-    ) external {
-        assertedTruthfully;
+    function assertionResolvedCallback(bytes32 assertionId, bool ) external {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         uint256 marketId = marketGroup.marketIdByAssertionId[assertionId];
         Market.Data storage market = Market.load(marketId);
@@ -118,26 +94,16 @@ contract UMASettlementModule is
         Market.Settlement storage settlement = market.settlement;
 
         if (!market.settlement.disputed) {
-            market.setSettlementPriceInRange(
-                DecimalPrice.sqrtRatioX96ToPrice(
-                    settlement.settlementPriceSqrtX96
-                )
-            );
+            market.setSettlementPriceInRange(DecimalPrice.sqrtRatioX96ToPrice(settlement.settlementPriceSqrtX96));
 
-            emit MarketSettled(
-                marketId,
-                assertionId,
-                settlement.settlementPriceSqrtX96
-            );
+            emit MarketSettled(marketId, assertionId, settlement.settlementPriceSqrtX96);
         }
 
         // clear the assertionId
         market.assertionId = bytes32(0);
     }
 
-    function assertionDisputedCallback(
-        bytes32 assertionId
-    ) external nonReentrant {
+    function assertionDisputedCallback(bytes32 assertionId) external nonReentrant {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         uint256 marketId = marketGroup.marketIdByAssertionId[assertionId];
         Market.Data storage market = Market.load(marketId);
@@ -150,45 +116,27 @@ contract UMASettlementModule is
         emit SettlementDisputed(marketId, block.timestamp);
     }
 
-    function validateSubmission(
-        Market.Data storage market,
-        MarketGroup.Data storage marketGroup,
-        address caller
-    ) internal view {
-        require(
-            block.timestamp >= market.endTime,
-            "Market activity is still allowed"
-        );
+    function validateSubmission(Market.Data storage market, MarketGroup.Data storage marketGroup, address caller)
+        internal
+        view
+    {
+        require(block.timestamp >= market.endTime, "Market activity is still allowed");
         require(!market.settled, "Market already settled");
-        require(
-            caller == marketGroup.owner,
-            "Only owner can call this function"
-        );
+        require(caller == marketGroup.owner, "Only owner can call this function");
     }
 
-    function validateUMACallback(
-        Market.Data storage market,
-        address caller,
-        bytes32 assertionId
-    ) internal view {
+    function validateUMACallback(Market.Data storage market, address caller, bytes32 assertionId) internal view {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
-        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                marketGroup.marketParams.optimisticOracleV3
-            );
+        OptimisticOracleV3Interface optimisticOracleV3 =
+            OptimisticOracleV3Interface(marketGroup.marketParams.optimisticOracleV3);
 
-        require(
-            block.timestamp > market.endTime,
-            "Market activity is still allowed"
-        );
+        require(block.timestamp > market.endTime, "Market activity is still allowed");
         require(!market.settled, "Market already settled");
         require(caller == address(optimisticOracleV3), "Invalid caller");
         require(assertionId == market.assertionId, "Invalid assertionId");
     }
 
-    function getClaim(
-        Market.Data storage market,
-        uint256 decimalPrice
-    ) internal view returns (bytes memory) {
+    function getClaim(Market.Data storage market, uint256 decimalPrice) internal view returns (bytes memory) {
         bytes memory claim;
         // Check if the market is a Yes/No market
         if (market.claimStatementNo.length > 0) {
@@ -196,11 +144,7 @@ contract UMASettlementModule is
                 ? abi.encodePacked(string(market.claimStatementYesOrNumeric))
                 : abi.encodePacked(string(market.claimStatementNo));
         } else {
-            claim = abi.encodePacked(
-                string(market.claimStatementYesOrNumeric),
-                Strings.toString(decimalPrice),
-                "."
-            );
+            claim = abi.encodePacked(string(market.claimStatementYesOrNumeric), Strings.toString(decimalPrice), ".");
         }
 
         return claim;

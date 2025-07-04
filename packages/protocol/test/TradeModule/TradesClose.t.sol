@@ -5,13 +5,9 @@ import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
-import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {TestMarket} from "../helpers/TestMarket.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-import {Position} from "../../src/market/storage/Position.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 
 import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
@@ -62,26 +58,18 @@ contract TradePositionClose is TestTrade {
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
 
         uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
-        (sapience, ) = createMarket(
-            MARKET_LOWER_TICK,
-            MARKET_UPPER_TICK,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote"
-        );
+        (sapience,) =
+            createMarket(MARKET_LOWER_TICK, MARKET_UPPER_TICK, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote");
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
         trader2 = TestUser.createUser("Trader2", 10_000_000 ether);
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -92,14 +80,7 @@ contract TradePositionClose is TestTrade {
 
         // Add liquidity
         vm.startPrank(lp1);
-        addLiquidity(
-            sapience,
-            pool,
-            marketId,
-            COLLATERAL_FOR_ORDERS * 100_000,
-            LP_LOWER_TICK,
-            LP_UPPER_TICK
-        ); // enough to keep price stable (no slippage)
+        addLiquidity(sapience, pool, marketId, COLLATERAL_FOR_ORDERS * 100_000, LP_LOWER_TICK, LP_UPPER_TICK); // enough to keep price stable (no slippage)
         vm.stopPrank();
     }
 
@@ -108,10 +89,7 @@ contract TradePositionClose is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-            marketId,
-            positionSize
-        );
+        (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, positionSize);
         // Send more collateral than required, just checking the position can be created/modified
         sapience.createTraderPosition(
             ISapienceStructs.TraderPositionCreateParams({
@@ -122,7 +100,7 @@ contract TradePositionClose is TestTrade {
             })
         );
         vm.stopPrank();
-        movePrice(.1 ether, positionSize * -100, 1000);
+        movePrice(0.1 ether, positionSize * -100, 1000);
     }
 
     function test_close_long_profit() public {}
@@ -135,11 +113,7 @@ contract TradePositionClose is TestTrade {
     // Helper functions //
     // //////////////// //
 
-    function movePrice(
-        uint256 expectedRatio,
-        int256 size,
-        uint256 maxIterations
-    ) internal {
+    function movePrice(uint256 expectedRatio, int256 size, uint256 maxIterations) internal {
         uint256 initialPrice = sapience.getReferencePrice(marketId);
         uint256 currentPrice;
         uint256 deltaPrice;
@@ -149,8 +123,7 @@ contract TradePositionClose is TestTrade {
 
         for (uint256 i = 0; i < maxIterations; i++) {
             // quote and open a long
-            (uint256 requiredCollateral, , ) = sapience
-                .quoteCreateTraderPosition(marketId, size);
+            (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, size);
             // Send more collateral than required, just checking the position can be created/modified
             sapience.createTraderPosition(
                 ISapienceStructs.TraderPositionCreateParams({
@@ -162,9 +135,7 @@ contract TradePositionClose is TestTrade {
             );
 
             currentPrice = sapience.getReferencePrice(marketId);
-            deltaPrice = currentPrice > initialPrice
-                ? currentPrice - initialPrice
-                : initialPrice - currentPrice;
+            deltaPrice = currentPrice > initialPrice ? currentPrice - initialPrice : initialPrice - currentPrice;
             priceRatio = deltaPrice.divDecimal(initialPrice);
             if (priceRatio >= expectedRatio) {
                 break;

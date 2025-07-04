@@ -38,11 +38,7 @@ contract CollateralDecimals8Test is Test {
         // Test large amount
         uint256 thousandWBTC = 1000 * 1e8;
         normalized = marketGroup.normalizeCollateralAmount(thousandWBTC);
-        assertEq(
-            normalized,
-            1000 * 1e18,
-            "1000 WBTC should normalize correctly"
-        );
+        assertEq(normalized, 1000 * 1e18, "1000 WBTC should normalize correctly");
     }
 
     function test_DenormalizationFrom18To8Decimals() public view {
@@ -50,19 +46,13 @@ contract CollateralDecimals8Test is Test {
 
         // Test denormalization
         uint256 amount18 = 1e18;
-        uint256 denormalized = marketGroup.denormalizeCollateralAmount(
-            amount18
-        );
+        uint256 denormalized = marketGroup.denormalizeCollateralAmount(amount18);
         assertEq(denormalized, 1e8, "1e18 should denormalize to 1 WBTC");
 
         // Test that can't have more precision than 8 decimals
         uint256 tinyAmount18 = 1e9; // Less than 1 satoshi in 18 decimals
         denormalized = marketGroup.denormalizeCollateralAmount(tinyAmount18);
-        assertEq(
-            denormalized,
-            0,
-            "Amount smaller than 1 satoshi should round to 0"
-        );
+        assertEq(denormalized, 0, "Amount smaller than 1 satoshi should round to 0");
 
         // Test exact satoshi boundary
         uint256 satoshi18 = 1e10;
@@ -82,20 +72,12 @@ contract CollateralDecimals8Test is Test {
         testAmounts[4] = 21000000 * 1e8; // 21M WBTC (max supply)
         testAmounts[5] = type(uint256).max / 1e10; // Near max that won't overflow
 
-        for (uint i = 0; i < testAmounts.length; i++) {
+        for (uint256 i = 0; i < testAmounts.length; i++) {
             uint256 original = testAmounts[i];
-            uint256 normalized = marketGroup.normalizeCollateralAmount(
-                original
-            );
-            uint256 denormalized = marketGroup.denormalizeCollateralAmount(
-                normalized
-            );
+            uint256 normalized = marketGroup.normalizeCollateralAmount(original);
+            uint256 denormalized = marketGroup.denormalizeCollateralAmount(normalized);
 
-            assertEq(
-                denormalized,
-                original,
-                string.concat("Round trip failed at index ", vm.toString(i))
-            );
+            assertEq(denormalized, original, string.concat("Round trip failed at index ", vm.toString(i)));
         }
     }
 
@@ -105,9 +87,7 @@ contract CollateralDecimals8Test is Test {
         // Test exact division - should return same as regular denormalize
         uint256 exactAmount = 1e18; // 1 token in 18 decimals
         uint256 regular = marketGroup.denormalizeCollateralAmount(exactAmount);
-        uint256 roundedUp = marketGroup.denormalizeCollateralAmountUp(
-            exactAmount
-        );
+        uint256 roundedUp = marketGroup.denormalizeCollateralAmountUp(exactAmount);
         assertEq(regular, roundedUp, "Exact amounts should be equal");
 
         // Test amount that requires rounding
@@ -130,11 +110,7 @@ contract CollateralDecimals8Test is Test {
         roundedUp = marketGroup.denormalizeCollateralAmountUp(largeAmount);
         uint256 remainder = largeAmount % marketGroup.collateralScalingFactor;
         if (remainder > 0) {
-            assertEq(
-                roundedUp,
-                regular + 1,
-                "Round up should be 1 unit higher when there's remainder"
-            );
+            assertEq(roundedUp, regular + 1, "Round up should be 1 unit higher when there's remainder");
         } else {
             assertEq(roundedUp, regular, "Should be equal when no remainder");
         }
@@ -178,9 +154,7 @@ contract CollateralDecimals8Test is Test {
         uint256 normalized = marketGroup.normalizeCollateralAmount(oneUSDC);
         assertEq(normalized, 1e18, "1 USDC should normalize to 1e18");
 
-        uint256 denormalized = marketGroup.denormalizeCollateralAmount(
-            normalized
-        );
+        uint256 denormalized = marketGroup.denormalizeCollateralAmount(normalized);
         assertEq(denormalized, oneUSDC, "Should denormalize back to 1 USDC");
     }
 
@@ -194,16 +168,11 @@ contract CollateralDecimals8Test is Test {
         uint256 normalized = marketGroup.normalizeCollateralAmount(oneToken);
         assertEq(normalized, oneToken, "18 decimal token should not change");
 
-        uint256 denormalized = marketGroup.denormalizeCollateralAmount(
-            normalized
-        );
+        uint256 denormalized = marketGroup.denormalizeCollateralAmount(normalized);
         assertEq(denormalized, oneToken, "Should remain the same");
     }
 
-    function testFuzz_NormalizationConsistency(
-        uint8 decimals,
-        uint256 amount
-    ) public {
+    function testFuzz_NormalizationConsistency(uint8 decimals, uint256 amount) public {
         // Limit decimals to reasonable range
         decimals = uint8(bound(decimals, 0, 18));
 
@@ -213,42 +182,24 @@ contract CollateralDecimals8Test is Test {
 
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         marketGroup.collateralDecimals = decimals;
-        marketGroup.collateralScalingFactor = decimals < 18
-            ? 10 ** (18 - decimals)
-            : 1;
+        marketGroup.collateralScalingFactor = decimals < 18 ? 10 ** (18 - decimals) : 1;
 
         uint256 normalized = marketGroup.normalizeCollateralAmount(amount);
-        uint256 denormalized = marketGroup.denormalizeCollateralAmount(
-            normalized
-        );
+        uint256 denormalized = marketGroup.denormalizeCollateralAmount(normalized);
 
         // For 18 decimal tokens, no precision loss
         if (decimals == 18) {
-            assertEq(
-                denormalized,
-                amount,
-                "18 decimal round trip should be exact"
-            );
+            assertEq(denormalized, amount, "18 decimal round trip should be exact");
         } else {
             // For other decimals, we might lose precision on very small amounts
             // but the round trip should work for amounts >= 1 unit
             if (amount >= 1) {
-                assertEq(
-                    denormalized,
-                    amount,
-                    "Round trip should preserve value"
-                );
+                assertEq(denormalized, amount, "Round trip should preserve value");
             }
         }
 
         // Normalized value should always be amount * 10^(18-decimals)
-        uint256 expectedNormalized = decimals < 18
-            ? amount * (10 ** (18 - decimals))
-            : amount;
-        assertEq(
-            normalized,
-            expectedNormalized,
-            "Normalization formula incorrect"
-        );
+        uint256 expectedNormalized = decimals < 18 ? amount * (10 ** (18 - decimals)) : amount;
+        assertEq(normalized, expectedNormalized, "Normalization formula incorrect");
     }
 }

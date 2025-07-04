@@ -6,10 +6,8 @@ import "cannon-std/Cannon.sol";
 import {ISapience} from "../src/market/interfaces/ISapience.sol";
 import {ISapienceStructs} from "../src/market/interfaces/ISapienceStructs.sol";
 import {IMintableToken} from "../src/market/external/IMintableToken.sol";
-import {TickMath} from "../src/market/external/univ3/TickMath.sol";
 import {TestMarket} from "./helpers/TestMarket.sol";
-import {TestUser} from "./helpers/TestUser.sol";
-import {DecimalPrice} from "../src/market/libraries/DecimalPrice.sol";
+
 
 contract UmaSettleMarket is TestMarket {
     using Cannon for Vm;
@@ -43,19 +41,11 @@ contract UmaSettleMarket is TestMarket {
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
         uint160 startingSqrtPriceX96 = SQRT_PRICE_10Eth; // 10
-        (sapience, ) = createMarket(
-            16000,
-            29800,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote"
-        );
+        (sapience,) = createMarket(16000, 29800, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote");
 
-        (owner, , , ) = sapience.getMarketGroup();
-        (
-            ISapienceStructs.MarketData memory _initialMarketData,
-            ISapienceStructs.MarketParams memory _marketParams
-        ) = sapience.getLatestMarket();
+        (owner,,,) = sapience.getMarketGroup();
+        (ISapienceStructs.MarketData memory _initialMarketData, ISapienceStructs.MarketParams memory _marketParams) =
+            sapience.getLatestMarket();
         marketId = _initialMarketData.marketId;
         endTime = _initialMarketData.endTime;
         minPriceD18 = _initialMarketData.minPriceD18;
@@ -85,10 +75,7 @@ contract UmaSettleMarket is TestMarket {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,
@@ -98,34 +85,27 @@ contract UmaSettleMarket is TestMarket {
         );
         vm.stopPrank();
         // ISapienceStructs.MarketData memory initialMarketData;
-        (marketData, ) = sapience.getLatestMarket();
+        (marketData,) = sapience.getLatestMarket();
         assertTrue(!marketData.settled, "The market isn't settled");
 
         vm.startPrank(optimisticOracleV3);
         sapience.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
 
-        (marketData, ) = sapience.getLatestMarket();
+        (marketData,) = sapience.getLatestMarket();
         assertTrue(marketData.settled, "The market is settled");
-        assertTrue(
-            marketData.settlementPriceD18 == COMPUTED_10EthPrice,
-            "The settlement price is as submitted"
-        );
+        assertTrue(marketData.settlementPriceD18 == COMPUTED_10EthPrice, "The settlement price is as submitted");
     }
 
     function test_settle_above_range() public {
         ISapienceStructs.MarketData memory marketData;
-        (ISapienceStructs.MarketData memory initialMarketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory initialMarketData,) = sapience.getLatestMarket();
         uint256 _maxPriceD18 = initialMarketData.maxPriceD18;
 
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,
@@ -139,26 +119,19 @@ contract UmaSettleMarket is TestMarket {
         sapience.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
 
-        (marketData, ) = sapience.getLatestMarket();
-        assertTrue(
-            marketData.settlementPriceD18 == _maxPriceD18,
-            "The settlement price is the maximum"
-        );
+        (marketData,) = sapience.getLatestMarket();
+        assertTrue(marketData.settlementPriceD18 == _maxPriceD18, "The settlement price is the maximum");
     }
 
     function test_settle_below_range() public {
         ISapienceStructs.MarketData memory marketData;
-        (ISapienceStructs.MarketData memory initialMarketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory initialMarketData,) = sapience.getLatestMarket();
         uint256 _minPriceD18 = initialMarketData.minPriceD18;
 
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,
@@ -172,21 +145,15 @@ contract UmaSettleMarket is TestMarket {
         sapience.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
 
-        (marketData, ) = sapience.getLatestMarket();
-        assertTrue(
-            marketData.settlementPriceD18 == _minPriceD18,
-            "The settlement price is the minimum"
-        );
+        (marketData,) = sapience.getLatestMarket();
+        assertTrue(marketData.settlementPriceD18 == _minPriceD18, "The settlement price is the minimum");
     }
 
     function test_settle_too_early() public {
         vm.warp(endTime - 1);
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         vm.expectRevert("Market activity is still allowed");
         sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
@@ -202,10 +169,7 @@ contract UmaSettleMarket is TestMarket {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,
@@ -220,10 +184,7 @@ contract UmaSettleMarket is TestMarket {
         vm.stopPrank();
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         vm.expectRevert("Market already settled");
         sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
@@ -240,10 +201,7 @@ contract UmaSettleMarket is TestMarket {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,
@@ -258,14 +216,11 @@ contract UmaSettleMarket is TestMarket {
         sapience.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
 
-        (marketData, ) = sapience.getLatestMarket();
+        (marketData,) = sapience.getLatestMarket();
         assertTrue(!marketData.settled, "The market is not settled");
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         bytes32 assertionId2 = sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,
@@ -276,28 +231,19 @@ contract UmaSettleMarket is TestMarket {
         vm.stopPrank();
 
         vm.startPrank(optimisticOracleV3);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         sapience.assertionResolvedCallback(assertionId2, true);
         vm.stopPrank();
 
-        (marketData, ) = sapience.getLatestMarket();
-        assertTrue(
-            marketData.settlementPriceD18 == COMPUTED_11EthPrice,
-            "The settlement price is the undisputed value"
-        );
+        (marketData,) = sapience.getLatestMarket();
+        assertTrue(marketData.settlementPriceD18 == COMPUTED_11EthPrice, "The settlement price is the undisputed value");
     }
 
     function test_revert_if_assertion_already_submitted() public {
         vm.warp(endTime + 1);
 
         vm.startPrank(owner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(sapience),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(sapience), marketParams.bondAmount);
         bytes32 assertionId = sapience.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,
@@ -321,14 +267,8 @@ contract UmaSettleMarket is TestMarket {
         sapience.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         assertTrue(marketData.settled, "The market is settled");
-        assertApproxEqAbs(
-            marketData.settlementPriceD18,
-            10 ether,
-            1e4,
-            "The settlement price is as submitted"
-        );
+        assertApproxEqAbs(marketData.settlementPriceD18, 10 ether, 1e4, "The settlement price is as submitted");
     }
 }

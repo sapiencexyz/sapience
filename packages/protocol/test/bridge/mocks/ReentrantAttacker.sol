@@ -15,7 +15,7 @@ contract ReentrantAttacker {
 
     IUMALayerZeroBridge public bridge;
     IERC20 public bondToken;
-    
+
     bool public attackInProgress = false;
     uint256 public attackCount = 0;
 
@@ -45,15 +45,15 @@ contract ReentrantAttacker {
         if (!attackInProgress) {
             attackInProgress = true;
             attackCount = 0;
-            
+
             // First call to depositBond
             bridge.depositBond(address(bondToken), amount);
-            
+
             attackInProgress = false;
         } else {
             // This is the reentrant call
             attackCount++;
-            
+
             // Try to call depositBond again during the first call
             try bridge.depositBond(address(bondToken), amount) {
                 // If this succeeds, there's a reentrancy vulnerability
@@ -66,21 +66,20 @@ contract ReentrantAttacker {
 
     /**
      * @notice Attempt a reentrancy attack on withdrawal
-     * @param amount The amount to withdraw
      */
-    function attackWithdrawal(uint256 amount) external {
+    function attackWithdrawal(uint256) external {
         if (!attackInProgress) {
             attackInProgress = true;
             attackCount = 0;
-            
+
             // First call to executeWithdrawal
             bridge.executeWithdrawal(address(bondToken));
-            
+
             attackInProgress = false;
         } else {
             // This is the reentrant call
             attackCount++;
-            
+
             // Try to call executeWithdrawal again during the first call
             try bridge.executeWithdrawal(address(bondToken)) {
                 // If this succeeds, there's a reentrancy vulnerability
@@ -99,15 +98,15 @@ contract ReentrantAttacker {
         if (!attackInProgress) {
             attackInProgress = true;
             attackCount = 0;
-            
+
             // First call to assertionResolvedCallback
             bridge.assertionResolvedCallback(assertionId, true);
-            
+
             attackInProgress = false;
         } else {
             // This is the reentrant call
             attackCount++;
-            
+
             // Try to call assertionResolvedCallback again during the first call
             try bridge.assertionResolvedCallback(assertionId, true) {
                 // If this succeeds, there's a reentrancy vulnerability
@@ -126,15 +125,15 @@ contract ReentrantAttacker {
         if (!attackInProgress) {
             attackInProgress = true;
             attackCount = 0;
-            
+
             // First call to depositBond
             bridge.depositBond(address(bondToken), amount);
-            
+
             attackInProgress = false;
         } else {
             // This is the reentrant call
             attackCount++;
-            
+
             // Try to call a different function during the first call
             try bridge.intentToWithdrawBond(address(bondToken), amount) {
                 // If this succeeds, there's a cross-function reentrancy vulnerability
@@ -181,4 +180,4 @@ contract ReentrantAttacker {
             attackCount++;
         }
     }
-} 
+}

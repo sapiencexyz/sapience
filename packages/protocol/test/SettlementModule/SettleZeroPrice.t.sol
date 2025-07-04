@@ -3,8 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import {Market} from "../../src/market/storage/Market.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
-import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
+
 
 contract SettleZeroPriceTest is Test {
     using Market for Market.Data;
@@ -27,11 +26,7 @@ contract SettleZeroPriceTest is Test {
         uint256 result = market.setSettlementPriceInRange(0);
 
         assertEq(result, 0, "Should return 0");
-        assertEq(
-            market.settlementPriceD18,
-            0,
-            "Should set settlement price to 0"
-        );
+        assertEq(market.settlementPriceD18, 0, "Should set settlement price to 0");
         assertTrue(market.settled, "Market should be marked as settled");
     }
 
@@ -40,21 +35,13 @@ contract SettleZeroPriceTest is Test {
 
         // First, verify our test setup
         assertGt(market.minPriceD18, 0, "Min price should be set and > 0");
-        assertLt(
-            market.minPriceD18,
-            market.maxPriceD18,
-            "Min should be less than max"
-        );
+        assertLt(market.minPriceD18, market.maxPriceD18, "Min should be less than max");
 
         // Test that small non-zero values still get clamped to min
         uint256 verySmallPrice = 1; // 1 wei, definitely smaller than min
         uint256 result = market.setSettlementPriceInRange(verySmallPrice);
 
-        assertEq(
-            result,
-            market.minPriceD18,
-            "Small non-zero price should clamp to min"
-        );
+        assertEq(result, market.minPriceD18, "Small non-zero price should clamp to min");
         assertGt(result, verySmallPrice, "Should have clamped up to min");
 
         // Reset for next test
@@ -76,10 +63,6 @@ contract SettleZeroPriceTest is Test {
         uint256 result = market.setSettlementPriceInRange(normalPrice);
 
         assertEq(result, normalPrice, "Normal price should be unchanged");
-        assertEq(
-            market.settlementPriceD18,
-            normalPrice,
-            "Should set exact price"
-        );
+        assertEq(market.settlementPriceD18, normalPrice, "Should set exact price");
     }
 }

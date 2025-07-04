@@ -7,7 +7,7 @@ import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {MockOptimisticOracleV3} from "../bridge/mocks/mockOptimisticOracleV3.sol";
-import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract YesNoMarketSettlementTest is Test {
@@ -36,9 +36,11 @@ contract YesNoMarketSettlementTest is Test {
     function setUp() public {
         // Deploy a new mock oracle
         newMockOracle = new MockOptimisticOracleV3(address(0));
-        
+
         // Use a unique salt and owner for each test
-        bytes32 testSalt = keccak256(abi.encodePacked("test_YesNoMarket_VerifyClaim_WithMockOracle", block.timestamp, block.prevrandao));
+        bytes32 testSalt = keccak256(
+            abi.encodePacked("test_YesNoMarket_VerifyClaim_WithMockOracle", block.timestamp, block.prevrandao)
+        );
         uint256 saltNum = uint256(testSalt) % type(uint256).max;
         marketOwner = address(uint160(uint256(keccak256(abi.encodePacked("owner", testSalt)))));
         address[] memory feeCollectors = new address[](0);
@@ -81,7 +83,7 @@ contract YesNoMarketSettlementTest is Test {
         );
 
         // Get the new market data
-        (ISapienceStructs.MarketData memory marketData, ) = mockSapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = mockSapience.getLatestMarket();
         newMarketId = marketData.marketId;
 
         // Setup bond currency for the new market
@@ -109,13 +111,9 @@ contract YesNoMarketSettlementTest is Test {
 
         // Get the assertion data from the mock oracle
         MockOptimisticOracleV3.AssertionData memory assertionData = newMockOracle.getAssertionData(assertionId);
-        
+
         // Verify the claim is correct for Yes outcome
-        assertEq(
-            assertionData.claim,
-            CLAIM_STATEMENT_YES,
-            "Claim should be Yes statement for Yes outcome"
-        );
+        assertEq(assertionData.claim, CLAIM_STATEMENT_YES, "Claim should be Yes statement for Yes outcome");
     }
 
     function test_YesNoMarket_VerifyClaim_WithMockOracle_No() public {
@@ -133,12 +131,8 @@ contract YesNoMarketSettlementTest is Test {
 
         // Get the assertion data for No outcome
         MockOptimisticOracleV3.AssertionData memory assertionDataNo = newMockOracle.getAssertionData(assertionIdNo);
-        
+
         // Verify the claim is correct for No outcome
-        assertEq(
-            assertionDataNo.claim,
-            CLAIM_STATEMENT_NO,
-            "Claim should be No statement for No outcome"
-        );
+        assertEq(assertionDataNo.claim, CLAIM_STATEMENT_NO, "Claim should be No statement for No outcome");
     }
-} 
+}

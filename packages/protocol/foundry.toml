@@ -8,4 +8,10 @@ optimizer = true
 solc_version = "0.8.30"
 allow_internal_expect_revert = true
 
+# Linting and formatting
+line_length = 120
+tab_width = 4
+bracket_spacing = true
+number_underscore = "thousands"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

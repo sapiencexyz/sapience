@@ -5,11 +5,8 @@ import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
-import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {TestMarket} from "../helpers/TestMarket.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
@@ -63,19 +60,12 @@ contract TradePositionDumb is TestTrade {
     uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
 
         uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
-        (sapience, ) = createMarket(
-            MARKET_LOWER_TICK,
-            MARKET_UPPER_TICK,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote"
-        );
+        (sapience,) =
+            createMarket(MARKET_LOWER_TICK, MARKET_UPPER_TICK, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote");
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
@@ -86,8 +76,7 @@ contract TradePositionDumb is TestTrade {
         collateralAsset.approve(address(sapience), 0);
         vm.stopPrank();
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -98,23 +87,14 @@ contract TradePositionDumb is TestTrade {
 
         // Add liquidity
         vm.startPrank(lp1);
-        addLiquidity(
-            sapience,
-            pool,
-            marketId,
-            COLLATERAL_FOR_ORDERS * 10_000_000,
-            LP_LOWER_TICK,
-            LP_UPPER_TICK
-        ); // enough to keep price stable (no slippage)
+        addLiquidity(sapience, pool, marketId, COLLATERAL_FOR_ORDERS * 10_000_000, LP_LOWER_TICK, LP_UPPER_TICK); // enough to keep price stable (no slippage)
         vm.stopPrank();
     }
 
     function test_revertWhen_zeroTradeSize_Create() public {
         vm.startPrank(trader1);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.DeltaTradeIsZero.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.DeltaTradeIsZero.selector));
         sapience.createTraderPosition(
             ISapienceStructs.TraderPositionCreateParams({
                 marketId: marketId,
@@ -130,15 +110,9 @@ contract TradePositionDumb is TestTrade {
     function test_revertWhen_zeroTradeSize_Modify() public {
         vm.startPrank(trader1);
         int256 initialPositionSize = 1 ether;
-        uint256 positionId = addTraderPosition(
-            sapience,
-            marketId,
-            initialPositionSize
-        );
+        uint256 positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.DeltaTradeIsZero.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.DeltaTradeIsZero.selector));
         sapience.modifyTraderPosition(
             ISapienceStructs.TraderPositionModifyParams({
                 positionId: positionId,
@@ -154,9 +128,7 @@ contract TradePositionDumb is TestTrade {
     function test_revertWhen_minTradeSizeNotMet_CreateLong() public {
         vm.startPrank(trader1);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector));
         sapience.createTraderPosition(
             ISapienceStructs.TraderPositionCreateParams({
                 marketId: marketId,
@@ -172,9 +144,7 @@ contract TradePositionDumb is TestTrade {
     function test_revertWhen_minTradeSizeNotMet_CreateShort() public {
         vm.startPrank(trader1);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector));
         sapience.createTraderPosition(
             ISapienceStructs.TraderPositionCreateParams({
                 marketId: marketId,
@@ -190,15 +160,9 @@ contract TradePositionDumb is TestTrade {
     function test_revertWhen_minTradeSizeNotMet_ModifyLongToLong() public {
         vm.startPrank(trader1);
         int256 initialPositionSize = 1 ether;
-        uint256 positionId = addTraderPosition(
-            sapience,
-            marketId,
-            initialPositionSize
-        );
+        uint256 positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector));
         sapience.modifyTraderPosition(
             ISapienceStructs.TraderPositionModifyParams({
                 positionId: positionId,
@@ -214,15 +178,9 @@ contract TradePositionDumb is TestTrade {
     function test_revertWhen_minTradeSizeNotMet_ModifyLongToShort() public {
         vm.startPrank(trader1);
         int256 initialPositionSize = 1 ether;
-        uint256 positionId = addTraderPosition(
-            sapience,
-            marketId,
-            initialPositionSize
-        );
+        uint256 positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector));
         sapience.modifyTraderPosition(
             ISapienceStructs.TraderPositionModifyParams({
                 positionId: positionId,
@@ -238,15 +196,9 @@ contract TradePositionDumb is TestTrade {
     function test_revertWhen_minTradeSizeNotMet_ModifyShortToLong() public {
         vm.startPrank(trader1);
         int256 initialPositionSize = -1 ether;
-        uint256 positionId = addTraderPosition(
-            sapience,
-            marketId,
-            initialPositionSize
-        );
+        uint256 positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector));
         sapience.modifyTraderPosition(
             ISapienceStructs.TraderPositionModifyParams({
                 positionId: positionId,
@@ -262,15 +214,9 @@ contract TradePositionDumb is TestTrade {
     function test_revertWhen_minTradeSizeNotMet_ModifyShortToShort() public {
         vm.startPrank(trader1);
         int256 initialPositionSize = -1 ether;
-        uint256 positionId = addTraderPosition(
-            sapience,
-            marketId,
-            initialPositionSize
-        );
+        uint256 positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.PositionSizeBelowMin.selector));
         sapience.modifyTraderPosition(
             ISapienceStructs.TraderPositionModifyParams({
                 positionId: positionId,
@@ -289,13 +235,7 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         vm.startPrank(trader2);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.NotAccountOwner.selector,
-                positionId,
-                trader2
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAccountOwner.selector, positionId, trader2));
         sapience.modifyTraderPosition(
             ISapienceStructs.TraderPositionModifyParams({
                 positionId: positionId,
@@ -311,13 +251,7 @@ contract TradePositionDumb is TestTrade {
         vm.startPrank(trader1);
         addTraderPosition(sapience, marketId, 1 ether);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.NotAccountOwner.selector,
-                1337,
-                trader1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.NotAccountOwner.selector, 1337, trader1));
         sapience.modifyTraderPosition(
             ISapienceStructs.TraderPositionModifyParams({
                 positionId: 1337,
@@ -332,19 +266,11 @@ contract TradePositionDumb is TestTrade {
     function test_revertWhen_modifyPosition_invalidPositionKind() public {
         // add a liquidity position as trader1
         vm.startPrank(trader2);
-        uint256 positionId = addLiquidity(
-            sapience,
-            pool,
-            marketId,
-            COLLATERAL_FOR_ORDERS * 1_000,
-            LP_LOWER_TICK,
-            LP_UPPER_TICK
-        ); // enough to keep price stable (no slippage)
+        uint256 positionId =
+            addLiquidity(sapience, pool, marketId, COLLATERAL_FOR_ORDERS * 1_000, LP_LOWER_TICK, LP_UPPER_TICK); // enough to keep price stable (no slippage)
 
         // try to modify it as a trader, it should revert
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.InvalidPositionKind.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidPositionKind.selector));
         sapience.modifyTraderPosition(
             ISapienceStructs.TraderPositionModifyParams({
                 positionId: positionId,
@@ -364,10 +290,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-            marketId,
-            positionSize
-        );
+        (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, positionSize);
         collateralAsset.approve(address(sapience), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
         uint256 positionId = sapience.createTraderPosition(
@@ -385,13 +308,10 @@ contract TradePositionDumb is TestTrade {
         expectedStateData.positionSize = positionSize;
         expectedStateData.vQuoteAmount = 0;
         expectedStateData.vBaseAmount = 1 ether;
-        expectedStateData.borrowedVQuote = INITIAL_PRICE_PLUS_FEE_D18
-            .mulDecimal(1 ether);
+        expectedStateData.borrowedVQuote = INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(1 ether);
         expectedStateData.borrowedVBase = 0;
         expectedStateData.depositedCollateralAmount = requiredCollateral;
-        expectedStateData.userCollateral =
-            initialStateData.userCollateral -
-            requiredCollateral;
+        expectedStateData.userCollateral = initialStateData.userCollateral - requiredCollateral;
 
         // Check position makes sense
         assertPosition(trader1, positionId, expectedStateData, "Create Long");
@@ -404,10 +324,7 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-            marketId,
-            positionSize
-        );
+        (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, positionSize);
         collateralAsset.approve(address(sapience), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
         uint256 positionId = sapience.createTraderPosition(
@@ -423,16 +340,12 @@ contract TradePositionDumb is TestTrade {
         // Set expected data
         StateData memory expectedStateData;
         expectedStateData.positionSize = positionSize;
-        expectedStateData.vQuoteAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(
-            1 ether
-        );
+        expectedStateData.vQuoteAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(1 ether);
         expectedStateData.vBaseAmount = 0;
         expectedStateData.borrowedVQuote = 0;
         expectedStateData.borrowedVBase = 1 ether;
         expectedStateData.depositedCollateralAmount = requiredCollateral;
-        expectedStateData.userCollateral =
-            initialStateData.userCollateral -
-            requiredCollateral;
+        expectedStateData.userCollateral = initialStateData.userCollateral - requiredCollateral;
 
         // Check position makes sense
         assertPosition(trader1, positionId, expectedStateData, "Create Short");
@@ -451,16 +364,10 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredCollateral, , , ) = sapience.quoteModifyTraderPosition(
-            positionId,
-            0
-        );
+        (int256 requiredCollateral,,,) = sapience.quoteModifyTraderPosition(positionId, 0);
 
         if (requiredCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredCollateral.toUint() + 2
-            );
+            collateralAsset.approve(address(sapience), requiredCollateral.toUint() + 2);
         }
         // Send more collateral than required, just checking the position can be created/modified
         sapience.modifyTraderPosition(
@@ -474,8 +381,8 @@ contract TradePositionDumb is TestTrade {
 
         vm.stopPrank();
 
-        int256 pnl = (INITIAL_PRICE_MINUS_FEE_D18.toInt() -
-            INITIAL_PRICE_PLUS_FEE_D18.toInt()).mulDecimal(initialPositionSize);
+        int256 pnl =
+            (INITIAL_PRICE_MINUS_FEE_D18.toInt() - INITIAL_PRICE_PLUS_FEE_D18.toInt()).mulDecimal(initialPositionSize);
 
         expectedStateData.positionSize = 0;
         expectedStateData.vQuoteAmount = 0;
@@ -484,9 +391,7 @@ contract TradePositionDumb is TestTrade {
         expectedStateData.borrowedVBase = 0;
         expectedStateData.depositedCollateralAmount = 0;
 
-        expectedStateData.userCollateral = (initialStateData
-            .userCollateral
-            .toInt() + pnl).toUint();
+        expectedStateData.userCollateral = (initialStateData.userCollateral.toInt() + pnl).toUint();
 
         // Check position makes sense
         assertPosition(trader1, positionId, expectedStateData, "Close Long");
@@ -505,15 +410,9 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredCollateral, , , ) = sapience.quoteModifyTraderPosition(
-            positionId,
-            0
-        );
+        (int256 requiredCollateral,,,) = sapience.quoteModifyTraderPosition(positionId, 0);
         if (requiredCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredCollateral.toUint() + 2
-            );
+            collateralAsset.approve(address(sapience), requiredCollateral.toUint() + 2);
         }
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -528,10 +427,9 @@ contract TradePositionDumb is TestTrade {
 
         vm.stopPrank();
 
-        int256 pnl = (INITIAL_PRICE_MINUS_FEE_D18.toInt() -
-            INITIAL_PRICE_PLUS_FEE_D18.toInt()).mulDecimal(
-                initialPositionSize * -1
-            );
+        int256 pnl = (INITIAL_PRICE_MINUS_FEE_D18.toInt() - INITIAL_PRICE_PLUS_FEE_D18.toInt()).mulDecimal(
+            initialPositionSize * -1
+        );
 
         expectedStateData.positionSize = 0;
         expectedStateData.vQuoteAmount = 0;
@@ -539,9 +437,7 @@ contract TradePositionDumb is TestTrade {
         expectedStateData.borrowedVQuote = 0;
         expectedStateData.borrowedVBase = 0;
         expectedStateData.depositedCollateralAmount = 0;
-        expectedStateData.userCollateral = (initialStateData
-            .userCollateral
-            .toInt() + pnl).toUint();
+        expectedStateData.userCollateral = (initialStateData.userCollateral.toInt() + pnl).toUint();
 
         // Check position makes sense
         assertPosition(trader1, positionId, expectedStateData, "Close Short");
@@ -563,14 +459,11 @@ contract TradePositionDumb is TestTrade {
         fillPositionState(positionId, initialStateData);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, , ) = sapience
-            .quoteModifyTraderPosition(positionId, finalPositionSize);
+        (int256 requiredDeltaCollateral, int256 closePnL,,) =
+            sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredDeltaCollateral.toUint()
-            );
+            collateralAsset.approve(address(sapience), requiredDeltaCollateral.toUint());
         }
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -588,33 +481,22 @@ contract TradePositionDumb is TestTrade {
         expectedStateData.positionSize = finalPositionSize;
         expectedStateData.vQuoteAmount = 0;
         expectedStateData.vBaseAmount = finalPositionSize.toUint();
-        expectedStateData.borrowedVQuote = finalPositionSize
-            .toUint()
-            .mulDecimal(INITIAL_PRICE_PLUS_FEE_D18);
+        expectedStateData.borrowedVQuote = finalPositionSize.toUint().mulDecimal(INITIAL_PRICE_PLUS_FEE_D18);
         expectedStateData.borrowedVBase = 0;
 
         expectedStateData.depositedCollateralAmount =
-            (initialStateData.depositedCollateralAmount.toInt() +
-                requiredDeltaCollateral).toUint() +
-            closePnL.toUint();
-        expectedStateData.userCollateral = (initialStateData
-            .userCollateral
-            .toInt() - requiredDeltaCollateral).toUint();
+            (initialStateData.depositedCollateralAmount.toInt() + requiredDeltaCollateral).toUint() + closePnL.toUint();
+        expectedStateData.userCollateral = (initialStateData.userCollateral.toInt() - requiredDeltaCollateral).toUint();
 
         // Check position makes sense
-        assertPosition(
-            trader1,
-            positionId,
-            expectedStateData,
-            "Long2Long Increase"
-        );
+        assertPosition(trader1, positionId, expectedStateData, "Long2Long Increase");
     }
 
     function test_modify_Long2Long_Reduce() public {
         StateData memory initialStateData;
         StateData memory expectedStateData;
         int256 initialPositionSize = 1 ether;
-        int256 finalPositionSize = .5 ether;
+        int256 finalPositionSize = 0.5 ether;
 
         uint256 positionId;
 
@@ -624,14 +506,11 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, , ) = sapience
-            .quoteModifyTraderPosition(positionId, finalPositionSize);
+        (int256 requiredDeltaCollateral, int256 closePnL,,) =
+            sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredDeltaCollateral.toUint() + 2
-            );
+            collateralAsset.approve(address(sapience), requiredDeltaCollateral.toUint() + 2);
         }
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -646,26 +525,17 @@ contract TradePositionDumb is TestTrade {
 
         vm.stopPrank();
 
-        uint partialVEth = initialPositionSize.toUint().mulDecimal(
-            INITIAL_PRICE_PLUS_FEE_D18
-        );
+        uint256 partialVEth = initialPositionSize.toUint().mulDecimal(INITIAL_PRICE_PLUS_FEE_D18);
 
         expectedStateData.positionSize = finalPositionSize;
         expectedStateData.vQuoteAmount = 0;
         expectedStateData.vBaseAmount = finalPositionSize.toUint();
         expectedStateData.borrowedVQuote =
-            partialVEth -
-            INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(.5 ether) -
-            (closePnL * -1).toUint();
+            partialVEth - INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(0.5 ether) - (closePnL * -1).toUint();
         expectedStateData.borrowedVBase = 0;
 
         // Check position makes sense
-        assertPosition(
-            trader1,
-            positionId,
-            expectedStateData,
-            "Long2Long Reduce"
-        );
+        assertPosition(trader1, positionId, expectedStateData, "Long2Long Reduce");
     }
 
     function test_modify_Short2Short_Increase() public {
@@ -682,14 +552,10 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , , ) = sapience
-            .quoteModifyTraderPosition(positionId, finalPositionSize);
+        (int256 requiredDeltaCollateral,,,) = sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredDeltaCollateral.toUint() + 2
-            );
+            collateralAsset.approve(address(sapience), requiredDeltaCollateral.toUint() + 2);
         }
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -705,27 +571,20 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         expectedStateData.positionSize = finalPositionSize;
-        expectedStateData.vQuoteAmount = (finalPositionSize * -1)
-            .toUint()
-            .mulDecimal(INITIAL_PRICE_MINUS_FEE_D18);
+        expectedStateData.vQuoteAmount = (finalPositionSize * -1).toUint().mulDecimal(INITIAL_PRICE_MINUS_FEE_D18);
         expectedStateData.vBaseAmount = 0;
         expectedStateData.borrowedVQuote = 0;
         expectedStateData.borrowedVBase = (finalPositionSize * -1).toUint();
 
         // Check position makes sense
-        assertPosition(
-            trader1,
-            positionId,
-            expectedStateData,
-            "Short2Short Increase"
-        );
+        assertPosition(trader1, positionId, expectedStateData, "Short2Short Increase");
     }
 
     function test_modify_Short2Short_Reduce() public {
         StateData memory initialStateData;
         StateData memory expectedStateData;
         int256 initialPositionSize = -1 ether;
-        int256 finalPositionSize = -.5 ether;
+        int256 finalPositionSize = -0.5 ether;
 
         uint256 positionId;
 
@@ -735,14 +594,11 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, int256 closePnL, , ) = sapience
-            .quoteModifyTraderPosition(positionId, finalPositionSize);
+        (int256 requiredDeltaCollateral, int256 closePnL,,) =
+            sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredDeltaCollateral.toUint() + 2
-            );
+            collateralAsset.approve(address(sapience), requiredDeltaCollateral.toUint() + 2);
         }
         // Send more collateral than required, just checking the position can be created/modified
         sapience.modifyTraderPosition(
@@ -756,26 +612,17 @@ contract TradePositionDumb is TestTrade {
 
         vm.stopPrank();
 
-        uint partialVEth = (initialPositionSize * -1).toUint().mulDecimal(
-            INITIAL_PRICE_MINUS_FEE_D18
-        );
+        uint256 partialVEth = (initialPositionSize * -1).toUint().mulDecimal(INITIAL_PRICE_MINUS_FEE_D18);
 
         expectedStateData.positionSize = finalPositionSize;
         expectedStateData.vQuoteAmount =
-            partialVEth -
-            INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(.5 ether) +
-            (closePnL * -1).toUint();
+            partialVEth - INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(0.5 ether) + (closePnL * -1).toUint();
         expectedStateData.vBaseAmount = 0;
         expectedStateData.borrowedVQuote = 0;
         expectedStateData.borrowedVBase = (finalPositionSize * -1).toUint();
 
         // Check position makes sense
-        assertPosition(
-            trader1,
-            positionId,
-            expectedStateData,
-            "Short2Short Reduce"
-        );
+        assertPosition(trader1, positionId, expectedStateData, "Short2Short Reduce");
     }
 
     function test_modify_Long2Short() public {
@@ -792,14 +639,10 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , , ) = sapience
-            .quoteModifyTraderPosition(positionId, finalPositionSize);
+        (int256 requiredDeltaCollateral,,,) = sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredDeltaCollateral.toUint() + 2
-            );
+            collateralAsset.approve(address(sapience), requiredDeltaCollateral.toUint() + 2);
         }
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -815,20 +658,13 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         expectedStateData.positionSize = finalPositionSize;
-        expectedStateData.vQuoteAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(
-            1 ether
-        );
+        expectedStateData.vQuoteAmount = INITIAL_PRICE_MINUS_FEE_D18.mulDecimal(1 ether);
         expectedStateData.vBaseAmount = 0;
         expectedStateData.borrowedVQuote = 0;
         expectedStateData.borrowedVBase = (finalPositionSize * -1).toUint();
 
         // Check position makes sense
-        assertPosition(
-            trader1,
-            positionId,
-            expectedStateData,
-            "Long2Short Reduce"
-        );
+        assertPosition(trader1, positionId, expectedStateData, "Long2Short Reduce");
     }
 
     function test_modify_Short2Long() public {
@@ -845,13 +681,9 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (int256 requiredDeltaCollateral, , , ) = sapience
-            .quoteModifyTraderPosition(positionId, finalPositionSize);
+        (int256 requiredDeltaCollateral,,,) = sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
         if (requiredDeltaCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredDeltaCollateral.toUint() + 2
-            );
+            collateralAsset.approve(address(sapience), requiredDeltaCollateral.toUint() + 2);
         }
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -869,17 +701,11 @@ contract TradePositionDumb is TestTrade {
         expectedStateData.positionSize = finalPositionSize;
         expectedStateData.vQuoteAmount = 0;
         expectedStateData.vBaseAmount = (finalPositionSize).toUint();
-        expectedStateData.borrowedVQuote = INITIAL_PRICE_PLUS_FEE_D18
-            .mulDecimal(1 ether);
+        expectedStateData.borrowedVQuote = INITIAL_PRICE_PLUS_FEE_D18.mulDecimal(1 ether);
         expectedStateData.borrowedVBase = 0;
 
         // Check position makes sense
-        assertPosition(
-            trader1,
-            positionId,
-            expectedStateData,
-            "Short2Long Reduce"
-        );
+        assertPosition(trader1, positionId, expectedStateData, "Short2Long Reduce");
     }
 
     function test_quote_create_Long() public {
@@ -889,11 +715,8 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (
-            uint256 requiredCollateral,
-            ,
-            uint256 quotedPrice18DigitsAfter
-        ) = sapience.quoteCreateTraderPosition(marketId, positionSize);
+        (uint256 requiredCollateral,, uint256 quotedPrice18DigitsAfter) =
+            sapience.quoteCreateTraderPosition(marketId, positionSize);
         collateralAsset.approve(address(sapience), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
         sapience.createTraderPosition(
@@ -907,11 +730,7 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         uint256 price18DigitsAfter = sapience.getReferencePrice(marketId);
-        assertEq(
-            quotedPrice18DigitsAfter,
-            price18DigitsAfter,
-            "quotedPrice18DigitsAfter"
-        );
+        assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
     function test_quote_create_Short() public {
@@ -921,11 +740,8 @@ contract TradePositionDumb is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (
-            uint256 requiredCollateral,
-            ,
-            uint256 quotedPrice18DigitsAfter
-        ) = sapience.quoteCreateTraderPosition(marketId, positionSize);
+        (uint256 requiredCollateral,, uint256 quotedPrice18DigitsAfter) =
+            sapience.quoteCreateTraderPosition(marketId, positionSize);
         collateralAsset.approve(address(sapience), requiredCollateral + 2);
         // Send more collateral than required, just checking the position can be created/modified
         sapience.createTraderPosition(
@@ -939,11 +755,7 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         uint256 price18DigitsAfter = sapience.getReferencePrice(marketId);
-        assertEq(
-            quotedPrice18DigitsAfter,
-            price18DigitsAfter,
-            "quotedPrice18DigitsAfter"
-        );
+        assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
     function test_quote_modify_Long() public {
@@ -961,18 +773,11 @@ contract TradePositionDumb is TestTrade {
         fillPositionState(positionId, initialStateData);
 
         // quote and close a long
-        (
-            int256 requiredDeltaCollateral,
-            ,
-            ,
-            uint256 quotedPrice18DigitsAfter
-        ) = sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
+        (int256 requiredDeltaCollateral,,, uint256 quotedPrice18DigitsAfter) =
+            sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredDeltaCollateral.toUint()
-            );
+            collateralAsset.approve(address(sapience), requiredDeltaCollateral.toUint());
         }
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -988,11 +793,7 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         uint256 price18DigitsAfter = sapience.getReferencePrice(marketId);
-        assertEq(
-            quotedPrice18DigitsAfter,
-            price18DigitsAfter,
-            "quotedPrice18DigitsAfter"
-        );
+        assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
     function test_quote_modify_Short() public {
@@ -1008,18 +809,11 @@ contract TradePositionDumb is TestTrade {
         positionId = addTraderPosition(sapience, marketId, initialPositionSize);
 
         // quote and close a long
-        (
-            int256 requiredDeltaCollateral,
-            ,
-            ,
-            uint256 quotedPrice18DigitsAfter
-        ) = sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
+        (int256 requiredDeltaCollateral,,, uint256 quotedPrice18DigitsAfter) =
+            sapience.quoteModifyTraderPosition(positionId, finalPositionSize);
 
         if (requiredDeltaCollateral > 0) {
-            collateralAsset.approve(
-                address(sapience),
-                requiredDeltaCollateral.toUint() + 2
-            );
+            collateralAsset.approve(address(sapience), requiredDeltaCollateral.toUint() + 2);
         }
 
         // Send more collateral than required, just checking the position can be created/modified
@@ -1035,24 +829,16 @@ contract TradePositionDumb is TestTrade {
         vm.stopPrank();
 
         uint256 price18DigitsAfter = sapience.getReferencePrice(marketId);
-        assertEq(
-            quotedPrice18DigitsAfter,
-            price18DigitsAfter,
-            "quotedPrice18DigitsAfter"
-        );
+        assertEq(quotedPrice18DigitsAfter, price18DigitsAfter, "quotedPrice18DigitsAfter");
     }
 
     // //////////////// //
     // Helper functions //
     // //////////////// //
 
-    function fillPositionState(
-        uint256 positionId,
-        StateData memory stateData
-    ) public {
+    function fillPositionState(uint256 positionId, StateData memory stateData) public {
         Position.Data memory position = sapience.getPosition(positionId);
-        stateData.depositedCollateralAmount = position
-            .depositedCollateralAmount;
+        stateData.depositedCollateralAmount = position.depositedCollateralAmount;
         stateData.vQuoteAmount = position.vQuoteAmount;
         stateData.vBaseAmount = position.vBaseAmount;
         stateData.borrowedVQuote = position.borrowedVQuote;
@@ -1060,22 +846,15 @@ contract TradePositionDumb is TestTrade {
         stateData.positionSize = sapience.getPositionSize(positionId);
     }
 
-    function fillCollateralStateData(
-        address user,
-        StateData memory stateData
-    ) public view {
+    function fillCollateralStateData(address user, StateData memory stateData) public view {
         stateData.userCollateral = collateralAsset.balanceOf(user);
-        stateData.sapienceCollateral = collateralAsset.balanceOf(
-            address(sapience)
-        );
+        stateData.sapienceCollateral = collateralAsset.balanceOf(address(sapience));
     }
 
-    function assertPosition(
-        address user,
-        uint256 positionId,
-        StateData memory expectedStateData,
-        string memory stage
-    ) public returns (StateData memory currentStateData) {
+    function assertPosition(address user, uint256 positionId, StateData memory expectedStateData, string memory stage)
+        public
+        returns (StateData memory currentStateData)
+    {
         fillCollateralStateData(user, currentStateData);
         fillPositionState(positionId, currentStateData);
 

@@ -18,9 +18,7 @@ interface ISettlementModule {
      * @notice The function may be called by anyone to set the settlement price to be whatever the uniswap pool price is
      * @return settlementPriceX96 settlement price that was set
      */
-    function __manual_setSettlementPrice()
-        external
-        returns (uint160 settlementPriceX96);
+    function __manual_setSettlementPrice() external returns (uint160 settlementPriceX96);
 
     event MarketManualSettlement(uint256 marketId, uint256 settlementPriceD18);
 }

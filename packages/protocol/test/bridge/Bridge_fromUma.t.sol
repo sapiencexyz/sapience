@@ -58,8 +58,7 @@ contract BridgeTestFromUma is TestHelperOz5 {
         marketBridge = MarketLayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(MarketLayerZeroBridge).creationCode,
-                    abi.encode(address(endpoints[marketEiD]), address(this))
+                    type(MarketLayerZeroBridge).creationCode, abi.encode(address(endpoints[marketEiD]), address(this))
                 )
             )
         );
@@ -67,8 +66,7 @@ contract BridgeTestFromUma is TestHelperOz5 {
         umaBridge = UMALayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(UMALayerZeroBridge).creationCode,
-                    abi.encode(address(endpoints[umaEiD]), address(this))
+                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
                 )
             )
         );
@@ -89,19 +87,9 @@ contract BridgeTestFromUma is TestHelperOz5 {
 
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
-        umaBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: marketEiD,
-                remoteBridge: address(marketBridge)
-            })
-        );
+        umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
 
-        marketBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: umaEiD,
-                remoteBridge: address(umaBridge)
-            })
-        );
+        marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaBridge)}));
 
         // Link bridges to the external contracts
         umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
@@ -123,23 +111,13 @@ contract BridgeTestFromUma is TestHelperOz5 {
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
 
         // Create a claim
-        mockMarketGroup.setAssertThruthData(
-            "some claim message",
-            3600,
-            address(bondCurrency),
-            BOND_AMOUNT
-        );
+        mockMarketGroup.setAssertThruthData("some claim message", 3600, address(bondCurrency), BOND_AMOUNT);
         marketAssertionId = mockMarketGroup.submitSettlementPrice(
-            ISapienceStructs.SettlementPriceParams({
-                marketId: 1,
-                asserter: address(umaUser),
-                settlementSqrtPriceX96: 1
-            })
-        );    
+            ISapienceStructs.SettlementPriceParams({marketId: 1, asserter: address(umaUser), settlementSqrtPriceX96: 1})
+        );
 
         verifyPackets(umaEiD, addressToBytes32(address(umaBridge)));
         umaAssertionId = mockOptimisticOracleV3.getLastAssertionId();
-
     }
 
     function test_failsNotUma_Resolved() public {
@@ -184,7 +162,11 @@ contract BridgeTestFromUma is TestHelperOz5 {
 
         assertEq(finalUmaUserBalance, initialUmaUserBalance + BOND_AMOUNT, "UMA user balance should increase");
         assertEq(finalUmaBridgeBalance, initialUmaBridgeBalance, "UMA bridge balance should be the same");
-        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance - BOND_AMOUNT, "Mock optimistic oracle balance should decrease");
+        assertEq(
+            finalMockOptimisticOracleV3Balance,
+            initialMockOptimisticOracleV3Balance - BOND_AMOUNT,
+            "Mock optimistic oracle balance should decrease"
+        );
 
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
 
@@ -193,9 +175,19 @@ contract BridgeTestFromUma is TestHelperOz5 {
         finalUmaBridgeBalance = bondCurrency.balanceOf(address(umaBridge));
         finalMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
 
-        assertEq(finalUmaUserBalance, initialUmaUserBalance + BOND_AMOUNT, "UMA user balance should increase (after propagation)");
-        assertEq(finalUmaBridgeBalance, initialUmaBridgeBalance , "UMA bridge balance should be the same (after propagation)");
-        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance - BOND_AMOUNT, "Mock optimistic oracle balance should decrease (after propagation)");
+        assertEq(
+            finalUmaUserBalance,
+            initialUmaUserBalance + BOND_AMOUNT,
+            "UMA user balance should increase (after propagation)"
+        );
+        assertEq(
+            finalUmaBridgeBalance, initialUmaBridgeBalance, "UMA bridge balance should be the same (after propagation)"
+        );
+        assertEq(
+            finalMockOptimisticOracleV3Balance,
+            initialMockOptimisticOracleV3Balance - BOND_AMOUNT,
+            "Mock optimistic oracle balance should decrease (after propagation)"
+        );
 
         // Check state of the market group
         MockMarketGroup.AssertionData memory assertionData = mockMarketGroup.getAssertionData(marketAssertionId);
@@ -218,7 +210,11 @@ contract BridgeTestFromUma is TestHelperOz5 {
 
         assertEq(finalUmaUserBalance, initialUmaUserBalance, "UMA user balance should be the same (bond lost)");
         assertEq(finalUmaBridgeBalance, initialUmaBridgeBalance, "UMA bridge balance should be the same");
-        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance - BOND_AMOUNT, "Mock optimistic oracle balance should decrease");
+        assertEq(
+            finalMockOptimisticOracleV3Balance,
+            initialMockOptimisticOracleV3Balance - BOND_AMOUNT,
+            "Mock optimistic oracle balance should decrease"
+        );
 
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
 
@@ -228,8 +224,14 @@ contract BridgeTestFromUma is TestHelperOz5 {
         finalMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
 
         assertEq(finalUmaUserBalance, initialUmaUserBalance, "UMA user balance should be the same (after propagation)");
-        assertEq(finalUmaBridgeBalance, initialUmaBridgeBalance , "UMA bridge balance should be the same (after propagation)");
-        assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance - BOND_AMOUNT, "Mock optimistic oracle balance should decrease (after propagation)");
+        assertEq(
+            finalUmaBridgeBalance, initialUmaBridgeBalance, "UMA bridge balance should be the same (after propagation)"
+        );
+        assertEq(
+            finalMockOptimisticOracleV3Balance,
+            initialMockOptimisticOracleV3Balance - BOND_AMOUNT,
+            "Mock optimistic oracle balance should decrease (after propagation)"
+        );
 
         // Check state of the market group
         MockMarketGroup.AssertionData memory assertionData = mockMarketGroup.getAssertionData(marketAssertionId);
@@ -237,4 +239,4 @@ contract BridgeTestFromUma is TestHelperOz5 {
         assertEq(assertionData.disputed, true, "Market group should be disputed");
         assertEq(assertionData.assertedTruthfully, false, "Market group should be disputed truthfully");
     }
- }
+}

@@ -51,11 +51,7 @@ contract PositionSettleZeroTest is Test {
         // borrowedVBase * 0 = 0 (no cost to buy back)
         // Keep the 100 quote from selling
         // deposited 500 + 100 = 600
-        assertEq(
-            withdrawable,
-            600e18,
-            "Short should profit when price goes to 0"
-        );
+        assertEq(withdrawable, 600e18, "Short should profit when price goes to 0");
         assertTrue(position.isSettled, "Position should be marked as settled");
     }
 
@@ -79,11 +75,7 @@ contract PositionSettleZeroTest is Test {
         // borrowedVBase * 0 = 0
         // Net quote: 200 - 500 = -300
         // Collateral: 1000 - 300 = 700
-        assertEq(
-            withdrawable,
-            700e18,
-            "LP should get remaining collateral after losses"
-        );
+        assertEq(withdrawable, 700e18, "LP should get remaining collateral after losses");
         assertTrue(position.isSettled, "Position should be marked as settled");
     }
 

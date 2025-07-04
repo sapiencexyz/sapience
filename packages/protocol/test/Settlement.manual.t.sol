@@ -5,8 +5,7 @@ import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {ISapience} from "../src/market/interfaces/ISapience.sol";
 import {ISapienceStructs} from "../src/market/interfaces/ISapienceStructs.sol";
-import {IMintableToken} from "../src/market/external/IMintableToken.sol";
-import {TickMath} from "../src/market/external/univ3/TickMath.sol";
+
 import {TestTrade} from "./helpers/TestTrade.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/market/libraries/DecimalPrice.sol";
@@ -32,21 +31,18 @@ contract ManualSettlementTest is TestTrade {
         uint160 startingSqrtPriceX96 = SQRT_PRICE_10Eth;
         int24 minTick = 16000;
         int24 maxTick = 29800;
-        (sapience, ) = createMarket(minTick, maxTick, startingSqrtPriceX96, 10_000, "wstGwei/quote");
+        (sapience,) = createMarket(minTick, maxTick, startingSqrtPriceX96, 10_000, "wstGwei/quote");
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         endTime = marketData.endTime;
 
-        (
-            uint256 baseTokenAmount,
-            uint256 quoteTokenAmount,
-
-        ) = getTokenAmountsForCollateralAmount(10 ether, minTick, maxTick);
+        (uint256 baseTokenAmount, uint256 quoteTokenAmount,) =
+            getTokenAmountsForCollateralAmount(10 ether, minTick, maxTick);
 
         // Create initial position
         vm.startPrank(lp1);
-        (lpPositionId, , , , , , ) = sapience.createLiquidityPosition(
+        (lpPositionId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: baseTokenAmount,
@@ -78,15 +74,14 @@ contract ManualSettlementTest is TestTrade {
         vm.warp(endTime + requiredDelay + 1);
 
         // Get current pool price before settlement
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
-        (uint160 sqrtPriceX96, , , , , , ) = IUniswapV3Pool(marketData.pool)
-            .slot0();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
+        (uint160 sqrtPriceX96,,,,,,) = IUniswapV3Pool(marketData.pool).slot0();
 
         // Call manual settlement
         sapience.__manual_setSettlementPrice();
 
         // Verify settlement occurred
-        (marketData, ) = sapience.getLatestMarket();
+        (marketData,) = sapience.getLatestMarket();
         assertTrue(marketData.settled, "Market should be settled");
         assertEq(
             marketData.settlementPriceD18,

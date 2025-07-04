@@ -23,4 +23,4 @@ library BridgeTypes {
         uint256 timestamp;
         bool executed;
     }
-} 
+}

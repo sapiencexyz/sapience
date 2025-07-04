@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
+
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {Position} from "../../src/market/storage/Position.sol";
@@ -29,56 +29,29 @@ contract TestTrade is TestMarket {
         uint256 collateral;
     }
 
-    function log_positionAccounting(
-        ISapience sapience,
-        uint256 positionId
-    ) public returns (PositionAccountingData memory data) {
+    function log_positionAccounting(ISapience sapience, uint256 positionId)
+        public
+        returns (PositionAccountingData memory data)
+    {
         Position.Data memory position = sapience.getPosition(positionId);
         uint256 currentPrice = sapience.getReferencePrice(position.marketId);
-        data.debtValue =
-            position.borrowedVQuote +
-            position.borrowedVBase.mulDecimal(currentPrice);
-        data.tokensValue =
-            position.vQuoteAmount +
-            position.vBaseAmount.mulDecimal(currentPrice);
+        data.debtValue = position.borrowedVQuote + position.borrowedVBase.mulDecimal(currentPrice);
+        data.tokensValue = position.vQuoteAmount + position.vBaseAmount.mulDecimal(currentPrice);
 
-        data.debtTokensBalance =
-            data.tokensValue.toInt() -
-            data.debtValue.toInt();
+        data.debtTokensBalance = data.tokensValue.toInt() - data.debtValue.toInt();
 
         data.collateral = position.depositedCollateralAmount;
         console2.log(" >>> PositionAccountingData");
         console2.log("    >> debtValue                   : ", data.debtValue);
         console2.log("    >> tokensValue                 : ", data.tokensValue);
-        console2.log(
-            "    >> debtTokensBalance           : ",
-            data.debtTokensBalance
-        );
+        console2.log("    >> debtTokensBalance           : ", data.debtTokensBalance);
         console2.log(" >>> PositionData", positionId);
-        console2.log(
-            "      >> depositedCollateralAmount  : ",
-            position.depositedCollateralAmount
-        );
-        console2.log(
-            "      >> borrowedVQuote             : ",
-            position.borrowedVQuote
-        );
-        console2.log(
-            "      >> borrowedVBase              : ",
-            position.borrowedVBase
-        );
-        console2.log(
-            "      >> vQuoteAmount               : ",
-            position.vQuoteAmount
-        );
-        console2.log(
-            "      >> vBaseAmount                : ",
-            position.vBaseAmount
-        );
-        console2.log(
-            "      >> positionSize               : ",
-            sapience.getPositionSize(positionId)
-        );
+        console2.log("      >> depositedCollateralAmount  : ", position.depositedCollateralAmount);
+        console2.log("      >> borrowedVQuote             : ", position.borrowedVQuote);
+        console2.log("      >> borrowedVBase              : ", position.borrowedVBase);
+        console2.log("      >> vQuoteAmount               : ", position.vQuoteAmount);
+        console2.log("      >> vBaseAmount                : ", position.vBaseAmount);
+        console2.log("      >> positionSize               : ", sapience.getPositionSize(positionId));
     }
 
     function addLiquidity(
@@ -90,45 +63,31 @@ contract TestTrade is TestMarket {
         int24 upperTick
     ) internal returns (uint256 positionId) {
         pool;
-        (
-            uint256 amountBaseToken,
-            uint256 amountQuoteToken,
+        (uint256 amountBaseToken, uint256 amountQuoteToken,) =
+            getTokenAmountsForCollateralAmount(collateralAmount, lowerTick, upperTick);
 
-        ) = getTokenAmountsForCollateralAmount(
-                collateralAmount,
-                lowerTick,
-                upperTick
-            );
+        ISapienceStructs.LiquidityMintParams memory params = ISapienceStructs.LiquidityMintParams({
+            marketId: marketId,
+            amountBaseToken: amountBaseToken,
+            amountQuoteToken: amountQuoteToken,
+            collateralAmount: collateralAmount * 2,
+            lowerTick: lowerTick,
+            upperTick: upperTick,
+            minAmountBaseToken: 0,
+            minAmountQuoteToken: 0,
+            deadline: block.timestamp + 30 minutes
+        });
 
-        ISapienceStructs.LiquidityMintParams memory params = ISapienceStructs
-            .LiquidityMintParams({
-                marketId: marketId,
-                amountBaseToken: amountBaseToken,
-                amountQuoteToken: amountQuoteToken,
-                collateralAmount: collateralAmount * 2,
-                lowerTick: lowerTick,
-                upperTick: upperTick,
-                minAmountBaseToken: 0,
-                minAmountQuoteToken: 0,
-                deadline: block.timestamp + 30 minutes
-            });
-
-        (positionId, , , , , , ) = sapience.createLiquidityPosition(params);
+        (positionId,,,,,,) = sapience.createLiquidityPosition(params);
     }
 
-    function addTraderPosition(
-        ISapience sapience,
-        uint256 marketId,
-        int256 positionSize
-    ) internal returns (uint256 positionId) {
-        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-            marketId,
-            positionSize
-        );
+    function addTraderPosition(ISapience sapience, uint256 marketId, int256 positionSize)
+        internal
+        returns (uint256 positionId)
+    {
+        (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, positionSize);
         address sapienceAddress = vm.getAddress("Sapience");
-        IMintableToken asset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        IMintableToken asset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
 
         if (asset.allowance(msg.sender, sapienceAddress) < requiredCollateral) {
             asset.approve(sapienceAddress, requiredCollateral);
@@ -144,19 +103,10 @@ contract TestTrade is TestMarket {
         );
     }
 
-    function modifyTraderPosition(
-        ISapience sapience,
-        uint256 positionId,
-        int256 newSize
-    ) internal {
-        (int256 deltaCollateral, , , ) = sapience.quoteModifyTraderPosition(
-            positionId,
-            newSize
-        );
+    function modifyTraderPosition(ISapience sapience, uint256 positionId, int256 newSize) internal {
+        (int256 deltaCollateral,,,) = sapience.quoteModifyTraderPosition(positionId, newSize);
         if (deltaCollateral > 0) {
-            IMintableToken asset = IMintableToken(
-                vm.getAddress("CollateralAsset.Token")
-            );
+            IMintableToken asset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
             asset.approve(address(sapience), deltaCollateral.toUint() + 2);
         }
 
@@ -170,10 +120,7 @@ contract TestTrade is TestMarket {
         );
     }
 
-    function closerTraderPosition(
-        ISapience sapience,
-        uint256 positionId
-    ) internal {
+    function closerTraderPosition(ISapience sapience, uint256 positionId) internal {
         modifyTraderPosition(sapience, positionId, 0);
     }
 }

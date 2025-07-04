@@ -26,18 +26,10 @@ contract BackwardCompatibilityTest is Test {
         uint256 amount = 123456789 * 1e18;
 
         uint256 normalized = marketGroup.normalizeCollateralAmount(amount);
-        assertEq(
-            normalized,
-            amount,
-            "18 decimal normalization should be identity"
-        );
+        assertEq(normalized, amount, "18 decimal normalization should be identity");
 
         uint256 denormalized = marketGroup.denormalizeCollateralAmount(amount);
-        assertEq(
-            denormalized,
-            amount,
-            "18 decimal denormalization should be identity"
-        );
+        assertEq(denormalized, amount, "18 decimal denormalization should be identity");
     }
 
     function test_NoOverflowOn18Decimals() public view {
@@ -49,14 +41,8 @@ contract BackwardCompatibilityTest is Test {
         uint256 normalized = marketGroup.normalizeCollateralAmount(largeAmount);
         assertEq(normalized, largeAmount, "Large amounts should work");
 
-        uint256 denormalized = marketGroup.denormalizeCollateralAmount(
-            largeAmount
-        );
-        assertEq(
-            denormalized,
-            largeAmount,
-            "Large amounts should work in reverse"
-        );
+        uint256 denormalized = marketGroup.denormalizeCollateralAmount(largeAmount);
+        assertEq(denormalized, largeAmount, "Large amounts should work in reverse");
     }
 
     function test_ScalingFactorCorrect() public {
@@ -64,35 +50,19 @@ contract BackwardCompatibilityTest is Test {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
 
         // 18 decimals = no scaling
-        assertEq(
-            marketGroup.collateralScalingFactor,
-            1,
-            "18 decimals should have factor of 1"
-        );
+        assertEq(marketGroup.collateralScalingFactor, 1, "18 decimals should have factor of 1");
 
         // Test other decimal configurations
         marketGroup.collateralDecimals = 6;
         marketGroup.collateralScalingFactor = 10 ** (18 - 6);
-        assertEq(
-            marketGroup.collateralScalingFactor,
-            1e12,
-            "6 decimals should have factor of 1e12"
-        );
+        assertEq(marketGroup.collateralScalingFactor, 1e12, "6 decimals should have factor of 1e12");
 
         marketGroup.collateralDecimals = 8;
         marketGroup.collateralScalingFactor = 10 ** (18 - 8);
-        assertEq(
-            marketGroup.collateralScalingFactor,
-            1e10,
-            "8 decimals should have factor of 1e10"
-        );
+        assertEq(marketGroup.collateralScalingFactor, 1e10, "8 decimals should have factor of 1e10");
 
         marketGroup.collateralDecimals = 0;
         marketGroup.collateralScalingFactor = 10 ** (18 - 0);
-        assertEq(
-            marketGroup.collateralScalingFactor,
-            1e18,
-            "0 decimals should have factor of 1e18"
-        );
+        assertEq(marketGroup.collateralScalingFactor, 1e18, "0 decimals should have factor of 1e18");
     }
 }

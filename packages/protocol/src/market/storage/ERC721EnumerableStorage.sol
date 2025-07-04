@@ -29,17 +29,11 @@ library ERC721EnumerableStorage {
         return load().allTokens.length;
     }
 
-    function tokenOfOwnerByIndex(
-        address owner,
-        uint256 index
-    ) public view returns (uint256) {
+    function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256) {
         ERC721Storage.Data storage erc721Storage = ERC721Storage.load();
 
         if (erc721Storage.balanceOf[owner] <= index) {
-            revert IERC721Enumerable.IndexOverrun(
-                index,
-                erc721Storage.balanceOf[owner]
-            );
+            revert IERC721Enumerable.IndexOverrun(index, erc721Storage.balanceOf[owner]);
         }
         return load().ownedTokens[owner][index];
     }
@@ -81,10 +75,7 @@ library ERC721EnumerableStorage {
      * @param from address representing the previous owner of the given token ID
      * @param tokenId uint256 ID of the token to be removed from the tokens list of the given address
      */
-    function _removeTokenFromOwnerEnumeration(
-        address from,
-        uint256 tokenId
-    ) internal {
+    function _removeTokenFromOwnerEnumeration(address from, uint256 tokenId) internal {
         // To prevent a gap in from's tokens array, we store the last token in the index of the token to delete, and
         // then delete the last slot (swap and pop).
         Data storage self = load();
