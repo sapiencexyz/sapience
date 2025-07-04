@@ -27,45 +27,33 @@ contract TradesQuotePriceValidationTest is TestTrade {
     uint160 sqrtPriceMinX96;
     uint160 sqrtPriceMaxX96;
     uint256 positionId;
+
     function setUp() public {
         // Create an market with narrow price bounds for testing
         int24 minTick = 5000;
         int24 maxTick = 25000;
-        uint160 startingSqrtPriceX96 = TickMath.getSqrtRatioAtTick(
-            (minTick + maxTick) / 2
-        );
+        uint160 startingSqrtPriceX96 = TickMath.getSqrtRatioAtTick((minTick + maxTick) / 2);
         uint256 minTradeSize = 0.001 ether;
 
         // Setup price bounds for tests
         sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(minTick);
         sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(maxTick);
 
-        (sapience, owner) = createMarket(
-            minTick,
-            maxTick,
-            startingSqrtPriceX96,
-            minTradeSize,
-            "wstGwei/quote"
-        );
+        (sapience, owner) = createMarket(minTick, maxTick, startingSqrtPriceX96, minTradeSize, "wstGwei/quote");
         sapienceAddress = address(sapience);
 
         // Get the marketId
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
 
         lp = TestUser.createUser("RegularLP", 50 ether);
         trader = TestUser.createUser("Trader", 100 ether);
 
-        (
-            uint256 loanAmount0,
-            uint256 loanAmount1,
-
-        ) = getTokenAmountsForCollateralAmount(1 ether, minTick, maxTick);
+        (uint256 loanAmount0, uint256 loanAmount1,) = getTokenAmountsForCollateralAmount(1 ether, minTick, maxTick);
 
         // Fee collector opens position
         vm.startPrank(lp);
-        (positionId, , , , , , ) = sapience.createLiquidityPosition(
+        (positionId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: loanAmount0,
@@ -82,10 +70,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
     }
 
     function test_validatePriceInRange_CreatePosition_Normal() public {
-        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-            marketId,
-            -0.1 ether
-        );
+        (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, -0.1 ether);
 
         vm.prank(trader);
         // Create the trader position
@@ -99,10 +84,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
         );
 
         // Verify the position was created successfully
-        assertTrue(
-            traderPositionId > 0,
-            "Position ID should be greater than 0"
-        );
+        assertTrue(traderPositionId > 0, "Position ID should be greater than 0");
 
         vm.stopPrank();
     }
@@ -116,10 +98,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
 
     function test_validatePriceInRange_ModifyPosition_Normal() public {
         // First create a small position
-        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-            marketId,
-            -0.05 ether
-        );
+        (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, -0.05 ether);
 
         vm.startPrank(trader);
         // Create the initial trader position
@@ -133,11 +112,10 @@ contract TradesQuotePriceValidationTest is TestTrade {
         );
 
         // Now modify the position
-        (int256 expectedCollateralDelta, , , ) = sapience
-            .quoteModifyTraderPosition(
-                traderPositionId,
-                -0.1 ether // Increase size from -0.05 to -0.1
-            );
+        (int256 expectedCollateralDelta,,,) = sapience.quoteModifyTraderPosition(
+            traderPositionId,
+            -0.1 ether // Increase size from -0.05 to -0.1
+        );
 
         // Modify the trader position
         sapience.modifyTraderPosition(
@@ -154,10 +132,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
 
     function test_validatePriceInRange_ModifyPosition_OutOfRange() public {
         // First create a small position
-        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
-            marketId,
-            -0.05 ether
-        );
+        (uint256 requiredCollateral,,) = sapience.quoteCreateTraderPosition(marketId, -0.05 ether);
 
         vm.startPrank(trader);
         // Create the initial trader position

@@ -12,7 +12,10 @@ import {IFeeManagement} from "../interfaces/ILayerZeroBridge.sol";
  * - Setting and getting max execution gas
  * - Checking gas thresholds and revert if necessary
  */
-abstract contract FeeManagement is Ownable, IFeeManagement { //TODO feeManagement?
+abstract contract FeeManagement is
+    Ownable,
+    IFeeManagement //TODO feeManagement?
+{
     // Gas monitoring and execution gas
     uint256 private WARNING_GAS_THRESHOLD = 0.1 ether;
     uint256 private CRITICAL_GAS_THRESHOLD = 0.05 ether;
@@ -79,4 +82,4 @@ abstract contract FeeManagement is Ownable, IFeeManagement { //TODO feeManagemen
     function _getLzReceiveCost() internal view returns (uint128) {
         return lzReceiveCost;
     }
-} 
+}

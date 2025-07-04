@@ -25,10 +25,8 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
     uint256 public constant WITHDRAWAL_DELAY = 1 days;
 
     // State variables
-    mapping(address => mapping(address => uint256))
-        internal submitterBondBalances; // submitter => bondToken => balance
-    mapping(address => mapping(address => BridgeTypes.WithdrawalIntent))
-        internal withdrawalIntents; // submitter => bondToken => intent
+    mapping(address => mapping(address => uint256)) internal submitterBondBalances; // submitter => bondToken => balance
+    mapping(address => mapping(address => BridgeTypes.WithdrawalIntent)) internal withdrawalIntents; // submitter => bondToken => intent
 
     /**
      * @notice Deposit bond tokens to escrow
@@ -36,28 +34,26 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @param amount The amount to deposit
      * @return receipt The messaging receipt
      */
-    function depositBond(
-        address bondToken,
-        uint256 amount
-    ) external virtual nonReentrant returns (MessagingReceipt memory) {
+    function depositBond(address bondToken, uint256 amount)
+        external
+        virtual
+        nonReentrant
+        returns (MessagingReceipt memory)
+    {
         require(bondToken != address(0), "Bond token cannot be zero address");
 
         require(amount > 0, "Amount must be greater than 0");
 
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
-        
+
         MessagingReceipt memory receipt = _sendBalanceUpdate(
-            _getDepositCommandType(),
-            msg.sender,
-            bondToken,
-            submitterBondBalances[msg.sender][bondToken],
-            amount
+            _getDepositCommandType(), msg.sender, bondToken, submitterBondBalances[msg.sender][bondToken], amount
         );
-        
+
         submitterBondBalances[msg.sender][bondToken] += amount;
-        
+
         emit BondDeposited(msg.sender, bondToken, amount);
-        
+
         return receipt;
     }
 
@@ -67,20 +63,16 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @param amount The amount to withdraw
      * @return receipt The messaging receipt
      */
-    function intentToWithdrawBond(
-        address bondToken,
-        uint256 amount
-    ) external virtual nonReentrant returns (MessagingReceipt memory) {
+    function intentToWithdrawBond(address bondToken, uint256 amount)
+        external
+        virtual
+        nonReentrant
+        returns (MessagingReceipt memory)
+    {
         require(bondToken != address(0), "Bond token cannot be zero address");
         require(amount > 0, "Amount must be greater than 0");
-        require(
-            submitterBondBalances[msg.sender][bondToken] >= amount,
-            "Insufficient balance"
-        );
-        require(
-            withdrawalIntents[msg.sender][bondToken].amount == 0,
-            "Withdrawal intent already exists"
-        );
+        require(submitterBondBalances[msg.sender][bondToken] >= amount, "Insufficient balance");
+        require(withdrawalIntents[msg.sender][bondToken].amount == 0, "Withdrawal intent already exists");
 
         MessagingReceipt memory receipt = _sendBalanceUpdate(
             _getIntentToWithdrawCommandType(),
@@ -90,11 +82,8 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
             amount
         );
 
-        withdrawalIntents[msg.sender][bondToken] = BridgeTypes.WithdrawalIntent({
-            amount: amount,
-            timestamp: block.timestamp,
-            executed: false
-        });
+        withdrawalIntents[msg.sender][bondToken] =
+            BridgeTypes.WithdrawalIntent({amount: amount, timestamp: block.timestamp, executed: false});
 
         emit BondWithdrawalIntentCreated(msg.sender, bondToken, amount, block.timestamp);
 
@@ -108,9 +97,7 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      */
     function executeWithdrawal(address bondToken) external virtual nonReentrant returns (MessagingReceipt memory) {
         require(bondToken != address(0), "Bond token cannot be zero address");
-        BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[msg.sender][
-            bondToken
-        ];
+        BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[msg.sender][bondToken];
         require(intent.amount > 0, "No withdrawal intent");
         require(!intent.executed, "Withdrawal already executed");
         require(block.timestamp >= intent.timestamp + WITHDRAWAL_DELAY, "Waiting period not over");
@@ -140,10 +127,7 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @param bondToken The bond token address
      * @return The bond balance
      */
-    function getBondBalance(
-        address submitter,
-        address bondToken
-    ) external view returns (uint256) {
+    function getBondBalance(address submitter, address bondToken) external view returns (uint256) {
         return submitterBondBalances[submitter][bondToken];
     }
 
@@ -154,13 +138,8 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @return amount The withdrawal amount
      * @return timestamp The withdrawal timestamp
      */
-    function getPendingWithdrawal(
-        address submitter,
-        address bondToken
-    ) external view returns (uint256, uint256) {
-        BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[submitter][
-            bondToken
-        ];
+    function getPendingWithdrawal(address submitter, address bondToken) external view returns (uint256, uint256) {
+        BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[submitter][bondToken];
         return (intent.amount, intent.timestamp);
     }
 
@@ -170,10 +149,7 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @param bondToken The bond token address
      * @return The bond balance
      */
-    function _getBondBalance(
-        address submitter,
-        address bondToken
-    ) internal view returns (uint256) {
+    function _getBondBalance(address submitter, address bondToken) internal view returns (uint256) {
         return submitterBondBalances[submitter][bondToken];
     }
 
@@ -183,10 +159,11 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @param bondToken The bond token address
      * @return The withdrawal intent
      */
-    function _getWithdrawalIntent(
-        address submitter,
-        address bondToken
-    ) internal view returns (BridgeTypes.WithdrawalIntent storage) {
+    function _getWithdrawalIntent(address submitter, address bondToken)
+        internal
+        view
+        returns (BridgeTypes.WithdrawalIntent storage)
+    {
         return withdrawalIntents[submitter][bondToken];
     }
 
@@ -197,12 +174,7 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @param amount The amount to add/subtract
      * @param isAddition Whether to add or subtract the amount
      */
-    function _updateBondBalance(
-        address submitter,
-        address bondToken,
-        uint256 amount,
-        bool isAddition
-    ) internal {
+    function _updateBondBalance(address submitter, address bondToken, uint256 amount, bool isAddition) internal {
         if (isAddition) {
             submitterBondBalances[submitter][bondToken] += amount;
         } else {
@@ -244,4 +216,4 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
      * @return The command type for withdraw
      */
     function _getWithdrawCommandType() internal pure virtual returns (uint16);
-} 
+}

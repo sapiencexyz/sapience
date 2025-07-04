@@ -16,7 +16,7 @@ interface IConfigurationModule {
     event MarketUpdated(ISapienceStructs.MarketParams marketParams);
 
     event MarketCreated(
-        uint marketId,
+        uint256 marketId,
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
@@ -24,15 +24,9 @@ interface IConfigurationModule {
         bytes claimStatementNo
     );
 
-    event OwnershipTransferStarted(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferStarted(address indexed previousOwner, address indexed newOwner);
 
-    event OwnershipTransferred(
-        address indexed previousOwner,
-        address indexed newOwner
-    );
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /**
      * @notice Initializes a market group
@@ -52,11 +46,7 @@ interface IConfigurationModule {
         ISapienceStructs.MarketParams memory marketParams
     ) external;
 
-    function updateMarketGroup(
-        ISapienceStructs.MarketParams memory marketParams
-    ) external;
+    function updateMarketGroup(ISapienceStructs.MarketParams memory marketParams) external;
 
-    function createMarket(
-        ISapienceStructs.MarketCreationParams memory params
-    ) external returns (uint256 marketId);
+    function createMarket(ISapienceStructs.MarketCreationParams memory params) external returns (uint256 marketId);
 }

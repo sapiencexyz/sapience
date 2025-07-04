@@ -35,42 +35,27 @@ contract IncreaseLiquidityPosition is TestTrade {
     uint256 positionId;
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         sapience = ISapience(vm.getAddress("Sapience"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (sapience, ) = createMarket(
-            MIN_TICK,
-            MAX_TICK,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote"
-        );
+        (sapience,) = createMarket(MIN_TICK, MAX_TICK, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote");
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
         tokenB = marketData.baseToken;
 
         // Get token amounts for collateral using TestMarket's method
-        (
-            uint256 baseTokenAmount,
-            uint256 quoteTokenAmount,
-
-        ) = getTokenAmountsForCollateralAmount(
-                INITIAL_COLLATERAL_AMOUNT,
-                MIN_TICK,
-                MAX_TICK
-            );
+        (uint256 baseTokenAmount, uint256 quoteTokenAmount,) =
+            getTokenAmountsForCollateralAmount(INITIAL_COLLATERAL_AMOUNT, MIN_TICK, MAX_TICK);
 
         // Create initial position
         vm.startPrank(lp1);
-        (positionId, , , , , , ) = sapience.createLiquidityPosition(
+        (positionId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: baseTokenAmount,
@@ -92,12 +77,7 @@ contract IncreaseLiquidityPosition is TestTrade {
         vm.startPrank(lp1);
         collateralAsset.approve(address(sapience), 5 ether);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InvalidPositionId.selector,
-                invalidPositionId
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidPositionId.selector, invalidPositionId));
         sapience.increaseLiquidityPosition(
             ISapienceStructs.LiquidityIncreaseParams({
                 positionId: invalidPositionId,
@@ -114,7 +94,7 @@ contract IncreaseLiquidityPosition is TestTrade {
 
     function test_revertWhen_increasingPositionAfterMarketSettlement() public {
         // Settle the market
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         vm.warp(marketData.endTime + 1);
 
         // Try to increase position after settlement
@@ -133,19 +113,10 @@ contract IncreaseLiquidityPosition is TestTrade {
         );
     }
 
-    function test_revertWhen_increasingPositionWithInsufficientCollateral()
-        public
-    {
+    function test_revertWhen_increasingPositionWithInsufficientCollateral() public {
         uint256 sufficientCollateral = 1 ether;
-        (
-            uint256 loanAmount0,
-            uint256 loanAmount1,
-
-        ) = getTokenAmountsForCollateralAmount(
-                sufficientCollateral,
-                MIN_TICK,
-                MAX_TICK
-            );
+        (uint256 loanAmount0, uint256 loanAmount1,) =
+            getTokenAmountsForCollateralAmount(sufficientCollateral, MIN_TICK, MAX_TICK);
 
         uint256 insufficientCollateral = sufficientCollateral / 2; // Use half of the sufficient collateral
 
@@ -181,48 +152,33 @@ contract IncreaseLiquidityPosition is TestTrade {
         traderBuysGas(); // moves price
 
         Position.Data memory initialPosition = sapience.getPosition(positionId);
-        (
-            uint256 currentGasTokenAmount,
-            uint256 currentEthTokenAmount,
-            ,
-            ,
-            uint128 currentLiquidity
-        ) = getCurrentPositionTokenAmounts(
-                initialPosition.uniswapPositionId,
-                MIN_TICK,
-                MAX_TICK
-            );
+        (uint256 currentGasTokenAmount, uint256 currentEthTokenAmount,,, uint128 currentLiquidity) =
+            getCurrentPositionTokenAmounts(initialPosition.uniswapPositionId, MIN_TICK, MAX_TICK);
 
-        uint256 requiredCollateral = sapience.quoteRequiredCollateral(
-            positionId,
-            currentLiquidity * 2
-        );
-        uint256 additionalCollateral = requiredCollateral -
-            initialPosition.depositedCollateralAmount;
+        uint256 requiredCollateral = sapience.quoteRequiredCollateral(positionId, currentLiquidity * 2);
+        uint256 additionalCollateral = requiredCollateral - initialPosition.depositedCollateralAmount;
 
         vm.startPrank(lp1);
         uint256 initialBalance = collateralAsset.balanceOf(lp1);
 
-        (, , , , uint256 totalDepositedCollateralAmount) = sapience
-            .increaseLiquidityPosition(
-                ISapienceStructs.LiquidityIncreaseParams({
-                    positionId: positionId,
-                    collateralAmount: additionalCollateral,
-                    baseTokenAmount: currentGasTokenAmount, // delta so doubling position
-                    quoteTokenAmount: currentEthTokenAmount, // delta so doubling position
-                    minBaseAmount: 0,
-                    minQuoteAmount: 0,
-                    deadline: block.timestamp + 30 minutes
-                })
-            );
+        (,,,, uint256 totalDepositedCollateralAmount) = sapience.increaseLiquidityPosition(
+            ISapienceStructs.LiquidityIncreaseParams({
+                positionId: positionId,
+                collateralAmount: additionalCollateral,
+                baseTokenAmount: currentGasTokenAmount, // delta so doubling position
+                quoteTokenAmount: currentEthTokenAmount, // delta so doubling position
+                minBaseAmount: 0,
+                minQuoteAmount: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
 
         uint256 finalBalance = collateralAsset.balanceOf(lp1);
         uint256 actualTransferred = initialBalance - finalBalance;
 
         assertEq(
             actualTransferred,
-            totalDepositedCollateralAmount -
-                initialPosition.depositedCollateralAmount,
+            totalDepositedCollateralAmount - initialPosition.depositedCollateralAmount,
             "Only additional collateral should be transferred"
         );
 

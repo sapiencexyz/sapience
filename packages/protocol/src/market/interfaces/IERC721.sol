@@ -37,29 +37,17 @@ interface IERC721Foil {
     /**
      * @notice Emitted when `tokenId` token is transferred from `from` to `to`.
      */
-    event Transfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed tokenId
-    );
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
     /**
      * @notice Emitted when `owner` enables `approved` to manage the `tokenId` token.
      */
-    event Approval(
-        address indexed owner,
-        address indexed approved,
-        uint256 indexed tokenId
-    );
+    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
 
     /**
      * @notice Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.
      */
-    event ApprovalForAll(
-        address indexed owner,
-        address indexed operator,
-        bool approved
-    );
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
 
     function name() external view returns (string memory);
 
@@ -98,12 +86,7 @@ interface IERC721Foil {
      *
      * Emits a {Transfer} event.
      */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes calldata data
-    ) external;
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes calldata data) external;
 
     /**
      * @notice Safely transfers `tokenId` token from `from` to `to`, checking first that contract recipients
@@ -119,11 +102,7 @@ interface IERC721Foil {
      *
      * Emits a {Transfer} event.
      */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
 
     /**
      * @notice Transfers `tokenId` token from `from` to `to`.
@@ -175,17 +154,12 @@ interface IERC721Foil {
      *
      * - `tokenId` must exist.
      */
-    function getApproved(
-        uint256 tokenId
-    ) external view returns (address operator);
+    function getApproved(uint256 tokenId) external view returns (address operator);
 
     /**
      * @notice Returns if the `operator` is allowed to manage all of the assets of `owner`.
      *
      * See {setApprovalForAll}
      */
-    function isApprovedForAll(
-        address owner,
-        address operator
-    ) external view returns (bool);
+    function isApprovedForAll(address owner, address operator) external view returns (bool);
 }

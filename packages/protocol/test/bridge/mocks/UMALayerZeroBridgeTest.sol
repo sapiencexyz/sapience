@@ -3,7 +3,10 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import {UMALayerZeroBridge} from "../../../src/bridge/UMALayerZeroBridge.sol";
 import {Origin} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import {MessagingFee, MessagingReceipt} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {
+    MessagingFee,
+    MessagingReceipt
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 
 contract UMALayerZeroBridgeTest is UMALayerZeroBridge {
     constructor(address _endpoint, address _owner) UMALayerZeroBridge(_endpoint, _owner) {}
@@ -26,4 +29,4 @@ contract UMALayerZeroBridgeTest is UMALayerZeroBridge {
     // ) external payable returns (MessagingReceipt memory) {
     //     return _sendMessageWithETH(_dstEid, _message, _options, _fee);
     // }
-} 
+}

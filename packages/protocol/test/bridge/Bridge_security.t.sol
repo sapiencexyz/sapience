@@ -70,8 +70,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
         umaBridge = UMALayerZeroBridgeTest(
             payable(
                 _deployOApp(
-                    type(UMALayerZeroBridgeTest).creationCode,
-                    abi.encode(address(endpoints[umaEiD]), address(this))
+                    type(UMALayerZeroBridgeTest).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
                 )
             )
         );
@@ -100,18 +99,8 @@ contract BridgeSecurityTest is TestHelperOz5 {
 
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         // Configure bridges
-        umaBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: marketEiD,
-                remoteBridge: address(marketBridge)
-            })
-        );
-        marketBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: umaEiD,
-                remoteBridge: address(umaBridge)
-            })
-        );
+        umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
+        marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaBridge)}));
         // Link bridges to external contracts
         umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
         marketBridge.enableMarketGroup(address(mockMarketGroup));
@@ -132,24 +121,13 @@ contract BridgeSecurityTest is TestHelperOz5 {
         // Test that MarketBridge rejects messages from wrong chain
         bytes memory maliciousMessage = abi.encode(
             uint16(1), // CMD_TO_UMA_ASSERT_TRUTH
-            abi.encode(
-                uint256(1),
-                address(0x1),
-                uint64(3600),
-                address(bondCurrency),
-                uint256(1000),
-                "claim"
-            )
+            abi.encode(uint256(1), address(0x1), uint64(3600), address(bondCurrency), uint256(1000), "claim")
         );
 
         // Try to send message from malicious chain
         vm.expectRevert("Invalid source chain");
         marketBridge.exposed_lzReceive(
-            Origin({
-                srcEid: maliciousEiD,
-                sender: addressToBytes32(address(umaBridge)),
-                nonce: 1
-            }),
+            Origin({srcEid: maliciousEiD, sender: addressToBytes32(address(umaBridge)), nonce: 1}),
             bytes32(0),
             maliciousMessage,
             address(0),
@@ -161,23 +139,12 @@ contract BridgeSecurityTest is TestHelperOz5 {
         // Test that UMABridge rejects messages from wrong chain
         bytes memory maliciousMessage = abi.encode(
             uint16(1), // CMD_TO_UMA_ASSERT_TRUTH
-            abi.encode(
-                uint256(1),
-                address(0x1),
-                uint64(3600),
-                address(bondCurrency),
-                uint256(1000),
-                "claim"
-            )
+            abi.encode(uint256(1), address(0x1), uint64(3600), address(bondCurrency), uint256(1000), "claim")
         );
 
         vm.expectRevert("Invalid source chain");
         umaBridge.exposed_lzReceive(
-            Origin({
-                srcEid: maliciousEiD,
-                sender: addressToBytes32(address(marketBridge)),
-                nonce: 1
-            }),
+            Origin({srcEid: maliciousEiD, sender: addressToBytes32(address(marketBridge)), nonce: 1}),
             bytes32(0),
             maliciousMessage,
             address(0),
@@ -191,14 +158,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
         // Test that MarketBridge rejects messages from wrong sender
         bytes memory maliciousMessage = abi.encode(
             uint16(1), // CMD_TO_UMA_ASSERT_TRUTH
-            abi.encode(
-                uint256(1),
-                address(0x1),
-                uint64(3600),
-                address(bondCurrency),
-                uint256(1000),
-                "claim"
-            )
+            abi.encode(uint256(1), address(0x1), uint64(3600), address(bondCurrency), uint256(1000), "claim")
         );
 
         vm.expectRevert("Invalid sender");
@@ -219,14 +179,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
         // Test that UMABridge rejects messages from wrong sender
         bytes memory maliciousMessage = abi.encode(
             uint16(1), // CMD_TO_UMA_ASSERT_TRUTH
-            abi.encode(
-                uint256(1),
-                address(0x1),
-                uint64(3600),
-                address(bondCurrency),
-                uint256(1000),
-                "claim"
-            )
+            abi.encode(uint256(1), address(0x1), uint64(3600), address(bondCurrency), uint256(1000), "claim")
         );
 
         vm.expectRevert("Invalid sender");
@@ -258,52 +211,28 @@ contract BridgeSecurityTest is TestHelperOz5 {
 
     function test_revertNonOwner_SetBridgeConfig() public {
         vm.startPrank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                attacker
-            )
-        );
-        marketBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: maliciousEiD,
-                remoteBridge: attacker
-            })
-        );
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
+        marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: maliciousEiD, remoteBridge: attacker}));
         vm.stopPrank();
     }
 
     function test_revertNonOwner_SetOptimisticOracleV3() public {
         vm.startPrank(attacker);
-        vm.expectRevert(            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                attacker
-            )
-);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
         umaBridge.setOptimisticOracleV3(attacker);
         vm.stopPrank();
     }
 
     function test_revertNonOwner_EnableMarketGroup() public {
         vm.startPrank(attacker);
-                vm.expectRevert(
-                    abi.encodeWithSelector(
-                        Ownable.OwnableUnauthorizedAccount.selector,
-                        attacker
-                    )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
         marketBridge.enableMarketGroup(attacker);
         vm.stopPrank();
     }
 
     function test_revertNonOwner_WithdrawETH() public {
         vm.startPrank(attacker);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Ownable.OwnableUnauthorizedAccount.selector,
-                attacker
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
         marketBridge.withdrawETH(1 ether);
         vm.stopPrank();
     }
@@ -318,11 +247,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
 
         vm.expectRevert("Invalid command type");
         marketBridge.exposed_lzReceive(
-            Origin({
-                srcEid: umaEiD,
-                sender: addressToBytes32(address(umaBridge)),
-                nonce: 1
-            }),
+            Origin({srcEid: umaEiD, sender: addressToBytes32(address(umaBridge)), nonce: 1}),
             bytes32(0),
             invalidMessage,
             address(0),
@@ -338,11 +263,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
 
         vm.expectRevert("Invalid command type");
         umaBridge.exposed_lzReceive(
-            Origin({
-                srcEid: marketEiD,
-                sender: addressToBytes32(address(marketBridge)),
-                nonce: 1
-            }),
+            Origin({srcEid: marketEiD, sender: addressToBytes32(address(marketBridge)), nonce: 1}),
             bytes32(0),
             invalidMessage,
             address(0),
@@ -444,5 +365,4 @@ contract BridgeSecurityTest is TestHelperOz5 {
         );
         vm.stopPrank();
     }
-
 }

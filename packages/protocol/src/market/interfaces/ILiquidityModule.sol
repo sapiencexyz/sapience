@@ -16,9 +16,7 @@ interface ILiquidityModule {
      * @return addedAmount0 The amount of token0 added to the position
      * @return addedAmount1 The amount of token1 added to the position
      */
-    function createLiquidityPosition(
-        ISapienceStructs.LiquidityMintParams memory params
-    )
+    function createLiquidityPosition(ISapienceStructs.LiquidityMintParams memory params)
         external
         returns (
             uint256 id,
@@ -30,7 +28,6 @@ interface ILiquidityModule {
             uint256 addedAmount1
         );
 
-
     /**
      * @notice Decreases the liquidity position
      * @param params The parameters for decreasing the liquidity position
@@ -38,9 +35,7 @@ interface ILiquidityModule {
      * @return amount1 The amount of token1 decreased
      * @return collateralAmount If position is closed, the amount of collateral returned.  If position is not closed, then this amount is current collateral amount backing the position.
      */
-    function decreaseLiquidityPosition(
-        ISapienceStructs.LiquidityDecreaseParams memory params
-    )
+    function decreaseLiquidityPosition(ISapienceStructs.LiquidityDecreaseParams memory params)
         external
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
 
@@ -51,16 +46,11 @@ interface ILiquidityModule {
      * @return amount1 The amount of token1 decreased
      * @return collateralAmount The amount of collateral returned from the LP position, if it's closed as LP, if it's transformed to trade, then this amount is the collateral amount backing the trade position that is closed .
      */
-    function closeLiquidityPosition(
-        ISapienceStructs.LiquidityCloseParams memory params
-    )
+    function closeLiquidityPosition(ISapienceStructs.LiquidityCloseParams memory params)
         external
         returns (uint256 amount0, uint256 amount1, uint256 collateralAmount);
 
-
-    function increaseLiquidityPosition(
-        ISapienceStructs.LiquidityIncreaseParams memory params
-    )
+    function increaseLiquidityPosition(ISapienceStructs.LiquidityIncreaseParams memory params)
         external
         returns (
             uint128 liquidity,
@@ -76,15 +66,12 @@ interface ILiquidityModule {
         uint160 sqrtPriceX96,
         uint160 sqrtPriceAX96,
         uint160 sqrtPriceBX96
-    )
+    ) external view returns (uint256 amount0, uint256 amount1, uint128 liquidity);
+
+    function quoteRequiredCollateral(uint256 positionId, uint128 liquidity)
         external
         view
-        returns (uint256 amount0, uint256 amount1, uint128 liquidity);
-
-    function quoteRequiredCollateral(
-        uint256 positionId,
-        uint128 liquidity
-    ) external view returns (uint256 requiredCollateral);
+        returns (uint256 requiredCollateral);
 
     /**
      * @notice Increases the deposited collateral for a liquidity position
@@ -94,10 +81,7 @@ interface ILiquidityModule {
      * @param positionId The ID of the liquidity position (fee collector has to be owner)
      * @param collateralAmount The amount of collateral to increase
      */
-    function depositCollateral(
-        uint256 positionId,
-        uint256 collateralAmount
-    ) external;
+    function depositCollateral(uint256 positionId, uint256 collateralAmount) external;
 
     /**
      * @notice Gets the amount of tokens from liquidity

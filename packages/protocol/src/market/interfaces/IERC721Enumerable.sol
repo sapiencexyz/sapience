@@ -27,10 +27,7 @@ interface IERC721Enumerable is IERC721Foil {
      * - `owner` must be a valid address
      * - `index` must be less than the balance of the tokens for the owner
      */
-    function tokenOfOwnerByIndex(
-        address owner,
-        uint256 index
-    ) external view returns (uint256);
+    function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256);
 
     /**
      * @dev Returns a token ID at a given `index` of all the tokens stored by the contract.

@@ -17,14 +17,8 @@ library Errors {
     error MarketSettled();
     error ExpiredMarket();
     error TokensAlreadyCreated();
-    error InsufficientCollateral(
-        uint256 amountRequired,
-        uint256 collateralAvailable
-    );
-    error CollateralLimitReached(
-        int256 collateralRequired,
-        int256 maxCollateral
-    );
+    error InsufficientCollateral(uint256 amountRequired, uint256 collateralAvailable);
+    error CollateralLimitReached(int256 collateralRequired, int256 maxCollateral);
     error CollateralBelowMin(uint256 collateralRequired, uint256 minCollateral);
     error NotAccountOwner(uint256 tokenId, address sender);
     error InvalidPositionKind();
@@ -42,24 +36,12 @@ library Errors {
     error OnlyInitializer(address sender, address initializer);
     error StartTimeCannotBeZero();
     error EndTimeTooEarly(uint256 startTime, uint256 endTime);
-    error PoolPriceOutOfRange(
-        uint160 poolPrice,
-        uint160 minPrice,
-        uint160 maxPrice
-    );
+    error PoolPriceOutOfRange(uint160 poolPrice, uint160 minPrice, uint160 maxPrice);
     error TransactionExpired(uint256 deadline, uint256 blockTime);
     error OnlyFeeCollector();
     error InvalidTransferRecipient(address recipient);
-    error TradePriceOutOfBounds(
-        uint256 tradeRatioD18,
-        uint256 minTradeRatioD18,
-        uint256 maxTradeRatioD18
-    );
-    error InvalidStartingPrice(
-        uint160 startingSqrtPriceX96,
-        uint160 minSqrtPriceX96,
-        uint160 maxSqrtPriceX96
-    );
+    error TradePriceOutOfBounds(uint256 tradeRatioD18, uint256 minTradeRatioD18, uint256 maxTradeRatioD18);
+    error InvalidStartingPrice(uint160 startingSqrtPriceX96, uint160 minSqrtPriceX96, uint160 maxSqrtPriceX96);
     error InvalidBondAmount(uint256 bondAmount, uint256 minBond);
     error ManualSettlementTooEarly(uint256 requiredDelay);
     error InvalidSlippage(uint256 liquiditySlippage, uint256 tradeSlippage);

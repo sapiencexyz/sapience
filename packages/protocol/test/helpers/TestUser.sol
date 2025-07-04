@@ -8,14 +8,9 @@ import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 contract TestUser is Test {
     using Cannon for Vm;
 
-    function createUser(
-        string memory name,
-        uint256 amount
-    ) public returns (address) {
+    function createUser(string memory name, uint256 amount) public returns (address) {
         address user = makeAddr(name);
-        IMintableToken asset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        IMintableToken asset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
 
         asset.mint(amount, user);
 

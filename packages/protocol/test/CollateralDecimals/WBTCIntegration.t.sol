@@ -34,14 +34,11 @@ contract WBTCIntegrationTest is TestMarket {
     uint160 constant INITIAL_SQRT_PRICE = 250541448375047931186413801569; // 10
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         sapience = ISapience(vm.getAddress("Sapience"));
 
         // Get collateral decimals
-        collateralDecimals = IERC20Metadata(address(collateralAsset))
-            .decimals();
+        collateralDecimals = IERC20Metadata(address(collateralAsset)).decimals();
 
         // Create users
         lp1 = makeAddr("LP1");
@@ -55,29 +52,16 @@ contract WBTCIntegrationTest is TestMarket {
 
         // Approve sapience to spend tokens
         vm.prank(lp1);
-        IERC20(address(collateralAsset)).approve(
-            address(sapience),
-            type(uint256).max
-        );
+        IERC20(address(collateralAsset)).approve(address(sapience), type(uint256).max);
 
         vm.prank(trader1);
-        IERC20(address(collateralAsset)).approve(
-            address(sapience),
-            type(uint256).max
-        );
+        IERC20(address(collateralAsset)).approve(address(sapience), type(uint256).max);
 
         // Create a market using the helper
-        (sapience, ) = createMarket(
-            MIN_TICK,
-            MAX_TICK,
-            INITIAL_SQRT_PRICE,
-            MIN_TRADE_SIZE,
-            "Test market"
-        );
+        (sapience,) = createMarket(MIN_TICK, MAX_TICK, INITIAL_SQRT_PRICE, MIN_TRADE_SIZE, "Test market");
 
         // Get the created market
-        (ISapienceStructs.MarketData memory marketData, ) = sapience
-            .getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
     }
@@ -91,33 +75,24 @@ contract WBTCIntegrationTest is TestMarket {
         uint256 balanceBefore = collateralAsset.balanceOf(lp1);
 
         // Create liquidity position
-        (
-            uint256 positionId,
-            ,
-            uint256 totalDeposited,
-            ,
-            uint128 liquidity,
-            ,
-
-        ) = sapience.createLiquidityPosition(
-                ISapienceStructs.LiquidityMintParams({
-                    marketId: marketId,
-                    amountBaseToken: 25 * 1e18,
-                    amountQuoteToken: 25 * 1e18,
-                    collateralAmount: depositAmount,
-                    lowerTick: LP_LOWER_TICK,
-                    upperTick: LP_UPPER_TICK,
-                    minAmountBaseToken: 0,
-                    minAmountQuoteToken: 0,
-                    deadline: block.timestamp + 1 hours
-                })
-            );
+        (uint256 positionId,, uint256 totalDeposited,, uint128 liquidity,,) = sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: 25 * 1e18,
+                amountQuoteToken: 25 * 1e18,
+                collateralAmount: depositAmount,
+                lowerTick: LP_LOWER_TICK,
+                upperTick: LP_UPPER_TICK,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
+                deadline: block.timestamp + 1 hours
+            })
+        );
 
         uint256 balanceAfterCreate = collateralAsset.balanceOf(lp1);
 
         // The balance decrease in token decimals should match totalDeposited converted to token decimals
-        uint256 expectedDecrease = totalDeposited /
-            (10 ** (18 - collateralDecimals));
+        uint256 expectedDecrease = totalDeposited / (10 ** (18 - collateralDecimals));
         assertApproxEqAbs(
             balanceBefore - balanceAfterCreate,
             expectedDecrease,
@@ -126,7 +101,7 @@ contract WBTCIntegrationTest is TestMarket {
         );
 
         // Decrease liquidity by 50%
-        (, , uint256 collateralReturned) = sapience.decreaseLiquidityPosition(
+        (,, uint256 collateralReturned) = sapience.decreaseLiquidityPosition(
             ISapienceStructs.LiquidityDecreaseParams({
                 positionId: positionId,
                 liquidity: liquidity / 2,
@@ -141,11 +116,7 @@ contract WBTCIntegrationTest is TestMarket {
 
         // Verify collateral was returned
         assertGt(collateralReturned, 0, "Should return collateral");
-        assertGt(
-            balanceAfterDecrease,
-            balanceAfterCreate,
-            "Balance should increase after decrease"
-        );
+        assertGt(balanceAfterDecrease, balanceAfterCreate, "Balance should increase after decrease");
     }
 
     function test_CloseLiquidityPosition_CollateralReturn() public {
@@ -156,7 +127,7 @@ contract WBTCIntegrationTest is TestMarket {
         uint256 initialBalance = collateralAsset.balanceOf(lp1);
 
         // Create liquidity position
-        (uint256 positionId, , , , , , ) = sapience.createLiquidityPosition(
+        (uint256 positionId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: 40 * 1e18,
@@ -171,7 +142,7 @@ contract WBTCIntegrationTest is TestMarket {
         );
 
         // Close the entire position
-        (, , uint256 collateralReturned) = sapience.closeLiquidityPosition(
+        (,, uint256 collateralReturned) = sapience.closeLiquidityPosition(
             ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
                 liquiditySlippage: 0.01 ether, // 1%
@@ -187,10 +158,7 @@ contract WBTCIntegrationTest is TestMarket {
 
         // Balance should be close to initial (within 2% for fees/slippage)
         assertApproxEqRel(
-            balanceAfterClose,
-            initialBalance,
-            0.02 ether,
-            "Should return to approximately initial balance"
+            balanceAfterClose, initialBalance, 0.02 ether, "Should return to approximately initial balance"
         );
     }
 
@@ -245,11 +213,7 @@ contract WBTCIntegrationTest is TestMarket {
         vm.stopPrank();
 
         // Should get back close to original balance (small loss from fees)
-        assertGt(
-            balanceAfterClose,
-            balanceAfterOpen,
-            "Should return collateral"
-        );
+        assertGt(balanceAfterClose, balanceAfterOpen, "Should return collateral");
         assertApproxEqRel(
             balanceAfterClose,
             balanceBefore,

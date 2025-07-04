@@ -37,28 +37,17 @@ contract DecreaseLiquidityPosition is TestTrade {
     uint256 positionId;
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         sapience = ISapience(vm.getAddress("Sapience"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (sapience, ) = createMarket(
-            MIN_TICK,
-            MAX_TICK,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/gas"
-        );
+        (sapience,) = createMarket(MIN_TICK, MAX_TICK, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/gas");
 
-        initialLpUser = TestUser.createUser(
-            "InitialLPUser",
-            INITIAL_LP_BALANCE
-        );
+        initialLpUser = TestUser.createUser("InitialLPUser", INITIAL_LP_BALANCE);
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
         trader1 = TestUser.createUser("Trader1", INITIAL_LP_BALANCE);
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
@@ -67,15 +56,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         // Create the initial context for the tests
         // First create an initial LP position to establish the pool
         vm.startPrank(initialLpUser);
-        (
-            uint256 initialBaseTokenAmount,
-            uint256 initialQuoteTokenAmount,
-
-        ) = getTokenAmountsForCollateralAmount(
-                INITIAL_COLLATERAL_AMOUNT,
-                MIN_TICK,
-                MAX_TICK
-            );
+        (uint256 initialBaseTokenAmount, uint256 initialQuoteTokenAmount,) =
+            getTokenAmountsForCollateralAmount(INITIAL_COLLATERAL_AMOUNT, MIN_TICK, MAX_TICK);
 
         sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
@@ -94,17 +76,10 @@ contract DecreaseLiquidityPosition is TestTrade {
 
         // Now create lp1's position
         vm.startPrank(lp1);
-        (
-            uint256 baseTokenAmount,
-            uint256 quoteTokenAmount,
+        (uint256 baseTokenAmount, uint256 quoteTokenAmount,) =
+            getTokenAmountsForCollateralAmount(INITIAL_COLLATERAL_AMOUNT, MIN_TICK, MAX_TICK);
 
-        ) = getTokenAmountsForCollateralAmount(
-                INITIAL_COLLATERAL_AMOUNT,
-                MIN_TICK,
-                MAX_TICK
-            );
-
-        (positionId, , , , , , ) = sapience.createLiquidityPosition(
+        (positionId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: baseTokenAmount,
@@ -151,13 +126,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.startPrank(lp1);
 
         // Get initial position details
-        (
-            uint256 initialAmount0,
-            uint256 initialAmount1,
-            ,
-            ,
-            uint128 initialLiquidity
-        ) = getCurrentPositionTokenAmounts(positionId, MIN_TICK, MAX_TICK);
+        (uint256 initialAmount0, uint256 initialAmount1,,, uint128 initialLiquidity) =
+            getCurrentPositionTokenAmounts(positionId, MIN_TICK, MAX_TICK);
         initialLiquidity;
 
         // Calculate amounts to increase
@@ -195,23 +165,18 @@ contract DecreaseLiquidityPosition is TestTrade {
             uint256 initialOwedTokens0,
             uint256 initialOwedTokens1,
             uint128 initialLiquidity
-        ) = getCurrentPositionTokenAmounts(
-                initialPosition.uniswapPositionId,
-                MIN_TICK,
-                MAX_TICK
-            );
+        ) = getCurrentPositionTokenAmounts(initialPosition.uniswapPositionId, MIN_TICK, MAX_TICK);
 
         // Close the position by decreasing all liquidity
-        (uint256 amount0, uint256 amount1,) = sapience
-            .decreaseLiquidityPosition(
-                ISapienceStructs.LiquidityDecreaseParams({
-                    positionId: positionId,
-                    liquidity: initialLiquidity,
-                    minBaseAmount: 0,
-                    minQuoteAmount: 0,
-                    deadline: block.timestamp + 30 minutes
-                })
-            );
+        (uint256 amount0, uint256 amount1,) = sapience.decreaseLiquidityPosition(
+            ISapienceStructs.LiquidityDecreaseParams({
+                positionId: positionId,
+                liquidity: initialLiquidity,
+                minBaseAmount: 0,
+                minQuoteAmount: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
 
         // Get updated position
         Position.Data memory updatedPosition = sapience.getPosition(positionId);
@@ -239,29 +204,16 @@ contract DecreaseLiquidityPosition is TestTrade {
         }
 
         // Verify the collateral amount is correct
-        int256 vQuoteLoan = int256(initialPosition.borrowedVQuote) -
-            int256(amount1);
+        int256 vQuoteLoan = int256(initialPosition.borrowedVQuote) - int256(amount1);
         assertEq(
             updatedPosition.depositedCollateralAmount,
-            uint256(
-                int256(initialPosition.depositedCollateralAmount) - vQuoteLoan
-            ),
+            uint256(int256(initialPosition.depositedCollateralAmount) - vQuoteLoan),
             "Deposited collateral amount shouldn't change"
         );
 
         // Verify all tokens were collected
-        assertApproxEqAbs(
-            amount0,
-            initialAmount0 + initialOwedTokens0,
-            1,
-            "All token0 should be collected"
-        );
-        assertApproxEqAbs(
-            amount1,
-            initialAmount1 + initialOwedTokens1,
-            1,
-            "All token1 should be collected"
-        );
+        assertApproxEqAbs(amount0, initialAmount0 + initialOwedTokens0, 1, "All token0 should be collected");
+        assertApproxEqAbs(amount1, initialAmount1 + initialOwedTokens1, 1, "All token1 should be collected");
 
         vm.stopPrank();
     }
@@ -274,27 +226,18 @@ contract DecreaseLiquidityPosition is TestTrade {
         Position.Data memory initialPosition = sapience.getPosition(positionId);
 
         // Get initial position details
-        (
-            uint256 initialAmount0,
-            uint256 initialAmount1,
-            uint256 initialOwedTokens0,
-            uint256 initialOwedTokens1,
-        ) = getCurrentPositionTokenAmounts(
-                initialPosition.uniswapPositionId,
-                MIN_TICK,
-                MAX_TICK
-            );
+        (uint256 initialAmount0, uint256 initialAmount1, uint256 initialOwedTokens0, uint256 initialOwedTokens1,) =
+            getCurrentPositionTokenAmounts(initialPosition.uniswapPositionId, MIN_TICK, MAX_TICK);
 
         // Close the position using closeLiquidityPosition
-        (uint256 amount0, uint256 amount1, ) = sapience
-            .closeLiquidityPosition(
-                ISapienceStructs.LiquidityCloseParams({
-                    positionId: positionId,
-                    liquiditySlippage: 1e18,
-                    tradeSlippage: 1e18,
-                    deadline: block.timestamp + 30 minutes
-                })
-            );
+        (uint256 amount0, uint256 amount1,) = sapience.closeLiquidityPosition(
+            ISapienceStructs.LiquidityCloseParams({
+                positionId: positionId,
+                liquiditySlippage: 1e18,
+                tradeSlippage: 1e18,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
 
         // Get updated position
         Position.Data memory updatedPosition = sapience.getPosition(positionId);
@@ -306,11 +249,7 @@ contract DecreaseLiquidityPosition is TestTrade {
             "Position should not be transformed into a trade position"
         );
 
-        assertEq(
-            updatedPosition.uniswapPositionId,
-            0,
-            "Uniswap position ID should be 0"
-        );
+        assertEq(updatedPosition.uniswapPositionId, 0, "Uniswap position ID should be 0");
         assertEq(updatedPosition.depositedCollateralAmount, 0, "Deposited collateral amount should be 0");
         assertEq(updatedPosition.borrowedVQuote, 0, "Borrowed vQuote should be 0");
         assertEq(updatedPosition.borrowedVBase, 0, "Borrowed vBase should be 0");
@@ -318,32 +257,18 @@ contract DecreaseLiquidityPosition is TestTrade {
         assertEq(updatedPosition.vQuoteAmount, 0, "vQuote amount should be 0");
 
         // Notice +/- 1 due to rounding errors
-        assertApproxEqAbs(
-            amount0,
-            initialAmount0 + initialOwedTokens0,
-            1,
-            "All token0 should be collected"
-        );
-        assertApproxEqAbs(
-            amount1,
-            initialAmount1 + initialOwedTokens1,
-            1,
-            "All token1 should be collected"
-        );
+        assertApproxEqAbs(amount0, initialAmount0 + initialOwedTokens0, 1, "All token0 should be collected");
+        assertApproxEqAbs(amount1, initialAmount1 + initialOwedTokens1, 1, "All token1 should be collected");
 
         vm.stopPrank();
     }
 
-    function test_revertWhenLiquiditySlippageParamIsWrong_closeLiquidityPosition_closeTrade()
-        public
-    {
+    function test_revertWhenLiquiditySlippageParamIsWrong_closeLiquidityPosition_closeTrade() public {
         // This test confirms that by using the closeLiquidityPosition function with the wrong parameters (slippage > 1e18) it reverts with the slippage error.
 
         vm.startPrank(lp1);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.InvalidSlippage.selector, 1e18 + 1, 1e18 )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSlippage.selector, 1e18 + 1, 1e18));
         sapience.closeLiquidityPosition(
             ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
@@ -356,16 +281,12 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.stopPrank();
     }
 
-    function test_revertWhenTradeSlippageParamIsWrong_closeLiquidityPosition_closeTrade()
-        public
-    {
+    function test_revertWhenTradeSlippageParamIsWrong_closeLiquidityPosition_closeTrade() public {
         // This test confirms that by using the closeLiquidityPosition function with the wrong parameters (slippage > 1e18) it reverts with the slippage error.
 
         vm.startPrank(lp1);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(Errors.InvalidSlippage.selector, 1e18 , 1e18 + 1)
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidSlippage.selector, 1e18, 1e18 + 1));
         sapience.closeLiquidityPosition(
             ISapienceStructs.LiquidityCloseParams({
                 positionId: positionId,
@@ -378,7 +299,7 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.stopPrank();
     }
 
-    // TODO: This test is not reverting even with no slippage allowed. Might need more work on preconditions 
+    // TODO: This test is not reverting even with no slippage allowed. Might need more work on preconditions
     // function test_revertWhenLiquiditySlippageIsExceeded_closeLiquidityPosition_closeTrade()
     //     public
     // {
@@ -402,16 +323,16 @@ contract DecreaseLiquidityPosition is TestTrade {
     //     vm.stopPrank();
     // }
 
-    function test_revertWhenTradeSlippageIsExceeded_closeLiquidityPosition_closeTrade()
-        public
-    {
+    function test_revertWhenTradeSlippageIsExceeded_closeLiquidityPosition_closeTrade() public {
         // This test confirms that by using the closeLiquidityPosition function, it reverts with the trade slippage error.
 
         vm.startPrank(lp1);
 
         // Try to close the position with a very high trade slippage that will cause it to revert
         vm.expectRevert(
-            abi.encodeWithSelector(Errors.CollateralLimitReached.selector, -1099629689067318712314, -1109169447826266919685)
+            abi.encodeWithSelector(
+                Errors.CollateralLimitReached.selector, -1099629689067318712314, -1109169447826266919685
+            )
         );
         sapience.closeLiquidityPosition(
             ISapienceStructs.LiquidityCloseParams({

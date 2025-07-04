@@ -6,14 +6,13 @@ import {IUMASettlementModule} from "../../../src/market/interfaces/IUMASettlemen
 import {ISapienceStructs} from "../../../src/market/interfaces/ISapienceStructs.sol";
 // import {console2} from "forge-std/console2.sol";
 
-
 /**
  * @title MockMarketGroup
  * @notice Mock contract that implements the UMASettlementModule interface functions
  * for testing purposes. This simulates a market group that can submit settlements
  * and receive callbacks from UMA.
  */
-contract MockMarketGroup is IUMASettlementModule{
+contract MockMarketGroup is IUMASettlementModule {
     // Storage for tracking calls and state
     struct AssertionData {
         bytes32 assertionId;
@@ -62,25 +61,16 @@ contract MockMarketGroup is IUMASettlementModule{
      * @param params The settlement price params
      * @return assertionId A mock assertion ID
      */
-    function submitSettlementPrice(
-        ISapienceStructs.SettlementPriceParams memory params
-    ) external returns (bytes32 assertionId) {
+    function submitSettlementPrice(ISapienceStructs.SettlementPriceParams memory params)
+        external
+        returns (bytes32 assertionId)
+    {
         assertionId = bridge.forwardAssertTruth(
-            address(this),
-            params.marketId,
-            claim,
-            params.asserter,
-            assertionLiveness,
-            bondCurrency,
-            bondAmount
+            address(this), params.marketId, claim, params.asserter, assertionLiveness, bondCurrency, bondAmount
         );
         lastAssertionId = assertionId;
-        assertionData[assertionId] = AssertionData({
-            assertionId: assertionId,
-            resolved: false,
-            disputed: false,
-            assertedTruthfully: false
-        });
+        assertionData[assertionId] =
+            AssertionData({assertionId: assertionId, resolved: false, disputed: false, assertedTruthfully: false});
     }
 
     function getAssertionData(bytes32 assertionId) external view returns (AssertionData memory) {
@@ -92,11 +82,8 @@ contract MockMarketGroup is IUMASettlementModule{
      * @param assertionId The assertion ID that was resolved
      * @param assertedTruthfully Whether the assertion was truthful
      */
-    function assertionResolvedCallback(
-        bytes32 assertionId,
-        bool assertedTruthfully
-    ) external {
-    //   console2.log("assertionResolvedCallback");
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external {
+        //   console2.log("assertionResolvedCallback");
         // Mark the assertion as resolved
         assertionData[assertionId].resolved = true;
         assertionData[assertionId].assertedTruthfully = assertedTruthfully;

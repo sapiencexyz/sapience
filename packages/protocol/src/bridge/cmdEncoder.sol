@@ -19,11 +19,22 @@ library Encoder {
     }
 
     // To UMA commands
-    function encodeToUMAAssertTruth(uint256 assertionId, address asserter, uint64 liveness, address currency, uint256 bond, bytes memory claim) internal pure returns (bytes memory) {
+    function encodeToUMAAssertTruth(
+        uint256 assertionId,
+        address asserter,
+        uint64 liveness,
+        address currency,
+        uint256 bond,
+        bytes memory claim
+    ) internal pure returns (bytes memory) {
         return abi.encode(assertionId, asserter, liveness, currency, bond, claim);
     }
 
-    function decodeToUMAAssertTruth(bytes memory data) internal pure returns (uint256, address, uint64, address, uint256, bytes memory) {
+    function decodeToUMAAssertTruth(bytes memory data)
+        internal
+        pure
+        returns (uint256, address, uint64, address, uint256, bytes memory)
+    {
         return abi.decode(data, (uint256, address, uint64, address, uint256, bytes));
     }
 
@@ -45,7 +56,11 @@ library Encoder {
     }
 
     // Forward from Bridge Bond Balance commands
-    function encodeFromBalanceUpdate(address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount) internal pure returns (bytes memory) {
+    function encodeFromBalanceUpdate(address submitter, address bondToken, uint256 finalAmount, uint256 deltaAmount)
+        internal
+        pure
+        returns (bytes memory)
+    {
         return abi.encode(submitter, bondToken, finalAmount, deltaAmount);
     }
 

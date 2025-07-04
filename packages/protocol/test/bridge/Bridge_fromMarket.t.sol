@@ -54,8 +54,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         marketBridge = MarketLayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(MarketLayerZeroBridge).creationCode,
-                    abi.encode(address(endpoints[marketEiD]), address(this))
+                    type(MarketLayerZeroBridge).creationCode, abi.encode(address(endpoints[marketEiD]), address(this))
                 )
             )
         );
@@ -63,8 +62,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         umaBridge = UMALayerZeroBridge(
             payable(
                 _deployOApp(
-                    type(UMALayerZeroBridge).creationCode,
-                    abi.encode(address(endpoints[umaEiD]), address(this))
+                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
                 )
             )
         );
@@ -85,28 +83,17 @@ contract BridgeTestFromMarket is TestHelperOz5 {
 
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
 
-        umaBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: marketEiD,
-                remoteBridge: address(marketBridge)
-            })
-        );
+        umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
 
         umaBridge.setOptimisticOracleV3(address(mockOptimisticOracleV3));
 
-        marketBridge.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: umaEiD,
-                remoteBridge: address(umaBridge)
-            })
-        );
+        marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaBridge)}));
 
         marketBridge.setLzReceiveCost(1000000);
         umaBridge.setLzReceiveCost(1000000);
 
         marketBridge.setGasThresholds(0.01 ether, 0.005 ether);
         umaBridge.setGasThresholds(0.1 ether, 0.05 ether);
-
 
         // Deposit bond to the escrow
         uint256 depositAmount = 100 * BOND_AMOUNT;
@@ -125,22 +112,13 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         vm.startPrank(marketUser);
         vm.expectRevert("Only enabled market groups can submit");
         marketBridge.forwardAssertTruth(
-            address(marketUser),
-            1,
-            "some claim message",
-            address(marketUser),
-            3600,
-            address(bondCurrency),
-            BOND_AMOUNT
+            address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), BOND_AMOUNT
         );
         vm.stopPrank();
     }
 
     function test_failsIfNotEnoughBond() public {
-        uint256 userRemoteBondBalance = marketBridge.getRemoteSubmitterBalance(
-            address(umaUser),
-            address(bondCurrency)
-        );
+        uint256 userRemoteBondBalance = marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
 
         // Check it reverts
         vm.startPrank(address(mockMarketGroup));
@@ -171,10 +149,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
     }
 
     function test_failsIfNotEnoughBondAndIntentToWithdraw() public {
-        uint256 userRemoteBondBalance = marketBridge.getRemoteSubmitterBalance(
-            address(umaUser),
-            address(bondCurrency)
-        );
+        uint256 userRemoteBondBalance = marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
         uint256 intentToWithdraw = userRemoteBondBalance / 2;
         uint256 availableBond = userRemoteBondBalance - intentToWithdraw;
 
@@ -200,69 +175,42 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         // Confirm it pass with enough bond
         vm.startPrank(address(mockMarketGroup));
         marketBridge.forwardAssertTruth(
-            address(marketUser),
-            1,
-            "some claim message",
-            address(umaUser),
-            3600,
-            address(bondCurrency),
-            availableBond
+            address(marketUser), 1, "some claim message", address(umaUser), 3600, address(bondCurrency), availableBond
         );
         vm.stopPrank();
     }
 
     function test_forwardAssertTruth() public {
         // Verify the balance movements (token)
-        uint256 initialUmaTokenBalance = bondCurrency.balanceOf(
-            address(umaBridge)
-        );
-        uint256 initialUserBondBalance = umaBridge.getBondBalance(
-            umaUser,
-            address(bondCurrency)
-        );
-        uint256 initialUserRemoteBondBalance = marketBridge
-            .getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
+        uint256 initialUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));
+        uint256 initialUserBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
+        uint256 initialUserRemoteBondBalance =
+            marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
 
         // Forward the assertion to the optimisticOracleV3
-        mockMarketGroup.setAssertThruthData(
-            "some claim message",
-            3600,
-            address(bondCurrency),
-            BOND_AMOUNT
-        );
+        mockMarketGroup.setAssertThruthData("some claim message", 3600, address(bondCurrency), BOND_AMOUNT);
         bytes32 assertionId = mockMarketGroup.submitSettlementPrice(
-            ISapienceStructs.SettlementPriceParams({
-                marketId: 1,
-                asserter: address(umaUser),
-                settlementSqrtPriceX96: 1
-            })
+            ISapienceStructs.SettlementPriceParams({marketId: 1, asserter: address(umaUser), settlementSqrtPriceX96: 1})
         );
 
         // Verify the balance movements (token)
-        uint256 finalUmaTokenBalance = bondCurrency.balanceOf(
-            address(umaBridge)
-        );
-        uint256 finalUserBondBalance = umaBridge.getBondBalance(
-            umaUser,
-            address(bondCurrency)
-        );
-        uint256 finalUserRemoteBondBalance = marketBridge
-            .getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
+        uint256 finalUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));
+        uint256 finalUserBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
+        uint256 finalUserRemoteBondBalance =
+            marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
 
         // Before propagating the assertion, the balance should be the same
         assertEq(finalUmaTokenBalance, initialUmaTokenBalance);
         assertEq(finalUserBondBalance, initialUserBondBalance);
-        assertEq(
-            finalUserRemoteBondBalance,
-            initialUserRemoteBondBalance - BOND_AMOUNT
-        );
+        assertEq(finalUserRemoteBondBalance, initialUserRemoteBondBalance - BOND_AMOUNT);
 
         uint256 initialMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
 
         // Propagate the assertion
         verifyPackets(umaEiD, addressToBytes32(address(umaBridge)));
         bytes32 umaAssertionId = mockOptimisticOracleV3.getLastAssertionId();
-        MockOptimisticOracleV3.AssertionData memory umaAssertionData = mockOptimisticOracleV3.getAssertionData(umaAssertionId);
+        MockOptimisticOracleV3.AssertionData memory umaAssertionData =
+            mockOptimisticOracleV3.getAssertionData(umaAssertionId);
 
         uint256 finalMockOptimisticOracleV3Balance = bondCurrency.balanceOf(address(mockOptimisticOracleV3));
         assertEq(finalMockOptimisticOracleV3Balance, initialMockOptimisticOracleV3Balance + BOND_AMOUNT);
@@ -271,22 +219,12 @@ contract BridgeTestFromMarket is TestHelperOz5 {
         assertEq(address(umaAssertionData.bondToken), address(bondCurrency));
         assertEq(umaAssertionData.bondAmount, BOND_AMOUNT);
 
-
         // After propagating the assertion, the balance should be different
         finalUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));
-        finalUserBondBalance = umaBridge.getBondBalance(
-            umaUser,
-            address(bondCurrency)
-        );
-        finalUserRemoteBondBalance = marketBridge.getRemoteSubmitterBalance(
-            address(umaUser),
-            address(bondCurrency)
-        );
+        finalUserBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
+        finalUserRemoteBondBalance = marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
         assertEq(finalUmaTokenBalance, initialUmaTokenBalance - BOND_AMOUNT);
         assertEq(finalUserBondBalance, initialUserBondBalance - BOND_AMOUNT);
-        assertEq(
-            finalUserRemoteBondBalance,
-            initialUserRemoteBondBalance - BOND_AMOUNT
-        );
+        assertEq(finalUserRemoteBondBalance, initialUserRemoteBondBalance - BOND_AMOUNT);
     }
 }

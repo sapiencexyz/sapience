@@ -13,25 +13,14 @@ contract ConfigureMarketLZBridge is Script {
         address umaLZBridge = 0xCe6876D1362585dF3F98294e7F214ad819AE9fA7;
         address optimisticOracleV3 = 0xa6147867264374F324524E30C02C331cF28aa879; // UMA Optimistic Oracle V3 at Arbitrum One
 
-        (uint32 eidMarket, bytes32 peerMarket) = (
-            uint32(30184),
-            bytes32(uint256(uint160(marketLZBridge)))
-        );
-        (uint32 eidUMA, bytes32 peerUMA) = (
-            uint32(30110),
-            bytes32(uint256(uint160(umaLZBridge)))
-        );
+        (uint32 eidMarket, bytes32 peerMarket) = (uint32(30184), bytes32(uint256(uint160(marketLZBridge))));
+        (uint32 eidUMA, bytes32 peerUMA) = (uint32(30110), bytes32(uint256(uint160(umaLZBridge))));
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
         MarketLayerZeroBridge market = MarketLayerZeroBridge(payable(marketLZBridge));
         market.setPeer(eidUMA, peerUMA);
 
-        market.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: eidUMA,
-                remoteBridge: address(umaLZBridge)
-            })
-        );
+        market.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: eidUMA, remoteBridge: address(umaLZBridge)}));
         market.setLzReceiveCost(1000000);
         market.setGasThresholds(0.01 ether, 0.005 ether);
         vm.stopBroadcast();

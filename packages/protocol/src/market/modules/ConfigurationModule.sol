@@ -9,10 +9,7 @@ import "../storage/MarketGroup.sol";
 import "../storage/Errors.sol";
 import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
 
-contract ConfigurationModule is
-    IConfigurationModule,
-    ReentrancyGuardUpgradeable
-{
+contract ConfigurationModule is IConfigurationModule, ReentrancyGuardUpgradeable {
     using MarketGroup for MarketGroup.Data;
     using Market for Market.Data;
 
@@ -37,9 +34,7 @@ contract ConfigurationModule is
     ) external override nonReentrant {
         address feeCollectorNFT;
         if (feeCollectors.length > 0) {
-            feeCollectorNFT = address(
-                new FeeCollectorNft("FeeCollectorNFT", "FCNFT")
-            );
+            feeCollectorNFT = address(new FeeCollectorNft("FeeCollectorNFT", "FCNFT"));
             for (uint256 i = 0; i < feeCollectors.length; i++) {
                 address feeCollector = feeCollectors[i];
                 FeeCollectorNft(feeCollectorNFT).mint(feeCollector);
@@ -47,34 +42,26 @@ contract ConfigurationModule is
         }
 
         MarketGroup.createValid(
-            initialOwner,
-            collateralAsset,
-            feeCollectorNFT,
-            minTradeSize,
-            bridgedSettlement,
-            marketParams
+            initialOwner, collateralAsset, feeCollectorNFT, minTradeSize, bridgedSettlement, marketParams
         );
         emit MarketInitialized(
-            initialOwner,
-            collateralAsset,
-            feeCollectorNFT,
-            minTradeSize,
-            bridgedSettlement,
-            marketParams
+            initialOwner, collateralAsset, feeCollectorNFT, minTradeSize, bridgedSettlement, marketParams
         );
     }
 
-    function updateMarketGroup(
-        ISapienceStructs.MarketParams memory marketParams
-    ) external override onlyOwner {
+    function updateMarketGroup(ISapienceStructs.MarketParams memory marketParams) external override onlyOwner {
         MarketGroup.updateValid(marketParams);
 
         emit MarketUpdated(marketParams);
     }
 
-    function createMarket(
-        ISapienceStructs.MarketCreationParams memory params
-    ) external override nonReentrant onlyOwner returns (uint256 marketId) {
+    function createMarket(ISapienceStructs.MarketCreationParams memory params)
+        external
+        override
+        nonReentrant
+        onlyOwner
+        returns (uint256 marketId)
+    {
         // load the market to check if it's already created
         MarketGroup.Data storage marketGroup = MarketGroup.load();
 
@@ -103,9 +90,7 @@ contract ConfigurationModule is
         return newMarketId;
     }
 
-    function transferOwnership(
-        address newOwner
-    ) external nonReentrant onlyOwner {
+    function transferOwnership(address newOwner) external nonReentrant onlyOwner {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         address oldOwner = marketGroup.owner;
         marketGroup.transferOwnership(newOwner);

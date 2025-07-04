@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import { TestHelperOz5 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import {MarketLayerZeroBridge} from "../../src/bridge/MarketLayerZeroBridge.sol";
 import {UMALayerZeroBridge} from "../../src/bridge/UMALayerZeroBridge.sol";
 import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
-import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol"; 
-import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol"; 
+import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import {MessagingParams} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 
 import "forge-std/Test.sol";
@@ -38,7 +38,6 @@ contract BridgeTestSetup is TestHelperOz5 {
 
     bytes options;
 
-
     function setUp() public override {
         vm.deal(umaUser, 1000 ether);
         vm.deal(marketUser, 1000 ether);
@@ -47,13 +46,21 @@ contract BridgeTestSetup is TestHelperOz5 {
         super.setUp();
         setUpEndpoints(2, LibraryType.UltraLightNode);
 
-        marketBridge = MarketLayerZeroBridge(payable(
-            _deployOApp(type(MarketLayerZeroBridge).creationCode, abi.encode(address(endpoints[marketEiD]), address(this)))
-        ));
+        marketBridge = MarketLayerZeroBridge(
+            payable(
+                _deployOApp(
+                    type(MarketLayerZeroBridge).creationCode, abi.encode(address(endpoints[marketEiD]), address(this))
+                )
+            )
+        );
 
-        umaBridge = UMALayerZeroBridge(payable( 
-            _deployOApp(type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this)))
-        ));
+        umaBridge = UMALayerZeroBridge(
+            payable(
+                _deployOApp(
+                    type(UMALayerZeroBridge).creationCode, abi.encode(address(endpoints[umaEiD]), address(this))
+                )
+            )
+        );
 
         address[] memory oapps = new address[](2);
         oapps[0] = address(marketBridge);
@@ -69,15 +76,9 @@ contract BridgeTestSetup is TestHelperOz5 {
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
 
-        umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
-            remoteEid: marketEiD,
-            remoteBridge: address(marketBridge)
-        }));
+        umaBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: marketEiD, remoteBridge: address(marketBridge)}));
 
-        marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({
-            remoteEid: umaEiD,
-            remoteBridge: address(umaBridge)
-        }));
+        marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaBridge)}));
     }
 
     function test_constructor() public {

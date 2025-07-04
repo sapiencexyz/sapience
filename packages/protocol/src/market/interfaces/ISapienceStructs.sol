@@ -94,11 +94,11 @@ interface ISapienceStructs {
      * @param endTime The end time of the market
      * @param startingSqrtPriceX96 The starting price of the market
      * @param baseAssetMinPriceTick The minimum price tick of the base asset
-     * @param baseAssetMaxPriceTick The maximum price tick of the base asset    
+     * @param baseAssetMaxPriceTick The maximum price tick of the base asset
      * @param salt The salt for the market
      * @param claimStatementYesOrNumeric The claim statement for the yes or numeric case
      * @param claimStatementNo The claim statement for the no case
-     * @dev claimStatementNo should be empty if market is for a numeric claim. If is a yes/no market the claim is selected based on the settlement price: 
+     * @dev claimStatementNo should be empty if market is for a numeric claim. If is a yes/no market the claim is selected based on the settlement price:
      * if the price is 0, the claim is No and the claimStatementNo is the statement for the no case.
      * if the price is 1, the claim is Yes and the claimStatementYesOrNumeric is the statement for the yes case.
      */

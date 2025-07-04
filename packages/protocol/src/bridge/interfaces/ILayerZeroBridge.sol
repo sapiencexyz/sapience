@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { BridgeTypes } from "../BridgeTypes.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {BridgeTypes} from "../BridgeTypes.sol";
 import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /**
@@ -14,7 +14,6 @@ interface ILayerZeroBridge {
     function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config) external;
     function getBridgeConfig() external view returns (BridgeTypes.BridgeConfig memory);
 }
-
 
 interface IETHManagement {
     // Events
@@ -42,7 +41,9 @@ interface IFeeManagement {
 interface IBondManagement {
     // Events
     event BondDeposited(address indexed submitter, address indexed bondToken, uint256 amount);
-    event BondWithdrawalIntentCreated(address indexed submitter, address indexed bondToken, uint256 amount, uint256 timestamp);
+    event BondWithdrawalIntentCreated(
+        address indexed submitter, address indexed bondToken, uint256 amount, uint256 timestamp
+    );
     event WithdrawalExecuted(address indexed submitter, address indexed bondToken, uint256 amount);
 
     // Functions
@@ -62,7 +63,9 @@ interface IUMALayerZeroBridge is ILayerZeroBridge, IBondManagement {
     event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
 
     // UMA-side specific functions
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external returns (MessagingReceipt memory);
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully)
+        external
+        returns (MessagingReceipt memory);
     function assertionDisputedCallback(bytes32 assertionId) external returns (MessagingReceipt memory);
 
     // Optimistic Oracle V3
@@ -96,4 +99,4 @@ interface IMarketLayerZeroBridge is ILayerZeroBridge {
     function enableMarketGroup(address marketGroup) external;
     function disableMarketGroup(address marketGroup) external;
     function isMarketGroupEnabled(address marketGroup) external view returns (bool);
-} 
+}

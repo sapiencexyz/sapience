@@ -35,42 +35,27 @@ contract DecreaseLiquidityPosition is TestTrade {
     uint256 positionId;
 
     function setUp() public {
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         sapience = ISapience(vm.getAddress("Sapience"));
 
         uint160 startingSqrtPriceX96 = 250541448375047931186413801569; // 10
-        (sapience, ) = createMarket(
-            MIN_TICK,
-            MAX_TICK,
-            startingSqrtPriceX96,
-            MIN_TRADE_SIZE,
-            "wstGwei/quote"
-        );
+        (sapience,) = createMarket(MIN_TICK, MAX_TICK, startingSqrtPriceX96, MIN_TRADE_SIZE, "wstGwei/quote");
 
         lp1 = TestUser.createUser("LP1", INITIAL_LP_BALANCE);
 
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         marketId = marketData.marketId;
         pool = marketData.pool;
         tokenA = marketData.quoteToken;
         tokenB = marketData.baseToken;
 
         // Get token amounts for collateral using TestMarket's method
-        (
-            uint256 baseTokenAmount,
-            uint256 quoteTokenAmount,
-
-        ) = getTokenAmountsForCollateralAmount(
-                INITIAL_COLLATERAL_AMOUNT,
-                MIN_TICK,
-                MAX_TICK
-            );
+        (uint256 baseTokenAmount, uint256 quoteTokenAmount,) =
+            getTokenAmountsForCollateralAmount(INITIAL_COLLATERAL_AMOUNT, MIN_TICK, MAX_TICK);
 
         // Create initial position
         vm.startPrank(lp1);
-        (positionId, , , , , , ) = sapience.createLiquidityPosition(
+        (positionId,,,,,,) = sapience.createLiquidityPosition(
             ISapienceStructs.LiquidityMintParams({
                 marketId: marketId,
                 amountBaseToken: baseTokenAmount,
@@ -90,12 +75,7 @@ contract DecreaseLiquidityPosition is TestTrade {
         uint256 invalidPositionId = 999; // An ID that doesn't exist
 
         vm.startPrank(lp1);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Errors.InvalidPositionId.selector,
-                invalidPositionId
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Errors.InvalidPositionId.selector, invalidPositionId));
         sapience.decreaseLiquidityPosition(
             ISapienceStructs.LiquidityDecreaseParams({
                 positionId: invalidPositionId,
@@ -110,7 +90,7 @@ contract DecreaseLiquidityPosition is TestTrade {
 
     function test_revertWhen_decreasingPositionAfterMarketSettlement() public {
         // Settle the market
-        (ISapienceStructs.MarketData memory marketData, ) = sapience.getLatestMarket();
+        (ISapienceStructs.MarketData memory marketData,) = sapience.getLatestMarket();
         vm.warp(marketData.endTime + 1);
 
         // Try to decrease position after settlement
@@ -153,41 +133,27 @@ contract DecreaseLiquidityPosition is TestTrade {
         Position.Data memory initialPosition = sapience.getPosition(positionId);
 
         InitialValues memory initialValues;
-        (
-            initialValues.initialGasTokenAmount,
-            initialValues.initialEthTokenAmount,
-            ,
-            ,
-            initialValues.initialLiquidity
-        ) = getCurrentPositionTokenAmounts(
-            initialPosition.uniswapPositionId,
-            MIN_TICK,
-            MAX_TICK
-        );
+        (initialValues.initialGasTokenAmount, initialValues.initialEthTokenAmount,,, initialValues.initialLiquidity) =
+            getCurrentPositionTokenAmounts(initialPosition.uniswapPositionId, MIN_TICK, MAX_TICK);
 
         // Calculate 30% of the initial liquidity
-        uint128 liquidityToDecrease = uint128(
-            (initialValues.initialLiquidity * 30) / 100
-        );
+        uint128 liquidityToDecrease = uint128((initialValues.initialLiquidity * 30) / 100);
 
         vm.startPrank(lp1);
 
         // Check initial balances
         initialValues.initialLpBalance = collateralAsset.balanceOf(lp1);
-        initialValues.initialSapienceBalance = collateralAsset.balanceOf(
-            address(sapience)
-        );
+        initialValues.initialSapienceBalance = collateralAsset.balanceOf(address(sapience));
 
-        (uint256 amount0, uint256 amount1, uint256 newCollateralAmount) = sapience
-            .decreaseLiquidityPosition(
-                ISapienceStructs.LiquidityDecreaseParams({
-                    positionId: positionId,
-                    liquidity: liquidityToDecrease,
-                    minBaseAmount: 0,
-                    minQuoteAmount: 0,
-                    deadline: block.timestamp + 30 minutes
-                })
-            );
+        (uint256 amount0, uint256 amount1, uint256 newCollateralAmount) = sapience.decreaseLiquidityPosition(
+            ISapienceStructs.LiquidityDecreaseParams({
+                positionId: positionId,
+                liquidity: liquidityToDecrease,
+                minBaseAmount: 0,
+                minQuoteAmount: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
 
         // Get the updated position data
         Position.Data memory updatedPosition = sapience.getPosition(positionId);
@@ -195,56 +161,27 @@ contract DecreaseLiquidityPosition is TestTrade {
         // Assert that the proper collateral amount was returned to lp
         assertEq(
             collateralAsset.balanceOf(lp1),
-            initialValues.initialLpBalance +
-                (initialPosition.depositedCollateralAmount -
-                    newCollateralAmount),
+            initialValues.initialLpBalance + (initialPosition.depositedCollateralAmount - newCollateralAmount),
             "Incorrect amount of collateral returned to LP"
         );
 
         // Assert that the proper collateral amount was reduced from sapience balance
         assertEq(
             collateralAsset.balanceOf(address(sapience)),
-            initialValues.initialSapienceBalance -
-                (initialPosition.depositedCollateralAmount -
-                    newCollateralAmount),
+            initialValues.initialSapienceBalance - (initialPosition.depositedCollateralAmount - newCollateralAmount),
             "Incorrect amount of collateral reduced from Sapience balance"
         );
 
         // Check that owed tokens have increased correctly
-        (
-            ,
-            ,
-            uint256 newTokensOwed0,
-            uint256 newTokensOwed1,
+        (,, uint256 newTokensOwed0, uint256 newTokensOwed1,) =
+            getCurrentPositionTokenAmounts(updatedPosition.uniswapPositionId, MIN_TICK, MAX_TICK);
 
-        ) = getCurrentPositionTokenAmounts(
-                updatedPosition.uniswapPositionId,
-                MIN_TICK,
-                MAX_TICK
-            );
-
-        assertEq(
-            newTokensOwed0,
-            amount0,
-            "Owed token0 should increase by 30% of removed amount"
-        );
-        assertEq(
-            newTokensOwed1,
-            amount1,
-            "Owed token1 should increase by 30% of removed amount"
-        );
+        assertEq(newTokensOwed0, amount0, "Owed token0 should increase by 30% of removed amount");
+        assertEq(newTokensOwed1, amount1, "Owed token1 should increase by 30% of removed amount");
 
         // Assertions
-        assertGt(
-            amount0,
-            0,
-            "Amount of token0 removed should be greater than 0"
-        );
-        assertGt(
-            amount1,
-            0,
-            "Amount of token1 removed should be greater than 0"
-        );
+        assertGt(amount0, 0, "Amount of token0 removed should be greater than 0");
+        assertGt(amount1, 0, "Amount of token1 removed should be greater than 0");
 
         assertEq(
             updatedPosition.depositedCollateralAmount,
@@ -261,13 +198,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         vm.startPrank(lp1);
 
         // Get initial position details
-        (
-            uint256 initialAmount0,
-            uint256 initialAmount1,
-            ,
-            ,
-            uint128 initialLiquidity
-        ) = getCurrentPositionTokenAmounts(positionId, MIN_TICK, MAX_TICK);
+        (uint256 initialAmount0, uint256 initialAmount1,,, uint128 initialLiquidity) =
+            getCurrentPositionTokenAmounts(positionId, MIN_TICK, MAX_TICK);
         initialLiquidity;
 
         // Calculate amounts to increase
@@ -297,27 +229,17 @@ contract DecreaseLiquidityPosition is TestTrade {
         Position.Data memory initialPosition = sapience.getPosition(positionId);
 
         // Get initial position details
-        (, , , , uint128 initialLiquidity) = getCurrentPositionTokenAmounts(
-            initialPosition.uniswapPositionId,
-            MIN_TICK,
-            MAX_TICK
-        );
+        (,,,, uint128 initialLiquidity) =
+            getCurrentPositionTokenAmounts(initialPosition.uniswapPositionId, MIN_TICK, MAX_TICK);
 
         // Calculate 20% of initial liquidity
         uint128 newLiquidity = uint128((uint256(initialLiquidity) * 80) / 100);
 
-        uint256 requiredCollateral = sapience.quoteRequiredCollateral(
-            positionId,
-            newLiquidity
-        );
+        uint256 requiredCollateral = sapience.quoteRequiredCollateral(positionId, newLiquidity);
 
         console2.log("requiredCollateral", requiredCollateral);
 
-        assertGt(
-            requiredCollateral,
-            2,
-            "Quoted collateral should be greater than 0"
-        );
+        assertGt(requiredCollateral, 2, "Quoted collateral should be greater than 0");
 
         vm.stopPrank();
     }
@@ -337,41 +259,29 @@ contract DecreaseLiquidityPosition is TestTrade {
             uint256 initialOwedTokens0,
             uint256 initialOwedTokens1,
             uint128 initialLiquidity
-        ) = getCurrentPositionTokenAmounts(
-                initialPosition.uniswapPositionId,
-                MIN_TICK,
-                MAX_TICK
-            );
+        ) = getCurrentPositionTokenAmounts(initialPosition.uniswapPositionId, MIN_TICK, MAX_TICK);
 
         // Close the position
-        (uint256 amount0, uint256 amount1, uint256 collateralAmount) = sapience
-            .decreaseLiquidityPosition(
-                ISapienceStructs.LiquidityDecreaseParams({
-                    positionId: positionId,
-                    liquidity: initialLiquidity,
-                    minBaseAmount: 0,
-                    minQuoteAmount: 0,
-                    deadline: block.timestamp + 30 minutes
-                })
-            );
+        (uint256 amount0, uint256 amount1, uint256 collateralAmount) = sapience.decreaseLiquidityPosition(
+            ISapienceStructs.LiquidityDecreaseParams({
+                positionId: positionId,
+                liquidity: initialLiquidity,
+                minBaseAmount: 0,
+                minQuoteAmount: 0,
+                deadline: block.timestamp + 30 minutes
+            })
+        );
 
         collateralAmount;
 
         // Get updated position
         Position.Data memory updatedPosition = sapience.getPosition(positionId);
 
-        assertEq(
-            updatedPosition.uniswapPositionId,
-            0,
-            "Uniswap position ID should be 0"
-        );
-        int256 vQuoteLoan = int256(initialPosition.borrowedVQuote) -
-            int256(amount1);
+        assertEq(updatedPosition.uniswapPositionId, 0, "Uniswap position ID should be 0");
+        int256 vQuoteLoan = int256(initialPosition.borrowedVQuote) - int256(amount1);
         assertEq(
             updatedPosition.depositedCollateralAmount,
-            uint256(
-                int256(initialPosition.depositedCollateralAmount) - vQuoteLoan
-            ),
+            uint256(int256(initialPosition.depositedCollateralAmount) - vQuoteLoan),
             "Deposited collateral amount shouldn't change"
         );
         assertEq(updatedPosition.borrowedVQuote, 0, "Borrowed vQuote should be 0");
@@ -391,18 +301,8 @@ contract DecreaseLiquidityPosition is TestTrade {
         }
 
         // Notice +/- 1 due to rounding errors
-        assertApproxEqAbs(
-            amount0,
-            initialAmount0 + initialOwedTokens0,
-            1,
-            "All token0 should be collected"
-        );
-        assertApproxEqAbs(
-            amount1,
-            initialAmount1 + initialOwedTokens1,
-            1,
-            "All token1 should be collected"
-        );
+        assertApproxEqAbs(amount0, initialAmount0 + initialOwedTokens0, 1, "All token0 should be collected");
+        assertApproxEqAbs(amount1, initialAmount1 + initialOwedTokens1, 1, "All token1 should be collected");
 
         // Check that the Uniswap position is burned
         // vm.expectRevert("Invalid token ID");

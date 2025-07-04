@@ -19,17 +19,11 @@ library DecimalMath {
         return Math.mulDiv(a, UNIT, b);
     }
 
-    function mulDecimalRoundUp(
-        uint256 a,
-        uint256 b
-    ) internal pure returns (uint256) {
+    function mulDecimalRoundUp(uint256 a, uint256 b) internal pure returns (uint256) {
         return Math.mulDiv(a, b, UNIT, Math.Rounding.Ceil);
     }
 
-    function divDecimalRoundUp(
-        uint256 a,
-        uint256 b
-    ) internal pure returns (uint256) {
+    function divDecimalRoundUp(uint256 a, uint256 b) internal pure returns (uint256) {
         return Math.mulDiv(a, UNIT, b, Math.Rounding.Ceil);
     }
 
@@ -42,22 +36,12 @@ library DecimalMath {
         return Math.mulDiv(abs(a), UNIT, abs(b)).toInt() * productSign(a, b);
     }
 
-    function mulDecimalRoundUp(
-        int256 a,
-        int256 b
-    ) internal pure returns (int256) {
-        return
-            Math.mulDiv(abs(a), abs(b), UNIT, Math.Rounding.Ceil).toInt() *
-            productSign(a, b);
+    function mulDecimalRoundUp(int256 a, int256 b) internal pure returns (int256) {
+        return Math.mulDiv(abs(a), abs(b), UNIT, Math.Rounding.Ceil).toInt() * productSign(a, b);
     }
 
-    function divDecimalRoundUp(
-        int256 a,
-        int256 b
-    ) internal pure returns (int256) {
-        return
-            Math.mulDiv(abs(a), UNIT, abs(b), Math.Rounding.Ceil).toInt() *
-            productSign(a, b);
+    function divDecimalRoundUp(int256 a, int256 b) internal pure returns (int256) {
+        return Math.mulDiv(abs(a), UNIT, abs(b), Math.Rounding.Ceil).toInt() * productSign(a, b);
     }
 
     // Auxiliary

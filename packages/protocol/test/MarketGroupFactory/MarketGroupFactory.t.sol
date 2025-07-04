@@ -41,17 +41,11 @@ contract MarketGroupFactoryTest is Test {
     address optimisticOracleV3;
 
     function setUp() public {
-        marketGroupFactory = MarketGroupFactory(
-            vm.getAddress("MarketGroupFactory")
-        );
-        collateralAsset = IMintableToken(
-            vm.getAddress("CollateralAsset.Token")
-        );
+        marketGroupFactory = MarketGroupFactory(vm.getAddress("MarketGroupFactory"));
+        collateralAsset = IMintableToken(vm.getAddress("CollateralAsset.Token"));
         safeOwner = makeAddr("safeOwner");
         bondCurrency = IMintableToken(vm.getAddress("BondCurrency.Token"));
-        uniswapPositionManager = vm.getAddress(
-            "Uniswap.NonfungiblePositionManager"
-        );
+        uniswapPositionManager = vm.getAddress("Uniswap.NonfungiblePositionManager");
         uniswapSwapRouter = vm.getAddress("Uniswap.SwapRouter");
         uniswapQuoter = vm.getAddress("Uniswap.QuoterV2");
         optimisticOracleV3 = vm.getAddress("UMA.OptimisticOracleV3");
@@ -59,44 +53,41 @@ contract MarketGroupFactoryTest is Test {
 
     function test_canCloneMarketGroup() public {
         vm.startPrank(safeOwner);
-        address marketGroup = marketGroupFactory
-            .cloneAndInitializeMarketGroup(
-                address(collateralAsset),
-                feeCollectors,
-                MIN_TRADE_SIZE,
-                false,
-                ISapienceStructs.MarketParams({
-                    feeRate: 10000,
-                    assertionLiveness: 21600,
-                    bondCurrency: address(bondCurrency),
-                    bondAmount: BOND_AMOUNT,
-                    uniswapPositionManager: uniswapPositionManager,
-                    uniswapSwapRouter: uniswapSwapRouter,
-                    uniswapQuoter: uniswapQuoter,
-                    optimisticOracleV3: optimisticOracleV3
-                }),
-                0
-            );
+        address marketGroup = marketGroupFactory.cloneAndInitializeMarketGroup(
+            address(collateralAsset),
+            feeCollectors,
+            MIN_TRADE_SIZE,
+            false,
+            ISapienceStructs.MarketParams({
+                feeRate: 10000,
+                assertionLiveness: 21600,
+                bondCurrency: address(bondCurrency),
+                bondAmount: BOND_AMOUNT,
+                uniswapPositionManager: uniswapPositionManager,
+                uniswapSwapRouter: uniswapSwapRouter,
+                uniswapQuoter: uniswapQuoter,
+                optimisticOracleV3: optimisticOracleV3
+            }),
+            0
+        );
 
-
-        address marketGroup2 = marketGroupFactory
-            .cloneAndInitializeMarketGroup(
-                address(collateralAsset),
-                feeCollectors,
-                MIN_TRADE_SIZE,
-                false,
-                ISapienceStructs.MarketParams({
-                    feeRate: 10000,
-                    assertionLiveness: 21600,
-                    bondCurrency: address(bondCurrency),
-                    bondAmount: BOND_AMOUNT,
-                    uniswapPositionManager: uniswapPositionManager,
-                    uniswapSwapRouter: uniswapSwapRouter,
-                    uniswapQuoter: uniswapQuoter,
-                    optimisticOracleV3: optimisticOracleV3
-                }),
-                0
-            );
+        address marketGroup2 = marketGroupFactory.cloneAndInitializeMarketGroup(
+            address(collateralAsset),
+            feeCollectors,
+            MIN_TRADE_SIZE,
+            false,
+            ISapienceStructs.MarketParams({
+                feeRate: 10000,
+                assertionLiveness: 21600,
+                bondCurrency: address(bondCurrency),
+                bondAmount: BOND_AMOUNT,
+                uniswapPositionManager: uniswapPositionManager,
+                uniswapSwapRouter: uniswapSwapRouter,
+                uniswapQuoter: uniswapQuoter,
+                optimisticOracleV3: optimisticOracleV3
+            }),
+            0
+        );
         vm.stopPrank();
         assertNotEq(marketGroup, address(0));
         assertNotEq(marketGroup2, address(0));
@@ -131,24 +122,23 @@ contract MarketGroupFactoryTest is Test {
 
     function test_attmeptToInitializeMarketGroupTwiceRevert() public {
         vm.startPrank(safeOwner);
-        address marketGroup = marketGroupFactory
-            .cloneAndInitializeMarketGroup(
-                address(collateralAsset),
-                feeCollectors,
-                MIN_TRADE_SIZE,
-                false,
-                ISapienceStructs.MarketParams({
-                    feeRate: 10000,
-                    assertionLiveness: 21600,
-                    bondCurrency: address(bondCurrency),
-                    bondAmount: BOND_AMOUNT,
-                    uniswapPositionManager: uniswapPositionManager,
-                    uniswapSwapRouter: uniswapSwapRouter,
-                    uniswapQuoter: uniswapQuoter,
-                    optimisticOracleV3: optimisticOracleV3
-                }),
-                0
-            );
+        address marketGroup = marketGroupFactory.cloneAndInitializeMarketGroup(
+            address(collateralAsset),
+            feeCollectors,
+            MIN_TRADE_SIZE,
+            false,
+            ISapienceStructs.MarketParams({
+                feeRate: 10000,
+                assertionLiveness: 21600,
+                bondCurrency: address(bondCurrency),
+                bondAmount: BOND_AMOUNT,
+                uniswapPositionManager: uniswapPositionManager,
+                uniswapSwapRouter: uniswapSwapRouter,
+                uniswapQuoter: uniswapQuoter,
+                optimisticOracleV3: optimisticOracleV3
+            }),
+            0
+        );
 
         // vm.expectRevert("MarketAlreadyCreated()"); // Note, expected error looks similar in the console log, but fails to catch it properly
         vm.expectRevert();
@@ -197,10 +187,8 @@ contract MarketGroupFactoryTest is Test {
         vm.stopPrank();
 
         // Get the market data
-        (
-            ISapienceStructs.MarketData memory _initialMarketData,
-            ISapienceStructs.MarketParams memory _marketParams
-        ) = marketGroup.getLatestMarket();
+        (ISapienceStructs.MarketData memory _initialMarketData, ISapienceStructs.MarketParams memory _marketParams) =
+            marketGroup.getLatestMarket();
         uint256 marketId = _initialMarketData.marketId;
         uint256 endTime = _initialMarketData.endTime;
         ISapienceStructs.MarketParams memory marketParams = _marketParams;
@@ -222,10 +210,7 @@ contract MarketGroupFactoryTest is Test {
         vm.stopPrank();
 
         vm.startPrank(safeOwner);
-        IMintableToken(marketParams.bondCurrency).approve(
-            address(marketGroup),
-            marketParams.bondAmount
-        );
+        IMintableToken(marketParams.bondCurrency).approve(address(marketGroup), marketParams.bondAmount);
         bytes32 assertionId = marketGroup.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({
                 marketId: marketId,
@@ -235,19 +220,15 @@ contract MarketGroupFactoryTest is Test {
         );
         vm.stopPrank();
 
-        (marketData, ) = marketGroup.getLatestMarket();
+        (marketData,) = marketGroup.getLatestMarket();
         assertTrue(!marketData.settled, "The market isn't settled");
 
         vm.startPrank(optimisticOracleV3);
         marketGroup.assertionResolvedCallback(assertionId, true);
         vm.stopPrank();
 
-        (marketData, ) = marketGroup.getLatestMarket();
+        (marketData,) = marketGroup.getLatestMarket();
         assertTrue(marketData.settled, "The market is settled");
-        assertEq(
-            marketData.settlementPriceD18,
-            settlementPriceD18,
-            "The settlement price is as submitted"
-        );
+        assertEq(marketData.settlementPriceD18, settlementPriceD18, "The settlement price is as submitted");
     }
 }

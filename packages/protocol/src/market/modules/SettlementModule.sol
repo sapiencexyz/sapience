@@ -20,9 +20,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
     using MarketGroup for MarketGroup.Data;
     using Market for Market.Data;
 
-    function settlePosition(
-        uint256 positionId
-    ) external override nonReentrant returns (uint256 withdrawnCollateral) {
+    function settlePosition(uint256 positionId) external override nonReentrant returns (uint256 withdrawnCollateral) {
         Position.Data storage position = Position.loadValid(positionId);
         Market.Data storage market = Market.loadValid(position.marketId);
         MarketGroup.Data storage marketGroup = MarketGroup.load();
@@ -51,10 +49,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
             revert Errors.InvalidPositionKind();
         }
 
-        withdrawnCollateral = marketGroup.withdrawCollateral(
-            msg.sender,
-            withdrawableCollateral
-        );
+        withdrawnCollateral = marketGroup.withdrawCollateral(msg.sender, withdrawableCollateral);
 
         int256 deltaCollateral = -int256(withdrawnCollateral);
 
@@ -75,11 +70,7 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         );
     }
 
-    function __manual_setSettlementPrice()
-        external
-        override
-        returns (uint160 settlementPriceX96)
-    {
+    function __manual_setSettlementPrice() external override returns (uint160 settlementPriceX96) {
         uint256 DURATION_MULTIPLIER = 2;
 
         MarketGroup.Data storage marketGroup = MarketGroup.load();
@@ -94,15 +85,11 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         uint256 timeSinceEnd = block.timestamp - market.endTime;
 
         if (timeSinceEnd < requiredDelay) {
-            revert Errors.ManualSettlementTooEarly(
-                requiredDelay - timeSinceEnd
-            );
+            revert Errors.ManualSettlementTooEarly(requiredDelay - timeSinceEnd);
         }
 
         settlementPriceX96 = market.getCurrentPoolPriceSqrtX96();
-        market.setSettlementPriceInRange(
-            DecimalPrice.sqrtRatioX96ToPrice(settlementPriceX96)
-        );
+        market.setSettlementPriceInRange(DecimalPrice.sqrtRatioX96ToPrice(settlementPriceX96));
 
         // update settlement
         market.settlement = Market.Settlement({
@@ -114,29 +101,27 @@ contract SettlementModule is ISettlementModule, ReentrancyGuardUpgradeable {
         emit MarketManualSettlement(market.id, settlementPriceX96);
     }
 
-    function _settleLiquidityPosition(
-        Position.Data storage position,
-        Market.Data storage market
-    ) internal returns (uint256) {
+    function _settleLiquidityPosition(Position.Data storage position, Market.Data storage market)
+        internal
+        returns (uint256)
+    {
         // Get current token amounts using Pool library
-        (uint256 currentAmount0, uint256 currentAmount1, , , , , ) = Pool
-            .getCurrentPositionTokenAmounts(market, position);
+        (uint256 currentAmount0, uint256 currentAmount1,,,,,) = Pool.getCurrentPositionTokenAmounts(market, position);
 
         // Update the position's token amounts with the current values
         position.vBaseAmount += currentAmount0;
         position.vQuoteAmount += currentAmount1;
 
         // Collect fees from the Uniswap position
-        (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(
-            market.marketParams.uniswapPositionManager
-        ).collect(
-                INonfungiblePositionManager.CollectParams({
-                    tokenId: position.uniswapPositionId,
-                    recipient: address(this),
-                    amount0Max: type(uint128).max,
-                    amount1Max: type(uint128).max
-                })
-            );
+        (uint256 amount0, uint256 amount1) = INonfungiblePositionManager(market.marketParams.uniswapPositionManager)
+            .collect(
+            INonfungiblePositionManager.CollectParams({
+                tokenId: position.uniswapPositionId,
+                recipient: address(this),
+                amount0Max: type(uint128).max,
+                amount1Max: type(uint128).max
+            })
+        );
 
         // Update the position's token amounts
         position.vBaseAmount += amount0;
