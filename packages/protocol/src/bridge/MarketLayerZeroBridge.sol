@@ -72,9 +72,7 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         // Handle incoming messages from the UMA side
         (uint16 commandType, bytes memory data) = _message.decodeType();
 
-        if (false) {
-            // Do Nothing here, this is a placeholder to have better
-        } else if (commandType == Encoder.CMD_FROM_ESCROW_DEPOSIT) {
+        if (commandType == Encoder.CMD_FROM_ESCROW_DEPOSIT) {
             (address submitter, address bondToken,, uint256 deltaAmount) = data.decodeFromBalanceUpdate();
             remoteSubmitterBalances[submitter][bondToken] += deltaAmount;
             emit BondDeposited(submitter, bondToken, deltaAmount);
@@ -173,18 +171,18 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         // Advance to next assertionId
         lastAssertionId++;
 
+        // Deduct the bond from the asserter
+        remoteSubmitterBalances[asserter][currency] -= bond;
+
+        // Store the assertionId to marketGroup mapping
+        assertionIdToMarketGroup[lastAssertionId] = marketGroup;
+
         // Make assertion data to UMA side via LayerZero
         bytes memory commandPayload =
             Encoder.encodeToUMAAssertTruth(lastAssertionId, asserter, liveness, address(currency), bond, claim);
 
         // Send the message with automatic fee calculation
         _sendLayerZeroMessageWithQuote(Encoder.CMD_TO_UMA_ASSERT_TRUTH, commandPayload, false);
-
-        // Deduct the bond from the asserter
-        remoteSubmitterBalances[asserter][currency] -= bond;
-
-        // Store the assertionId to marketGroup mapping
-        assertionIdToMarketGroup[lastAssertionId] = marketGroup;
 
         // Emit the assertion submitted event
         emit AssertionSubmitted(marketGroup, marketId, lastAssertionId);
