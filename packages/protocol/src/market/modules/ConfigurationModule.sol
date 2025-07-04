@@ -5,33 +5,35 @@ import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol
 import "../external/FeeCollectorNft.sol";
 import "../interfaces/IConfigurationModule.sol";
 import "../storage/Market.sol";
-import "../storage/Epoch.sol";
+import "../storage/MarketGroup.sol";
 import "../storage/Errors.sol";
+import {ISapienceStructs} from "../interfaces/ISapienceStructs.sol";
 
 contract ConfigurationModule is
     IConfigurationModule,
     ReentrancyGuardUpgradeable
 {
+    using MarketGroup for MarketGroup.Data;
     using Market for Market.Data;
 
     modifier onlyOwner() {
-        Market.Data storage market = Market.load();
-        if (market.owner == address(0)) {
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        if (marketGroup.owner == address(0)) {
             revert Errors.MarketNotInitialized();
         }
-        if (msg.sender != market.owner) {
+        if (msg.sender != marketGroup.owner) {
             revert Errors.OnlyOwner();
         }
         _;
     }
 
-    function initializeMarket(
+    function initializeMarketGroup(
         address initialOwner,
         address collateralAsset,
         address[] calldata feeCollectors,
-        address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.MarketParams memory marketParams
+        bool bridgedSettlement,
+        ISapienceStructs.MarketParams memory marketParams
     ) external override nonReentrant {
         address feeCollectorNFT;
         if (feeCollectors.length > 0) {
@@ -44,84 +46,86 @@ contract ConfigurationModule is
             }
         }
 
-        Market.createValid(
+        MarketGroup.createValid(
             initialOwner,
             collateralAsset,
             feeCollectorNFT,
-            callbackRecipient,
             minTradeSize,
+            bridgedSettlement,
             marketParams
         );
         emit MarketInitialized(
             initialOwner,
             collateralAsset,
             feeCollectorNFT,
-            callbackRecipient,
             minTradeSize,
+            bridgedSettlement,
             marketParams
         );
     }
 
-    function updateMarket(
-        IFoilStructs.MarketParams memory marketParams
+    function updateMarketGroup(
+        ISapienceStructs.MarketParams memory marketParams
     ) external override onlyOwner {
-        Market.updateValid(marketParams);
+        MarketGroup.updateValid(marketParams);
 
         emit MarketUpdated(marketParams);
     }
 
-    function createEpoch(
-        uint256 startTime,
-        uint256 endTime,
-        uint160 startingSqrtPriceX96,
-        int24 baseAssetMinPriceTick,
-        int24 baseAssetMaxPriceTick,
-        uint256 salt,
-        bytes calldata claimStatement
-    ) external override nonReentrant onlyOwner returns (uint256 epochId) {
+    function createMarket(
+        ISapienceStructs.MarketCreationParams memory params
+    ) external override nonReentrant onlyOwner returns (uint256 marketId) {
         // load the market to check if it's already created
-        Market.Data storage market = Market.load();
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
 
-        uint256 newEpochId = market.getNewEpochId();
+        uint256 newMarketId = marketGroup.getNewMarketId();
 
-        Epoch.createValid(
-            newEpochId,
-            startTime,
-            endTime,
-            startingSqrtPriceX96,
-            baseAssetMinPriceTick,
-            baseAssetMaxPriceTick,
-            salt,
-            claimStatement
+        Market.createValid(
+            newMarketId,
+            params.startTime,
+            params.endTime,
+            params.startingSqrtPriceX96,
+            params.baseAssetMinPriceTick,
+            params.baseAssetMaxPriceTick,
+            params.salt,
+            params.claimStatementYesOrNumeric,
+            params.claimStatementNo
         );
-        emit EpochCreated(newEpochId, startTime, endTime, startingSqrtPriceX96, claimStatement);
+        emit MarketCreated(
+            newMarketId,
+            params.startTime,
+            params.endTime,
+            params.startingSqrtPriceX96,
+            params.claimStatementYesOrNumeric,
+            params.claimStatementNo
+        );
 
-        return newEpochId;
+        return newMarketId;
     }
 
     function transferOwnership(
         address newOwner
     ) external nonReentrant onlyOwner {
-        Market.Data storage market = Market.load();
-        address oldOwner = market.owner;
-        market.transferOwnership(newOwner);
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        address oldOwner = marketGroup.owner;
+        marketGroup.transferOwnership(newOwner);
         emit OwnershipTransferStarted(oldOwner, newOwner);
     }
 
     function acceptOwnership() external nonReentrant {
-        Market.Data storage market = Market.load();
-        address oldOwner = market.owner;
-        market.acceptOwnership();
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        address oldOwner = marketGroup.owner;
+        marketGroup.acceptOwnership();
         emit OwnershipTransferred(oldOwner, msg.sender);
     }
 
     function pendingOwner() external view returns (address) {
-        Market.Data storage market = Market.load();
-        return market.pendingOwner;
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        return marketGroup.pendingOwner;
     }
 
     function owner() external view returns (address) {
-        Market.Data storage market = Market.load();
-        return market.owner;
+        MarketGroup.Data storage marketGroup = MarketGroup.load();
+        return marketGroup.owner;
     }
 }

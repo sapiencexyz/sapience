@@ -1,26 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {IFoilStructs} from "./IFoilStructs.sol";
+import {ISapienceStructs} from "./ISapienceStructs.sol";
 
 interface IConfigurationModule {
     event MarketInitialized(
         address initialOwner,
         address collateralAsset,
         address feeCollectorNFT,
-        address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.MarketParams marketParams
+        bool bridgedSettlement,
+        ISapienceStructs.MarketParams marketParams
     );
 
-    event MarketUpdated(IFoilStructs.MarketParams marketParams);
+    event MarketUpdated(ISapienceStructs.MarketParams marketParams);
 
-    event EpochCreated(
-        uint epochId,
+    event MarketCreated(
+        uint marketId,
         uint256 startTime,
         uint256 endTime,
         uint160 startingSqrtPriceX96,
-        bytes claimStatement
+        bytes claimStatementYesOrNumeric,
+        bytes claimStatementNo
     );
 
     event OwnershipTransferStarted(
@@ -34,34 +35,28 @@ interface IConfigurationModule {
     );
 
     /**
-     * @notice Initializes a market
-     * @param owner Address of a market owner, which can update the configurations and submit a settlement price
-     * @param collateralAsset Address of the collateral used by the market. This cannot be a rebase token.
+     * @notice Initializes a market group
+     * @param owner Address of a market group owner, which can update the configurations and submit a settlement price
+     * @param collateralAsset Address of the collateral used by the market group. This cannot be a rebase token.
      * @param feeCollectors Addresses of fee collectors
-     * @param callbackRecipient recipient of callback on resolution of epoch, can be address(0)
      * @param minTradeSize Minimum trade size for a position
-     * @param marketParams Parameters used when new epochs are created
+     * @param bridgedSettlement Whether the market group uses bridged settlement
+     * @param marketParams Parameters used when new markets are created
      */
-    function initializeMarket(
+    function initializeMarketGroup(
         address owner,
         address collateralAsset,
         address[] calldata feeCollectors,
-        address callbackRecipient,
         uint256 minTradeSize,
-        IFoilStructs.MarketParams memory marketParams
+        bool bridgedSettlement,
+        ISapienceStructs.MarketParams memory marketParams
     ) external;
 
-    function updateMarket(
-        IFoilStructs.MarketParams memory marketParams
+    function updateMarketGroup(
+        ISapienceStructs.MarketParams memory marketParams
     ) external;
 
-    function createEpoch(
-        uint256 startTime,
-        uint256 endTime,
-        uint160 startingSqrtPriceX96,
-        int24 baseAssetMinPriceTick,
-        int24 baseAssetMaxPriceTick,
-        uint256 salt,
-        bytes calldata claimStatement
-    ) external returns (uint256 epochId);
+    function createMarket(
+        ISapienceStructs.MarketCreationParams memory params
+    ) external returns (uint256 marketId);
 }

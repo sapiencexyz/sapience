@@ -3,16 +3,16 @@ pragma solidity >=0.8.2 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {TestEpoch} from "../helpers/TestEpoch.sol";
+import {TestMarket} from "../helpers/TestMarket.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import {Position} from "../../src/market/storage/Position.sol";
-import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 
 import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -27,29 +27,29 @@ contract TradePositionClose is TestTrade {
     // helper struct
     struct StateData {
         uint256 userCollateral;
-        uint256 foilCollateral;
-        uint256 borrowedVEth;
-        uint256 borrowedVGas;
-        uint256 vEthAmount;
-        uint256 vGasAmount;
+        uint256 sapienceCollateral;
+        uint256 borrowedVQuote;
+        uint256 borrowedVBase;
+        uint256 vQuoteAmount;
+        uint256 vBaseAmount;
         int256 positionSize;
         uint256 depositedCollateralAmount;
     }
 
-    IFoil foil;
+    ISapience sapience;
     IMintableToken collateralAsset;
 
     address lp1;
     address trader1;
     address trader2;
-    uint256 epochId;
+    uint256 marketId;
     address pool;
     address tokenA;
     address tokenB;
     IUniswapV3Pool uniCastedPool;
     uint256 feeRate;
-    int24 EPOCH_LOWER_TICK = 16000; //5 (4.952636224061651)
-    int24 EPOCH_UPPER_TICK = 29800; //20 (19.68488357413147)
+    int24 MARKET_LOWER_TICK = 16000; //5 (4.952636224061651)
+    int24 MARKET_UPPER_TICK = 29800; //20 (19.68488357413147)
     int24 LP_LOWER_TICK = 16000; // (9.973035566235849)
     int24 LP_UPPER_TICK = 29800; // (10.174494074987374)
     uint256 COLLATERAL_FOR_ORDERS = 10 ether;
@@ -59,7 +59,7 @@ contract TradePositionClose is TestTrade {
     uint256 INITIAL_PRICE_MINUS_FEE_D18 = 9.9 ether;
     uint256 PLUS_FEE_MULTIPLIER_D18 = 1.01 ether;
     uint256 MINUS_FEE_MULTIPLIER_D18 = 0.99 ether;
-    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vGas
+    uint256 constant MIN_TRADE_SIZE = 10_000; // 10,000 vBase
 
     function setUp() public {
         collateralAsset = IMintableToken(
@@ -68,23 +68,24 @@ contract TradePositionClose is TestTrade {
 
         uint160 startingSqrtPriceX96 = INITIAL_PRICE_SQRT;
 
-        (foil, ) = createEpoch(
-            EPOCH_LOWER_TICK,
-            EPOCH_UPPER_TICK,
+        (sapience, ) = createMarket(
+            MARKET_LOWER_TICK,
+            MARKET_UPPER_TICK,
             startingSqrtPriceX96,
             MIN_TRADE_SIZE,
-            "wstGwei/gas"
+            "wstGwei/quote"
         );
 
         lp1 = TestUser.createUser("LP1", 10_000_000_000 ether);
         trader1 = TestUser.createUser("Trader1", 10_000_000 ether);
         trader2 = TestUser.createUser("Trader2", 10_000_000 ether);
 
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        epochId = epochData.epochId;
-        pool = epochData.pool;
-        tokenA = epochData.ethToken;
-        tokenB = epochData.gasToken;
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
+        marketId = marketData.marketId;
+        pool = marketData.pool;
+        tokenA = marketData.quoteToken;
+        tokenB = marketData.baseToken;
 
         uniCastedPool = IUniswapV3Pool(pool);
         feeRate = uint256(uniCastedPool.fee()) * 1e12;
@@ -92,9 +93,9 @@ contract TradePositionClose is TestTrade {
         // Add liquidity
         vm.startPrank(lp1);
         addLiquidity(
-            foil,
+            sapience,
             pool,
-            epochId,
+            marketId,
             COLLATERAL_FOR_ORDERS * 100_000,
             LP_LOWER_TICK,
             LP_UPPER_TICK
@@ -107,16 +108,18 @@ contract TradePositionClose is TestTrade {
 
         vm.startPrank(trader1);
         // quote and open a long
-        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
-            epochId,
+        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
+            marketId,
             positionSize
         );
         // Send more collateral than required, just checking the position can be created/modified
-        foil.createTraderPosition(
-            epochId,
-            positionSize,
-            requiredCollateral * 2,
-            block.timestamp + 30 minutes
+        sapience.createTraderPosition(
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: positionSize,
+                maxCollateral: requiredCollateral * 2,
+                deadline: block.timestamp + 30 minutes
+            })
         );
         vm.stopPrank();
         movePrice(.1 ether, positionSize * -100, 1000);
@@ -137,7 +140,7 @@ contract TradePositionClose is TestTrade {
         int256 size,
         uint256 maxIterations
     ) internal {
-        uint256 initialPrice = foil.getReferencePrice(epochId);
+        uint256 initialPrice = sapience.getReferencePrice(marketId);
         uint256 currentPrice;
         uint256 deltaPrice;
         uint256 priceRatio;
@@ -146,19 +149,19 @@ contract TradePositionClose is TestTrade {
 
         for (uint256 i = 0; i < maxIterations; i++) {
             // quote and open a long
-            (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
-                epochId,
-                size
-            );
+            (uint256 requiredCollateral, , ) = sapience
+                .quoteCreateTraderPosition(marketId, size);
             // Send more collateral than required, just checking the position can be created/modified
-            foil.createTraderPosition(
-                epochId,
-                size,
-                requiredCollateral * 2,
-                block.timestamp + 30 minutes
+            sapience.createTraderPosition(
+                ISapienceStructs.TraderPositionCreateParams({
+                    marketId: marketId,
+                    size: size,
+                    maxCollateral: requiredCollateral * 2,
+                    deadline: block.timestamp + 30 minutes
+                })
             );
 
-            currentPrice = foil.getReferencePrice(epochId);
+            currentPrice = sapience.getReferencePrice(marketId);
             deltaPrice = currentPrice > initialPrice
                 ? currentPrice - initialPrice
                 : initialPrice - currentPrice;
@@ -171,51 +174,7 @@ contract TradePositionClose is TestTrade {
     }
 
     function getPnl(int256 initialPositionSize) internal {
-        // uint256 trader1InitialBalance = collateralAsset.balanceOf(trader1);
-        // int256 pnl;
-        // if (initialPositionSize > 0) {
-        //     // Long: PNL = (Settlement Price - Initial Price) * Position Size
-        //     pnl = initialPositionSize.mulDecimal(
-        //         SETTLEMENT_PRICE_D18.toInt() -
-        //             INITIAL_PRICE_PLUS_FEE_D18.toInt()
-        //     );
-        // } else {
-        //     // Short: PNL = (Initial Price - Settlement Price) * Position Size * -1 (positionSize is negative for short)
-        //     pnl =
-        //         -1 *
-        //         initialPositionSize.mulDecimal(
-        //             INITIAL_PRICE_LESS_FEE_D18.toInt() -
-        //                 SETTLEMENT_PRICE_D18.toInt()
-        //         );
-        // }
-        // vm.startPrank(trader1);
-        // (uint256 requiredCollateral,) = foil.quoteCreateTraderPosition(
-        //     epochId,
-        //     initialPositionSize
-        // );
-        // uint256 positionId = foil.createTraderPosition(
-        //     epochId,
-        //     initialPositionSize,
-        //     requiredCollateral * 2,
-        //     block.timestamp + 30 minutes
-        // );
-        // vm.stopPrank();
-        // vm.startPrank(trader1);
-        // requiredCollateral = foil.quoteModifyTraderPosition(positionId, 0);
-        // foil.modifyTraderPosition(
-        //     positionId,
-        //     0,
-        //     requiredCollateral.toInt(),
-        //     block.timestamp + 30 minutes
-        // );
-        // vm.stopPrank();
-        // uint256 trader1FinalBalance = collateralAsset.balanceOf(trader1);
-        // assertApproxEqRel(
-        //     trader1FinalBalance.toInt() - trader1InitialBalance.toInt(),
-        //     pnl,
-        //     0.01 ether,
-        //     "pnl"
-        // );
+        // Function implementation commented out
     }
 
     /*
@@ -223,14 +182,14 @@ contract TradePositionClose is TestTrade {
         uint256 positionId,
         StateData memory stateData
     ) public {
-        Position.Data memory position = foil.getPosition(positionId);
+        Position.Data memory position = sapience.getPosition(positionId);
         stateData.depositedCollateralAmount = position
             .depositedCollateralAmount;
-        stateData.vEthAmount = position.vEthAmount;
-        stateData.vGasAmount = position.vGasAmount;
-        stateData.borrowedVEth = position.borrowedVEth;
-        stateData.borrowedVGas = position.borrowedVGas;
-        stateData.positionSize = foil.getPositionSize(positionId);
+        stateData.vQuoteAmount = position.vQuoteAmount;
+        stateData.vBaseAmount = position.vBaseAmount;
+        stateData.borrowedVQuote = position.borrowedVQuote;
+        stateData.borrowedVBase = position.borrowedVBase;
+        stateData.positionSize = sapience.getPositionSize(positionId);
     }
 
     function fillCollateralStateData(
@@ -238,7 +197,7 @@ contract TradePositionClose is TestTrade {
         StateData memory stateData
     ) public view {
         stateData.userCollateral = collateralAsset.balanceOf(user);
-        stateData.foilCollateral = collateralAsset.balanceOf(address(foil));
+        stateData.foilCollateral = collateralAsset.balanceOf(address(sapience));
     }
 
     function assertPosition(
@@ -260,7 +219,7 @@ contract TradePositionClose is TestTrade {
             currentStateData.foilCollateral,
             expectedStateData.foilCollateral,
             0.0000001 ether,
-            string.concat(stage, " foilCollateral")
+            string.concat(stage, " sapienceCollateral")
         );
         assertEq(
             currentStateData.depositedCollateralAmount,
@@ -274,28 +233,28 @@ contract TradePositionClose is TestTrade {
             string.concat(stage, " positionSize")
         );
         assertApproxEqRel(
-            currentStateData.vGasAmount,
-            expectedStateData.vGasAmount,
+            currentStateData.vBaseAmount,
+            expectedStateData.vBaseAmount,
             0.001 ether,
-            string.concat(stage, " vGasAmount")
+            string.concat(stage, " vBaseAmount")
         );
         assertApproxEqRel(
-            currentStateData.borrowedVGas,
-            expectedStateData.borrowedVGas,
+            currentStateData.borrowedVBase,
+            expectedStateData.borrowedVBase,
             0.001 ether,
-            string.concat(stage, " borrowedVGas")
+            string.concat(stage, " borrowedVBase")
         );
         assertApproxEqRel(
-            currentStateData.vEthAmount,
-            expectedStateData.vEthAmount,
+            currentStateData.vQuoteAmount,
+            expectedStateData.vQuoteAmount,
             0.15 ether,
-            string.concat(stage, " vEthAmount")
+            string.concat(stage, " vQuoteAmount")
         );
         assertApproxEqRel(
-            currentStateData.borrowedVEth,
-            expectedStateData.borrowedVEth,
+            currentStateData.borrowedVQuote,
+            expectedStateData.borrowedVQuote,
             0.15 ether,
-            string.concat(stage, " borrowedVEth")
+            string.concat(stage, " borrowedVQuote")
         );
     }
     */

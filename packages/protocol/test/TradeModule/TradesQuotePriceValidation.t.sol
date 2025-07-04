@@ -3,12 +3,12 @@ pragma solidity >=0.8.25 <0.9.0;
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
-import {IFoil} from "../../src/market/interfaces/IFoil.sol";
+import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
 import {TestUser} from "../helpers/TestUser.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
-import {IFoilStructs} from "../../src/market/interfaces/IFoilStructs.sol";
+import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 
 contract TradesQuotePriceValidationTest is TestTrade {
@@ -17,10 +17,10 @@ contract TradesQuotePriceValidationTest is TestTrade {
     using SafeCastU256 for uint256;
     using DecimalMath for uint256;
 
-    IFoil public foil;
-    uint256 public epochId;
+    ISapience public sapience;
+    uint256 public marketId;
     address mockQuoter;
-    address foilAddress;
+    address sapienceAddress;
     address owner;
     address lp;
     address trader;
@@ -28,7 +28,7 @@ contract TradesQuotePriceValidationTest is TestTrade {
     uint160 sqrtPriceMaxX96;
     uint256 positionId;
     function setUp() public {
-        // Create an epoch with narrow price bounds for testing
+        // Create an market with narrow price bounds for testing
         int24 minTick = 5000;
         int24 maxTick = 25000;
         uint160 startingSqrtPriceX96 = TickMath.getSqrtRatioAtTick(
@@ -40,18 +40,19 @@ contract TradesQuotePriceValidationTest is TestTrade {
         sqrtPriceMinX96 = TickMath.getSqrtRatioAtTick(minTick);
         sqrtPriceMaxX96 = TickMath.getSqrtRatioAtTick(maxTick);
 
-        (foil, owner) = createEpoch(
+        (sapience, owner) = createMarket(
             minTick,
             maxTick,
             startingSqrtPriceX96,
             minTradeSize,
-            "wstGwei/gas"
+            "wstGwei/quote"
         );
-        foilAddress = address(foil);
+        sapienceAddress = address(sapience);
 
-        // Get the epochId
-        (IFoilStructs.EpochData memory epochData, ) = foil.getLatestEpoch();
-        epochId = epochData.epochId;
+        // Get the marketId
+        (ISapienceStructs.MarketData memory marketData, ) = sapience
+            .getLatestMarket();
+        marketId = marketData.marketId;
 
         lp = TestUser.createUser("RegularLP", 50 ether);
         trader = TestUser.createUser("Trader", 100 ether);
@@ -64,16 +65,16 @@ contract TradesQuotePriceValidationTest is TestTrade {
 
         // Fee collector opens position
         vm.startPrank(lp);
-        (positionId, , , , , , ) = foil.createLiquidityPosition(
-            IFoilStructs.LiquidityMintParams({
-                epochId: epochId,
-                amountTokenA: loanAmount0,
-                amountTokenB: loanAmount1,
+        (positionId, , , , , , ) = sapience.createLiquidityPosition(
+            ISapienceStructs.LiquidityMintParams({
+                marketId: marketId,
+                amountBaseToken: loanAmount0,
+                amountQuoteToken: loanAmount1,
                 collateralAmount: 1.1 ether,
                 lowerTick: minTick,
                 upperTick: maxTick,
-                minAmountTokenA: 0,
-                minAmountTokenB: 0,
+                minAmountBaseToken: 0,
+                minAmountQuoteToken: 0,
                 deadline: block.timestamp + 30 minutes
             })
         );
@@ -81,18 +82,20 @@ contract TradesQuotePriceValidationTest is TestTrade {
     }
 
     function test_validatePriceInRange_CreatePosition_Normal() public {
-        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
-            epochId,
+        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
+            marketId,
             -0.1 ether
         );
 
         vm.prank(trader);
         // Create the trader position
-        uint256 traderPositionId = foil.createTraderPosition(
-            epochId,
-            -0.1 ether, // Same size as quoted
-            requiredCollateral, // Use the quoted collateral amount
-            block.timestamp + 30 minutes // Set a reasonable deadline
+        uint256 traderPositionId = sapience.createTraderPosition(
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: -0.1 ether,
+                maxCollateral: requiredCollateral, // Same size as quoted
+                deadline: block.timestamp + 30 minutes // Use the quoted collateral amount // Set a reasonable deadline
+            })
         );
 
         // Verify the position was created successfully
@@ -108,37 +111,42 @@ contract TradesQuotePriceValidationTest is TestTrade {
         // This should revert with PoolPriceOutOfRange because the post-trade price would be out of range
         vm.expectRevert();
         // Attempt to quote a position with a size that would push the price out of range
-        foil.quoteCreateTraderPosition(epochId, -0.35 ether);
+        sapience.quoteCreateTraderPosition(marketId, -0.35 ether);
     }
 
     function test_validatePriceInRange_ModifyPosition_Normal() public {
         // First create a small position
-        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
-            epochId,
+        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
+            marketId,
             -0.05 ether
         );
 
         vm.startPrank(trader);
         // Create the initial trader position
-        uint256 traderPositionId = foil.createTraderPosition(
-            epochId,
-            -0.05 ether,
-            requiredCollateral,
-            block.timestamp + 30 minutes
+        uint256 traderPositionId = sapience.createTraderPosition(
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: -0.05 ether,
+                maxCollateral: requiredCollateral,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // Now modify the position
-        (int256 expectedCollateralDelta, , , ) = foil.quoteModifyTraderPosition(
-            traderPositionId,
-            -0.1 ether // Increase size from -0.05 to -0.1
-        );
+        (int256 expectedCollateralDelta, , , ) = sapience
+            .quoteModifyTraderPosition(
+                traderPositionId,
+                -0.1 ether // Increase size from -0.05 to -0.1
+            );
 
         // Modify the trader position
-        foil.modifyTraderPosition(
-            traderPositionId,
-            -0.1 ether, // New size
-            expectedCollateralDelta,
-            block.timestamp + 30 minutes
+        sapience.modifyTraderPosition(
+            ISapienceStructs.TraderPositionModifyParams({
+                positionId: traderPositionId,
+                size: -0.1 ether,
+                deltaCollateralLimit: expectedCollateralDelta, // New size
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         vm.stopPrank();
@@ -146,24 +154,26 @@ contract TradesQuotePriceValidationTest is TestTrade {
 
     function test_validatePriceInRange_ModifyPosition_OutOfRange() public {
         // First create a small position
-        (uint256 requiredCollateral, , ) = foil.quoteCreateTraderPosition(
-            epochId,
+        (uint256 requiredCollateral, , ) = sapience.quoteCreateTraderPosition(
+            marketId,
             -0.05 ether
         );
 
         vm.startPrank(trader);
         // Create the initial trader position
-        uint256 traderPositionId = foil.createTraderPosition(
-            epochId,
-            -0.05 ether,
-            requiredCollateral,
-            block.timestamp + 30 minutes
+        uint256 traderPositionId = sapience.createTraderPosition(
+            ISapienceStructs.TraderPositionCreateParams({
+                marketId: marketId,
+                size: -0.05 ether,
+                maxCollateral: requiredCollateral,
+                deadline: block.timestamp + 30 minutes
+            })
         );
 
         // This should revert with PoolPriceOutOfRange because the post-trade price would be out of range
         vm.expectRevert();
         // Attempt to quote a position modification with a size that would push the price out of range
-        foil.quoteModifyTraderPosition(
+        sapience.quoteModifyTraderPosition(
             traderPositionId,
             -0.35 ether // Try to increase size too much
         );
