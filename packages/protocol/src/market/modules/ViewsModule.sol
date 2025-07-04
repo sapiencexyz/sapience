@@ -151,7 +151,7 @@ contract ViewsModule is IViewsModule {
         return Market.getTickSpacingForFee(MarketGroup.load().marketParams.feeRate);
     }
 
-    function getDecimalPriceFromSqrtPriceX96(uint160 sqrtPriceX96) external view override returns (uint256) {
+    function getDecimalPriceFromSqrtPriceX96(uint160 sqrtPriceX96) external pure override returns (uint256) {
         return DecimalPrice.sqrtRatioX96ToPrice(sqrtPriceX96);
     }
 }

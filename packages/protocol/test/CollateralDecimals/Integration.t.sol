@@ -134,7 +134,7 @@ contract CollateralDecimalsIntegrationTest is Test {
         assertEq(withdrawn, withdrawAmount18, "Should return amount in 18 decimals");
     }
 
-    function test_PrecisionEdgeCases() public {
+    function test_PrecisionEdgeCases() public view {
         MarketGroup.Data storage marketGroup = MarketGroup.load();
 
         // Test amount that doesn't divide evenly

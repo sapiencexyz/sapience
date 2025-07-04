@@ -81,7 +81,7 @@ contract BridgeTestSetup is TestHelperOz5 {
         marketBridge.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaBridge)}));
     }
 
-    function test_constructor() public {
+    function test_constructor() public view {
         assertEq(address(marketBridge.owner()), address(this), "MarketBridge owner");
         assertEq(address(umaBridge.owner()), address(this), "UMABridge owner");
 
@@ -89,7 +89,7 @@ contract BridgeTestSetup is TestHelperOz5 {
         assertEq(address(umaBridge.endpoint()), address(endpoints[umaEiD]), "UMABridge endpoint");
     }
 
-    function test_balances() public {
+    function test_balances() public view {
         assertEq(address(umaUser).balance, 1000 ether);
         assertEq(address(marketUser).balance, 1000 ether);
     }

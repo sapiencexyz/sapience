@@ -189,7 +189,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
 
         // Forward the assertion to the optimisticOracleV3
         mockMarketGroup.setAssertThruthData("some claim message", 3600, address(bondCurrency), BOND_AMOUNT);
-        bytes32 assertionId = mockMarketGroup.submitSettlementPrice(
+        mockMarketGroup.submitSettlementPrice(
             ISapienceStructs.SettlementPriceParams({marketId: 1, asserter: address(umaUser), settlementSqrtPriceX96: 1})
         );
 

@@ -178,8 +178,7 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
             Encoder.encodeToUMAAssertTruth(lastAssertionId, asserter, liveness, address(currency), bond, claim);
 
         // Send the message with automatic fee calculation
-        (MessagingReceipt memory receipt, MessagingFee memory fee) =
-            _sendLayerZeroMessageWithQuote(Encoder.CMD_TO_UMA_ASSERT_TRUTH, commandPayload, false);
+        _sendLayerZeroMessageWithQuote(Encoder.CMD_TO_UMA_ASSERT_TRUTH, commandPayload, false);
 
         // Deduct the bond from the asserter
         remoteSubmitterBalances[asserter][currency] -= bond;

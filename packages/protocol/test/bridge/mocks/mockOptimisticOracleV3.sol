@@ -162,7 +162,7 @@ contract MockOptimisticOracleV3 is OptimisticOracleV3Interface {
         return assertion.settlementResolution;
     }
 
-    function getMinimumBond(address currency) external view returns (uint256) {
+    function getMinimumBond(address) external pure returns (uint256) {
         return 0.1 ether; // Mock minimum bond
     }
 

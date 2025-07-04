@@ -194,7 +194,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.stopPrank();
     }
 
-    function test_MarketBridge_getETHBalance() public {
+    function test_MarketBridge_getETHBalance() public view {
         uint256 expectedBalance = address(marketBridge).balance;
         uint256 actualBalance = marketBridge.getETHBalance();
 
@@ -295,7 +295,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.stopPrank();
     }
 
-    function test_UMABridge_getETHBalance() public {
+    function test_UMABridge_getETHBalance() public view {
         uint256 expectedBalance = address(umaBridge).balance;
         uint256 actualBalance = umaBridge.getETHBalance();
 
@@ -343,7 +343,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.stopPrank();
 
         // Should be below critical threshold now
-        (uint256 warningGasThreshold, uint256 criticalGasThreshold) = marketBridge.getGasThresholds();
+        (, uint256 criticalGasThreshold) = marketBridge.getGasThresholds();
         assertTrue(address(marketBridge).balance <= criticalGasThreshold);
     }
 
@@ -360,7 +360,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.stopPrank();
 
         // Should be below critical threshold now
-        (uint256 warningGasThreshold, uint256 criticalGasThreshold) = umaBridge.getGasThresholds();
+        (, uint256 criticalGasThreshold) = umaBridge.getGasThresholds();
         assertTrue(address(umaBridge).balance <= criticalGasThreshold);
     }
 

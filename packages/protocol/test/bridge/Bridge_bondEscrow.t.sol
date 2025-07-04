@@ -199,7 +199,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         uint256 initialUmaUserTokenBalance = bondCurrency.balanceOf(umaUser);
         uint256 initialUmaTokenBalance = bondCurrency.balanceOf(address(umaBridge));
         uint256 initialUserBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
-        (uint256 initialUserPendingWithdrawal, uint256 initialUserPendingWithdrawalTimestamp) =
+        (uint256 initialUserPendingWithdrawal,) =
             umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
         uint256 initialRemoteUserBondBalance =
             marketBridge.getRemoteSubmitterBalance(address(umaUser), address(bondCurrency));
@@ -258,7 +258,6 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         _depositBond(umaUser, 1 ether);
 
         vm.startPrank(umaUser);
-        uint256 currentTimestamp = block.timestamp;
         umaBridge.intentToWithdrawBond(address(bondCurrency), 0.5 ether);
         vm.stopPrank();
         // Verify packets for marketBridge (bridge through LZ)

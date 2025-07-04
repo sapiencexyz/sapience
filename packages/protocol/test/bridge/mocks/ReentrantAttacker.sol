@@ -66,9 +66,8 @@ contract ReentrantAttacker {
 
     /**
      * @notice Attempt a reentrancy attack on withdrawal
-     * @param amount The amount to withdraw
      */
-    function attackWithdrawal(uint256 amount) external {
+    function attackWithdrawal(uint256) external {
         if (!attackInProgress) {
             attackInProgress = true;
             attackCount = 0;
