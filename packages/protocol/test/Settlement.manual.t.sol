@@ -5,8 +5,7 @@ import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {ISapience} from "../src/market/interfaces/ISapience.sol";
 import {ISapienceStructs} from "../src/market/interfaces/ISapienceStructs.sol";
-import {IMintableToken} from "../src/market/external/IMintableToken.sol";
-import {TickMath} from "../src/market/external/univ3/TickMath.sol";
+
 import {TestTrade} from "./helpers/TestTrade.sol";
 import {TestUser} from "./helpers/TestUser.sol";
 import {DecimalPrice} from "../src/market/libraries/DecimalPrice.sol";

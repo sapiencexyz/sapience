@@ -7,11 +7,7 @@ import {TestTrade} from "../helpers/TestTrade.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
-import {SettlementModule} from "../../src/market/modules/SettlementModule.sol";
-import {TradeModule} from "../../src/market/modules/TradeModule.sol";
-import {Market} from "../../src/market/storage/Market.sol";
 import {Position} from "../../src/market/storage/Position.sol";
-import {Market} from "../../src/market/storage/Market.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 

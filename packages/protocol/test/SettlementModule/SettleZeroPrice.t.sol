@@ -3,8 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import {Market} from "../../src/market/storage/Market.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
-import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
+
 
 contract SettleZeroPriceTest is Test {
     using Market for Market.Data;

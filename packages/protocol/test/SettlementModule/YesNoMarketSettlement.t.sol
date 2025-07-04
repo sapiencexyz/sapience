@@ -7,8 +7,7 @@ import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {MockOptimisticOracleV3} from "../bridge/mocks/mockOptimisticOracleV3.sol";
-import {OptimisticOracleV3Interface} from
-    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract YesNoMarketSettlementTest is Test {

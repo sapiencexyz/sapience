@@ -5,15 +5,10 @@ import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
-import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
-import {Market} from "../../src/market/storage/Market.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
-import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 
 contract IncreaseLiquidityPosition is TestTrade {

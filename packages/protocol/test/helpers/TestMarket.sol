@@ -11,7 +11,7 @@ import {TickMath} from "../../src/market/external/univ3/TickMath.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
+
 import {TestUser} from "./TestUser.sol";
 
 contract TestMarket is TestUser {

@@ -6,12 +6,9 @@ import "cannon-std/Cannon.sol";
 import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {DecimalPrice} from "../../src/market/libraries/DecimalPrice.sol";
 import {DecimalMath} from "../../src/market/libraries/DecimalMath.sol";
 import {SafeCastI256, SafeCastU256} from "@synthetixio/core-contracts/contracts/utils/SafeCast.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {Errors} from "../../src/market/storage/Errors.sol";
-import {Position} from "../../src/market/storage/Position.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 
 contract TradeViews is TestTrade {

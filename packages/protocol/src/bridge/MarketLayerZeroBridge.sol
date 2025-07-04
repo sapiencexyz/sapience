@@ -61,10 +61,10 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
     // LayerZero message handling
     function _lzReceive(
         Origin calldata _origin,
-        bytes32 _guid,
+        bytes32 ,
         bytes calldata _message,
-        address _executor,
-        bytes calldata _extraData
+        address ,
+        bytes calldata 
     ) internal override {
         require(_origin.srcEid == bridgeConfig.remoteEid, "Invalid source chain");
         require(address(uint160(uint256(_origin.sender))) == bridgeConfig.remoteBridge, "Invalid sender");

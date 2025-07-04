@@ -7,11 +7,11 @@ import {ISapience} from "../../src/market/interfaces/ISapience.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {TestTrade} from "../helpers/TestTrade.sol";
 import {TestUser} from "../helpers/TestUser.sol";
-import {ILiquidityModule} from "../../src/market/interfaces/ILiquidityModule.sol";
 import {Position} from "../../src/market/storage/Position.sol";
 import {Errors} from "../../src/market/storage/Errors.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
 import {ISapiencePositionEvents} from "../../src/market/interfaces/ISapiencePositionEvents.sol";
+
 
 contract DepositCollateralTest is TestTrade {
     using Cannon for Vm;
