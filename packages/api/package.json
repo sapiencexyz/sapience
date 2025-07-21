@@ -44,6 +44,7 @@
   "dependencies": {
     "@apollo/server": "^4.11.3",
     "@apollo/server-plugin-response-cache": "^4.1.4",
+    "@ethereum-attestation-service/eas-sdk": "^2.7.0",
     "@modelcontextprotocol/sdk": "^1.11.4",
     "@msgpack/msgpack": "^3.1.1",
     "@prisma/client": "^6.10.1",
