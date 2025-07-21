@@ -11,7 +11,7 @@ import Sentry from '../../instrument';
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { IResourcePriceIndexer } from '../../interfaces';
 import type { Resource } from '../../../generated/prisma';
-  
+
 const BLOCK_BATCH_SIZE = 100;
 
 // EAS contract addresses on different chains
@@ -287,14 +287,12 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
     }
   }
 
-
   async indexBlockPriceFromTimestamp(
-    resource: Resource,
+    _: Resource,
     startTimestamp: number,
     endTimestamp?: number,
     overwriteExisting: boolean = false
   ): Promise<boolean> {
-    resource; // Unused parameter
     try {
       const initialBlock = await getBlockByTimestamp(
         this.client,
@@ -406,8 +404,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
     }
   }
 
-  async indexBlocks(resource: Resource, blocks: number[]): Promise<boolean> {
-    resource; // Unused parameter
+  async indexBlocks(_: Resource, blocks: number[]): Promise<boolean> {
     try {
       console.log(
         `[EASPredictionIndexer] Indexing ${blocks.length} specific blocks`
@@ -456,8 +453,8 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async watchBlocksForResource(resource: Resource): Promise<void> {
-    resource; // Unused parameter
     if (this.isWatching) {
       console.log(
         `[EASPredictionIndexer] Already watching for new predictions`
