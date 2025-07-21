@@ -49,9 +49,34 @@ const PREDICTION_MARKET_SCHEMA = [
 
 // EAS ABI for attestation events and data fetching
 const EAS_ABI = [
-  parseAbiItem(
-    'function getAttestation(bytes32 uid) external view returns (tuple(bytes32 uid, bytes32 schema, uint64 time, uint64 expirationTime, uint64 revocationTime, bytes32 refUID, address recipient, address attester, bool revocable, bytes data))'
-  ),
+  {
+    type: 'function',
+    name: 'getAttestation',
+    inputs: [
+      {
+        type: 'bytes32',
+        name: 'uid'
+      }
+    ],
+    outputs: [
+      {
+        type: 'tuple',
+        components: [
+          { type: 'bytes32', name: 'uid' },
+          { type: 'bytes32', name: 'schema' },
+          { type: 'uint64', name: 'time' },
+          { type: 'uint64', name: 'expirationTime' },
+          { type: 'uint64', name: 'revocationTime' },
+          { type: 'bytes32', name: 'refUID' },
+          { type: 'address', name: 'recipient' },
+          { type: 'address', name: 'attester' },
+          { type: 'bool', name: 'revocable' },
+          { type: 'bytes', name: 'data' }
+        ]
+      }
+    ],
+    stateMutability: 'view'
+  }
 ] as const;
 
 const attestedEventSignature = parseAbiItem(
