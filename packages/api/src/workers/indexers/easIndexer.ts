@@ -267,8 +267,9 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
       }
 
       const data = attestationData.data;
-      const decodedDataJson = JSON.stringify(schemaEncoder.decodeData(data), (key, value) =>
-        typeof value === 'bigint' ? value.toString() : value
+      const decodedDataJson = JSON.stringify(
+        schemaEncoder.decodeData(data),
+        (key, value) => (typeof value === 'bigint' ? value.toString() : value)
       );
 
       await prisma.attestation.upsert({
@@ -369,7 +370,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
           `[EASPredictionIndexer] Processing batch: blocks ${currentBlock} to ${batchEnd}`
         );
 
-        let skipBlocks: number[] = [];
+        const skipBlocks: number[] = [];
 
         if (!overwriteExisting) {
           for (

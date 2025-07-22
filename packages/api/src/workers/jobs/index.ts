@@ -90,8 +90,10 @@ const callReindexMarketGroupFactory = async (argv: string[]) => {
 
 const callReindexEAS = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);
-  const startTimestamp = argv[4] !== 'undefined' ? parseInt(argv[4], 10) : undefined;
-  const endTimestamp = argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
+  const startTimestamp =
+    argv[4] !== 'undefined' ? parseInt(argv[4], 10) : undefined;
+  const endTimestamp =
+    argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
   const overwriteExisting = argv[6] === 'true';
 
   if (isNaN(chainId)) {
@@ -100,14 +102,19 @@ const callReindexEAS = async (argv: string[]) => {
     );
     process.exit(1);
   }
-  
-  const result = await reindexEAS(chainId, startTimestamp, endTimestamp, overwriteExisting);
-  
+
+  const result = await reindexEAS(
+    chainId,
+    startTimestamp,
+    endTimestamp,
+    overwriteExisting
+  );
+
   if (!result) {
     console.error('Failed to reindex EAS');
     process.exit(1);
   }
-  
+
   console.log('Done reindexing EAS');
   process.exit(0);
 };

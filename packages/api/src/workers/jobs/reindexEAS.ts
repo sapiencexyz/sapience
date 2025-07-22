@@ -1,6 +1,5 @@
 import { initializeDataSource } from '../../db';
 import * as Sentry from '@sentry/node';
-import prisma from '../../db';
 import EASPredictionIndexer from '../indexers/easIndexer';
 import { Resource } from '../../../generated/prisma';
 
@@ -41,7 +40,8 @@ export async function reindexEAS(
     const indexer = new EASPredictionIndexer(chainId);
 
     // Use default timestamps if not provided
-    const startTime = startTimestamp || Math.floor(Date.now() / 1000) - (7 * 24 * 60 * 60); // Default to 7 days ago
+    const startTime =
+      startTimestamp || Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60; // Default to 7 days ago
     const endTime = endTimestamp || Math.floor(Date.now() / 1000);
 
     console.log(
