@@ -24,11 +24,6 @@
       "name": "Bitcoin Hashrate",
       "slug": "bitcoin-hashrate",
       "category": "decentralized-compute"
-    },
-    {
-      "name": "Attestation Prediction Market",
-      "slug": "attestation-prediction-market",
-      "category": "economy-finance"
     }
   ],
   "CATEGORIES": [
