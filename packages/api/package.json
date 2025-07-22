@@ -25,6 +25,7 @@
     "start:reindex-missing": "tsx src/workers/worker.ts reindexMissing $*",
     "start:reindex-resource": "tsx src/workers/worker.ts reindexResource $*",
     "start:reindex-market-group-factory": "tsx src/workers/worker.ts reindexMarketGroupFactory $*",
+    "start:reindex-eas": "tsx src/workers/worker.ts reindexEAS $*",
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate-types": "graphql-codegen --config codegen.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",

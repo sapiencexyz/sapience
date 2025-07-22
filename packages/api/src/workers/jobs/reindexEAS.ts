@@ -2,7 +2,7 @@ import { initializeDataSource } from '../../db';
 import * as Sentry from '@sentry/node';
 import prisma from '../../db';
 import EASPredictionIndexer from '../indexers/easIndexer';
-import type { Resource } from '../../../generated/prisma';
+import { Resource } from '../../../generated/prisma';
 
 export async function reindexEAS(
   chainId: number,
@@ -12,20 +12,30 @@ export async function reindexEAS(
 ) {
   try {
     console.log(
-      `Reindexing EAS attestations on chain ${chainId} from ${startTimestamp ? new Date(startTimestamp * 1000).toISOString() : 'beginning'} to ${endTimestamp ? new Date(endTimestamp * 1000).toISOString() : 'now'}`
+      `[EAS Reindex] Reindexing EAS attestations on chain ${chainId} from ${startTimestamp ? new Date(startTimestamp * 1000).toISOString() : 'beginning'} to ${endTimestamp ? new Date(endTimestamp * 1000).toISOString() : 'now'}`
     );
 
     await initializeDataSource();
 
-    // Get the attestation prediction market resource
-    const resource = await prisma.resource.findFirst({
-      where: { slug: 'attestation-prediction-market' },
-    });
+    // Notice: there's no resource for EAS, so we use an empty resource for the indexer
+    const resource = {
+      id: 0,
+      slug: 'attestation-prediction-market',
+      name: 'Attestation prediction market',
+      description: 'Attestation prediction market',
+      createdAt: new Date(),
+      categoryId: 1,
+    } as Resource;
 
-    if (!resource) {
-      console.error('Attestation prediction market resource not found');
-      return false;
-    }
+    // // Get the attestation prediction market resource
+    // const resource = await prisma.resource.findFirst({
+    //   where: { slug: 'attestation-prediction-market' },
+    // });
+
+    // if (!resource) {
+    //   console.error('Attestation prediction market resource not found');
+    //   return false;
+    // }
 
     // Create the EAS indexer for the specified chain
     const indexer = new EASPredictionIndexer(chainId);
@@ -35,7 +45,7 @@ export async function reindexEAS(
     const endTime = endTimestamp || Math.floor(Date.now() / 1000);
 
     console.log(
-      `Starting EAS reindexing for resource ${resource.name} (${resource.slug}) on chain ${chainId}`
+      `[EAS Reindex] Starting EAS reindexing for resource ${resource.name} (${resource.slug}) on chain ${chainId}`
     );
 
     const result = await indexer.indexBlockPriceFromTimestamp(
@@ -47,11 +57,11 @@ export async function reindexEAS(
 
     if (result) {
       console.log(
-        `Successfully completed EAS reindexing for chain ${chainId}`
+        `[EAS Reindex] Successfully completed EAS reindexing for chain ${chainId}`
       );
     } else {
       console.error(
-        `Failed to complete EAS reindexing for chain ${chainId}`
+        `[EAS Reindex] Failed to complete EAS reindexing for chain ${chainId}`
       );
     }
 

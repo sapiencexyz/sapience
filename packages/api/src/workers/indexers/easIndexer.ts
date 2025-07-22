@@ -33,8 +33,7 @@ const EAS_START_BLOCK = {
 
 // Your specific prediction market schema
 const PREDICTION_MARKET_SCHEMA_ID =
-  '0x70c5a48f8bf98f877e109501da138243aec847479a69c09390ab468f0b349fc4';
-
+  '0x70c5a48f8bf98f877e109501da138243aec847479a69c09390eb468f0b349fc4';
 const schemaEncoder = new SchemaEncoder(
   'address marketAddress,uint256 marketId,uint160 prediction,string comment'
 );
@@ -55,8 +54,8 @@ const EAS_ABI = [
     inputs: [
       {
         type: 'bytes32',
-        name: 'uid'
-      }
+        name: 'uid',
+      },
     ],
     outputs: [
       {
@@ -71,16 +70,16 @@ const EAS_ABI = [
           { type: 'address', name: 'recipient' },
           { type: 'address', name: 'attester' },
           { type: 'bool', name: 'revocable' },
-          { type: 'bytes', name: 'data' }
-        ]
-      }
+          { type: 'bytes', name: 'data' },
+        ],
+      },
     ],
-    stateMutability: 'view'
-  }
+    stateMutability: 'view',
+  },
 ] as const;
 
 const attestedEventSignature = parseAbiItem(
-  'event Attested(address indexed recipient, address indexed attester, bytes32 uid, bytes32 indexed schemaUID)'
+  'event Attested(address indexed recipient, address indexed attester, bytes32 uid, bytes32 indexed schema)'
 );
 
 interface AttestationData {
@@ -196,8 +195,9 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
     }
   }
 
-  private async getPredictionMarketEventsFromBlock(
-    blockNumber: bigint
+  private async getPredictionMarketEventsForBlocks(
+    fromBlock: bigint,
+    toBlock: bigint
   ): Promise<PredictionMarketEvent[]> {
     try {
       // Only get events for the prediction market schema
@@ -207,19 +207,25 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
         ] as `0x${string}`,
         event: attestedEventSignature,
         args: {
-          schemaUID: PREDICTION_MARKET_SCHEMA_ID as `0x${string}`,
+          schema: PREDICTION_MARKET_SCHEMA_ID as `0x${string}`,
         },
-        fromBlock: blockNumber,
-        toBlock: blockNumber,
+        fromBlock: fromBlock,
+        toBlock: toBlock,
       });
 
       const events: PredictionMarketEvent[] = [];
-      const block = await this.client.getBlock({ blockNumber });
 
       for (const log of attestedLogs) {
+        if (log.args.schema !== PREDICTION_MARKET_SCHEMA_ID) {
+          continue;
+        }
+
+        const block = await this.client.getBlock({
+          blockNumber: log.blockNumber!,
+        });
         events.push({
           uid: log.args.uid!,
-          schemaUID: log.args.schemaUID!,
+          schemaUID: log.args.schema!,
           attester: log.args.attester!,
           recipient: log.args.recipient!,
           transactionHash: log.transactionHash,
@@ -231,7 +237,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
       return events;
     } catch (error) {
       console.error(
-        `[EASPredictionIndexer] Error fetching prediction market events from block ${blockNumber}:`,
+        `[EASPredictionIndexer] Error fetching prediction market events from block ${fromBlock} to ${toBlock}:`,
         error
       );
       return [];
@@ -261,7 +267,9 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
       }
 
       const data = attestationData.data;
-      const decodedDataJson = JSON.stringify(schemaEncoder.decodeData(data));
+      const decodedDataJson = JSON.stringify(schemaEncoder.decodeData(data), (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      );
 
       await prisma.attestation.upsert({
         where: {
@@ -340,7 +348,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
       if (!endBlock.number) {
         throw new Error('No end block number found');
       }
-      const currentBlock = Math.max(
+      let currentBlock = Math.max(
         Number(initialBlock.number),
         this.easStartBlock
       );
@@ -361,29 +369,58 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
           `[EASPredictionIndexer] Processing batch: blocks ${currentBlock} to ${batchEnd}`
         );
 
-        for (
-          let blockNumber = currentBlock;
-          blockNumber <= batchEnd;
-          blockNumber++
-        ) {
-          try {
-            // Check if we already have data for this block
-            if (!overwriteExisting) {
-              const existingAttestations = await prisma.attestation.findFirst({
-                where: {
-                  blockNumber: blockNumber,
-                },
-              });
+        let skipBlocks: number[] = [];
 
-              if (existingAttestations) {
-                console.log(
-                  `[EASPredictionIndexer] Already have data for block ${blockNumber}, skipping...`
-                );
-                continue;
-              }
+        if (!overwriteExisting) {
+          for (
+            let blockNumber = currentBlock;
+            blockNumber <= batchEnd;
+            blockNumber++
+          ) {
+            const existingAttestations = await prisma.attestation.findFirst({
+              where: {
+                blockNumber: blockNumber,
+              },
+            });
+
+            if (existingAttestations) {
+              console.log(
+                `[EASPredictionIndexer] Already have data for block ${blockNumber}, skipping...`
+              );
+              skipBlocks.push(blockNumber);
+            }
+          }
+        }
+
+        let events: PredictionMarketEvent[] = [];
+        try {
+          events = await this.getPredictionMarketEventsForBlocks(
+            BigInt(currentBlock),
+            BigInt(batchEnd)
+          );
+          if (events.length > 0) {
+            console.log(
+              `[EASPredictionIndexer] Found ${events.length} prediction market attestations in blocks ${currentBlock} to ${batchEnd}`
+            );
+          }
+        } catch (error) {
+          console.error(
+            `[EASPredictionIndexer] Error fetching prediction market events for blocks ${currentBlock} to ${batchEnd}:`,
+            error
+          );
+
+          // Try one by one
+          for (
+            let blockNumber = currentBlock;
+            blockNumber <= batchEnd;
+            blockNumber++
+          ) {
+            if (skipBlocks.includes(Number(blockNumber))) {
+              continue;
             }
 
-            const events = await this.getPredictionMarketEventsFromBlock(
+            const currentEvents = await this.getPredictionMarketEventsForBlocks(
+              BigInt(blockNumber),
               BigInt(blockNumber)
             );
 
@@ -391,18 +428,26 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
               console.log(
                 `[EASPredictionIndexer] Found ${events.length} prediction market attestations in block ${blockNumber}`
               );
-
-              for (const event of events) {
-                await this.storePredictionAttestation(event);
-              }
+              events.push(...currentEvents);
             }
+          }
+        }
+
+        for (const event of events) {
+          try {
+            // Check if we already have data for this block
+            if (skipBlocks.includes(Number(event.blockNumber))) {
+              continue;
+            }
+
+            await this.storePredictionAttestation(event);
           } catch (error) {
             console.error(
-              `[EASPredictionIndexer] Error processing block ${blockNumber}:`,
+              `[EASPredictionIndexer] Error processing block ${event.blockNumber}:`,
               error
             );
             Sentry.withScope((scope: Sentry.Scope) => {
-              scope.setExtra('blockNumber', blockNumber);
+              scope.setExtra('blockNumber', event.blockNumber);
               scope.setExtra('chainId', this.chainId);
               Sentry.captureException(error);
             });
@@ -411,6 +456,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
 
         // Small delay between batches
         await new Promise((resolve) => setTimeout(resolve, 100));
+        currentBlock = batchEnd + 1;
       }
 
       return true;
@@ -437,7 +483,8 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
 
       for (const blockNumber of blocks) {
         try {
-          const events = await this.getPredictionMarketEventsFromBlock(
+          const events = await this.getPredictionMarketEventsForBlocks(
+            BigInt(blockNumber),
             BigInt(blockNumber)
           );
 
@@ -499,15 +546,15 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
         ] as `0x${string}`,
         event: attestedEventSignature,
         args: {
-          schemaUID: PREDICTION_MARKET_SCHEMA_ID as `0x${string}`,
+          schema: PREDICTION_MARKET_SCHEMA_ID as `0x${string}`,
         },
         onLogs: async (logs) => {
           for (const log of logs) {
             try {
-              if (log.args.schemaUID !== PREDICTION_MARKET_SCHEMA_ID) {
+              if (log.args.schema !== PREDICTION_MARKET_SCHEMA_ID) {
                 // Skip if not a prediction market attestation for this schema
                 console.log(
-                  `[EASPredictionIndexer] Skipping event with schemaUID ${log.args.schemaUID}`
+                  `[EASPredictionIndexer] Skipping event with schema ${log.args.schema}`
                 );
                 continue;
               }
@@ -518,7 +565,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
 
               const event: PredictionMarketEvent = {
                 uid: log.args.uid!,
-                schemaUID: log.args.schemaUID!,
+                schemaUID: log.args.schema!,
                 attester: log.args.attester!,
                 recipient: log.args.recipient!,
                 transactionHash: log.transactionHash,
