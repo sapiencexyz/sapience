@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
+import type { MarketGroupType } from '@sapience/ui/types';
 import { useEffect, useMemo } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import type { MarketGroupType } from '@sapience/ui/types';
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
 import YesNoPredict from './inputs/YesNoPredict';
@@ -174,16 +175,13 @@ export default function PredictForm({
         {renderCategoryInput()}
 
         {/* Comment field */}
-        <div className="space-y-2">
-          <label htmlFor="comment" className="text-sm font-medium">
-            Comment
-          </label>
+        <div>
+          <Label htmlFor="comment">Comment (Optional)</Label>
           <textarea
             id="comment"
+            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Add a comment about your prediction..."
             {...methods.register('comment')}
-            placeholder="Optional"
-            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            rows={3}
           />
         </div>
 

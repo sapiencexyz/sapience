@@ -5,6 +5,7 @@ import { initializeFixtures, INDEXERS } from '../fixtures';
 import { handleJobCommand } from './jobs';
 import { startIndexingAndWatchingMarketGroups as indexMarketsJob } from './jobs/indexMarkets';
 import { createResilientProcess } from '../utils/utils';
+import { Resource } from 'generated/prisma';
 
 async function main() {
   await initializeDataSource();
@@ -47,11 +48,28 @@ async function startResourceIndexers(): Promise<
   const resourceJobs: Promise<void | (() => void)>[] = [];
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
+    let useEmtpyResourceForIndexer = false;
+    let resource: Resource | null = null;
+    if (resourceSlug === 'attestation-prediction-market') {
+      useEmtpyResourceForIndexer = true;
+      continue;
+    }
+
     // Find the resource in the database
-    const resource = await prisma.resource.findFirst({
+    resource = await prisma.resource.findFirst({
       where: { slug: resourceSlug },
     });
 
+    if (!resource && useEmtpyResourceForIndexer) {
+      resource = {
+        id: 0,
+        slug: 'attestation-prediction-market',
+        name: 'attestation-prediction-market',
+        description: 'Attestation prediction market',
+        createdAt: new Date(),
+        categoryId: 1,
+      } as Resource;
+    }
     if (!resource) {
       console.log(`Resource not found: ${resourceSlug}`);
       continue;

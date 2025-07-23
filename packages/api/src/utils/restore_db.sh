@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Reset environment variables if they are already set
-unset DB_HOST DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER
+unset DB_HOST DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER BACKUP_DIR
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -36,6 +36,7 @@ else
     echo "DB_USER=your_username"
     echo "DB_PASSWORD=your_password"
     echo "LOCAL_USER=your_local_postgres_user"
+    echo "BACKUP_DIR=your_backup_directory"
     exit 1
 fi
 
@@ -47,8 +48,8 @@ if [ -z "$DB_NAME_LOCAL" ] || [ -z "$LOCAL_USER" ]; then
 fi
 
 # Check if dump file exists
-if [ ! -f "./db_backups/complete_dump.sql" ]; then
-    echo "ERROR: Dump file not found at ./db_backups/complete_dump.sql"
+if [ ! -f "$BACKUP_DIR/complete_dump.sql" ]; then
+    echo "ERROR: Dump file not found at $BACKUP_DIR/complete_dump.sql"
     echo "Please run clone_db.sh first to create the dump file."
     exit 1
 fi
@@ -68,7 +69,7 @@ fi
 
 # Replace all instances of the original database name with the local database name
 # This handles cases where the dump contains references to the original database name
-sed -i '' "s/$DB_NAME/$DB_NAME_LOCAL/g" './db_backups/complete_dump.sql'
+sed -i '' "s/$DB_NAME/$DB_NAME_LOCAL/g" "$BACKUP_DIR/complete_dump.sql"
 
 # Step 1: Drop and recreate local database
 echo "Dropping and recreating local database..."
@@ -80,7 +81,7 @@ psql -U $LOCAL_USER -c "CREATE DATABASE temp_connection_db;"
 
 # Step 2: Restore the database
 echo "Restoring database to local server..."
-psql -U $LOCAL_USER -d $DB_NAME_LOCAL -f ./db_backups/complete_dump.sql
+psql -U $LOCAL_USER -d $DB_NAME_LOCAL -f $BACKUP_DIR/complete_dump.sql
 
 # Step 3: Manually reset sequences to match current data
 echo "Manually resetting sequences..."

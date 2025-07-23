@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { useEffect, useMemo, useRef } from 'react';
@@ -31,8 +32,9 @@ export default function MultipleChoiceWagerForm({
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
     return z.object({
-      predictionValue: z.string().min(0, 'Please select an option'),
+      predictionValue: z.string().min(1, 'Please select an option'),
       wagerAmount: wagerAmountSchema,
+      comment: z.string().optional(),
     });
   }, []);
 
@@ -43,8 +45,9 @@ export default function MultipleChoiceWagerForm({
       predictionValue:
         marketGroupData.markets?.[0]?.marketId?.toString() ?? '0', // first market
       wagerAmount: '',
+      comment: '',
     },
-    mode: 'onChange', // Validate on change for immediate feedback
+    mode: 'onChange',
   });
 
   // Get form values
@@ -184,6 +187,18 @@ export default function MultipleChoiceWagerForm({
 
           {renderQuoteData()}
         </div>
+
+        {/* Comment field */}
+        <div>
+          <Label htmlFor="comment">Comment (Optional)</Label>
+          <textarea
+            id="comment"
+            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Add a comment about your wager..."
+            {...methods.register('comment')}
+          />
+        </div>
+
         <PermittedAlert isPermitted={isPermitted} />
 
         <Button

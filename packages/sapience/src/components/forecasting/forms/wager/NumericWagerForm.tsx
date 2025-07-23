@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { useEffect, useMemo, useRef } from 'react';
@@ -49,6 +50,7 @@ export default function NumericWagerForm({
           message: `Must be at most ${upperBound}`,
         }),
       wagerAmount: wagerAmountSchema,
+      comment: z.string().optional(),
     });
   }, [lowerBound, upperBound]);
 
@@ -62,6 +64,7 @@ export default function NumericWagerForm({
           : Math.round((lowerBound + upperBound) / 2)
       ),
       wagerAmount: '',
+      comment: '',
     },
     mode: 'onChange', // Validate on change for immediate feedback
   });
@@ -206,6 +209,18 @@ export default function NumericWagerForm({
 
           {renderQuoteData()}
         </div>
+
+        {/* Comment field */}
+        <div>
+          <Label htmlFor="comment">Comment (Optional)</Label>
+          <textarea
+            id="comment"
+            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Add a comment about your wager..."
+            {...methods.register('comment')}
+          />
+        </div>
+
         <PermittedAlert isPermitted={isPermitted} />
 
         <Button

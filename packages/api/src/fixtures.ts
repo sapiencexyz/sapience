@@ -5,6 +5,7 @@ import { IResourcePriceIndexer } from './interfaces';
 import evmIndexer from './workers/indexers/evmIndexer';
 import { WeatherIndexer } from './workers/indexers/weatherIndexer';
 import BtcHashIndexer from './workers/indexers/btcHashIndexer';
+import EASPredictionIndexer from './workers/indexers/easIndexer';
 import type { Resource } from '../generated/prisma';
 
 export const TIME_INTERVALS = {
@@ -27,6 +28,7 @@ export const INDEXERS: {
   'nyc-air-temperature': new WeatherIndexer('temperature'),
   'sf-precipitation': new WeatherIndexer('precipitation'),
   'bitcoin-hashrate': new BtcHashIndexer(),
+  'attestation-prediction-market': new EASPredictionIndexer(432),
 };
 
 // Function to initialize fixtures - upsert resources and markets from fixtures.json

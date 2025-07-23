@@ -3,6 +3,14 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
+type AggregateAttestation {
+  _avg: AttestationAvgAggregate
+  _count: AttestationCountAggregate
+  _max: AttestationMaxAggregate
+  _min: AttestationMinAggregate
+  _sum: AttestationSumAggregate
+}
+
 type AggregateCategory {
   _avg: CategoryAvgAggregate
   _count: CategoryCountAggregate
@@ -73,6 +81,302 @@ type AggregateTransaction {
   _max: TransactionMaxAggregate
   _min: TransactionMinAggregate
   _sum: TransactionSumAggregate
+}
+
+type Attestation {
+  attester: String!
+  blockNumber: Int!
+  comment: String
+  createdAt: DateTimeISO!
+  data: String!
+  decodedDataJson: String!
+  id: Int!
+  marketAddress: String!
+  marketId: String!
+  prediction: String!
+  recipient: String!
+  schemaId: String!
+  time: Int!
+  transactionHash: String!
+  uid: String!
+}
+
+type AttestationAvgAggregate {
+  blockNumber: Float
+  id: Float
+  time: Float
+}
+
+input AttestationAvgOrderByAggregateInput {
+  blockNumber: SortOrder
+  id: SortOrder
+  time: SortOrder
+}
+
+type AttestationCountAggregate {
+  _all: Int!
+  attester: Int!
+  blockNumber: Int!
+  comment: Int!
+  createdAt: Int!
+  data: Int!
+  decodedDataJson: Int!
+  id: Int!
+  marketAddress: Int!
+  marketId: Int!
+  prediction: Int!
+  recipient: Int!
+  schemaId: Int!
+  time: Int!
+  transactionHash: Int!
+  uid: Int!
+}
+
+input AttestationCountOrderByAggregateInput {
+  attester: SortOrder
+  blockNumber: SortOrder
+  comment: SortOrder
+  createdAt: SortOrder
+  data: SortOrder
+  decodedDataJson: SortOrder
+  id: SortOrder
+  marketAddress: SortOrder
+  marketId: SortOrder
+  prediction: SortOrder
+  recipient: SortOrder
+  schemaId: SortOrder
+  time: SortOrder
+  transactionHash: SortOrder
+  uid: SortOrder
+}
+
+type AttestationGroupBy {
+  _avg: AttestationAvgAggregate
+  _count: AttestationCountAggregate
+  _max: AttestationMaxAggregate
+  _min: AttestationMinAggregate
+  _sum: AttestationSumAggregate
+  attester: String!
+  blockNumber: Int!
+  comment: String
+  createdAt: DateTimeISO!
+  data: String!
+  decodedDataJson: String!
+  id: Int!
+  marketAddress: String!
+  marketId: String!
+  prediction: String!
+  recipient: String!
+  schemaId: String!
+  time: Int!
+  transactionHash: String!
+  uid: String!
+}
+
+type AttestationMaxAggregate {
+  attester: String
+  blockNumber: Int
+  comment: String
+  createdAt: DateTimeISO
+  data: String
+  decodedDataJson: String
+  id: Int
+  marketAddress: String
+  marketId: String
+  prediction: String
+  recipient: String
+  schemaId: String
+  time: Int
+  transactionHash: String
+  uid: String
+}
+
+input AttestationMaxOrderByAggregateInput {
+  attester: SortOrder
+  blockNumber: SortOrder
+  comment: SortOrder
+  createdAt: SortOrder
+  data: SortOrder
+  decodedDataJson: SortOrder
+  id: SortOrder
+  marketAddress: SortOrder
+  marketId: SortOrder
+  prediction: SortOrder
+  recipient: SortOrder
+  schemaId: SortOrder
+  time: SortOrder
+  transactionHash: SortOrder
+  uid: SortOrder
+}
+
+type AttestationMinAggregate {
+  attester: String
+  blockNumber: Int
+  comment: String
+  createdAt: DateTimeISO
+  data: String
+  decodedDataJson: String
+  id: Int
+  marketAddress: String
+  marketId: String
+  prediction: String
+  recipient: String
+  schemaId: String
+  time: Int
+  transactionHash: String
+  uid: String
+}
+
+input AttestationMinOrderByAggregateInput {
+  attester: SortOrder
+  blockNumber: SortOrder
+  comment: SortOrder
+  createdAt: SortOrder
+  data: SortOrder
+  decodedDataJson: SortOrder
+  id: SortOrder
+  marketAddress: SortOrder
+  marketId: SortOrder
+  prediction: SortOrder
+  recipient: SortOrder
+  schemaId: SortOrder
+  time: SortOrder
+  transactionHash: SortOrder
+  uid: SortOrder
+}
+
+input AttestationOrderByWithAggregationInput {
+  _avg: AttestationAvgOrderByAggregateInput
+  _count: AttestationCountOrderByAggregateInput
+  _max: AttestationMaxOrderByAggregateInput
+  _min: AttestationMinOrderByAggregateInput
+  _sum: AttestationSumOrderByAggregateInput
+  attester: SortOrder
+  blockNumber: SortOrder
+  comment: SortOrderInput
+  createdAt: SortOrder
+  data: SortOrder
+  decodedDataJson: SortOrder
+  id: SortOrder
+  marketAddress: SortOrder
+  marketId: SortOrder
+  prediction: SortOrder
+  recipient: SortOrder
+  schemaId: SortOrder
+  time: SortOrder
+  transactionHash: SortOrder
+  uid: SortOrder
+}
+
+input AttestationOrderByWithRelationInput {
+  attester: SortOrder
+  blockNumber: SortOrder
+  comment: SortOrderInput
+  createdAt: SortOrder
+  data: SortOrder
+  decodedDataJson: SortOrder
+  id: SortOrder
+  marketAddress: SortOrder
+  marketId: SortOrder
+  prediction: SortOrder
+  recipient: SortOrder
+  schemaId: SortOrder
+  time: SortOrder
+  transactionHash: SortOrder
+  uid: SortOrder
+}
+
+enum AttestationScalarFieldEnum {
+  attester
+  blockNumber
+  comment
+  createdAt
+  data
+  decodedDataJson
+  id
+  marketAddress
+  marketId
+  prediction
+  recipient
+  schemaId
+  time
+  transactionHash
+  uid
+}
+
+input AttestationScalarWhereWithAggregatesInput {
+  AND: [AttestationScalarWhereWithAggregatesInput!]
+  NOT: [AttestationScalarWhereWithAggregatesInput!]
+  OR: [AttestationScalarWhereWithAggregatesInput!]
+  attester: StringWithAggregatesFilter
+  blockNumber: IntWithAggregatesFilter
+  comment: StringNullableWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  data: StringWithAggregatesFilter
+  decodedDataJson: StringWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  marketAddress: StringWithAggregatesFilter
+  marketId: StringWithAggregatesFilter
+  prediction: StringWithAggregatesFilter
+  recipient: StringWithAggregatesFilter
+  schemaId: StringWithAggregatesFilter
+  time: IntWithAggregatesFilter
+  transactionHash: StringWithAggregatesFilter
+  uid: StringWithAggregatesFilter
+}
+
+type AttestationSumAggregate {
+  blockNumber: Int
+  id: Int
+  time: Int
+}
+
+input AttestationSumOrderByAggregateInput {
+  blockNumber: SortOrder
+  id: SortOrder
+  time: SortOrder
+}
+
+input AttestationWhereInput {
+  AND: [AttestationWhereInput!]
+  NOT: [AttestationWhereInput!]
+  OR: [AttestationWhereInput!]
+  attester: StringFilter
+  blockNumber: IntFilter
+  comment: StringNullableFilter
+  createdAt: DateTimeFilter
+  data: StringFilter
+  decodedDataJson: StringFilter
+  id: IntFilter
+  marketAddress: StringFilter
+  marketId: StringFilter
+  prediction: StringFilter
+  recipient: StringFilter
+  schemaId: StringFilter
+  time: IntFilter
+  transactionHash: StringFilter
+  uid: StringFilter
+}
+
+input AttestationWhereUniqueInput {
+  AND: [AttestationWhereInput!]
+  NOT: [AttestationWhereInput!]
+  OR: [AttestationWhereInput!]
+  attester: StringFilter
+  blockNumber: IntFilter
+  comment: StringNullableFilter
+  createdAt: DateTimeFilter
+  data: StringFilter
+  decodedDataJson: StringFilter
+  id: Int
+  marketAddress: StringFilter
+  marketId: StringFilter
+  prediction: StringFilter
+  recipient: StringFilter
+  schemaId: StringFilter
+  time: IntFilter
+  transactionHash: StringFilter
+  uid: String
 }
 
 """
@@ -2731,6 +3035,7 @@ input PositionWhereUniqueInput {
 }
 
 type Query {
+  aggregateAttestation(cursor: AttestationWhereUniqueInput, orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): AggregateAttestation!
   aggregateCategory(cursor: CategoryWhereUniqueInput, orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): AggregateCategory!
   aggregateCryptoPrices(cursor: CryptoPricesWhereUniqueInput, orderBy: [CryptoPricesOrderByWithRelationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): AggregateCryptoPrices!
   aggregateMarket(cursor: MarketWhereUniqueInput, orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): AggregateMarket!
@@ -2740,8 +3045,12 @@ type Query {
   aggregateResource(cursor: ResourceWhereUniqueInput, orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): AggregateResource!
   aggregateResourcePrice(cursor: ResourcePriceWhereUniqueInput, orderBy: [ResourcePriceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourcePriceWhereInput): AggregateResourcePrice!
   aggregateTransaction(cursor: TransactionWhereUniqueInput, orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): AggregateTransaction!
+  attestation(where: AttestationWhereUniqueInput!): Attestation
+  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
   category(where: CategoryWhereUniqueInput!): Category
+  findFirstAttestation(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
+  findFirstAttestationOrThrow(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
   findFirstCategory(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
   findFirstCategoryOrThrow(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
   findFirstCryptoPrices(cursor: CryptoPricesWhereUniqueInput, distinct: [CryptoPricesScalarFieldEnum!], orderBy: [CryptoPricesOrderByWithRelationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): CryptoPrices
@@ -2763,6 +3072,7 @@ type Query {
   findManyCryptoPrices(cursor: CryptoPricesWhereUniqueInput, distinct: [CryptoPricesScalarFieldEnum!], orderBy: [CryptoPricesOrderByWithRelationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): [CryptoPrices!]!
   findUniqueCryptoPrices(where: CryptoPricesWhereUniqueInput!): CryptoPrices
   findUniqueCryptoPricesOrThrow(where: CryptoPricesWhereUniqueInput!): CryptoPrices
+  getAttestation(where: AttestationWhereUniqueInput!): Attestation
   getCategory(where: CategoryWhereUniqueInput!): Category
   getMarket(where: MarketWhereUniqueInput!): Market
   getMarketGroup(where: MarketGroupWhereUniqueInput!): MarketGroup
@@ -2772,6 +3082,7 @@ type Query {
   getResource(where: ResourceWhereUniqueInput!): Resource
   getResourcePrice(where: ResourcePriceWhereUniqueInput!): ResourcePrice
   getTransaction(where: TransactionWhereUniqueInput!): Transaction
+  groupByAttestation(by: [AttestationScalarFieldEnum!]!, having: AttestationScalarWhereWithAggregatesInput, orderBy: [AttestationOrderByWithAggregationInput!], skip: Int, take: Int, where: AttestationWhereInput): [AttestationGroupBy!]!
   groupByCategory(by: [CategoryScalarFieldEnum!]!, having: CategoryScalarWhereWithAggregatesInput, orderBy: [CategoryOrderByWithAggregationInput!], skip: Int, take: Int, where: CategoryWhereInput): [CategoryGroupBy!]!
   groupByCryptoPrices(by: [CryptoPricesScalarFieldEnum!]!, having: CryptoPricesScalarWhereWithAggregatesInput, orderBy: [CryptoPricesOrderByWithAggregationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): [CryptoPricesGroupBy!]!
   groupByMarket(by: [MarketScalarFieldEnum!]!, having: MarketScalarWhereWithAggregatesInput, orderBy: [MarketOrderByWithAggregationInput!], skip: Int, take: Int, where: MarketWhereInput): [MarketGroupBy!]!
