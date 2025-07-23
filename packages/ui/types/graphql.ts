@@ -22,6 +22,15 @@ export type Scalars = {
   JSON: { input: any; output: any; }
 };
 
+export type AggregateAttestation = {
+  __typename?: 'AggregateAttestation';
+  _avg?: Maybe<AttestationAvgAggregate>;
+  _count?: Maybe<AttestationCountAggregate>;
+  _max?: Maybe<AttestationMaxAggregate>;
+  _min?: Maybe<AttestationMinAggregate>;
+  _sum?: Maybe<AttestationSumAggregate>;
+};
+
 export type AggregateCategory = {
   __typename?: 'AggregateCategory';
   _avg?: Maybe<CategoryAvgAggregate>;
@@ -101,6 +110,308 @@ export type AggregateTransaction = {
   _max?: Maybe<TransactionMaxAggregate>;
   _min?: Maybe<TransactionMinAggregate>;
   _sum?: Maybe<TransactionSumAggregate>;
+};
+
+export type Attestation = {
+  __typename?: 'Attestation';
+  attester: Scalars['String']['output'];
+  blockNumber: Scalars['Int']['output'];
+  comment?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTimeISO']['output'];
+  data: Scalars['String']['output'];
+  decodedDataJson: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  marketId: Scalars['String']['output'];
+  prediction: Scalars['String']['output'];
+  recipient: Scalars['String']['output'];
+  schemaId: Scalars['String']['output'];
+  time: Scalars['Int']['output'];
+  transactionHash: Scalars['String']['output'];
+  uid: Scalars['String']['output'];
+};
+
+export type AttestationAvgAggregate = {
+  __typename?: 'AttestationAvgAggregate';
+  blockNumber?: Maybe<Scalars['Float']['output']>;
+  id?: Maybe<Scalars['Float']['output']>;
+  time?: Maybe<Scalars['Float']['output']>;
+};
+
+export type AttestationAvgOrderByAggregateInput = {
+  blockNumber?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  time?: InputMaybe<SortOrder>;
+};
+
+export type AttestationCountAggregate = {
+  __typename?: 'AttestationCountAggregate';
+  _all: Scalars['Int']['output'];
+  attester: Scalars['Int']['output'];
+  blockNumber: Scalars['Int']['output'];
+  comment: Scalars['Int']['output'];
+  createdAt: Scalars['Int']['output'];
+  data: Scalars['Int']['output'];
+  decodedDataJson: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['Int']['output'];
+  marketId: Scalars['Int']['output'];
+  prediction: Scalars['Int']['output'];
+  recipient: Scalars['Int']['output'];
+  schemaId: Scalars['Int']['output'];
+  time: Scalars['Int']['output'];
+  transactionHash: Scalars['Int']['output'];
+  uid: Scalars['Int']['output'];
+};
+
+export type AttestationCountOrderByAggregateInput = {
+  attester?: InputMaybe<SortOrder>;
+  blockNumber?: InputMaybe<SortOrder>;
+  comment?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  data?: InputMaybe<SortOrder>;
+  decodedDataJson?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  marketAddress?: InputMaybe<SortOrder>;
+  marketId?: InputMaybe<SortOrder>;
+  prediction?: InputMaybe<SortOrder>;
+  recipient?: InputMaybe<SortOrder>;
+  schemaId?: InputMaybe<SortOrder>;
+  time?: InputMaybe<SortOrder>;
+  transactionHash?: InputMaybe<SortOrder>;
+  uid?: InputMaybe<SortOrder>;
+};
+
+export type AttestationGroupBy = {
+  __typename?: 'AttestationGroupBy';
+  _avg?: Maybe<AttestationAvgAggregate>;
+  _count?: Maybe<AttestationCountAggregate>;
+  _max?: Maybe<AttestationMaxAggregate>;
+  _min?: Maybe<AttestationMinAggregate>;
+  _sum?: Maybe<AttestationSumAggregate>;
+  attester: Scalars['String']['output'];
+  blockNumber: Scalars['Int']['output'];
+  comment?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTimeISO']['output'];
+  data: Scalars['String']['output'];
+  decodedDataJson: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  marketId: Scalars['String']['output'];
+  prediction: Scalars['String']['output'];
+  recipient: Scalars['String']['output'];
+  schemaId: Scalars['String']['output'];
+  time: Scalars['Int']['output'];
+  transactionHash: Scalars['String']['output'];
+  uid: Scalars['String']['output'];
+};
+
+export type AttestationMaxAggregate = {
+  __typename?: 'AttestationMaxAggregate';
+  attester?: Maybe<Scalars['String']['output']>;
+  blockNumber?: Maybe<Scalars['Int']['output']>;
+  comment?: Maybe<Scalars['String']['output']>;
+  createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
+  data?: Maybe<Scalars['String']['output']>;
+  decodedDataJson?: Maybe<Scalars['String']['output']>;
+  id?: Maybe<Scalars['Int']['output']>;
+  marketAddress?: Maybe<Scalars['String']['output']>;
+  marketId?: Maybe<Scalars['String']['output']>;
+  prediction?: Maybe<Scalars['String']['output']>;
+  recipient?: Maybe<Scalars['String']['output']>;
+  schemaId?: Maybe<Scalars['String']['output']>;
+  time?: Maybe<Scalars['Int']['output']>;
+  transactionHash?: Maybe<Scalars['String']['output']>;
+  uid?: Maybe<Scalars['String']['output']>;
+};
+
+export type AttestationMaxOrderByAggregateInput = {
+  attester?: InputMaybe<SortOrder>;
+  blockNumber?: InputMaybe<SortOrder>;
+  comment?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  data?: InputMaybe<SortOrder>;
+  decodedDataJson?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  marketAddress?: InputMaybe<SortOrder>;
+  marketId?: InputMaybe<SortOrder>;
+  prediction?: InputMaybe<SortOrder>;
+  recipient?: InputMaybe<SortOrder>;
+  schemaId?: InputMaybe<SortOrder>;
+  time?: InputMaybe<SortOrder>;
+  transactionHash?: InputMaybe<SortOrder>;
+  uid?: InputMaybe<SortOrder>;
+};
+
+export type AttestationMinAggregate = {
+  __typename?: 'AttestationMinAggregate';
+  attester?: Maybe<Scalars['String']['output']>;
+  blockNumber?: Maybe<Scalars['Int']['output']>;
+  comment?: Maybe<Scalars['String']['output']>;
+  createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
+  data?: Maybe<Scalars['String']['output']>;
+  decodedDataJson?: Maybe<Scalars['String']['output']>;
+  id?: Maybe<Scalars['Int']['output']>;
+  marketAddress?: Maybe<Scalars['String']['output']>;
+  marketId?: Maybe<Scalars['String']['output']>;
+  prediction?: Maybe<Scalars['String']['output']>;
+  recipient?: Maybe<Scalars['String']['output']>;
+  schemaId?: Maybe<Scalars['String']['output']>;
+  time?: Maybe<Scalars['Int']['output']>;
+  transactionHash?: Maybe<Scalars['String']['output']>;
+  uid?: Maybe<Scalars['String']['output']>;
+};
+
+export type AttestationMinOrderByAggregateInput = {
+  attester?: InputMaybe<SortOrder>;
+  blockNumber?: InputMaybe<SortOrder>;
+  comment?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  data?: InputMaybe<SortOrder>;
+  decodedDataJson?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  marketAddress?: InputMaybe<SortOrder>;
+  marketId?: InputMaybe<SortOrder>;
+  prediction?: InputMaybe<SortOrder>;
+  recipient?: InputMaybe<SortOrder>;
+  schemaId?: InputMaybe<SortOrder>;
+  time?: InputMaybe<SortOrder>;
+  transactionHash?: InputMaybe<SortOrder>;
+  uid?: InputMaybe<SortOrder>;
+};
+
+export type AttestationOrderByWithAggregationInput = {
+  _avg?: InputMaybe<AttestationAvgOrderByAggregateInput>;
+  _count?: InputMaybe<AttestationCountOrderByAggregateInput>;
+  _max?: InputMaybe<AttestationMaxOrderByAggregateInput>;
+  _min?: InputMaybe<AttestationMinOrderByAggregateInput>;
+  _sum?: InputMaybe<AttestationSumOrderByAggregateInput>;
+  attester?: InputMaybe<SortOrder>;
+  blockNumber?: InputMaybe<SortOrder>;
+  comment?: InputMaybe<SortOrderInput>;
+  createdAt?: InputMaybe<SortOrder>;
+  data?: InputMaybe<SortOrder>;
+  decodedDataJson?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  marketAddress?: InputMaybe<SortOrder>;
+  marketId?: InputMaybe<SortOrder>;
+  prediction?: InputMaybe<SortOrder>;
+  recipient?: InputMaybe<SortOrder>;
+  schemaId?: InputMaybe<SortOrder>;
+  time?: InputMaybe<SortOrder>;
+  transactionHash?: InputMaybe<SortOrder>;
+  uid?: InputMaybe<SortOrder>;
+};
+
+export type AttestationOrderByWithRelationInput = {
+  attester?: InputMaybe<SortOrder>;
+  blockNumber?: InputMaybe<SortOrder>;
+  comment?: InputMaybe<SortOrderInput>;
+  createdAt?: InputMaybe<SortOrder>;
+  data?: InputMaybe<SortOrder>;
+  decodedDataJson?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  marketAddress?: InputMaybe<SortOrder>;
+  marketId?: InputMaybe<SortOrder>;
+  prediction?: InputMaybe<SortOrder>;
+  recipient?: InputMaybe<SortOrder>;
+  schemaId?: InputMaybe<SortOrder>;
+  time?: InputMaybe<SortOrder>;
+  transactionHash?: InputMaybe<SortOrder>;
+  uid?: InputMaybe<SortOrder>;
+};
+
+export type AttestationScalarFieldEnum =
+  | 'attester'
+  | 'blockNumber'
+  | 'comment'
+  | 'createdAt'
+  | 'data'
+  | 'decodedDataJson'
+  | 'id'
+  | 'marketAddress'
+  | 'marketId'
+  | 'prediction'
+  | 'recipient'
+  | 'schemaId'
+  | 'time'
+  | 'transactionHash'
+  | 'uid';
+
+export type AttestationScalarWhereWithAggregatesInput = {
+  AND?: InputMaybe<Array<AttestationScalarWhereWithAggregatesInput>>;
+  NOT?: InputMaybe<Array<AttestationScalarWhereWithAggregatesInput>>;
+  OR?: InputMaybe<Array<AttestationScalarWhereWithAggregatesInput>>;
+  attester?: InputMaybe<StringWithAggregatesFilter>;
+  blockNumber?: InputMaybe<IntWithAggregatesFilter>;
+  comment?: InputMaybe<StringNullableWithAggregatesFilter>;
+  createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
+  data?: InputMaybe<StringWithAggregatesFilter>;
+  decodedDataJson?: InputMaybe<StringWithAggregatesFilter>;
+  id?: InputMaybe<IntWithAggregatesFilter>;
+  marketAddress?: InputMaybe<StringWithAggregatesFilter>;
+  marketId?: InputMaybe<StringWithAggregatesFilter>;
+  prediction?: InputMaybe<StringWithAggregatesFilter>;
+  recipient?: InputMaybe<StringWithAggregatesFilter>;
+  schemaId?: InputMaybe<StringWithAggregatesFilter>;
+  time?: InputMaybe<IntWithAggregatesFilter>;
+  transactionHash?: InputMaybe<StringWithAggregatesFilter>;
+  uid?: InputMaybe<StringWithAggregatesFilter>;
+};
+
+export type AttestationSumAggregate = {
+  __typename?: 'AttestationSumAggregate';
+  blockNumber?: Maybe<Scalars['Int']['output']>;
+  id?: Maybe<Scalars['Int']['output']>;
+  time?: Maybe<Scalars['Int']['output']>;
+};
+
+export type AttestationSumOrderByAggregateInput = {
+  blockNumber?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  time?: InputMaybe<SortOrder>;
+};
+
+export type AttestationWhereInput = {
+  AND?: InputMaybe<Array<AttestationWhereInput>>;
+  NOT?: InputMaybe<Array<AttestationWhereInput>>;
+  OR?: InputMaybe<Array<AttestationWhereInput>>;
+  attester?: InputMaybe<StringFilter>;
+  blockNumber?: InputMaybe<IntFilter>;
+  comment?: InputMaybe<StringNullableFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  data?: InputMaybe<StringFilter>;
+  decodedDataJson?: InputMaybe<StringFilter>;
+  id?: InputMaybe<IntFilter>;
+  marketAddress?: InputMaybe<StringFilter>;
+  marketId?: InputMaybe<StringFilter>;
+  prediction?: InputMaybe<StringFilter>;
+  recipient?: InputMaybe<StringFilter>;
+  schemaId?: InputMaybe<StringFilter>;
+  time?: InputMaybe<IntFilter>;
+  transactionHash?: InputMaybe<StringFilter>;
+  uid?: InputMaybe<StringFilter>;
+};
+
+export type AttestationWhereUniqueInput = {
+  AND?: InputMaybe<Array<AttestationWhereInput>>;
+  NOT?: InputMaybe<Array<AttestationWhereInput>>;
+  OR?: InputMaybe<Array<AttestationWhereInput>>;
+  attester?: InputMaybe<StringFilter>;
+  blockNumber?: InputMaybe<IntFilter>;
+  comment?: InputMaybe<StringNullableFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  data?: InputMaybe<StringFilter>;
+  decodedDataJson?: InputMaybe<StringFilter>;
+  id?: InputMaybe<Scalars['Int']['input']>;
+  marketAddress?: InputMaybe<StringFilter>;
+  marketId?: InputMaybe<StringFilter>;
+  prediction?: InputMaybe<StringFilter>;
+  recipient?: InputMaybe<StringFilter>;
+  schemaId?: InputMaybe<StringFilter>;
+  time?: InputMaybe<IntFilter>;
+  transactionHash?: InputMaybe<StringFilter>;
+  uid?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type BigIntFilter = {
@@ -2913,6 +3224,7 @@ export type PositionWhereUniqueInput = {
 
 export type Query = {
   __typename?: 'Query';
+  aggregateAttestation: AggregateAttestation;
   aggregateCategory: AggregateCategory;
   aggregateCryptoPrices: AggregateCryptoPrices;
   aggregateMarket: AggregateMarket;
@@ -2922,8 +3234,12 @@ export type Query = {
   aggregateResource: AggregateResource;
   aggregateResourcePrice: AggregateResourcePrice;
   aggregateTransaction: AggregateTransaction;
+  attestation?: Maybe<Attestation>;
+  attestations: Array<Attestation>;
   categories: Array<Category>;
   category?: Maybe<Category>;
+  findFirstAttestation?: Maybe<Attestation>;
+  findFirstAttestationOrThrow?: Maybe<Attestation>;
   findFirstCategory?: Maybe<Category>;
   findFirstCategoryOrThrow?: Maybe<Category>;
   findFirstCryptoPrices?: Maybe<CryptoPrices>;
@@ -2945,6 +3261,7 @@ export type Query = {
   findManyCryptoPrices: Array<CryptoPrices>;
   findUniqueCryptoPrices?: Maybe<CryptoPrices>;
   findUniqueCryptoPricesOrThrow?: Maybe<CryptoPrices>;
+  getAttestation?: Maybe<Attestation>;
   getCategory?: Maybe<Category>;
   getMarket?: Maybe<Market>;
   getMarketGroup?: Maybe<MarketGroup>;
@@ -2954,6 +3271,7 @@ export type Query = {
   getResource?: Maybe<Resource>;
   getResourcePrice?: Maybe<ResourcePrice>;
   getTransaction?: Maybe<Transaction>;
+  groupByAttestation: Array<AttestationGroupBy>;
   groupByCategory: Array<CategoryGroupBy>;
   groupByCryptoPrices: Array<CryptoPricesGroupBy>;
   groupByMarket: Array<MarketGroupBy>;
@@ -2984,6 +3302,15 @@ export type Query = {
   totalVolumeByMarket: Scalars['Float']['output'];
   transaction?: Maybe<Transaction>;
   transactions: Array<Transaction>;
+};
+
+
+export type QueryAggregateAttestationArgs = {
+  cursor?: InputMaybe<AttestationWhereUniqueInput>;
+  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<AttestationWhereInput>;
 };
 
 
@@ -3068,6 +3395,21 @@ export type QueryAggregateTransactionArgs = {
 };
 
 
+export type QueryAttestationArgs = {
+  where: AttestationWhereUniqueInput;
+};
+
+
+export type QueryAttestationsArgs = {
+  cursor?: InputMaybe<AttestationWhereUniqueInput>;
+  distinct?: InputMaybe<Array<AttestationScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<AttestationWhereInput>;
+};
+
+
 export type QueryCategoriesArgs = {
   cursor?: InputMaybe<CategoryWhereUniqueInput>;
   distinct?: InputMaybe<Array<CategoryScalarFieldEnum>>;
@@ -3080,6 +3422,26 @@ export type QueryCategoriesArgs = {
 
 export type QueryCategoryArgs = {
   where: CategoryWhereUniqueInput;
+};
+
+
+export type QueryFindFirstAttestationArgs = {
+  cursor?: InputMaybe<AttestationWhereUniqueInput>;
+  distinct?: InputMaybe<Array<AttestationScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<AttestationWhereInput>;
+};
+
+
+export type QueryFindFirstAttestationOrThrowArgs = {
+  cursor?: InputMaybe<AttestationWhereUniqueInput>;
+  distinct?: InputMaybe<Array<AttestationScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<AttestationWhereInput>;
 };
 
 
@@ -3283,6 +3645,11 @@ export type QueryFindUniqueCryptoPricesOrThrowArgs = {
 };
 
 
+export type QueryGetAttestationArgs = {
+  where: AttestationWhereUniqueInput;
+};
+
+
 export type QueryGetCategoryArgs = {
   where: CategoryWhereUniqueInput;
 };
@@ -3327,6 +3694,16 @@ export type QueryGetResourcePriceArgs = {
 
 export type QueryGetTransactionArgs = {
   where: TransactionWhereUniqueInput;
+};
+
+
+export type QueryGroupByAttestationArgs = {
+  by: Array<AttestationScalarFieldEnum>;
+  having?: InputMaybe<AttestationScalarWhereWithAggregatesInput>;
+  orderBy?: InputMaybe<Array<AttestationOrderByWithAggregationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<AttestationWhereInput>;
 };
 
 

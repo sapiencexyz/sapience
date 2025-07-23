@@ -21,6 +21,7 @@ const EAS_CONTRACTS = {
   10: '0x4200000000000000000000000000000000000021', // Optimism
   8453: '0x4200000000000000000000000000000000000021', // Base
   42161: '0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458', // Arbitrum
+  432: '0x1ABeF822A38CC8906557cD73788ab23A607ae104',
 } as const;
 
 const EAS_START_BLOCK = {
@@ -29,19 +30,21 @@ const EAS_START_BLOCK = {
   10: 107476600,
   8453: 3701279,
   42161: 64528380,
+  432: 1,
 } as const; // FROM https://github.com/ethereum-attestation-service/eas-indexing-service/blob/master/utils.ts
 
 // Your specific prediction market schema
 const PREDICTION_MARKET_SCHEMA_ID =
-  '0x70c5a48f8bf98f877e109501da138243aec847479a69c09390eb468f0b349fc4';
+  '0x2dbb0921fa38ebc044ab0a7fe109442c456fb9ad39a68ce0a32f193744d17744';
 const schemaEncoder = new SchemaEncoder(
-  'address marketAddress,uint256 marketId,uint160 prediction,string comment'
+  'address marketAddress,uint256 marketId,bytes32 questionId,uint160 prediction,string comment'
 );
 
 // Schema for decoding prediction market data: address marketAddress, uint256 marketId, uint160 prediction, string comment
 const PREDICTION_MARKET_SCHEMA = [
   { type: 'address', name: 'marketAddress' },
   { type: 'uint256', name: 'marketId' },
+  { type: 'bytes32', name: 'questionId' },
   { type: 'uint160', name: 'prediction' },
   { type: 'string', name: 'comment' },
 ] as const;
@@ -104,6 +107,7 @@ interface PredictionMarketEvent {
 interface DecodedPredictionData {
   marketAddress: string;
   marketId: string;
+  questionId: string;
   prediction: string;
   comment: string;
 }
@@ -183,8 +187,9 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
       return {
         marketAddress: decoded[0].toString(),
         marketId: decoded[1].toString(),
-        prediction: decoded[2].toString(),
-        comment: decoded[3].toString(),
+        questionId: decoded[2].toString(),
+        prediction: decoded[3].toString(),
+        comment: decoded[4].toString(),
       };
     } catch (error) {
       console.error(
@@ -290,6 +295,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
           // Exploded data
           marketAddress: decodedData.marketAddress,
           marketId: decodedData.marketId,
+          questionId: decodedData.questionId,
           prediction: decodedData.prediction,
           comment: decodedData.comment || null,
         },
@@ -300,13 +306,14 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
           // Exploded data
           marketAddress: decodedData.marketAddress,
           marketId: decodedData.marketId,
+          questionId: decodedData.questionId,
           prediction: decodedData.prediction,
           comment: decodedData.comment || null,
         },
       });
 
       console.log(
-        `[EASPredictionIndexer] Stored prediction attestation ${event.uid} for market ${decodedData.marketAddress} with prediction ${decodedData.prediction}`
+        `[EASPredictionIndexer] Stored prediction attestation ${event.uid} for market ${decodedData.marketAddress} (questionId: ${decodedData.questionId}) with prediction ${decodedData.prediction}`
       );
     } catch (error) {
       console.error(

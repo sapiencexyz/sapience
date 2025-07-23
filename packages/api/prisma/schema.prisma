@@ -307,6 +307,7 @@ model Attestation {
   // Prediction market schema data
   marketAddress   String   @db.VarChar
   marketId        String   @db.VarChar
+  questionId      String   @db.VarChar
   prediction      String   @db.VarChar
   comment         String?  @db.Text
 
@@ -316,6 +317,7 @@ model Attestation {
   @@index([time], map: "IDX_attestation_time")
   @@index([marketAddress], map: "IDX_attestation_market_address")
   @@index([marketId], map: "IDX_attestation_market_id")
+  @@index([questionId], map: "IDX_attestation_question_id")
   @@map("attestation")
 }
 
