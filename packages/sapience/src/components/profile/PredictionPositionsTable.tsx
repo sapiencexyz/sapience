@@ -19,6 +19,7 @@ import Link from 'next/link';
 import React from 'react';
 
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
+import { getAttestationViewURL } from '~/lib/constants/eas';
 import { useSapience } from '~/lib/context/SapienceProvider';
 
 // Helper function to extract market address from attestation data
@@ -201,19 +202,30 @@ const renderQuestionCell = ({
 
 const renderActionsCell = ({
   row,
+  chainId,
 }: {
   row: { original: FormattedAttestation };
-}) => (
-  <a
-    href={`https://base.easscan.org/attestation/view/${row.original.id}`}
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    <Button variant="outline" size="xs">
-      View
-    </Button>
-  </a>
-);
+  chainId?: number;
+}) => {
+  const viewUrl = getAttestationViewURL(chainId || 8453, row.original.id);
+  
+  // Don't render the button if no EAS explorer is configured for this chain
+  if (!viewUrl) {
+    return <span className="text-muted-foreground text-xs">N/A</span>;
+  }
+  
+  return (
+    <a
+      href={viewUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <Button variant="outline" size="xs">
+        View
+      </Button>
+    </a>
+  );
+};
 
 const PredictionPositionsTable = ({
   attestations,
@@ -267,7 +279,7 @@ const PredictionPositionsTable = ({
       },
       {
         id: 'actions',
-        cell: (info) => renderActionsCell({ row: info.row }),
+        cell: (info) => renderActionsCell({ row: info.row, chainId: parentChainId }),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

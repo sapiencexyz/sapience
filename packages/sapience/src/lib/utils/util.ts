@@ -307,6 +307,8 @@ export const getChainIdFromShortName = (shortName: string): number => {
     case 'ethereum':
     case 'mainnet':
       return 1;
+    case 'converge':
+      return 432;
     default:
       console.warn(`Unknown chain short name: ${shortName}`);
       return 0; // Return 0 or handle error appropriately
@@ -315,10 +317,15 @@ export const getChainIdFromShortName = (shortName: string): number => {
 
 // Helper function to get chain short name from chainId
 export const getChainShortName = (id: number): string => {
-  const chainObj = Object.values(chains).find((chain) => chain.id === id);
-  return chainObj
-    ? chainObj.name.toLowerCase().replace(/\s+/g, '')
-    : id.toString();
+  switch (id) {
+    case 432:
+      return 'converge';
+    default:
+      const chainObj = Object.values(chains).find((chain) => chain.id === id);
+      return chainObj
+        ? chainObj.name.toLowerCase().replace(/\s+/g, '')
+        : id.toString();
+  }
 };
 
 // Parse URL parameter to extract chain and market address

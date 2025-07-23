@@ -115,7 +115,6 @@ const ForecastPage = () => {
       marketClassification || MarketGroupClassification.YES_NO,
     submissionValue,
     marketId: marketId || 0,
-    targetChainId: targetChainId || 8453, // Default to Base chain if not found
     comment,
   });
 

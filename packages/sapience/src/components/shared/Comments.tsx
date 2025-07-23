@@ -85,8 +85,6 @@ function getDecodedDataFromAttestation(att: any): {
   prediction: bigint;
   commentText: string;
 } {
-  console.log('marketID', att.decodedData[1].value.value);
-  console.log('prediction', att.decodedData[2].value.value);
   return {
     marketAddress: att.decodedData[0].value.value,
     // marketId: att.decodedData[1].value.value,

@@ -143,6 +143,7 @@ const ReindexFactoryForm = () => {
             <SelectItem value="8453">Base</SelectItem>
             <SelectItem value="42161">Arbitrum</SelectItem>
             <SelectItem value="137">Polygon</SelectItem>
+            <SelectItem value="432">Converge</SelectItem>
           </SelectContent>
         </Select>
       </div>

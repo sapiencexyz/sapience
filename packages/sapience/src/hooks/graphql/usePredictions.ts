@@ -2,11 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { getAddress } from 'viem';
 
-import { SCHEMA_UID } from '../../lib/constants/eas';
+import { SCHEMA_UID, getEASGraphQLEndpoint } from '../../lib/constants/eas';
 
 // Type for the raw data fetched from the API
 interface RawAttestation {
-  id: string;
+  id: number;
   decodedDataJson: string;
   attester: string;
   recipient: string;
@@ -16,19 +16,11 @@ interface RawAttestation {
 // Parameterized version of the query
 const GET_ATTESTATIONS_QUERY = `
   query FindAttestations(
-    $schemaId: String!
+    $where: AttestationWhereInput!
     $take: Int!
-    $marketAddress: String
-    $attesterAddress: String
   ) {
     attestations(
-      where: {
-        schemaId: { equals: $schemaId }
-        AND: [
-          { decodedDataJson: { contains: $marketAddress } }
-          { attester: { equals: $attesterAddress } }
-        ]
-      }
+      where: $where
       orderBy: { time: desc }
       take: $take
     ) {
@@ -217,7 +209,7 @@ const formatAttestationData = (
     ).toLocaleString();
 
     return {
-      id: attestation.id,
+      id: attestation.id.toString(),
       attester: attestation.attester,
       shortAttester: `${attestation.attester.slice(0, 6)}...${attestation.attester.slice(-4)}`,
       value: predictionValue,
@@ -228,7 +220,7 @@ const formatAttestationData = (
   } catch (err) {
     console.error('Error processing attestation data:', err);
     return {
-      id: attestation.id,
+      id: attestation.id.toString(),
       attester: attestation.attester,
       shortAttester: `${attestation.attester.slice(0, 6)}...${attestation.attester.slice(-4)}`,
       value: 'Error processing data',
@@ -293,19 +285,27 @@ export const usePredictions = ({
       }
 
       // Prepare variables, omitting undefined ones
-      const variables: Record<string, string | number> = {
-        schemaId,
-        take: 10, // Consider making 'take' a parameter if needed
-      };
+      const filters = [];
       if (normalizedMarketAddress) {
-        variables.marketAddress = normalizedMarketAddress;
+        filters.push({ marketAddress: { equals: normalizedMarketAddress } });
       }
       if (normalizedAttesterAddress) {
-        variables.attesterAddress = normalizedAttesterAddress;
+        filters.push({ attester: { equals: normalizedAttesterAddress } });
       }
 
+      const variables = {
+        where: {
+          schemaId: { equals: schemaId },
+          AND: filters,
+        },
+        take: 10,
+      };
+
+      // Get chain-specific EAS GraphQL endpoint
+      const easEndpoint = '/api/graphql';
+
       // Make the request to the external EAS GraphQL API
-      const response = await fetch('https://base.easscan.org/graphql', {
+      const response = await fetch(easEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
