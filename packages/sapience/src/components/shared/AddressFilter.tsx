@@ -30,9 +30,30 @@ const AddressFilter = ({
   // Update input value when selectedAddress changes (only from external sources)
   useEffect(() => {
     if (!isInternalUpdate && selectedAddress) {
+      // If selectedAddress is an ENS, keep the display value as the ENS, but inputValue and resolvedAddress as the address
       setInputValue(selectedAddress);
       setDisplayValue(selectedAddress);
-      setResolvedAddress(selectedAddress);
+      if (!isAddress(selectedAddress) && selectedAddress.endsWith('.eth')) {
+        // Resolve ENS and call onAddressChange with the resolved address
+        (async () => {
+          setIsResolving(true);
+          setError(null);
+          try {
+            const ensAddress = await mainnetClient.getEnsAddress({ name: selectedAddress });
+            if (ensAddress && ensAddress !== resolvedAddress) {
+              setResolvedAddress(ensAddress);
+              setIsInternalUpdate(true);
+              onAddressChange(ensAddress);
+            }
+          } catch (_e) {
+            setError('Could not resolve ENS address');
+          } finally {
+            setIsResolving(false);
+          }
+        })();
+      } else {
+        setResolvedAddress(selectedAddress);
+      }
     } else if (!isInternalUpdate && !selectedAddress) {
       setInputValue('');
       setDisplayValue('');
@@ -51,6 +72,7 @@ const AddressFilter = ({
     }
 
     let resolvedAddr = inputValue.trim();
+    let displayVal = inputValue.trim();
 
     // If it's not already a valid address, try to resolve it as ENS
     if (!isAddress(inputValue.trim())) {
@@ -69,8 +91,13 @@ const AddressFilter = ({
 
           resolvedAddr = ensAddress;
           // Keep the original ENS input for display, but store resolved address
-          setDisplayValue(inputValue.trim());
+          displayVal = inputValue.trim();
+          setDisplayValue(displayVal);
           setResolvedAddress(resolvedAddr);
+          setError(null);
+          setIsInternalUpdate(true);
+          onAddressChange(resolvedAddr); // Always pass resolved address
+          return;
         } catch (_error) {
           setError('Error resolving ENS address');
           return;
@@ -83,13 +110,13 @@ const AddressFilter = ({
       }
     } else {
       // For regular addresses, display and resolve are the same
-      setDisplayValue(inputValue.trim());
+      setDisplayValue(displayVal);
       setResolvedAddress(resolvedAddr);
+      setError(null);
+      setIsInternalUpdate(true);
+      onAddressChange(resolvedAddr);
+      return;
     }
-
-    setError(null);
-    setIsInternalUpdate(true);
-    onAddressChange(resolvedAddr);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

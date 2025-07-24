@@ -69,17 +69,3 @@
     @apply bg-background text-foreground;
   }
 }
-
-.tab-row::-webkit-scrollbar {
-  height: 4px;
-  background: transparent;
-}
-.tab-row::-webkit-scrollbar-thumb {
-  background: #e5e7eb; /* Tailwind's gray-200 */
-  border-radius: 2px;
-}
-
-.tab-row {
-  scrollbar-color: #e5e7eb transparent;
-  scrollbar-width: thin;
-}
