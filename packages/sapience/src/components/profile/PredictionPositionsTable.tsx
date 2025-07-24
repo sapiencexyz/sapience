@@ -39,7 +39,7 @@ const extractMarketAddress = (
       : null;
 
   return typeof potentialMarketAddress === 'string'
-    ? (potentialMarketAddress as string).toLowerCase()
+    ? potentialMarketAddress.toLowerCase()
     : null;
 };
 
@@ -208,18 +208,14 @@ const renderActionsCell = ({
   chainId?: number;
 }) => {
   const viewUrl = getAttestationViewURL(chainId || 8453, row.original.id);
-  
+
   // Don't render the button if no EAS explorer is configured for this chain
   if (!viewUrl) {
     return <span className="text-muted-foreground text-xs">N/A</span>;
   }
-  
+
   return (
-    <a
-      href={viewUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
+    <a href={viewUrl} target="_blank" rel="noopener noreferrer">
       <Button variant="outline" size="xs">
         View
       </Button>
@@ -279,7 +275,8 @@ const PredictionPositionsTable = ({
       },
       {
         id: 'actions',
-        cell: (info) => renderActionsCell({ row: info.row, chainId: parentChainId }),
+        cell: (info) =>
+          renderActionsCell({ row: info.row, chainId: parentChainId }),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

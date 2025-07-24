@@ -50,9 +50,7 @@ const transports: Record<number, HttpTransport> = {
       ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
       : 'https://base-rpc.publicnode.com'
   ),
-  [converge.id]: http(
-    process.env.NEXT_PUBLIC_RPC_URL || ''
-  ),
+  [converge.id]: http(process.env.NEXT_PUBLIC_RPC_URL || ''),
 };
 
 // Use mutable array type Chain[] initially

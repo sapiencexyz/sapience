@@ -6,14 +6,6 @@ const EAS_CONTRACT_ADDRESSES: Record<number, string> = {
   11155111: '0xC2679fBD37d54388Ce493F1DB75320D236e1815e', // Sepolia
 };
 
-// Chain-specific EAS GraphQL endpoints
-const EAS_GRAPHQL_ENDPOINTS: Record<number, string> = {
-  8453: 'https://base.easscan.org/graphql', // Base
-  432: '', // Converge - no EAS explorer yet, will need to be configured
-  1: 'https://easscan.org/graphql', // Ethereum mainnet
-  11155111: 'https://sepolia.easscan.org/graphql', // Sepolia
-};
-
 // Chain-specific EAS explorer URLs
 const EAS_EXPLORER_URLS: Record<number, string> = {
   8453: 'https://base.easscan.org', // Base
@@ -30,15 +22,14 @@ export const getEASContractAddress = (chainId: number): string => {
   return EAS_CONTRACT_ADDRESSES[chainId] || EAS_CONTRACT_ADDRESSES[8453]; // Fallback to Base
 };
 
-export const getEASGraphQLEndpoint = (chainId: number): string => {
-  return EAS_GRAPHQL_ENDPOINTS[chainId] || '';
-};
-
 export const getEASExplorerURL = (chainId: number): string => {
   return EAS_EXPLORER_URLS[chainId] || '';
 };
 
-export const getAttestationViewURL = (chainId: number, attestationId: string): string => {
+export const getAttestationViewURL = (
+  chainId: number,
+  attestationId: string
+): string => {
   const baseUrl = getEASExplorerURL(chainId);
   return baseUrl ? `${baseUrl}/attestation/view/${attestationId}` : '';
 };

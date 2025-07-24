@@ -320,11 +320,12 @@ export const getChainShortName = (id: number): string => {
   switch (id) {
     case 432:
       return 'converge';
-    default:
+    default: {
       const chainObj = Object.values(chains).find((chain) => chain.id === id);
       return chainObj
         ? chainObj.name.toLowerCase().replace(/\s+/g, '')
         : id.toString();
+    }
   }
 };
 
