@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { getAddress } from 'viem';
+import { graphqlRequest } from '@sapience/ui/lib';
 
 import { SCHEMA_UID } from '../../lib/constants/eas';
 
@@ -141,32 +142,17 @@ export const usePredictions = ({
         take: 100,
       };
 
-      const easEndpoint = '/api/graphql';
+      try {
+        const data = await graphqlRequest<AttestationsQueryResponse>(
+          GET_ATTESTATIONS_QUERY,
+          variables
+        );
 
-      // Make the request to the external EAS GraphQL API
-      const response = await fetch(easEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: GET_ATTESTATIONS_QUERY,
-          variables,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
+        return data;
+      } catch (error) {
+        console.error('Failed to load predictions:', error);
+        throw new Error('Failed to load predictions');
       }
-
-      const result = await response.json();
-
-      // Check if we have data in the expected structure
-      if (result.data?.attestations) {
-        return result.data;
-      }
-      console.error('Unexpected response structure:', result);
-      throw new Error('Failed to load predictions');
     },
     enabled: Boolean(schemaId && (marketAddress || attesterAddress)),
     retry: 3,
