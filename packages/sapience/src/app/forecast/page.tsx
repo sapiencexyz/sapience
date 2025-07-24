@@ -84,16 +84,11 @@ const ForecastPage = () => {
   const [selectedMarket, setSelectedMarket] = useState<any>(undefined);
 
   // Extract market details if selected
-  let marketId,
-    marketAddress,
-    marketClassification,
-    targetChainId,
-    marketGroupData;
+  let marketId, marketAddress, marketClassification, marketGroupData;
   if (selectedMarket) {
     marketId = selectedMarket.marketId;
     marketAddress = selectedMarket.group.address;
     marketClassification = selectedMarket.group.marketClassification;
-    targetChainId = selectedMarket.group.chainId;
     marketGroupData = {
       ...selectedMarket.group,
       markets: [selectedMarket],
@@ -293,7 +288,6 @@ const ForecastPage = () => {
                           <PredictForm
                             marketGroupData={marketGroupData}
                             marketClassification={marketClassification}
-                            chainId={targetChainId}
                           />
                         )}
                       </div>

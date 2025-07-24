@@ -22,45 +22,40 @@ import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
 import { getAttestationViewURL } from '~/lib/constants/eas';
 import { useSapience } from '~/lib/context/SapienceProvider';
 
-// Helper function to extract market address from attestation data
-const extractMarketAddress = (
-  attestation: FormattedAttestation
+// Helper function to extract market address from context or props
+// Since market address is not available in the attestation data directly,
+// we'll need to use parentMarketAddress when available
+const getMarketAddressForAttestation = (
+  attestation: FormattedAttestation,
+  parentMarketAddress?: string,
+  marketGroups?: ReturnType<typeof useSapience>['marketGroups']
 ): string | null => {
-  const marketAddressField = attestation.decodedData.find(
-    (field) => field.name === 'marketAddress'
-  );
+  // If we have a parent market address (single market context), use it
+  if (parentMarketAddress) {
+    return parentMarketAddress.toLowerCase();
+  }
 
-  const potentialMarketAddress =
-    marketAddressField &&
-    typeof marketAddressField.value === 'object' &&
-    marketAddressField.value !== null &&
-    'value' in marketAddressField.value
-      ? marketAddressField.value.value
-      : null;
+  // For profile view with multiple markets, we need to find the market group
+  // that contains this marketId. This is a limitation of the current data structure.
+  if (marketGroups && attestation.marketId) {
+    const marketId = parseInt(attestation.marketId, 16);
+    for (const group of marketGroups) {
+      const market = group.markets?.find((m: any) => m.marketId === marketId);
+      if (market && group.address) {
+        return group.address.toLowerCase();
+      }
+    }
+  }
 
-  return typeof potentialMarketAddress === 'string'
-    ? potentialMarketAddress.toLowerCase()
-    : null;
+  return null;
 };
 
-// Helper function to extract market ID hex from attestation data
+// Helper function to extract market ID from attestation data
 const extractMarketIdHex = (
   attestation: FormattedAttestation
 ): string | null => {
-  const marketIdField = attestation.decodedData.find(
-    (field) => field.name === 'marketId'
-  );
-
-  return marketIdField &&
-    typeof marketIdField.value === 'object' &&
-    marketIdField.value !== null &&
-    'value' in marketIdField.value &&
-    typeof marketIdField.value.value === 'object' &&
-    marketIdField.value.value !== null &&
-    'hex' in marketIdField.value.value &&
-    typeof marketIdField.value.value.hex === 'string'
-    ? marketIdField.value.value.hex
-    : null;
+  // Use the marketId directly from the formatted attestation
+  return attestation.marketId || null;
 };
 
 // Helper function to check if market group has multiple markets
@@ -78,21 +73,6 @@ const hasMultipleMarkets = (
       Array.isArray(marketGroup.markets) &&
       marketGroup.markets.length > 1
   );
-};
-
-// Helper function to render prediction when baseTokenName is 'Yes'
-const renderConditionalPrediction = (value: string) => {
-  if (value === '1000000000000000000' || value === '1') {
-    return 'Yes';
-  }
-  if (value === '0') {
-    return 'No';
-  }
-  try {
-    return <NumberDisplay value={BigInt(value)} />;
-  } catch (_e) {
-    return value; // Fallback if not a BigInt string
-  }
 };
 
 interface PredictionPositionsTableProps {
@@ -115,12 +95,18 @@ const renderPredictionCell = ({
   row,
   marketGroups,
   isMarketsLoading,
+  parentMarketAddress,
 }: {
   row: { original: FormattedAttestation };
   marketGroups: ReturnType<typeof useSapience>['marketGroups'];
   isMarketsLoading: boolean;
+  parentMarketAddress?: string;
 }) => {
-  const marketAddress = extractMarketAddress(row.original);
+  const marketAddress = getMarketAddressForAttestation(
+    row.original,
+    parentMarketAddress,
+    marketGroups
+  );
 
   let baseTokenName = '';
   if (!isMarketsLoading && marketAddress) {
@@ -135,34 +121,49 @@ const renderPredictionCell = ({
   const { value } = row.original; // value is a string
 
   // Conditionally render 'Yes'/'No' if baseTokenName is 'Yes'
-  if (baseTokenName === 'Yes') {
-    return renderConditionalPrediction(value);
+  if (baseTokenName.toLowerCase() === 'yes') {
+    // Assumes the value is either '79228162514264337593543950336' for Yes or '0' for No
+    const isYes = value === '79228162514264337593543950336';
+    return (
+      <span className={isYes ? 'text-green-600' : 'text-red-600'}>
+        {isYes ? 'Yes' : 'No'}
+      </span>
+    );
   }
 
-  try {
-    const numericValue = BigInt(value);
-    return (
-      <>
-        <NumberDisplay value={numericValue} />
-        {baseTokenName && ` ${baseTokenName}`}
-      </>
-    );
-  } catch (_e) {
-    // Fallback: if value is not a string parsable to BigInt (e.g., "CAT", "DOG" for a categorical market)
-    return `${value} ${baseTokenName || ''}`.trim();
+  // For other cases, check if the value is numeric and format accordingly
+  const numericValue = parseFloat(value);
+  if (!isNaN(numericValue)) {
+    // If the number is very large (likely wei), convert appropriately
+    if (numericValue > 1e15) {
+      // This might be a wei value, convert to a more readable format
+      const convertedValue = numericValue / 1e18;
+      return <NumberDisplay value={convertedValue} precision={6} />;
+    }
+    // For smaller numbers, display as is with appropriate formatting
+    return <NumberDisplay value={numericValue} precision={6} />;
   }
+
+  // Fallback for non-numeric values
+  return `${value} ${baseTokenName || ''}`.trim();
 };
 
 const renderQuestionCell = ({
   row,
   marketGroups,
   isMarketsLoading,
+  parentMarketAddress,
 }: {
   row: { original: FormattedAttestation };
   marketGroups: ReturnType<typeof useSapience>['marketGroups'];
   isMarketsLoading: boolean;
+  parentMarketAddress?: string;
 }) => {
-  const marketAddress = extractMarketAddress(row.original);
+  const marketAddress = getMarketAddressForAttestation(
+    row.original,
+    parentMarketAddress,
+    marketGroups
+  );
   const marketIdHex = extractMarketIdHex(row.original);
 
   if (isMarketsLoading) {
@@ -242,13 +243,17 @@ const PredictionPositionsTable = ({
 
     // Check if any attestation has a market with multiple markets
     return attestations.some((attestation) => {
-      const marketAddress = extractMarketAddress(attestation);
+      const marketAddress = getMarketAddressForAttestation(
+        attestation,
+        parentMarketAddress,
+        marketGroups
+      );
 
       if (!marketAddress) return false;
 
       return hasMultipleMarkets(marketAddress, marketGroups);
     });
-  }, [isMarketPage, attestations, marketGroups]);
+  }, [isMarketPage, attestations, marketGroups, parentMarketAddress]);
 
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
@@ -256,7 +261,12 @@ const PredictionPositionsTable = ({
         accessorKey: 'question',
         header: 'Question',
         cell: (info) =>
-          renderQuestionCell({ row: info.row, marketGroups, isMarketsLoading }),
+          renderQuestionCell({
+            row: info.row,
+            marketGroups,
+            isMarketsLoading,
+            parentMarketAddress,
+          }),
       },
       {
         accessorKey: 'value',
@@ -266,6 +276,7 @@ const PredictionPositionsTable = ({
             row: info.row,
             marketGroups,
             isMarketsLoading,
+            parentMarketAddress,
           }),
       },
       {

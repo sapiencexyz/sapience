@@ -47,6 +47,7 @@ export type FormattedAttestation = {
   value: string;
   time: string; // Formatted time string
   rawTime: number; // Original timestamp
+  marketId: string; // Add marketId from raw data
 };
 
 // Format raw attestation data into a displayable format
@@ -67,6 +68,7 @@ const formatAttestationData = (
     value: attestation.prediction,
     time: formattedTime,
     rawTime: attestation.time,
+    marketId: attestation.marketId, // Include marketId from raw data
   };
 };
 
