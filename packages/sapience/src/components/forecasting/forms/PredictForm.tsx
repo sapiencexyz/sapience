@@ -22,13 +22,11 @@ const NO_SQRT_PRICE_X96 = '0';
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
-  chainId: number;
 }
 
 export default function PredictForm({
   marketGroupData,
   marketClassification,
-  chainId,
 }: PredictFormProps) {
   const { isConnected } = useAccount();
   const { toast } = useToast();
@@ -134,7 +132,6 @@ export default function PredictForm({
     marketClassification,
     marketId,
     submissionValue,
-    targetChainId: chainId,
     comment,
   });
 

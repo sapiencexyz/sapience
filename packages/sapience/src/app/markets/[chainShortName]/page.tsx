@@ -301,7 +301,6 @@ const ForecastingForm = ({
             <DynamicPredictForm
               marketGroupData={marketGroupData}
               marketClassification={marketClassification}
-              chainId={marketGroupData.chainId}
             />
           ) : (
             <DynamicWagerFormFactory
