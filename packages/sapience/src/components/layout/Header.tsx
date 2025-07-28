@@ -64,22 +64,22 @@ const NavLinks = ({
 
   return (
     <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-48 pl-4">
-      <Link href="/forecast" passHref className="flex w-fit">
+      <Link href="/forecasting" passHref className="flex w-fit">
         <Button
           variant="ghost"
-          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
+          className={`${linkClass} ${isActive('/forecasting', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
-          Forecast
+          Forecasting
         </Button>
       </Link>
-      <Link href="/markets" passHref className="flex w-fit">
+      <Link href="/vaults" passHref className="flex w-fit">
         <Button
           variant="ghost"
-          className={`${linkClass} ${isActive('/markets', pathname) ? activeClass : ''}`}
+          className={`${linkClass} ${isActive('/vaults', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
-          Markets
+          Vaults
         </Button>
       </Link>
       <Link href="/leaderboard" passHref className="flex w-fit">
@@ -98,15 +98,6 @@ const NavLinks = ({
           onClick={handleLinkClick}
         >
           Build Bots
-        </Button>
-      </Link>
-      <Link href="/agents" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/agents', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Use Agents
         </Button>
       </Link>
       <Link
@@ -225,24 +216,8 @@ const Header = () => {
           <NavLinks />
         </SidebarContent>
         <SidebarFooter>
-          <div className="flex flex-col gap-2 text-xs w-full ml-2 rounded-lg">
+          <div className="flex flex-col gap-2 text-xs w-full ml-4 rounded-lg">
             <div className="flex flex-col items-start gap-2 mb-2">
-              <span>Built on</span>
-              <a
-                href="https://convergeonchain.xyz"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Image
-                  src="/converge.svg"
-                  alt="Converge"
-                  width={80}
-                  height={24}
-                  className="dark:invert opacity-80 hover:opacity-100 transition-opacity duration-200"
-                />
-              </a>
-            </div>
-            <div className="flex flex-col items-start gap-2 mb-0.5">
               <span>Powered by</span>
               <a
                 href="https://ethena.fi"
@@ -258,8 +233,24 @@ const Header = () => {
                 />
               </a>
             </div>
+            <div className="flex flex-col items-start gap-2 mb-0.5">
+              <span>Built on</span>
+              <a
+                href="https://convergeonchain.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Image
+                  src="/converge.svg"
+                  alt="Converge"
+                  width={80}
+                  height={24}
+                  className="dark:invert opacity-80 hover:opacity-100 transition-opacity duration-200"
+                />
+              </a>
+            </div>
           </div>
-          <div className="flex items-center gap-2 p-2">
+          <div className="flex items-center gap-2 p-2 pl-4 pb-4 pt-4">
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
                 href="https://github.com/sapiencexyz/sapience"

@@ -1206,7 +1206,7 @@ const MarketFormFields = ({
             onChange={(timestamp: number) =>
               handleDateTimeChange('startTime', timestamp)
             }
-            min={0}
+            min={1}
             max={endTimestamp > 0 ? endTimestamp : undefined}
             timePart={getTimePart(startTimestamp)}
           />

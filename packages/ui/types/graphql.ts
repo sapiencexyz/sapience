@@ -124,6 +124,7 @@ export type Attestation = {
   marketAddress: Scalars['String']['output'];
   marketId: Scalars['String']['output'];
   prediction: Scalars['String']['output'];
+  questionId: Scalars['String']['output'];
   recipient: Scalars['String']['output'];
   schemaId: Scalars['String']['output'];
   time: Scalars['Int']['output'];
@@ -157,6 +158,7 @@ export type AttestationCountAggregate = {
   marketAddress: Scalars['Int']['output'];
   marketId: Scalars['Int']['output'];
   prediction: Scalars['Int']['output'];
+  questionId: Scalars['Int']['output'];
   recipient: Scalars['Int']['output'];
   schemaId: Scalars['Int']['output'];
   time: Scalars['Int']['output'];
@@ -175,6 +177,7 @@ export type AttestationCountOrderByAggregateInput = {
   marketAddress?: InputMaybe<SortOrder>;
   marketId?: InputMaybe<SortOrder>;
   prediction?: InputMaybe<SortOrder>;
+  questionId?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   schemaId?: InputMaybe<SortOrder>;
   time?: InputMaybe<SortOrder>;
@@ -199,6 +202,7 @@ export type AttestationGroupBy = {
   marketAddress: Scalars['String']['output'];
   marketId: Scalars['String']['output'];
   prediction: Scalars['String']['output'];
+  questionId: Scalars['String']['output'];
   recipient: Scalars['String']['output'];
   schemaId: Scalars['String']['output'];
   time: Scalars['Int']['output'];
@@ -218,6 +222,7 @@ export type AttestationMaxAggregate = {
   marketAddress?: Maybe<Scalars['String']['output']>;
   marketId?: Maybe<Scalars['String']['output']>;
   prediction?: Maybe<Scalars['String']['output']>;
+  questionId?: Maybe<Scalars['String']['output']>;
   recipient?: Maybe<Scalars['String']['output']>;
   schemaId?: Maybe<Scalars['String']['output']>;
   time?: Maybe<Scalars['Int']['output']>;
@@ -236,6 +241,7 @@ export type AttestationMaxOrderByAggregateInput = {
   marketAddress?: InputMaybe<SortOrder>;
   marketId?: InputMaybe<SortOrder>;
   prediction?: InputMaybe<SortOrder>;
+  questionId?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   schemaId?: InputMaybe<SortOrder>;
   time?: InputMaybe<SortOrder>;
@@ -255,6 +261,7 @@ export type AttestationMinAggregate = {
   marketAddress?: Maybe<Scalars['String']['output']>;
   marketId?: Maybe<Scalars['String']['output']>;
   prediction?: Maybe<Scalars['String']['output']>;
+  questionId?: Maybe<Scalars['String']['output']>;
   recipient?: Maybe<Scalars['String']['output']>;
   schemaId?: Maybe<Scalars['String']['output']>;
   time?: Maybe<Scalars['Int']['output']>;
@@ -273,6 +280,7 @@ export type AttestationMinOrderByAggregateInput = {
   marketAddress?: InputMaybe<SortOrder>;
   marketId?: InputMaybe<SortOrder>;
   prediction?: InputMaybe<SortOrder>;
+  questionId?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   schemaId?: InputMaybe<SortOrder>;
   time?: InputMaybe<SortOrder>;
@@ -296,6 +304,7 @@ export type AttestationOrderByWithAggregationInput = {
   marketAddress?: InputMaybe<SortOrder>;
   marketId?: InputMaybe<SortOrder>;
   prediction?: InputMaybe<SortOrder>;
+  questionId?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   schemaId?: InputMaybe<SortOrder>;
   time?: InputMaybe<SortOrder>;
@@ -314,6 +323,7 @@ export type AttestationOrderByWithRelationInput = {
   marketAddress?: InputMaybe<SortOrder>;
   marketId?: InputMaybe<SortOrder>;
   prediction?: InputMaybe<SortOrder>;
+  questionId?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   schemaId?: InputMaybe<SortOrder>;
   time?: InputMaybe<SortOrder>;
@@ -332,6 +342,7 @@ export type AttestationScalarFieldEnum =
   | 'marketAddress'
   | 'marketId'
   | 'prediction'
+  | 'questionId'
   | 'recipient'
   | 'schemaId'
   | 'time'
@@ -352,6 +363,7 @@ export type AttestationScalarWhereWithAggregatesInput = {
   marketAddress?: InputMaybe<StringWithAggregatesFilter>;
   marketId?: InputMaybe<StringWithAggregatesFilter>;
   prediction?: InputMaybe<StringWithAggregatesFilter>;
+  questionId?: InputMaybe<StringWithAggregatesFilter>;
   recipient?: InputMaybe<StringWithAggregatesFilter>;
   schemaId?: InputMaybe<StringWithAggregatesFilter>;
   time?: InputMaybe<IntWithAggregatesFilter>;
@@ -386,6 +398,7 @@ export type AttestationWhereInput = {
   marketAddress?: InputMaybe<StringFilter>;
   marketId?: InputMaybe<StringFilter>;
   prediction?: InputMaybe<StringFilter>;
+  questionId?: InputMaybe<StringFilter>;
   recipient?: InputMaybe<StringFilter>;
   schemaId?: InputMaybe<StringFilter>;
   time?: InputMaybe<IntFilter>;
@@ -407,6 +420,7 @@ export type AttestationWhereUniqueInput = {
   marketAddress?: InputMaybe<StringFilter>;
   marketId?: InputMaybe<StringFilter>;
   prediction?: InputMaybe<StringFilter>;
+  questionId?: InputMaybe<StringFilter>;
   recipient?: InputMaybe<StringFilter>;
   schemaId?: InputMaybe<StringFilter>;
   time?: InputMaybe<IntFilter>;

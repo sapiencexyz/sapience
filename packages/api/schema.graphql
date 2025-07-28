@@ -94,6 +94,7 @@ type Attestation {
   marketAddress: String!
   marketId: String!
   prediction: String!
+  questionId: String!
   recipient: String!
   schemaId: String!
   time: Int!
@@ -125,6 +126,7 @@ type AttestationCountAggregate {
   marketAddress: Int!
   marketId: Int!
   prediction: Int!
+  questionId: Int!
   recipient: Int!
   schemaId: Int!
   time: Int!
@@ -143,6 +145,7 @@ input AttestationCountOrderByAggregateInput {
   marketAddress: SortOrder
   marketId: SortOrder
   prediction: SortOrder
+  questionId: SortOrder
   recipient: SortOrder
   schemaId: SortOrder
   time: SortOrder
@@ -166,6 +169,7 @@ type AttestationGroupBy {
   marketAddress: String!
   marketId: String!
   prediction: String!
+  questionId: String!
   recipient: String!
   schemaId: String!
   time: Int!
@@ -184,6 +188,7 @@ type AttestationMaxAggregate {
   marketAddress: String
   marketId: String
   prediction: String
+  questionId: String
   recipient: String
   schemaId: String
   time: Int
@@ -202,6 +207,7 @@ input AttestationMaxOrderByAggregateInput {
   marketAddress: SortOrder
   marketId: SortOrder
   prediction: SortOrder
+  questionId: SortOrder
   recipient: SortOrder
   schemaId: SortOrder
   time: SortOrder
@@ -220,6 +226,7 @@ type AttestationMinAggregate {
   marketAddress: String
   marketId: String
   prediction: String
+  questionId: String
   recipient: String
   schemaId: String
   time: Int
@@ -238,6 +245,7 @@ input AttestationMinOrderByAggregateInput {
   marketAddress: SortOrder
   marketId: SortOrder
   prediction: SortOrder
+  questionId: SortOrder
   recipient: SortOrder
   schemaId: SortOrder
   time: SortOrder
@@ -261,6 +269,7 @@ input AttestationOrderByWithAggregationInput {
   marketAddress: SortOrder
   marketId: SortOrder
   prediction: SortOrder
+  questionId: SortOrder
   recipient: SortOrder
   schemaId: SortOrder
   time: SortOrder
@@ -279,6 +288,7 @@ input AttestationOrderByWithRelationInput {
   marketAddress: SortOrder
   marketId: SortOrder
   prediction: SortOrder
+  questionId: SortOrder
   recipient: SortOrder
   schemaId: SortOrder
   time: SortOrder
@@ -297,6 +307,7 @@ enum AttestationScalarFieldEnum {
   marketAddress
   marketId
   prediction
+  questionId
   recipient
   schemaId
   time
@@ -318,6 +329,7 @@ input AttestationScalarWhereWithAggregatesInput {
   marketAddress: StringWithAggregatesFilter
   marketId: StringWithAggregatesFilter
   prediction: StringWithAggregatesFilter
+  questionId: StringWithAggregatesFilter
   recipient: StringWithAggregatesFilter
   schemaId: StringWithAggregatesFilter
   time: IntWithAggregatesFilter
@@ -351,6 +363,7 @@ input AttestationWhereInput {
   marketAddress: StringFilter
   marketId: StringFilter
   prediction: StringFilter
+  questionId: StringFilter
   recipient: StringFilter
   schemaId: StringFilter
   time: IntFilter
@@ -372,6 +385,7 @@ input AttestationWhereUniqueInput {
   marketAddress: StringFilter
   marketId: StringFilter
   prediction: StringFilter
+  questionId: StringFilter
   recipient: StringFilter
   schemaId: StringFilter
   time: IntFilter

@@ -30,9 +30,15 @@ export function getTimeWindow(from: number, to: number, interval: number) {
 }
 
 export function BNMax(a: string, b: string) {
-  return BigInt(a) > BigInt(b) ? a : b;
+  // handlesscientific notation and decimal numbers
+  const numA = parseFloat(a);
+  const numB = parseFloat(b);
+  return numA > numB ? a : b;
 }
 
 export function BNMin(a: string, b: string) {
-  return BigInt(a) < BigInt(b) ? a : b;
+  // handles scientific notation and decimal numbers
+  const numA = parseFloat(a);
+  const numB = parseFloat(b);
+  return numA < numB ? a : b;
 }
