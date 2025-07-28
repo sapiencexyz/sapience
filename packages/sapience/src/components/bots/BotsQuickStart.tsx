@@ -17,7 +17,7 @@ export default function BotsQuickStart() {
                 Install the Sapience plug-in to quickly spin up an agent that
                 submits forecasts onchain.
               </p>
-              <div className="pt-2 space-y-3">
+              <div className="pt-2 space-x-2">
                 <a
                   href="https://eliza.how/"
                   target="_blank"
@@ -34,7 +34,7 @@ export default function BotsQuickStart() {
                     Get Started
                   </Button>
                 </a>
-                <br className="sm:hidden" />
+                {/* <br className="sm:hidden" /> */}
                 <a
                   href="https://github.com/sapiencexyz/plugin-sapience"
                   target="_blank"
