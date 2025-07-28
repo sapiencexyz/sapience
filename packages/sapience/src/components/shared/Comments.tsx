@@ -3,12 +3,11 @@
 import { blo } from 'blo';
 import Image from 'next/image';
 import { useEffect } from 'react';
-import { fromHex } from 'viem';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Filter } from 'lucide-react';
 import { AddressDisplay, useEnsName } from './AddressDisplay';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
-import { SCHEMA_UID } from '~/lib/constants/eas';
+import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
@@ -88,12 +87,10 @@ function getDecodedDataFromAttestation(att: any): {
   commentText: string;
 } {
   return {
-    marketAddress: att.decodedData[0].value.value,
-    // marketId: att.decodedData[1].value.value,
-    // prediction: att.decodedData[2].value.value,
-    marketId: fromHex(att.decodedData[1].value.value.hex, 'number'),
-    prediction: fromHex(att.decodedData[2].value.value.hex, 'bigint'),
-    commentText: att.decodedData[3].value.value
+    marketAddress: att.marketAddress,
+    marketId: att.marketId,
+    prediction: BigInt(att.value),
+    commentText: att.comment
   };
 }
 
@@ -184,11 +181,11 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
   let predictionText = '';
   const YES_SQRT_PRICE_X96 = BigInt('79228162514264337593543950336');
   if (marketClassification === '2') { // YES_NO
-    predictionText = `${prediction === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'} • ${prediction === YES_SQRT_PRICE_X96 ? '100' : '0'}% Chance`;
+    predictionText = `${prediction === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'}`;
   } else if (marketClassification === '1') { // MULTIPLE_CHOICE
     predictionText = optionName ? `${optionName}` : `Option ID: ${marketId}`;
   } else if (marketClassification === '3') { // NUMERIC
-    predictionText = `Prediction: ${numericValue?.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;
+    predictionText = `${numericValue?.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;
   } else {
     predictionText = `${numericValue}% Chance`;
   }
@@ -223,8 +220,8 @@ const Comments = ({
 }: CommentsProps) => {
   // Fetch EAS attestations
   const shouldFilterByAttester = selectedCategory === SelectableTab.MyPredictions && address && typeof address === 'string' && address.length > 0;
-  const { data: easAttestations, isLoading: _isEasLoading, refetch } = usePredictions({ schemaId: SCHEMA_UID, attesterAddress: shouldFilterByAttester ? address : undefined });
-
+  const { data: easAttestations, isLoading: _isEasLoading, refetch } = usePredictions({ schemaId: CONVERGE_SCHEMA_UID, attesterAddress: shouldFilterByAttester ? address : undefined });
+  
   // Refetch EAS attestations when refetchTrigger changes
   useEffect(() => {
     if (refetch) refetch();
@@ -237,8 +234,7 @@ const Comments = ({
   // Convert EAS attestations to Comment objects with category
   const easComments: Comment[] = (easAttestations || []).map(att => attestationToComment(att, marketGroups));
 
-
-
+  console.log("easComments", easComments);
 
   // Filter comments based on selected category and question
   const displayComments = (() => {

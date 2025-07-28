@@ -9,7 +9,7 @@ import {
 } from 'wagmi';
 
 import { MarketGroupClassification } from '../../lib/types';
-import { SCHEMA_UID } from '~/lib/constants/eas';
+import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
 
 const CONVERGE_CHAIN_ID = 432;
 // Constant for 2^96 as a BigInt, which is used for sqrt(1) * 2^96
@@ -96,11 +96,12 @@ export function useSubmitPrediction({
 
         return encodeAbiParameters(
           parseAbiParameters(
-            'address marketAddress, uint256 marketId, uint160 prediction, string comment'
+            'address marketAddress, uint256 marketId, bytes32 questionId, uint160 prediction, string comment'
           ),
           [
             _marketAddress as `0x${string}`,
             BigInt(_marketId),
+            `0x0000000000000000000000000000000000000000000000000000000000000000` as `0x${string}`, // TODO: fix this, it is a stub!
             finalPredictionBigInt,
             _comment,
           ]
@@ -206,7 +207,7 @@ export function useSubmitPrediction({
         functionName: 'attest',
         args: [
           {
-            schema: SCHEMA_UID as `0x${string}`,
+            schema: CONVERGE_SCHEMA_UID as `0x${string}`,
             data: {
               recipient:
                 '0x0000000000000000000000000000000000000000' as `0x${string}`,
@@ -279,6 +280,10 @@ export function useSubmitPrediction({
     setAttestationSuccess(null);
   }, []);
 
+  console.log('isAttesting', isAttesting);
+  console.log('isLoading', isLoading);
+  console.log('txSuccess', txSuccess);
+  console.log('txReceipt', txReceipt)
   return {
     submitPrediction,
     isAttesting: isAttesting || isLoading,

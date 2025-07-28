@@ -67,9 +67,39 @@ if [[ "$DB_NAME_LOCAL" == *"$DB_NAME"* ]]; then
     exit 1
 fi
 
+echo "DUMP FILE: $BACKUP_DIR/complete_dump.sql"
+echo "DB_NAME: $DB_NAME"
+echo "DB_NAME_LOCAL: $DB_NAME_LOCAL"
+
 # Replace all instances of the original database name with the local database name
 # This handles cases where the dump contains references to the original database name
-sed -i '' "s/$DB_NAME/$DB_NAME_LOCAL/g" "$BACKUP_DIR/complete_dump.sql"
+if [ -z "$BACKUP_DIR" ]; then
+    echo "ERROR: BACKUP_DIR is not set or is empty"
+    exit 1
+fi
+
+if [ -z "$DB_NAME" ] || [ -z "$DB_NAME_LOCAL" ]; then
+    echo "ERROR: DB_NAME or DB_NAME_LOCAL is not set"
+    echo "DB_NAME: '$DB_NAME'"
+    echo "DB_NAME_LOCAL: '$DB_NAME_LOCAL'"
+    exit 1
+fi
+
+echo "Running sed command: sed -i '' \"s/$DB_NAME/$DB_NAME_LOCAL/g\" \"$BACKUP_DIR/complete_dump.sql\""
+
+# Try different sed implementations for compatibility
+if sed -i '' "s/$DB_NAME/$DB_NAME_LOCAL/g" "$BACKUP_DIR/complete_dump.sql" 2>/dev/null; then
+    echo "sed command completed successfully"
+elif sed -i "s/$DB_NAME/$DB_NAME_LOCAL/g" "$BACKUP_DIR/complete_dump.sql" 2>/dev/null; then
+    echo "sed command completed successfully (without empty string)"
+else
+    echo "ERROR: sed command failed. Trying alternative approach..."
+    # Create a temporary file and replace
+    cp "$BACKUP_DIR/complete_dump.sql" "$BACKUP_DIR/complete_dump.sql.bak"
+    sed "s/$DB_NAME/$DB_NAME_LOCAL/g" "$BACKUP_DIR/complete_dump.sql.bak" > "$BACKUP_DIR/complete_dump.sql"
+    rm "$BACKUP_DIR/complete_dump.sql.bak"
+    echo "sed command completed using alternative approach"
+fi
 
 # Step 1: Drop and recreate local database
 echo "Dropping and recreating local database..."

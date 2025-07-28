@@ -82,7 +82,7 @@ const EAS_ABI = [
 ] as const;
 
 const attestedEventSignature = parseAbiItem(
-  'event Attested(address indexed recipient, address indexed attester, bytes32 uid, bytes32 indexed schema)'
+  'event Attested(address indexed recipient, address indexed attester, bytes32 uid, bytes32 indexed schemaUID)'
 );
 
 interface AttestationData {
@@ -212,7 +212,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
         ] as `0x${string}`,
         event: attestedEventSignature,
         args: {
-          schema: PREDICTION_MARKET_SCHEMA_ID as `0x${string}`,
+          schemaUID: PREDICTION_MARKET_SCHEMA_ID as `0x${string}`,
         },
         fromBlock: fromBlock,
         toBlock: toBlock,
@@ -221,7 +221,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
       const events: PredictionMarketEvent[] = [];
 
       for (const log of attestedLogs) {
-        if (log.args.schema !== PREDICTION_MARKET_SCHEMA_ID) {
+        if (log.args.schemaUID !== PREDICTION_MARKET_SCHEMA_ID) {
           continue;
         }
 
@@ -230,7 +230,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
         });
         events.push({
           uid: log.args.uid!,
-          schemaUID: log.args.schema!,
+          schemaUID: log.args.schemaUID!,
           attester: log.args.attester!,
           recipient: log.args.recipient!,
           transactionHash: log.transactionHash,
@@ -554,15 +554,15 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
         ] as `0x${string}`,
         event: attestedEventSignature,
         args: {
-          schema: PREDICTION_MARKET_SCHEMA_ID as `0x${string}`,
+          schemaUID: PREDICTION_MARKET_SCHEMA_ID as `0x${string}`,
         },
         onLogs: async (logs) => {
           for (const log of logs) {
             try {
-              if (log.args.schema !== PREDICTION_MARKET_SCHEMA_ID) {
+              if (log.args.schemaUID !== PREDICTION_MARKET_SCHEMA_ID) {
                 // Skip if not a prediction market attestation for this schema
                 console.log(
-                  `[EASPredictionIndexer] Skipping event with schema ${log.args.schema}`
+                  `[EASPredictionIndexer] Skipping event with schema ${log.args.schemaUID}`
                 );
                 continue;
               }
@@ -573,7 +573,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
 
               const event: PredictionMarketEvent = {
                 uid: log.args.uid!,
-                schemaUID: log.args.schema!,
+                schemaUID: log.args.schemaUID!,
                 attester: log.args.attester!,
                 recipient: log.args.recipient!,
                 transactionHash: log.transactionHash,

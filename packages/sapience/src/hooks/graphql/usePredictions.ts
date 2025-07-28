@@ -11,11 +11,13 @@ interface RawAttestation {
   attester: string;
   time: number; // API returns time as a number (Unix timestamp)
   prediction: string;
+  comment: string;
+  marketAddress: string;
   marketId: string;
 }
 
 // Parameterized version of the query
-const GET_ATTESTATIONS_QUERY = `
+const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
   query FindAttestations(
     $where: AttestationWhereInput!
     $take: Int!
@@ -30,6 +32,8 @@ const GET_ATTESTATIONS_QUERY = `
       time
       prediction
       marketId
+      comment
+      marketAddress
     }
   }
 `;
@@ -45,6 +49,8 @@ export type FormattedAttestation = {
   attester: string;
   shortAttester: string;
   value: string;
+  comment: string;
+  marketAddress: string;
   time: string; // Formatted time string
   rawTime: number; // Original timestamp
   marketId: string; // Add marketId from raw data
@@ -68,6 +74,8 @@ const formatAttestationData = (
     value: attestation.prediction,
     time: formattedTime,
     rawTime: attestation.time,
+    comment: attestation.comment,
+    marketAddress: attestation.marketAddress,
     marketId: attestation.marketId, // Include marketId from raw data
   };
 };

@@ -48,11 +48,10 @@ async function startResourceIndexers(): Promise<
   const resourceJobs: Promise<void | (() => void)>[] = [];
   // Watch for new blocks for each resource with an indexer
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
-    let useEmtpyResourceForIndexer = false;
+    let useEmptyResourceForIndexer = false;
     let resource: Resource | null = null;
     if (resourceSlug === 'attestation-prediction-market') {
-      useEmtpyResourceForIndexer = true;
-      continue;
+      useEmptyResourceForIndexer = true;
     }
 
     // Find the resource in the database
@@ -60,7 +59,7 @@ async function startResourceIndexers(): Promise<
       where: { slug: resourceSlug },
     });
 
-    if (!resource && useEmtpyResourceForIndexer) {
+    if (!resource && useEmptyResourceForIndexer) {
       resource = {
         id: 0,
         slug: 'attestation-prediction-market',
