@@ -1,71 +1,90 @@
 import { Button } from '@sapience/ui/components/ui/button';
-import { Rocket } from 'lucide-react';
+import Image from 'next/image';
 
 export default function BotsQuickStart() {
   return (
-    <section className="pt-12 pb-24 lg:pt-24 lg:pb-48 px-4 sm:px-6 w-full">
-      <div className="max-w-6xl mx-auto w-full">
-        <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
-          {/* Left side: Explanatory text and CTA */}
-          <div className="w-full lg:w-3/5 lg:max-w-[320px] text-left lg:text-inherit">
-            <h2 className="font-sans text-2xl lg:text-3xl font-normal mb-2 lg:mb-6">
-              Deploy Today
-            </h2>
-            <p className="text-muted-foreground text-lg mb-6">
-              Use the quick start template to deploy a bot{' '}
-              <a
-                href="https://x.com/0xbeadbot"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                like this one
-              </a>{' '}
-              in under an hour.
-            </p>
-            <div className="pt-2">
-              <a
-                href="https://docs.sapience.xyz/quick-start"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button>
-                  <Rocket className="h-4 w-4 mr-1" />
-                  Quick Start
-                </Button>
-              </a>
+    <div>
+      {/* ElizaOS Section */}
+      <section className="pb-24 lg:pb-48 px-4 sm:px-6 w-full">
+        <div className="max-w-6xl mx-auto w-full">
+          <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
+            {/* Left side: Explanatory text and CTAs */}
+            <div className="w-full lg:w-3/5 lg:max-w-[360px] text-left lg:text-inherit">
+              <h2 className="font-sans text-2xl lg:text-3xl font-normal mb-2 lg:mb-6">
+                Use ElizaOS
+              </h2>
+              <p className="text-muted-foreground text-lg mb-6">
+                Install the Sapience plug-in to quickly spin up an agent that
+                submits forecasts onchain.
+              </p>
+              <div className="pt-2 space-y-3">
+                <a
+                  href="https://eliza.how/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button className="w-auto">
+                    <Image
+                      src="/eliza-icon.png"
+                      alt="Eliza"
+                      width={16}
+                      height={16}
+                      className="rounded-sm"
+                    />
+                    Get Started
+                  </Button>
+                </a>
+                <br className="sm:hidden" />
+                <a
+                  href="https://github.com/sapiencexyz/plugin-sapience"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-0 sm:ml-5"
+                >
+                  <Button variant="outline" className="w-auto">
+                    <Image
+                      src="/github.svg"
+                      alt="GitHub"
+                      width={16}
+                      height={16}
+                      className="invert dark:invert-0"
+                    />
+                    Plug-in Docs
+                  </Button>
+                </a>
+              </div>
             </div>
-          </div>
 
-          {/* Right side: Video Embed */}
-          <div className="w-full lg:w-2/5">
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                paddingBottom: '75%' /* 4:3 Aspect Ratio */,
-                borderRadius: '0.5rem',
-                overflow: 'hidden',
-              }}
-            >
-              <iframe
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                }}
-                src="https://www.youtube.com/embed/r0udy9AUF_Y?rel=0&modestbranding=1&showinfo=0"
-                title="YouTube video player"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+            {/* Right side: Video background with centered hero image */}
+            <div className="w-full lg:w-2/5">
+              <div
+                className="relative w-full rounded-lg overflow-hidden flex items-end justify-center inner-shadow"
+                style={{ paddingBottom: '60%' /* Taller aspect ratio */ }}
+              >
+                {/* Background video */}
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                >
+                  <source src="/eliza-bg.mp4" type="video/mp4" />
+                </video>
+
+                {/* Hero image shifted down */}
+                <div className="absolute z-10 w-[80%] bottom-[-50%]">
+                  <img
+                    src="/eliza-hero.png"
+                    alt="Eliza Hero"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
