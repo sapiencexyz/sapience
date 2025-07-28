@@ -4,7 +4,7 @@
 # Define tables that should be filtered by timestamp
 TIMESTAMP_FILTER_TABLES=()
 # Reset environment variables if they are already set
-unset DB_HOST DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER
+unset DB_HOST DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER BACKUP_DIR
 
 # Parse command line arguments
 SKIP_IF_EXISTS=false
@@ -12,6 +12,7 @@ TIMESTAMP_FROM=""
 TIMESTAMP_TO=""
 INCLUDE_CANDLES=false
 INCLUDE_PRICES=false
+BACKUP_DIR="./db_backups"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -74,15 +75,18 @@ else
     echo "DB_USER=your_username"
     echo "DB_PASSWORD=your_password"
     echo "LOCAL_USER=your_local_postgres_user"
+    echo "BACKUP_DIR=your_backup_directory"
     exit 1
 fi
 
 # Validate required environment variables
-if [ -z "$DB_HOST" ] || [ -z "$DB_NAME" ] || [ -z "$DB_NAME_LOCAL" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$LOCAL_USER" ]; then
+if [ -z "$DB_HOST" ] || [ -z "$DB_NAME" ] || [ -z "$DB_NAME_LOCAL" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ] || [ -z "$LOCAL_USER" ] || [ -z "$BACKUP_DIR" ]; then
     echo "ERROR: Missing required environment variables. Please check your .env file contains:"
-    echo "DB_HOST, DB_NAME, DB_NAME_LOCAL, DB_USER, DB_PASSWORD, LOCAL_USER"
+    echo "DB_HOST, DB_NAME, DB_NAME_LOCAL, DB_USER, DB_PASSWORD, LOCAL_USER, BACKUP_DIR"
     exit 1
 fi
+
+echo "BACKUP_DIR: $BACKUP_DIR"
 
 # Build the timestamp filter tables array based on flags
 if [ "$INCLUDE_CANDLES" = true ]; then
@@ -102,8 +106,8 @@ fi
 echo "Timestamp filter tables: ${TIMESTAMP_FILTER_TABLES[*]}"
 
 # Create backup directory if it doesn't exist
-mkdir -p ./db_backups
-cd ./db_backups
+mkdir -p $BACKUP_DIR
+cd $BACKUP_DIR
 echo "===== Starting database cloning process ====="
 
 # Check if dump file already exists
@@ -144,7 +148,7 @@ fi
 
 # Fix locale issues in dump file
 echo "Fixing locale settings in dump file..."
-sed -i '' 's/en_US.UTF8/en_US.UTF-8/g' complete_dump.sql 2>/dev/null || true
+sed -i '' "s/en_US.UTF8/en_US.UTF-8/g" "complete_dump.sql" 2>/dev/null || true
 
 # Remove constraints from the dump file to avoid constraint violations during data insertion
 echo "Removing constraints from dump file..."
@@ -288,6 +292,6 @@ cat constraints.sql >> complete_dump.sql
 rm -f constraints.sql
 
 echo "===== Database schema and filtered data cloning completed ====="
-echo "Schema and data dump file created: ./db_backups/complete_dump.sql"
+echo "Schema and data dump file created: $BACKUP_DIR/complete_dump.sql"
 echo "Run restore_db.sh to restore the database locally."
-cd ..
+cd -

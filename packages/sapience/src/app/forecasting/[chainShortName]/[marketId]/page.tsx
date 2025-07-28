@@ -188,6 +188,7 @@ const ForecastContent = () => {
     tickSpacing,
     quoteTokenName,
     baseTokenName,
+    enabled: chartType === ChartType.ORDER_BOOK,
   });
   // ---- End: Hoisted OrderBook Data Fetching ----
 

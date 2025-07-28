@@ -25,6 +25,7 @@ interface UsePoolOrderBookDataProps {
   quoteTokenName?: string; // Optional for formatting
   // Add price range/zoom level if needed later
   baseTokenName?: string; // Add base token name for display
+  enabled?: boolean; // Optional, defaults to true
 }
 
 // Structure for each level in the order book UI
@@ -106,6 +107,7 @@ export function useOrderBookData({
   tickSpacing: tickSpacingProp,
   quoteTokenName,
   baseTokenName, // Destructure baseTokenName
+  enabled = true, // Default to true if not provided
 }: UsePoolOrderBookDataProps): UsePoolOrderBookDataReturn {
   const [processedPoolData, setProcessedPoolData] = useState<
     PoolData | undefined
@@ -133,6 +135,9 @@ export function useOrderBookData({
 
   // 1. Generate Tick Range for Querying
   const ticks = useMemo(() => {
+    if (!enabled) {
+      return [];
+    }
     // Use the determined actualTickSpacing
     const spacing = actualTickSpacing;
     // Ensure ticks are valid numbers and min < max
@@ -158,9 +163,13 @@ export function useOrderBookData({
         tickRange.push(i);
       }
     }
-    // Log using the actual spacing determined
     return tickRange;
-  }, [actualTickSpacing, baseAssetMaxPriceTick, baseAssetMinPriceTick]);
+  }, [
+    actualTickSpacing,
+    baseAssetMaxPriceTick,
+    baseAssetMinPriceTick,
+    enabled,
+  ]);
 
   // 2. Prepare Contracts for useReadContracts
   const contracts = useMemo(() => {
@@ -190,7 +199,7 @@ export function useOrderBookData({
   } = useReadContracts({
     contracts,
     query: {
-      enabled: contracts.length > 0, // Only run if contracts are defined
+      enabled: enabled && contracts.length > 0, // Only run expensive RPC calls if enabled and contracts are defined
       // Add other query options like refetchInterval if needed
     },
   });

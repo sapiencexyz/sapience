@@ -56,6 +56,7 @@ export const POSITIONS_QUERY = /* GraphQL */ `
       transactions {
         id
         type
+        createdAt
       }
     }
   }

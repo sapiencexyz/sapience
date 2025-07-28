@@ -287,6 +287,40 @@ model ResourcePrice {
   @@map("resource_price")
 }
 
+model Attestation {
+  id              Int      @id(map: "PK_attestation") @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  
+  // Core EAS fields
+  uid             String   @unique @db.VarChar
+  attester        String   @db.VarChar
+  recipient       String   @db.VarChar
+  time            Int // Using time instead of timestamp to mimic AES indexer
+  blockNumber     Int
+  transactionHash String   @db.VarChar
+  schemaId        String   @db.VarChar
+
+  // Prediction market raw data
+  data            String   @db.VarChar    
+  decodedDataJson String   @db.VarChar @default("")
+
+  // Prediction market schema data
+  marketAddress   String   @db.VarChar
+  marketId        String   @db.VarChar
+  questionId      String   @db.VarChar
+  prediction      String   @db.VarChar
+  comment         String?  @db.Text
+
+  @@unique([uid], map: "UQ_attestation_uid")
+  @@index([attester], map: "IDX_attestation_attester")
+  @@index([recipient], map: "IDX_attestation_recipient")
+  @@index([time], map: "IDX_attestation_time")
+  @@index([marketAddress], map: "IDX_attestation_market_address")
+  @@index([marketId], map: "IDX_attestation_market_id")
+  @@index([questionId], map: "IDX_attestation_question_id")
+  @@map("attestation")
+}
+
 model Transaction {
   id                   Int                   @id(map: "PK_89eadb93a89810556e1cbcd6ab9") @default(autoincrement())
   createdAt            DateTime              @default(now()) @db.Timestamp(6)

@@ -19,7 +19,25 @@ import * as viem from 'viem';
 import * as viemChains from 'viem/chains';
 import * as Sentry from '@sentry/node';
 
-export const chains: viem.Chain[] = [...Object.values(viemChains)];
+// Custom chain definition for Converge (chainId 432)
+export const convergeChain: viem.Chain = {
+  id: 432,
+  name: 'Converge',
+  nativeCurrency: {
+    name: 'Converge',
+    symbol: 'CVG',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: { http: [process.env.RPC_URL || ''] },
+    public: { http: [process.env.RPC_URL || ''] },
+  },
+};
+
+export const chains: viem.Chain[] = [
+  ...Object.values(viemChains),
+  convergeChain,
+];
 
 export function getChainById(id: number): viem.Chain | undefined {
   const chain = viem.extractChain({
@@ -60,8 +78,18 @@ const createChainClient = (
   chain: viem.Chain,
   network: string,
   useLocalhost = false
-) =>
-  createPublicClient({
+) => {
+  // Special handling for Converge (chainId 432)
+  if (chain.id === 432 && process.env.RPC_URL) {
+    return createPublicClient({
+      chain,
+      transport: http(process.env.RPC_URL),
+      batch: {
+        multicall: true,
+      },
+    });
+  }
+  return createPublicClient({
     chain,
     transport: useLocalhost
       ? http('http://localhost:8545')
@@ -72,6 +100,7 @@ const createChainClient = (
       multicall: true,
     },
   });
+};
 
 export const mainnetPublicClient = createChainClient(mainnet, 'mainnet');
 export const basePublicClient = createChainClient(base, 'base-mainnet');
@@ -104,6 +133,9 @@ export function getProviderForChain(chainId: number): PublicClient {
       break;
     case 42161:
       newClient = arbitrumPublicClient as PublicClient;
+      break;
+    case 432:
+      newClient = createChainClient(convergeChain, 'converge');
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);

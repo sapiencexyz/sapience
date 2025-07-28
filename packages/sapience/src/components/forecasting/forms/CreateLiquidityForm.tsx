@@ -339,6 +339,8 @@ export function CreateLiquidityForm({
                       placeholder="0"
                       type="number"
                       step="any"
+                      min={tickToPrice(lowPriceTick || 0, tickSpacing)}
+                      max={tickToPrice(highPriceTick || 0, tickSpacing)}
                       className="rounded-r-none"
                       {...field}
                     />
@@ -374,6 +376,8 @@ export function CreateLiquidityForm({
                       placeholder="0"
                       type="number"
                       step="any"
+                      min={tickToPrice(lowPriceTick || 0, tickSpacing)}
+                      max={tickToPrice(highPriceTick || 0, tickSpacing)}
                       className="rounded-r-none"
                       {...field}
                     />

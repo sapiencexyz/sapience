@@ -90,6 +90,15 @@ import {
   FindUniqueTransactionResolver,
   FindUniqueTransactionOrThrowResolver,
   GroupByTransactionResolver,
+
+  // Attestation queries
+  AggregateAttestationResolver,
+  FindFirstAttestationResolver,
+  FindFirstAttestationOrThrowResolver,
+  FindManyAttestationResolver,
+  FindUniqueAttestationResolver,
+  FindUniqueAttestationOrThrowResolver,
+  GroupByAttestationResolver,
 } from '@generated/type-graphql';
 
 // Import the custom resolvers to keep
@@ -183,6 +192,15 @@ export const initializeApolloServer = async () => {
     FindUniqueTransactionResolver,
     FindUniqueTransactionOrThrowResolver,
     GroupByTransactionResolver,
+
+    // Attestation queries
+    AggregateAttestationResolver,
+    FindFirstAttestationResolver,
+    FindFirstAttestationOrThrowResolver,
+    FindManyAttestationResolver,
+    FindUniqueAttestationResolver,
+    FindUniqueAttestationOrThrowResolver,
+    GroupByAttestationResolver,
   ];
 
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers

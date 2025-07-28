@@ -73,6 +73,15 @@ const NavLinks = ({
           Forecasting
         </Button>
       </Link>
+      <Link href="/vaults" passHref className="flex w-fit">
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/vaults', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          Vaults
+        </Button>
+      </Link>
       <Link href="/leaderboard" passHref className="flex w-fit">
         <Button
           variant="ghost"
@@ -89,15 +98,6 @@ const NavLinks = ({
           onClick={handleLinkClick}
         >
           Build Bots
-        </Button>
-      </Link>
-      <Link href="/agents" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/agents', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Use Agents
         </Button>
       </Link>
       <Link

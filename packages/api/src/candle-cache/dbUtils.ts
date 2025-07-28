@@ -314,19 +314,25 @@ export async function getLastCandleFromDb({
 }
 
 export async function saveCandle(candle: Prisma.CacheCandleCreateInput) {
+  // Exclude the id field from create operation to avoid unique constraint violations
+  // Cast to handle runtime objects that may have id field even though type doesn't include it
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _id, ...candleWithoutId } =
+    candle as Prisma.CacheCandleCreateInput & { id?: string };
+
   await prisma.cacheCandle.upsert({
     where: {
       candleType_interval_timestamp_resourceSlug_marketIdx_trailingAvgTime: {
         candleType: candle.candleType,
         interval: candle.interval,
         timestamp: candle.timestamp,
-        resourceSlug: candle.resourceSlug || null,
-        marketIdx: candle.marketIdx || null,
-        trailingAvgTime: candle.trailingAvgTime || null,
+        resourceSlug: candle.resourceSlug ?? null,
+        marketIdx: candle.marketIdx ?? null,
+        trailingAvgTime: candle.trailingAvgTime ?? null,
       } as Prisma.CacheCandleCandleTypeIntervalTimestampResourceSlugMarketIdxTrailingAvgTimeCompoundUniqueInput,
     },
-    update: candle,
-    create: candle,
+    update: candleWithoutId, // Exclude id from updates to avoid unique constraint violations
+    create: candleWithoutId, // Exclude id for creates because sometimes the id is set to 0 when creating a new candle, this lets the DB auto-generate the id. 
   });
 }
 
