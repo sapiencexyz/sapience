@@ -409,7 +409,7 @@ const Comments = ({
 
           {displayComments.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
-              No comments for selected filters...
+              No forecasts found.
             </div>
           )}
           {displayComments.map((comment, index) => (

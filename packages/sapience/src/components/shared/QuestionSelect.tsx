@@ -198,7 +198,7 @@ const QuestionSelect = ({
           onBlur={handleInputBlur}
           placeholder={
             marketMode
-              ? 'Search markets...'
+              ? 'Search questions...'
               : 'Search questions or market groups...'
           }
           className="pl-10 h-12 text-base pr-10"

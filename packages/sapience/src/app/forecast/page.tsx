@@ -1,17 +1,16 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
-// Import existing components
+// Import popover components
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@sapience/ui/components/ui/accordion';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
 import { SelectableTab } from '../../components/shared/Comments';
 import PredictForm from '~/components/forecasting/forms/PredictForm';
 // import AskForm from '~/components/shared/AskForm';
@@ -46,7 +45,6 @@ const ForecastPage = () => {
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<SelectableTab | null>(SelectableTab.MyPredictions);
-  const [activeTab, setActiveTab] = useState<'forecasts' | 'ask'>('forecasts');
   const [predictionValue, _setPredictionValue] = useState([50]);
   const [comment, _setComment] = useState('');
   const [selectedAddressFilter, setSelectedAddressFilter] = useState<
@@ -123,127 +121,70 @@ const ForecastPage = () => {
     comment,
   });
 
-  // Deselect question when switching tabs or category
-  useEffect(() => {
-    setSelectedMarket(undefined);
-  }, [activeTab, selectedCategory]);
-
-  // Clear address filter when switching tabs
-  useEffect(() => {
-    setSelectedAddressFilter(null);
-  }, [activeTab]);
-
   // Style classes for category buttons
   const selectedStatusClass = 'bg-primary/10 text-primary';
   const hoverStatusClass =
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-24 lg:pt-0">
       {/* Main content container with Twitter-like layout */}
       <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen">
-        {/* Tab Navigation */}
-        <div className="sticky top-0 bg-background/80 backdrop-blur-sm border-b border-border z-20">
-          <div className="flex">
-            <button
-              onClick={() => setActiveTab('forecasts')}
-              className={`flex-1 px-4 py-4 text-base font-medium transition-colors relative ${
-                activeTab === 'forecasts'
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Predict
-              {activeTab === 'forecasts' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-              )}
-            </button>
-            <button
-              onClick={() => setActiveTab('ask')}
-              className={`flex-1 px-4 py-4 text-base font-medium transition-colors relative ${
-                activeTab === 'ask'
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Ask
-              {activeTab === 'ask' && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-              )}
-            </button>
+        <>
+          {/* Market Selector (direct market search) */}
+          <div className="bg-background/80 backdrop-blur-sm z-10">
+            <div className="px-4 py-6">
+              <QuestionSelect
+                marketMode={true}
+                markets={activeMarkets}
+                selectedMarketId={selectedMarket?.marketId?.toString()}
+                onMarketGroupSelect={handleMarketSelect}
+              />
+            </div>
           </div>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'forecasts' && (
-          <>
-            {/* Market Selector (direct market search) */}
-            <div className="sticky top-[65px] bg-background/80 backdrop-blur-sm z-10">
-              <div className="px-4 pb-2 pt-6">
-                <QuestionSelect
-                  marketMode={true}
-                  markets={activeMarkets}
-                  selectedMarketId={selectedMarket?.marketId?.toString()}
-                  onMarketGroupSelect={handleMarketSelect}
+          {/* Forecast Form */}
+          <div className="border-b border-border bg-background">
+            {selectedMarket && (
+              <div className="p-4">
+                <PredictForm
+                  marketGroupData={marketGroupData}
+                  marketClassification={marketClassification}
+                  onSuccess={refetchComments}
                 />
               </div>
-              {/* Advanced Filters */}
-              <div className="px-4">
-                <Accordion type="single" collapsible className="w-full">
-                  <AccordionItem
-                    value="advanced-filters"
-                    className="border-none"
-                  >
-                    <AccordionTrigger className="text-base font-medium text-muted-foreground hover:text-foreground py-3">
-                      Advanced Filters
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-3">
-                      <div className="space-y-3">
-                        <div className="text-sm font-medium text-foreground">
-                          Filter by ENS/address
-                        </div>
-                        <AddressFilter
-                          selectedAddress={selectedAddressFilter}
-                          onAddressChange={setSelectedAddressFilter}
-                          placeholder="Filter by address or ENS..."
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              </div>
-            </div>
-            {/* Forecast Form */}
-            <div className="border-b border-border bg-background">
-              <div className="px-4 pb-2 pt-6">
-                {selectedCategory === SelectableTab.Selected ? (
-                  <div className="space-y-4">
-                    {/* Only show prediction form if a market is selected */}
-                    {selectedMarket && (
-                      <PredictForm
-                        marketGroupData={marketGroupData}
-                        marketClassification={marketClassification}
-                        onSuccess={refetchComments}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <></>
-                )}
-              </div>
-            </div>
-            {/* Category Selection Section */}
-            <div className="bg-background border-b border-border">
-              <div
-                className="flex overflow-x-auto pb-2"
-                style={{ WebkitOverflowScrolling: 'touch' }}
-                onWheel={(e) => {
-                  if (e.deltaY === 0) return;
-                  e.currentTarget.scrollLeft += e.deltaY;
-                  e.preventDefault();
-                }}
+            )}
+          </div>
+          {/* Category Selection Section */}
+          <div className="bg-background">
+            <div
+              className="flex overflow-x-auto"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+              onWheel={(e) => {
+                if (e.deltaY === 0) return;
+                e.currentTarget.scrollLeft += e.deltaY;
+                e.preventDefault();
+              }}
+            >
+              {/* All option - moved to first position */}
+              <button
+                type="button"
+                onClick={() => setSelectedCategory(null)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border border-b-2 ${
+                  selectedCategory === null ? 'border-b-primary' : ''
+                } ${
+                  selectedCategory === null
+                    ? selectedStatusClass
+                    : hoverStatusClass
+                }`}
               >
-                {/* Selected Question option */}
+                <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
+                  <LayoutGridIcon className="w-2.5 h-2.5 text-zinc-500" />
+                </div>
+                <span className="font-medium">All</span>
+              </button>
+
+              {/* Selected Question option - only show when a market is selected */}
+              {selectedMarket && (
                 <button
                   type="button"
                   onClick={() => setSelectedCategory(SelectableTab.Selected)}
@@ -262,122 +203,100 @@ const ForecastPage = () => {
                   </div>
                   <span className="font-medium">Selected Question</span>
                 </button>
+              )}
 
-                {/* All option */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory(null)}
-                  className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border border-b-2 ${
-                    selectedCategory === null ? 'border-b-primary' : ''
-                  } ${
-                    selectedCategory === null
-                      ? selectedStatusClass
-                      : hoverStatusClass
-                  }`}
-                >
-                  <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
-                    <LayoutGridIcon className="w-2.5 h-2.5 text-zinc-500" />
-                  </div>
-                  <span className="font-medium">All</span>
-                </button>
-
-                {/* My Predictions option */}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedCategory(SelectableTab.MyPredictions)
-                  }
-                  className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border border-b-2 ${
-                    selectedCategory === SelectableTab.MyPredictions
-                      ? 'border-b-primary'
-                      : ''
-                  } ${
-                    selectedCategory === SelectableTab.MyPredictions
-                      ? selectedStatusClass
-                      : hoverStatusClass
-                  }`}
-                >
-                  <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
-                    <UserIcon className="w-2.5 h-2.5 text-zinc-500" />
-                  </div>
-                  <span className="font-medium">My Predictions</span>
-                </button>
-
-                {/* Focus Area Categories */}
-                {FOCUS_AREAS.map((focusArea, index) => (
+              {/* My Predictions option with popover */}
+              <Popover>
+                <PopoverTrigger asChild>
                   <button
                     type="button"
-                    key={focusArea.id}
                     onClick={() =>
-                      setSelectedCategory(focusArea.id as SelectableTab)
+                      setSelectedCategory(SelectableTab.MyPredictions)
                     }
-                    className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-b-2 ${
-                      index < FOCUS_AREAS.length - 1
-                        ? 'border-r border-border'
-                        : ''
-                    } ${
-                      selectedCategory === (focusArea.id as SelectableTab)
+                    className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border border-b-2 ${
+                      selectedCategory === SelectableTab.MyPredictions
                         ? 'border-b-primary'
                         : ''
                     } ${
-                      selectedCategory === (focusArea.id as SelectableTab)
+                      selectedCategory === SelectableTab.MyPredictions
                         ? selectedStatusClass
                         : hoverStatusClass
                     }`}
                   >
-                    <div
-                      className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center"
-                      style={{ backgroundColor: `${focusArea.color}1A` }}
-                    >
-                      <div style={{ transform: 'scale(0.5)' }}>
-                        <div
-                          style={{ color: focusArea.color }}
-                          dangerouslySetInnerHTML={{
-                            __html: focusArea.iconSvg,
-                          }}
-                        />
-                      </div>
+                    <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
+                      <UserIcon className="w-2.5 h-2.5 text-zinc-500" />
                     </div>
-                    <span className="font-medium">{focusArea.name}</span>
+                    <span className="font-medium">My Predictions</span>
                   </button>
-                ))}
-              </div>
-            </div>
-            {/* Comments Section */}
-            <div className="bg-background">
-              <div className="divide-y divide-border">
-                <Comments
-                  selectedCategory={selectedCategory}
-                  question={selectedMarket?.question}
-                  address={address}
-                  refetchTrigger={refetchCommentsTrigger}
-                  selectedAddressFilter={selectedAddressFilter}
-                  onAddressFilterChange={setSelectedAddressFilter}
-                />
-              </div>
-            </div>
-          </>
-        )}
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-foreground">
+                      Filter by ENS/address
+                    </div>
+                    <AddressFilter
+                      selectedAddress={selectedAddressFilter}
+                      onAddressChange={setSelectedAddressFilter}
+                      placeholder="Filter by address or ENS..."
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
 
-        {/* Ask Tab Content */}
-        {activeTab === 'ask' && (
-          // <AskForm />
-          <div className="flex flex-col items-center justify-center min-h-[400px] px-4">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
-                <FileTextIcon className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <h2 className="text-2xl font-semibold text-foreground">
-                Coming Soon
-              </h2>
-              <p className="text-muted-foreground max-w-md">
-                The Ask feature is currently under development. You'll be able
-                to submit questions and propose new prediction markets here
-                soon.
-              </p>
+              {/* Focus Area Categories */}
+              {FOCUS_AREAS.map((focusArea, index) => (
+                <button
+                  type="button"
+                  key={focusArea.id}
+                  onClick={() =>
+                    setSelectedCategory(focusArea.id as SelectableTab)
+                  }
+                  className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-b-2 ${
+                    index < FOCUS_AREAS.length - 1
+                      ? 'border-r border-border'
+                      : ''
+                  } ${
+                    selectedCategory === (focusArea.id as SelectableTab)
+                      ? 'border-b-primary'
+                      : ''
+                  } ${
+                    selectedCategory === (focusArea.id as SelectableTab)
+                      ? selectedStatusClass
+                      : hoverStatusClass
+                  }`}
+                >
+                  <div
+                    className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center"
+                    style={{ backgroundColor: `${focusArea.color}1A` }}
+                  >
+                    <div style={{ transform: 'scale(0.5)' }}>
+                      <div
+                        style={{ color: focusArea.color }}
+                        dangerouslySetInnerHTML={{
+                          __html: focusArea.iconSvg,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <span className="font-medium">{focusArea.name}</span>
+                </button>
+              ))}
             </div>
           </div>
-        )}
+          {/* Comments Section */}
+          <div className="bg-background">
+            <div className="divide-y divide-border">
+              <Comments
+                selectedCategory={selectedCategory}
+                question={selectedMarket?.question}
+                address={address}
+                refetchTrigger={refetchCommentsTrigger}
+                selectedAddressFilter={selectedAddressFilter}
+                onAddressFilterChange={setSelectedAddressFilter}
+              />
+            </div>
+          </div>
+        </>
       </div>
     </div>
   );
