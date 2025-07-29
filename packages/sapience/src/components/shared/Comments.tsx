@@ -269,8 +269,7 @@ const Comments = ({
     }
 
     // Filter by address if 'my-predictions' tab is selected
-    
-    // No need to filter by address here, as usePredictions already does it if needed
+   
     // Filter by question prop if set
     if (question && selectedCategory !== null) {
       filtered = filtered.filter((comment) => {
