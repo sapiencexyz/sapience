@@ -16,8 +16,6 @@ import PredictForm from '~/components/forecasting/forms/PredictForm';
 // import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
-import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
-import { MarketGroupClassification } from '~/lib/types';
 
 // Dynamically import components to avoid SSR issues
 const QuestionSelect = dynamic(
@@ -45,8 +43,6 @@ const ForecastPage = () => {
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<SelectableTab | null>(SelectableTab.MyPredictions);
-  const [predictionValue, _setPredictionValue] = useState([50]);
-  const [comment, _setComment] = useState('');
   const [selectedAddressFilter, setSelectedAddressFilter] = useState<
     string | null
   >(null);
@@ -98,29 +94,15 @@ const ForecastPage = () => {
   };
 
   // Extract market details if selected
-  let marketId, marketAddress, marketClassification, marketGroupData;
+  let marketClassification, marketGroupData;
   if (selectedMarket) {
-    marketId = selectedMarket.marketId;
-    marketAddress = selectedMarket.group.address;
     marketClassification = selectedMarket.group.marketClassification;
     marketGroupData = {
-      ...selectedMarket.group,
+      ...selectedMarket.group,  
       markets: [selectedMarket],
     };
   }
 
-  // Prepare submission value for attestation (confidence as string)
-  const submissionValue = String(predictionValue[0]);
-
-  // Use the attestation hook
-  const _ = useSubmitPrediction({
-    marketAddress: marketAddress || '',
-    marketClassification:
-      marketClassification || MarketGroupClassification.YES_NO,
-    submissionValue,
-    marketId: marketId || 0,
-    comment,
-  });
 
   // Style classes for category buttons
   const selectedStatusClass = 'bg-primary/10 text-primary';
