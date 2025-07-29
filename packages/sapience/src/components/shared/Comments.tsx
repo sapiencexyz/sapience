@@ -3,14 +3,14 @@
 import { blo } from 'blo';
 import Image from 'next/image';
 import { useEffect } from 'react';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Filter } from 'lucide-react';
-import { AddressDisplay, useEnsName } from './AddressDisplay';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import { AddressDisplay } from './AddressDisplay';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
 import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
+import { formatRelativeTime } from '~/lib/utils/timeUtils';
 
 // Helper function to check if a market is active
 function isMarketActive(market: any): boolean {
@@ -73,8 +73,6 @@ interface CommentsProps {
   selectedCategory?: SelectableTab | null;
   address?: string | null;
   refetchTrigger?: number;
-  selectedAddressFilter?: string | null;
-  onAddressFilterChange?: (address: string | null) => void;
 }
 
 // Helper to extract decoded data from attestation, handling .decodedData, .value.value, etc.
@@ -92,56 +90,6 @@ function getDecodedDataFromAttestation(att: any): {
   };
 }
 
-// Component to handle ENS resolution for filter button
-const FilterButton = ({
-  address,
-  onFilter,
-}: {
-  address: string;
-  onFilter: (resolvedAddress: string) => void;
-}) => {
-  const { data: ensName } = useEnsName(address);
-  const displayName = ensName || address;
-
-  const handleFilterClick = async () => {
-    // If the address is an ENS name, resolve it first
-    if (displayName.includes('.eth')) {
-      try {
-        // Import the mainnetClient dynamically to avoid circular dependencies
-        const { mainnetClient } = await import('~/lib/utils/util');
-        const resolvedAddress = await mainnetClient.getEnsAddress({
-          name: displayName,
-        });
-        if (resolvedAddress) {
-          onFilter(resolvedAddress);
-        } else {
-          // If resolution fails, use the original address
-          onFilter(address);
-        }
-      } catch (error) {
-        console.error('Failed to resolve ENS:', error);
-        // If resolution fails, use the original address
-        onFilter(address);
-      }
-    } else {
-      // If it's already an address, use it directly
-      onFilter(address);
-    }
-  };
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-5 w-5 p-0 ml-1"
-      onClick={handleFilterClick}
-      title={`Filter by ${displayName}`}
-    >
-      <Filter className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-    </Button>
-  );
-};
-
 // Helper to parse EAS attestation data to Comment type for SCHEMA_UID
 function attestationToComment(
   att: any,
@@ -155,7 +103,6 @@ function attestationToComment(
   let category: string | undefined = undefined;
   let question: string = marketId?.toString() || '';
   let marketClassification: string | undefined = undefined;
-  let optionName: string | undefined = undefined;
   let baseTokenName: string | undefined = undefined;
   let quoteTokenName: string | undefined = undefined;
   let optionIndex: number | undefined = undefined;
@@ -194,9 +141,6 @@ function attestationToComment(
       if (group.marketClassification) {
         marketClassification = group.marketClassification;
       }
-      if (market && market.optionName) {
-        optionName = market.optionName;
-      }
       if (group.baseTokenName) baseTokenName = group.baseTokenName;
       if (group.quoteTokenName) quoteTokenName = group.quoteTokenName;
       // Multiple choice: find index and total
@@ -225,17 +169,21 @@ function attestationToComment(
 
   // Format prediction text based on market type
   let predictionText = '';
-  const YES_SQRT_PRICE_X96 = BigInt('79228162514264337593543950336');
   if (marketClassification === '2') {
-    // YES_NO
-    predictionText = `${prediction === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'}`;
+    // YES_NO - show percentage chance
+    const priceD18 = sqrtPriceX96ToPriceD18(prediction);
+    const percentage = (Number(priceD18) / 10 ** 18) * 100;
+    predictionText = `${Math.round(percentage)}% Chance`;
   } else if (marketClassification === '1') {
-    // MULTIPLE_CHOICE
-    predictionText = optionName ? `${optionName}` : `Option ID: ${marketId}`;
+    // MULTIPLE_CHOICE - show percentage chance for yes/no within multiple choice
+    const priceD18 = sqrtPriceX96ToPriceD18(prediction);
+    const percentage = (Number(priceD18) / 10 ** 18) * 100;
+    predictionText = `${Math.round(percentage)}% Chance`;
   } else if (marketClassification === '3') {
-    // NUMERIC
+    // NUMERIC - show numeric value
     predictionText = `${numericValue?.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;
   } else {
+    // Fallback
     predictionText = `${numericValue}% Chance`;
   }
 
@@ -264,8 +212,6 @@ const Comments = ({
   selectedCategory = null,
   address = null,
   refetchTrigger,
-  selectedAddressFilter = null,
-  onAddressFilterChange,
 }: CommentsProps) => {
   // Fetch EAS attestations
   const shouldFilterByAttester =
@@ -317,19 +263,9 @@ const Comments = ({
     }
 
     // Filter by address if 'my-predictions' tab is selected
+    
     // No need to filter by address here, as usePredictions already does it if needed
-
-    // Filter by selected address filter
-    if (selectedAddressFilter) {
-      filtered = filtered.filter((comment) => {
-        // Since we now resolve ENS to addresses, we can do exact matching
-        const matches =
-          comment.address.toLowerCase() === selectedAddressFilter.toLowerCase();
-        return matches;
-      });
-    }
-
-    // Filter by question prop if set (but not when "All" category is selected)
+    // Filter by question prop if set
     if (question && selectedCategory !== null) {
       filtered = filtered.filter((comment) => {
         return comment.question === question;
@@ -389,54 +325,40 @@ const Comments = ({
       )}
       {!(selectedCategory === SelectableTab.Selected && !question) && (
         <>
-          {/* Show active filter indicator */}
-          {selectedAddressFilter && (
-            <div className="px-6 py-3 bg-muted/50 border-b border-border">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Filtering by address:</span>
-                <span className="font-mono bg-background px-2 py-1 rounded">
-                  {selectedAddressFilter}
-                </span>
-                <button
-                  onClick={() => onAddressFilterChange?.(null)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-          )}
-
           {displayComments.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               No forecasts found.
             </div>
           )}
-          {displayComments.map((comment, index) => (
-            <div key={comment.id} className="relative">
-              {/* Divider */}
-              {index > 0 && <div className="border-t border-border" />}
+          {displayComments.map((comment) => (
+            <div key={comment.id} className="relative border-b border-border">
               <div className="relative bg-background">
-                <div className="px-6 py-5 space-y-4">
+                <div className="px-6 py-5 space-y-5">
                   {/* Question and Prediction */}
                   <div className="space-y-2">
                     <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
                       {comment.question}
                     </h2>
-                    {/* Prediction and Signature on same line */}
-                    <div className="flex items-center gap-4">
-                      {/* Prediction badge/text based on market type */}
-                      {comment.prediction &&
-                        (() => {
-                          return (
-                            <span
-                              className={`inline-flex items-center h-6 px-2.5 text-xs font-semibold rounded-full border`}
-                            >
-                              {comment.prediction}
-                            </span>
-                          );
-                        })()}
-                      {/* Signature */}
+                    {/* Prediction, time, and signature layout */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        {/* Prediction badge/text based on market type */}
+                        {comment.prediction &&
+                          (() => {
+                            return (
+                              <Badge variant="default">
+                                {comment.prediction}
+                              </Badge>
+                            );
+                          })()}
+                        {/* Time */}
+                        <span className="text-sm text-muted-foreground/70 font-medium">
+                          {formatRelativeTime(
+                            new Date(comment.timestamp).getTime()
+                          )}
+                        </span>
+                      </div>
+                      {/* Address display - right justified */}
                       <div className="flex items-center gap-2">
                         <div className="relative">
                           <Image
@@ -447,38 +369,18 @@ const Comments = ({
                             height={20}
                           />
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground/80 font-medium">
+                        <div className="text-xs text-muted-foreground/80 font-medium">
                           <AddressDisplay
                             address={comment.address}
                             disableProfileLink={false}
                             className="text-xs"
-                          />
-                          <span className="text-muted-foreground/50">·</span>
-                          <span className="text-muted-foreground/70">
-                            {new Date(comment.timestamp).toLocaleString(
-                              undefined,
-                              {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              }
-                            )}
-                          </span>
-                          {/* Filter button for this address */}
-                          <FilterButton
-                            address={comment.address}
-                            onFilter={(displayName) =>
-                              onAddressFilterChange?.(displayName)
-                            }
                           />
                         </div>
                       </div>
                     </div>
                   </div>
                   {/* Comment content */}
-                  <div className="text-base leading-[1.5] text-foreground/90 tracking-[-0.005em]">
+                  <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
                     {comment.content}
                   </div>
                 </div>

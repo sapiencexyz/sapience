@@ -42,7 +42,8 @@ const AddressFilter = dynamic(
 const ForecastPage = () => {
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
-    useState<SelectableTab | null>(SelectableTab.MyPredictions);
+    useState<SelectableTab | null>(null);
+
   const [selectedAddressFilter, setSelectedAddressFilter] = useState<
     string | null
   >(null);
@@ -280,8 +281,8 @@ const ForecastPage = () => {
                 question={selectedMarket?.question}
                 address={address}
                 refetchTrigger={refetchCommentsTrigger}
-                selectedAddressFilter={selectedAddressFilter}
-                onAddressFilterChange={setSelectedAddressFilter}
+                // selectedAddressFilter={selectedAddressFilter}
+                // onAddressFilterChange={setSelectedAddressFilter}
               />
             </div>
           </div>
