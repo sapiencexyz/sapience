@@ -151,7 +151,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   const successHandled = useRef(false);
 
   const positionData = getPositionById(positionId);
-  console.log('Position Data:', positionData);
 
   const {
     marketAddress,

@@ -39,7 +39,9 @@ const AddressFilter = ({
           setIsResolving(true);
           setError(null);
           try {
-            const ensAddress = await mainnetClient.getEnsAddress({ name: selectedAddress });
+            const ensAddress = await mainnetClient.getEnsAddress({
+              name: selectedAddress,
+            });
             if (ensAddress && ensAddress !== resolvedAddress) {
               setResolvedAddress(ensAddress);
               setIsInternalUpdate(true);
@@ -140,7 +142,7 @@ const AddressFilter = ({
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative px-2 ${className}`}>
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
           <Search className="h-5 w-5 text-muted-foreground" />

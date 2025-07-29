@@ -17,7 +17,7 @@ function isMarketActive(market: any): boolean {
   const now = Math.floor(Date.now() / 1000);
   const start = market.startTimestamp;
   const end = market.endTimestamp;
-  
+
   return (
     market.public &&
     typeof start === 'number' &&
@@ -77,8 +77,6 @@ interface CommentsProps {
   onAddressFilterChange?: (address: string | null) => void;
 }
 
-
-
 // Helper to extract decoded data from attestation, handling .decodedData, .value.value, etc.
 function getDecodedDataFromAttestation(att: any): {
   marketAddress: string;
@@ -90,21 +88,53 @@ function getDecodedDataFromAttestation(att: any): {
     marketAddress: att.marketAddress,
     marketId: att.marketId,
     prediction: BigInt(att.value),
-    commentText: att.comment
+    commentText: att.comment,
   };
 }
 
 // Component to handle ENS resolution for filter button
-const FilterButton = ({ address, onFilter }: { address: string; onFilter: (displayName: string) => void }) => {
+const FilterButton = ({
+  address,
+  onFilter,
+}: {
+  address: string;
+  onFilter: (resolvedAddress: string) => void;
+}) => {
   const { data: ensName } = useEnsName(address);
   const displayName = ensName || address;
-  
+
+  const handleFilterClick = async () => {
+    // If the address is an ENS name, resolve it first
+    if (displayName.includes('.eth')) {
+      try {
+        // Import the mainnetClient dynamically to avoid circular dependencies
+        const { mainnetClient } = await import('~/lib/utils/util');
+        const resolvedAddress = await mainnetClient.getEnsAddress({
+          name: displayName,
+        });
+        if (resolvedAddress) {
+          onFilter(resolvedAddress);
+        } else {
+          // If resolution fails, use the original address
+          onFilter(address);
+        }
+      } catch (error) {
+        console.error('Failed to resolve ENS:', error);
+        // If resolution fails, use the original address
+        onFilter(address);
+      }
+    } else {
+      // If it's already an address, use it directly
+      onFilter(address);
+    }
+  };
+
   return (
     <Button
       variant="ghost"
       size="sm"
       className="h-5 w-5 p-0 ml-1"
-      onClick={() => onFilter(displayName)}
+      onClick={handleFilterClick}
       title={`Filter by ${displayName}`}
     >
       <Filter className="h-3 w-3 text-muted-foreground hover:text-foreground" />
@@ -113,9 +143,13 @@ const FilterButton = ({ address, onFilter }: { address: string; onFilter: (displ
 };
 
 // Helper to parse EAS attestation data to Comment type for SCHEMA_UID
-function attestationToComment(att: any, marketGroups: any[] | undefined): Comment {
+function attestationToComment(
+  att: any,
+  marketGroups: any[] | undefined
+): Comment {
   // Schema: address marketAddress, uint256 marketId, uint160 prediction, string comment
-  const {marketAddress, marketId, prediction, commentText} = getDecodedDataFromAttestation(att);
+  const { marketAddress, marketId, prediction, commentText } =
+    getDecodedDataFromAttestation(att);
 
   // Find the category, question, and marketClassification using marketGroups
   let category: string | undefined = undefined;
@@ -136,7 +170,9 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
     );
     if (group) {
       // Find the market in the group
-      const market = group.markets?.find((m: any) => m.marketId?.toString() === marketId?.toString());
+      const market = group.markets?.find(
+        (m: any) => m.marketId?.toString() === marketId?.toString()
+      );
       // Check if the market is active
       if (market) {
         isActive = isMarketActive(market);
@@ -165,14 +201,24 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
       if (group.quoteTokenName) quoteTokenName = group.quoteTokenName;
       // Multiple choice: find index and total
       if (marketClassification === '1' && group.markets) {
-        optionIndex = group.markets.findIndex((m: any) => m.marketId?.toString() === marketId?.toString());
+        optionIndex = group.markets.findIndex(
+          (m: any) => m.marketId?.toString() === marketId?.toString()
+        );
         totalOptions = group.markets.length;
       }
       // Numeric: get value and bounds
       if (marketClassification === '3' && market) {
-        numericValue = Number(sqrtPriceX96ToPriceD18(prediction) / BigInt(10 ** 36));
-        lowerBound = market.baseAssetMinPriceTick !== undefined ? Number(market.baseAssetMinPriceTick) : undefined;
-        upperBound = market.baseAssetMaxPriceTick !== undefined ? Number(market.baseAssetMaxPriceTick) : undefined;
+        numericValue = Number(
+          sqrtPriceX96ToPriceD18(prediction) / BigInt(10 ** 36)
+        );
+        lowerBound =
+          market.baseAssetMinPriceTick !== undefined
+            ? Number(market.baseAssetMinPriceTick)
+            : undefined;
+        upperBound =
+          market.baseAssetMaxPriceTick !== undefined
+            ? Number(market.baseAssetMaxPriceTick)
+            : undefined;
       }
     }
   }
@@ -180,11 +226,14 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
   // Format prediction text based on market type
   let predictionText = '';
   const YES_SQRT_PRICE_X96 = BigInt('79228162514264337593543950336');
-  if (marketClassification === '2') { // YES_NO
+  if (marketClassification === '2') {
+    // YES_NO
     predictionText = `${prediction === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'}`;
-  } else if (marketClassification === '1') { // MULTIPLE_CHOICE
+  } else if (marketClassification === '1') {
+    // MULTIPLE_CHOICE
     predictionText = optionName ? `${optionName}` : `Option ID: ${marketId}`;
-  } else if (marketClassification === '3') { // NUMERIC
+  } else if (marketClassification === '3') {
+    // NUMERIC
     predictionText = `${numericValue?.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;
   } else {
     predictionText = `${numericValue}% Chance`;
@@ -209,32 +258,48 @@ function attestationToComment(att: any, marketGroups: any[] | undefined): Commen
   };
 }
 
-const Comments = ({ 
-  className, 
+const Comments = ({
+  className,
   question = undefined,
   selectedCategory = null,
   address = null,
   refetchTrigger,
   selectedAddressFilter = null,
-  onAddressFilterChange
+  onAddressFilterChange,
 }: CommentsProps) => {
   // Fetch EAS attestations
-  const shouldFilterByAttester = selectedCategory === SelectableTab.MyPredictions && address && typeof address === 'string' && address.length > 0;
-  const { data: easAttestations, isLoading: _isEasLoading, refetch } = usePredictions({ schemaId: CONVERGE_SCHEMA_UID, attesterAddress: shouldFilterByAttester ? address : undefined });
-  
+  const shouldFilterByAttester =
+    selectedCategory === SelectableTab.MyPredictions &&
+    address &&
+    typeof address === 'string' &&
+    address.length > 0;
+  const {
+    data: easAttestations,
+    isLoading: _isEasLoading,
+    refetch,
+  } = usePredictions({
+    schemaId: CONVERGE_SCHEMA_UID,
+    attesterAddress: shouldFilterByAttester ? address : undefined,
+  });
+
   // Refetch EAS attestations when refetchTrigger changes
   useEffect(() => {
-    if (refetch) refetch();
+    if (refetch) {
+      setTimeout(() => {
+        refetch();
+      }, 2000);
+    }
   }, [refetchTrigger, refetch]);
 
-  console.log("easAttestations", easAttestations);
   // Fetch all market groups for category lookup
-  const { data: marketGroups } = useEnrichedMarketGroups ? useEnrichedMarketGroups() : { data: undefined };
+  const { data: marketGroups } = useEnrichedMarketGroups
+    ? useEnrichedMarketGroups()
+    : { data: undefined };
 
   // Convert EAS attestations to Comment objects with category
-  const easComments: Comment[] = (easAttestations || []).map(att => attestationToComment(att, marketGroups));
-
-  console.log("easComments", easComments);
+  const easComments: Comment[] = (easAttestations || []).map((att) =>
+    attestationToComment(att, marketGroups)
+  );
 
   // Filter comments based on selected category and question
   const displayComments = (() => {
@@ -246,35 +311,56 @@ const Comments = ({
       selectedCategory !== SelectableTab.Selected &&
       selectedCategory !== SelectableTab.MyPredictions
     ) {
-      filtered = filtered.filter(comment => comment.category === selectedCategory);
+      filtered = filtered.filter(
+        (comment) => comment.category === selectedCategory
+      );
     }
 
     // Filter by address if 'my-predictions' tab is selected
     // No need to filter by address here, as usePredictions already does it if needed
-    
+
     // Filter by selected address filter
     if (selectedAddressFilter) {
-      filtered = filtered.filter(comment => comment.address.toLowerCase() === selectedAddressFilter.toLowerCase());
+      filtered = filtered.filter((comment) => {
+        // Since we now resolve ENS to addresses, we can do exact matching
+        const matches =
+          comment.address.toLowerCase() === selectedAddressFilter.toLowerCase();
+        return matches;
+      });
     }
-    
+
     // Filter by question prop if set
     if (question) {
       filtered = filtered.filter((comment) => {
-        console.log("filter comment", comment.question, question);
         return comment.question === question;
       });
     }
 
     // Sort by timestamp descending (most recent first)
-    filtered = filtered.slice().sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    filtered = filtered
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
 
     // Filter out numeric comments outside the range
-    filtered = filtered.filter(comment => {
+    filtered = filtered.filter((comment) => {
       if (comment?.marketClassification === '3') {
-        console.log("comment", tickToPrice(comment?.lowerBound as number), tickToPrice(comment?.upperBound as number), comment?.numericValue);
+        console.log(
+          'comment',
+          tickToPrice(comment?.lowerBound as number),
+          tickToPrice(comment?.upperBound as number),
+          comment?.numericValue
+        );
       }
 
-      if (comment.marketClassification === '3' && comment.numericValue !== undefined && comment.lowerBound !== undefined && comment.upperBound !== undefined) {
+      if (
+        comment.marketClassification === '3' &&
+        comment.numericValue !== undefined &&
+        comment.lowerBound !== undefined &&
+        comment.upperBound !== undefined
+      ) {
         const min = tickToPrice(comment.lowerBound);
         const max = tickToPrice(comment.upperBound);
         const val = comment.numericValue;
@@ -284,7 +370,7 @@ const Comments = ({
     });
 
     // Filter out inactive comments
-    filtered = filtered.filter(comment => {
+    filtered = filtered.filter((comment) => {
       // For attestation comments (from EAS), check if the market is active
       // For mock comments, allow them through (they don't have isActive field)
       return comment.isActive !== false;
@@ -293,18 +379,34 @@ const Comments = ({
     return filtered;
   })();
 
-
-
-
   return (
     <div className={`${className || ''}`}>
       {selectedCategory === SelectableTab.Selected && !question && (
         <div className="text-center text-muted-foreground py-8">
-          Please select a question to submit a prediction and view the predictions of other users
+          Please select a question to submit a prediction and view the
+          predictions of other users
         </div>
       )}
       {!(selectedCategory === SelectableTab.Selected && !question) && (
         <>
+          {/* Show active filter indicator */}
+          {selectedAddressFilter && (
+            <div className="px-6 py-3 bg-muted/50 border-b border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Filtering by address:</span>
+                <span className="font-mono bg-background px-2 py-1 rounded">
+                  {selectedAddressFilter}
+                </span>
+                <button
+                  onClick={() => onAddressFilterChange?.(null)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
           {displayComments.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               No comments for selected filters...
@@ -324,15 +426,16 @@ const Comments = ({
                     {/* Prediction and Signature on same line */}
                     <div className="flex items-center gap-4">
                       {/* Prediction badge/text based on market type */}
-                      {comment.prediction && (() => {
-                        return (
-                          <span
-                            className={`inline-flex items-center h-6 px-2.5 text-xs font-semibold rounded-full border`}
-                          >
-                            {comment.prediction}
-                          </span>
-                        );
-                      })()}
+                      {comment.prediction &&
+                        (() => {
+                          return (
+                            <span
+                              className={`inline-flex items-center h-6 px-2.5 text-xs font-semibold rounded-full border`}
+                            >
+                              {comment.prediction}
+                            </span>
+                          );
+                        })()}
                       {/* Signature */}
                       <div className="flex items-center gap-2">
                         <div className="relative">
@@ -352,18 +455,23 @@ const Comments = ({
                           />
                           <span className="text-muted-foreground/50">·</span>
                           <span className="text-muted-foreground/70">
-                            {new Date(comment.timestamp).toLocaleString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                            {new Date(comment.timestamp).toLocaleString(
+                              undefined,
+                              {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              }
+                            )}
                           </span>
                           {/* Filter button for this address */}
-                          <FilterButton 
+                          <FilterButton
                             address={comment.address}
-                            onFilter={(displayName) => onAddressFilterChange?.(displayName)}
+                            onFilter={(displayName) =>
+                              onAddressFilterChange?.(displayName)
+                            }
                           />
                         </div>
                       </div>
@@ -383,4 +491,4 @@ const Comments = ({
   );
 };
 
-export default Comments; 
+export default Comments;

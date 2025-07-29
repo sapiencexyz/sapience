@@ -77,11 +77,10 @@ const AskForm = ({ className }: AskFormProps) => {
 
   const marketClassification = form.watch('marketClassification');
 
-  const onSubmit = (values: AskFormValues) => {
+  const onSubmit = (_values: AskFormValues) => {
     setIsSubmitting(true);
     try {
       // Here you would submit the form to your API
-      console.log('Form submitted:', values);
 
       // Show success toast
       toast({

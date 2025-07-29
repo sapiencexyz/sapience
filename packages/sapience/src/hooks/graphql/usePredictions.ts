@@ -18,15 +18,8 @@ interface RawAttestation {
 
 // Parameterized version of the query
 const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
-  query FindAttestations(
-    $where: AttestationWhereInput!
-    $take: Int!
-  ) {
-    attestations(
-      where: $where
-      orderBy: { time: desc }
-      take: $take
-    ) {
+  query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
+    attestations(where: $where, orderBy: { time: desc }, take: $take) {
       id
       attester
       time

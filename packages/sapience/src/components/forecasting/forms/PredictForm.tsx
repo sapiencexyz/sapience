@@ -22,11 +22,13 @@ const NO_SQRT_PRICE_X96 = '0';
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
+  onSuccess?: () => void;
 }
 
 export default function PredictForm({
   marketGroupData,
   marketClassification,
+  onSuccess,
 }: PredictFormProps) {
   const { isConnected } = useAccount();
   const { toast } = useToast();
@@ -133,6 +135,7 @@ export default function PredictForm({
     marketId,
     submissionValue,
     comment,
+    onSuccess,
   });
 
   const handleSubmit = async () => {
@@ -149,7 +152,6 @@ export default function PredictForm({
 
   // Render the appropriate prediction input based on market category
   const renderCategoryInput = () => {
-    console.log('marketGroupData.markets', marketGroupData.markets);
     switch (marketClassification) {
       case MarketGroupClassification.YES_NO:
         return <YesNoPredict />;

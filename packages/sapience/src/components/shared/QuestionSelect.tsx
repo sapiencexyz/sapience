@@ -16,10 +16,20 @@ interface QuestionSelectProps {
   selectedMarketId?: string;
 }
 
-const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, selectedCategory, marketMode = false, markets = [], selectedMarketId }: QuestionSelectProps) => {
+const QuestionSelect = ({
+  className,
+  selectedMarketGroup,
+  onMarketGroupSelect,
+  selectedCategory,
+  marketMode = false,
+  markets = [],
+  selectedMarketId,
+}: QuestionSelectProps) => {
   // Track last selected id/group to avoid overwriting inputValue on every render
   const [inputValue, setInputValue] = useState('');
-  const [lastSelected, setLastSelected] = useState<{ id?: string; group?: any } | undefined>(undefined);
+  const [lastSelected, setLastSelected] = useState<
+    { id?: string; group?: any } | undefined
+  >(undefined);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [filteredMarketGroups, setFilteredMarketGroups] = useState<any[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -28,12 +38,14 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
   // Fetch market groups (only if not in marketMode)
   const { data: marketGroups, isLoading } = useEnrichedMarketGroups();
 
-  // Only update inputValue when selection changes, not on every render
+  // Only update inputValue when selection changes
   useEffect(() => {
     if (marketMode) {
       if (selectedMarketId && lastSelected?.id !== selectedMarketId) {
-        const selected = markets.find((m) => m.marketId?.toString() === selectedMarketId);
-        
+        const selected = markets.find(
+          (m) => m.marketId?.toString() === selectedMarketId
+        );
+
         // For multiple choice markets, show the market group question instead of option name
         let displayValue = '';
         if (selected) {
@@ -44,7 +56,7 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
             displayValue = selected.optionName || selected.question || '';
           }
         }
-        
+
         setInputValue(displayValue);
         setLastSelected({ id: selectedMarketId });
       } else if (!selectedMarketId && lastSelected?.id) {
@@ -69,9 +81,13 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
       let filtered = markets;
       if (inputValue.trim()) {
         const searchTerm = inputValue.toLowerCase();
-        filtered = filtered.filter((market) =>
-          (market.question?.toLowerCase() || '').includes(searchTerm) ||
-          (market.optionName?.toLowerCase() || '').includes(searchTerm)
+        filtered = filtered.filter(
+          (market) =>
+            (market.group?.question?.toLowerCase() || '').includes(
+              searchTerm
+            ) ||
+            (market.question?.toLowerCase() || '').includes(searchTerm) ||
+            (market.optionName?.toLowerCase() || '').includes(searchTerm)
         );
       }
       setFilteredMarketGroups(filtered);
@@ -122,19 +138,13 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
 
   // Handle selection
   const handleSelect = (item: any) => {
-    // For multiple choice markets, show the market group question instead of option name
     let displayValue = '';
     if (marketMode) {
-      const isMultipleChoice = item.group?.marketClassification === '1';
-      if (isMultipleChoice) {
-        displayValue = item.group?.question || item.question || '';
-      } else {
-        displayValue = item.optionName || item.question || '';
-      }
+      displayValue = item.question || item.group?.question || '';
     } else {
       displayValue = item.question || '';
     }
-    
+
     setInputValue(displayValue);
     setIsDropdownOpen(false);
     // Update lastSelected to prevent useEffect from overriding the input value
@@ -186,7 +196,11 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
           onChange={handleInputChange}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
-          placeholder={marketMode ? 'Search markets...' : 'Search questions or market groups...'}
+          placeholder={
+            marketMode
+              ? 'Search markets...'
+              : 'Search questions or market groups...'
+          }
           className="pl-10 h-12 text-base pr-10"
         />
         {inputValue && (
@@ -226,14 +240,12 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
                       {/* Market info */}
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-foreground truncate">
-                          {market.group?.question || market.question || `Market ${market.marketId}`}
+                          {market.question && <span>{market.question}</span>}
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                          {market.optionName && market.group?.markets?.length > 1 ? (
-                            <span>Option: {market.optionName}</span>
-                          ) : (
-                            market.question && <span>{market.question}</span>
-                          )}
+                          {market.group?.question ||
+                            market.question ||
+                            `Market ${market.marketId}`}
                         </div>
                       </div>
                     </div>
@@ -245,73 +257,79 @@ const QuestionSelect = ({ className, selectedMarketGroup, onMarketGroupSelect, s
                 No markets found matching "{inputValue}"
               </div>
             ) : null
-          ) : (
-            // Group mode dropdown (original)
-            isLoading ? (
-              <div className="p-4 text-center text-muted-foreground">
-                Loading market groups...
-              </div>
-            ) : filteredMarketGroups.length > 0 ? (
-              <div className="py-2">
-                {filteredMarketGroups.map((marketGroup) => (
-                  <button
-                    key={marketGroup.id}
-                    type="button"
-                    className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b border-border last:border-b-0"
-                    onClick={() => handleSelect(marketGroup)}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Category icon */}
-                      <div className="flex-shrink-0 mt-1">
-                        <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center"
-                          style={{ backgroundColor: `${marketGroup.category?.color || '#9CA3AF'}1A` }}
-                        >
-                          <div style={{ transform: 'scale(0.6)' }}>
-                            <div
-                              style={{ color: marketGroup.category?.color || '#9CA3AF' }}
-                              dangerouslySetInnerHTML={{
-                                __html: marketGroup.category?.iconSvg || '',
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      {/* Market group info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-foreground truncate">
-                          {marketGroup.question}
-                        </div>
-                        <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                          <span>{marketGroup.category?.name}</span>
-                          {marketGroup.baseTokenName && marketGroup.quoteTokenName && (
-                            <>
-                              <span>•</span>
-                              <span>{marketGroup.baseTokenName}/{marketGroup.quoteTokenName}</span>
-                            </>
-                          )}
-                          {marketGroup.markets?.length > 0 && (
-                            <>
-                              <span>•</span>
-                              <span>{marketGroup.markets.length} markets</span>
-                            </>
-                          )}
+          ) : // Group mode dropdown (original)
+          isLoading ? (
+            <div className="p-4 text-center text-muted-foreground">
+              Loading market groups...
+            </div>
+          ) : filteredMarketGroups.length > 0 ? (
+            <div className="py-2">
+              {filteredMarketGroups.map((marketGroup) => (
+                <button
+                  key={marketGroup.id}
+                  type="button"
+                  className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors border-b border-border last:border-b-0"
+                  onClick={() => handleSelect(marketGroup)}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Category icon */}
+                    <div className="flex-shrink-0 mt-1">
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center"
+                        style={{
+                          backgroundColor: `${marketGroup.category?.color || '#9CA3AF'}1A`,
+                        }}
+                      >
+                        <div style={{ transform: 'scale(0.6)' }}>
+                          <div
+                            style={{
+                              color: marketGroup.category?.color || '#9CA3AF',
+                            }}
+                            dangerouslySetInnerHTML={{
+                              __html: marketGroup.category?.iconSvg || '',
+                            }}
+                          />
                         </div>
                       </div>
                     </div>
-                  </button>
-                ))}
-              </div>
-            ) : inputValue.trim() ? (
-              <div className="p-4 text-center text-muted-foreground">
-                No market groups found matching "{inputValue}"
-              </div>
-            ) : null
-          )}
+                    {/* Market group info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-foreground truncate">
+                        {marketGroup.question}
+                      </div>
+                      <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                        <span>{marketGroup.category?.name}</span>
+                        {marketGroup.baseTokenName &&
+                          marketGroup.quoteTokenName && (
+                            <>
+                              <span>•</span>
+                              <span>
+                                {marketGroup.baseTokenName}/
+                                {marketGroup.quoteTokenName}
+                              </span>
+                            </>
+                          )}
+                        {marketGroup.markets?.length > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{marketGroup.markets.length} markets</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : inputValue.trim() ? (
+            <div className="p-4 text-center text-muted-foreground">
+              No market groups found matching "{inputValue}"
+            </div>
+          ) : null}
         </div>
       )}
     </div>
   );
 };
 
-export default QuestionSelect; 
+export default QuestionSelect;

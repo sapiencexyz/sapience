@@ -21,6 +21,7 @@ interface UseSubmitPredictionProps {
   submissionValue: string; // Value from the form (e.g. "1.23" for numeric, "marketId" for MCQ, pre-calc sqrtPriceX96 for Yes/No)
   marketId: number; // Specific market ID for the attestation (for MCQ, this is the ID of the chosen option)
   comment?: string; // Optional comment field
+  onSuccess?: () => void; // Callback for successful submission
 }
 
 export function useSubmitPrediction({
@@ -29,6 +30,7 @@ export function useSubmitPrediction({
   submissionValue,
   marketId,
   comment = '',
+  onSuccess,
 }: UseSubmitPredictionProps) {
   const { address, chainId: currentChainId } = useAccount();
   const { toast } = useToast();
@@ -41,14 +43,20 @@ export function useSubmitPrediction({
 
   const {
     writeContract,
-    data: attestData,
+    data: transactionHash,
     isPending: isAttesting,
     error: writeError,
     reset,
   } = useWriteContract();
 
-  const { data: txReceipt, isSuccess: txSuccess } = useTransaction({
-    hash: attestData,
+  const {
+    data: txReceipt,
+    isSuccess: txSuccess,
+    status: _status,
+    error: _error,
+  } = useTransaction({
+    hash: transactionHash,
+    chainId: CONVERGE_CHAIN_ID,
   });
 
   const { switchChainAsync } = useSwitchChain();
@@ -272,18 +280,17 @@ export function useSubmitPrediction({
           'Your position will appear on this page and your profile shortly.',
         duration: 5000,
       });
+
+      // Call the onSuccess callback to trigger refetch
+      onSuccess?.();
     }
-  }, [txSuccess, txReceipt, address, toast, setIsLoading]);
+  }, [txSuccess, txReceipt, address, toast, setIsLoading, onSuccess]);
 
   const resetStatus = useCallback(() => {
     setAttestationError(null);
     setAttestationSuccess(null);
   }, []);
 
-  console.log('isAttesting', isAttesting);
-  console.log('isLoading', isLoading);
-  console.log('txSuccess', txSuccess);
-  console.log('txReceipt', txReceipt)
   return {
     submitPrediction,
     isAttesting: isAttesting || isLoading,

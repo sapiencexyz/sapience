@@ -12,7 +12,7 @@ import PredictionPositionsTable from '../profile/PredictionPositionsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
-import { SCHEMA_UID } from '~/lib/constants/eas';
+import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
 
 interface UserPositionsTableProps {
   account: Address;
@@ -70,7 +70,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     refetch: refetchAttestations,
   } = usePredictions({
     attesterAddress: account,
-    schemaId: SCHEMA_UID,
+    schemaId: CONVERGE_SCHEMA_UID,
     marketAddress,
     chainId,
     marketId,
