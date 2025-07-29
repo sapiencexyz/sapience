@@ -226,7 +226,7 @@ const ForecastPage = () => {
                     <div className="rounded-full p-0.5 w-4 h-4 flex items-center justify-center bg-zinc-500/20">
                       <UserIcon className="w-2.5 h-2.5 text-zinc-500" />
                     </div>
-                    <span className="font-medium">My Predictions</span>
+                    <span className="font-medium">Account</span>
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80">
