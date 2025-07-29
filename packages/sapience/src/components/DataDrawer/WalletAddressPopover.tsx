@@ -8,7 +8,6 @@ import {
 import { Loader2, WalletIcon, ArrowRightIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
-import { useAccount } from 'wagmi';
 
 import { mainnetClient, shortenAddress } from '~/lib/utils/util';
 
@@ -21,17 +20,16 @@ const WalletAddressPopover = ({
   onWalletSelect,
   selectedAddress,
 }: WalletAddressPopoverProps) => {
-  const { address } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
-  const [inputAddress, setInputAddress] = useState<string>(address || '');
+  const [inputAddress, setInputAddress] = useState<string>(selectedAddress || '');
   const [addressError, setAddressError] = useState<string>('');
   const [isResolvingEns, setIsResolvingEns] = useState(false);
 
   useEffect(() => {
-    if (address) {
-      setInputAddress(address);
+    if (selectedAddress) {
+      setInputAddress(selectedAddress);
     }
-  }, [address]);
+  }, [selectedAddress]);
 
   const handleWalletSubmit = async () => {
     if (!inputAddress) {
