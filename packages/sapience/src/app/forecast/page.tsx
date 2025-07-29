@@ -51,6 +51,7 @@ const ForecastPage = () => {
     string | null
   >(null);
   const [refetchCommentsTrigger, setRefetchCommentsTrigger] = useState(0);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const refetchComments = useCallback(() => {
     // Add a small delay to ensure the transaction is processed
     setTimeout(() => {
@@ -132,7 +133,7 @@ const ForecastPage = () => {
       <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen">
         <>
           {/* Market Selector (direct market search) */}
-          <div className="bg-background/80 backdrop-blur-sm z-10">
+          <div className="bg-background/80 backdrop-blur-sm z-20 sticky top-0">
             <div className="px-4 py-6">
               <QuestionSelect
                 marketMode={true}
@@ -143,7 +144,7 @@ const ForecastPage = () => {
             </div>
           </div>
           {/* Forecast Form */}
-          <div className="border-b border-border bg-background">
+          <div className="border-b border-border bg-background z-10 relative">
             {selectedMarket && (
               <div className="p-4">
                 <PredictForm
@@ -155,12 +156,18 @@ const ForecastPage = () => {
             )}
           </div>
           {/* Category Selection Section */}
-          <div className="bg-background">
+          <div className="bg-background z-5 relative">
             <div
-              className="flex overflow-x-auto"
+              className={`flex overflow-x-auto ${
+                isPopoverOpen ? 'overflow-x-hidden' : ''
+              }`}
               style={{ WebkitOverflowScrolling: 'touch' }}
               onWheel={(e) => {
-                if (e.deltaY === 0) return;
+                if (isPopoverOpen || e.deltaY === 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
                 e.currentTarget.scrollLeft += e.deltaY;
                 e.preventDefault();
               }}
@@ -206,7 +213,7 @@ const ForecastPage = () => {
               )}
 
               {/* My Predictions option with popover */}
-              <Popover>
+              <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
