@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { AddressDisplay } from './AddressDisplay';
+import LottieLoader from './LottieLoader';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
 import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
@@ -227,7 +228,7 @@ const Comments = ({
     address.length > 0;
   const {
     data: easAttestations,
-    isLoading: _isEasLoading,
+    isLoading: isEasLoading,
     refetch,
   } = usePredictions({
     schemaId: CONVERGE_SCHEMA_UID,
@@ -331,78 +332,88 @@ const Comments = ({
       )}
       {!(selectedCategory === SelectableTab.Selected && !question) && (
         <>
-          {displayComments.length === 0 && (
+          {isEasLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <LottieLoader width={32} height={32} />
+            </div>
+          ) : displayComments.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               No forecasts found.
             </div>
-          )}
-          {displayComments.map((comment) => (
-            <div key={comment.id} className="relative border-b border-border">
-              <div className="relative bg-background">
-                <div className="px-6 py-5 space-y-5">
-                  {/* Comment content */}
-                  <div className="border border-border/50 rounded-lg p-4 shadow-sm">
-                    <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
-                      {comment.content}
-                    </div>
-                  </div>
-                  {/* Question and Prediction */}
-                  <div className="space-y-2">
-                    <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
-                      {comment.question}
-                      {comment.marketAddress && comment.marketId && (
-                        <Link
-                          href={`/markets/base:${comment.marketAddress.toLowerCase()}/${comment.marketId}`}
-                          className="transition-colors"
-                        >
-                          <ChevronRight className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-                        </Link>
-                      )}
-                    </h2>
-                    {/* Prediction, time, and signature layout */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {/* Prediction badge/text based on market type */}
-                        {comment.prediction &&
-                          (() => {
-                            return (
-                              <Badge variant="default">
-                                {comment.prediction}
-                              </Badge>
-                            );
-                          })()}
-                        {/* Time */}
-                        <span className="text-sm text-muted-foreground/70 font-medium">
-                          {formatRelativeTime(
-                            new Date(comment.timestamp).getTime()
-                          )}
-                        </span>
-                      </div>
-                      {/* Address display - right justified */}
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <Image
-                            alt={comment.address}
-                            src={blo(comment.address as `0x${string}`)}
-                            className="w-5 h-5 rounded-full ring-1 ring-border/50"
-                            width={20}
-                            height={20}
-                          />
+          ) : (
+            <>
+              {displayComments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="relative border-b border-border"
+                >
+                  <div className="relative bg-background">
+                    <div className="px-6 py-5 space-y-5">
+                      {/* Comment content */}
+                      <div className="border border-border/50 rounded-lg p-4 shadow-sm">
+                        <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
+                          {comment.content}
                         </div>
-                        <div className="text-xs text-muted-foreground/80 font-medium">
-                          <AddressDisplay
-                            address={comment.address}
-                            disableProfileLink={false}
-                            className="text-xs"
-                          />
+                      </div>
+                      {/* Question and Prediction */}
+                      <div className="space-y-2">
+                        <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
+                          {comment.question}
+                          {comment.marketAddress && comment.marketId && (
+                            <Link
+                              href={`/markets/base:${comment.marketAddress.toLowerCase()}/${comment.marketId}`}
+                              className="transition-colors"
+                            >
+                              <ChevronRight className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                            </Link>
+                          )}
+                        </h2>
+                        {/* Prediction, time, and signature layout */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {/* Prediction badge/text based on market type */}
+                            {comment.prediction &&
+                              (() => {
+                                return (
+                                  <Badge variant="default">
+                                    {comment.prediction}
+                                  </Badge>
+                                );
+                              })()}
+                            {/* Time */}
+                            <span className="text-sm text-muted-foreground/70 font-medium">
+                              {formatRelativeTime(
+                                new Date(comment.timestamp).getTime()
+                              )}
+                            </span>
+                          </div>
+                          {/* Address display - right justified */}
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <Image
+                                alt={comment.address}
+                                src={blo(comment.address as `0x${string}`)}
+                                className="w-5 h-5 rounded-full ring-1 ring-border/50"
+                                width={20}
+                                height={20}
+                              />
+                            </div>
+                            <div className="text-sm text-muted-foreground/80 font-medium">
+                              <AddressDisplay
+                                address={comment.address}
+                                disableProfileLink={false}
+                                className="text-xs"
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              ))}
+            </>
+          )}
         </>
       )}
     </div>
