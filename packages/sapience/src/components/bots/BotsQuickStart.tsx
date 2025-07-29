@@ -38,7 +38,7 @@ export default function BotsQuickStart() {
                   href="https://github.com/sapiencexyz/plugin-sapience"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="ml-0 sm:ml-5"
+                  className="ml-3 sm:ml-5"
                 >
                   <Button variant="outline" className="w-auto">
                     <Image
