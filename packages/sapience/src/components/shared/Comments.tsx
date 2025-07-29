@@ -329,8 +329,8 @@ const Comments = ({
       });
     }
 
-    // Filter by question prop if set
-    if (question) {
+    // Filter by question prop if set (but not when "All" category is selected)
+    if (question && selectedCategory !== null) {
       filtered = filtered.filter((comment) => {
         return comment.question === question;
       });
