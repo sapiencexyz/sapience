@@ -43,7 +43,6 @@ const ForecastPage = () => {
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<SelectableTab | null>(null);
-
   const [selectedAddressFilter, setSelectedAddressFilter] = useState<
     string | null
   >(null);
