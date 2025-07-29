@@ -4,6 +4,7 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
+import { SquareStack } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -207,6 +208,15 @@ export default function YesNoWagerForm({
           className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {getButtonText()}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full py-6 px-5 rounded text-lg font-normal hover:bg-accent hover:text-accent-foreground"
+        >
+          <SquareStack className="w-5 h-5 mr-2" />
+          Add to Parlay
         </Button>
       </form>
     </FormProvider>
