@@ -236,8 +236,8 @@ const ForecastPage = () => {
                     <span className="font-medium">Account</span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  <div className="space-y-3">
+                <PopoverContent className="w-[600px] max-w-[98vw]">
+                  <div className="space-y-4 p-3">
                     <div className="text-sm font-medium text-foreground">
                       Filter by ENS/address
                     </div>

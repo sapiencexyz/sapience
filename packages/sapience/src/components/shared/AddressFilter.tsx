@@ -179,11 +179,6 @@ const AddressFilter = ({
           <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
             {displayValue}
           </span>
-          {resolvedAddress !== displayValue && (
-            <span className="text-xs text-muted-foreground">
-              ({resolvedAddress})
-            </span>
-          )}
           <Button
             variant="ghost"
             size="sm"
