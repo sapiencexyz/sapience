@@ -6,7 +6,7 @@ import {
 } from '@sapience/ui/components/ui/popover';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
-import { Copy, ExternalLink, Wallet } from 'lucide-react';
+import { Copy, ExternalLink, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createPublicClient, http } from 'viem';
@@ -98,7 +98,7 @@ const AddressDisplay = ({
               size="icon"
               className={isLarge ? LARGE_BUTTON_SIZE : SMALL_BUTTON_SIZE}
             >
-              <Wallet
+              <User
                 className={`${isLarge ? LARGE_ICON_SIZE : SMALL_ICON_SIZE} text-muted-foreground hover:text-foreground`}
               />
             </Button>

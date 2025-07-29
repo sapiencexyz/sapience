@@ -2,7 +2,9 @@
 
 import { blo } from 'blo';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { AddressDisplay } from './AddressDisplay';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
@@ -54,16 +56,18 @@ interface Comment {
   content: string;
   timestamp: string;
   prediction?: string;
-  question: string; // Added question field
-  category?: string; // Added category field
+  question: string;
+  category?: string;
   answer: Answer;
-  marketClassification?: string; // Added marketClassification field
+  marketClassification?: string;
   optionIndex?: number;
   totalOptions?: number;
   numericValue?: number;
   lowerBound?: number;
   upperBound?: number;
-  isActive?: boolean; // Added isActive field
+  isActive?: boolean;
+  marketAddress?: string;
+  marketId?: string;
 }
 
 interface CommentsProps {
@@ -203,6 +207,8 @@ function attestationToComment(
     lowerBound,
     upperBound,
     isActive,
+    marketAddress,
+    marketId: marketId?.toString(),
   };
 }
 
@@ -334,14 +340,28 @@ const Comments = ({
             <div key={comment.id} className="relative border-b border-border">
               <div className="relative bg-background">
                 <div className="px-6 py-5 space-y-5">
+                  {/* Comment content */}
+                  <div className="border border-border/50 rounded-lg p-4 shadow-sm">
+                    <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
+                      {comment.content}
+                    </div>
+                  </div>
                   {/* Question and Prediction */}
                   <div className="space-y-2">
-                    <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
+                    <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
                       {comment.question}
+                      {comment.marketAddress && comment.marketId && (
+                        <Link
+                          href={`/markets/base:${comment.marketAddress.toLowerCase()}/${comment.marketId}`}
+                          className="transition-colors"
+                        >
+                          <ChevronRight className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                        </Link>
+                      )}
                     </h2>
                     {/* Prediction, time, and signature layout */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         {/* Prediction badge/text based on market type */}
                         {comment.prediction &&
                           (() => {
@@ -378,10 +398,6 @@ const Comments = ({
                         </div>
                       </div>
                     </div>
-                  </div>
-                  {/* Comment content */}
-                  <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
-                    {comment.content}
                   </div>
                 </div>
               </div>
