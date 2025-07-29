@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -64,13 +64,22 @@ const NavLinks = ({
 
   return (
     <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-48 pl-4">
-      <Link href="/forecasting" passHref className="flex w-fit">
+      <Link href="/forecast" passHref className="flex w-fit">
         <Button
           variant="ghost"
-          className={`${linkClass} ${isActive('/forecasting', pathname) ? activeClass : ''}`}
+          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
           onClick={handleLinkClick}
         >
           Forecasting
+        </Button>
+      </Link>
+      <Link href="/markets" passHref className="flex w-fit">
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/markets', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          Prediction Markets
         </Button>
       </Link>
       <Link href="/vaults" passHref className="flex w-fit">
@@ -98,17 +107,6 @@ const NavLinks = ({
           onClick={handleLinkClick}
         >
           Build Bots
-        </Button>
-      </Link>
-      <Link
-        href="https://docs.sapience.xyz"
-        passHref
-        className="flex w-fit"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <Button variant="ghost" className={linkClass} onClick={handleLinkClick}>
-          Docs
         </Button>
       </Link>
     </nav>
@@ -294,6 +292,15 @@ const Header = () => {
                   width={12}
                   height={12}
                 />
+              </a>
+            </Button>
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://docs.sapience.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <BookOpen className="h-3 w-3 scale-[85%]" />
               </a>
             </Button>
           </div>
