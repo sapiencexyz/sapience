@@ -49,13 +49,13 @@ export default function SusdeCollateralSection() {
 
           {/* Right column for image/logo */}
           <div className="w-full lg:w-2/5 flex items-center justify-center order-1 lg:order-2">
-            <div className="flex items-center justify-center w-full h-56 rounded-lg border shadow-inner overflow-hidden">
+            <div className="flex items-center justify-center w-full rounded-lg border shadow-inner overflow-hidden">
               <Image
                 src="/susde.svg"
                 alt="sUSDe"
-                width={400}
-                height={200}
-                className="object-cover w-full h-full"
+                width={1080}
+                height={420}
+                className="object-cover"
               />
             </div>
           </div>
