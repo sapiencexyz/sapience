@@ -51,11 +51,16 @@ export default function CollateralBalance({
     }
   };
 
+  // Don't render anything if wallet is not connected
+  if (!isConnected || !accountAddress) {
+    return null;
+  }
+
+  // Show "Get collateralSymbol" button if connected but no balance
   if (
-    !isConnected ||
-    (isConnected &&
-      !isBalanceLoading &&
-      (numericBalance === 0 || Number.isNaN(numericBalance)))
+    isConnected &&
+    !isBalanceLoading &&
+    (numericBalance === 0 || Number.isNaN(numericBalance))
   ) {
     return (
       <div className="flex items-center space-x-2">

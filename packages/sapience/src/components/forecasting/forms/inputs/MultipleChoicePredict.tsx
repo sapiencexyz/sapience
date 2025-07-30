@@ -1,5 +1,4 @@
 import { Button } from '@sapience/ui/components/ui/button';
-import { Label } from '@sapience/ui/components/ui/label';
 import { useFormContext } from 'react-hook-form';
 
 interface MultipleChoicePredictProps {
@@ -25,7 +24,6 @@ export default function MultipleChoicePredict({
   return (
     <div className="space-y-4">
       <div>
-        <Label>Your Prediction</Label>
         <div className="grid grid-cols-1 gap-2 mt-2">
           {options.map(({ name: optionName, marketId }) => (
             <Button
