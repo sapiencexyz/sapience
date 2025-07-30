@@ -15,7 +15,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import Link from 'next/link';
-import { formatEther, formatUnits } from 'viem';
+import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
