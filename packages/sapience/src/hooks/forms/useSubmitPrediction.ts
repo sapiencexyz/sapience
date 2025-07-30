@@ -12,8 +12,6 @@ import { MarketGroupClassification } from '../../lib/types';
 import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
 
 const CONVERGE_CHAIN_ID = 432;
-// Constant for 2^96 as a BigInt, which is used for sqrt(1) * 2^96
-const BIGINT_2_POW_96 = BigInt('79228162514264337593543950336');
 
 interface UseSubmitPredictionProps {
   marketAddress: string;
@@ -75,6 +73,7 @@ export function useSubmitPrediction({
 
         switch (classification) {
           case MarketGroupClassification.NUMERIC: {
+            console.log('predictionInput numeric', predictionInput);
             const inputNum = parseFloat(predictionInput);
             if (Number.isNaN(inputNum) || inputNum < 0) {
               throw new Error(
@@ -88,10 +87,12 @@ export function useSubmitPrediction({
             break;
           }
           case MarketGroupClassification.YES_NO:
+            console.log('predictionInput yes no', predictionInput);
             finalPredictionBigInt = BigInt(predictionInput);
             break;
           case MarketGroupClassification.MULTIPLE_CHOICE:
-            finalPredictionBigInt = BIGINT_2_POW_96;
+            console.log('predictionInput multiple choice', predictionInput);
+            finalPredictionBigInt = BigInt(predictionInput);
             break;
           default: {
             // This will catch any unhandled enum members at compile time

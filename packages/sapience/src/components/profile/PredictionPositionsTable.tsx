@@ -20,7 +20,9 @@ import React from 'react';
 
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
 import { getAttestationViewURL } from '~/lib/constants/eas';
+import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 import { useSapience } from '~/lib/context/SapienceProvider';
+import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
 
 // Helper function to extract market address from context or props
 // Since market address is not available in the attestation data directly,
@@ -123,10 +125,13 @@ const renderPredictionCell = ({
   // Conditionally render 'Yes'/'No' if baseTokenName is 'Yes'
   if (baseTokenName.toLowerCase() === 'yes') {
     // Assumes the value is either '79228162514264337593543950336' for Yes or '0' for No
-    const isYes = value === '79228162514264337593543950336';
+    const priceD18 = sqrtPriceX96ToPriceD18(BigInt(value));
+    const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
+    const percentageD2 = priceD18 * BigInt(10000) / YES_SQRT_X96_PRICE_D18;
+    const percentage = Math.round(Number(percentageD2) / 100);
     return (
-      <span className={isYes ? 'text-green-600' : 'text-red-600'}>
-        {isYes ? 'Yes' : 'No'}
+      <span className={percentage >= 50 ? 'text-green-600' : 'text-red-600'}>
+        {percentage + '%'}
       </span>
     );
   }

@@ -22,7 +22,7 @@ export const COLLATERAL_DECIMALS = 18; // Assuming collateral uses standard deci
 export const HIGH_PRICE_IMPACT = 5; // Example: 5% price impact warning threshold
 export const MIN_BIG_INT_SIZE = BigInt(1e10);
 
-export const YES_SQRT_RATIO = BigInt('79228162514264337593543950336');
-export const NO_SQRT_RATIO = BigInt('0');
+export const YES_SQRT_X96_PRICE = BigInt('79228162514264337593543950336');
+export const NO_SQRT_X96_PRICE = BigInt('0');
 
 export const MINIMUM_POSITION_WIN = BigInt('10000000000000');

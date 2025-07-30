@@ -1,10 +1,9 @@
-import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
+import Slider from '@sapience/ui/components/ui/slider';
 import { useFormContext } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { priceToSqrtPriceX96 } from '~/lib/utils/util';
 
-// Define constants for sqrtPriceX96 values
-const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
-const NO_SQRT_PRICE_X96 = '0';
 
 interface YesNoPredictProps {
   name?: string;
@@ -13,40 +12,36 @@ interface YesNoPredictProps {
 export default function YesNoPredict({
   name = 'predictionValue',
 }: YesNoPredictProps) {
-  const { register, setValue, watch } = useFormContext();
-  const value = watch(name);
+  const { register, setValue } = useFormContext();
+  const [sliderValue, setSliderValue] = useState([50]); // Default to 50%
+
+  // Calculate the sqrtPriceX96 value based on slider percentage
+  const calculateSqrtPriceX96 = (percentage: number) => {
+    const decimal = percentage / 100;
+    const result = priceToSqrtPriceX96(decimal);
+    return result.toString();
+  };
+
+  // Update form value when slider changes
+  useEffect(() => {
+    const sqrtPriceX96Value = calculateSqrtPriceX96(sliderValue[0]);
+    setValue(name, sqrtPriceX96Value, { shouldValidate: true });
+  }, [sliderValue, name, setValue]);
 
   return (
     <div className="space-y-4">
       <div>
-        <Label>Your Prediction</Label>
-        <div className="grid grid-cols-2 gap-4 mt-2">
-          <Button
-            type="button"
-            onClick={() =>
-              setValue(name, YES_SQRT_PRICE_X96, { shouldValidate: true })
-            }
-            className={`py-6 text-lg font-normal ${
-              value === YES_SQRT_PRICE_X96
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-            }`}
-          >
-            Yes
-          </Button>
-          <Button
-            type="button"
-            onClick={() =>
-              setValue(name, NO_SQRT_PRICE_X96, { shouldValidate: true })
-            }
-            className={`py-6 text-lg font-normal ${
-              value === NO_SQRT_PRICE_X96
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-            }`}
-          >
-            No
-          </Button>
+        {/* Slider for fine-tuning */}
+        <div className="space-y-2">
+          <Label>Probability: {sliderValue[0]}%</Label>
+          <Slider
+            value={sliderValue}
+            onValueChange={setSliderValue}
+            max={100}
+            min={0}
+            step={1}
+            className="w-full"
+          />
         </div>
 
         {/* Hidden input for form submission */}

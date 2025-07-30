@@ -11,7 +11,7 @@ import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fr
 import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
 import type { MarketType as Market } from '@sapience/ui/types'; // Import types
 
-import { NO_SQRT_RATIO, YES_SQRT_RATIO } from '~/lib/constants/numbers';
+import { NO_SQRT_X96_PRICE, YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
 // Define MarketParams interface (consider moving to a shared location if needed)
 interface MarketParams {
@@ -603,9 +603,9 @@ const SettlementParamsDisplay = ({
 
   if (isYesNoMarket) {
     if (settlementValue === '1') {
-      settlementDisplayValue = YES_SQRT_RATIO.toString();
+      settlementDisplayValue = YES_SQRT_X96_PRICE.toString();
     } else {
-      settlementDisplayValue = NO_SQRT_RATIO.toString();
+      settlementDisplayValue = NO_SQRT_X96_PRICE.toString();
     }
   } else {
     const numericValue = Number(settlementValue);

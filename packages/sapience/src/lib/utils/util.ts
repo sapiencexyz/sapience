@@ -476,7 +476,7 @@ export function tickToPrice(tick: number | string | undefined | null): number {
 export const sqrtPriceX96ToPriceD18 = (sqrtPriceX96: bigint): bigint => {
   // 2^192
   return (
-    (sqrtPriceX96 * sqrtPriceX96 * BigInt(10 ** 18)) /
+    (sqrtPriceX96 * sqrtPriceX96 * BigInt('1000000000000000000')) /
     BigInt('6277101735386680763835789423207666416102355444464034512896')
   );
 };

@@ -14,6 +14,7 @@ import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
+import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
 // Helper function to check if a market is active
 function isMarketActive(market: any): boolean {
@@ -179,13 +180,17 @@ function attestationToComment(
   if (marketClassification === '2') {
     // YES_NO - show percentage chance
     const priceD18 = sqrtPriceX96ToPriceD18(prediction);
-    const percentage = (Number(priceD18) / 10 ** 18) * 100;
-    predictionText = `${Math.round(percentage)}% Chance`;
+    const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
+    const percentageD2 = priceD18 * BigInt(10000) / YES_SQRT_X96_PRICE_D18;
+    predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
   } else if (marketClassification === '1') {
     // MULTIPLE_CHOICE - show percentage chance for yes/no within multiple choice
+    
     const priceD18 = sqrtPriceX96ToPriceD18(prediction);
-    const percentage = (Number(priceD18) / 10 ** 18) * 100;
-    predictionText = `${Math.round(percentage)}% Chance`;
+    const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
+    const percentageD2 = priceD18 * BigInt(10000) / YES_SQRT_X96_PRICE_D18;
+
+    predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
   } else if (marketClassification === '3') {
     // NUMERIC - show numeric value
     predictionText = `${numericValue?.toString()}${baseTokenName ? ' ' + baseTokenName : ''}${quoteTokenName ? '/' + quoteTokenName : ''}`;

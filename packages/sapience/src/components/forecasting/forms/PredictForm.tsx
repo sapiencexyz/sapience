@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import type { MarketGroupType } from '@sapience/ui/types';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -14,10 +14,8 @@ import YesNoPredict from './inputs/YesNoPredict';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
+import { NO_SQRT_X96_PRICE, YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
-// Define sqrtPriceX96 constants to match those in YesNoPredict
-const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
-const NO_SQRT_PRICE_X96 = '0';
 
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
@@ -35,6 +33,7 @@ export default function PredictForm({
   const firstMarket = marketGroupData.markets?.[0];
   const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
+  const [selectedMarketIdMultipleChoice, setSelectedMarketIdMultipleChoice] = useState<number>(1);
   // Create a unified schema that works for all market types
   const formSchema = useMemo(() => {
     const baseValidation = z.string().min(1, 'Please enter a prediction');
@@ -51,7 +50,7 @@ export default function PredictForm({
       case MarketGroupClassification.YES_NO:
         return z.object({
           predictionValue: baseValidation.refine(
-            (val) => val === NO_SQRT_PRICE_X96 || val === YES_SQRT_PRICE_X96,
+            (val) => NO_SQRT_X96_PRICE <= BigInt(val) && BigInt(val) <= YES_SQRT_X96_PRICE,
             { message: 'Please select Yes or No' }
           ),
           comment: commentValidation,
@@ -80,16 +79,24 @@ export default function PredictForm({
 
   const defaultPredictionValue: string = useMemo(() => {
     switch (marketClassification) {
-      case MarketGroupClassification.YES_NO:
-        return YES_SQRT_PRICE_X96;
-      case MarketGroupClassification.MULTIPLE_CHOICE:
-        return firstMarket?.marketId?.toString() ?? '0';
+      case MarketGroupClassification.YES_NO: {
+        // Default to 50% of YES_SQRT_PRICE_X96
+        const yesBigInt = BigInt(YES_SQRT_X96_PRICE);
+        const defaultValue = (yesBigInt * BigInt(500000)) / BigInt(1000000);
+        return defaultValue.toString();
+      }
+      case MarketGroupClassification.MULTIPLE_CHOICE: {
+        // Default to 50% of YES_SQRT_PRICE_X96
+        const yesBigInt = BigInt(YES_SQRT_X96_PRICE);
+        const defaultValue = (yesBigInt * BigInt(500000)) / BigInt(1000000);
+        return defaultValue.toString();
+      }
       case MarketGroupClassification.NUMERIC:
         return String(Math.round((lowerBound + upperBound) / 2));
       default:
         return '';
     }
-  }, [marketClassification, firstMarket?.marketId, lowerBound, upperBound]);
+  }, [marketClassification, lowerBound, upperBound]);
 
   // Set up form with dynamic schema
   const methods = useForm({
@@ -111,15 +118,15 @@ export default function PredictForm({
 
   const marketId = useMemo(() => {
     if (marketClassification === MarketGroupClassification.MULTIPLE_CHOICE) {
-      return Number(predictionValue);
+      return selectedMarketIdMultipleChoice;
     }
     return firstMarket?.marketId ?? 0;
-  }, [marketClassification, predictionValue, firstMarket?.marketId]);
+  }, [marketClassification, firstMarket?.marketId, selectedMarketIdMultipleChoice]);
 
   const submissionValue = useMemo(() => {
     switch (marketClassification) {
       case MarketGroupClassification.MULTIPLE_CHOICE:
-        return '1';
+        return predictionValue;
       case MarketGroupClassification.YES_NO:
         return predictionValue;
       case MarketGroupClassification.NUMERIC:
@@ -162,6 +169,8 @@ export default function PredictForm({
               name: market.optionName || '',
               marketId: market.marketId,
             }))}
+            selectedMarketId={selectedMarketIdMultipleChoice}
+            setSelectedMarketId={setSelectedMarketIdMultipleChoice}
           />
         );
       case MarketGroupClassification.NUMERIC:
