@@ -15,7 +15,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import Link from 'next/link';
-import { formatEther } from 'viem';
+import { formatEther, formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
@@ -40,7 +40,10 @@ function MarketCell({ position }: { position: PositionType }) {
 function CollateralCell({ position }: { position: PositionType }) {
   const decimals = position.market?.marketGroup?.collateralDecimals || 18; // Default to 18 if not provided
   const symbol = position.market?.marketGroup?.collateralSymbol || 'Tokens';
-  const displayValue = Number(position.collateral) / 10 ** decimals;
+  
+  
+  const collateralValue = position.collateral || '0';
+  const displayValue = Number(formatUnits(BigInt(collateralValue), decimals));
 
   return (
     <div className="flex items-center gap-1">
@@ -58,7 +61,17 @@ function VirtualTokenCell({
   value: string | number | undefined | null;
   unit: string;
 }) {
-  const displayValue = Number(formatEther(BigInt(value?.toString() || '0')));
+  const safeValue = value?.toString() || '0';
+  let displayValue: number;
+  
+  try {
+    // Direct BigInt conversion since values are now stored as strings
+    displayValue = Number(formatEther(BigInt(safeValue)));
+  } catch (error) {
+    console.warn('Failed to convert value to BigInt:', safeValue, error);
+    displayValue = 0;
+  }
+  
   return (
     <div className="flex items-center gap-1">
       <NumberDisplay value={displayValue} />
