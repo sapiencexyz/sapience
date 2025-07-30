@@ -42,27 +42,7 @@ interface DataDrawerProps {
   trigger?: React.ReactNode;
 }
 
-// Helper function to safely convert scientific notation strings to BigInt
-const safeStringToBigInt = (value: string): bigint => {
-  if (!value) {
-    return BigInt(0);
-  }
-  
-  // Check if the string contains scientific notation (e, E, +, -)
-  if (value.toLowerCase().includes('e')) {
-    // Convert scientific notation to regular number, then to string, then to BigInt
-    const numericValue = Number(value);
-    if (isNaN(numericValue)) {
-      throw new Error(`Invalid numeric value: ${value}`);
-    }
-    // Convert to string with no decimal places (since we're dealing with wei values)
-    const stringValue = numericValue.toLocaleString('fullwide', { useGrouping: false });
-    return BigInt(stringValue);
-  }
-  
-  // If not scientific notation, convert directly
-  return BigInt(value);
-};
+
 
 const CenteredMessage = ({
   children,

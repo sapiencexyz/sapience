@@ -42,8 +42,7 @@ function CollateralCell({ position }: { position: PositionType }) {
   const symbol = position.market?.marketGroup?.collateralSymbol || 'Tokens';
   
   
-  const collateralValue = position.collateral || '0';
-  const displayValue = Number(formatUnits(BigInt(collateralValue), decimals));
+  const displayValue = Number(formatUnits(BigInt(position.collateral), decimals));
 
   return (
     <div className="flex items-center gap-1">
@@ -61,14 +60,9 @@ function VirtualTokenCell({
   value: string | number | undefined | null;
   unit: string;
 }) {
-  const safeValue = value?.toString() || '0';
-  let displayValue: number;
+
+  let displayValue = Number(formatUnits(BigInt(value?.toString() || '0'), 18));
   
-  try {
-    displayValue = Number(formatEther(BigInt(safeValue)));
-  } catch (error) {
-    displayValue = 0;
-  }
   
   return (
     <div className="flex items-center gap-1">
