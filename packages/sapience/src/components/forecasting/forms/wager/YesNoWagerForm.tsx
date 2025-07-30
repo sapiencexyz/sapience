@@ -11,10 +11,10 @@ import { z } from 'zod';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
-import YesNoPredict from '../inputs/YesNoPredict';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
+import { useParlayContext } from '~/lib/context/ParlayContext';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -33,6 +33,7 @@ export default function YesNoWagerForm({
 }: YesNoWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
+  const { addPosition } = useParlayContext();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -41,7 +42,6 @@ export default function YesNoWagerForm({
         required_error: 'Please select Yes or No',
       }),
       wagerAmount: wagerAmountSchema,
-      comment: z.string().optional(),
     });
   }, []);
 
@@ -51,7 +51,6 @@ export default function YesNoWagerForm({
     defaultValues: {
       predictionValue: YES_SQRT_PRICE_X96, // Default to YES
       wagerAmount: '',
-      comment: '',
     },
     mode: 'onChange', // Validate on change for immediate feedback
   });
@@ -89,6 +88,25 @@ export default function YesNoWagerForm({
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
+
+  // Handle adding to parlay
+  const handleAddToParlay = () => {
+    if (!predictionValue || !marketGroupData.question) return;
+
+    const position = {
+      prediction: predictionValue === YES_SQRT_PRICE_X96,
+      marketAddress: marketGroupData.address as string,
+      marketId: marketGroupData.markets?.[0]?.marketId ?? 0,
+      question: marketGroupData.question,
+    };
+
+    addPosition(position);
+    
+    toast({
+      title: 'Added to Parlay',
+      description: `${position.prediction ? 'Yes' : 'No'} prediction added to your parlay.`,
+    });
+  };
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -174,7 +192,55 @@ export default function YesNoWagerForm({
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
-        <YesNoPredict />
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between items-center">
+              <Label>Your Prediction</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="text-xs"
+                onClick={handleAddToParlay}
+                disabled={!predictionValue || !marketGroupData.question}
+              >
+                <SquareStack className="w-3 h-3" />
+                Add to Parlay
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <Button
+                type="button"
+                onClick={() =>
+                  methods.setValue('predictionValue', YES_SQRT_PRICE_X96, { shouldValidate: true })
+                }
+                className={`py-6 text-lg font-normal ${
+                  predictionValue === YES_SQRT_PRICE_X96
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                Yes
+              </Button>
+              <Button
+                type="button"
+                onClick={() =>
+                  methods.setValue('predictionValue', NO_SQRT_PRICE_X96, { shouldValidate: true })
+                }
+                className={`py-6 text-lg font-normal ${
+                  predictionValue === NO_SQRT_PRICE_X96
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                No
+              </Button>
+            </div>
+
+            {/* Hidden input for form submission */}
+            <input type="hidden" {...methods.register('predictionValue')} />
+          </div>
+        </div>
         <div>
           <WagerInput
             collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
@@ -189,17 +255,6 @@ export default function YesNoWagerForm({
           {renderQuoteData()}
         </div>
 
-        {/* Comment field */}
-        <div>
-          <Label htmlFor="comment">Comment (Optional)</Label>
-          <textarea
-            id="comment"
-            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Add a comment about your wager..."
-            {...methods.register('comment')}
-          />
-        </div>
-
         <PermittedAlert isPermitted={isPermitted} />
 
         <Button
@@ -208,15 +263,6 @@ export default function YesNoWagerForm({
           className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {getButtonText()}
-        </Button>
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full py-6 px-5 rounded text-lg font-normal hover:bg-accent hover:text-accent-foreground"
-        >
-          <SquareStack className="w-5 h-5 mr-2" />
-          Add to Parlay
         </Button>
       </form>
     </FormProvider>

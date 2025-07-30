@@ -1,23 +1,18 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import { SquareStack, ChevronRight } from 'lucide-react';
+import { SquareStack, ChevronRight, X } from 'lucide-react';
 import Link from 'next/link';
 
-// TODO: Define proper type based on requirements
-type ParlayPosition = {
-  id: string;
-  // Add other properties as needed
-};
+import { useParlayContext } from '~/lib/context/ParlayContext';
 
 const ParlaysPopover = () => {
-  const [parlayPositions, setParlayPositions] = useState<ParlayPosition[]>([]);
+  const { parlayPositions, removePosition, clearParlay } = useParlayContext();
 
   return (
     <Popover>
@@ -46,9 +41,59 @@ const ParlaysPopover = () => {
             </Link>
           </div>
         ) : (
-          // TODO: Render list of ParlayPositions
-          <div>
-            {/* ParlayPositions list will be implemented here */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-sm">Parlay ({parlayPositions.length})</h3>
+              <Button
+                variant="ghost"
+                size="xs"
+                onClick={clearParlay}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear All
+              </Button>
+            </div>
+            
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {parlayPositions.map((position) => (
+                <div
+                  key={position.id}
+                  className="flex items-start justify-between p-3 bg-secondary/50 rounded-lg border"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">
+                      {position.question}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${
+                        position.prediction 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                      }`}>
+                        {position.prediction ? 'YES' : 'NO'}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Market #{position.marketId}
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => removePosition(position.id)}
+                    className="ml-2 h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            
+            <div className="pt-2 border-t">
+              <Button className="w-full" size="sm">
+                Place Parlay Wager
+              </Button>
+            </div>
           </div>
         )}
       </PopoverContent>
