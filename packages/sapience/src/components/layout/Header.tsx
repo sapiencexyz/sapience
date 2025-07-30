@@ -15,13 +15,15 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen, SquareStack } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import ModeToggle from './ModeToggle';
+import ParlaysPopover from './ParlaysPopover';
+import { useParlayContext } from '~/lib/context/ParlayContext';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -118,6 +120,7 @@ const Header = () => {
   const { login, ready, authenticated, logout } = usePrivy();
   const { wallets } = useWallets();
   const connectedWallet = wallets[0]; // Get the first connected wallet
+  const { setIsPopoverOpen } = useParlayContext();
 
   return (
     <>
@@ -156,10 +159,26 @@ const Header = () => {
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
 
+          {/* Mobile Parlay Button (fixed right, with border, hover effect) */}
+          {ready && (
+            <Button
+              onClick={() => setIsPopoverOpen(true)}
+              className="fixed right-0 top-16 z-[51] flex items-center justify-center md:hidden border border-r-0 border-border bg-background/30 p-2 pr-2 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
+              variant="ghost"
+            >
+              <SquareStack className="h-6 w-6" />
+            </Button>
+          )}
+
           <div className="flex items-center gap-4 pointer-events-auto">
             <div className="block">
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
+            {ready && (
+              <div className="hidden md:block">
+                <ParlaysPopover />
+              </div>
+            )}
             {!ready && null /* Render nothing while Privy is loading */}
             {ready && authenticated && (
               <DropdownMenu>

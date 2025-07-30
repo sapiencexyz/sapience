@@ -4,6 +4,7 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
+import { SquareStack } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -14,6 +15,7 @@ import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
+import { useParlayContext } from '~/lib/context/ParlayContext';
 
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -28,13 +30,13 @@ export default function MultipleChoiceWagerForm({
 }: MultipleChoiceWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
+  const { addPosition } = useParlayContext();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
     return z.object({
       predictionValue: z.string().min(1, 'Please select an option'),
       wagerAmount: wagerAmountSchema,
-      comment: z.string().optional(),
     });
   }, []);
 
@@ -45,7 +47,6 @@ export default function MultipleChoiceWagerForm({
       predictionValue:
         marketGroupData.markets?.[0]?.marketId?.toString() ?? '0', // first market
       wagerAmount: '',
-      comment: '',
     },
     mode: 'onChange',
   });
@@ -83,6 +84,30 @@ export default function MultipleChoiceWagerForm({
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
+
+  // Handle adding to parlay
+  const handleAddToParlay = () => {
+    if (!predictionValue || !marketGroupData.question) return;
+
+    // Find the selected market option
+    const selectedMarket = marketGroupData.markets?.find(
+      (market) => market.marketId === Number(predictionValue)
+    );
+
+    if (!selectedMarket) return;
+
+    const position = {
+      prediction: true, // For multiple choice, we set this to true and use the market's own question
+      marketAddress: marketGroupData.address as string,
+      marketId: selectedMarket.marketId,
+      question:
+        selectedMarket.question ||
+        `${marketGroupData.question} - ${selectedMarket.optionName}` ||
+        'Unknown Question', // Ensure question is always a string
+    };
+
+    addPosition(position);
+  };
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -168,12 +193,30 @@ export default function MultipleChoiceWagerForm({
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
-        <MultipleChoicePredict
-          options={(marketGroupData.markets || []).map((market) => ({
-            name: market.optionName || '',
-            marketId: market.marketId,
-          }))}
-        />
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between items-center">
+              <Label>Your Prediction</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="text-xs"
+                onClick={handleAddToParlay}
+                disabled={!predictionValue || !marketGroupData.question}
+              >
+                <SquareStack className="w-3 h-3" />
+                Add to Parlay
+              </Button>
+            </div>
+            <MultipleChoicePredict
+              options={(marketGroupData.markets || []).map((market) => ({
+                name: market.optionName || '',
+                marketId: market.marketId,
+              }))}
+            />
+          </div>
+        </div>
         <div>
           <WagerInput
             collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
@@ -186,17 +229,6 @@ export default function MultipleChoiceWagerForm({
           )}
 
           {renderQuoteData()}
-        </div>
-
-        {/* Comment field */}
-        <div>
-          <Label htmlFor="comment">Comment (Optional)</Label>
-          <textarea
-            id="comment"
-            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Add a comment about your wager..."
-            {...methods.register('comment')}
-          />
         </div>
 
         <PermittedAlert isPermitted={isPermitted} />

@@ -10,6 +10,7 @@ import { injected } from 'wagmi/connectors';
 
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
+import { ParlayProvider } from '~/lib/context/ParlayContext';
 
 const queryClient = new QueryClient();
 
@@ -89,7 +90,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       >
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={config}>
-            <SapienceProvider>{children}</SapienceProvider>
+            <SapienceProvider>
+              <ParlayProvider>{children}</ParlayProvider>
+            </SapienceProvider>
           </WagmiProvider>
         </QueryClientProvider>
       </ThemeProvider>
