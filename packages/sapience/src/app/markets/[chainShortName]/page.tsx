@@ -410,7 +410,7 @@ const MarketGroupPageContent = () => {
                   ? CommentFilters.AllMultichoiceQuestions
                   : CommentFilters.SelectedQuestion
               }
-              question={undefined}
+              question={activeMarket?.question?.toString()}
               address={address}
               refetchTrigger={userPositionsTrigger}
               marketGroupAddress={marketGroupData?.address || null}
