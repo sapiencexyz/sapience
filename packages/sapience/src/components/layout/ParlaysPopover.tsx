@@ -6,16 +6,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
+import { Switch } from '@sapience/ui/components/ui/switch';
 import { SquareStack, ChevronRight, X } from 'lucide-react';
 import Link from 'next/link';
 
 import { useParlayContext } from '~/lib/context/ParlayContext';
 
 const ParlaysPopover = () => {
-  const { parlayPositions, removePosition, clearParlay } = useParlayContext();
+  const { parlayPositions, removePosition, updatePosition, clearParlay, isPopoverOpen, setIsPopoverOpen } = useParlayContext();
 
   return (
-    <Popover>
+    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -26,7 +27,7 @@ const ParlaysPopover = () => {
           Parlays
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-6 py-14" align="end">
+      <PopoverContent className={`w-80 ${parlayPositions.length === 0 ? 'p-6 py-14' : 'p-0'}`} align="end">
         {parlayPositions.length === 0 ? (
           <div className="text-center space-y-3">
             <p className="text-base text-muted-foreground">
@@ -41,57 +42,48 @@ const ParlaysPopover = () => {
             </Link>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-sm">Parlay ({parlayPositions.length})</h3>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={clearParlay}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Clear All
-              </Button>
-            </div>
-            
+          <div className="space-y-4 p-6">
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {parlayPositions.map((position) => (
                 <div
                   key={position.id}
-                  className="flex items-start justify-between p-3 bg-secondary/50 rounded-lg border"
+                  className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-foreground truncate">
+                  <div className="flex-1 min-w-0 pr-3">
+                    <p className="text-sm font-medium text-foreground truncate">
                       {position.question}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        position.prediction 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                      }`}>
-                        {position.prediction ? 'YES' : 'NO'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Market #{position.marketId}
-                      </span>
-                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => removePosition(position.id)}
-                    className="ml-2 h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground font-medium">NO</span>
+                      <Switch
+                        checked={position.prediction}
+                        onCheckedChange={(checked) => 
+                          updatePosition(position.id, { prediction: checked })
+                        }
+                        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500"
+                      />
+                      <span className="text-xs text-muted-foreground font-medium">YES</span>
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => removePosition(position.id)}
+                      className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground opacity-60 hover:opacity-100"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
             
-            <div className="pt-2 border-t">
-              <Button className="w-full" size="sm">
-                Place Parlay Wager
+            <div className="pt-2">
+              <Button className="w-full" size="lg" disabled>
+                Quote Unavailable
               </Button>
             </div>
           </div>

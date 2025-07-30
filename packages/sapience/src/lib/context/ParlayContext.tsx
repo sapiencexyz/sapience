@@ -15,7 +15,11 @@ interface ParlayContextType {
   parlayPositions: ParlayPosition[];
   addPosition: (position: Omit<ParlayPosition, 'id'>) => void;
   removePosition: (id: string) => void;
+  updatePosition: (id: string, updates: Partial<ParlayPosition>) => void;
   clearParlay: () => void;
+  openPopover: () => void;
+  isPopoverOpen: boolean;
+  setIsPopoverOpen: (open: boolean) => void;
 }
 
 const ParlayContext = createContext<ParlayContextType | undefined>(undefined);
@@ -34,6 +38,7 @@ interface ParlayProviderProps {
 
 export const ParlayProvider = ({ children }: ParlayProviderProps) => {
   const [parlayPositions, setParlayPositions] = useState<ParlayPosition[]>([]);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const addPosition = useCallback((position: Omit<ParlayPosition, 'id'>) => {
     // Generate a unique ID for the position
@@ -53,6 +58,7 @@ export const ParlayProvider = ({ children }: ParlayProviderProps) => {
         id,
       };
       setParlayPositions(prev => [...prev, newPosition]);
+      setIsPopoverOpen(true); // Open popover when position is added
     }
   }, [parlayPositions]);
 
@@ -60,15 +66,29 @@ export const ParlayProvider = ({ children }: ParlayProviderProps) => {
     setParlayPositions(prev => prev.filter(p => p.id !== id));
   }, []);
 
+  const updatePosition = useCallback((id: string, updates: Partial<ParlayPosition>) => {
+    setParlayPositions(prev =>
+      prev.map(p => (p.id === id ? { ...p, ...updates } : p))
+    );
+  }, []);
+
   const clearParlay = useCallback(() => {
     setParlayPositions([]);
+  }, []);
+
+  const openPopover = useCallback(() => {
+    setIsPopoverOpen(true);
   }, []);
 
   const value: ParlayContextType = {
     parlayPositions,
     addPosition,
     removePosition,
+    updatePosition,
     clearParlay,
+    openPopover,
+    isPopoverOpen,
+    setIsPopoverOpen,
   };
 
   return (

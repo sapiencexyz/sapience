@@ -104,11 +104,6 @@ export default function MultipleChoiceWagerForm({
     };
 
     addPosition(position);
-    
-    toast({
-      title: 'Added to Parlay',
-      description: `"${selectedMarket.optionName}" prediction added to your parlay.`,
-    });
   };
 
   // Handle form submission

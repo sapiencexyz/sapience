@@ -101,11 +101,6 @@ export default function YesNoWagerForm({
     };
 
     addPosition(position);
-    
-    toast({
-      title: 'Added to Parlay',
-      description: `${position.prediction ? 'Yes' : 'No'} prediction added to your parlay.`,
-    });
   };
 
   // Handle form submission
