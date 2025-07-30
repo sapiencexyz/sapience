@@ -37,18 +37,19 @@ export enum Answer {
   No = 'no',
 }
 
-export enum SelectableTab {
-  Selected = 'selected',
+export enum CommentFilters {
+  SelectedQuestion = 'selected',
+  AllMultichoiceQuestions = 'all-multichoice-questions',
   MyPredictions = 'my-predictions',
-  EconomyFinance = 'economy-finance',
-  DecentralizedCompute = 'decentralized-compute',
-  EnergyDePIN = 'energy-depin',
-  ClimateChange = 'climate-change',
-  Geopolitics = 'geopolitics',
-  Biosecurity = 'biosecurity',
-  SpaceExploration = 'space-exploration',
-  EmergingTechnologies = 'emerging-technologies',
-  Athletics = 'athletics',
+  EconomyFinanceCategory = 'economy-finance',
+  DecentralizedComputeCategory = 'decentralized-compute',
+  EnergyDePINCategory = 'energy-depin',
+  ClimateChangeCategory = 'climate-change',
+  GeopoliticsCategory = 'geopolitics',
+  BiosecurityCategory = 'biosecurity',
+  SpaceExplorationCategory = 'space-exploration',
+  EmergingTechnologiesCategory = 'emerging-technologies',
+  AthleticsCategory = 'athletics',
 }
 
 interface Comment {
@@ -75,9 +76,10 @@ interface CommentsProps {
   className?: string;
   question?: string;
   showAllForecasts?: boolean;
-  selectedCategory?: SelectableTab | null;
+  selectedCategory?: CommentFilters | null;
   address?: string | null;
   refetchTrigger?: number;
+  marketGroupAddress?: string | null;
 }
 
 // Helper to extract decoded data from attestation, handling .decodedData, .value.value, etc.
@@ -216,13 +218,14 @@ function attestationToComment(
 const Comments = ({
   className,
   question = undefined,
-  selectedCategory = null,
+  selectedCategory: selectedFilter = null,
   address = null,
   refetchTrigger,
+  marketGroupAddress,
 }: CommentsProps) => {
   // Fetch EAS attestations
   const shouldFilterByAttester =
-    selectedCategory === SelectableTab.MyPredictions &&
+    selectedFilter === CommentFilters.MyPredictions &&
     address &&
     typeof address === 'string' &&
     address.length > 0;
@@ -260,21 +263,29 @@ const Comments = ({
 
     // Filter by category if one is selected (but not for 'selected' tab)
     if (
-      selectedCategory &&
-      selectedCategory !== SelectableTab.Selected &&
-      selectedCategory !== SelectableTab.MyPredictions
+      selectedFilter &&
+      selectedFilter !== CommentFilters.SelectedQuestion &&
+      selectedFilter !== CommentFilters.MyPredictions &&
+      selectedFilter !== CommentFilters.AllMultichoiceQuestions
     ) {
       filtered = filtered.filter(
-        (comment) => comment.category === selectedCategory
+        (comment) => comment.category === selectedFilter
       );
     }
 
     // Filter by address if 'my-predictions' tab is selected
    
-    // Filter by question prop if set
-    if (question && selectedCategory !== null) {
+    // Filter by question prop if set (but not for AllMultichoiceQuestions)
+    if (question && selectedFilter !== null && selectedFilter !== CommentFilters.AllMultichoiceQuestions) {
       filtered = filtered.filter((comment) => {
         return comment.question === question;
+      });
+    }
+
+    // Filter by marketGroupAddress if AllMultichoiceQuestions is selected
+    if (selectedFilter === CommentFilters.AllMultichoiceQuestions && marketGroupAddress) {
+      filtered = filtered.filter((comment) => {
+        return comment.marketAddress?.toLowerCase() === marketGroupAddress.toLowerCase();
       });
     }
 
@@ -288,14 +299,6 @@ const Comments = ({
 
     // Filter out numeric comments outside the range
     filtered = filtered.filter((comment) => {
-      if (comment?.marketClassification === '3') {
-        console.log(
-          'comment',
-          tickToPrice(comment?.lowerBound as number),
-          tickToPrice(comment?.upperBound as number),
-          comment?.numericValue
-        );
-      }
 
       if (
         comment.marketClassification === '3' &&
@@ -314,7 +317,6 @@ const Comments = ({
     // Filter out inactive comments
     filtered = filtered.filter((comment) => {
       // For attestation comments (from EAS), check if the market is active
-      // For mock comments, allow them through (they don't have isActive field)
       return comment.isActive !== false;
     });
 
@@ -323,13 +325,13 @@ const Comments = ({
 
   return (
     <div className={`${className || ''}`}>
-      {selectedCategory === SelectableTab.Selected && !question && (
+      {selectedFilter === CommentFilters.SelectedQuestion && !question && (
         <div className="text-center text-muted-foreground py-8">
           Please select a question to submit a prediction and view the
           predictions of other users
         </div>
       )}
-      {!(selectedCategory === SelectableTab.Selected && !question) && (
+      {!(selectedFilter === CommentFilters.SelectedQuestion && !question) && (
         <>
           {isEasLoading ? (
             <div className="flex flex-col items-center justify-center py-16">

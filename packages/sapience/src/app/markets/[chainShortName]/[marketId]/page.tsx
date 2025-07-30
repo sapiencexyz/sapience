@@ -31,6 +31,12 @@ import {
 } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
 import { parseUrlParameter } from '~/lib/utils/util';
+import { CommentFilters } from '~/components/shared/Comments';
+
+// Dynamically import Comments component
+const Comments = dynamic(() => import('~/components/shared/Comments'), {
+  ssr: false,
+});
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -514,6 +520,18 @@ const ForecastContent = () => {
                 </div>
               );
             })()}
+
+            {/* Comments Section */}
+            <div className="border border-border rounded shadow-sm">
+              <div className="p-4 border-b border-border">
+                <h3 className="text-lg font-medium">Predictions & Comments</h3>
+              </div>
+              <Comments
+                selectedCategory={CommentFilters.SelectedQuestion}
+                question={marketData?.question?.toString()}
+                refetchTrigger={userPositionsTrigger}
+              />
+            </div>
 
             {/* Market Rules */}
             {marketData?.rules && (

@@ -11,7 +11,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import { SelectableTab } from '../../components/shared/Comments';
+import { CommentFilters } from '../../components/shared/Comments';
 import PredictForm from '~/components/forecasting/forms/PredictForm';
 // import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -39,7 +39,7 @@ const WalletAddressPopover = dynamic(
 const ForecastPage = () => {
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
-    useState<SelectableTab | null>(null);
+    useState<CommentFilters | null>(null);
   const [selectedAddressFilter, setSelectedAddressFilter] = useState<
     string | null
   >(null);
@@ -86,7 +86,7 @@ const ForecastPage = () => {
 
   // Handler to select a market and switch to the selected question tab
   const handleMarketSelect = (market: any) => {
-    setSelectedCategory(SelectableTab.Selected);
+    setSelectedCategory(CommentFilters.SelectedQuestion);
     setTimeout(() => {
       setSelectedMarket(market);
     }, 0);
@@ -175,13 +175,13 @@ const ForecastPage = () => {
               {selectedMarket && (
                 <button
                   type="button"
-                  onClick={() => setSelectedCategory(SelectableTab.Selected)}
+                  onClick={() => setSelectedCategory(CommentFilters.SelectedQuestion)}
                   className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border border-b-2 ${
-                    selectedCategory === SelectableTab.Selected
+                    selectedCategory === CommentFilters.SelectedQuestion
                       ? 'border-b-primary'
                       : ''
                   } ${
-                    selectedCategory === SelectableTab.Selected
+                    selectedCategory === CommentFilters.SelectedQuestion
                       ? selectedStatusClass
                       : hoverStatusClass
                   }`}
@@ -199,14 +199,14 @@ const ForecastPage = () => {
                   <button
                     type="button"
                     onClick={() =>
-                      setSelectedCategory(SelectableTab.MyPredictions)
+                      setSelectedCategory(CommentFilters.MyPredictions)
                     }
                     className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border border-b-2 ${
-                      selectedCategory === SelectableTab.MyPredictions
+                      selectedCategory === CommentFilters.MyPredictions
                         ? 'border-b-primary'
                         : ''
                     } ${
-                      selectedCategory === SelectableTab.MyPredictions
+                      selectedCategory === CommentFilters.MyPredictions
                         ? selectedStatusClass
                         : hoverStatusClass
                     }`}
@@ -236,18 +236,18 @@ const ForecastPage = () => {
                   type="button"
                   key={focusArea.id}
                   onClick={() =>
-                    setSelectedCategory(focusArea.id as SelectableTab)
+                    setSelectedCategory(focusArea.id as CommentFilters)
                   }
                   className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-b-2 ${
                     index < FOCUS_AREAS.length - 1
                       ? 'border-r border-border'
                       : ''
                   } ${
-                    selectedCategory === (focusArea.id as SelectableTab)
+                    selectedCategory === (focusArea.id as CommentFilters)
                       ? 'border-b-primary'
                       : ''
                   } ${
-                    selectedCategory === (focusArea.id as SelectableTab)
+                    selectedCategory === (focusArea.id as CommentFilters)
                       ? selectedStatusClass
                       : hoverStatusClass
                   }`}

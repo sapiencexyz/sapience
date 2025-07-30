@@ -15,6 +15,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
+import { CommentFilters } from '../../../components/shared/Comments';
 import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
@@ -24,8 +25,14 @@ import {
   MarketGroupPageProvider,
   useMarketGroupPage,
 } from '~/lib/context/MarketGroupPageProvider';
-import type { MarketGroupClassification } from '~/lib/types';
 import { findActiveMarkets } from '~/lib/utils/util';
+import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
+import { MarketGroupClassification } from '~/lib/types';
+
+// Dynamically import Comments component
+const Comments = dynamic(() => import('../../../components/shared/Comments'), {
+  ssr: false,
+});
 
 // Helper function to group markets by end time and find the appropriate group to display
 const getMarketsGroupedByEndTime = (markets: MarketType[]) => {
@@ -81,7 +88,6 @@ const getMarketsGroupedByEndTime = (markets: MarketType[]) => {
 
   return null;
 };
-import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 
 export type ActiveTab = 'predict' | 'wager';
 
@@ -252,6 +258,25 @@ const MarketGroupPageContent = () => {
     marketAddress,
   });
 
+  // Find markets grouped by common end time
+  const marketGroupByEndTime = marketGroupData?.markets
+    ? getMarketsGroupedByEndTime(marketGroupData.markets)
+    : null;
+
+  // Find the active market from the group with the next common end time
+  const activeMarket = useMemo(() => {
+    if (!marketGroupByEndTime) return undefined;
+    const { markets } = marketGroupByEndTime;
+    if (marketAddress) {
+      const foundMarket = markets.find(
+        (market) => market.poolAddress === marketAddress
+      );
+      if (foundMarket) return foundMarket;
+    }
+    return markets[0];
+  }, [marketGroupByEndTime, marketAddress]);
+  
+
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
     return (
@@ -279,32 +304,8 @@ const MarketGroupPageContent = () => {
     (market: MarketType) => market.optionName || ''
   );
 
-  // Find markets grouped by common end time
-  const marketGroupByEndTime = marketGroupData?.markets
-    ? getMarketsGroupedByEndTime(marketGroupData.markets)
-    : null;
 
-  // Find the active market from the group with the next common end time
-  const activeMarket = (() => {
-    if (!marketGroupByEndTime) {
-      return undefined;
-    }
 
-    const { markets } = marketGroupByEndTime;
-
-    // Try to find the specific market by marketAddress if provided
-    if (marketAddress) {
-      const foundMarket = markets.find(
-        (market) => market.poolAddress === marketAddress
-      );
-      if (foundMarket) {
-        return foundMarket;
-      }
-    }
-
-    // Otherwise return the first market from the group
-    return markets[0];
-  })();
 
   // Otherwise show the main content
   return (
@@ -396,6 +397,25 @@ const MarketGroupPageContent = () => {
               </div>
             );
           })()}
+
+
+          {/* Comments Section */}
+          <div className="border border-border rounded shadow-sm">
+            <div className="p-4 border-b border-border">
+              <h3 className="text-lg font-medium">Predictions & Comments</h3>
+            </div>
+            <Comments
+              selectedCategory={
+                marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
+                  ? CommentFilters.AllMultichoiceQuestions
+                  : CommentFilters.SelectedQuestion
+              }
+              question={undefined}
+              address={address}
+              refetchTrigger={userPositionsTrigger}
+              marketGroupAddress={marketGroupData?.address || null}
+            />
+          </div>
         </div>
       </div>
 
