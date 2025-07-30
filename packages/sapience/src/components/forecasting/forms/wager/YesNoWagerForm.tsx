@@ -14,7 +14,8 @@ import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-import { useParlayContext } from '~/lib/context/ParlayContext';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
+import { MarketGroupClassification } from '~/lib/types';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -33,7 +34,7 @@ export default function YesNoWagerForm({
 }: YesNoWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const { addPosition } = useParlayContext();
+  const { addPosition } = useBetSlipContext();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -89,8 +90,8 @@ export default function YesNoWagerForm({
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
 
-  // Handle adding to parlay
-  const handleAddToParlay = () => {
+  // Handle adding to bet slip
+  const handleAddToBetSlip = () => {
     if (!predictionValue || !marketGroupData.question) return;
 
     const position = {
@@ -98,6 +99,8 @@ export default function YesNoWagerForm({
       marketAddress: marketGroupData.address as string,
       marketId: marketGroupData.markets?.[0]?.marketId ?? 0,
       question: marketGroupData.question || 'Unknown Question', // Ensure question is always a string
+      marketGroupData,
+      marketClassification: MarketGroupClassification.YES_NO,
     };
 
     addPosition(position);
@@ -189,20 +192,7 @@ export default function YesNoWagerForm({
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-4">
           <div>
-            <div className="flex justify-between items-center">
               <Label>Your Prediction</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                className="text-xs"
-                onClick={handleAddToParlay}
-                disabled={!predictionValue || !marketGroupData.question}
-              >
-                <SquareStack className="w-3 h-3" />
-                Add to Parlay
-              </Button>
-            </div>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <Button
                 type="button"

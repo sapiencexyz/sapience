@@ -2,16 +2,14 @@
 
 import Link from 'next/link';
 import * as React from 'react';
-import { ChevronDown, SquareStack, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { useToast } from '@sapience/ui/hooks/use-toast';
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getChainShortName } from '~/lib/utils/util';
-import { useParlayContext } from '~/lib/context/ParlayContext';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
 
 // Import the shared type
@@ -38,8 +36,8 @@ const MarketGroupsRow = ({
   displayUnit,
 }: MarketGroupsRowProps) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const { addPosition } = useParlayContext();
-  const { toast } = useToast();
+  const { addPosition } = useBetSlipContext();
+
 
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
@@ -55,8 +53,8 @@ const MarketGroupsRow = ({
     return `${Math.round(percentage)}% chance`;
   };
 
-  // Helper function to handle adding market to parlay
-  const handleAddToParlay = (marketItem: MarketWithContext) => {
+  // Helper function to handle adding market to bet slip
+  const handleAddToBetSlip = (marketItem: MarketWithContext) => {
     const position = {
       prediction: true, // Default to true, could be made dynamic based on market type
       marketAddress: marketAddress,
@@ -64,11 +62,6 @@ const MarketGroupsRow = ({
       question: marketItem.question || marketItem.optionName || displayQuestion,
     };
     addPosition(position);
-
-    toast({
-      title: 'Added to Parlay',
-      description: `${marketItem.optionName || marketItem.question || 'Market'} has been added to your parlay.`,
-    });
   };
 
   if (!market || market.length === 0) {
@@ -228,52 +221,43 @@ const MarketGroupsRow = ({
                 </Button>
 
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 w-[70px]"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsExpanded(!isExpanded);
                   }}
                 >
-                  <motion.div
-                    animate={{ rotate: isExpanded ? 180 : 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </motion.div>
-                  <span className="sr-only">
-                    {isExpanded ? 'Hide market details' : 'Show market details'}
-                  </span>
+                  {isExpanded ? 'Hide' : 'Show'}
                 </Button>
               </>
             ) : (
-              // For non-multichoice markets, show Parlay + Trade buttons for the active market
+              // For non-multichoice markets, show Details + Wager buttons for the active market
               activeMarket && (
-                <>
-                  {/* Only show Parlay button for non-numeric markets */}
-                  {marketClassification !==
-                    MarketGroupClassificationEnum.NUMERIC && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAddToParlay(activeMarket)}
-                      className="h-8 px-3"
-                    >
-                      <SquareStack className="h-3 w-3" />
-                      Parlay
-                    </Button>
-                  )}
-
-                  <Button size="sm" asChild className="h-8 px-3">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="link"
+                    size="xs"
+                    asChild
+                    className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground"
+                  >
                     <Link
                       href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
                     >
-                      <TrendingUp className="h-3 w-3" />
-                      Trade
+                      Details
                     </Link>
                   </Button>
-                </>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAddToBetSlip(activeMarket)}
+                    className="h-8 px-3"
+                  >
+                    Wager
+                  </Button>
+                </div>
               )
             )}
           </div>
@@ -293,7 +277,7 @@ const MarketGroupsRow = ({
               className="overflow-hidden bg-background/95 border-l-4 border-muted"
               style={{ borderLeftColor: color }}
             >
-              <div className="px-6 py-4">
+              <div className="px-6">
                 {/* Panel Content */}
                 <div className="max-h-96 overflow-y-auto">
                   {market.length > 0 ? (
@@ -323,24 +307,27 @@ const MarketGroupsRow = ({
 
                             {/* Right Side: Actions */}
                             <div className="flex items-center gap-3">
-                              <div className="flex gap-2">
+                              <div className="flex items-center gap-2">
                                 <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleAddToParlay(marketItem)}
-                                  className="h-8 px-3"
+                                  variant="link"
+                                  size="xs"
+                                  asChild
+                                  className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground"
                                 >
-                                  <SquareStack className="h-3 w-3" />
-                                  Parlay
-                                </Button>
-
-                                <Button size="sm" asChild className="h-8 px-3">
                                   <Link
                                     href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
                                   >
-                                    <TrendingUp className="h-3 w-3" />
-                                    Trade
+                                    Details
                                   </Link>
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAddToBetSlip(marketItem)}
+                                  className="h-8 px-3"
+                                >
+                                  Wager
                                 </Button>
                               </div>
                             </div>

@@ -15,7 +15,8 @@ import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-import { useParlayContext } from '~/lib/context/ParlayContext';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
+import { MarketGroupClassification } from '~/lib/types';
 
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -30,7 +31,7 @@ export default function MultipleChoiceWagerForm({
 }: MultipleChoiceWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const { addPosition } = useParlayContext();
+  const { addPosition } = useBetSlipContext();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -86,7 +87,7 @@ export default function MultipleChoiceWagerForm({
   });
 
   // Handle adding to parlay
-  const handleAddToParlay = () => {
+  const handleAddToBetSlip = () => {
     if (!predictionValue || !marketGroupData.question) return;
 
     // Find the selected market option
@@ -104,6 +105,8 @@ export default function MultipleChoiceWagerForm({
         selectedMarket.question ||
         `${marketGroupData.question} - ${selectedMarket.optionName}` ||
         'Unknown Question', // Ensure question is always a string
+      marketGroupData,
+      marketClassification: MarketGroupClassification.MULTIPLE_CHOICE,
     };
 
     addPosition(position);
@@ -195,20 +198,7 @@ export default function MultipleChoiceWagerForm({
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-4">
           <div>
-            <div className="flex justify-between items-center">
               <Label>Your Prediction</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                className="text-xs"
-                onClick={handleAddToParlay}
-                disabled={!predictionValue || !marketGroupData.question}
-              >
-                <SquareStack className="w-3 h-3" />
-                Add to Parlay
-              </Button>
-            </div>
             <MultipleChoicePredict
               options={(marketGroupData.markets || []).map((market) => ({
                 name: market.optionName || '',
