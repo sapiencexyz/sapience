@@ -97,7 +97,7 @@ export default function YesNoWagerForm({
       prediction: predictionValue === YES_SQRT_PRICE_X96,
       marketAddress: marketGroupData.address as string,
       marketId: marketGroupData.markets?.[0]?.marketId ?? 0,
-      question: marketGroupData.question,
+      question: marketGroupData.question || 'Unknown Question', // Ensure question is always a string
     };
 
     addPosition(position);
@@ -207,7 +207,9 @@ export default function YesNoWagerForm({
               <Button
                 type="button"
                 onClick={() =>
-                  methods.setValue('predictionValue', YES_SQRT_PRICE_X96, { shouldValidate: true })
+                  methods.setValue('predictionValue', YES_SQRT_PRICE_X96, {
+                    shouldValidate: true,
+                  })
                 }
                 className={`py-6 text-lg font-normal ${
                   predictionValue === YES_SQRT_PRICE_X96
@@ -220,7 +222,9 @@ export default function YesNoWagerForm({
               <Button
                 type="button"
                 onClick={() =>
-                  methods.setValue('predictionValue', NO_SQRT_PRICE_X96, { shouldValidate: true })
+                  methods.setValue('predictionValue', NO_SQRT_PRICE_X96, {
+                    shouldValidate: true,
+                  })
                 }
                 className={`py-6 text-lg font-normal ${
                   predictionValue === NO_SQRT_PRICE_X96

@@ -97,10 +97,13 @@ export default function MultipleChoiceWagerForm({
     if (!selectedMarket) return;
 
     const position = {
-      prediction: true, // For multiple choice, we set this to true and use the option name in the question
+      prediction: true, // For multiple choice, we set this to true and use the market's own question
       marketAddress: marketGroupData.address as string,
       marketId: selectedMarket.marketId,
-      question: `${marketGroupData.question} - ${selectedMarket.optionName}`,
+      question:
+        selectedMarket.question ||
+        `${marketGroupData.question} - ${selectedMarket.optionName}` ||
+        'Unknown Question', // Ensure question is always a string
     };
 
     addPosition(position);

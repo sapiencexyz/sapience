@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import type React from 'react';
+import { createContext, useContext, useState, useCallback } from 'react';
 
 // Updated ParlayPosition type based on requirements
 export interface ParlayPosition {
@@ -40,37 +41,56 @@ export const ParlayProvider = ({ children }: ParlayProviderProps) => {
   const [parlayPositions, setParlayPositions] = useState<ParlayPosition[]>([]);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const addPosition = useCallback((position: Omit<ParlayPosition, 'id'>) => {
-    // Generate a unique ID for the position
-    const id = `${position.marketAddress}-${position.marketId}-${position.prediction}-${Date.now()}`;
-    
-    // Check if this exact position already exists
-    const existingPosition = parlayPositions.find(
-      p => 
-        p.marketAddress === position.marketAddress &&
-        p.marketId === position.marketId &&
-        p.prediction === position.prediction
-    );
+  const addPosition = useCallback(
+    (position: Omit<ParlayPosition, 'id'>) => {
+      // Check if a position with the same marketAddress and marketId already exists
+      const existingPositionIndex = parlayPositions.findIndex(
+        (p) =>
+          p.marketAddress === position.marketAddress &&
+          p.marketId === position.marketId
+      );
 
-    if (!existingPosition) {
-      const newPosition: ParlayPosition = {
-        ...position,
-        id,
-      };
-      setParlayPositions(prev => [...prev, newPosition]);
-      setIsPopoverOpen(true); // Open popover when position is added
-    }
-  }, [parlayPositions]);
+      if (existingPositionIndex !== -1) {
+        // Merge into existing position by updating it
+        setParlayPositions((prev) =>
+          prev.map((p, index) =>
+            index === existingPositionIndex
+              ? {
+                  ...p,
+                  prediction: position.prediction,
+                  question: position.question,
+                }
+              : p
+          )
+        );
+      } else {
+        // Generate a unique ID for the new position
+        const id = `${position.marketAddress}-${position.marketId}-${position.prediction}-${Date.now()}`;
+
+        const newPosition: ParlayPosition = {
+          ...position,
+          id,
+        };
+        setParlayPositions((prev) => [...prev, newPosition]);
+      }
+
+      setIsPopoverOpen(true); // Open popover when position is added or updated
+    },
+    [parlayPositions]
+  );
 
   const removePosition = useCallback((id: string) => {
-    setParlayPositions(prev => prev.filter(p => p.id !== id));
+    setParlayPositions((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
-  const updatePosition = useCallback((id: string, updates: Partial<ParlayPosition>) => {
-    setParlayPositions(prev =>
-      prev.map(p => (p.id === id ? { ...p, ...updates } : p))
-    );
-  }, []);
+  const updatePosition = useCallback(
+    (id: string, updates: Partial<ParlayPosition>) => {
+      setParlayPositions((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      );
+    },
+    []
+  );
 
   const clearParlay = useCallback(() => {
     setParlayPositions([]);
@@ -92,8 +112,6 @@ export const ParlayProvider = ({ children }: ParlayProviderProps) => {
   };
 
   return (
-    <ParlayContext.Provider value={value}>
-      {children}
-    </ParlayContext.Provider>
+    <ParlayContext.Provider value={value}>{children}</ParlayContext.Provider>
   );
-}; 
+};

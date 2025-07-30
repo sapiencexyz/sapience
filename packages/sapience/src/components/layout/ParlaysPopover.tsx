@@ -13,28 +13,33 @@ import Link from 'next/link';
 import { useParlayContext } from '~/lib/context/ParlayContext';
 
 const ParlaysPopover = () => {
-  const { parlayPositions, removePosition, updatePosition, clearParlay, isPopoverOpen, setIsPopoverOpen } = useParlayContext();
+  const {
+    parlayPositions,
+    removePosition,
+    updatePosition,
+    isPopoverOpen,
+    setIsPopoverOpen,
+  } = useParlayContext();
 
   return (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className="rounded-full px-6"
-          size="default"
-        >
+        <Button variant="outline" className="rounded-full px-6" size="default">
           <SquareStack className="h-4 w-4" />
           Parlays
         </Button>
       </PopoverTrigger>
-      <PopoverContent className={`w-80 ${parlayPositions.length === 0 ? 'p-6 py-14' : 'p-0'}`} align="end">
+      <PopoverContent
+        className={`w-80 ${parlayPositions.length === 0 ? 'p-6 py-14' : 'p-0'}`}
+        align="end"
+      >
         {parlayPositions.length === 0 ? (
           <div className="text-center space-y-3">
             <p className="text-base text-muted-foreground">
               Build a wager that combines multiple outcomes.
             </p>
-            <Link 
-              href="/markets" 
+            <Link
+              href="/markets"
               className="inline-flex items-center text-xs text-primary hover:text-primary/80 transition-colors"
             >
               Browse prediction markets
@@ -54,20 +59,24 @@ const ParlaysPopover = () => {
                       {position.question}
                     </p>
                   </div>
-                  
+
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-medium">NO</span>
+                      <span className="text-xs text-muted-foreground font-medium">
+                        NO
+                      </span>
                       <Switch
                         checked={position.prediction}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           updatePosition(position.id, { prediction: checked })
                         }
                         className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-red-500"
                       />
-                      <span className="text-xs text-muted-foreground font-medium">YES</span>
+                      <span className="text-xs text-muted-foreground font-medium">
+                        YES
+                      </span>
                     </div>
-                    
+
                     <Button
                       variant="ghost"
                       size="xs"
@@ -80,7 +89,7 @@ const ParlaysPopover = () => {
                 </div>
               ))}
             </div>
-            
+
             <div className="pt-2">
               <Button className="w-full" size="lg" disabled>
                 Quote Unavailable
@@ -93,4 +102,4 @@ const ParlaysPopover = () => {
   );
 };
 
-export default ParlaysPopover; 
+export default ParlaysPopover;
