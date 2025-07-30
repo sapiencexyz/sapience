@@ -29,8 +29,8 @@ const Comments = dynamic(() => import('../../components/shared/Comments'), {
   ssr: false,
 });
 
-const AddressFilter = dynamic(
-  () => import('../../components/shared/AddressFilter'),
+const WalletAddressPopover = dynamic(
+  () => import('../../components/DataDrawer/WalletAddressPopover'),
   {
     ssr: false,
   }
@@ -217,15 +217,14 @@ const ForecastPage = () => {
                     <span className="font-medium">Account</span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[600px] max-w-[98vw]">
+                <PopoverContent className="w-fit max-w-[98vw]">
                   <div className="space-y-4 p-3">
                     <div className="text-sm font-medium text-foreground">
                       Filter by ENS/address
                     </div>
-                    <AddressFilter
-                      selectedAddress={selectedAddressFilter}
-                      onAddressChange={setSelectedAddressFilter}
-                      placeholder="Filter by address or ENS..."
+                    <WalletAddressPopover
+                      selectedAddress={selectedAddressFilter || ''}
+                      onWalletSelect={setSelectedAddressFilter}
                     />
                   </div>
                 </PopoverContent>
@@ -277,7 +276,7 @@ const ForecastPage = () => {
               <Comments
                 selectedCategory={selectedCategory}
                 question={selectedMarket?.question}
-                address={address}
+                address={selectedAddressFilter || address}
                 refetchTrigger={refetchCommentsTrigger}
               />
             </div>
