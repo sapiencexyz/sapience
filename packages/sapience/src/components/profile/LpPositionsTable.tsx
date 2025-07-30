@@ -40,9 +40,10 @@ function MarketCell({ position }: { position: PositionType }) {
 function CollateralCell({ position }: { position: PositionType }) {
   const decimals = position.market?.marketGroup?.collateralDecimals || 18; // Default to 18 if not provided
   const symbol = position.market?.marketGroup?.collateralSymbol || 'Tokens';
-  
-  
-  const displayValue = Number(formatUnits(BigInt(position.collateral), decimals));
+
+  const displayValue = Number(
+    formatUnits(BigInt(position.collateral), decimals)
+  );
 
   return (
     <div className="flex items-center gap-1">
@@ -60,10 +61,10 @@ function VirtualTokenCell({
   value: string | number | undefined | null;
   unit: string;
 }) {
+  const displayValue = Number(
+    formatUnits(BigInt(value?.toString() || '0'), 18)
+  );
 
-  let displayValue = Number(formatUnits(BigInt(value?.toString() || '0'), 18));
-  
-  
   return (
     <div className="flex items-center gap-1">
       <NumberDisplay value={displayValue} />

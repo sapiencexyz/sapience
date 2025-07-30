@@ -42,8 +42,6 @@ interface DataDrawerProps {
   trigger?: React.ReactNode;
 }
 
-
-
 const CenteredMessage = ({
   children,
   className = 'text-muted-foreground',
@@ -92,33 +90,15 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
 
   // Fetch GraphQL-based positions (includes transaction data)
   const targetAddress = walletAddress || address;
-  
-  // Build position query variables - only include market filtering if we have a specific user selected
-  // If no specific wallet is selected (showing all market data), filter by market
-  // If a specific wallet is selected, show all their positions across all markets
-  const positionVars: {
-    address?: string;
-    marketAddress?: string;
-    chainId?: number;
-  } = {};
-  
-  if (targetAddress) {
-    positionVars.address = targetAddress;
-    // When viewing a specific user's positions, show ALL their positions (like profile page)
-    // Comment out market filtering to see positions across all markets
-    // positionVars.marketAddress = marketAddress || undefined;
-    // positionVars.chainId = chainId || undefined;
-  } else {
-    // When no specific user selected, filter by current market
-    positionVars.marketAddress = marketAddress || undefined;
-    positionVars.chainId = chainId || undefined;
-  }
-  
   const {
     data: allPositions = [],
     isLoading: isLoadingPositions,
     error: positionsError,
-  } = usePositions(positionVars);
+  } = usePositions({
+    address: targetAddress || undefined,
+    marketAddress: marketAddress || undefined,
+    chainId: chainId || undefined,
+  });
 
   // Filter positions by type
   const lpPositions = allPositions.filter((pos) => pos.isLP);
@@ -186,7 +166,7 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
               {allTransactions.map((tx) => {
                 const typeDisplay = getTransactionTypeDisplay(tx.type);
                 const collateralAmount = tx.position.collateral
-                  ? Number(formatEther(safeStringToBigInt(tx.position.collateral)))
+                  ? Number(formatEther(BigInt(tx.position.collateral)))
                   : 0;
 
                 return (
