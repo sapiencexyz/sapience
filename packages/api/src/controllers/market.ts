@@ -37,7 +37,6 @@ import Sapience from '@sapience/protocol/deployments/Sapience.json';
 import { PublicClient } from 'viem';
 import Sentry from '../instrument';
 import { Transaction } from '../../generated/prisma';
-import { Decimal } from 'generated/prisma/runtime/library';
 
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file

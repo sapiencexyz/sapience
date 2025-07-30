@@ -61,9 +61,7 @@ router.get(
     // Format the data
     const formattedPositions = positions.map((position) => ({
       ...position,
-      baseToken: position.baseToken
-        ? formatDbBigInt(position.baseToken)
-        : null,
+      baseToken: position.baseToken ? formatDbBigInt(position.baseToken) : null,
       quoteToken: position.quoteToken
         ? formatDbBigInt(position.quoteToken)
         : null,

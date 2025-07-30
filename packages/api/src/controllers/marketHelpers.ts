@@ -290,9 +290,7 @@ const updateTransactionStateFromEvent = (
   // Latest position state
   transaction.baseToken = String(eventArgs.positionVgasAmount || '0');
   transaction.quoteToken = String(eventArgs.positionVethAmount || '0');
-  transaction.borrowedBaseToken = String(
-    eventArgs.positionBorrowedVgas || '0'
-  );
+  transaction.borrowedBaseToken = String(eventArgs.positionBorrowedVgas || '0');
   transaction.borrowedQuoteToken = String(
     eventArgs.positionBorrowedVeth || '0'
   );
