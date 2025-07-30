@@ -59,6 +59,7 @@ const ForecastPage = () => {
   // Fetch all market groups
   const { data: marketGroups } = useEnrichedMarketGroups();
 
+
   // Flatten all markets from all groups
   const allMarkets = (marketGroups || []).flatMap((group) =>
     (group.markets || []).map((market) => ({
