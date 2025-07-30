@@ -24,20 +24,17 @@ const QuestionSelect = dynamic(
   () => import('../../components/shared/QuestionSelect'),
   {
     ssr: false,
-    loading: () => <div className="h-20 bg-muted animate-pulse rounded-lg" />,
   }
 );
 
 const Comments = dynamic(() => import('../../components/shared/Comments'), {
   ssr: false,
-  loading: () => <div className="h-64 bg-muted animate-pulse rounded-lg" />,
 });
 
 const AddressFilter = dynamic(
   () => import('../../components/shared/AddressFilter'),
   {
     ssr: false,
-    loading: () => <div className="h-12 bg-muted animate-pulse rounded-lg" />,
   }
 );
 
@@ -51,14 +48,44 @@ const ForecastPage = () => {
     string | null
   >(null);
   const [refetchCommentsTrigger, setRefetchCommentsTrigger] = useState(0);
+
+  // State for selected market - moved to top
+  const [selectedMarket, setSelectedMarket] = useState<any>(undefined);
+
   const refetchComments = useCallback(() => {
     // Add a small delay to ensure the transaction is processed
     setTimeout(() => {
       setRefetchCommentsTrigger((t) => t + 1);
     }, 1000); // 1 second delay
   }, []);
+
   // Fetch all market groups
   const { data: marketGroups } = useEnrichedMarketGroups();
+
+  // Extract market details if selected - moved to top
+  let marketId, marketAddress, marketClassification, marketGroupData;
+  if (selectedMarket) {
+    marketId = selectedMarket.marketId;
+    marketAddress = selectedMarket.group.address;
+    marketClassification = selectedMarket.group.marketClassification;
+    marketGroupData = {
+      ...selectedMarket.group,
+      markets: [selectedMarket],
+    };
+  }
+
+  // Prepare submission value for attestation (confidence as string) - moved to top
+  const submissionValue = String(predictionValue[0]);
+
+  // Use the attestation hook - moved to top
+  const _ = useSubmitPrediction({
+    marketAddress: marketAddress || '',
+    marketClassification:
+      marketClassification || MarketGroupClassification.YES_NO,
+    submissionValue,
+    marketId: marketId || 0,
+    comment,
+  });
 
   // Flatten all markets from all groups
   const allMarkets = (marketGroups || []).flatMap((group) =>
@@ -85,9 +112,6 @@ const ForecastPage = () => {
     );
   });
 
-  // State for selected market
-  const [selectedMarket, setSelectedMarket] = useState<any>(undefined);
-
   // Handler to select a market and switch to the selected question tab
   const handleMarketSelect = (market: any) => {
     setSelectedCategory(SelectableTab.Selected);
@@ -95,31 +119,6 @@ const ForecastPage = () => {
       setSelectedMarket(market);
     }, 0);
   };
-
-  // Extract market details if selected
-  let marketId, marketAddress, marketClassification, marketGroupData;
-  if (selectedMarket) {
-    marketId = selectedMarket.marketId;
-    marketAddress = selectedMarket.group.address;
-    marketClassification = selectedMarket.group.marketClassification;
-    marketGroupData = {
-      ...selectedMarket.group,
-      markets: [selectedMarket],
-    };
-  }
-
-  // Prepare submission value for attestation (confidence as string)
-  const submissionValue = String(predictionValue[0]);
-
-  // Use the attestation hook
-  const _ = useSubmitPrediction({
-    marketAddress: marketAddress || '',
-    marketClassification:
-      marketClassification || MarketGroupClassification.YES_NO,
-    submissionValue,
-    marketId: marketId || 0,
-    comment,
-  });
 
   // Style classes for category buttons
   const selectedStatusClass = 'bg-primary/10 text-primary';
