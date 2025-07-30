@@ -65,10 +65,8 @@ function VirtualTokenCell({
   let displayValue: number;
   
   try {
-    // Direct BigInt conversion since values are now stored as strings
     displayValue = Number(formatEther(BigInt(safeValue)));
   } catch (error) {
-    console.warn('Failed to convert value to BigInt:', safeValue, error);
     displayValue = 0;
   }
   
