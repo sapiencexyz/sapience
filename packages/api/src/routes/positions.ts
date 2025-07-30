@@ -62,23 +62,23 @@ router.get(
     const formattedPositions = positions.map((position) => ({
       ...position,
       baseToken: position.baseToken
-        ? formatDbBigInt(position.baseToken.toString())
+        ? formatDbBigInt(position.baseToken)
         : null,
       quoteToken: position.quoteToken
-        ? formatDbBigInt(position.quoteToken.toString())
+        ? formatDbBigInt(position.quoteToken)
         : null,
       borrowedBaseToken: position.borrowedBaseToken
-        ? formatDbBigInt(position.borrowedBaseToken.toString())
+        ? formatDbBigInt(position.borrowedBaseToken)
         : null,
       borrowedQuoteToken: position.borrowedQuoteToken
-        ? formatDbBigInt(position.borrowedQuoteToken.toString())
+        ? formatDbBigInt(position.borrowedQuoteToken)
         : null,
-      collateral: formatDbBigInt(position.collateral.toString()),
+      collateral: formatDbBigInt(position.collateral),
       lpBaseToken: position.lpBaseToken
-        ? formatDbBigInt(position.lpBaseToken.toString())
+        ? formatDbBigInt(position.lpBaseToken)
         : null,
       lpQuoteToken: position.lpQuoteToken
-        ? formatDbBigInt(position.lpQuoteToken.toString())
+        ? formatDbBigInt(position.lpQuoteToken)
         : null,
     }));
     res.json(formattedPositions);

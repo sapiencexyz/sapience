@@ -715,7 +715,7 @@ export const upsertEntitiesFromEvent = async (
     quoteToken: null,
     borrowedBaseToken: null,
     borrowedQuoteToken: null,
-    collateral: new Decimal('0'),
+    collateral: '0',
     lpBaseDeltaToken: null,
     lpQuoteDeltaToken: null,
     tradeRatioD18: null,
@@ -895,7 +895,7 @@ export const upsertEntitiesFromEvent = async (
     try {
       // Ensure collateral is set to a default value if not present
       if (!newTransaction.collateral) {
-        newTransaction.collateral = new Decimal('0');
+        newTransaction.collateral = '0';
       }
 
       // Ensure all required fields have values

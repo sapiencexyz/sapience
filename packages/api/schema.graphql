@@ -2670,54 +2670,40 @@ type PnLType {
 
 type Position {
   _count: PositionCount
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
+  baseToken: String
+  borrowedBaseToken: String
+  borrowedQuoteToken: String
+  collateral: String!
   createdAt: DateTimeISO!
   highPriceTick: Decimal
   id: Int!
   isLP: Boolean!
   isSettled: Boolean
   lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
+  lpBaseToken: String
+  lpQuoteToken: String
   market(where: MarketWhereInput): Market
   marketId: Int
   owner: String
   positionId: Int!
-  quoteToken: Decimal
+  quoteToken: String
   transactions(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): [Transaction!]!
 }
 
 type PositionAvgAggregate {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal
   highPriceTick: Decimal
   id: Float
   lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
   marketId: Float
   positionId: Float
-  quoteToken: Decimal
 }
 
 input PositionAvgOrderByAggregateInput {
-  baseToken: SortOrder
-  borrowedBaseToken: SortOrder
-  borrowedQuoteToken: SortOrder
-  collateral: SortOrder
   highPriceTick: SortOrder
   id: SortOrder
   lowPriceTick: SortOrder
-  lpBaseToken: SortOrder
-  lpQuoteToken: SortOrder
   marketId: SortOrder
   positionId: SortOrder
-  quoteToken: SortOrder
 }
 
 type PositionCount {
@@ -2769,22 +2755,22 @@ type PositionGroupBy {
   _max: PositionMaxAggregate
   _min: PositionMinAggregate
   _sum: PositionSumAggregate
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
+  baseToken: String
+  borrowedBaseToken: String
+  borrowedQuoteToken: String
+  collateral: String!
   createdAt: DateTimeISO!
   highPriceTick: Decimal
   id: Int!
   isLP: Boolean!
   isSettled: Boolean
   lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
+  lpBaseToken: String
+  lpQuoteToken: String
   marketId: Int
   owner: String
   positionId: Int!
-  quoteToken: Decimal
+  quoteToken: String
 }
 
 input PositionListRelationFilter {
@@ -2794,22 +2780,22 @@ input PositionListRelationFilter {
 }
 
 type PositionMaxAggregate {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal
+  baseToken: String
+  borrowedBaseToken: String
+  borrowedQuoteToken: String
+  collateral: String
   createdAt: DateTimeISO
   highPriceTick: Decimal
   id: Int
   isLP: Boolean
   isSettled: Boolean
   lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
+  lpBaseToken: String
+  lpQuoteToken: String
   marketId: Int
   owner: String
   positionId: Int
-  quoteToken: Decimal
+  quoteToken: String
 }
 
 input PositionMaxOrderByAggregateInput {
@@ -2832,22 +2818,22 @@ input PositionMaxOrderByAggregateInput {
 }
 
 type PositionMinAggregate {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal
+  baseToken: String
+  borrowedBaseToken: String
+  borrowedQuoteToken: String
+  collateral: String
   createdAt: DateTimeISO
   highPriceTick: Decimal
   id: Int
   isLP: Boolean
   isSettled: Boolean
   lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
+  lpBaseToken: String
+  lpQuoteToken: String
   marketId: Int
   owner: String
   positionId: Int
-  quoteToken: Decimal
+  quoteToken: String
 }
 
 input PositionMinOrderByAggregateInput {
@@ -2951,75 +2937,61 @@ input PositionScalarWhereWithAggregatesInput {
   AND: [PositionScalarWhereWithAggregatesInput!]
   NOT: [PositionScalarWhereWithAggregatesInput!]
   OR: [PositionScalarWhereWithAggregatesInput!]
-  baseToken: DecimalNullableWithAggregatesFilter
-  borrowedBaseToken: DecimalNullableWithAggregatesFilter
-  borrowedQuoteToken: DecimalNullableWithAggregatesFilter
-  collateral: DecimalWithAggregatesFilter
+  baseToken: StringNullableWithAggregatesFilter
+  borrowedBaseToken: StringNullableWithAggregatesFilter
+  borrowedQuoteToken: StringNullableWithAggregatesFilter
+  collateral: StringWithAggregatesFilter
   createdAt: DateTimeWithAggregatesFilter
   highPriceTick: DecimalNullableWithAggregatesFilter
   id: IntWithAggregatesFilter
   isLP: BoolWithAggregatesFilter
   isSettled: BoolNullableWithAggregatesFilter
   lowPriceTick: DecimalNullableWithAggregatesFilter
-  lpBaseToken: DecimalNullableWithAggregatesFilter
-  lpQuoteToken: DecimalNullableWithAggregatesFilter
+  lpBaseToken: StringNullableWithAggregatesFilter
+  lpQuoteToken: StringNullableWithAggregatesFilter
   marketId: IntNullableWithAggregatesFilter
   owner: StringNullableWithAggregatesFilter
   positionId: IntWithAggregatesFilter
-  quoteToken: DecimalNullableWithAggregatesFilter
+  quoteToken: StringNullableWithAggregatesFilter
 }
 
 type PositionSumAggregate {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal
   highPriceTick: Decimal
   id: Int
   lowPriceTick: Decimal
-  lpBaseToken: Decimal
-  lpQuoteToken: Decimal
   marketId: Int
   positionId: Int
-  quoteToken: Decimal
 }
 
 input PositionSumOrderByAggregateInput {
-  baseToken: SortOrder
-  borrowedBaseToken: SortOrder
-  borrowedQuoteToken: SortOrder
-  collateral: SortOrder
   highPriceTick: SortOrder
   id: SortOrder
   lowPriceTick: SortOrder
-  lpBaseToken: SortOrder
-  lpQuoteToken: SortOrder
   marketId: SortOrder
   positionId: SortOrder
-  quoteToken: SortOrder
 }
 
 input PositionWhereInput {
   AND: [PositionWhereInput!]
   NOT: [PositionWhereInput!]
   OR: [PositionWhereInput!]
-  baseToken: DecimalNullableFilter
-  borrowedBaseToken: DecimalNullableFilter
-  borrowedQuoteToken: DecimalNullableFilter
-  collateral: DecimalFilter
+  baseToken: StringNullableFilter
+  borrowedBaseToken: StringNullableFilter
+  borrowedQuoteToken: StringNullableFilter
+  collateral: StringFilter
   createdAt: DateTimeFilter
   highPriceTick: DecimalNullableFilter
   id: IntFilter
   isLP: BoolFilter
   isSettled: BoolNullableFilter
   lowPriceTick: DecimalNullableFilter
-  lpBaseToken: DecimalNullableFilter
-  lpQuoteToken: DecimalNullableFilter
+  lpBaseToken: StringNullableFilter
+  lpQuoteToken: StringNullableFilter
   market: MarketNullableRelationFilter
   marketId: IntNullableFilter
   owner: StringNullableFilter
   positionId: IntFilter
-  quoteToken: DecimalNullableFilter
+  quoteToken: StringNullableFilter
   transactions: TransactionListRelationFilter
 }
 
@@ -3027,24 +2999,24 @@ input PositionWhereUniqueInput {
   AND: [PositionWhereInput!]
   NOT: [PositionWhereInput!]
   OR: [PositionWhereInput!]
-  baseToken: DecimalNullableFilter
-  borrowedBaseToken: DecimalNullableFilter
-  borrowedQuoteToken: DecimalNullableFilter
-  collateral: DecimalFilter
+  baseToken: StringNullableFilter
+  borrowedBaseToken: StringNullableFilter
+  borrowedQuoteToken: StringNullableFilter
+  collateral: StringFilter
   createdAt: DateTimeFilter
   highPriceTick: DecimalNullableFilter
   id: Int
   isLP: BoolFilter
   isSettled: BoolNullableFilter
   lowPriceTick: DecimalNullableFilter
-  lpBaseToken: DecimalNullableFilter
-  lpQuoteToken: DecimalNullableFilter
+  lpBaseToken: StringNullableFilter
+  lpQuoteToken: StringNullableFilter
   market: MarketNullableRelationFilter
   marketId: IntNullableFilter
   owner: StringNullableFilter
   positionId: IntFilter
   positionId_marketId: PositionPositionIdMarketIdCompoundUniqueInput
-  quoteToken: DecimalNullableFilter
+  quoteToken: StringNullableFilter
   transactions: TransactionListRelationFilter
 }
 
@@ -3630,57 +3602,41 @@ input StringWithAggregatesFilter {
 }
 
 type Transaction {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
+  baseToken: String
+  borrowedBaseToken: String
+  borrowedQuoteToken: String
+  collateral: String!
   collateralTransfer(where: CollateralTransferWhereInput): CollateralTransfer
   collateralTransferId: Int
   createdAt: DateTimeISO!
   event(where: EventWhereInput): Event
   eventId: Int
   id: Int!
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
+  lpBaseDeltaToken: String
+  lpQuoteDeltaToken: String
   marketPrice(where: MarketPriceWhereInput): MarketPrice
   marketPriceId: Int
   position(where: PositionWhereInput): Position
   positionId: Int
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
+  quoteToken: String
+  tradeRatioD18: String
   type: transaction_type_enum!
 }
 
 type TransactionAvgAggregate {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal
   collateralTransferId: Float
   eventId: Float
   id: Float
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
   marketPriceId: Float
   positionId: Float
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
 }
 
 input TransactionAvgOrderByAggregateInput {
-  baseToken: SortOrder
-  borrowedBaseToken: SortOrder
-  borrowedQuoteToken: SortOrder
-  collateral: SortOrder
   collateralTransferId: SortOrder
   eventId: SortOrder
   id: SortOrder
-  lpBaseDeltaToken: SortOrder
-  lpQuoteDeltaToken: SortOrder
   marketPriceId: SortOrder
   positionId: SortOrder
-  quoteToken: SortOrder
-  tradeRatioD18: SortOrder
 }
 
 type TransactionCountAggregate {
@@ -3726,20 +3682,20 @@ type TransactionGroupBy {
   _max: TransactionMaxAggregate
   _min: TransactionMinAggregate
   _sum: TransactionSumAggregate
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal!
+  baseToken: String
+  borrowedBaseToken: String
+  borrowedQuoteToken: String
+  collateral: String!
   collateralTransferId: Int
   createdAt: DateTimeISO!
   eventId: Int
   id: Int!
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
+  lpBaseDeltaToken: String
+  lpQuoteDeltaToken: String
   marketPriceId: Int
   positionId: Int
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
+  quoteToken: String
+  tradeRatioD18: String
   type: transaction_type_enum!
 }
 
@@ -3750,20 +3706,20 @@ input TransactionListRelationFilter {
 }
 
 type TransactionMaxAggregate {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal
+  baseToken: String
+  borrowedBaseToken: String
+  borrowedQuoteToken: String
+  collateral: String
   collateralTransferId: Int
   createdAt: DateTimeISO
   eventId: Int
   id: Int
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
+  lpBaseDeltaToken: String
+  lpQuoteDeltaToken: String
   marketPriceId: Int
   positionId: Int
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
+  quoteToken: String
+  tradeRatioD18: String
   type: transaction_type_enum
 }
 
@@ -3786,20 +3742,20 @@ input TransactionMaxOrderByAggregateInput {
 }
 
 type TransactionMinAggregate {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal
+  baseToken: String
+  borrowedBaseToken: String
+  borrowedQuoteToken: String
+  collateral: String
   collateralTransferId: Int
   createdAt: DateTimeISO
   eventId: Int
   id: Int
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
+  lpBaseDeltaToken: String
+  lpQuoteDeltaToken: String
   marketPriceId: Int
   positionId: Int
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
+  quoteToken: String
+  tradeRatioD18: String
   type: transaction_type_enum
 }
 
@@ -3897,77 +3853,61 @@ input TransactionScalarWhereWithAggregatesInput {
   AND: [TransactionScalarWhereWithAggregatesInput!]
   NOT: [TransactionScalarWhereWithAggregatesInput!]
   OR: [TransactionScalarWhereWithAggregatesInput!]
-  baseToken: DecimalNullableWithAggregatesFilter
-  borrowedBaseToken: DecimalNullableWithAggregatesFilter
-  borrowedQuoteToken: DecimalNullableWithAggregatesFilter
-  collateral: DecimalWithAggregatesFilter
+  baseToken: StringNullableWithAggregatesFilter
+  borrowedBaseToken: StringNullableWithAggregatesFilter
+  borrowedQuoteToken: StringNullableWithAggregatesFilter
+  collateral: StringWithAggregatesFilter
   collateralTransferId: IntNullableWithAggregatesFilter
   createdAt: DateTimeWithAggregatesFilter
   eventId: IntNullableWithAggregatesFilter
   id: IntWithAggregatesFilter
-  lpBaseDeltaToken: DecimalNullableWithAggregatesFilter
-  lpQuoteDeltaToken: DecimalNullableWithAggregatesFilter
+  lpBaseDeltaToken: StringNullableWithAggregatesFilter
+  lpQuoteDeltaToken: StringNullableWithAggregatesFilter
   marketPriceId: IntNullableWithAggregatesFilter
   positionId: IntNullableWithAggregatesFilter
-  quoteToken: DecimalNullableWithAggregatesFilter
-  tradeRatioD18: DecimalNullableWithAggregatesFilter
+  quoteToken: StringNullableWithAggregatesFilter
+  tradeRatioD18: StringNullableWithAggregatesFilter
   type: Enumtransaction_type_enumWithAggregatesFilter
 }
 
 type TransactionSumAggregate {
-  baseToken: Decimal
-  borrowedBaseToken: Decimal
-  borrowedQuoteToken: Decimal
-  collateral: Decimal
   collateralTransferId: Int
   eventId: Int
   id: Int
-  lpBaseDeltaToken: Decimal
-  lpQuoteDeltaToken: Decimal
   marketPriceId: Int
   positionId: Int
-  quoteToken: Decimal
-  tradeRatioD18: Decimal
 }
 
 input TransactionSumOrderByAggregateInput {
-  baseToken: SortOrder
-  borrowedBaseToken: SortOrder
-  borrowedQuoteToken: SortOrder
-  collateral: SortOrder
   collateralTransferId: SortOrder
   eventId: SortOrder
   id: SortOrder
-  lpBaseDeltaToken: SortOrder
-  lpQuoteDeltaToken: SortOrder
   marketPriceId: SortOrder
   positionId: SortOrder
-  quoteToken: SortOrder
-  tradeRatioD18: SortOrder
 }
 
 input TransactionWhereInput {
   AND: [TransactionWhereInput!]
   NOT: [TransactionWhereInput!]
   OR: [TransactionWhereInput!]
-  baseToken: DecimalNullableFilter
-  borrowedBaseToken: DecimalNullableFilter
-  borrowedQuoteToken: DecimalNullableFilter
-  collateral: DecimalFilter
+  baseToken: StringNullableFilter
+  borrowedBaseToken: StringNullableFilter
+  borrowedQuoteToken: StringNullableFilter
+  collateral: StringFilter
   collateralTransfer: CollateralTransferNullableRelationFilter
   collateralTransferId: IntNullableFilter
   createdAt: DateTimeFilter
   event: EventNullableRelationFilter
   eventId: IntNullableFilter
   id: IntFilter
-  lpBaseDeltaToken: DecimalNullableFilter
-  lpQuoteDeltaToken: DecimalNullableFilter
+  lpBaseDeltaToken: StringNullableFilter
+  lpQuoteDeltaToken: StringNullableFilter
   marketPrice: MarketPriceNullableRelationFilter
   marketPriceId: IntNullableFilter
   position: PositionNullableRelationFilter
   positionId: IntNullableFilter
-  quoteToken: DecimalNullableFilter
-  tradeRatioD18: DecimalNullableFilter
+  quoteToken: StringNullableFilter
+  tradeRatioD18: StringNullableFilter
   type: Enumtransaction_type_enumFilter
 }
 
@@ -3975,24 +3915,24 @@ input TransactionWhereUniqueInput {
   AND: [TransactionWhereInput!]
   NOT: [TransactionWhereInput!]
   OR: [TransactionWhereInput!]
-  baseToken: DecimalNullableFilter
-  borrowedBaseToken: DecimalNullableFilter
-  borrowedQuoteToken: DecimalNullableFilter
-  collateral: DecimalFilter
+  baseToken: StringNullableFilter
+  borrowedBaseToken: StringNullableFilter
+  borrowedQuoteToken: StringNullableFilter
+  collateral: StringFilter
   collateralTransfer: CollateralTransferNullableRelationFilter
   collateralTransferId: Int
   createdAt: DateTimeFilter
   event: EventNullableRelationFilter
   eventId: Int
   id: Int
-  lpBaseDeltaToken: DecimalNullableFilter
-  lpQuoteDeltaToken: DecimalNullableFilter
+  lpBaseDeltaToken: StringNullableFilter
+  lpQuoteDeltaToken: StringNullableFilter
   marketPrice: MarketPriceNullableRelationFilter
   marketPriceId: Int
   position: PositionNullableRelationFilter
   positionId: IntNullableFilter
-  quoteToken: DecimalNullableFilter
-  tradeRatioD18: DecimalNullableFilter
+  quoteToken: StringNullableFilter
+  tradeRatioD18: StringNullableFilter
   type: Enumtransaction_type_enumFilter
 }
 
