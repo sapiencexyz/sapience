@@ -37,7 +37,6 @@ import Sapience from '@sapience/protocol/deployments/Sapience.json';
 import { PublicClient } from 'viem';
 import Sentry from '../instrument';
 import { Transaction } from '../../generated/prisma';
-import { Decimal } from 'generated/prisma/runtime/library';
 
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -715,7 +714,7 @@ export const upsertEntitiesFromEvent = async (
     quoteToken: null,
     borrowedBaseToken: null,
     borrowedQuoteToken: null,
-    collateral: new Decimal('0'),
+    collateral: '0',
     lpBaseDeltaToken: null,
     lpQuoteDeltaToken: null,
     tradeRatioD18: null,
@@ -895,7 +894,7 @@ export const upsertEntitiesFromEvent = async (
     try {
       // Ensure collateral is set to a default value if not present
       if (!newTransaction.collateral) {
-        newTransaction.collateral = new Decimal('0');
+        newTransaction.collateral = '0';
       }
 
       // Ensure all required fields have values

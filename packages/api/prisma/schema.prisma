@@ -227,13 +227,13 @@ model Position {
   highPriceTick      Decimal?      @db.Decimal(78, 0)
   lowPriceTick       Decimal?      @db.Decimal(78, 0)
   isSettled          Boolean?
-  lpBaseToken        Decimal?      @db.Decimal(78, 0)
-  lpQuoteToken       Decimal?      @db.Decimal(78, 0)
-  baseToken          Decimal?      @db.Decimal(78, 0)
-  quoteToken         Decimal?      @db.Decimal(78, 0)
-  borrowedBaseToken  Decimal?      @db.Decimal(78, 0)
-  borrowedQuoteToken Decimal?      @db.Decimal(78, 0)
-  collateral         Decimal       @db.Decimal(78, 0)
+  lpBaseToken        String?       @db.VarChar
+  lpQuoteToken       String?       @db.VarChar
+  baseToken          String?       @db.VarChar
+  quoteToken         String?       @db.VarChar
+  borrowedBaseToken  String?       @db.VarChar
+  borrowedQuoteToken String?       @db.VarChar
+  collateral         String        @db.VarChar
   marketId           Int?
   market             Market?       @relation(fields: [marketId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_0ad1a3735077091c74287ffc7ca")
   /// @TypeGraphQL.field(name: "transactions")
@@ -324,15 +324,15 @@ model Attestation {
 model Transaction {
   id                   Int                   @id(map: "PK_89eadb93a89810556e1cbcd6ab9") @default(autoincrement())
   createdAt            DateTime              @default(now()) @db.Timestamp(6)
-  tradeRatioD18        Decimal?              @db.Decimal(78, 0)
+  tradeRatioD18        String?               @db.VarChar
   type                 transaction_type_enum
-  baseToken            Decimal?              @db.Decimal(78, 0)
-  quoteToken           Decimal?              @db.Decimal(78, 0)
-  borrowedBaseToken    Decimal?              @db.Decimal(78, 0)
-  borrowedQuoteToken   Decimal?              @db.Decimal(78, 0)
-  collateral           Decimal               @db.Decimal(78, 0)
-  lpBaseDeltaToken     Decimal?              @db.Decimal(78, 0)
-  lpQuoteDeltaToken    Decimal?              @db.Decimal(78, 0)
+  baseToken            String?               @db.VarChar
+  quoteToken           String?               @db.VarChar
+  borrowedBaseToken    String?               @db.VarChar
+  borrowedQuoteToken   String?               @db.VarChar
+  collateral           String                @db.VarChar
+  lpBaseDeltaToken     String?               @db.VarChar
+  lpQuoteDeltaToken    String?               @db.VarChar
   eventId              Int?                  @unique(map: "REL_f8aba9691e84fbd42400be9ce8")
   positionId           Int?
   marketPriceId        Int?                  @unique(map: "REL_91ebc2a6a20b2b1ac354cfae98")

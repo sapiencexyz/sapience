@@ -15,7 +15,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import Link from 'next/link';
-import { formatEther } from 'viem';
+import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
@@ -40,7 +40,10 @@ function MarketCell({ position }: { position: PositionType }) {
 function CollateralCell({ position }: { position: PositionType }) {
   const decimals = position.market?.marketGroup?.collateralDecimals || 18; // Default to 18 if not provided
   const symbol = position.market?.marketGroup?.collateralSymbol || 'Tokens';
-  const displayValue = Number(position.collateral) / 10 ** decimals;
+
+  const displayValue = Number(
+    formatUnits(BigInt(position.collateral), decimals)
+  );
 
   return (
     <div className="flex items-center gap-1">
@@ -58,7 +61,10 @@ function VirtualTokenCell({
   value: string | number | undefined | null;
   unit: string;
 }) {
-  const displayValue = Number(formatEther(BigInt(value?.toString() || '0')));
+  const displayValue = Number(
+    formatUnits(BigInt(value?.toString() || '0'), 18)
+  );
+
   return (
     <div className="flex items-center gap-1">
       <NumberDisplay value={displayValue} />

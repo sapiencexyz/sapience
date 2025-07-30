@@ -216,15 +216,15 @@ export const createOrModifyPositionFromTransaction = async (
             ''
           ).toLowerCase(),
           isLP: isLpPosition(transaction),
-          baseToken: toDecimal(eventArgs.positionVgasAmount || '0'),
-          quoteToken: toDecimal(eventArgs.positionVethAmount || '0'),
-          borrowedBaseToken: toDecimal(eventArgs.positionBorrowedVgas || '0'),
-          borrowedQuoteToken: toDecimal(eventArgs.positionBorrowedVeth || '0'),
-          collateral: toDecimal(eventArgs.positionCollateralAmount || '0'),
-          lpBaseToken: toDecimal(
+          baseToken: String(eventArgs.positionVgasAmount || '0'),
+          quoteToken: String(eventArgs.positionVethAmount || '0'),
+          borrowedBaseToken: String(eventArgs.positionBorrowedVgas || '0'),
+          borrowedQuoteToken: String(eventArgs.positionBorrowedVeth || '0'),
+          collateral: String(eventArgs.positionCollateralAmount || '0'),
+          lpBaseToken: String(
             eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'
           ),
-          lpQuoteToken: toDecimal(
+          lpQuoteToken: String(
             eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0'
           ),
           highPriceTick: toDecimal(
@@ -246,15 +246,15 @@ export const createOrModifyPositionFromTransaction = async (
           marketId: market.id,
           owner: ((eventArgs.sender as string) || '').toLowerCase(),
           isLP: isLpPosition(transaction),
-          baseToken: toDecimal(eventArgs.positionVgasAmount || '0'),
-          quoteToken: toDecimal(eventArgs.positionVethAmount || '0'),
-          borrowedBaseToken: toDecimal(eventArgs.positionBorrowedVgas || '0'),
-          borrowedQuoteToken: toDecimal(eventArgs.positionBorrowedVeth || '0'),
-          collateral: toDecimal(eventArgs.positionCollateralAmount || '0'),
-          lpBaseToken: toDecimal(
+          baseToken: String(eventArgs.positionVgasAmount || '0'),
+          quoteToken: String(eventArgs.positionVethAmount || '0'),
+          borrowedBaseToken: String(eventArgs.positionBorrowedVgas || '0'),
+          borrowedQuoteToken: String(eventArgs.positionBorrowedVeth || '0'),
+          collateral: String(eventArgs.positionCollateralAmount || '0'),
+          lpBaseToken: String(
             eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'
           ),
-          lpQuoteToken: toDecimal(
+          lpQuoteToken: String(
             eventArgs.loanAmount1 || eventArgs.addedAmount1 || '0'
           ),
           highPriceTick: toDecimal(eventArgs.upperTick || '0'),
@@ -288,18 +288,16 @@ const updateTransactionStateFromEvent = (
   const eventArgs = getLogDataArgs(event.logData);
 
   // Latest position state
-  transaction.baseToken = toDecimal(eventArgs.positionVgasAmount || '0');
-  transaction.quoteToken = toDecimal(eventArgs.positionVethAmount || '0');
-  transaction.borrowedBaseToken = toDecimal(
-    eventArgs.positionBorrowedVgas || '0'
-  );
-  transaction.borrowedQuoteToken = toDecimal(
+  transaction.baseToken = String(eventArgs.positionVgasAmount || '0');
+  transaction.quoteToken = String(eventArgs.positionVethAmount || '0');
+  transaction.borrowedBaseToken = String(eventArgs.positionBorrowedVgas || '0');
+  transaction.borrowedQuoteToken = String(
     eventArgs.positionBorrowedVeth || '0'
   );
-  transaction.collateral = toDecimal(eventArgs.positionCollateralAmount || '0');
+  transaction.collateral = String(eventArgs.positionCollateralAmount || '0');
 
   if (eventArgs.tradeRatio) {
-    transaction.tradeRatioD18 = toDecimal(eventArgs.tradeRatio);
+    transaction.tradeRatioD18 = String(eventArgs.tradeRatio);
   }
 };
 
@@ -340,7 +338,7 @@ export const insertCollateralTransfer = async (
       transactionHash: transaction.event.transactionHash,
       timestamp: Number(transaction.event.timestamp),
       owner: ((eventArgs.sender as string) || '').toLowerCase(),
-      collateral: toDecimal(eventArgs.deltaCollateral),
+      collateral: String(eventArgs.deltaCollateral),
     },
   });
 
@@ -604,32 +602,32 @@ export const updateTransactionFromAddLiquidityEvent = (
   updateTransactionStateFromEvent(newTransaction, event);
 
   const args = getLogDataArgs(event.logData);
-  newTransaction.lpBaseDeltaToken = toDecimal(args.addedAmount0 || '0');
-  newTransaction.lpQuoteDeltaToken = toDecimal(args.addedAmount1 || '0');
+  newTransaction.lpBaseDeltaToken = String(args.addedAmount0 || '0');
+  newTransaction.lpQuoteDeltaToken = String(args.addedAmount1 || '0');
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 
   if (!newTransaction.tradeRatioD18) {
-    newTransaction.tradeRatioD18 = new Decimal('0');
+    newTransaction.tradeRatioD18 = '0';
   }
 };
 
@@ -651,32 +649,32 @@ export const updateTransactionFromLiquidityClosedEvent = async (
   updateTransactionStateFromEvent(newTransaction, event);
 
   const args = getLogDataArgs(event.logData);
-  newTransaction.lpBaseDeltaToken = toDecimal(args.collectedAmount0 || '0');
-  newTransaction.lpQuoteDeltaToken = toDecimal(args.collectedAmount1 || '0');
+  newTransaction.lpBaseDeltaToken = String(args.collectedAmount0 || '0');
+  newTransaction.lpQuoteDeltaToken = String(args.collectedAmount1 || '0');
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 
   if (!newTransaction.tradeRatioD18) {
-    newTransaction.tradeRatioD18 = new Decimal('0');
+    newTransaction.tradeRatioD18 = '0';
   }
 };
 
@@ -703,40 +701,36 @@ export const updateTransactionFromLiquidityModifiedEvent = async (
   const args = getLogDataArgs(event.logData);
 
   newTransaction.lpBaseDeltaToken = isDecrease
-    ? toDecimal(
-        (BigInt(String(args.decreasedAmount0 || '0')) * BigInt(-1)).toString()
-      )
-    : toDecimal(String(args.increasedAmount0 || '0'));
+    ? (BigInt(String(args.decreasedAmount0 || '0')) * BigInt(-1)).toString()
+    : String(args.increasedAmount0 || '0');
 
   newTransaction.lpQuoteDeltaToken = isDecrease
-    ? toDecimal(
-        (BigInt(String(args.decreasedAmount1 || '0')) * BigInt(-1)).toString()
-      )
-    : toDecimal(String(args.increasedAmount1 || '0'));
+    ? (BigInt(String(args.decreasedAmount1 || '0')) * BigInt(-1)).toString()
+    : String(args.increasedAmount1 || '0');
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 
   if (!newTransaction.tradeRatioD18) {
-    newTransaction.tradeRatioD18 = new Decimal('0');
+    newTransaction.tradeRatioD18 = '0';
   }
 };
 
@@ -762,29 +756,29 @@ export const updateTransactionFromTradeModifiedEvent = async (
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 
   if (!newTransaction.tradeRatioD18 && args.tradeRatio) {
-    newTransaction.tradeRatioD18 = toDecimal(args.tradeRatio);
+    newTransaction.tradeRatioD18 = String(args.tradeRatio);
   } else if (!newTransaction.tradeRatioD18) {
-    newTransaction.tradeRatioD18 = new Decimal('0');
+    newTransaction.tradeRatioD18 = '0';
   }
 };
 
@@ -823,7 +817,7 @@ export const updateTransactionFromPositionSettledEvent = async (
     if (position) {
       updateTransactionStateFromEvent(newTransaction, event);
       newTransaction.tradeRatioD18 =
-        market.settlementPriceD18 || new Decimal('0');
+        market.settlementPriceD18?.toString() || '0';
       found = true;
       break;
     }
@@ -835,23 +829,23 @@ export const updateTransactionFromPositionSettledEvent = async (
 
   // Ensure all required fields have default values if not set
   if (!newTransaction.baseToken) {
-    newTransaction.baseToken = new Decimal('0');
+    newTransaction.baseToken = '0';
   }
 
   if (!newTransaction.quoteToken) {
-    newTransaction.quoteToken = new Decimal('0');
+    newTransaction.quoteToken = '0';
   }
 
   if (!newTransaction.borrowedBaseToken) {
-    newTransaction.borrowedBaseToken = new Decimal('0');
+    newTransaction.borrowedBaseToken = '0';
   }
 
   if (!newTransaction.borrowedQuoteToken) {
-    newTransaction.borrowedQuoteToken = new Decimal('0');
+    newTransaction.borrowedQuoteToken = '0';
   }
 
   if (!newTransaction.collateral) {
-    newTransaction.collateral = new Decimal('0');
+    newTransaction.collateral = '0';
   }
 };
 

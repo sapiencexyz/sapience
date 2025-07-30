@@ -332,7 +332,7 @@ export async function saveCandle(candle: Prisma.CacheCandleCreateInput) {
       } as Prisma.CacheCandleCandleTypeIntervalTimestampResourceSlugMarketIdxTrailingAvgTimeCompoundUniqueInput,
     },
     update: candleWithoutId, // Exclude id from updates to avoid unique constraint violations
-    create: candleWithoutId, // Exclude id for creates because sometimes the id is set to 0 when creating a new candle, this lets the DB auto-generate the id. 
+    create: candleWithoutId, // Exclude id for creates because sometimes the id is set to 0 when creating a new candle, this lets the DB auto-generate the id.
   });
 }
 

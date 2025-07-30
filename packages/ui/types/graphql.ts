@@ -2832,23 +2832,23 @@ export type PnLType = {
 export type Position = {
   __typename?: 'Position';
   _count?: Maybe<PositionCount>;
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral: Scalars['Decimal']['output'];
+  baseToken?: Maybe<Scalars['String']['output']>;
+  borrowedBaseToken?: Maybe<Scalars['String']['output']>;
+  borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
+  collateral: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   highPriceTick?: Maybe<Scalars['Decimal']['output']>;
   id: Scalars['Int']['output'];
   isLP: Scalars['Boolean']['output'];
   isSettled?: Maybe<Scalars['Boolean']['output']>;
   lowPriceTick?: Maybe<Scalars['Decimal']['output']>;
-  lpBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteToken?: Maybe<Scalars['Decimal']['output']>;
+  lpBaseToken?: Maybe<Scalars['String']['output']>;
+  lpQuoteToken?: Maybe<Scalars['String']['output']>;
   market?: Maybe<Market>;
   marketId?: Maybe<Scalars['Int']['output']>;
   owner?: Maybe<Scalars['String']['output']>;
   positionId: Scalars['Int']['output'];
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
   transactions: Array<Transaction>;
 };
 
@@ -2869,33 +2869,19 @@ export type PositionTransactionsArgs = {
 
 export type PositionAvgAggregate = {
   __typename?: 'PositionAvgAggregate';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral?: Maybe<Scalars['Decimal']['output']>;
   highPriceTick?: Maybe<Scalars['Decimal']['output']>;
   id?: Maybe<Scalars['Float']['output']>;
   lowPriceTick?: Maybe<Scalars['Decimal']['output']>;
-  lpBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteToken?: Maybe<Scalars['Decimal']['output']>;
   marketId?: Maybe<Scalars['Float']['output']>;
   positionId?: Maybe<Scalars['Float']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
 };
 
 export type PositionAvgOrderByAggregateInput = {
-  baseToken?: InputMaybe<SortOrder>;
-  borrowedBaseToken?: InputMaybe<SortOrder>;
-  borrowedQuoteToken?: InputMaybe<SortOrder>;
-  collateral?: InputMaybe<SortOrder>;
   highPriceTick?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   lowPriceTick?: InputMaybe<SortOrder>;
-  lpBaseToken?: InputMaybe<SortOrder>;
-  lpQuoteToken?: InputMaybe<SortOrder>;
   marketId?: InputMaybe<SortOrder>;
   positionId?: InputMaybe<SortOrder>;
-  quoteToken?: InputMaybe<SortOrder>;
 };
 
 export type PositionCount = {
@@ -2955,22 +2941,22 @@ export type PositionGroupBy = {
   _max?: Maybe<PositionMaxAggregate>;
   _min?: Maybe<PositionMinAggregate>;
   _sum?: Maybe<PositionSumAggregate>;
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral: Scalars['Decimal']['output'];
+  baseToken?: Maybe<Scalars['String']['output']>;
+  borrowedBaseToken?: Maybe<Scalars['String']['output']>;
+  borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
+  collateral: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   highPriceTick?: Maybe<Scalars['Decimal']['output']>;
   id: Scalars['Int']['output'];
   isLP: Scalars['Boolean']['output'];
   isSettled?: Maybe<Scalars['Boolean']['output']>;
   lowPriceTick?: Maybe<Scalars['Decimal']['output']>;
-  lpBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteToken?: Maybe<Scalars['Decimal']['output']>;
+  lpBaseToken?: Maybe<Scalars['String']['output']>;
+  lpQuoteToken?: Maybe<Scalars['String']['output']>;
   marketId?: Maybe<Scalars['Int']['output']>;
   owner?: Maybe<Scalars['String']['output']>;
   positionId: Scalars['Int']['output'];
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
 };
 
 export type PositionListRelationFilter = {
@@ -2981,22 +2967,22 @@ export type PositionListRelationFilter = {
 
 export type PositionMaxAggregate = {
   __typename?: 'PositionMaxAggregate';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral?: Maybe<Scalars['Decimal']['output']>;
+  baseToken?: Maybe<Scalars['String']['output']>;
+  borrowedBaseToken?: Maybe<Scalars['String']['output']>;
+  borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
+  collateral?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   highPriceTick?: Maybe<Scalars['Decimal']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
   isLP?: Maybe<Scalars['Boolean']['output']>;
   isSettled?: Maybe<Scalars['Boolean']['output']>;
   lowPriceTick?: Maybe<Scalars['Decimal']['output']>;
-  lpBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteToken?: Maybe<Scalars['Decimal']['output']>;
+  lpBaseToken?: Maybe<Scalars['String']['output']>;
+  lpQuoteToken?: Maybe<Scalars['String']['output']>;
   marketId?: Maybe<Scalars['Int']['output']>;
   owner?: Maybe<Scalars['String']['output']>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
 };
 
 export type PositionMaxOrderByAggregateInput = {
@@ -3020,22 +3006,22 @@ export type PositionMaxOrderByAggregateInput = {
 
 export type PositionMinAggregate = {
   __typename?: 'PositionMinAggregate';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral?: Maybe<Scalars['Decimal']['output']>;
+  baseToken?: Maybe<Scalars['String']['output']>;
+  borrowedBaseToken?: Maybe<Scalars['String']['output']>;
+  borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
+  collateral?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   highPriceTick?: Maybe<Scalars['Decimal']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
   isLP?: Maybe<Scalars['Boolean']['output']>;
   isSettled?: Maybe<Scalars['Boolean']['output']>;
   lowPriceTick?: Maybe<Scalars['Decimal']['output']>;
-  lpBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteToken?: Maybe<Scalars['Decimal']['output']>;
+  lpBaseToken?: Maybe<Scalars['String']['output']>;
+  lpQuoteToken?: Maybe<Scalars['String']['output']>;
   marketId?: Maybe<Scalars['Int']['output']>;
   owner?: Maybe<Scalars['String']['output']>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
 };
 
 export type PositionMinOrderByAggregateInput = {
@@ -3138,76 +3124,62 @@ export type PositionScalarWhereWithAggregatesInput = {
   AND?: InputMaybe<Array<PositionScalarWhereWithAggregatesInput>>;
   NOT?: InputMaybe<Array<PositionScalarWhereWithAggregatesInput>>;
   OR?: InputMaybe<Array<PositionScalarWhereWithAggregatesInput>>;
-  baseToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  borrowedBaseToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  borrowedQuoteToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  collateral?: InputMaybe<DecimalWithAggregatesFilter>;
+  baseToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  borrowedBaseToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  borrowedQuoteToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  collateral?: InputMaybe<StringWithAggregatesFilter>;
   createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
   highPriceTick?: InputMaybe<DecimalNullableWithAggregatesFilter>;
   id?: InputMaybe<IntWithAggregatesFilter>;
   isLP?: InputMaybe<BoolWithAggregatesFilter>;
   isSettled?: InputMaybe<BoolNullableWithAggregatesFilter>;
   lowPriceTick?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  lpBaseToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  lpQuoteToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
+  lpBaseToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  lpQuoteToken?: InputMaybe<StringNullableWithAggregatesFilter>;
   marketId?: InputMaybe<IntNullableWithAggregatesFilter>;
   owner?: InputMaybe<StringNullableWithAggregatesFilter>;
   positionId?: InputMaybe<IntWithAggregatesFilter>;
-  quoteToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
+  quoteToken?: InputMaybe<StringNullableWithAggregatesFilter>;
 };
 
 export type PositionSumAggregate = {
   __typename?: 'PositionSumAggregate';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral?: Maybe<Scalars['Decimal']['output']>;
   highPriceTick?: Maybe<Scalars['Decimal']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
   lowPriceTick?: Maybe<Scalars['Decimal']['output']>;
-  lpBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteToken?: Maybe<Scalars['Decimal']['output']>;
   marketId?: Maybe<Scalars['Int']['output']>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
 };
 
 export type PositionSumOrderByAggregateInput = {
-  baseToken?: InputMaybe<SortOrder>;
-  borrowedBaseToken?: InputMaybe<SortOrder>;
-  borrowedQuoteToken?: InputMaybe<SortOrder>;
-  collateral?: InputMaybe<SortOrder>;
   highPriceTick?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   lowPriceTick?: InputMaybe<SortOrder>;
-  lpBaseToken?: InputMaybe<SortOrder>;
-  lpQuoteToken?: InputMaybe<SortOrder>;
   marketId?: InputMaybe<SortOrder>;
   positionId?: InputMaybe<SortOrder>;
-  quoteToken?: InputMaybe<SortOrder>;
 };
 
 export type PositionWhereInput = {
   AND?: InputMaybe<Array<PositionWhereInput>>;
   NOT?: InputMaybe<Array<PositionWhereInput>>;
   OR?: InputMaybe<Array<PositionWhereInput>>;
-  baseToken?: InputMaybe<DecimalNullableFilter>;
-  borrowedBaseToken?: InputMaybe<DecimalNullableFilter>;
-  borrowedQuoteToken?: InputMaybe<DecimalNullableFilter>;
-  collateral?: InputMaybe<DecimalFilter>;
+  baseToken?: InputMaybe<StringNullableFilter>;
+  borrowedBaseToken?: InputMaybe<StringNullableFilter>;
+  borrowedQuoteToken?: InputMaybe<StringNullableFilter>;
+  collateral?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   highPriceTick?: InputMaybe<DecimalNullableFilter>;
   id?: InputMaybe<IntFilter>;
   isLP?: InputMaybe<BoolFilter>;
   isSettled?: InputMaybe<BoolNullableFilter>;
   lowPriceTick?: InputMaybe<DecimalNullableFilter>;
-  lpBaseToken?: InputMaybe<DecimalNullableFilter>;
-  lpQuoteToken?: InputMaybe<DecimalNullableFilter>;
+  lpBaseToken?: InputMaybe<StringNullableFilter>;
+  lpQuoteToken?: InputMaybe<StringNullableFilter>;
   market?: InputMaybe<MarketNullableRelationFilter>;
   marketId?: InputMaybe<IntNullableFilter>;
   owner?: InputMaybe<StringNullableFilter>;
   positionId?: InputMaybe<IntFilter>;
-  quoteToken?: InputMaybe<DecimalNullableFilter>;
+  quoteToken?: InputMaybe<StringNullableFilter>;
   transactions?: InputMaybe<TransactionListRelationFilter>;
 };
 
@@ -3215,24 +3187,24 @@ export type PositionWhereUniqueInput = {
   AND?: InputMaybe<Array<PositionWhereInput>>;
   NOT?: InputMaybe<Array<PositionWhereInput>>;
   OR?: InputMaybe<Array<PositionWhereInput>>;
-  baseToken?: InputMaybe<DecimalNullableFilter>;
-  borrowedBaseToken?: InputMaybe<DecimalNullableFilter>;
-  borrowedQuoteToken?: InputMaybe<DecimalNullableFilter>;
-  collateral?: InputMaybe<DecimalFilter>;
+  baseToken?: InputMaybe<StringNullableFilter>;
+  borrowedBaseToken?: InputMaybe<StringNullableFilter>;
+  borrowedQuoteToken?: InputMaybe<StringNullableFilter>;
+  collateral?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   highPriceTick?: InputMaybe<DecimalNullableFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
   isLP?: InputMaybe<BoolFilter>;
   isSettled?: InputMaybe<BoolNullableFilter>;
   lowPriceTick?: InputMaybe<DecimalNullableFilter>;
-  lpBaseToken?: InputMaybe<DecimalNullableFilter>;
-  lpQuoteToken?: InputMaybe<DecimalNullableFilter>;
+  lpBaseToken?: InputMaybe<StringNullableFilter>;
+  lpQuoteToken?: InputMaybe<StringNullableFilter>;
   market?: InputMaybe<MarketNullableRelationFilter>;
   marketId?: InputMaybe<IntNullableFilter>;
   owner?: InputMaybe<StringNullableFilter>;
   positionId?: InputMaybe<IntFilter>;
   positionId_marketId?: InputMaybe<PositionPositionIdMarketIdCompoundUniqueInput>;
-  quoteToken?: InputMaybe<DecimalNullableFilter>;
+  quoteToken?: InputMaybe<StringNullableFilter>;
   transactions?: InputMaybe<TransactionListRelationFilter>;
 };
 
@@ -4530,24 +4502,24 @@ export type StringWithAggregatesFilter = {
 
 export type Transaction = {
   __typename?: 'Transaction';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral: Scalars['Decimal']['output'];
+  baseToken?: Maybe<Scalars['String']['output']>;
+  borrowedBaseToken?: Maybe<Scalars['String']['output']>;
+  borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
+  collateral: Scalars['String']['output'];
   collateralTransfer?: Maybe<CollateralTransfer>;
   collateralTransferId?: Maybe<Scalars['Int']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
   event?: Maybe<Event>;
   eventId?: Maybe<Scalars['Int']['output']>;
   id: Scalars['Int']['output'];
-  lpBaseDeltaToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteDeltaToken?: Maybe<Scalars['Decimal']['output']>;
+  lpBaseDeltaToken?: Maybe<Scalars['String']['output']>;
+  lpQuoteDeltaToken?: Maybe<Scalars['String']['output']>;
   marketPrice?: Maybe<MarketPrice>;
   marketPriceId?: Maybe<Scalars['Int']['output']>;
   position?: Maybe<Position>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
-  tradeRatioD18?: Maybe<Scalars['Decimal']['output']>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
+  tradeRatioD18?: Maybe<Scalars['String']['output']>;
   type: Transaction_Type_Enum;
 };
 
@@ -4573,35 +4545,19 @@ export type TransactionPositionArgs = {
 
 export type TransactionAvgAggregate = {
   __typename?: 'TransactionAvgAggregate';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral?: Maybe<Scalars['Decimal']['output']>;
   collateralTransferId?: Maybe<Scalars['Float']['output']>;
   eventId?: Maybe<Scalars['Float']['output']>;
   id?: Maybe<Scalars['Float']['output']>;
-  lpBaseDeltaToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteDeltaToken?: Maybe<Scalars['Decimal']['output']>;
   marketPriceId?: Maybe<Scalars['Float']['output']>;
   positionId?: Maybe<Scalars['Float']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
-  tradeRatioD18?: Maybe<Scalars['Decimal']['output']>;
 };
 
 export type TransactionAvgOrderByAggregateInput = {
-  baseToken?: InputMaybe<SortOrder>;
-  borrowedBaseToken?: InputMaybe<SortOrder>;
-  borrowedQuoteToken?: InputMaybe<SortOrder>;
-  collateral?: InputMaybe<SortOrder>;
   collateralTransferId?: InputMaybe<SortOrder>;
   eventId?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
-  lpBaseDeltaToken?: InputMaybe<SortOrder>;
-  lpQuoteDeltaToken?: InputMaybe<SortOrder>;
   marketPriceId?: InputMaybe<SortOrder>;
   positionId?: InputMaybe<SortOrder>;
-  quoteToken?: InputMaybe<SortOrder>;
-  tradeRatioD18?: InputMaybe<SortOrder>;
 };
 
 export type TransactionCountAggregate = {
@@ -4649,20 +4605,20 @@ export type TransactionGroupBy = {
   _max?: Maybe<TransactionMaxAggregate>;
   _min?: Maybe<TransactionMinAggregate>;
   _sum?: Maybe<TransactionSumAggregate>;
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral: Scalars['Decimal']['output'];
+  baseToken?: Maybe<Scalars['String']['output']>;
+  borrowedBaseToken?: Maybe<Scalars['String']['output']>;
+  borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
+  collateral: Scalars['String']['output'];
   collateralTransferId?: Maybe<Scalars['Int']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
   eventId?: Maybe<Scalars['Int']['output']>;
   id: Scalars['Int']['output'];
-  lpBaseDeltaToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteDeltaToken?: Maybe<Scalars['Decimal']['output']>;
+  lpBaseDeltaToken?: Maybe<Scalars['String']['output']>;
+  lpQuoteDeltaToken?: Maybe<Scalars['String']['output']>;
   marketPriceId?: Maybe<Scalars['Int']['output']>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
-  tradeRatioD18?: Maybe<Scalars['Decimal']['output']>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
+  tradeRatioD18?: Maybe<Scalars['String']['output']>;
   type: Transaction_Type_Enum;
 };
 
@@ -4674,20 +4630,20 @@ export type TransactionListRelationFilter = {
 
 export type TransactionMaxAggregate = {
   __typename?: 'TransactionMaxAggregate';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral?: Maybe<Scalars['Decimal']['output']>;
+  baseToken?: Maybe<Scalars['String']['output']>;
+  borrowedBaseToken?: Maybe<Scalars['String']['output']>;
+  borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
+  collateral?: Maybe<Scalars['String']['output']>;
   collateralTransferId?: Maybe<Scalars['Int']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   eventId?: Maybe<Scalars['Int']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
-  lpBaseDeltaToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteDeltaToken?: Maybe<Scalars['Decimal']['output']>;
+  lpBaseDeltaToken?: Maybe<Scalars['String']['output']>;
+  lpQuoteDeltaToken?: Maybe<Scalars['String']['output']>;
   marketPriceId?: Maybe<Scalars['Int']['output']>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
-  tradeRatioD18?: Maybe<Scalars['Decimal']['output']>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
+  tradeRatioD18?: Maybe<Scalars['String']['output']>;
   type?: Maybe<Transaction_Type_Enum>;
 };
 
@@ -4711,20 +4667,20 @@ export type TransactionMaxOrderByAggregateInput = {
 
 export type TransactionMinAggregate = {
   __typename?: 'TransactionMinAggregate';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral?: Maybe<Scalars['Decimal']['output']>;
+  baseToken?: Maybe<Scalars['String']['output']>;
+  borrowedBaseToken?: Maybe<Scalars['String']['output']>;
+  borrowedQuoteToken?: Maybe<Scalars['String']['output']>;
+  collateral?: Maybe<Scalars['String']['output']>;
   collateralTransferId?: Maybe<Scalars['Int']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   eventId?: Maybe<Scalars['Int']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
-  lpBaseDeltaToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteDeltaToken?: Maybe<Scalars['Decimal']['output']>;
+  lpBaseDeltaToken?: Maybe<Scalars['String']['output']>;
+  lpQuoteDeltaToken?: Maybe<Scalars['String']['output']>;
   marketPriceId?: Maybe<Scalars['Int']['output']>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
-  tradeRatioD18?: Maybe<Scalars['Decimal']['output']>;
+  quoteToken?: Maybe<Scalars['String']['output']>;
+  tradeRatioD18?: Maybe<Scalars['String']['output']>;
   type?: Maybe<Transaction_Type_Enum>;
 };
 
@@ -4821,78 +4777,62 @@ export type TransactionScalarWhereWithAggregatesInput = {
   AND?: InputMaybe<Array<TransactionScalarWhereWithAggregatesInput>>;
   NOT?: InputMaybe<Array<TransactionScalarWhereWithAggregatesInput>>;
   OR?: InputMaybe<Array<TransactionScalarWhereWithAggregatesInput>>;
-  baseToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  borrowedBaseToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  borrowedQuoteToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  collateral?: InputMaybe<DecimalWithAggregatesFilter>;
+  baseToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  borrowedBaseToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  borrowedQuoteToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  collateral?: InputMaybe<StringWithAggregatesFilter>;
   collateralTransferId?: InputMaybe<IntNullableWithAggregatesFilter>;
   createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
   eventId?: InputMaybe<IntNullableWithAggregatesFilter>;
   id?: InputMaybe<IntWithAggregatesFilter>;
-  lpBaseDeltaToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  lpQuoteDeltaToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
+  lpBaseDeltaToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  lpQuoteDeltaToken?: InputMaybe<StringNullableWithAggregatesFilter>;
   marketPriceId?: InputMaybe<IntNullableWithAggregatesFilter>;
   positionId?: InputMaybe<IntNullableWithAggregatesFilter>;
-  quoteToken?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  tradeRatioD18?: InputMaybe<DecimalNullableWithAggregatesFilter>;
+  quoteToken?: InputMaybe<StringNullableWithAggregatesFilter>;
+  tradeRatioD18?: InputMaybe<StringNullableWithAggregatesFilter>;
   type?: InputMaybe<Enumtransaction_Type_EnumWithAggregatesFilter>;
 };
 
 export type TransactionSumAggregate = {
   __typename?: 'TransactionSumAggregate';
-  baseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedBaseToken?: Maybe<Scalars['Decimal']['output']>;
-  borrowedQuoteToken?: Maybe<Scalars['Decimal']['output']>;
-  collateral?: Maybe<Scalars['Decimal']['output']>;
   collateralTransferId?: Maybe<Scalars['Int']['output']>;
   eventId?: Maybe<Scalars['Int']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
-  lpBaseDeltaToken?: Maybe<Scalars['Decimal']['output']>;
-  lpQuoteDeltaToken?: Maybe<Scalars['Decimal']['output']>;
   marketPriceId?: Maybe<Scalars['Int']['output']>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  quoteToken?: Maybe<Scalars['Decimal']['output']>;
-  tradeRatioD18?: Maybe<Scalars['Decimal']['output']>;
 };
 
 export type TransactionSumOrderByAggregateInput = {
-  baseToken?: InputMaybe<SortOrder>;
-  borrowedBaseToken?: InputMaybe<SortOrder>;
-  borrowedQuoteToken?: InputMaybe<SortOrder>;
-  collateral?: InputMaybe<SortOrder>;
   collateralTransferId?: InputMaybe<SortOrder>;
   eventId?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
-  lpBaseDeltaToken?: InputMaybe<SortOrder>;
-  lpQuoteDeltaToken?: InputMaybe<SortOrder>;
   marketPriceId?: InputMaybe<SortOrder>;
   positionId?: InputMaybe<SortOrder>;
-  quoteToken?: InputMaybe<SortOrder>;
-  tradeRatioD18?: InputMaybe<SortOrder>;
 };
 
 export type TransactionWhereInput = {
   AND?: InputMaybe<Array<TransactionWhereInput>>;
   NOT?: InputMaybe<Array<TransactionWhereInput>>;
   OR?: InputMaybe<Array<TransactionWhereInput>>;
-  baseToken?: InputMaybe<DecimalNullableFilter>;
-  borrowedBaseToken?: InputMaybe<DecimalNullableFilter>;
-  borrowedQuoteToken?: InputMaybe<DecimalNullableFilter>;
-  collateral?: InputMaybe<DecimalFilter>;
+  baseToken?: InputMaybe<StringNullableFilter>;
+  borrowedBaseToken?: InputMaybe<StringNullableFilter>;
+  borrowedQuoteToken?: InputMaybe<StringNullableFilter>;
+  collateral?: InputMaybe<StringFilter>;
   collateralTransfer?: InputMaybe<CollateralTransferNullableRelationFilter>;
   collateralTransferId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   event?: InputMaybe<EventNullableRelationFilter>;
   eventId?: InputMaybe<IntNullableFilter>;
   id?: InputMaybe<IntFilter>;
-  lpBaseDeltaToken?: InputMaybe<DecimalNullableFilter>;
-  lpQuoteDeltaToken?: InputMaybe<DecimalNullableFilter>;
+  lpBaseDeltaToken?: InputMaybe<StringNullableFilter>;
+  lpQuoteDeltaToken?: InputMaybe<StringNullableFilter>;
   marketPrice?: InputMaybe<MarketPriceNullableRelationFilter>;
   marketPriceId?: InputMaybe<IntNullableFilter>;
   position?: InputMaybe<PositionNullableRelationFilter>;
   positionId?: InputMaybe<IntNullableFilter>;
-  quoteToken?: InputMaybe<DecimalNullableFilter>;
-  tradeRatioD18?: InputMaybe<DecimalNullableFilter>;
+  quoteToken?: InputMaybe<StringNullableFilter>;
+  tradeRatioD18?: InputMaybe<StringNullableFilter>;
   type?: InputMaybe<Enumtransaction_Type_EnumFilter>;
 };
 
@@ -4900,24 +4840,24 @@ export type TransactionWhereUniqueInput = {
   AND?: InputMaybe<Array<TransactionWhereInput>>;
   NOT?: InputMaybe<Array<TransactionWhereInput>>;
   OR?: InputMaybe<Array<TransactionWhereInput>>;
-  baseToken?: InputMaybe<DecimalNullableFilter>;
-  borrowedBaseToken?: InputMaybe<DecimalNullableFilter>;
-  borrowedQuoteToken?: InputMaybe<DecimalNullableFilter>;
-  collateral?: InputMaybe<DecimalFilter>;
+  baseToken?: InputMaybe<StringNullableFilter>;
+  borrowedBaseToken?: InputMaybe<StringNullableFilter>;
+  borrowedQuoteToken?: InputMaybe<StringNullableFilter>;
+  collateral?: InputMaybe<StringFilter>;
   collateralTransfer?: InputMaybe<CollateralTransferNullableRelationFilter>;
   collateralTransferId?: InputMaybe<Scalars['Int']['input']>;
   createdAt?: InputMaybe<DateTimeFilter>;
   event?: InputMaybe<EventNullableRelationFilter>;
   eventId?: InputMaybe<Scalars['Int']['input']>;
   id?: InputMaybe<Scalars['Int']['input']>;
-  lpBaseDeltaToken?: InputMaybe<DecimalNullableFilter>;
-  lpQuoteDeltaToken?: InputMaybe<DecimalNullableFilter>;
+  lpBaseDeltaToken?: InputMaybe<StringNullableFilter>;
+  lpQuoteDeltaToken?: InputMaybe<StringNullableFilter>;
   marketPrice?: InputMaybe<MarketPriceNullableRelationFilter>;
   marketPriceId?: InputMaybe<Scalars['Int']['input']>;
   position?: InputMaybe<PositionNullableRelationFilter>;
   positionId?: InputMaybe<IntNullableFilter>;
-  quoteToken?: InputMaybe<DecimalNullableFilter>;
-  tradeRatioD18?: InputMaybe<DecimalNullableFilter>;
+  quoteToken?: InputMaybe<StringNullableFilter>;
+  tradeRatioD18?: InputMaybe<StringNullableFilter>;
   type?: InputMaybe<Enumtransaction_Type_EnumFilter>;
 };
 
