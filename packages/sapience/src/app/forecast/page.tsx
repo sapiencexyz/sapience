@@ -22,20 +22,17 @@ const QuestionSelect = dynamic(
   () => import('../../components/shared/QuestionSelect'),
   {
     ssr: false,
-    loading: () => <div className="h-20 bg-muted animate-pulse rounded-lg" />,
   }
 );
 
 const Comments = dynamic(() => import('../../components/shared/Comments'), {
   ssr: false,
-  loading: () => <div className="h-64 bg-muted animate-pulse rounded-lg" />,
 });
 
 const AddressFilter = dynamic(
   () => import('../../components/shared/AddressFilter'),
   {
     ssr: false,
-    loading: () => <div className="h-12 bg-muted animate-pulse rounded-lg" />,
   }
 );
 
@@ -48,12 +45,17 @@ const ForecastPage = () => {
   >(null);
   const [refetchCommentsTrigger, setRefetchCommentsTrigger] = useState(0);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  // State for selected market - moved to top
+  const [selectedMarket, setSelectedMarket] = useState<any>(undefined);
+
   const refetchComments = useCallback(() => {
     // Add a small delay to ensure the transaction is processed
     setTimeout(() => {
       setRefetchCommentsTrigger((t) => t + 1);
     }, 1000); // 1 second delay
   }, []);
+
   // Fetch all market groups
   const { data: marketGroups } = useEnrichedMarketGroups();
 
@@ -81,9 +83,6 @@ const ForecastPage = () => {
       now < end
     );
   });
-
-  // State for selected market
-  const [selectedMarket, setSelectedMarket] = useState<any>(undefined);
 
   // Handler to select a market and switch to the selected question tab
   const handleMarketSelect = (market: any) => {

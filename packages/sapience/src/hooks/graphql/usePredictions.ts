@@ -157,7 +157,7 @@ export const usePredictions = ({
         throw new Error('Failed to load predictions');
       }
     },
-    enabled: Boolean(schemaId && (marketAddress || attesterAddress)),
+    enabled: Boolean(schemaId),
     retry: 3,
     retryDelay: 1000,
     refetchInterval: 4000, // Refetch every 4 seconds

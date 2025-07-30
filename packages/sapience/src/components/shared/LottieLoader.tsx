@@ -1,6 +1,7 @@
 'use client';
 
-import { useLottie } from 'lottie-react';
+import { useEffect, useState } from 'react';
+import type { ReactElement } from 'react';
 
 interface LottieLoaderProps {
   className?: string;
@@ -13,21 +14,53 @@ const LottieLoader = ({
   width = 24,
   height = 24,
 }: LottieLoaderProps) => {
-  const options = {
-    animationData: undefined,
-    path: '/lottie/loader.json',
-    loop: true,
-    autoplay: true,
-    className,
-    style: {
-      width,
-      height,
-    },
-  };
+  const [LottieView, setLottieView] = useState<ReactElement | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  const { View } = useLottie(options);
+  useEffect(() => {
+    // Dynamically import lottie-react only on the client side
+    const loadLottie = async () => {
+      try {
+        const { useLottie } = await import('lottie-react');
 
-  return <span className="dark:invert">{View}</span>;
+        const options = {
+          animationData: undefined,
+          path: '/lottie/loader.json',
+          loop: true,
+          autoplay: true,
+          className,
+          style: {
+            width,
+            height,
+          },
+        };
+
+        // We can't use the hook directly here since we're in an effect
+        // Instead, we'll create a wrapper component
+        const LottieComponent = () => {
+          const { View } = useLottie(options);
+          return <span className="dark:invert">{View}</span>;
+        };
+
+        setLottieView(<LottieComponent />);
+        setIsLoaded(true);
+      } catch (error) {
+        console.error('Failed to load lottie-react:', error);
+        setIsLoaded(true); // Still set loaded to show fallback
+      }
+    };
+
+    loadLottie();
+  }, [className, width, height]);
+
+  // Return fallback during SSR and while loading
+  if (!isLoaded || !LottieView) {
+    return (
+      <span className={`inline-block ${className}`} style={{ width, height }} />
+    );
+  }
+
+  return LottieView;
 };
 
 export default LottieLoader;
