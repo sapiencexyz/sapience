@@ -291,8 +291,6 @@ const ForecastPage = () => {
                 question={selectedMarket?.question}
                 address={address}
                 refetchTrigger={refetchCommentsTrigger}
-                selectedAddressFilter={selectedAddressFilter}
-                onAddressFilterChange={setSelectedAddressFilter}
               />
             </div>
           </div>
