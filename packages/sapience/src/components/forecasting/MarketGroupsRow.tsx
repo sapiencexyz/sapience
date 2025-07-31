@@ -38,7 +38,6 @@ const MarketGroupsRow = ({
   const [isExpanded, setIsExpanded] = React.useState(false);
   const { addPosition } = useBetSlipContext();
 
-
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
     [chainId]
@@ -221,7 +220,7 @@ const MarketGroupsRow = ({
                 </Button>
 
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="h-8 px-3 w-[70px]"
                   onClick={(e) => {
@@ -242,15 +241,13 @@ const MarketGroupsRow = ({
                     asChild
                     className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground"
                   >
-                    <Link
-                      href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
-                    >
+                    <Link href={`/markets/${chainShortName}:${marketAddress}`}>
                       Details
                     </Link>
                   </Button>
 
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
                     onClick={() => handleAddToBetSlip(activeMarket)}
                     className="h-8 px-3"
@@ -307,7 +304,7 @@ const MarketGroupsRow = ({
 
                             {/* Right Side: Actions */}
                             <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-3">
                                 <Button
                                   variant="link"
                                   size="xs"
@@ -322,7 +319,7 @@ const MarketGroupsRow = ({
                                 </Button>
 
                                 <Button
-                                  variant="outline"
+                                  variant="default"
                                   size="sm"
                                   onClick={() => handleAddToBetSlip(marketItem)}
                                   className="h-8 px-3"

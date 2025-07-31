@@ -38,7 +38,9 @@ interface BetSlipProviderProps {
 }
 
 export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
-  const [betSlipPositions, setBetSlipPositions] = useState<BetSlipPosition[]>([]);
+  const [betSlipPositions, setBetSlipPositions] = useState<BetSlipPosition[]>(
+    []
+  );
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const addPosition = useCallback(

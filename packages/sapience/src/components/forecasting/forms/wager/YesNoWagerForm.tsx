@@ -4,7 +4,6 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
-import { SquareStack } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -14,8 +13,6 @@ import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-import { MarketGroupClassification } from '~/lib/types';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -34,7 +31,6 @@ export default function YesNoWagerForm({
 }: YesNoWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const { addPosition } = useBetSlipContext();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -89,22 +85,6 @@ export default function YesNoWagerForm({
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
-
-  // Handle adding to bet slip
-  const handleAddToBetSlip = () => {
-    if (!predictionValue || !marketGroupData.question) return;
-
-    const position = {
-      prediction: predictionValue === YES_SQRT_PRICE_X96,
-      marketAddress: marketGroupData.address as string,
-      marketId: marketGroupData.markets?.[0]?.marketId ?? 0,
-      question: marketGroupData.question || 'Unknown Question', // Ensure question is always a string
-      marketGroupData,
-      marketClassification: MarketGroupClassification.YES_NO,
-    };
-
-    addPosition(position);
-  };
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -192,7 +172,7 @@ export default function YesNoWagerForm({
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-4">
           <div>
-              <Label>Your Prediction</Label>
+            <Label>Your Prediction</Label>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <Button
                 type="button"

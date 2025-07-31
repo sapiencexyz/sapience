@@ -20,8 +20,8 @@ export default function BotsQuickStart() {
                 />
               </div>
               <p className="text-muted-foreground text-lg mb-6">
-                Install the Sapience plug-in for ElizaOS to quickly spin up an agent that
-                submits forecasts onchain.
+                Install the Sapience plug-in for ElizaOS to quickly spin up an
+                agent that submits forecasts onchain.
               </p>
               <div className="pt-2 gap-2 flex flex-wrap justify-start">
                 <a

@@ -4,7 +4,6 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
-import { SquareStack } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -15,8 +14,6 @@ import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-import { MarketGroupClassification } from '~/lib/types';
 
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -31,7 +28,6 @@ export default function MultipleChoiceWagerForm({
 }: MultipleChoiceWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const { addPosition } = useBetSlipContext();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -85,32 +81,6 @@ export default function MultipleChoiceWagerForm({
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
-
-  // Handle adding to parlay
-  const handleAddToBetSlip = () => {
-    if (!predictionValue || !marketGroupData.question) return;
-
-    // Find the selected market option
-    const selectedMarket = marketGroupData.markets?.find(
-      (market) => market.marketId === Number(predictionValue)
-    );
-
-    if (!selectedMarket) return;
-
-    const position = {
-      prediction: true, // For multiple choice, we set this to true and use the market's own question
-      marketAddress: marketGroupData.address as string,
-      marketId: selectedMarket.marketId,
-      question:
-        selectedMarket.question ||
-        `${marketGroupData.question} - ${selectedMarket.optionName}` ||
-        'Unknown Question', // Ensure question is always a string
-      marketGroupData,
-      marketClassification: MarketGroupClassification.MULTIPLE_CHOICE,
-    };
-
-    addPosition(position);
-  };
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -198,7 +168,7 @@ export default function MultipleChoiceWagerForm({
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-4">
           <div>
-              <Label>Your Prediction</Label>
+            <Label>Your Prediction</Label>
             <MultipleChoicePredict
               options={(marketGroupData.markets || []).map((market) => ({
                 name: market.optionName || '',

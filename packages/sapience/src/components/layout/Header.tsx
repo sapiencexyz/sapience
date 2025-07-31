@@ -161,13 +161,13 @@ const Header = () => {
 
           {/* Mobile Parlay Button (fixed right, with border, hover effect) */}
           {ready && (
-                      <Button
-            onClick={() => setIsPopoverOpen(true)}
-            className="fixed right-0 top-16 z-[51] flex items-center justify-center md:hidden border border-r-0 border-border bg-background/30 p-2 pr-2 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
-            variant="ghost"
-          >
-            Wager
-          </Button>
+            <Button
+              onClick={() => setIsPopoverOpen(true)}
+              className="fixed right-0 top-16 z-[51] flex items-center justify-center md:hidden border border-r-0 border-border bg-background/30 p-2 pr-2 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
+              variant="ghost"
+            >
+              Wager
+            </Button>
           )}
 
           <div className="flex items-center gap-4 pointer-events-auto">

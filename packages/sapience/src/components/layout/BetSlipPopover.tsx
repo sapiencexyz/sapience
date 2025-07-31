@@ -7,14 +7,9 @@ import {
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
 import { Switch } from '@sapience/ui/components/ui/switch';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@sapience/ui/components/ui/tabs';
 import Link from 'next/link';
 import { useForm, FormProvider } from 'react-hook-form';
+import { useState } from 'react';
 import { z } from 'zod';
 
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
@@ -22,12 +17,6 @@ import {
   WagerInput,
   wagerAmountSchema,
 } from '~/components/forecasting/forms/inputs/WagerInput';
-import WagerFormFactory from '~/components/forecasting/forms/WagerFormFactory';
-
-// Default values based on app configuration
-const DEFAULT_CHAIN_ID = 8453; // Base
-const DEFAULT_COLLATERAL_ASSET = '0x5875eee11cf8398102fdad704c9e96607675467a'; // sUSDS
-const DEFAULT_COLLATERAL_SYMBOL = 'sUSDS';
 
 // Form schema
 const _betSlipFormSchema = z.object({
@@ -44,6 +33,8 @@ const BetSlipPopover = () => {
     isPopoverOpen,
     setIsPopoverOpen,
   } = useBetSlipContext();
+
+  const [isParlayMode, setIsParlayMode] = useState(false);
 
   const methods = useForm<BetSlipFormData>({
     defaultValues: {
@@ -72,32 +63,34 @@ const BetSlipPopover = () => {
             <p className="text-base text-muted-foreground">
               Place a wager on future events
             </p>
-            <Button
-              variant="default"
-              size="xs"
-              asChild
-            >
-              <Link
-                href="/markets"
-                onClick={() => setIsPopoverOpen(false)}
-              >
+            <Button variant="default" size="xs" asChild>
+              <Link href="/markets" onClick={() => setIsPopoverOpen(false)}>
                 Browse Prediction Markets
               </Link>
             </Button>
           </div>
         ) : (
-          <Tabs defaultValue="multiple" className="w-full">
-            <div className="px-3 pt-3">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="singles">Singles</TabsTrigger>
-                <TabsTrigger value="multiple">Multiple</TabsTrigger>
-              </TabsList>
+          <div className="w-full">
+            <div className="px-3 pt-3 pb-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Place a Wager</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Parlay</span>
+                  <Switch
+                    checked={isParlayMode}
+                    onCheckedChange={setIsParlayMode}
+                  />
+                </div>
+              </div>
             </div>
-            
-            <TabsContent value="singles" className="mt-0">
+
+            {!isParlayMode ? (
               <div className="p-3 space-y-4 max-h-96 overflow-y-auto">
                 {betSlipPositions.map((position) => (
-                  <div key={position.id} className="border-b border-border pb-4 last:border-b-0">
+                  <div
+                    key={position.id}
+                    className="border-b border-border pb-4 last:border-b-0"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-sm font-medium text-foreground truncate pr-2">
                         {position.question}
@@ -110,29 +103,20 @@ const BetSlipPopover = () => {
                         Remove
                       </button>
                     </div>
-                    <WagerFormFactory
-                      marketClassification={position.marketClassification}
-                      marketGroupData={position.marketGroupData}
-                      isPermitted={true}
-                      onSuccess={(txHash) => {
-                        console.log('Wager successful:', txHash);
-                        // Optional: Remove position after successful wager
-                        // removePosition(position.id);
-                      }}
-                    />
+                    <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+                      Individual wager functionality needs implementation.
+                      <br />
+                      Market: {position.marketAddress}
+                      <br />
+                      Prediction: {position.prediction ? 'YES' : 'NO'}
+                    </div>
                   </div>
                 ))}
-                {betSlipPositions.length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-sm text-muted-foreground">
-                      No wagers in your bet slip
-                    </p>
-                  </div>
-                )}
+                <Button variant="default" size="sm" className="w-full">
+                  Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
+                </Button>
               </div>
-            </TabsContent>
-            
-            <TabsContent value="multiple" className="mt-0">
+            ) : (
               <FormProvider {...methods}>
                 <form
                   onSubmit={methods.handleSubmit(handleSubmit)}
@@ -182,11 +166,7 @@ const BetSlipPopover = () => {
                   </div>
 
                   <div className="pt-1">
-                    <WagerInput
-                      collateralSymbol={DEFAULT_COLLATERAL_SYMBOL}
-                      collateralAddress={DEFAULT_COLLATERAL_ASSET}
-                      chainId={DEFAULT_CHAIN_ID}
-                    />
+                    <WagerInput />
                   </div>
 
                   <div className="pt-2">
@@ -196,8 +176,8 @@ const BetSlipPopover = () => {
                   </div>
                 </form>
               </FormProvider>
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         )}
       </PopoverContent>
     </Popover>
