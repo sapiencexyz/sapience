@@ -89,19 +89,16 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
     useMarketPage();
 
   // Fetch GraphQL-based positions (includes transaction data)
-  const targetAddress = walletAddress || address;
-  // Convert address to lowercase for consistent GraphQL querying (addresses are case-insensitive)
-  const normalizedAddress = targetAddress?.toLowerCase();
-  // Use marketGroup address for GraphQL query, not individual market address
-  const marketGroupAddress = marketData?.marketGroup?.address;
-  
+  const targetAddress = walletAddress?.toLowerCase() || address?.toLowerCase();
+
+  console.log('LOOK HERE ZAYDO marketData', marketData);
   const {
     data: allPositions = [],
     isLoading: isLoadingPositions,
     error: positionsError,
   } = usePositions({
-    address: normalizedAddress || undefined,
-    marketAddress: marketGroupAddress || undefined,
+    address: targetAddress || undefined,
+    marketAddress: marketData?.marketGroup?.address || undefined,
   });
   // Filter positions by type
   const lpPositions = allPositions.filter((pos) => pos.isLP);
