@@ -53,6 +53,16 @@ const ForecastPage = () => {
   // Fetch all market groups
   const { data: marketGroups } = useEnrichedMarketGroups();
 
+  // Extract market details if selected
+  let marketClassification, marketGroupData;
+  if (selectedMarket) {
+    marketClassification = selectedMarket.group.marketClassification;
+    marketGroupData = {
+      ...selectedMarket.group,
+      markets: [selectedMarket],
+    };
+  }
+
   // Flatten all markets from all groups
   const allMarkets = (marketGroups || []).flatMap((group) =>
     (group.markets || []).map((market) => ({
@@ -86,15 +96,6 @@ const ForecastPage = () => {
     }, 0);
   };
 
-  // Extract market details if selected
-  let marketClassification, marketGroupData;
-  if (selectedMarket) {
-    marketClassification = selectedMarket.group.marketClassification;
-    marketGroupData = {
-      ...selectedMarket.group,
-      markets: [selectedMarket],
-    };
-  }
 
   // Style classes for category buttons
   const selectedStatusClass = 'bg-primary/10 text-primary';

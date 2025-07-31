@@ -10,7 +10,7 @@ import { injected } from 'wagmi/connectors';
 
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
-import { ParlayProvider } from '~/lib/context/ParlayContext';
+import { BetSlipProvider } from '~/lib/context/BetSlipContext';
 
 const queryClient = new QueryClient();
 
@@ -91,7 +91,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={config}>
             <SapienceProvider>
-              <ParlayProvider>{children}</ParlayProvider>
+              <BetSlipProvider>{children}</BetSlipProvider>
             </SapienceProvider>
           </WagmiProvider>
         </QueryClientProvider>

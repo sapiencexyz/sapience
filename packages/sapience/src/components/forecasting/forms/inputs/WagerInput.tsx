@@ -15,9 +15,9 @@ import { getChainShortName } from '~/lib/utils/util';
 
 interface WagerInputProps {
   name?: string;
-  collateralSymbol: string;
-  collateralAddress: `0x${string}`;
-  chainId: number;
+  collateralSymbol?: string;
+  collateralAddress?: `0x${string}`;
+  chainId?: number;
 }
 
 // Define the wager schema that will be used across all forms
@@ -70,9 +70,9 @@ function SUsdsHelp() {
 
 export function WagerInput({
   name = 'wagerAmount',
-  collateralSymbol,
-  collateralAddress,
-  chainId,
+  collateralSymbol = 'sUSDe',
+  collateralAddress = '0x0000000000000000000000000000000000000000',
+  chainId = 432,
 }: WagerInputProps) {
   const {
     register,
