@@ -8,7 +8,6 @@ import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getTimtestampCandleInterval } from '../candleUtils';
 import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { marketInfo, marketInfoStore } from '../marketInfoStore';
-import { Decimal } from '../../../generated/prisma/runtime/library';
 
 type ResourcePriceWithResource = ResourcePrice & { resource: Resource };
 
@@ -22,13 +21,14 @@ export class IndexCandleProcessor {
     prevCandle: CacheCandle | undefined,
     price: ResourcePriceWithResource
   ) => {
-    const feePaid =
-      (prevCandle
-        ? BigInt(prevCandle.sumFeePaid?.toString() || '0')
-        : BigInt(0)) + BigInt(price.feePaid.toString());
-    const used =
-      (prevCandle ? BigInt(prevCandle.sumUsed?.toString() || '0') : BigInt(0)) +
-      BigInt(price.used.toString());
+    const feePaidStr = price.feePaid;
+    const usedStr = price.used;
+
+    const prevFeePaidStr = prevCandle?.sumFeePaid || '0';
+    const prevUsedStr = prevCandle?.sumUsed || '0';
+
+    const feePaid = BigInt(prevFeePaidStr) + BigInt(feePaidStr);
+    const used = BigInt(prevUsedStr) + BigInt(usedStr);
     const avg = used > 0 ? feePaid / used : 0;
     return { feePaid, used, avg };
   };
@@ -62,8 +62,8 @@ export class IndexCandleProcessor {
     candle.high = String(avg);
     candle.low = String(avg);
     candle.close = String(avg);
-    candle.sumFeePaid = new Decimal(feePaid.toString());
-    candle.sumUsed = new Decimal(used.toString());
+    candle.sumFeePaid = feePaid.toString();
+    candle.sumUsed = used.toString();
     return candle;
   }
 
@@ -126,8 +126,8 @@ export class IndexCandleProcessor {
           candle.low = String(avg);
           candle.close = String(avg);
           candle.lastUpdatedTimestamp = price.timestamp;
-          candle.sumFeePaid = new Decimal(feePaid.toString());
-          candle.sumUsed = new Decimal(used.toString());
+          candle.sumFeePaid = feePaid.toString();
+          candle.sumUsed = used.toString();
         }
       }
     }

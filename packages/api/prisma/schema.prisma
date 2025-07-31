@@ -28,8 +28,8 @@ model CacheCandle {
   close                  String   @db.VarChar
   endTimestamp           Int
   lastUpdatedTimestamp   Int
-  sumUsed                Decimal? @db.Decimal(78, 0)
-  sumFeePaid             Decimal? @db.Decimal(78, 0)
+  sumUsed                String?  @db.VarChar
+  sumFeePaid             String?  @db.VarChar
   trailingStartTimestamp Int?
   address                String?  @db.VarChar
   chainId                Int?
@@ -274,9 +274,9 @@ model ResourcePrice {
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
   blockNumber Int
   timestamp   Int
-  value       Decimal   @db.Decimal(78, 0)
-  used        Decimal   @db.Decimal(78, 0)
-  feePaid     Decimal   @db.Decimal(78, 0)
+  value       String    @db.VarChar
+  used        String    @db.VarChar
+  feePaid     String    @db.VarChar
   resourceId  Int?
   resource    Resource? @relation(fields: [resourceId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_187fa56af532560ce204719ea39")
 
