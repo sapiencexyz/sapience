@@ -454,16 +454,12 @@ const MarketGroupPageContent = () => {
                             href={`${pathname}/${market.marketId}`}
                             onClick={() => setShowMarketSelector(false)}
                           >
-                            <div className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-b last:border-b-0 border-border">
-                              {/* Colored Bar (Full Height) */}
-                              <div
-                                className="w-1 min-w-[4px] max-w-[4px]"
-                                style={{
-                                  backgroundColor: '#3B82F6',
-                                  margin: '-1px 0',
-                                }}
-                              />
-
+                            <div
+                              className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-r border-t border-b border-border last:border-b-0"
+                              style={{
+                                borderLeft: '4px solid #3B82F6',
+                              }}
+                            >
                               {/* Content Container */}
                               <div className="flex-grow flex flex-col lg:flex-row lg:items-center px-5 py-3">
                                 {/* Question Section */}
@@ -495,16 +491,12 @@ const MarketGroupPageContent = () => {
                             href={`${pathname}/${market.marketId}`}
                             onClick={() => setShowMarketSelector(false)}
                           >
-                            <div className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-b last:border-b-0 border-border">
-                              {/* Colored Bar (Full Height) */}
-                              <div
-                                className="w-1 min-w-[4px] max-w-[4px]"
-                                style={{
-                                  backgroundColor: '#F59E0B',
-                                  margin: '-1px 0',
-                                }}
-                              />
-
+                            <div
+                              className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-r border-t border-b border-border last:border-b-0"
+                              style={{
+                                borderLeft: '4px solid #F59E0B',
+                              }}
+                            >
                               {/* Content Container */}
                               <div className="flex-grow flex flex-col lg:flex-row lg:items-center px-5 py-3">
                                 {/* Question Section */}
@@ -536,16 +528,12 @@ const MarketGroupPageContent = () => {
                             href={`${pathname}/${market.marketId}`}
                             onClick={() => setShowMarketSelector(false)}
                           >
-                            <div className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-b last:border-b-0 border-border opacity-75">
-                              {/* Colored Bar (Full Height) */}
-                              <div
-                                className="w-1 min-w-[4px] max-w-[4px]"
-                                style={{
-                                  backgroundColor: '#71717a',
-                                  margin: '-1px 0',
-                                }}
-                              />
-
+                            <div
+                              className="bg-background border-muted dark:bg-muted/50 flex flex-row hover:bg-secondary/20 transition-colors items-stretch min-h-[72px] border-r border-t border-b border-border last:border-b-0 opacity-75"
+                              style={{
+                                borderLeft: '4px solid #71717a',
+                              }}
+                            >
                               {/* Content Container */}
                               <div className="flex-grow flex flex-col lg:flex-row lg:items-center px-5 py-3">
                                 {/* Question Section */}
