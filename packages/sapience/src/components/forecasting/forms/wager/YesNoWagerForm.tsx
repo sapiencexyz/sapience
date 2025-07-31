@@ -1,20 +1,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
-import { SquareStack } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
+import QuoteDisplay from '../shared/QuoteDisplay';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
-import { useParlayContext } from '~/lib/context/ParlayContext';
+import { MarketGroupClassification } from '~/lib/types';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -33,7 +32,6 @@ export default function YesNoWagerForm({
 }: YesNoWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  const { addPosition } = useParlayContext();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -88,20 +86,6 @@ export default function YesNoWagerForm({
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
-
-  // Handle adding to parlay
-  const handleAddToParlay = () => {
-    if (!predictionValue || !marketGroupData.question) return;
-
-    const position = {
-      prediction: predictionValue === YES_SQRT_PRICE_X96,
-      marketAddress: marketGroupData.address as string,
-      marketId: marketGroupData.markets?.[0]?.marketId ?? 0,
-      question: marketGroupData.question || 'Unknown Question', // Ensure question is always a string
-    };
-
-    addPosition(position);
-  };
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -160,49 +144,14 @@ export default function YesNoWagerForm({
     return 'Submit Wager';
   };
 
-  // Render quote data if available
-  const renderQuoteData = () => {
-    if (!quoteData || quoteError) return null;
-
-    return (
-      <div className="mt-2 text-sm text-muted-foreground">
-        <p>
-          If this market resolves to{' '}
-          <span className="font-medium">
-            {predictionValue === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'}
-          </span>
-          , you will receive approximately{' '}
-          <span className="font-medium">
-            <NumberDisplay
-              value={BigInt(Math.abs(Number(quoteData.maxSize)))}
-              precision={4}
-            />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
-          </span>
-        </p>
-      </div>
-    );
-  };
+  // Quote data is now handled by the shared QuoteDisplay component
 
   return (
     <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
         <div className="space-y-4">
           <div>
-            <div className="flex justify-between items-center">
-              <Label>Your Prediction</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                className="text-xs"
-                onClick={handleAddToParlay}
-                disabled={!predictionValue || !marketGroupData.question}
-              >
-                <SquareStack className="w-3 h-3" />
-                Add to Parlay
-              </Button>
-            </div>
+            <Label>Your Prediction</Label>
             <div className="grid grid-cols-2 gap-4 mt-2">
               <Button
                 type="button"
@@ -247,11 +196,14 @@ export default function YesNoWagerForm({
             chainId={marketGroupData.chainId}
           />
 
-          {quoteError && (
-            <p className="text-destructive text-sm">{quoteError}</p>
-          )}
-
-          {renderQuoteData()}
+          <QuoteDisplay
+            quoteData={quoteData}
+            quoteError={quoteError}
+            isLoading={isQuoteLoading}
+            marketGroupData={marketGroupData}
+            marketClassification={MarketGroupClassification.YES_NO}
+            predictionValue={predictionValue}
+          />
         </div>
 
         <PermittedAlert isPermitted={isPermitted} />

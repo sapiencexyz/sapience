@@ -3,48 +3,51 @@
 import type React from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
 
-// Updated ParlayPosition type based on requirements
-export interface ParlayPosition {
+// Updated BetSlipPosition type based on requirements
+export interface BetSlipPosition {
   id: string;
   prediction: boolean;
   marketAddress: string;
   marketId: number;
   question: string;
+  chainId: number; // Add chainId to identify which chain the market is on
 }
 
-interface ParlayContextType {
-  parlayPositions: ParlayPosition[];
-  addPosition: (position: Omit<ParlayPosition, 'id'>) => void;
+interface BetSlipContextType {
+  betSlipPositions: BetSlipPosition[];
+  addPosition: (position: Omit<BetSlipPosition, 'id'>) => void;
   removePosition: (id: string) => void;
-  updatePosition: (id: string, updates: Partial<ParlayPosition>) => void;
-  clearParlay: () => void;
+  updatePosition: (id: string, updates: Partial<BetSlipPosition>) => void;
+  clearBetSlip: () => void;
   openPopover: () => void;
   isPopoverOpen: boolean;
   setIsPopoverOpen: (open: boolean) => void;
 }
 
-const ParlayContext = createContext<ParlayContextType | undefined>(undefined);
+const BetSlipContext = createContext<BetSlipContextType | undefined>(undefined);
 
-export const useParlayContext = () => {
-  const context = useContext(ParlayContext);
+export const useBetSlipContext = () => {
+  const context = useContext(BetSlipContext);
   if (!context) {
-    throw new Error('useParlayContext must be used within a ParlayProvider');
+    throw new Error('useBetSlipContext must be used within a BetSlipProvider');
   }
   return context;
 };
 
-interface ParlayProviderProps {
+interface BetSlipProviderProps {
   children: React.ReactNode;
 }
 
-export const ParlayProvider = ({ children }: ParlayProviderProps) => {
-  const [parlayPositions, setParlayPositions] = useState<ParlayPosition[]>([]);
+export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
+  const [betSlipPositions, setBetSlipPositions] = useState<BetSlipPosition[]>(
+    []
+  );
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const addPosition = useCallback(
-    (position: Omit<ParlayPosition, 'id'>) => {
+    (position: Omit<BetSlipPosition, 'id'>) => {
       // Check if a position with the same marketAddress and marketId already exists
-      const existingPositionIndex = parlayPositions.findIndex(
+      const existingPositionIndex = betSlipPositions.findIndex(
         (p) =>
           p.marketAddress === position.marketAddress &&
           p.marketId === position.marketId
@@ -52,7 +55,7 @@ export const ParlayProvider = ({ children }: ParlayProviderProps) => {
 
       if (existingPositionIndex !== -1) {
         // Merge into existing position by updating it
-        setParlayPositions((prev) =>
+        setBetSlipPositions((prev) =>
           prev.map((p, index) =>
             index === existingPositionIndex
               ? {
@@ -67,51 +70,51 @@ export const ParlayProvider = ({ children }: ParlayProviderProps) => {
         // Generate a unique ID for the new position
         const id = `${position.marketAddress}-${position.marketId}-${position.prediction}-${Date.now()}`;
 
-        const newPosition: ParlayPosition = {
+        const newPosition: BetSlipPosition = {
           ...position,
           id,
         };
-        setParlayPositions((prev) => [...prev, newPosition]);
+        setBetSlipPositions((prev) => [...prev, newPosition]);
       }
 
       setIsPopoverOpen(true); // Open popover when position is added or updated
     },
-    [parlayPositions]
+    [betSlipPositions]
   );
 
   const removePosition = useCallback((id: string) => {
-    setParlayPositions((prev) => prev.filter((p) => p.id !== id));
+    setBetSlipPositions((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
   const updatePosition = useCallback(
-    (id: string, updates: Partial<ParlayPosition>) => {
-      setParlayPositions((prev) =>
+    (id: string, updates: Partial<BetSlipPosition>) => {
+      setBetSlipPositions((prev) =>
         prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
       );
     },
     []
   );
 
-  const clearParlay = useCallback(() => {
-    setParlayPositions([]);
+  const clearBetSlip = useCallback(() => {
+    setBetSlipPositions([]);
   }, []);
 
   const openPopover = useCallback(() => {
     setIsPopoverOpen(true);
   }, []);
 
-  const value: ParlayContextType = {
-    parlayPositions,
+  const value: BetSlipContextType = {
+    betSlipPositions,
     addPosition,
     removePosition,
     updatePosition,
-    clearParlay,
+    clearBetSlip,
     openPopover,
     isPopoverOpen,
     setIsPopoverOpen,
   };
 
   return (
-    <ParlayContext.Provider value={value}>{children}</ParlayContext.Provider>
+    <BetSlipContext.Provider value={value}>{children}</BetSlipContext.Provider>
   );
 };

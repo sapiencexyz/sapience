@@ -10,12 +10,18 @@ export default function BotsQuickStart() {
           <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
             {/* Left side: Explanatory text and CTAs */}
             <div className="w-full lg:w-3/5 lg:max-w-[360px] text-left lg:text-inherit">
-              <h2 className="font-sans text-2xl lg:text-3xl font-normal mb-2 lg:mb-6">
-                Use ElizaOS
-              </h2>
+              <div className="mb-2 lg:mb-6">
+                <Image
+                  src="/elizaos-logo.svg"
+                  alt="Eliza OS"
+                  width={400}
+                  height={120}
+                  className="w-auto h-auto max-w-[200px]"
+                />
+              </div>
               <p className="text-muted-foreground text-lg mb-6">
-                Install the Sapience plug-in to quickly spin up an agent that
-                submits forecasts onchain.
+                Install the Sapience plug-in for ElizaOS to quickly spin up an
+                agent that submits forecasts onchain.
               </p>
               <div className="pt-2 gap-2 flex flex-wrap justify-start">
                 <a
