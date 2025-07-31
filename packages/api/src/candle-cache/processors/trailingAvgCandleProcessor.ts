@@ -10,7 +10,6 @@ import { RuntimeCandleStore } from '../runtimeCandleStore';
 import { getOrCreateCandle, saveCandle } from '../dbUtils';
 import { TrailingAvgHistoryStore } from '../trailingAvgHistoryStore';
 import { startOfInterval, startOfNextInterval } from '../candleUtils';
-import { Decimal } from '../../../generated/prisma/runtime/library';
 
 export class TrailingAvgCandleProcessor {
   constructor(
@@ -46,8 +45,8 @@ export class TrailingAvgCandleProcessor {
     candle.high = avg.toString();
     candle.low = avg.toString();
     candle.close = avg.toString();
-    candle.sumUsed = new Decimal(sumUsed.toString());
-    candle.sumFeePaid = new Decimal(sumFeePaid.toString());
+    candle.sumUsed = sumUsed.toString();
+    candle.sumFeePaid = sumFeePaid.toString();
     candle.trailingStartTimestamp = startOfTrailingWindow;
     return candle;
   }
@@ -96,8 +95,8 @@ export class TrailingAvgCandleProcessor {
         candle.high = avg.toString();
         candle.low = avg.toString();
         candle.close = avg.toString();
-        candle.sumUsed = new Decimal(sumUsed.toString());
-        candle.sumFeePaid = new Decimal(sumFeePaid.toString());
+        candle.sumUsed = sumUsed.toString();
+        candle.sumFeePaid = sumFeePaid.toString();
         candle.trailingStartTimestamp = startOfTrailingWindow;
         candle.lastUpdatedTimestamp = price.timestamp;
       }

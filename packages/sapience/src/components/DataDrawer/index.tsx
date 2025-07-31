@@ -85,8 +85,13 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
   const [selectedTab, setSelectedTab] = useState('transactions');
 
   // Get market context data
-  const { marketAddress, chainId, numericMarketId, collateralAssetTicker, marketData } =
-    useMarketPage();
+  const {
+    marketAddress,
+    chainId,
+    numericMarketId,
+    collateralAssetTicker,
+    marketData,
+  } = useMarketPage();
 
   // Fetch GraphQL-based positions (includes transaction data)
   const targetAddress = walletAddress?.toLowerCase() || address?.toLowerCase();
