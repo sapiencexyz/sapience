@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -11,9 +10,11 @@ import { z } from 'zod';
 import type { MarketGroupType } from '@sapience/ui/types';
 import MultipleChoicePredict from '../inputs/MultipleChoicePredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
+import QuoteDisplay from '../shared/QuoteDisplay';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
+import { MarketGroupClassification } from '~/lib/types';
 
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -139,29 +140,7 @@ export default function MultipleChoiceWagerForm({
     return 'Submit Wager';
   };
 
-  // Render quote data if available
-  const renderQuoteData = () => {
-    if (!quoteData || quoteError) return null;
-
-    // Get the selected option name based on predictionValue
-    const selectedOptionName = (marketGroupData.markets || []).find(
-      (market) => market.marketId === Number(predictionValue)
-    )?.optionName;
-
-    return (
-      <div className="mt-2 text-sm text-muted-foreground">
-        <p>
-          If this market resolves to{' '}
-          <span className="font-medium">{selectedOptionName}</span>, you will
-          receive approximately{' '}
-          <span className="font-medium">
-            <NumberDisplay value={BigInt(quoteData.maxSize)} precision={4} />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
-          </span>
-        </p>
-      </div>
-    );
-  };
+  // Quote data is now handled by the shared QuoteDisplay component
 
   return (
     <FormProvider {...methods}>
@@ -184,11 +163,14 @@ export default function MultipleChoiceWagerForm({
             chainId={marketGroupData.chainId}
           />
 
-          {quoteError && (
-            <p className="text-destructive text-sm">{quoteError}</p>
-          )}
-
-          {renderQuoteData()}
+          <QuoteDisplay
+            quoteData={quoteData}
+            quoteError={quoteError}
+            isLoading={isQuoteLoading}
+            marketGroupData={marketGroupData}
+            marketClassification={MarketGroupClassification.MULTIPLE_CHOICE}
+            predictionValue={predictionValue}
+          />
         </div>
 
         <PermittedAlert isPermitted={isPermitted} />

@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -10,9 +9,11 @@ import { z } from 'zod';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
+import QuoteDisplay from '../shared/QuoteDisplay';
 import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
+import { MarketGroupClassification } from '~/lib/types';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -143,29 +144,7 @@ export default function YesNoWagerForm({
     return 'Submit Wager';
   };
 
-  // Render quote data if available
-  const renderQuoteData = () => {
-    if (!quoteData || quoteError) return null;
-
-    return (
-      <div className="mt-2 text-sm text-muted-foreground">
-        <p>
-          If this market resolves to{' '}
-          <span className="font-medium">
-            {predictionValue === YES_SQRT_PRICE_X96 ? 'Yes' : 'No'}
-          </span>
-          , you will receive approximately{' '}
-          <span className="font-medium">
-            <NumberDisplay
-              value={BigInt(Math.abs(Number(quoteData.maxSize)))}
-              precision={4}
-            />{' '}
-            {marketGroupData?.collateralSymbol || 'tokens'}
-          </span>
-        </p>
-      </div>
-    );
-  };
+  // Quote data is now handled by the shared QuoteDisplay component
 
   return (
     <FormProvider {...methods}>
@@ -217,11 +196,14 @@ export default function YesNoWagerForm({
             chainId={marketGroupData.chainId}
           />
 
-          {quoteError && (
-            <p className="text-destructive text-sm">{quoteError}</p>
-          )}
-
-          {renderQuoteData()}
+          <QuoteDisplay
+            quoteData={quoteData}
+            quoteError={quoteError}
+            isLoading={isQuoteLoading}
+            marketGroupData={marketGroupData}
+            marketClassification={MarketGroupClassification.YES_NO}
+            predictionValue={predictionValue}
+          />
         </div>
 
         <PermittedAlert isPermitted={isPermitted} />

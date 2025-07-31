@@ -9,21 +9,28 @@ import {
 import { Switch } from '@sapience/ui/components/ui/switch';
 import Link from 'next/link';
 import { useForm, FormProvider } from 'react-hook-form';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 
+import type { MarketGroupType } from '@sapience/ui/types';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import {
   WagerInput,
   wagerAmountSchema,
 } from '~/components/forecasting/forms/inputs/WagerInput';
+import { useMultipleMarketGroups } from '~/hooks/graphql/useMultipleMarketGroups';
+import { getChainShortName } from '~/lib/utils/util';
+import PositionWithQuote from '~/components/forecasting/forms/shared/PositionWithQuote';
+import type { MarketGroupClassification } from '~/lib/types';
 
-// Form schema
-const _betSlipFormSchema = z.object({
-  wagerAmount: wagerAmountSchema,
-});
-
-type BetSlipFormData = z.infer<typeof _betSlipFormSchema>;
+interface PositionWithMarketData {
+  position: any; // BetSlipPosition from context
+  marketGroupData?: MarketGroupType;
+  marketClassification?: MarketGroupClassification;
+  isLoading: boolean;
+  error?: any;
+}
 
 const BetSlipPopover = () => {
   const {
@@ -36,15 +43,113 @@ const BetSlipPopover = () => {
 
   const [isParlayMode, setIsParlayMode] = useState(false);
 
-  const methods = useForm<BetSlipFormData>({
+  // Create a map of unique market identifiers to avoid duplicate queries
+  const uniqueMarkets = useMemo(() => {
+    const marketMap = new Map();
+    betSlipPositions.forEach((position) => {
+      // Fallback to base chain (8453) if chainId is missing (for existing positions)
+      const chainId = position.chainId || 8453;
+      const key = `${chainId}-${position.marketAddress}`;
+
+      if (!marketMap.has(key)) {
+        const chainShortName = getChainShortName(chainId);
+        console.log('Processing position:', {
+          originalChainId: position.chainId,
+          effectiveChainId: chainId,
+          chainShortName,
+          marketAddress: position.marketAddress,
+          question: position.question,
+        });
+
+        marketMap.set(key, {
+          chainId,
+          marketAddress: position.marketAddress,
+          chainShortName,
+        });
+      }
+    });
+    return Array.from(marketMap.values());
+  }, [betSlipPositions]);
+
+  // Use the custom hook that follows React's rules of hooks
+  const { queries: marketQueries } = useMultipleMarketGroups(uniqueMarkets);
+
+  // Create positions with market data
+  const positionsWithMarketData: PositionWithMarketData[] = useMemo(() => {
+    return betSlipPositions.map((position) => {
+      // Use same fallback logic for consistency
+      const effectiveChainId = position.chainId || 8453;
+
+      const marketIndex = uniqueMarkets.findIndex(
+        (market) =>
+          market.chainId === effectiveChainId &&
+          market.marketAddress === position.marketAddress
+      );
+
+      const marketQuery =
+        marketIndex >= 0 ? marketQueries[marketIndex] : undefined;
+
+      return {
+        position: {
+          ...position,
+          chainId: effectiveChainId, // Ensure position has chainId for UI display
+        },
+        marketGroupData: marketQuery?.marketGroupData,
+        marketClassification: marketQuery?.marketClassification,
+        isLoading: marketQuery?.isLoading || false,
+        error: marketQuery?.isError,
+      };
+    });
+  }, [betSlipPositions, marketQueries, uniqueMarkets]);
+
+  // Create dynamic form schema based on positions
+  const formSchema = useMemo(() => {
+    const positionsSchema: Record<string, z.ZodObject<any>> = {};
+
+    betSlipPositions.forEach((position) => {
+      positionsSchema[position.id] = z.object({
+        predictionValue: z.string().min(1, 'Please make a prediction'),
+        wagerAmount: wagerAmountSchema,
+      });
+    });
+
+    return z.object({
+      positions: z.object(positionsSchema),
+    });
+  }, [betSlipPositions]);
+
+  // Set up form for individual wagers
+  const individualMethods = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      positions: Object.fromEntries(
+        betSlipPositions.map((position) => [
+          position.id,
+          {
+            predictionValue: position.prediction ? 'YES' : 'NO',
+            wagerAmount: '',
+          },
+        ])
+      ),
+    },
+    mode: 'onChange',
+  });
+
+  // Set up form for parlay mode
+  const parlayMethods = useForm({
     defaultValues: {
       wagerAmount: '',
     },
   });
 
-  const handleSubmit = (data: BetSlipFormData) => {
-    // TODO: Implement bet slip submission logic
-    console.log('Bet slip form data:', data);
+  const handleIndividualSubmit = (data: any) => {
+    console.log('Individual wager form data:', data);
+    // TODO: Implement individual wager submission logic
+  };
+
+  const handleParlaySubmit = (data: any) => {
+    console.log('Parlay form data:', data);
+    // TODO: Implement parlay submission logic
   };
 
   return (
@@ -85,41 +190,140 @@ const BetSlipPopover = () => {
             </div>
 
             {!isParlayMode ? (
-              <div className="p-3 space-y-4 max-h-96 overflow-y-auto">
-                {betSlipPositions.map((position) => (
-                  <div
-                    key={position.id}
-                    className="border-b border-border pb-4 last:border-b-0"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-medium text-foreground truncate pr-2">
-                        {position.question}
-                      </h3>
-                      <button
-                        onClick={() => removePosition(position.id)}
-                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        type="button"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                      Individual wager functionality needs implementation.
-                      <br />
-                      Market: {position.marketAddress}
-                      <br />
-                      Prediction: {position.prediction ? 'YES' : 'NO'}
-                    </div>
-                  </div>
-                ))}
-                <Button variant="default" size="sm" className="w-full">
-                  Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
-                </Button>
-              </div>
-            ) : (
-              <FormProvider {...methods}>
+              <FormProvider {...individualMethods}>
                 <form
-                  onSubmit={methods.handleSubmit(handleSubmit)}
+                  onSubmit={individualMethods.handleSubmit(
+                    handleIndividualSubmit
+                  )}
+                  className="p-3 space-y-4 max-h-96 overflow-y-auto"
+                >
+                  {positionsWithMarketData.map((positionData) => {
+                    // Show loading state
+                    if (positionData.isLoading) {
+                      return (
+                        <div
+                          key={positionData.position.id}
+                          className="border-b border-border pb-4 last:border-b-0"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-foreground truncate pr-2">
+                              {positionData.position.question}
+                            </h3>
+                            <button
+                              onClick={() =>
+                                removePosition(positionData.position.id)
+                              }
+                              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              type="button"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+                            Loading market data...
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Show error state
+                    if (positionData.error) {
+                      return (
+                        <div
+                          key={positionData.position.id}
+                          className="border-b border-border pb-4 last:border-b-0"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-medium text-foreground truncate pr-2">
+                              {positionData.position.question}
+                            </h3>
+                            <button
+                              onClick={() =>
+                                removePosition(positionData.position.id)
+                              }
+                              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              type="button"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          <div className="text-xs text-destructive p-2 bg-destructive/10 rounded">
+                            Error loading market data
+                            <br />
+                            <small>
+                              Chain: {positionData.position.chainId} (
+                              {getChainShortName(positionData.position.chainId)}
+                              )
+                              <br />
+                              Market: {positionData.position.marketAddress}
+                            </small>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Show position with quote functionality
+                    if (
+                      positionData.marketGroupData &&
+                      positionData.marketClassification
+                    ) {
+                      return (
+                        <PositionWithQuote
+                          key={positionData.position.id}
+                          positionId={positionData.position.id}
+                          question={positionData.position.question}
+                          marketGroupData={positionData.marketGroupData}
+                          marketClassification={
+                            positionData.marketClassification
+                          }
+                          onRemove={() =>
+                            removePosition(positionData.position.id)
+                          }
+                        />
+                      );
+                    }
+
+                    // Fallback for no market data
+                    return (
+                      <div
+                        key={positionData.position.id}
+                        className="border-b border-border pb-4 last:border-b-0"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm font-medium text-foreground truncate pr-2">
+                            {positionData.position.question}
+                          </h3>
+                          <button
+                            onClick={() =>
+                              removePosition(positionData.position.id)
+                            }
+                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            type="button"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+                          Market data not available
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <Button
+                    type="submit"
+                    variant="default"
+                    className="w-full"
+                    disabled={positionsWithMarketData.some((p) => p.isLoading)}
+                  >
+                    Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
+                  </Button>
+                </form>
+              </FormProvider>
+            ) : (
+              <FormProvider {...parlayMethods}>
+                <form
+                  onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)}
                   className="space-y-4 p-3"
                 >
                   <div className="space-y-2 max-h-64 overflow-y-auto">

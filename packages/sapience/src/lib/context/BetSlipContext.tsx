@@ -10,6 +10,7 @@ export interface BetSlipPosition {
   marketAddress: string;
   marketId: number;
   question: string;
+  chainId: number; // Add chainId to identify which chain the market is on
 }
 
 interface BetSlipContextType {

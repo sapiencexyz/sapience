@@ -1,14 +1,23 @@
 import { Button } from '@sapience/ui/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@sapience/ui/components/ui/select';
 import { useFormContext } from 'react-hook-form';
 
 interface MultipleChoicePredictProps {
   name?: string;
   options: Array<{ name: string; marketId: number }>;
+  variant?: 'buttons' | 'dropdown';
 }
 
 export default function MultipleChoicePredict({
   name = 'predictionValue',
   options,
+  variant = 'buttons',
 }: MultipleChoicePredictProps) {
   const { register, setValue, watch } = useFormContext();
   const value = watch(name);
@@ -17,6 +26,33 @@ export default function MultipleChoicePredict({
     return (
       <div className="text-muted-foreground py-4">
         No options available for this market.
+      </div>
+    );
+  }
+
+  if (variant === 'dropdown') {
+    return (
+      <div className="mt-2">
+        <Select
+          value={value}
+          onValueChange={(newValue) => {
+            setValue(name, newValue, { shouldValidate: true });
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select an option..." />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map(({ name: optionName, marketId }) => (
+              <SelectItem key={marketId} value={marketId.toString()}>
+                {optionName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Hidden input for form submission */}
+        <input type="hidden" {...register(name)} />
       </div>
     );
   }

@@ -59,6 +59,7 @@ const MarketGroupsRow = ({
       marketAddress: marketAddress,
       marketId: marketItem.marketId,
       question: marketItem.question || marketItem.optionName || displayQuestion,
+      chainId: chainId, // Include chainId so betslip knows which chain this market is on
     };
     addPosition(position);
   };
