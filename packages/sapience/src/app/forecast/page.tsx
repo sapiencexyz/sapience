@@ -96,7 +96,6 @@ const ForecastPage = () => {
     }, 0);
   };
 
-
   // Style classes for category buttons
   const selectedStatusClass = 'bg-primary/10 text-primary';
   const hoverStatusClass =

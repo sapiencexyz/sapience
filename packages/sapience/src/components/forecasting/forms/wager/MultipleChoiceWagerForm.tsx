@@ -4,7 +4,7 @@ import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -30,7 +30,7 @@ export default function MultipleChoiceWagerForm({
 }: MultipleChoiceWagerFormProps) {
   const { toast } = useToast();
   const successHandled = useRef(false);
-  
+
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
     return z.object({
@@ -83,8 +83,6 @@ export default function MultipleChoiceWagerForm({
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
-
-
 
   // Handle form submission
   const handleSubmit = async () => {

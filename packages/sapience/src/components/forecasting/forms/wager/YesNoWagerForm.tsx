@@ -88,8 +88,6 @@ export default function YesNoWagerForm({
     collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
   });
 
-
-
   // Handle form submission
   const handleSubmit = async () => {
     if (!isPermitted) return;
