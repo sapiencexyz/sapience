@@ -395,7 +395,7 @@ const MarketGroupPageContent = () => {
           })()}
 
           {/* Comments Section */}
-          <div className="border border-border rounded shadow-sm">
+          <div className="border border-border rounded shadow-sm dark:bg-muted/50">
             <div className="p-4 border-b border-border">
               <h3 className="text-lg font-medium">Forecasts</h3>
             </div>

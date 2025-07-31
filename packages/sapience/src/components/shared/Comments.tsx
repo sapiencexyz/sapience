@@ -362,10 +362,10 @@ const Comments = ({
                   key={comment.id}
                   className="relative border-b border-border"
                 >
-                  <div className="relative bg-background">
+                  <div className="relative">
                     <div className="px-6 py-5 space-y-5">
                       {/* Comment content */}
-                      <div className="border border-border/50 rounded-lg p-4 shadow-sm">
+                      <div className="border border-border/50 rounded-lg p-4 shadow-sm bg-background">
                         <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
                           {comment.content}
                         </div>

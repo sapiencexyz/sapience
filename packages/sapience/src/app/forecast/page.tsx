@@ -104,10 +104,10 @@ const ForecastPage = () => {
   return (
     <div className="min-h-screen bg-background pt-24 lg:pt-0">
       {/* Main content container with Twitter-like layout */}
-      <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen">
+      <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
         <>
           {/* Market Selector (direct market search) */}
-          <div className="bg-background/80 backdrop-blur-sm z-20 sticky top-0">
+          <div className="backdrop-blur-sm z-20 sticky top-0">
             <div className="px-4 py-6">
               <QuestionSelect
                 marketMode={true}
@@ -118,7 +118,7 @@ const ForecastPage = () => {
             </div>
           </div>
           {/* Forecast Form */}
-          <div className="border-b border-border bg-background z-10 relative">
+          <div className="border-b border-border z-10 relative">
             {selectedMarket && (
               <div className="p-4">
                 <PredictForm
@@ -270,15 +270,13 @@ const ForecastPage = () => {
             </div>
           </div>
           {/* Comments Section */}
-          <div className="bg-background">
-            <div className="divide-y divide-border">
-              <Comments
-                selectedCategory={selectedCategory}
-                question={selectedMarket?.question}
-                address={selectedAddressFilter || address}
-                refetchTrigger={refetchCommentsTrigger}
-              />
-            </div>
+          <div className="divide-y divide-border">
+            <Comments
+              selectedCategory={selectedCategory}
+              question={selectedMarket?.question}
+              address={selectedAddressFilter || address}
+              refetchTrigger={refetchCommentsTrigger}
+            />
           </div>
         </>
       </div>

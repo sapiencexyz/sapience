@@ -155,7 +155,7 @@ const BetSlipPopover = () => {
   return (
     <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="rounded-full px-6" size="default">
+        <Button variant="default" className="rounded-full px-6" size="default">
           Wager
         </Button>
       </PopoverTrigger>
