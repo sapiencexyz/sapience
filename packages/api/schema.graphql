@@ -3237,33 +3237,27 @@ input ResourceOrderByWithRelationInput {
 type ResourcePrice {
   blockNumber: Int!
   createdAt: DateTimeISO!
-  feePaid: Decimal!
+  feePaid: String!
   id: Int!
   resource(where: ResourceWhereInput): Resource
   resourceId: Int
   timestamp: Int!
-  used: Decimal!
-  value: Decimal!
+  used: String!
+  value: String!
 }
 
 type ResourcePriceAvgAggregate {
   blockNumber: Float
-  feePaid: Decimal
   id: Float
   resourceId: Float
   timestamp: Float
-  used: Decimal
-  value: Decimal
 }
 
 input ResourcePriceAvgOrderByAggregateInput {
   blockNumber: SortOrder
-  feePaid: SortOrder
   id: SortOrder
   resourceId: SortOrder
   timestamp: SortOrder
-  used: SortOrder
-  value: SortOrder
 }
 
 type ResourcePriceCountAggregate {
@@ -3297,12 +3291,12 @@ type ResourcePriceGroupBy {
   _sum: ResourcePriceSumAggregate
   blockNumber: Int!
   createdAt: DateTimeISO!
-  feePaid: Decimal!
+  feePaid: String!
   id: Int!
   resourceId: Int
   timestamp: Int!
-  used: Decimal!
-  value: Decimal!
+  used: String!
+  value: String!
 }
 
 input ResourcePriceListRelationFilter {
@@ -3314,12 +3308,12 @@ input ResourcePriceListRelationFilter {
 type ResourcePriceMaxAggregate {
   blockNumber: Int
   createdAt: DateTimeISO
-  feePaid: Decimal
+  feePaid: String
   id: Int
   resourceId: Int
   timestamp: Int
-  used: Decimal
-  value: Decimal
+  used: String
+  value: String
 }
 
 input ResourcePriceMaxOrderByAggregateInput {
@@ -3336,12 +3330,12 @@ input ResourcePriceMaxOrderByAggregateInput {
 type ResourcePriceMinAggregate {
   blockNumber: Int
   createdAt: DateTimeISO
-  feePaid: Decimal
+  feePaid: String
   id: Int
   resourceId: Int
   timestamp: Int
-  used: Decimal
-  value: Decimal
+  used: String
+  value: String
 }
 
 input ResourcePriceMinOrderByAggregateInput {
@@ -3409,32 +3403,26 @@ input ResourcePriceScalarWhereWithAggregatesInput {
   OR: [ResourcePriceScalarWhereWithAggregatesInput!]
   blockNumber: IntWithAggregatesFilter
   createdAt: DateTimeWithAggregatesFilter
-  feePaid: DecimalWithAggregatesFilter
+  feePaid: StringWithAggregatesFilter
   id: IntWithAggregatesFilter
   resourceId: IntNullableWithAggregatesFilter
   timestamp: IntWithAggregatesFilter
-  used: DecimalWithAggregatesFilter
-  value: DecimalWithAggregatesFilter
+  used: StringWithAggregatesFilter
+  value: StringWithAggregatesFilter
 }
 
 type ResourcePriceSumAggregate {
   blockNumber: Int
-  feePaid: Decimal
   id: Int
   resourceId: Int
   timestamp: Int
-  used: Decimal
-  value: Decimal
 }
 
 input ResourcePriceSumOrderByAggregateInput {
   blockNumber: SortOrder
-  feePaid: SortOrder
   id: SortOrder
   resourceId: SortOrder
   timestamp: SortOrder
-  used: SortOrder
-  value: SortOrder
 }
 
 input ResourcePriceWhereInput {
@@ -3443,13 +3431,13 @@ input ResourcePriceWhereInput {
   OR: [ResourcePriceWhereInput!]
   blockNumber: IntFilter
   createdAt: DateTimeFilter
-  feePaid: DecimalFilter
+  feePaid: StringFilter
   id: IntFilter
   resource: ResourceNullableRelationFilter
   resourceId: IntNullableFilter
   timestamp: IntFilter
-  used: DecimalFilter
-  value: DecimalFilter
+  used: StringFilter
+  value: StringFilter
 }
 
 input ResourcePriceWhereUniqueInput {
@@ -3458,14 +3446,14 @@ input ResourcePriceWhereUniqueInput {
   OR: [ResourcePriceWhereInput!]
   blockNumber: IntFilter
   createdAt: DateTimeFilter
-  feePaid: DecimalFilter
+  feePaid: StringFilter
   id: Int
   resource: ResourceNullableRelationFilter
   resourceId: IntNullableFilter
   resourceId_timestamp: ResourcePriceResourceIdTimestampCompoundUniqueInput
   timestamp: IntFilter
-  used: DecimalFilter
-  value: DecimalFilter
+  used: StringFilter
+  value: StringFilter
 }
 
 enum ResourceScalarFieldEnum {

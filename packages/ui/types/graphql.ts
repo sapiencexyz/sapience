@@ -4127,13 +4127,13 @@ export type ResourcePrice = {
   __typename?: 'ResourcePrice';
   blockNumber: Scalars['Int']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
-  feePaid: Scalars['Decimal']['output'];
+  feePaid: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   resource?: Maybe<Resource>;
   resourceId?: Maybe<Scalars['Int']['output']>;
   timestamp: Scalars['Int']['output'];
-  used: Scalars['Decimal']['output'];
-  value: Scalars['Decimal']['output'];
+  used: Scalars['String']['output'];
+  value: Scalars['String']['output'];
 };
 
 
@@ -4144,22 +4144,16 @@ export type ResourcePriceResourceArgs = {
 export type ResourcePriceAvgAggregate = {
   __typename?: 'ResourcePriceAvgAggregate';
   blockNumber?: Maybe<Scalars['Float']['output']>;
-  feePaid?: Maybe<Scalars['Decimal']['output']>;
   id?: Maybe<Scalars['Float']['output']>;
   resourceId?: Maybe<Scalars['Float']['output']>;
   timestamp?: Maybe<Scalars['Float']['output']>;
-  used?: Maybe<Scalars['Decimal']['output']>;
-  value?: Maybe<Scalars['Decimal']['output']>;
 };
 
 export type ResourcePriceAvgOrderByAggregateInput = {
   blockNumber?: InputMaybe<SortOrder>;
-  feePaid?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   resourceId?: InputMaybe<SortOrder>;
   timestamp?: InputMaybe<SortOrder>;
-  used?: InputMaybe<SortOrder>;
-  value?: InputMaybe<SortOrder>;
 };
 
 export type ResourcePriceCountAggregate = {
@@ -4195,12 +4189,12 @@ export type ResourcePriceGroupBy = {
   _sum?: Maybe<ResourcePriceSumAggregate>;
   blockNumber: Scalars['Int']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
-  feePaid: Scalars['Decimal']['output'];
+  feePaid: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   resourceId?: Maybe<Scalars['Int']['output']>;
   timestamp: Scalars['Int']['output'];
-  used: Scalars['Decimal']['output'];
-  value: Scalars['Decimal']['output'];
+  used: Scalars['String']['output'];
+  value: Scalars['String']['output'];
 };
 
 export type ResourcePriceListRelationFilter = {
@@ -4213,12 +4207,12 @@ export type ResourcePriceMaxAggregate = {
   __typename?: 'ResourcePriceMaxAggregate';
   blockNumber?: Maybe<Scalars['Int']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
-  feePaid?: Maybe<Scalars['Decimal']['output']>;
+  feePaid?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
   resourceId?: Maybe<Scalars['Int']['output']>;
   timestamp?: Maybe<Scalars['Int']['output']>;
-  used?: Maybe<Scalars['Decimal']['output']>;
-  value?: Maybe<Scalars['Decimal']['output']>;
+  used?: Maybe<Scalars['String']['output']>;
+  value?: Maybe<Scalars['String']['output']>;
 };
 
 export type ResourcePriceMaxOrderByAggregateInput = {
@@ -4236,12 +4230,12 @@ export type ResourcePriceMinAggregate = {
   __typename?: 'ResourcePriceMinAggregate';
   blockNumber?: Maybe<Scalars['Int']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
-  feePaid?: Maybe<Scalars['Decimal']['output']>;
+  feePaid?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
   resourceId?: Maybe<Scalars['Int']['output']>;
   timestamp?: Maybe<Scalars['Int']['output']>;
-  used?: Maybe<Scalars['Decimal']['output']>;
-  value?: Maybe<Scalars['Decimal']['output']>;
+  used?: Maybe<Scalars['String']['output']>;
+  value?: Maybe<Scalars['String']['output']>;
 };
 
 export type ResourcePriceMinOrderByAggregateInput = {
@@ -4308,33 +4302,27 @@ export type ResourcePriceScalarWhereWithAggregatesInput = {
   OR?: InputMaybe<Array<ResourcePriceScalarWhereWithAggregatesInput>>;
   blockNumber?: InputMaybe<IntWithAggregatesFilter>;
   createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
-  feePaid?: InputMaybe<DecimalWithAggregatesFilter>;
+  feePaid?: InputMaybe<StringWithAggregatesFilter>;
   id?: InputMaybe<IntWithAggregatesFilter>;
   resourceId?: InputMaybe<IntNullableWithAggregatesFilter>;
   timestamp?: InputMaybe<IntWithAggregatesFilter>;
-  used?: InputMaybe<DecimalWithAggregatesFilter>;
-  value?: InputMaybe<DecimalWithAggregatesFilter>;
+  used?: InputMaybe<StringWithAggregatesFilter>;
+  value?: InputMaybe<StringWithAggregatesFilter>;
 };
 
 export type ResourcePriceSumAggregate = {
   __typename?: 'ResourcePriceSumAggregate';
   blockNumber?: Maybe<Scalars['Int']['output']>;
-  feePaid?: Maybe<Scalars['Decimal']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
   resourceId?: Maybe<Scalars['Int']['output']>;
   timestamp?: Maybe<Scalars['Int']['output']>;
-  used?: Maybe<Scalars['Decimal']['output']>;
-  value?: Maybe<Scalars['Decimal']['output']>;
 };
 
 export type ResourcePriceSumOrderByAggregateInput = {
   blockNumber?: InputMaybe<SortOrder>;
-  feePaid?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   resourceId?: InputMaybe<SortOrder>;
   timestamp?: InputMaybe<SortOrder>;
-  used?: InputMaybe<SortOrder>;
-  value?: InputMaybe<SortOrder>;
 };
 
 export type ResourcePriceWhereInput = {
@@ -4343,13 +4331,13 @@ export type ResourcePriceWhereInput = {
   OR?: InputMaybe<Array<ResourcePriceWhereInput>>;
   blockNumber?: InputMaybe<IntFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
-  feePaid?: InputMaybe<DecimalFilter>;
+  feePaid?: InputMaybe<StringFilter>;
   id?: InputMaybe<IntFilter>;
   resource?: InputMaybe<ResourceNullableRelationFilter>;
   resourceId?: InputMaybe<IntNullableFilter>;
   timestamp?: InputMaybe<IntFilter>;
-  used?: InputMaybe<DecimalFilter>;
-  value?: InputMaybe<DecimalFilter>;
+  used?: InputMaybe<StringFilter>;
+  value?: InputMaybe<StringFilter>;
 };
 
 export type ResourcePriceWhereUniqueInput = {
@@ -4358,14 +4346,14 @@ export type ResourcePriceWhereUniqueInput = {
   OR?: InputMaybe<Array<ResourcePriceWhereInput>>;
   blockNumber?: InputMaybe<IntFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
-  feePaid?: InputMaybe<DecimalFilter>;
+  feePaid?: InputMaybe<StringFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
   resource?: InputMaybe<ResourceNullableRelationFilter>;
   resourceId?: InputMaybe<IntNullableFilter>;
   resourceId_timestamp?: InputMaybe<ResourcePriceResourceIdTimestampCompoundUniqueInput>;
   timestamp?: InputMaybe<IntFilter>;
-  used?: InputMaybe<DecimalFilter>;
-  value?: InputMaybe<DecimalFilter>;
+  used?: InputMaybe<StringFilter>;
+  value?: InputMaybe<StringFilter>;
 };
 
 export type ResourceScalarFieldEnum =
