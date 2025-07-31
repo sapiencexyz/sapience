@@ -5,30 +5,35 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import { Loader2, WalletIcon, ArrowRightIcon } from 'lucide-react';
+import { Loader2, ArrowRightIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { isAddress } from 'viem';
 
-import { mainnetClient, shortenAddress } from '~/lib/utils/util';
+import { mainnetClient } from '~/lib/utils/util';
 
 interface WalletAddressPopoverProps {
   onWalletSelect: (address: string | null) => void;
   selectedAddress: string;
+  trigger: React.ReactNode;
+  isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
+  side?: 'top' | 'bottom';
 }
 
 const WalletAddressPopover = ({
   onWalletSelect,
   selectedAddress,
+  trigger,
+  isOpen,
+  setIsOpen,
+  side = 'top',
 }: WalletAddressPopoverProps) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [inputAddress, setInputAddress] = useState<string>(selectedAddress || '');
   const [addressError, setAddressError] = useState<string>('');
   const [isResolvingEns, setIsResolvingEns] = useState(false);
 
   useEffect(() => {
-    if (selectedAddress) {
       setInputAddress(selectedAddress);
-    }
   }, [selectedAddress]);
 
   const handleWalletSubmit = async () => {
@@ -79,15 +84,9 @@ const WalletAddressPopover = ({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={`flex items-center gap-2 ${selectedAddress ? 'bg-secondary' : ''}`}
-        >
-          <WalletIcon className="w-4 h-4" />
-          {selectedAddress ? shortenAddress(selectedAddress) : 'Select Wallet'}
-        </Button>
+        {trigger}
       </PopoverTrigger>
-      <PopoverContent className="w-80" side="top" align="end" sideOffset={4}>
+      <PopoverContent className="w-80" side={side} align="end" sideOffset={4}>
         <form
           onSubmit={(e) => {
             e.preventDefault();

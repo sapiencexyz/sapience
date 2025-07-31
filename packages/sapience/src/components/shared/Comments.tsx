@@ -41,7 +41,7 @@ export enum Answer {
 export enum CommentFilters {
   SelectedQuestion = 'selected',
   AllMultichoiceQuestions = 'all-multichoice-questions',
-  MyPredictions = 'my-predictions',
+  FilterByAccount = 'my-predictions',
   EconomyFinanceCategory = 'economy-finance',
   DecentralizedComputeCategory = 'decentralized-compute',
   EnergyDePINCategory = 'energy-depin',
@@ -230,7 +230,7 @@ const Comments = ({
 }: CommentsProps) => {
   // Fetch EAS attestations
   const shouldFilterByAttester =
-    selectedFilter === CommentFilters.MyPredictions &&
+    selectedFilter === CommentFilters.FilterByAccount &&
     address &&
     typeof address === 'string' &&
     address.length > 0;
@@ -270,7 +270,7 @@ const Comments = ({
     if (
       selectedFilter &&
       selectedFilter !== CommentFilters.SelectedQuestion &&
-      selectedFilter !== CommentFilters.MyPredictions &&
+      selectedFilter !== CommentFilters.FilterByAccount &&
       selectedFilter !== CommentFilters.AllMultichoiceQuestions
     ) {
       filtered = filtered.filter(

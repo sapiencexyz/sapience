@@ -5,12 +5,6 @@ import { useState, useCallback } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
-// Import popover components
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
 import { CommentFilters } from '../../components/shared/Comments';
 import PredictForm from '~/components/forecasting/forms/PredictForm';
 // import AskForm from '~/components/shared/AskForm';
@@ -143,15 +137,24 @@ const ForecastPage = () => {
               className={`flex overflow-x-auto ${
                 isPopoverOpen ? 'overflow-x-hidden' : ''
               }`}
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              style={{ 
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehavior: 'contain'
+              }}
               onWheel={(e) => {
-                if (isPopoverOpen || e.deltaY === 0) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return;
-                }
-                e.currentTarget.scrollLeft += e.deltaY;
+                // Prevent page scrolling when scrolling horizontally on categories
                 e.preventDefault();
+                e.stopPropagation();
+                
+                // Only handle horizontal scrolling if not in popover
+                if (!isPopoverOpen && e.deltaY !== 0) {
+                  e.currentTarget.scrollLeft += e.deltaY;
+                }
+              }}
+              onTouchMove={(e) => {
+                // Prevent page scrolling on touch devices
+                e.preventDefault();
+                e.stopPropagation();
               }}
             >
               {/* All option - moved to first position */}
@@ -195,19 +198,25 @@ const ForecastPage = () => {
               )}
 
               {/* My Predictions option with popover */}
-              <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                <PopoverTrigger asChild>
+
+              <WalletAddressPopover
+                selectedAddress={selectedAddressFilter || ''}
+                onWalletSelect={setSelectedAddressFilter}
+                isOpen={isPopoverOpen}
+                setIsOpen={setIsPopoverOpen}
+                side="bottom"
+                trigger={
                   <button
                     type="button"
                     onClick={() =>
-                      setSelectedCategory(CommentFilters.MyPredictions)
+                      setSelectedCategory(CommentFilters.FilterByAccount)
                     }
                     className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border border-b-2 ${
-                      selectedCategory === CommentFilters.MyPredictions
+                      selectedCategory === CommentFilters.FilterByAccount
                         ? 'border-b-primary'
                         : ''
                     } ${
-                      selectedCategory === CommentFilters.MyPredictions
+                      selectedCategory === CommentFilters.FilterByAccount
                         ? selectedStatusClass
                         : hoverStatusClass
                     }`}
@@ -217,19 +226,8 @@ const ForecastPage = () => {
                     </div>
                     <span className="font-medium">Account</span>
                   </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-fit max-w-[98vw]">
-                  <div className="space-y-4 p-3">
-                    <div className="text-sm font-medium text-foreground">
-                      Filter by ENS/address
-                    </div>
-                    <WalletAddressPopover
-                      selectedAddress={selectedAddressFilter || ''}
-                      onWalletSelect={setSelectedAddressFilter}
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
+                }
+              />
 
               {/* Focus Area Categories */}
               {FOCUS_AREAS.map((focusArea, index) => (
