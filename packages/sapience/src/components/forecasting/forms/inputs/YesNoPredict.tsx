@@ -4,7 +4,6 @@ import { useFormContext } from 'react-hook-form';
 import { useState, useEffect } from 'react';
 import { priceToSqrtPriceX96 } from '~/lib/utils/util';
 
-
 interface YesNoPredictProps {
   name?: string;
 }

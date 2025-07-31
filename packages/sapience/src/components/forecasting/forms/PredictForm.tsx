@@ -16,7 +16,6 @@ import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { NO_SQRT_X96_PRICE, YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
-
 interface PredictFormProps {
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
@@ -33,7 +32,8 @@ export default function PredictForm({
   const firstMarket = marketGroupData.markets?.[0];
   const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
-  const [selectedMarketIdMultipleChoice, setSelectedMarketIdMultipleChoice] = useState<number>(1);
+  const [selectedMarketIdMultipleChoice, setSelectedMarketIdMultipleChoice] =
+    useState<number>(1);
   // Create a unified schema that works for all market types
   const formSchema = useMemo(() => {
     const baseValidation = z.string().min(1, 'Please enter a prediction');
@@ -50,7 +50,9 @@ export default function PredictForm({
       case MarketGroupClassification.YES_NO:
         return z.object({
           predictionValue: baseValidation.refine(
-            (val) => NO_SQRT_X96_PRICE <= BigInt(val) && BigInt(val) <= YES_SQRT_X96_PRICE,
+            (val) =>
+              NO_SQRT_X96_PRICE <= BigInt(val) &&
+              BigInt(val) <= YES_SQRT_X96_PRICE,
             { message: 'Please select Yes or No' }
           ),
           comment: commentValidation,
@@ -121,7 +123,11 @@ export default function PredictForm({
       return selectedMarketIdMultipleChoice;
     }
     return firstMarket?.marketId ?? 0;
-  }, [marketClassification, firstMarket?.marketId, selectedMarketIdMultipleChoice]);
+  }, [
+    marketClassification,
+    firstMarket?.marketId,
+    selectedMarketIdMultipleChoice,
+  ]);
 
   const submissionValue = useMemo(() => {
     switch (marketClassification) {

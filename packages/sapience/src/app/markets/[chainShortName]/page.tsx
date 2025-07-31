@@ -275,7 +275,6 @@ const MarketGroupPageContent = () => {
     }
     return markets[0];
   }, [marketGroupByEndTime, marketAddress]);
-  
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -303,9 +302,6 @@ const MarketGroupPageContent = () => {
   const optionNames = (marketGroupData.markets || []).map(
     (market: MarketType) => market.optionName || ''
   );
-
-
-
 
   // Otherwise show the main content
   return (
@@ -398,7 +394,6 @@ const MarketGroupPageContent = () => {
             );
           })()}
 
-
           {/* Comments Section */}
           <div className="border border-border rounded shadow-sm">
             <div className="p-4 border-b border-border">
@@ -406,7 +401,8 @@ const MarketGroupPageContent = () => {
             </div>
             <Comments
               selectedCategory={
-                marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
+                marketClassification ===
+                MarketGroupClassification.MULTIPLE_CHOICE
                   ? CommentFilters.AllMultichoiceQuestions
                   : CommentFilters.SelectedQuestion
               }

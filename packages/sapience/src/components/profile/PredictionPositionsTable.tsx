@@ -127,7 +127,7 @@ const renderPredictionCell = ({
     // Assumes the value is either '79228162514264337593543950336' for Yes or '0' for No
     const priceD18 = sqrtPriceX96ToPriceD18(BigInt(value));
     const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-    const percentageD2 = priceD18 * BigInt(10000) / YES_SQRT_X96_PRICE_D18;
+    const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
     const percentage = Math.round(Number(percentageD2) / 100);
     return (
       <span className={percentage >= 50 ? 'text-green-600' : 'text-red-600'}>

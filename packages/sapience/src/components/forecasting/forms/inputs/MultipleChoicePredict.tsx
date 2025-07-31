@@ -39,9 +39,8 @@ export default function MultipleChoicePredict({
   useEffect(() => {
     if (options && options.length === 1) {
       setSelectedMarketId(options[0].marketId);
-
     }
-  }, [options]);
+  }, [options, setSelectedMarketId]);
 
   if (!options || options.length === 0) {
     return (

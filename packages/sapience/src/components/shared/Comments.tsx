@@ -181,14 +181,14 @@ function attestationToComment(
     // YES_NO - show percentage chance
     const priceD18 = sqrtPriceX96ToPriceD18(prediction);
     const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-    const percentageD2 = priceD18 * BigInt(10000) / YES_SQRT_X96_PRICE_D18;
+    const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
     predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
   } else if (marketClassification === '1') {
     // MULTIPLE_CHOICE - show percentage chance for yes/no within multiple choice
-    
+
     const priceD18 = sqrtPriceX96ToPriceD18(prediction);
     const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-    const percentageD2 = priceD18 * BigInt(10000) / YES_SQRT_X96_PRICE_D18;
+    const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
 
     predictionText = `${Math.round(Number(percentageD2) / 100)}% Chance`;
   } else if (marketClassification === '3') {
@@ -279,18 +279,28 @@ const Comments = ({
     }
 
     // Filter by address if 'my-predictions' tab is selected
-   
+
     // Filter by question prop if set (but not for AllMultichoiceQuestions)
-    if (question && selectedFilter !== null && selectedFilter !== CommentFilters.AllMultichoiceQuestions) {
+    if (
+      question &&
+      selectedFilter !== null &&
+      selectedFilter !== CommentFilters.AllMultichoiceQuestions
+    ) {
       filtered = filtered.filter((comment) => {
         return comment.question === question;
       });
     }
 
     // Filter by marketGroupAddress if AllMultichoiceQuestions is selected
-    if (selectedFilter === CommentFilters.AllMultichoiceQuestions && marketGroupAddress) {
+    if (
+      selectedFilter === CommentFilters.AllMultichoiceQuestions &&
+      marketGroupAddress
+    ) {
       filtered = filtered.filter((comment) => {
-        return comment.marketAddress?.toLowerCase() === marketGroupAddress.toLowerCase();
+        return (
+          comment.marketAddress?.toLowerCase() ===
+          marketGroupAddress.toLowerCase()
+        );
       });
     }
 
@@ -304,7 +314,6 @@ const Comments = ({
 
     // Filter out numeric comments outside the range
     filtered = filtered.filter((comment) => {
-
       if (
         comment.marketClassification === '3' &&
         comment.numericValue !== undefined &&

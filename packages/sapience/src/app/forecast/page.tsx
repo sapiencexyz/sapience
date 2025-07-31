@@ -53,7 +53,6 @@ const ForecastPage = () => {
   // Fetch all market groups
   const { data: marketGroups } = useEnrichedMarketGroups();
 
-
   // Flatten all markets from all groups
   const allMarkets = (marketGroups || []).flatMap((group) =>
     (group.markets || []).map((market) => ({
@@ -92,11 +91,10 @@ const ForecastPage = () => {
   if (selectedMarket) {
     marketClassification = selectedMarket.group.marketClassification;
     marketGroupData = {
-      ...selectedMarket.group,  
+      ...selectedMarket.group,
       markets: [selectedMarket],
     };
   }
-
 
   // Style classes for category buttons
   const selectedStatusClass = 'bg-primary/10 text-primary';
@@ -137,15 +135,15 @@ const ForecastPage = () => {
               className={`flex overflow-x-auto ${
                 isPopoverOpen ? 'overflow-x-hidden' : ''
               }`}
-              style={{ 
+              style={{
                 WebkitOverflowScrolling: 'touch',
-                overscrollBehavior: 'contain'
+                overscrollBehavior: 'contain',
               }}
               onWheel={(e) => {
                 // Prevent page scrolling when scrolling horizontally on categories
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 // Only handle horizontal scrolling if not in popover
                 if (!isPopoverOpen && e.deltaY !== 0) {
                   e.currentTarget.scrollLeft += e.deltaY;
@@ -179,7 +177,9 @@ const ForecastPage = () => {
               {selectedMarket && (
                 <button
                   type="button"
-                  onClick={() => setSelectedCategory(CommentFilters.SelectedQuestion)}
+                  onClick={() =>
+                    setSelectedCategory(CommentFilters.SelectedQuestion)
+                  }
                   className={`flex items-center gap-1.5 px-2 py-1.5 transition-colors text-xs whitespace-nowrap border-r border-border border-b-2 ${
                     selectedCategory === CommentFilters.SelectedQuestion
                       ? 'border-b-primary'

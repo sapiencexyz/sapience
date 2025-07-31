@@ -28,12 +28,14 @@ const WalletAddressPopover = ({
   setIsOpen,
   side = 'top',
 }: WalletAddressPopoverProps) => {
-  const [inputAddress, setInputAddress] = useState<string>(selectedAddress || '');
+  const [inputAddress, setInputAddress] = useState<string>(
+    selectedAddress || ''
+  );
   const [addressError, setAddressError] = useState<string>('');
   const [isResolvingEns, setIsResolvingEns] = useState(false);
 
   useEffect(() => {
-      setInputAddress(selectedAddress);
+    setInputAddress(selectedAddress);
   }, [selectedAddress]);
 
   const handleWalletSubmit = async () => {
@@ -83,9 +85,7 @@ const WalletAddressPopover = ({
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        {trigger}
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent className="w-80" side={side} align="end" sideOffset={4}>
         <form
           onSubmit={(e) => {

@@ -5,7 +5,7 @@ import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { SquareStack } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -31,7 +31,8 @@ export default function MultipleChoiceWagerForm({
   const { toast } = useToast();
   const successHandled = useRef(false);
   const { addPosition } = useParlayContext();
-
+  const [selectedMarketId, setSelectedMarketId] = useState<number | null>(null);
+  
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
     return z.object({
