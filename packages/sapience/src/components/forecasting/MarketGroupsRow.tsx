@@ -10,7 +10,7 @@ import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getChainShortName } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
+import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 
 // Import the shared type
 
@@ -42,6 +42,40 @@ const MarketGroupsRow = ({
     () => getChainShortName(chainId),
     [chainId]
   );
+
+  // Extract market IDs from the market array
+  const marketIds = React.useMemo(
+    () => market.map((m) => m.marketId),
+    [market]
+  );
+
+  // Use the chart data hook to get latest prices
+  const { chartData, isLoading: isLoadingChartData } = useMarketGroupChartData({
+    chainShortName,
+    marketAddress,
+    activeMarketIds: marketIds,
+  });
+
+  // Get the latest price data from chart data
+  const latestPrices = React.useMemo(() => {
+    if (chartData.length === 0) return {};
+
+    const latestDataPoint = chartData[chartData.length - 1];
+    const prices: Record<number, number> = {};
+
+    if (latestDataPoint.markets) {
+      Object.entries(latestDataPoint.markets).forEach(
+        ([marketIdStr, value]) => {
+          if (typeof value === 'number') {
+            // Scale down from Wei (divide by 1e18) to get decimal value between 0-1
+            prices[parseInt(marketIdStr)] = value / 1e18;
+          }
+        }
+      );
+    }
+
+    return prices;
+  }, [chartData]);
 
   // Helper function to format price as percentage
   const formatPriceAsPercentage = (price: number) => {
@@ -77,11 +111,7 @@ const MarketGroupsRow = ({
     ) {
       // For multichoice markets, find the option with the highest current price
       const marketPriceData = market.map((marketItem) => {
-        const { data: currentPrice = 0 } = useMarketPrice(
-          marketAddress,
-          chainId,
-          marketItem.marketId
-        );
+        const currentPrice = latestPrices[marketItem.marketId] || 0;
         return {
           marketItem,
           price: currentPrice,
@@ -99,7 +129,11 @@ const MarketGroupsRow = ({
           </span>
         );
       }
-      return <span className="font-medium text-foreground">Loading...</span>;
+      return (
+        <span className="text-foreground">
+          {isLoadingChartData ? 'Loading...' : <span>No trades yet</span>}
+        </span>
+      );
     } else {
       // For YES/NO and NUMERIC markets, get the appropriate market
       let targetMarket = market[0]; // Default to first market
@@ -108,11 +142,7 @@ const MarketGroupsRow = ({
         targetMarket = market.find((m) => m.optionName === 'Yes') || market[0];
       }
 
-      const { data: currentPrice = 0 } = useMarketPrice(
-        marketAddress,
-        chainId,
-        targetMarket.marketId
-      );
+      const currentPrice = latestPrices[targetMarket.marketId] || 0;
 
       if (currentPrice > 0) {
         if (marketClassification === MarketGroupClassificationEnum.NUMERIC) {
@@ -133,7 +163,11 @@ const MarketGroupsRow = ({
         }
       }
 
-      return <span className="font-medium text-foreground">Loading...</span>;
+      return (
+        <span className="text-foreground">
+          {isLoadingChartData ? 'Loading...' : 'No trades yet'}
+        </span>
+      );
     }
   };
 
@@ -143,11 +177,7 @@ const MarketGroupsRow = ({
   }: {
     marketItem: MarketWithContext;
   }) => {
-    const { data: currentPrice = 0 } = useMarketPrice(
-      marketAddress,
-      chainId,
-      marketItem.marketId
-    );
+    const currentPrice = latestPrices[marketItem.marketId] || 0;
 
     if (currentPrice > 0) {
       return (
@@ -157,7 +187,15 @@ const MarketGroupsRow = ({
       );
     }
 
-    return <span className="font-medium text-foreground">Loading...</span>;
+    return (
+      <span className="text-foreground">
+        {isLoadingChartData ? (
+          <span>Loading...</span>
+        ) : (
+          <span>No trades yet</span>
+        )}
+      </span>
+    );
   };
 
   // Get the active market for action buttons (non-multichoice markets)
@@ -275,7 +313,7 @@ const MarketGroupsRow = ({
               className="overflow-hidden bg-background/95 border-l-4 border-muted"
               style={{ borderLeftColor: color }}
             >
-              <div className="px-6">
+              <div className="px-6  dark:bg-muted/50">
                 {/* Panel Content */}
                 <div className="max-h-96 overflow-y-auto">
                   {market.length > 0 ? (
