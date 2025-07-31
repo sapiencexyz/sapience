@@ -1,12 +1,12 @@
 import { useFormContext } from 'react-hook-form';
 import type { MarketGroupType } from '@sapience/ui/types';
-import PositionInputFactory from '../inputs/PositionInputFactory';
+import WagerInputFactory from '../inputs/WagerInputFactory';
 import QuoteDisplay from './QuoteDisplay';
 import { MarketGroupClassification } from '~/lib/types';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 
-interface PositionWithQuoteProps {
+interface WagerInputWithQuoteProps {
   positionId: string;
   question: string;
   marketGroupData: MarketGroupType;
@@ -14,13 +14,13 @@ interface PositionWithQuoteProps {
   onRemove: () => void;
 }
 
-export default function PositionWithQuote({
+export default function WagerInputWithQuote({
   positionId,
   question,
   marketGroupData,
   marketClassification,
   onRemove,
-}: PositionWithQuoteProps) {
+}: WagerInputWithQuoteProps) {
   const { watch } = useFormContext();
 
   const predictionValue =
@@ -68,7 +68,7 @@ export default function PositionWithQuote({
         </button>
       </div>
 
-      <PositionInputFactory
+      <WagerInputFactory
         marketClassification={marketClassification}
         marketGroupData={marketGroupData}
         positionId={positionId}

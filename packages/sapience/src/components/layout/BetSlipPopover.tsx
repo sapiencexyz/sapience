@@ -21,7 +21,7 @@ import {
 } from '~/components/forecasting/forms/inputs/WagerInput';
 import { useMultipleMarketGroups } from '~/hooks/graphql/useMultipleMarketGroups';
 import { getChainShortName } from '~/lib/utils/util';
-import PositionWithQuote from '~/components/forecasting/forms/shared/PositionWithQuote';
+import WagerInputWithQuote from '~/components/forecasting/forms/shared/WagerInputWithQuote';
 import type { MarketGroupClassification } from '~/lib/types';
 
 interface PositionWithMarketData {
@@ -268,7 +268,7 @@ const BetSlipPopover = () => {
                       positionData.marketClassification
                     ) {
                       return (
-                        <PositionWithQuote
+                        <WagerInputWithQuote
                           key={positionData.position.id}
                           positionId={positionData.position.id}
                           question={positionData.position.question}

@@ -4,17 +4,17 @@ import MultipleChoiceWagerInput from './MultipleChoiceWagerInput';
 import NumericWagerInput from './NumericWagerInput';
 import { MarketGroupClassification } from '~/lib/types';
 
-interface PositionInputFactoryProps {
+interface WagerInputFactoryProps {
   marketClassification: MarketGroupClassification;
   marketGroupData: MarketGroupType;
   positionId: string;
 }
 
-export default function PositionInputFactory({
+export default function WagerInputFactory({
   marketClassification,
   marketGroupData,
   positionId,
-}: PositionInputFactoryProps) {
+}: WagerInputFactoryProps) {
   switch (marketClassification) {
     case MarketGroupClassification.YES_NO:
       return (
