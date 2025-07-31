@@ -96,7 +96,6 @@ const DataDrawer = ({ trigger }: DataDrawerProps) => {
   // Fetch GraphQL-based positions (includes transaction data)
   const targetAddress = walletAddress?.toLowerCase() || address?.toLowerCase();
 
-  console.log('LOOK HERE ZAYDO marketData', marketData);
   const {
     data: allPositions = [],
     isLoading: isLoadingPositions,

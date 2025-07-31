@@ -84,7 +84,6 @@ const PriceChart: React.FC<PriceChartProps> = ({
       onHoverChange(hoverData);
     }
   }, [hoverData, onHoverChange]);
-  console.log('LOOK HERE ZAYDO chartData', chartData);
 
   // Handle loading and error states
   return (

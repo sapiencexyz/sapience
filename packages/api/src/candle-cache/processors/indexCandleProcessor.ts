@@ -21,7 +21,6 @@ export class IndexCandleProcessor {
     prevCandle: CacheCandle | undefined,
     price: ResourcePriceWithResource
   ) => {
-    // Cast to string since schema has been updated but types not yet regenerated
     const feePaidStr = price.feePaid;
     const usedStr = price.used;
 
