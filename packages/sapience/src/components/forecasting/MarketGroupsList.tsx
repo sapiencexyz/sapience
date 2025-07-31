@@ -553,7 +553,7 @@ const ForecastingTable = () => {
     } else {
       params.set('category', categorySlug);
     }
-    router.replace(`/forecasting?${params.toString()}`);
+    router.replace(`/markets?${params.toString()}`);
   };
 
   const handleStatusFilterClick = (filter: 'all' | 'active') => {

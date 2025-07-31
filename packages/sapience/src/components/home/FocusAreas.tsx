@@ -81,7 +81,7 @@ export default function TopicsOfInterest() {
   }, []); // Remove dependencies related to manual scroll and mobile detection
 
   return (
-    <section className="pt-40 pb-24 px-8 overflow-hidden relative">
+    <section className="pt-16 pb-12 md:pt-24 md:pb-16 px-8 overflow-hidden relative">
       <div className="container mx-auto">
         <div className="relative">
           {/* Gradient overlays for fade effect */}
@@ -98,7 +98,7 @@ export default function TopicsOfInterest() {
               {extendedFocusAreas.map((area, index) => (
                 <Link
                   key={index}
-                  href={`/forecasting?category=${area.id}`}
+                  href={`/markets?category=${area.id}`}
                   className="bg-background rounded-lg overflow-hidden shadow-sm border border-muted border-t-0 flex flex-col w-auto flex-shrink-0 hover:bg-muted/30 transition-colors"
                 >
                   <div
