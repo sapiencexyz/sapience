@@ -3,6 +3,7 @@
 import { Input } from '@sapience/ui/components/ui/input';
 import { Search } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import type { CommentFilters } from './Comments';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 
 interface QuestionSelectProps {
@@ -14,6 +15,7 @@ interface QuestionSelectProps {
   marketMode?: boolean;
   markets?: any[];
   selectedMarketId?: string;
+  setSelectedCategory?: (category: CommentFilters | null) => void;
 }
 
 const QuestionSelect = ({
@@ -24,6 +26,7 @@ const QuestionSelect = ({
   marketMode = false,
   markets = [],
   selectedMarketId,
+  setSelectedCategory,
 }: QuestionSelectProps) => {
   // Track last selected id/group to avoid overwriting inputValue on every render
   const [inputValue, setInputValue] = useState('');
@@ -51,7 +54,7 @@ const QuestionSelect = ({
         if (selected) {
           const isMultipleChoice = selected.group?.marketClassification === '1';
           if (isMultipleChoice) {
-            displayValue = selected.group?.question || selected.question || '';
+            displayValue = selected.question || selected?.group?.question || '';
           } else {
             displayValue = selected.optionName || selected.question || '';
           }
@@ -209,8 +212,8 @@ const QuestionSelect = ({
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
             onClick={() => {
               setInputValue('');
-              setIsDropdownOpen(true);
               onMarketGroupSelect?.(undefined);
+              setSelectedCategory?.(null);
             }}
             tabIndex={-1}
             aria-label="Clear input"

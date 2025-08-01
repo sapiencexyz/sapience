@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
@@ -88,6 +88,17 @@ const ForecastPage = () => {
     );
   });
 
+  // Auto-select the first market when markets are loaded and no market is currently selected
+  useEffect(() => {
+    if (activeMarkets.length > 0 && !selectedMarket) {
+      const firstMarket = activeMarkets[0];
+      setSelectedMarket(firstMarket);
+      // Don't set category filter - keep it as null to show all comments
+      // setSelectedCategory(CommentFilters.SelectedQuestion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketGroups]);
+
   // Handler to select a market and switch to the selected question tab
   const handleMarketSelect = (market: any) => {
     setSelectedCategory(CommentFilters.SelectedQuestion);
@@ -114,6 +125,7 @@ const ForecastPage = () => {
                 markets={activeMarkets}
                 selectedMarketId={selectedMarket?.marketId?.toString()}
                 onMarketGroupSelect={handleMarketSelect}
+                setSelectedCategory={setSelectedCategory}
               />
             </div>
           </div>
