@@ -56,15 +56,13 @@ export default function WagerInputWithQuote({
   return (
     <div className="border-b border-border pb-4 last:border-b-0">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-foreground truncate pr-2">
-          {question}
-        </h3>
+        <h3 className="font-medium text-foreground pr-2">{question}</h3>
         <button
           onClick={onRemove}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           type="button"
         >
-          Remove
+          &times;
         </button>
       </div>
 

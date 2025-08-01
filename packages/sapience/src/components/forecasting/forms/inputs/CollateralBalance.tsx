@@ -69,7 +69,7 @@ export default function CollateralBalance({
           target="_blank"
           rel="noopener noreferrer"
         >
-          <Button variant="outline" size="xs" className="text-xs" type="button">
+          <Button variant="default" size="xs" className="text-xs" type="button">
             Get {collateralSymbol}
           </Button>
         </a>

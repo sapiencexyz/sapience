@@ -180,7 +180,9 @@ const BetSlipPopover = () => {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Place a Wager</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">Parlay</span>
+                  <span className="text-xs text-muted-foreground">
+                    Make it Parlay
+                  </span>
                   <Switch
                     checked={isParlayMode}
                     onCheckedChange={setIsParlayMode}
@@ -195,7 +197,7 @@ const BetSlipPopover = () => {
                   onSubmit={individualMethods.handleSubmit(
                     handleIndividualSubmit
                   )}
-                  className="p-3 space-y-4 max-h-96 overflow-y-auto"
+                  className="p-3 max-h-96 overflow-y-auto"
                 >
                   {positionsWithMarketData.map((positionData) => {
                     // Show loading state
@@ -206,17 +208,17 @@ const BetSlipPopover = () => {
                           className="border-b border-border pb-4 last:border-b-0"
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-medium text-foreground truncate pr-2">
+                            <h3 className="font-medium text-foreground pr-2">
                               {positionData.position.question}
                             </h3>
                             <button
                               onClick={() =>
                                 removePosition(positionData.position.id)
                               }
-                              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                               type="button"
                             >
-                              Remove
+                              &times;
                             </button>
                           </div>
                           <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
@@ -234,17 +236,17 @@ const BetSlipPopover = () => {
                           className="border-b border-border pb-4 last:border-b-0"
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-sm font-medium text-foreground truncate pr-2">
+                            <h3 className="font-medium text-foreground pr-2">
                               {positionData.position.question}
                             </h3>
                             <button
                               onClick={() =>
                                 removePosition(positionData.position.id)
                               }
-                              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                               type="button"
                             >
-                              Remove
+                              &times;
                             </button>
                           </div>
                           <div className="text-xs text-destructive p-2 bg-destructive/10 rounded">
@@ -290,17 +292,17 @@ const BetSlipPopover = () => {
                         className="border-b border-border pb-4 last:border-b-0"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-sm font-medium text-foreground truncate pr-2">
+                          <h3 className="font-medium text-foreground pr-2">
                             {positionData.position.question}
                           </h3>
                           <button
                             onClick={() =>
                               removePosition(positionData.position.id)
                             }
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                             type="button"
                           >
-                            Remove
+                            &times;
                           </button>
                         </div>
                         <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
@@ -313,6 +315,7 @@ const BetSlipPopover = () => {
                   <Button
                     type="submit"
                     variant="default"
+                    size="lg"
                     className="w-full"
                     disabled={positionsWithMarketData.some((p) => p.isLoading)}
                   >
@@ -359,10 +362,10 @@ const BetSlipPopover = () => {
 
                           <button
                             onClick={() => removePosition(position.id)}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                             type="button"
                           >
-                            Remove
+                            &times;
                           </button>
                         </div>
                       </div>
