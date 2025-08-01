@@ -216,10 +216,10 @@ export const createOrModifyPositionFromTransaction = async (
             ''
           ).toLowerCase(),
           isLP: isLpPosition(transaction),
-          baseToken: String(eventArgs.positionVgasAmount || '0'),
-          quoteToken: String(eventArgs.positionVethAmount || '0'),
-          borrowedBaseToken: String(eventArgs.positionBorrowedVgas || '0'),
-          borrowedQuoteToken: String(eventArgs.positionBorrowedVeth || '0'),
+          baseToken: String(eventArgs.positionVbaseAmount || '0'),
+          quoteToken: String(eventArgs.positionVquoteAmount || '0'),
+          borrowedBaseToken: String(eventArgs.positionBorrowedVbase || '0'),
+          borrowedQuoteToken: String(eventArgs.positionBorrowedVquote || '0'),
           collateral: String(eventArgs.positionCollateralAmount || '0'),
           lpBaseToken: String(
             eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'
@@ -246,10 +246,10 @@ export const createOrModifyPositionFromTransaction = async (
           marketId: market.id,
           owner: ((eventArgs.sender as string) || '').toLowerCase(),
           isLP: isLpPosition(transaction),
-          baseToken: String(eventArgs.positionVgasAmount || '0'),
-          quoteToken: String(eventArgs.positionVethAmount || '0'),
-          borrowedBaseToken: String(eventArgs.positionBorrowedVgas || '0'),
-          borrowedQuoteToken: String(eventArgs.positionBorrowedVeth || '0'),
+          baseToken: String(eventArgs.positionVbaseAmount || '0'),
+          quoteToken: String(eventArgs.positionVquoteAmount || '0'),
+          borrowedBaseToken: String(eventArgs.positionBorrowedVbase || '0'),
+          borrowedQuoteToken: String(eventArgs.positionBorrowedVquote || '0'),
           collateral: String(eventArgs.positionCollateralAmount || '0'),
           lpBaseToken: String(
             eventArgs.loanAmount0 || eventArgs.addedAmount0 || '0'
@@ -288,11 +288,11 @@ const updateTransactionStateFromEvent = (
   const eventArgs = getLogDataArgs(event.logData);
 
   // Latest position state
-  transaction.baseToken = String(eventArgs.positionVgasAmount || '0');
-  transaction.quoteToken = String(eventArgs.positionVethAmount || '0');
-  transaction.borrowedBaseToken = String(eventArgs.positionBorrowedVgas || '0');
+  transaction.baseToken = String(eventArgs.positionVbaseAmount || '0');
+  transaction.quoteToken = String(eventArgs.positionVquoteAmount || '0');
+  transaction.borrowedBaseToken = String(eventArgs.positionBorrowedVbase || '0');
   transaction.borrowedQuoteToken = String(
-    eventArgs.positionBorrowedVeth || '0'
+    eventArgs.positionBorrowedVquote || '0'
   );
   transaction.collateral = String(eventArgs.positionCollateralAmount || '0');
 
