@@ -1,8 +1,8 @@
 import { Label } from '@sapience/ui/components/ui/label';
 
 import type { MarketGroupType } from '@sapience/ui/types';
-import MultipleChoicePredict from './MultipleChoicePredict';
 import { WagerInput } from './WagerInput';
+import MultipleChoiceWagerChoiceSelect from './MultipleChoiceWager';
 
 interface MultipleChoiceWagerInputProps {
   marketGroupData: MarketGroupType;
@@ -20,13 +20,12 @@ export default function MultipleChoiceWagerInput({
     <div className="space-y-4">
       <div>
         <Label>Your Prediction</Label>
-        <MultipleChoicePredict
+        <MultipleChoiceWagerChoiceSelect
           name={predictionFieldName}
           options={(marketGroupData.markets || []).map((market) => ({
             name: market.optionName || '',
             marketId: market.marketId,
           }))}
-          variant="dropdown"
         />
       </div>
 
