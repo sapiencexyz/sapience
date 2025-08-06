@@ -16,6 +16,7 @@ import PredictForm from '~/components/forecasting/forms/PredictForm';
 // import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
+import { NetworkSwitcher } from '~/components/shared/NetworkSwticher';
 
 // Dynamically import components to avoid SSR issues
 const QuestionSelect = dynamic(
@@ -153,6 +154,7 @@ const ForecastPage = () => {
             </div>
           </div>
 
+          <NetworkSwitcher />
           {/* Market Selector (direct market search) */}
           <div className="backdrop-blur-sm z-10 sticky top-2-">
             <div className="p-3 pt-6">

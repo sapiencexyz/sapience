@@ -28,6 +28,7 @@ import {
 import { findActiveMarkets } from '~/lib/utils/util';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 import { MarketGroupClassification } from '~/lib/types';
+import { NetworkSwitcher } from '~/components/shared/NetworkSwticher';
 
 // Dynamically import Comments component
 const Comments = dynamic(() => import('../../../components/shared/Comments'), {
@@ -307,6 +308,7 @@ const MarketGroupPageContent = () => {
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
       <div className="container mx-auto max-w-4xl flex flex-col">
+        <NetworkSwitcher />
         <MarketGroupHeader
           marketGroupData={marketGroupData}
           activeMarket={activeMarket}
