@@ -96,6 +96,42 @@ const formatSize = (
   return symbol ? `${formattedSize} ${symbol}` : formattedSize; // Append symbol if it exists
 };
 
+// Aggregate ticks into cent-level order book rows
+const aggregateTicksToLevels = (
+  ticks: any[], // Processed ticks
+  ascending: boolean,
+  pool: Pool | null,
+  quoteTokenName?: string,
+  baseTokenName?: string
+): OrderBookLevel[] => {
+  // Group sizes by price truncated to cents
+  const grouped = new Map<number, number>();
+  for (const tick of ticks) {
+    const size = tick.liquidityLockedToken0;
+    if (size <= 1e-9) continue; // Skip negligible liquidity
+    const priceKey = Math.floor(tick.price0 * 100) / 100; // Truncate to cents
+    grouped.set(priceKey, (grouped.get(priceKey) ?? 0) + size);
+  }
+
+  const sortedPrices = Array.from(grouped.keys()).sort((a, b) =>
+    ascending ? a - b : b - a
+  );
+
+  let cumulative = 0;
+  return sortedPrices.map((price) => {
+    const size = grouped.get(price)!;
+    cumulative += size;
+    return {
+      rawPrice: price,
+      rawSize: size,
+      rawTotal: cumulative,
+      price: formatPrice(price, pool, quoteTokenName),
+      size: formatSize(size, pool, baseTokenName),
+      total: formatSize(cumulative, pool, baseTokenName),
+    };
+  });
+};
+
 // --- Hook Implementation ---
 
 export function useOrderBookData({
@@ -340,37 +376,21 @@ export function useOrderBookData({
           const rawBids = processedTicks.slice(0, referenceIndex).reverse(); // Reverse for descending price order
           const rawAsks = processedTicks.slice(referenceIndex + 1);
 
-          let cumulativeBidSize = 0;
-          const bids: OrderBookLevel[] = rawBids
-            .map((tick) => {
-              const size = tick.liquidityLockedToken0;
-              cumulativeBidSize += size;
-              return {
-                rawPrice: tick.price0,
-                rawSize: size,
-                rawTotal: cumulativeBidSize,
-                price: formatPrice(tick.price0, pool, quoteTokenName),
-                size: formatSize(size, pool, baseTokenName),
-                total: formatSize(cumulativeBidSize, pool, baseTokenName),
-              };
-            })
-            .filter((level) => level.rawSize > 1e-9);
+          const bids: OrderBookLevel[] = aggregateTicksToLevels(
+            rawBids,
+            false,
+            pool,
+            quoteTokenName,
+            baseTokenName
+          );
 
-          let cumulativeAskSize = 0;
-          const asks: OrderBookLevel[] = rawAsks
-            .map((tick) => {
-              const size = tick.liquidityLockedToken0;
-              cumulativeAskSize += size;
-              return {
-                rawPrice: tick.price0,
-                rawSize: size,
-                rawTotal: cumulativeAskSize,
-                price: formatPrice(tick.price0, pool, quoteTokenName),
-                size: formatSize(size, pool, baseTokenName),
-                total: formatSize(cumulativeAskSize, pool, baseTokenName),
-              };
-            })
-            .filter((level) => level.rawSize > 1e-9);
+          const asks: OrderBookLevel[] = aggregateTicksToLevels(
+            rawAsks,
+            true,
+            pool,
+            quoteTokenName,
+            baseTokenName
+          );
 
           setOrderBookData({
             asks,
@@ -399,41 +419,21 @@ export function useOrderBookData({
     const rawBids = processedTicks.slice(0, currentTickIndex).reverse(); // Reverse for descending price order
     const rawAsks = processedTicks.slice(currentTickIndex + 1);
 
-    let cumulativeBidSize = 0;
-    const bids: OrderBookLevel[] = rawBids
-      .map((tick) => {
-        // For bids (offers to buy base token), liquidity comes from token1 locked.
-        // The 'size' displayed should be how much base token (token0) can be bought at this price.
-        const size = tick.liquidityLockedToken0; // Use token0 locked for the size
-        cumulativeBidSize += size;
-        return {
-          rawPrice: tick.price0,
-          rawSize: size,
-          rawTotal: cumulativeBidSize,
-          price: formatPrice(tick.price0, pool, quoteTokenName),
-          size: formatSize(size, pool, baseTokenName),
-          total: formatSize(cumulativeBidSize, pool, baseTokenName),
-        };
-      })
-      .filter((level) => level.rawSize > 1e-9); // Filter out negligible dust liquidity
+    const bids: OrderBookLevel[] = aggregateTicksToLevels(
+      rawBids,
+      false,
+      pool,
+      quoteTokenName,
+      baseTokenName
+    );
 
-    let cumulativeAskSize = 0;
-    const asks: OrderBookLevel[] = rawAsks
-      .map((tick) => {
-        // For asks (offers to sell base token), liquidity comes from token0 locked.
-        // The 'size' displayed is how much base token (token0) is available to sell.
-        const size = tick.liquidityLockedToken0;
-        cumulativeAskSize += size;
-        return {
-          rawPrice: tick.price0,
-          rawSize: size,
-          rawTotal: cumulativeAskSize,
-          price: formatPrice(tick.price0, pool, quoteTokenName),
-          size: formatSize(size, pool, baseTokenName),
-          total: formatSize(cumulativeAskSize, pool, baseTokenName),
-        };
-      })
-      .filter((level) => level.rawSize > 1e-9); // Filter out negligible dust liquidity
+    const asks: OrderBookLevel[] = aggregateTicksToLevels(
+      rawAsks,
+      true,
+      pool,
+      quoteTokenName,
+      baseTokenName
+    );
 
     setOrderBookData({
       asks,

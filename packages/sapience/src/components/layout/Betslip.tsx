@@ -21,7 +21,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { useState, useMemo, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { DollarSign, SquareStack } from 'lucide-react';
+import { SquareStack } from 'lucide-react';
 import { usePrivy } from '@privy-io/react-auth';
 
 import type { MarketGroupType } from '@sapience/ui/types';
@@ -84,7 +84,7 @@ const BetslipContent = ({
           </p>
           <Button variant="default" size="xs" asChild>
             <Link href="/markets" onClick={() => setIsPopoverOpen(false)}>
-              Browse Prediction Markets
+              Explore Prediction Markets
             </Link>
           </Button>
         </div>
@@ -119,7 +119,7 @@ const BetslipContent = ({
                   return (
                     <div
                       key={positionData.position.id}
-                      className={`pb-4 mb-4 ${!isLast ? 'border-b border-border' : ''} ${isLast ? 'pb-0 mb-0' : ''}`}
+                      className={`mb-4 ${!isLast ? 'border-b border-border pb-4' : ''}`}
                     >
                       {/* Show loading state */}
                       {positionData.isLoading && (
@@ -137,9 +137,6 @@ const BetslipContent = ({
                             >
                               &times;
                             </button>
-                          </div>
-                          <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                            Loading market data...
                           </div>
                         </>
                       )}
@@ -473,7 +470,7 @@ const Betslip = () => {
               className="fixed right-0 top-16 z-[51] flex items-center justify-center md:hidden border border-r-0 border-border bg-background/30 p-2.5 pr-1.5 backdrop-blur-sm rounded-l-full opacity-90 hover:opacity-100 hover:bg-accent hover:text-accent-foreground transition-all pointer-events-auto"
               variant="ghost"
             >
-              <DollarSign className="h-4 w-4" />
+              <Image src="/susde-icon.svg" alt="sUSDe" width={20} height={20} />
             </Button>
           </DrawerTrigger>
           <DrawerContent className="max-h-[85vh]">

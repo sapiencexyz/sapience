@@ -22,6 +22,7 @@ export default function QuoteDisplay({
   predictionValue,
   displayUnit,
 }: QuoteDisplayProps) {
+  // Always show loading state when fetching a new quote, regardless of previous data
   if (isLoading) {
     return (
       <div className="mt-2 text-xs text-muted-foreground">Loading quote...</div>

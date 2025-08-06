@@ -62,7 +62,7 @@ export default function NumericWagerForm({
           ? ((lowerBound + upperBound) / 2).toFixed(6)
           : Math.round((lowerBound + upperBound) / 2)
       ),
-      wagerAmount: '',
+      wagerAmount: '1',
     },
     mode: 'onChange', // Validate on change for immediate feedback
   });

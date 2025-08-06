@@ -35,12 +35,17 @@ const OrderBookRow: React.FC<OrderBookRowProps> = ({
   const bgColor = type === 'ask' ? 'bg-red-500/10' : 'bg-green-500/10'; // Use subtle opacity
   // const barPosition = type === 'ask' ? 'right-0' : 'left-0'; // Removed conditional positioning
 
-  const baseUnit = baseTokenName ? ` ${baseTokenName}` : '';
-  const baseUnitPart = baseUnit ? `/${baseUnit.trim()}` : ''; // Create the conditional part separately
-  const priceUnit = quoteTokenName ? ` ${quoteTokenName}${baseUnitPart}` : ''; // Combine without nesting
+  // For Yes/No markets, show "No" for asks (selling Yes = betting No) and "Yes" for bids
+  const displayTokenName =
+    baseTokenName === 'Yes' && type === 'ask' ? 'No' : baseTokenName;
+  const baseUnit = displayTokenName ? ` ${displayTokenName}` : '';
+  // Only include the base unit part if baseTokenName is not "Yes"
+  const baseUnitPart =
+    baseUnit && baseTokenName !== 'Yes' ? `/${baseUnit.trim()}` : '';
+  const priceUnit = quoteTokenName ? ` ${quoteTokenName}${baseUnitPart}` : '';
 
   return (
-    <div className="relative grid grid-cols-3 gap-4 text-sm py-1 px-2 hover:bg-muted/50 overflow-hidden">
+    <div className="relative grid grid-cols-3 gap-4 text-xs py-0.5 px-2 hover:bg-muted/50 overflow-hidden">
       <div
         className={`absolute top-0 bottom-0 left-0 ${bgColor}`}
         style={{ width: `${percentage}%` }}
@@ -178,7 +183,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
       className={`w-full border rounded bg-background text-foreground ${className} h-full flex flex-col`}
     >
       {/* Header */}
-      <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground/70 tracking-widest transition-all duration-300 font-semibold flex-shrink-0 py-2 px-2 border-b">
+      <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground/70 tracking-widest transition-all duration-300 font-semibold flex-shrink-0 py-1.5 px-2 border-b">
         <span>PRICE</span>
         <span className="text-right">SIZE</span>
         <span className="text-right">TOTAL</span>
@@ -210,8 +215,8 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
         </div>
 
         {/* Last Price */}
-        <div className="flex font-medium py-2 px-2 border-y bg-muted/30 flex-shrink-0 last-price-row">
-          <span className="text-sm">Last Price: {lastPrice ?? '-'}</span>
+        <div className="flex font-medium py-1.5 px-2 border-y bg-muted/30 flex-shrink-0 last-price-row">
+          <span className="text-xs">Last Price: {lastPrice ?? '-'}</span>
         </div>
 
         {/* Bids (Buy Orders) - Rendered top-down */}

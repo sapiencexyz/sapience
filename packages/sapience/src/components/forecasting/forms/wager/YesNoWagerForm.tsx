@@ -49,7 +49,7 @@ export default function YesNoWagerForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       predictionValue: YES_SQRT_PRICE_X96, // Default to YES
-      wagerAmount: '',
+      wagerAmount: '1',
     },
     mode: 'onChange', // Validate on change for immediate feedback
   });

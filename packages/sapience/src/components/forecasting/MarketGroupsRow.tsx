@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
@@ -244,7 +245,7 @@ const MarketGroupsRow = ({
           </div>
 
           {/* Right Side: Action Buttons */}
-          <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:ml-6 md:self-auto">
+          <div className="flex flex-row-reverse items-center gap-3 self-start md:flex-row md:ml-6 md:self-auto">
             {marketClassification ===
             MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (
               // For multichoice markets, show Details + dropdown
@@ -261,7 +262,7 @@ const MarketGroupsRow = ({
                 </Button>
 
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
                   className="h-8 px-3 w-24"
                   onClick={(e) => {
@@ -269,13 +270,20 @@ const MarketGroupsRow = ({
                     setIsExpanded(!isExpanded);
                   }}
                 >
-                  {isExpanded ? 'Hide' : 'Show'}
+                  <span className="flex items-center gap-1">
+                    {isExpanded ? 'Hide' : 'Show'}
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform duration-200 ${
+                        isExpanded ? 'rotate-180' : 'rotate-0'
+                      }`}
+                    />
+                  </span>
                 </Button>
               </>
             ) : (
               // For non-multichoice markets, show Details + Wager buttons for the active market
               activeMarket && (
-                <div className="flex flex-row-reverse items-center md:gap-3 md:flex-row">
+                <>
                   <Button
                     variant="link"
                     size="xs"
@@ -301,7 +309,7 @@ const MarketGroupsRow = ({
                     />
                     Predict
                   </Button>
-                </div>
+                </>
               )
             )}
           </div>
@@ -350,36 +358,34 @@ const MarketGroupsRow = ({
                             </div>
 
                             {/* Right Side: Actions */}
-                            <div className="flex items-center gap-3 self-start md:self-auto">
-                              <div className="flex flex-row-reverse items-center md:gap-3 md:flex-row">
-                                <Button
-                                  variant="link"
-                                  size="xs"
-                                  asChild
-                                  className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
+                            <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
+                              <Button
+                                variant="link"
+                                size="xs"
+                                asChild
+                                className="h-6 px-2 text-muted-foreground font-normal hover:text-foreground w-24"
+                              >
+                                <Link
+                                  href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
                                 >
-                                  <Link
-                                    href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
-                                  >
-                                    Details
-                                  </Link>
-                                </Button>
+                                  Details
+                                </Link>
+                              </Button>
 
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => handleAddToBetSlip(marketItem)}
-                                  className="h-8 px-3 w-24"
-                                >
-                                  <Image
-                                    src="/susde-icon.svg"
-                                    alt="sUSDe"
-                                    width={18}
-                                    height={18}
-                                  />
-                                  Predict
-                                </Button>
-                              </div>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleAddToBetSlip(marketItem)}
+                                className="h-8 px-3 w-24"
+                              >
+                                <Image
+                                  src="/susde-icon.svg"
+                                  alt="sUSDe"
+                                  width={18}
+                                  height={18}
+                                />
+                                Predict
+                              </Button>
                             </div>
                           </div>
                         ))}

@@ -6,13 +6,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@sapience/ui/components/ui/tabs';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
-import { ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
+import { formatDistanceToNow, fromUnixTime } from 'date-fns';
+import { ChevronRight } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
@@ -20,6 +28,7 @@ import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
 import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
+import PredictForm from '~/components/forecasting/forms/PredictForm';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,
@@ -90,8 +99,6 @@ const getMarketsGroupedByEndTime = (markets: MarketType[]) => {
   return null;
 };
 
-export type ActiveTab = 'predict' | 'wager';
-
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(
   () => import('../../../components/shared/LottieLoader'),
@@ -99,21 +106,6 @@ const LottieLoader = dynamic(
     ssr: false,
     // Use a simple div as placeholder during load
     loading: () => <div className="w-8 h-8" />,
-  }
-);
-
-const DynamicPredictForm = dynamic(
-  () =>
-    import('~/components/forecasting/forms/PredictForm').then((mod) => ({
-      default: mod.default,
-    })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex justify-center items-center py-24 w-full">
-        <LottieLoader width={32} height={32} />
-      </div>
-    ),
   }
 );
 
@@ -132,8 +124,8 @@ const DynamicWagerFormFactory = dynamic(
   }
 );
 
-// Create a ForecastingForm component to handle the form rendering logic
-const ForecastingForm = ({
+// Create a WagerForm component to handle the wager form rendering logic
+const WagerForm = ({
   marketGroupData,
   marketClassification,
   permitData,
@@ -146,8 +138,6 @@ const ForecastingForm = ({
   onWagerSuccess: (txnHash: string) => void;
   activeMarket?: MarketType;
 }) => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('wager');
-
   // Check if market is active (not expired or settled)
   const isActive = useMemo(() => {
     if (!activeMarket) {
@@ -173,53 +163,36 @@ const ForecastingForm = ({
     );
   }
 
-  return (
-    <div className="bg-card p-6 rounded shadow-sm border">
-      <h2 className="text-3xl font-normal mb-4">Forecast</h2>
-      {/* Tabs Section */}
-      <div className="space-y-2 mt-4">
-        <div className="flex w-full border-b">
-          <button
-            type="button"
-            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-              activeTab === 'wager'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground'
-            }`}
-            onClick={() => setActiveTab('wager')}
-          >
-            Wager
-          </button>
-          <button
-            type="button"
-            className={`flex-1 px-4 py-2 text-base font-medium text-center ${
-              activeTab === 'predict'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground'
-            }`}
-            onClick={() => setActiveTab('predict')}
-          >
-            Predict
-          </button>
-        </div>
+  // Format end time for badge
+  const endTimeBadge = (() => {
+    const endTime = activeMarket?.endTimestamp;
+    if (typeof endTime !== 'number') {
+      return null;
+    }
 
-        {/* Form Content Based on Market Type */}
-        <div className="pt-4">
-          {/* Only render the active form component */}
-          {activeTab === 'predict' ? (
-            <DynamicPredictForm
-              marketGroupData={marketGroupData}
-              marketClassification={marketClassification}
-            />
-          ) : (
-            <DynamicWagerFormFactory
-              marketClassification={marketClassification}
-              marketGroupData={marketGroupData}
-              isPermitted={!!permitData?.permitted}
-              onSuccess={onWagerSuccess}
-            />
-          )}
-        </div>
+    try {
+      const date = fromUnixTime(endTime);
+      const displayTime = formatDistanceToNow(date, { addSuffix: true });
+      return <Badge>Ends {displayTime}</Badge>;
+    } catch (error) {
+      console.error('Error formatting relative time:', error);
+      return null;
+    }
+  })();
+
+  return (
+    <div className="bg-card p-6 rounded shadow-sm border flex flex-col flex-1">
+      <div className="mb-4">
+        <h2 className="text-2xl font-medium mb-2">Place a Wager</h2>
+        {endTimeBadge && <div className="flex mt-3">{endTimeBadge}</div>}
+      </div>
+      <div className="flex-1">
+        <DynamicWagerFormFactory
+          marketClassification={marketClassification}
+          marketGroupData={marketGroupData}
+          isPermitted={!!permitData?.permitted}
+          onSuccess={onWagerSuccess}
+        />
       </div>
     </div>
   );
@@ -234,6 +207,7 @@ const MarketGroupPageContent = () => {
 
   // Local trigger that will be bumped whenever the user submits a new wager
   const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
+  const [activeContentTab, setActiveContentTab] = useState<string>('forecasts');
 
   const handleUserPositionsRefetch = useCallback(() => {
     setUserPositionsTrigger((prev) => prev + 1);
@@ -306,7 +280,7 @@ const MarketGroupPageContent = () => {
 
   // Otherwise show the main content
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-28 pb-40 lg:pt-32 lg:pb-12">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-24">
       <div className="container mx-auto max-w-4xl flex flex-col">
         <NetworkSwitcher />
         <MarketGroupHeader
@@ -317,14 +291,14 @@ const MarketGroupPageContent = () => {
           chainShortName={chainShortName}
         />
 
-        {/* Main content layout: Apply gap-6 and px-3 from user example */}
-        <div className="flex flex-col gap-6 px-3">
+        {/* Main content layout: Apply gap-12 and px-3 for consistent spacing */}
+        <div className="flex flex-col gap-12 px-3">
           {/* Row 1: Chart/List + Form */}
-          <div className="flex flex-col lg:flex-row gap-12">
+          <div className="flex flex-col lg:flex-row gap-12 lg:items-stretch">
             {/* Left Column (Chart/List) */}
             <div className="flex flex-col w-full md:flex-1">
-              <div className="border border-border rounded flex flex-col flex-1 shadow-sm">
-                <div className="flex-1 min-h-[400px]">
+              <div className="border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
+                <div className="flex-1">
                   <MarketGroupChart
                     chainShortName={chainShortName}
                     marketAddress={marketAddress}
@@ -352,9 +326,9 @@ const MarketGroupPageContent = () => {
               </div>
             </div>
 
-            {/* Form (Right Column) */}
+            {/* Wager Form (Right Column) */}
             <div className="w-full lg:w-[340px]">
-              <ForecastingForm
+              <WagerForm
                 marketGroupData={marketGroupData}
                 marketClassification={marketClassification!}
                 permitData={permitData!}
@@ -364,55 +338,79 @@ const MarketGroupPageContent = () => {
             </div>
           </div>
 
-          {/* Row 2: Dropdown and Advanced View */}
-          <div className="flex justify-between items-center">
-            <div>{/* placeholder */}</div>
-            {/* Advanced View button (Right Aligned) */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowMarketSelector(true)}
-                className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-1 text-xs tracking-widest transition-all duration-300 font-semibold"
-              >
-                ADVANCED VIEW
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {(() => {
-            if (!address) {
-              return null;
-            }
-            return (
-              <div>
-                <UserPositionsTable
-                  account={address}
-                  marketAddress={marketAddress}
-                  chainId={chainId}
-                  refetchUserPositions={refetchUserPositions}
-                />
-              </div>
-            );
-          })()}
-
-          {/* Comments Section */}
+          {/* Comments and Positions Tabs */}
           <div className="border border-border rounded shadow-sm dark:bg-muted/50">
-            <div className="p-4 border-b border-border">
-              <h3 className="text-lg font-medium">Forecasts</h3>
-            </div>
-            <Comments
-              selectedCategory={
-                marketClassification ===
-                MarketGroupClassification.MULTIPLE_CHOICE
-                  ? CommentFilters.AllMultichoiceQuestions
-                  : CommentFilters.SelectedQuestion
-              }
-              question={activeMarket?.question?.toString()}
-              address={address}
-              refetchTrigger={userPositionsTrigger}
-              marketGroupAddress={marketGroupData?.address || null}
-            />
+            <Tabs value={activeContentTab} onValueChange={setActiveContentTab}>
+              <div className="p-4 border-b border-border">
+                <div className="flex items-center">
+                  <TabsList className="h-auto p-0 bg-transparent">
+                    <TabsTrigger
+                      value="forecasts"
+                      className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                    >
+                      Forecasts
+                    </TabsTrigger>
+                    {address && (
+                      <TabsTrigger
+                        value="positions"
+                        className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                      >
+                        Your Positions
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
+
+                  {/* Advanced View tab-like link (After tabs) */}
+                  <button
+                    type="button"
+                    onClick={() => setShowMarketSelector(true)}
+                    className="text-lg font-medium text-muted-foreground hover:text-primary px-0 flex items-center gap-1 transition-colors"
+                  >
+                    Details
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <TabsContent value="forecasts" className="mt-0">
+                <div className="p-4">
+                  {/* Prediction Form */}
+                  <div className="mb-6">
+                    <PredictForm
+                      marketGroupData={marketGroupData}
+                      marketClassification={marketClassification!}
+                      onSuccess={handleUserPositionsRefetch}
+                    />
+                  </div>
+
+                  {/* Comments */}
+                  <Comments
+                    selectedCategory={
+                      marketClassification ===
+                      MarketGroupClassification.MULTIPLE_CHOICE
+                        ? CommentFilters.AllMultichoiceQuestions
+                        : CommentFilters.SelectedQuestion
+                    }
+                    question={activeMarket?.question?.toString()}
+                    address={address}
+                    refetchTrigger={userPositionsTrigger}
+                    marketGroupAddress={marketGroupData?.address || null}
+                  />
+                </div>
+              </TabsContent>
+              {address && (
+                <TabsContent value="positions" className="mt-0">
+                  <div className="p-4">
+                    <UserPositionsTable
+                      showHeaderText={false}
+                      account={address}
+                      marketAddress={marketAddress}
+                      chainId={chainId}
+                      refetchUserPositions={refetchUserPositions}
+                    />
+                  </div>
+                </TabsContent>
+              )}
+            </Tabs>
           </div>
         </div>
       </div>

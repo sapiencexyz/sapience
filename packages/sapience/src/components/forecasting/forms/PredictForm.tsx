@@ -6,7 +6,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useAccount } from 'wagmi';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+import { usePrivy } from '@privy-io/react-auth';
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
 import YesNoPredict from './inputs/YesNoPredict';
@@ -27,7 +27,7 @@ export default function PredictForm({
   onSuccess,
 }: PredictFormProps) {
   const { isConnected } = useAccount();
-  const { toast } = useToast();
+  const { login, authenticated } = usePrivy();
   const firstMarket = marketGroupData.markets?.[0];
   const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
@@ -151,12 +151,8 @@ export default function PredictForm({
   });
 
   const handleSubmit = async () => {
-    if (!isConnected) {
-      toast({
-        title: 'Wallet Not Connected',
-        description: 'Please connect your wallet to submit a prediction.',
-        variant: 'destructive',
-      });
+    if (!authenticated || !isConnected) {
+      login();
       return;
     }
     await submitPrediction();

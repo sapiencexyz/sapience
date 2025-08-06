@@ -102,6 +102,6 @@ export function usePositions({ address, marketAddress }: UsePositionsProps) {
     // Enable query if we have either an address OR a marketAddress
     enabled: Boolean(address) || Boolean(marketAddress),
     staleTime: 30000, // 30 seconds
-    refetchInterval: 4000, // Refetch every 4 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds
   });
 }

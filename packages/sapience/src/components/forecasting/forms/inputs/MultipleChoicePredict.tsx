@@ -82,8 +82,10 @@ export default function MultipleChoicePredict({
 
         {/* Slider for confidence level */}
         {selectedMarketId !== null && (
-          <div className="space-y-2">
-            <Label>Forecast: {sliderValue[0]}% Chance</Label>
+          <div className="space-y-2.5">
+            <Label className="text-base">
+              Forecast: {sliderValue[0]}% Chance
+            </Label>
             <Slider
               value={sliderValue}
               onValueChange={setSliderValue}

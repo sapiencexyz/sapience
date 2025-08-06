@@ -1,11 +1,11 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import Image from 'next/image';
 
-export default function BotsQuickStart() {
+export default function ElizaHomepageFeature() {
   return (
     <div>
       {/* ElizaOS Section */}
-      <section className="pb-24 lg:pb-48 px-4 sm:px-6 w-full">
+      <section className="pt-8 lg:pt-16 pb-16 lg:pb-32 px-4 sm:px-6 w-full">
         <div className="max-w-6xl mx-auto w-full">
           <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
             {/* Left side: Explanatory text and CTAs */}
@@ -16,7 +16,7 @@ export default function BotsQuickStart() {
                   alt="Eliza OS"
                   width={400}
                   height={120}
-                  className="w-auto h-auto max-w-[200px]"
+                  className="w-auto h-auto max-w-[200px] dark:invert"
                 />
               </div>
               <p className="text-muted-foreground text-lg mb-6">
@@ -41,7 +41,7 @@ export default function BotsQuickStart() {
                   </Button>
                 </a>
                 <a
-                  href="https://github.com/sapiencexyz/plugin-sapience"
+                  href="https://github.com/sapiencexyz/elizaos-boilerplate"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-3 sm:ml-5"
@@ -54,7 +54,7 @@ export default function BotsQuickStart() {
                       height={16}
                       className="invert dark:invert-0"
                     />
-                    Plug-in Docs
+                    Agent Boilerplate
                   </Button>
                 </a>
               </div>

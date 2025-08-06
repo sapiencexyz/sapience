@@ -45,7 +45,7 @@ export default function MultipleChoiceWagerForm({
     defaultValues: {
       predictionValue:
         marketGroupData.markets?.[0]?.marketId?.toString() ?? '0', // first market
-      wagerAmount: '',
+      wagerAmount: '1',
     },
     mode: 'onChange',
   });
