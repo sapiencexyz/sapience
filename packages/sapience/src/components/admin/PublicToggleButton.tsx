@@ -119,4 +119,4 @@ const PublicToggleButton: React.FC<PublicToggleButtonProps> = ({
   );
 };
 
-export default PublicToggleButton; 
+export default PublicToggleButton;
