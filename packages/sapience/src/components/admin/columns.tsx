@@ -24,6 +24,7 @@ import EnableBridgedMarketGroupButton from './EnableBridgedMarketGroupButton';
 import MarketDeployButton from './MarketDeployButton';
 import MarketGroupDeployButton from './MarketGroupDeployButton';
 import OwnershipDialog from './OwnershipDialog';
+import PublicToggleButton from './PublicToggleButton';
 import ReindexMarketButton from './ReindexMarketButton';
 import SettleMarketDialog from './SettleMarketDialog';
 import { shortenAddress } from '~/lib/utils/util';
@@ -250,6 +251,7 @@ const MarketItem = ({
             ends {formatTimestamp(market.endTimestamp ?? 0)}
           </span>
         )}
+        <PublicToggleButton market={market} group={group} />
         {renderMarketActions()}
       </div>
     </div>
