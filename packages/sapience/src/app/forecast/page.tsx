@@ -16,7 +16,7 @@ import PredictForm from '~/components/forecasting/forms/PredictForm';
 // import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
-import { NetworkSwitcher } from '~/components/shared/NetworkSwticher';
+import { NetworkSwitcher } from '~/components/shared/NetworkSwitcher';
 import QuestionSuggestions from '~/components/forecasting/QuestionSuggestions';
 
 // Dynamically import components to avoid SSR issues

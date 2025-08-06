@@ -37,7 +37,7 @@ import {
 import { findActiveMarkets } from '~/lib/utils/util';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 import { MarketGroupClassification } from '~/lib/types';
-import { NetworkSwitcher } from '~/components/shared/NetworkSwticher';
+import { NetworkSwitcher } from '~/components/shared/NetworkSwitcher';
 
 // Dynamically import Comments component
 const Comments = dynamic(() => import('../../../components/shared/Comments'), {

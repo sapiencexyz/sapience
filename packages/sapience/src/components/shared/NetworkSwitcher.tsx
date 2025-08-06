@@ -4,9 +4,9 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAccount, useChainId, useSwitchChain } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import { base } from 'viem/chains';
 
 // Chain constants
-const BASE_CHAIN_ID = 8453;
 const CONVERGE_CHAIN_ID = 432;
 
 export function NetworkSwitcher() {
@@ -17,29 +17,29 @@ export function NetworkSwitcher() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Only run if wallet is connected and not currently switching
+    
     if (!isConnected || isPending) {
       return;
     }
 
-    // Determine expected network based on current page
+   
     const isOnForecastingPage = pathname.startsWith('/forecast');
     const isOnMarketPages = pathname.startsWith('/markets') || pathname.startsWith('/market');
     
-    // Only switch on relevant pages
+   
     if (!isOnForecastingPage && !isOnMarketPages) {
       return;
     }
 
-    const expectedChainId = isOnForecastingPage ? CONVERGE_CHAIN_ID : BASE_CHAIN_ID;
-    const expectedNetworkName = isOnForecastingPage ? 'Converge' : 'Base';
+    const expectedChainId = isOnForecastingPage ? CONVERGE_CHAIN_ID : base.id;
+    const expectedNetworkName = isOnForecastingPage ? 'Converge' : base.name;
     
-    // If already on correct network, do nothing
+   
     if (currentChainId === expectedChainId) {
       return;
     }
 
-    // Auto-switch to the expected network
+  
     if (switchChain) {
       switchChain(
         { chainId: expectedChainId },
@@ -67,6 +67,6 @@ export function NetworkSwitcher() {
     }
   }, [pathname, isConnected, currentChainId, switchChain, isPending, toast]);
 
-  // This component doesn't render anything
+ 
   return null;
 } 

@@ -30,7 +30,7 @@ import {
 import { MarketGroupClassification } from '~/lib/types';
 import { parseUrlParameter } from '~/lib/utils/util';
 import { CommentFilters } from '~/components/shared/Comments';
-import { NetworkSwitcher } from '~/components/shared/NetworkSwticher';
+import { NetworkSwitcher } from '~/components/shared/NetworkSwitcher';
 
 // Dynamically import Comments component
 const Comments = dynamic(() => import('~/components/shared/Comments'), {

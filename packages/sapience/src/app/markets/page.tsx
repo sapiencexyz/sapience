@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
-import { NetworkSwitcher } from '~/components/shared/NetworkSwticher';
+import { NetworkSwitcher } from '~/components/shared/NetworkSwitcher';
 
 const MarketGroupsListSkeleton = () => <div className="space-y-4" />;
 
