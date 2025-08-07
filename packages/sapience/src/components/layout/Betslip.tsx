@@ -34,6 +34,7 @@ import {
   WagerInput,
   wagerAmountSchema,
 } from '~/components/forecasting/forms/inputs/WagerInput';
+import YesNoWagerInput from '~/components/forecasting/forms/inputs/YesNoWagerInput';
 import { useMultipleMarketGroups } from '~/hooks/graphql/useMultipleMarketGroups';
 import { getChainShortName } from '~/lib/utils/util';
 import WagerInputWithQuote from '~/components/forecasting/forms/shared/WagerInputWithQuote';
@@ -80,7 +81,6 @@ const BetslipContent = ({
   parlayMethods,
   handleIndividualSubmit,
   handleParlaySubmit,
-  updatePosition,
   isParlaySubmitting,
   parlayError,
 }: BetslipContentProps) => {
@@ -260,21 +260,22 @@ const BetslipContent = ({
                 onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)}
                 className="space-y-4 p-3"
               >
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {betSlipPositions.map((position) => (
+                <div className="space-y-4 max-h-64 overflow-y-auto">
+                  {positionsWithMarketData.map((positionData) => (
                     <div
-                      key={position.id}
+                      key={positionData.position.id}
                       className="pb-4 mb-4 border-b border-border"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 pr-3">
                           <p className="text-lg font-normal text-foreground">
-                            {position.question}
+                            {positionData.position.question}
                           </p>
                         </div>
-
                         <button
-                          onClick={() => removePosition(position.id)}
+                          onClick={() =>
+                            removePosition(positionData.position.id)
+                          }
                           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                           type="button"
                         >
@@ -282,64 +283,73 @@ const BetslipContent = ({
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground font-medium">
-                          YES
-                        </span>
-                        <Switch
-                          checked={!position.prediction}
-                          onCheckedChange={(checked) =>
-                            updatePosition(position.id, {
-                              prediction: !checked,
-                            })
-                          }
-                          className="data-[state=checked]:bg-red-500 data-[state=unchecked]:bg-green-600 scale-75"
+                      {positionData.marketGroupData && (
+                        <YesNoWagerInput
+                          marketGroupData={positionData.marketGroupData}
+                          positionId={positionData.position.id}
+                          showWagerInput={false}
                         />
-                        <span className="text-xs text-muted-foreground font-medium">
-                          NO
-                        </span>
-                      </div>
+                      )}
                     </div>
                   ))}
-                </div>
 
-                <div className="pt-1">
-                  <WagerInput />
-                </div>
-
-                <div>
-                  <Label htmlFor="limitAmount" className="text-sm font-medium">
-                    Minimum Payout
-                  </Label>
-                  <div className="mt-1.5 relative">
-                    <Input
-                      id="limitAmount"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      className="pr-16"
-                      {...parlayMethods.register('limitAmount', {
-                        required: 'Minimum payout is required',
-                        min: {
-                          value: 0,
-                          message: 'Minimum payout must be positive',
-                        },
-                        validate: (value: string) => {
-                          const num = parseFloat(value);
-                          return !isNaN(num) || 'Must be a valid number';
-                        },
-                      })}
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                      sUSDe
-                    </div>
+                  <div className="pt-1">
+                    <WagerInput />
                   </div>
-                  {parlayMethods.formState.errors.limitAmount && (
-                    <p className="text-sm text-destructive mt-1">
-                      {parlayMethods.formState.errors.limitAmount.message}
-                    </p>
-                  )}
+
+                  <div>
+                    <Label
+                      htmlFor="limitAmount"
+                      className="text-sm font-medium"
+                    >
+                      Minimum Payout
+                    </Label>
+                    <div className="mt-1.5 relative">
+                      <Input
+                        id="limitAmount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        className="pr-16"
+                        {...parlayMethods.register('limitAmount', {
+                          required: 'Minimum payout is required',
+                          min: {
+                            value: 0,
+                            message: 'Minimum payout must be positive',
+                          },
+                          validate: (value: string) => {
+                            const num = parseFloat(value);
+                            return !isNaN(num) || 'Must be a valid number';
+                          },
+                        })}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                        sUSDe
+                      </div>
+                    </div>
+                    {parlayMethods.formState.errors.limitAmount && (
+                      <p className="text-sm text-destructive mt-1">
+                        {parlayMethods.formState.errors.limitAmount.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="pt-2">
+                    <Button
+                      className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                      disabled={
+                        isParlaySubmitting ||
+                        positionsWithMarketData.some((p) => p.isLoading)
+                      }
+                      type="submit"
+                      size="lg"
+                      variant="default"
+                    >
+                      {isParlaySubmitting
+                        ? 'Submitting Parlay...'
+                        : 'Submit Parlay'}
+                    </Button>
+                  </div>
                 </div>
 
                 {parlayError && (
@@ -347,23 +357,6 @@ const BetslipContent = ({
                     {parlayError}
                   </div>
                 )}
-
-                <div className="pt-2">
-                  <Button
-                    className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={
-                      isParlaySubmitting ||
-                      positionsWithMarketData.some((p) => p.isLoading)
-                    }
-                    type="submit"
-                    size="lg"
-                    variant="default"
-                  >
-                    {isParlaySubmitting
-                      ? 'Submitting Parlay...'
-                      : 'Submit Parlay'}
-                  </Button>
-                </div>
               </form>
             </FormProvider>
           )}
@@ -502,13 +495,14 @@ const Betslip = () => {
   // Set up form for parlay mode
   const parlayMethods = useForm({
     defaultValues: {
+      ...generateFormValues,
       wagerAmount: DEFAULT_WAGER_AMOUNT,
       limitAmount:
         betSlipPositions.length > 0
           ? 1 /
             (Math.pow(0.5, betSlipPositions.length) *
               parseFloat(DEFAULT_WAGER_AMOUNT))
-          : '10', // Default limit amount
+          : '10',
     },
   });
 
@@ -516,6 +510,16 @@ const Betslip = () => {
   useEffect(() => {
     individualMethods.reset(generateFormValues);
   }, [individualMethods, generateFormValues]);
+
+  // Keep parlay form positions in sync when betslip positions change
+  useEffect(() => {
+    parlayMethods.reset({
+      ...generateFormValues,
+      wagerAmount:
+        parlayMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT,
+      limitAmount: parlayMethods.getValues('limitAmount') || '10',
+    });
+  }, [parlayMethods, generateFormValues]);
 
   // Calculate and set minimum payout when list length or wager amount changes
   useEffect(() => {
@@ -561,12 +565,21 @@ const Betslip = () => {
   // Prepare parlay positions for the hook
   const parlayPositions = useMemo(() => {
     const limitAmount = (parlayMethods.watch('limitAmount') ?? '10').toString();
-    return betSlipPositions.map((position) => ({
-      marketAddress: position.marketAddress,
-      marketId: position.marketId,
-      prediction: position.prediction,
-      limit: limitAmount, // Use the limit from the form
-    }));
+    const positionsForm = parlayMethods.getValues('positions') as Record<
+      string,
+      { predictionValue?: string }
+    >;
+
+    return betSlipPositions.map((position) => {
+      const predValue = positionsForm?.[position.id]?.predictionValue;
+      const isYes = predValue === YES_SQRT_PRICE_X96;
+      return {
+        marketAddress: position.marketAddress,
+        marketId: position.marketId,
+        prediction: isYes,
+        limit: limitAmount,
+      };
+    });
   }, [betSlipPositions, parlayMethods]);
 
   // Calculate payout amount (for now, use 2x the wager as a simple calculation)
