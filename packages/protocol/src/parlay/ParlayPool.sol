@@ -399,15 +399,28 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             IParlayStructs.PredictedOutcome[] memory predictedOutcomes
         )
     {
-        require(
-            parlayId != 0 &&
-                parlayId <= _parlayIdCounter &&
-                _isParlay(parlayId),
-            "Parlay does not exist"
-        );
+        (parlayData, predictedOutcomes) = _getParlayView(parlayId);
+    }
 
-        parlayData = parlays[parlayId];
-        predictedOutcomes = parlayPredictedOutcomes[parlayId];
+    function getParlayByIds(
+        uint256[] calldata parlayIds
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData[] memory parlayDataList,
+            IParlayStructs.PredictedOutcome[][] memory predictedOutcomesList
+        )
+    {
+        uint256 len = parlayIds.length;
+        parlayDataList = new IParlayStructs.ParlayData[](len);
+        predictedOutcomesList = new IParlayStructs.PredictedOutcome[][](len);
+
+        for (uint256 i = 0; i < len; i++) {
+            (IParlayStructs.ParlayData memory dataItem, IParlayStructs.PredictedOutcome[] memory outcomesItem) = _getParlayView(parlayIds[i]);
+            parlayDataList[i] = dataItem;
+            predictedOutcomesList[i] = outcomesItem;
+        }
     }
 
     function getParlayOrder(
@@ -442,6 +455,60 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         }
 
         return (true, 0);
+    }
+
+    /**
+     * @notice Get all unfilled order IDs
+     * @dev Scans from 1.._parlayIdCounter and returns IDs that are still requests (maker set and not filled)
+     */
+    function getUnfilledOrderIds() external view returns (uint256[] memory orderIds) {
+        uint256 totalCount = _parlayIdCounter;
+        uint256 matchCount = 0;
+        // First pass: count
+        for (uint256 i = 1; i <= totalCount; i++) {
+            if (_isRequest(i)) {
+                matchCount++;
+            }
+        }
+
+        // Allocate and populate
+        orderIds = new uint256[](matchCount);
+        uint256 writeIndex = 0;
+        for (uint256 i = 1; i <= totalCount; i++) {
+            if (_isRequest(i)) {
+                orderIds[writeIndex] = i;
+                writeIndex++;
+            }
+        }
+    }
+
+    /**
+     * @notice Get all order IDs where `account` is the maker or taker
+     * @dev Includes both unfilled and filled orders. Canceled orders are excluded (maker reset to address(0)).
+     * @param account Address to filter by
+     */
+    function getOrderIdsByAddress(address account) external view returns (uint256[] memory orderIds) {
+        uint256 totalCount = _parlayIdCounter;
+        uint256 matchCount = 0;
+
+        // First pass: count matches
+        for (uint256 i = 1; i <= totalCount; i++) {
+            IParlayStructs.ParlayData storage dataRef = parlays[i];
+            if (dataRef.maker == account || dataRef.taker == account) {
+                matchCount++;
+            }
+        }
+
+        // Allocate and populate
+        orderIds = new uint256[](matchCount);
+        uint256 writeIndex = 0;
+        for (uint256 i = 1; i <= totalCount; i++) {
+            IParlayStructs.ParlayData storage dataRef = parlays[i];
+            if (dataRef.maker == account || dataRef.taker == account) {
+                orderIds[writeIndex] = i;
+                writeIndex++;
+            }
+        }
     }
 
     // ============ Internal Functions ============
@@ -540,5 +607,20 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
                 "Market is not a Yes/No market - settlement price is not at bounds"
             );
         }
+    }
+
+    function _getParlayView(
+        uint256 parlayId
+    ) internal view returns (
+        IParlayStructs.ParlayData memory parlayData,
+        IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+    ) {
+        require(
+            parlayId != 0 && parlayId <= _parlayIdCounter && _isParlay(parlayId),
+            "Parlay does not exist"
+        );
+
+        parlayData = parlays[parlayId];
+        predictedOutcomes = parlayPredictedOutcomes[parlayId];
     }
 }
