@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "./interfaces/IParlayPool.sol";
 import "./interfaces/IParlayNFT.sol";
 import "./interfaces/IParlayStructs.sol";
@@ -19,6 +20,7 @@ import "../market/interfaces/ISapienceStructs.sol";
  */
 contract ParlayPool is IParlayPool, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.UintSet;
     // ============ State Variables ============
 
     IParlayStructs.Settings public config;
@@ -31,6 +33,13 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
     mapping(uint256 => uint256) public makerNftToParlayId; // makerNftTokenId => parlayId
     mapping(uint256 => uint256) public takerNftToParlayId; // takerNftTokenId => parlayId
+
+    // Auxiliary mappings to track unfilled orders
+    EnumerableSet.UintSet private unfilledOrders;
+
+    // Auxiliary mappings to track all orders by maker and taker
+    mapping(address => EnumerableSet.UintSet) private ordersByMaker;
+    mapping(address => EnumerableSet.UintSet) private ordersByTaker;
 
     // ============ Modifiers ============
 
@@ -90,6 +99,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
         _parlayIdCounter = 0;
         _nftTokenIdCounter = 0;
+
     }
 
     // ============ Parlay Order Functions ============
@@ -131,6 +141,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
         _parlayIdCounter++;
         requestId = _parlayIdCounter;
+
+        // Add request to unfilled orders
+        unfilledOrders.add(requestId);
+
+        // Add request to maker's orders
+        ordersByMaker[msg.sender].add(requestId);
 
         uint256 balanceBefore = IERC20(config.collateralToken).balanceOf(
             address(this)
@@ -185,6 +201,7 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         uint256 requestId
     ) external nonReentrant {
         require(parlays[requestId].maker != address(0), "Request does not exist");
+        require(parlays[requestId].maker != msg.sender, "Maker cannot fill their own order");
         
         IParlayStructs.ParlayData storage request = parlays[requestId];
 
@@ -227,6 +244,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         request.taker = msg.sender;
         request.makerNftTokenId = makerNftTokenId;
         request.takerNftTokenId = takerNftTokenId;
+
+        // Remove request from unfilled orders
+        unfilledOrders.remove(requestId);
+
+        // Add request to taker's orders
+        ordersByTaker[msg.sender].add(requestId);
 
         // Use the same ID - no need to move data
         uint256 parlayId = requestId;
@@ -360,6 +383,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         request.payout = 0;
         request.maker = address(0);
 
+        // Remove request from unfilled orders
+        unfilledOrders.remove(requestId);
+
+        // Remove request from maker's orders
+        ordersByMaker[maker].remove(requestId);
+
         // Return collateral to maker
         IERC20(config.collateralToken).safeTransfer(maker, collateral);
 
@@ -459,27 +488,9 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
     /**
      * @notice Get all unfilled order IDs
-     * @dev Scans from 1.._parlayIdCounter and returns IDs that are still requests (maker set and not filled)
      */
     function getUnfilledOrderIds() external view returns (uint256[] memory orderIds) {
-        uint256 totalCount = _parlayIdCounter;
-        uint256 matchCount = 0;
-        // First pass: count
-        for (uint256 i = 1; i <= totalCount; i++) {
-            if (_isRequest(i)) {
-                matchCount++;
-            }
-        }
-
-        // Allocate and populate
-        orderIds = new uint256[](matchCount);
-        uint256 writeIndex = 0;
-        for (uint256 i = 1; i <= totalCount; i++) {
-            if (_isRequest(i)) {
-                orderIds[writeIndex] = i;
-                writeIndex++;
-            }
-        }
+        orderIds = unfilledOrders.values();
     }
 
     /**
@@ -488,26 +499,19 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
      * @param account Address to filter by
      */
     function getOrderIdsByAddress(address account) external view returns (uint256[] memory orderIds) {
-        uint256 totalCount = _parlayIdCounter;
-        uint256 matchCount = 0;
+        // Get all orders by maker
+        uint256[] memory makerOrderIds = ordersByMaker[account].values();
+        uint256 makerOrderIdsLength = makerOrderIds.length;
 
-        // First pass: count matches
-        for (uint256 i = 1; i <= totalCount; i++) {
-            IParlayStructs.ParlayData storage dataRef = parlays[i];
-            if (dataRef.maker == account || dataRef.taker == account) {
-                matchCount++;
-            }
-        }
+        // Get all orders by taker
+        uint256[] memory takerOrderIds = ordersByTaker[account].values();
+        uint256 takerOrderIdsLength = takerOrderIds.length;
 
-        // Allocate and populate
-        orderIds = new uint256[](matchCount);
-        uint256 writeIndex = 0;
-        for (uint256 i = 1; i <= totalCount; i++) {
-            IParlayStructs.ParlayData storage dataRef = parlays[i];
-            if (dataRef.maker == account || dataRef.taker == account) {
-                orderIds[writeIndex] = i;
-                writeIndex++;
-            }
+        uint256 totalCount = makerOrderIdsLength + takerOrderIdsLength;
+        orderIds = new uint256[](totalCount);
+
+        for (uint256 i = 0; i < totalCount; i++) {
+            orderIds[i] = i < makerOrderIdsLength ? makerOrderIds[i] : takerOrderIds[i - makerOrderIdsLength];
         }
     }
 
