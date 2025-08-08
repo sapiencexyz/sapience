@@ -205,15 +205,17 @@ export class CandleCacheRetriever {
     fillInitialCandlesWithZeroes: boolean;
     marketIdx?: number | undefined;
   }): Promise<{ data: ResponseCandleData[]; lastUpdateTimestamp: number }> {
-    if (
-      (!candles || candles.length === 0)
-    ) {
+    if (!candles || candles.length === 0) {
       if (!(fillMissingCandles || fillInitialCandlesWithZeroes)) {
         return { data: [], lastUpdateTimestamp: 0 };
-      }
-      else if (marketIdx > 0) { // edge case for market prices
+      } else if (marketIdx > 0) {
+        // edge case for market prices
         const outputEntries: ResponseCandleData[] = [];
-        const latestMarketPrice = await getLatestMarketPrice(initialTimestamp, marketIdx, true);
+        const latestMarketPrice = await getLatestMarketPrice(
+          initialTimestamp,
+          marketIdx,
+          true
+        );
         if (latestMarketPrice) {
           outputEntries.push({
             timestamp: latestMarketPrice.timestamp,
