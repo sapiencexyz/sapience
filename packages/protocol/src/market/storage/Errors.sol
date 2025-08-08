@@ -5,17 +5,17 @@ library Errors {
     error OnlyOwner();
     error MarketNotInitialized();
     error InvalidData(string message);
-    error MarketAlreadyCreated();
+    error MarketGroupAlreadyCreated();
     error PositionAlreadyCreated();
     error InvalidPositionId(uint256 positionId);
-    error NoEpochsCreated();
-    error InvalidEpoch();
+    error NoMarketsCreated();
     error InvalidMarket();
-    error EpochNotSettled(uint256 epochId);
-    error ExpiredEpochNotSettled(uint256 epochEndTime);
-    error EpochAlreadyStarted();
-    error EpochSettled();
-    error ExpiredEpoch();
+    error InvalidMarketGroup();
+    error MarketNotSettled(uint256 marketId);
+    error ExpiredMarketNotSettled(uint256 marketEndTime);
+    error MarketAlreadyStarted();
+    error MarketSettled();
+    error ExpiredMarket();
     error TokensAlreadyCreated();
     error InsufficientCollateral(
         uint256 amountRequired,
@@ -33,13 +33,11 @@ library Errors {
     error InvalidBaseAssetMinPriceTick(int24 minPriceTick, int24 tickSpacing);
     error InvalidBaseAssetMaxPriceTick(int24 maxPriceTick, int24 tickSpacing);
     error InvalidPriceTickRange(int24 minPriceTick, int24 maxPriceTick);
-    error InvalidTickSpacing(uint24 feeRate);
     error InvalidInternalTradeSize(uint256 tradeSize);
     error DeltaTradeIsZero();
     error PositionSizeBelowMin();
     error InvalidFeeRate(uint24 feeRate);
     error OwnableUnauthorizedAccount(address sender);
-    error OnlyInitializer(address sender, address initializer);
     error StartTimeCannotBeZero();
     error EndTimeTooEarly(uint256 startTime, uint256 endTime);
     error PoolPriceOutOfRange(
@@ -48,8 +46,6 @@ library Errors {
         uint160 maxPrice
     );
     error TransactionExpired(uint256 deadline, uint256 blockTime);
-    error OnlyFeeCollector();
-    error InvalidCallbackResolutionInterface(address callbackRecipient);
     error InvalidTransferRecipient(address recipient);
     error TradePriceOutOfBounds(
         uint256 tradeRatioD18,
@@ -62,5 +58,6 @@ library Errors {
         uint160 maxSqrtPriceX96
     );
     error InvalidBondAmount(uint256 bondAmount, uint256 minBond);
-    error ManualSettlementTooEarly(uint256 requiredDelay);
+    error InvalidSlippage(uint256 liquiditySlippage, uint256 tradeSlippage);
+    error SwapFailed(bytes reason);
 }

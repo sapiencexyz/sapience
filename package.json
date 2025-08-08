@@ -27,6 +27,9 @@
     "node": ">=20.14.x",
     "pnpm": "9.x"
   },
+  "resolutions": {
+    "@openzeppelin/contracts": "^5.0.2"
+  },
   "pnpm": {
     "overrides": {
       "typegraphql-prisma>@prisma/client": "^6.10.1",

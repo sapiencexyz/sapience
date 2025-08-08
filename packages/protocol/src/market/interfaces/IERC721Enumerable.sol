@@ -6,7 +6,7 @@ import "./IERC721.sol";
 /**
  * @title ERC721 extension with helper functions that allow the enumeration of NFT tokens.
  */
-interface IERC721Enumerable is IERC721Foil {
+interface IERC721Enumerable is IERC721Sapience {
     /**
      * @notice Thrown calling *ByIndex function with an index greater than the number of tokens existing
      * @param requestedIndex The index requested by the caller
@@ -27,10 +27,7 @@ interface IERC721Enumerable is IERC721Foil {
      * - `owner` must be a valid address
      * - `index` must be less than the balance of the tokens for the owner
      */
-    function tokenOfOwnerByIndex(
-        address owner,
-        uint256 index
-    ) external view returns (uint256);
+    function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256);
 
     /**
      * @dev Returns a token ID at a given `index` of all the tokens stored by the contract.
