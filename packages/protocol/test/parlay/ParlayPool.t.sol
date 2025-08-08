@@ -754,4 +754,254 @@ contract ParlayPoolTest is Test {
         vm.expectRevert("Parlay does not exist");
         pool.getParlay(999);
     }
+
+    // ============ New Function Tests ============
+
+    function testGetParlayByIds() public {
+        // Create multiple parlays
+        uint256 requestId1 = createParlayRequest(ana, 1000e6, 1200e6, block.timestamp + 60);
+        uint256 requestId2 = createParlayRequest(bob, 800e6, 1000e6, block.timestamp + 60);
+        uint256 requestId3 = createParlayRequest(carl, 1500e6, 1800e6, block.timestamp + 60);
+        
+        // Fill all parlays
+        fillParlayRequest(bob, requestId1);
+        fillParlayRequest(ana, requestId2);
+        fillParlayRequest(bob, requestId3);
+        
+        // Test getParlayByIds with multiple IDs (all filled)
+        uint256[] memory parlayIds = new uint256[](3);
+        parlayIds[0] = 1; // requestId1
+        parlayIds[1] = 2; // requestId2  
+        parlayIds[2] = 3; // requestId3
+        
+        (IParlayStructs.ParlayData[] memory parlayDataList, IParlayStructs.PredictedOutcome[][] memory predictedOutcomesList) = pool.getParlayByIds(parlayIds);
+        
+        // Verify results
+        assertEq(parlayDataList.length, 3);
+        assertEq(predictedOutcomesList.length, 3);
+        
+        // Check first parlay (filled)
+        assertEq(parlayDataList[0].maker, ana);
+        assertEq(parlayDataList[0].taker, bob);
+        assertEq(parlayDataList[0].filled, true);
+        assertEq(parlayDataList[0].collateral, 1000e6);
+        assertEq(parlayDataList[0].payout, 1200e6);
+        assertEq(predictedOutcomesList[0].length, 2);
+        
+        // Check second parlay (filled)
+        assertEq(parlayDataList[1].maker, bob);
+        assertEq(parlayDataList[1].taker, ana);
+        assertEq(parlayDataList[1].filled, true);
+        assertEq(parlayDataList[1].collateral, 800e6);
+        assertEq(parlayDataList[1].payout, 1000e6);
+        assertEq(predictedOutcomesList[1].length, 2);
+        
+        // Check third parlay (filled)
+        assertEq(parlayDataList[2].maker, carl);
+        assertEq(parlayDataList[2].taker, bob);
+        assertEq(parlayDataList[2].filled, true);
+        assertEq(parlayDataList[2].collateral, 1500e6);
+        assertEq(parlayDataList[2].payout, 1800e6);
+        assertEq(predictedOutcomesList[2].length, 2);
+    }
+
+    function testGetParlayByIdsWithEmptyArray() public {
+        uint256[] memory parlayIds = new uint256[](0);
+        
+        (IParlayStructs.ParlayData[] memory parlayDataList, IParlayStructs.PredictedOutcome[][] memory predictedOutcomesList) = pool.getParlayByIds(parlayIds);
+        
+        assertEq(parlayDataList.length, 0);
+        assertEq(predictedOutcomesList.length, 0);
+    }
+
+    function testGetParlayByIdsWithUnfilledParlay() public {
+        // Create a parlay but don't fill it
+        uint256 requestId = createParlayRequest(ana, 1000e6, 1200e6, block.timestamp + 60);
+        
+        uint256[] memory parlayIds = new uint256[](1);
+        parlayIds[0] = 1; // requestId (unfilled)
+        
+        // Should revert because the parlay is not filled
+        vm.expectRevert("Parlay does not exist");
+        pool.getParlayByIds(parlayIds);
+    }
+
+    function testGetParlayByIdsWithNonExistentIds() public {
+        uint256[] memory parlayIds = new uint256[](1);
+        parlayIds[0] = 999; // Non-existent
+        
+        // Should revert because the parlay does not exist
+        vm.expectRevert("Parlay does not exist");
+        pool.getParlayByIds(parlayIds);
+    }
+
+    function testGetParlayByIdsWithMixedFilledAndUnfilled() public {
+        // Create multiple parlays
+        uint256 requestId1 = createParlayRequest(ana, 1000e6, 1200e6, block.timestamp + 60);
+        uint256 requestId2 = createParlayRequest(bob, 800e6, 1000e6, block.timestamp + 60);
+        
+        // Fill only the first parlay
+        fillParlayRequest(bob, requestId1);
+        
+        uint256[] memory parlayIds = new uint256[](2);
+        parlayIds[0] = 1; // requestId1 (filled)
+        parlayIds[1] = 2; // requestId2 (unfilled)
+        
+        // Should revert because the second parlay is not filled
+        vm.expectRevert("Parlay does not exist");
+        pool.getParlayByIds(parlayIds);
+    }
+
+    function testGetUnfilledOrderIds() public {
+        // Create multiple parlays
+        uint256 requestId1 = createParlayRequest(ana, 1000e6, 1200e6, block.timestamp + 60);
+        uint256 requestId2 = createParlayRequest(bob, 800e6, 1000e6, block.timestamp + 60);
+        uint256 requestId3 = createParlayRequest(carl, 1500e6, 1800e6, block.timestamp + 60);
+        
+        // Fill some parlays
+        fillParlayRequest(bob, requestId1);
+        // requestId2 and requestId3 remain unfilled
+        
+        uint256[] memory unfilledOrderIds = pool.getUnfilledOrderIds();
+        
+        // Should return 2 unfilled orders
+        assertEq(unfilledOrderIds.length, 2);
+        
+        // Verify the unfilled order IDs
+        bool foundRequestId1 = false;
+        bool foundRequestId2 = false;
+        bool foundRequestId3 = false;
+
+        for (uint256 i = 0; i < unfilledOrderIds.length; i++) {
+            if (unfilledOrderIds[i] == requestId1) foundRequestId1 = true;
+            if (unfilledOrderIds[i] == requestId2) foundRequestId2 = true;
+            if (unfilledOrderIds[i] == requestId3) foundRequestId3 = true;
+        }
+        
+        assertTrue(foundRequestId2, "requestId2 should be in unfilled orders");
+        assertTrue(foundRequestId3, "requestId3 should be in unfilled orders");
+        assertFalse(foundRequestId1, "requestId1 should not be in unfilled orders");
+    }
+
+    function testGetUnfilledOrderIdsWhenAllFilled() public {
+        // Create and fill a parlay
+        uint256 requestId = createParlayRequest(ana, 1000e6, 1200e6, block.timestamp + 60);
+        fillParlayRequest(bob, requestId);
+        
+        uint256[] memory unfilledOrderIds = pool.getUnfilledOrderIds();
+        
+        // Should return empty array when all orders are filled
+        assertEq(unfilledOrderIds.length, 0);
+    }
+
+    function testGetUnfilledOrderIdsWhenNoOrders() public {
+        uint256[] memory unfilledOrderIds = pool.getUnfilledOrderIds();
+        
+        // Should return empty array when no orders exist
+        assertEq(unfilledOrderIds.length, 0);
+    }
+
+    function testGetOrderIdsByAddress() public {
+        // Create multiple parlays
+        uint256 requestId1 = createParlayRequest(ana, 1000e6, 1200e6, block.timestamp + 60);
+        uint256 requestId2 = createParlayRequest(bob, 800e6, 1000e6, block.timestamp + 60);
+        uint256 requestId3 = createParlayRequest(carl, 1500e6, 1800e6, block.timestamp + 60);
+        
+        // Fill some parlays
+        fillParlayRequest(bob, requestId1); // Bob becomes taker for requestId1
+        fillParlayRequest(ana, requestId2); // Ana becomes taker for requestId2
+        
+        // Test Ana's orders (maker of requestId1, taker of requestId2)
+        uint256[] memory anaOrderIds = pool.getOrderIdsByAddress(ana);
+        assertEq(anaOrderIds.length, 2);
+        
+        bool foundRequestId1 = false;
+        bool foundRequestId2 = false;
+        
+        for (uint256 i = 0; i < anaOrderIds.length; i++) {
+            if (anaOrderIds[i] == requestId1) foundRequestId1 = true;
+            if (anaOrderIds[i] == requestId2) foundRequestId2 = true;
+        }
+        
+        assertTrue(foundRequestId1, "Ana should be maker of requestId1");
+        assertTrue(foundRequestId2, "Ana should be taker of requestId2");
+        
+        // Test Bob's orders (maker of requestId2, taker of requestId1)
+        uint256[] memory bobOrderIds = pool.getOrderIdsByAddress(bob);
+        assertEq(bobOrderIds.length, 2);
+        
+        foundRequestId1 = false;
+        foundRequestId2 = false;
+        
+        for (uint256 i = 0; i < bobOrderIds.length; i++) {
+            if (bobOrderIds[i] == requestId1) foundRequestId1 = true;
+            if (bobOrderIds[i] == requestId2) foundRequestId2 = true;
+        }
+        
+        assertTrue(foundRequestId1, "Bob should be taker of requestId1");
+        assertTrue(foundRequestId2, "Bob should be maker of requestId2");
+        
+        // Test Carl's orders (only maker of requestId3)
+        uint256[] memory carlOrderIds = pool.getOrderIdsByAddress(carl);
+        assertEq(carlOrderIds.length, 1);
+        assertEq(carlOrderIds[0], requestId3);
+    }
+
+    function testGetOrderIdsByAddressForNonParticipant() public {
+        address nonParticipant = makeAddr("nonParticipant");
+        
+        uint256[] memory orderIds = pool.getOrderIdsByAddress(nonParticipant);
+        
+        // Should return empty array for address with no orders
+        assertEq(orderIds.length, 0);
+    }
+
+    function testGetOrderIdsByAddressWithCanceledOrder() public {
+        // Create a parlay
+        uint256 requestId = createParlayRequest(ana, 1000e6, 1200e6, block.timestamp + 60);
+        
+        // Cancel the order
+        vm.warp(block.timestamp + 61); // Expire the order
+        vm.startPrank(ana);
+        pool.cancelExpiredOrder(requestId);
+        vm.stopPrank();
+        
+        // Test that canceled orders are not included
+        uint256[] memory anaOrderIds = pool.getOrderIdsByAddress(ana);
+        assertEq(anaOrderIds.length, 0);
+    }
+
+    function testGetOrderIdsByAddressComplexScenario() public {
+        // Create multiple parlays with complex interactions
+        uint256 requestId1 = createParlayRequest(ana, 1000e6, 1200e6, block.timestamp + 60);
+        uint256 requestId2 = createParlayRequest(bob, 800e6, 1000e6, block.timestamp + 60);
+        uint256 requestId3 = createParlayRequest(carl, 1500e6, 1800e6, block.timestamp + 60);
+        uint256 requestId4 = createParlayRequest(ana, 2000e6, 2400e6, block.timestamp + 60);
+        
+        // Fill parlays
+        fillParlayRequest(bob, requestId1); // Bob taker for requestId1
+        fillParlayRequest(ana, requestId2); // Ana taker for requestId2
+        fillParlayRequest(bob, requestId3); // Bob taker for requestId3
+        // requestId4 remains unfilled
+        
+        // Test Ana's orders (maker of requestId1 and requestId4, taker of requestId2)
+        uint256[] memory anaOrderIds = pool.getOrderIdsByAddress(ana);
+        assertEq(anaOrderIds.length, 3);
+        
+        // Test Bob's orders (maker of requestId2, taker of requestId1 and requestId3)
+        uint256[] memory bobOrderIds = pool.getOrderIdsByAddress(bob);
+        assertEq(bobOrderIds.length, 3);
+        
+        // Test Carl's orders (maker of requestId3)
+        uint256[] memory carlOrderIds = pool.getOrderIdsByAddress(carl);
+        assertEq(carlOrderIds.length, 1);
+        assertEq(carlOrderIds[0], requestId3);
+    }
+
+    function testGetOrderIdsByAddressWithZeroAddress() public {
+        uint256[] memory orderIds = pool.getOrderIdsByAddress(address(0));
+        
+        // Should return empty array for zero address
+        assertEq(orderIds.length, 0);
+    }
 } 
