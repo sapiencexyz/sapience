@@ -13,11 +13,13 @@ import {
 interface YesNoWagerInputProps {
   marketGroupData: MarketGroupType;
   positionId: string; // Used to namespace form fields
+  showWagerInput?: boolean; // Whether to show the per-position wager input
 }
 
 export default function YesNoWagerInput({
   marketGroupData,
   positionId,
+  showWagerInput = true,
 }: YesNoWagerInputProps) {
   const { register, setValue, watch, getValues } = useFormContext();
 
@@ -79,12 +81,14 @@ export default function YesNoWagerInput({
         <input type="hidden" {...register(predictionFieldName)} />
       </div>
 
-      <WagerInput
-        name={wagerAmountFieldName}
-        collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
-        collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
-        chainId={marketGroupData.chainId}
-      />
+      {showWagerInput && (
+        <WagerInput
+          name={wagerAmountFieldName}
+          collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
+          collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
+          chainId={marketGroupData.chainId}
+        />
+      )}
     </div>
   );
 }
