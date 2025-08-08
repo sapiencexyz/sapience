@@ -1245,7 +1245,7 @@ contract ParlayPoolTest is Test {
             1800e6,
             block.timestamp + 60
         );
-        createParlayRequest(
+        uint256 requestId4 = createParlayRequest(
             ana,
             2000e6,
             2400e6,
@@ -1287,10 +1287,14 @@ contract ParlayPoolTest is Test {
         approvedTakers[0] = bob;
         approvedTakers[1] = carl;
         
+        // Create new NFTs for this test
+        ParlayNFT testMakerNFT = new ParlayNFT("Parlay Maker", "PMKR");
+        ParlayNFT testTakerNFT = new ParlayNFT("Parlay Taker", "PTKR");
+        
         ParlayPool restrictedPool = new ParlayPool(
             address(collateralToken),
-            address(makerNFT),
-            address(takerNFT),
+            address(testMakerNFT),
+            address(testTakerNFT),
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
@@ -1299,8 +1303,8 @@ contract ParlayPoolTest is Test {
         );
         
         // Transfer NFT ownership to the new pool
-        makerNFT.transferOwnership(address(restrictedPool));
-        takerNFT.transferOwnership(address(restrictedPool));
+        testMakerNFT.transferOwnership(address(restrictedPool));
+        testTakerNFT.transferOwnership(address(restrictedPool));
         
         // Create a parlay request
         uint256 requestId = createParlayRequestWithPool(restrictedPool, ana, 1000e6, 1200e6, block.timestamp + 60);
@@ -1321,10 +1325,14 @@ contract ParlayPoolTest is Test {
         address[] memory approvedTakers = new address[](1);
         approvedTakers[0] = bob;
         
+        // Create new NFTs for this test
+        ParlayNFT testMakerNFT = new ParlayNFT("Parlay Maker", "PMKR");
+        ParlayNFT testTakerNFT = new ParlayNFT("Parlay Taker", "PTKR");
+        
         ParlayPool restrictedPool = new ParlayPool(
             address(collateralToken),
-            address(makerNFT),
-            address(takerNFT),
+            address(testMakerNFT),
+            address(testTakerNFT),
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
@@ -1333,8 +1341,8 @@ contract ParlayPoolTest is Test {
         );
         
         // Transfer NFT ownership to the new pool
-        makerNFT.transferOwnership(address(restrictedPool));
-        takerNFT.transferOwnership(address(restrictedPool));
+        testMakerNFT.transferOwnership(address(restrictedPool));
+        testTakerNFT.transferOwnership(address(restrictedPool));
         
         // Create a parlay request
         uint256 requestId = createParlayRequestWithPool(restrictedPool, ana, 1000e6, 1200e6, block.timestamp + 60);
@@ -1351,10 +1359,14 @@ contract ParlayPoolTest is Test {
         // Deploy a new ParlayPool with empty approved takers list
         address[] memory approvedTakers = new address[](0);
         
+        // Create new NFTs for this test
+        ParlayNFT testMakerNFT = new ParlayNFT("Parlay Maker", "PMKR");
+        ParlayNFT testTakerNFT = new ParlayNFT("Parlay Taker", "PTKR");
+        
         ParlayPool openPool = new ParlayPool(
             address(collateralToken),
-            address(makerNFT),
-            address(takerNFT),
+            address(testMakerNFT),
+            address(testTakerNFT),
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
@@ -1363,8 +1375,8 @@ contract ParlayPoolTest is Test {
         );
         
         // Transfer NFT ownership to the new pool
-        makerNFT.transferOwnership(address(openPool));
-        takerNFT.transferOwnership(address(openPool));
+        testMakerNFT.transferOwnership(address(openPool));
+        testTakerNFT.transferOwnership(address(openPool));
         
         // Create a parlay request
         uint256 requestId = createParlayRequestWithPool(openPool, ana, 1000e6, 1200e6, block.timestamp + 60);
@@ -1382,14 +1394,12 @@ contract ParlayPoolTest is Test {
 
     function testApprovedTakersConfiguration() view public {
         // Test that the configuration shows the approved takers
-        (IParlayStructs.Settings memory config) = pool.getConfig();
+        IParlayStructs.Settings memory config = pool.getConfig();
         
         // The original pool should have no approved takers (empty list)
-        // Note: getConfig() doesn't return approvedTakers in the current interface
-        // This test verifies the basic configuration works
-        assertEq(config.collateralToken, this.collateralToken.address );
-        assertEq(config.makerNft, this.makerNFT.address);
-        assertEq(config.takerNft, this.takerNFT.address);
+        assertEq(config.collateralToken, address(collateralToken));
+        assertEq(config.makerNft, address(makerNFT));
+        assertEq(config.takerNft, address(takerNFT));
         assertEq(config.maxParlayMarkets, MAX_PARLAY_MARKETS);
         assertEq(config.minCollateral, MIN_COLLATERAL);
         assertEq(config.minRequestExpirationTime, MIN_EXPIRATION_TIME);
