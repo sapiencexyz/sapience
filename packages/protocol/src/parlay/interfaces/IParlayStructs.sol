@@ -15,6 +15,7 @@ interface IParlayStructs {
         uint256 minCollateral; // minimum collateral amount for a parlay
         uint256 minRequestExpirationTime; // minimum expiration time for a parlay request
         uint256 maxRequestExpirationTime; // maximum expiration time for a parlay request
+        address[] approvedTakers; // Global list of approved takers (empty means anyone can fill)
     }
 
     struct Market {

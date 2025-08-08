@@ -44,7 +44,8 @@ contract ParlayPoolIntegrationTest is Test {
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
-            MAX_EXPIRATION_TIME
+            MAX_EXPIRATION_TIME,
+            new address[](0)
         );
 
         // Transfer ownership of NFT contracts to ParlayPool

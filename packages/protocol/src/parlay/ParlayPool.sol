@@ -42,6 +42,9 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     mapping(address => EnumerableSet.UintSet) private ordersByMaker;
     mapping(address => EnumerableSet.UintSet) private ordersByTaker;
 
+    // Auxiliary mapping to track approved takers
+    mapping(address => bool) private approvedTakers;
+
     // ============ Modifiers ============
 
     modifier onlyValidRequest(uint256 requestId) {
@@ -72,7 +75,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         uint256 _maxParlayMarkets,
         uint256 _minCollateral,
         uint256 _minRequestExpirationTime,
-        uint256 _maxRequestExpirationTime
+        uint256 _maxRequestExpirationTime,
+        address[] memory _approvedTakers
     ) {
         require(_collateralToken != address(0), "Invalid collateral token");
         require(_makerNft != address(0), "Invalid maker NFT");
@@ -95,8 +99,13 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             maxParlayMarkets: _maxParlayMarkets,
             minCollateral: _minCollateral,
             minRequestExpirationTime: _minRequestExpirationTime,
-            maxRequestExpirationTime: _maxRequestExpirationTime
+            maxRequestExpirationTime: _maxRequestExpirationTime,
+            approvedTakers: _approvedTakers
         });
+
+        for (uint256 i = 0; i < _approvedTakers.length; i++) {
+            approvedTakers[_approvedTakers[i]] = true;
+        }
 
         _parlayIdCounter = 0;
         _nftTokenIdCounter = 0;
@@ -212,6 +221,11 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         require(!request.filled, "Order already filled");
         require(block.timestamp < request.orderExpirationTime, "Order expired");
         // TODO Add a require for a delay between order submission and order filling
+
+        // Check if taker is approved (if approved takers list is not empty)
+        if (config.approvedTakers.length > 0) {
+            require(approvedTakers[msg.sender], "Taker not approved for this order");
+        }
 
         // Calculate the delta (profit amount) that taker needs to provide
         uint256 delta = request.payout - request.collateral;

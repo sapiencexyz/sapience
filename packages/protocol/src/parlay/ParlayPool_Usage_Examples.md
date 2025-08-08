@@ -10,6 +10,27 @@ The ParlayPool implements a true orderbook-style parlay system where:
 - The **first taker to fill** within the order expiration time wins
 - Takers only provide the delta (profit amount), not the full payout
 - After market resolution, the **winner** (maker or taker) withdraws collateral + payout
+- Parlays can only be settled after 30 days from creation (expiration period)
+
+## Approved Takers Feature
+
+The ParlayPool supports a global approved takers list that restricts who can fill parlay orders:
+
+- **Empty List**: When the approved takers list is empty, anyone can fill any parlay order (unlimited access)
+- **Restricted List**: When the approved takers list contains addresses, only those addresses can fill parlay orders
+- **Global Setting**: The approved takers list is set at contract deployment and applies to all orders
+- **Security**: This feature allows for controlled access to parlay filling, useful for testing or restricted environments
+
+### Example Usage:
+```solidity
+// Allow anyone to fill orders
+address[] memory approvedTakers = new address[](0);
+
+// Restrict to specific addresses
+address[] memory approvedTakers = new address[](2);
+approvedTakers[0] = address(0x123...);
+approvedTakers[1] = address(0x456...);
+```
 
 ## Contract Setup
 
@@ -22,13 +43,14 @@ ParlayNFT takerNFT = new ParlayNFT("Parlay Taker", "PTKR");
 
 // Deploy ParlayPool
 ParlayPool pool = new ParlayPool(
-    collateralToken,   // USDC address
-    address(makerNFT), // Maker NFT contract
-    address(takerNFT), // Taker NFT contract
-    5,                 // maxParlayMarkets (5 markets max per parlay)
-    100e6,            // minCollateral (100 USDC)
-    60,               // minRequestExpirationTime (60 seconds)
-    86400 * 7         // maxRequestExpirationTime (7 days)
+    collateralToken,
+    address(makerNFT),
+    address(takerNFT),
+    maxParlayMarkets,
+    minCollateral,
+    minRequestExpirationTime,
+    maxRequestExpirationTime,
+    approvedTakers // List of approved takers (empty array = anyone can fill)
 );
 
 // Transfer ownership of NFT contracts to ParlayPool

@@ -44,7 +44,8 @@ contract ParlayPoolTest is Test {
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
-            MAX_EXPIRATION_TIME
+            MAX_EXPIRATION_TIME,
+            new address[](0) // No approved takers - anyone can fill
         );
 
         // Transfer ownership of NFT contracts to ParlayPool
@@ -132,7 +133,8 @@ contract ParlayPoolTest is Test {
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
-            MAX_EXPIRATION_TIME
+            MAX_EXPIRATION_TIME,
+            new address[](0)
         );
     }
 
@@ -145,7 +147,8 @@ contract ParlayPoolTest is Test {
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
-            MAX_EXPIRATION_TIME
+            MAX_EXPIRATION_TIME,
+            new address[](0)
         );
     }
 
@@ -158,7 +161,8 @@ contract ParlayPoolTest is Test {
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
-            MAX_EXPIRATION_TIME
+            MAX_EXPIRATION_TIME,
+            new address[](0)
         );
     }
 
@@ -171,7 +175,8 @@ contract ParlayPoolTest is Test {
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
-            MAX_EXPIRATION_TIME
+            MAX_EXPIRATION_TIME,
+            new address[](0)
         );
     }
 
@@ -993,7 +998,7 @@ contract ParlayPoolTest is Test {
         assertEq(predictedOutcomesList[2].length, 2);
     }
 
-    function testGetParlayByIdsWithEmptyArray() public {
+    function testGetParlayByIdsWithEmptyArray() view public {
         uint256[] memory parlayIds = new uint256[](0);
 
         (
@@ -1015,7 +1020,7 @@ contract ParlayPoolTest is Test {
         );
 
         uint256[] memory parlayIds = new uint256[](1);
-        parlayIds[0] = 1; // requestId (unfilled)
+        parlayIds[0] = requestId; // requestId (unfilled)
 
         // Should revert because the parlay is not filled
         vm.expectRevert("Parlay does not exist");
@@ -1050,8 +1055,8 @@ contract ParlayPoolTest is Test {
         fillParlayRequest(bob, requestId1);
 
         uint256[] memory parlayIds = new uint256[](2);
-        parlayIds[0] = 1; // requestId1 (filled)
-        parlayIds[1] = 2; // requestId2 (unfilled)
+        parlayIds[0] = requestId1; // requestId1 (filled)
+        parlayIds[1] = requestId2; // requestId2 (unfilled)
 
         // Should revert because the second parlay is not filled
         vm.expectRevert("Parlay does not exist");
@@ -1123,7 +1128,7 @@ contract ParlayPoolTest is Test {
         assertEq(unfilledOrderIds.length, 0);
     }
 
-    function testGetUnfilledOrderIdsWhenNoOrders() public {
+    function testGetUnfilledOrderIdsWhenNoOrders() view public {
         uint256[] memory unfilledOrderIds = pool.getUnfilledOrderIds();
 
         // Should return empty array when no orders exist
@@ -1240,7 +1245,7 @@ contract ParlayPoolTest is Test {
             1800e6,
             block.timestamp + 60
         );
-        uint256 requestId4 = createParlayRequest(
+        createParlayRequest(
             ana,
             2000e6,
             2400e6,
@@ -1267,10 +1272,158 @@ contract ParlayPoolTest is Test {
         assertEq(carlOrderIds[0], requestId3);
     }
 
-    function testGetOrderIdsByAddressWithZeroAddress() public {
+    function testGetOrderIdsByAddressWithZeroAddress() view public {
         uint256[] memory orderIds = pool.getOrderIdsByAddress(address(0));
 
         // Should return empty array for zero address
         assertEq(orderIds.length, 0);
+    }
+
+    // ============ Approved Takers Tests ============
+
+    function testApprovedTakersRestriction() public {
+        // Deploy a new ParlayPool with approved takers
+        address[] memory approvedTakers = new address[](2);
+        approvedTakers[0] = bob;
+        approvedTakers[1] = carl;
+        
+        ParlayPool restrictedPool = new ParlayPool(
+            address(collateralToken),
+            address(makerNFT),
+            address(takerNFT),
+            MAX_PARLAY_MARKETS,
+            MIN_COLLATERAL,
+            MIN_EXPIRATION_TIME,
+            MAX_EXPIRATION_TIME,
+            approvedTakers
+        );
+        
+        // Transfer NFT ownership to the new pool
+        makerNFT.transferOwnership(address(restrictedPool));
+        takerNFT.transferOwnership(address(restrictedPool));
+        
+        // Create a parlay request
+        uint256 requestId = createParlayRequestWithPool(restrictedPool, ana, 1000e6, 1200e6, block.timestamp + 60);
+        
+        // Bob (approved) should be able to fill
+        vm.startPrank(bob);
+        collateralToken.approve(address(restrictedPool), 200e6);
+        restrictedPool.fillParlayOrder(requestId);
+        vm.stopPrank();
+        
+        // Verify Bob filled the order
+        (IParlayStructs.ParlayData memory parlay, ) = restrictedPool.getParlayOrder(requestId);
+        assertEq(parlay.taker, bob);
+    }
+
+    function testApprovedTakersRestrictionUnauthorized() public {
+        // Deploy a new ParlayPool with approved takers
+        address[] memory approvedTakers = new address[](1);
+        approvedTakers[0] = bob;
+        
+        ParlayPool restrictedPool = new ParlayPool(
+            address(collateralToken),
+            address(makerNFT),
+            address(takerNFT),
+            MAX_PARLAY_MARKETS,
+            MIN_COLLATERAL,
+            MIN_EXPIRATION_TIME,
+            MAX_EXPIRATION_TIME,
+            approvedTakers
+        );
+        
+        // Transfer NFT ownership to the new pool
+        makerNFT.transferOwnership(address(restrictedPool));
+        takerNFT.transferOwnership(address(restrictedPool));
+        
+        // Create a parlay request
+        uint256 requestId = createParlayRequestWithPool(restrictedPool, ana, 1000e6, 1200e6, block.timestamp + 60);
+        
+        // Carl (not approved) should not be able to fill
+        vm.startPrank(carl);
+        collateralToken.approve(address(restrictedPool), 200e6);
+        vm.expectRevert("Taker not approved for this order");
+        restrictedPool.fillParlayOrder(requestId);
+        vm.stopPrank();
+    }
+
+    function testApprovedTakersEmptyList() public {
+        // Deploy a new ParlayPool with empty approved takers list
+        address[] memory approvedTakers = new address[](0);
+        
+        ParlayPool openPool = new ParlayPool(
+            address(collateralToken),
+            address(makerNFT),
+            address(takerNFT),
+            MAX_PARLAY_MARKETS,
+            MIN_COLLATERAL,
+            MIN_EXPIRATION_TIME,
+            MAX_EXPIRATION_TIME,
+            approvedTakers
+        );
+        
+        // Transfer NFT ownership to the new pool
+        makerNFT.transferOwnership(address(openPool));
+        takerNFT.transferOwnership(address(openPool));
+        
+        // Create a parlay request
+        uint256 requestId = createParlayRequestWithPool(openPool, ana, 1000e6, 1200e6, block.timestamp + 60);
+        
+        // Anyone should be able to fill (empty approved list means no restrictions)
+        vm.startPrank(carl);
+        collateralToken.approve(address(openPool), 200e6);
+        openPool.fillParlayOrder(requestId);
+        vm.stopPrank();
+        
+        // Verify Carl filled the order
+        (IParlayStructs.ParlayData memory parlay, ) = openPool.getParlayOrder(requestId);
+        assertEq(parlay.taker, carl);
+    }
+
+    function testApprovedTakersConfiguration() view public {
+        // Test that the configuration shows the approved takers
+        (IParlayStructs.Settings memory config) = pool.getConfig();
+        
+        // The original pool should have no approved takers (empty list)
+        // Note: getConfig() doesn't return approvedTakers in the current interface
+        // This test verifies the basic configuration works
+        assertEq(config.collateralToken, this.collateralToken.address );
+        assertEq(config.makerNft, this.makerNFT.address);
+        assertEq(config.takerNft, this.takerNFT.address);
+        assertEq(config.maxParlayMarkets, MAX_PARLAY_MARKETS);
+        assertEq(config.minCollateral, MIN_COLLATERAL);
+        assertEq(config.minRequestExpirationTime, MIN_EXPIRATION_TIME);
+        assertEq(config.maxRequestExpirationTime, MAX_EXPIRATION_TIME);
+        assertEq(config.approvedTakers.length, 0);
+    }
+
+    // Helper function to create parlay request with a specific pool
+    function createParlayRequestWithPool(
+        ParlayPool poolContract,
+        address maker,
+        uint256 collateral,
+        uint256 payout,
+        uint256 expirationTime
+    ) internal returns (uint256 requestId) {
+        IParlayStructs.PredictedOutcome[]
+            memory outcomes = new IParlayStructs.PredictedOutcome[](2);
+        outcomes[0] = IParlayStructs.PredictedOutcome({
+            market: IParlayStructs.Market(marketGroup1, 1),
+            prediction: true
+        });
+        outcomes[1] = IParlayStructs.PredictedOutcome({
+            market: IParlayStructs.Market(marketGroup2, 2),
+            prediction: true
+        });
+
+        vm.startPrank(maker);
+        collateralToken.approve(address(poolContract), collateral);
+        requestId = poolContract.submitParlayOrder(
+            outcomes,
+            collateral,
+            payout,
+            expirationTime
+        );
+        vm.stopPrank();
     }
 }

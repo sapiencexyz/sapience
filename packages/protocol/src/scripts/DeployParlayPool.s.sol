@@ -16,6 +16,9 @@ contract DeployParlayPool is Script {
         uint256 minCollateral = 100000000000000000000; // 100 sUSDe (18 decimals)
         uint256 minRequestExpirationTime = 30; // 30 seconds minimum
         uint256 maxRequestExpirationTime = 86400; // 1 day maximum
+        
+        // Approved takers (empty array means anyone can fill)
+        address[] memory approvedTakers = new address[](0); // No restrictions
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
 
@@ -38,7 +41,8 @@ contract DeployParlayPool is Script {
             maxParlayMarkets,
             minCollateral,
             minRequestExpirationTime,
-            maxRequestExpirationTime
+            maxRequestExpirationTime,
+            approvedTakers
         );
         console.log("ParlayPool deployed to:", address(pool));
 

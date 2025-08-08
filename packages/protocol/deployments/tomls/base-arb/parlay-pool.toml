@@ -6,8 +6,9 @@ preset="test"
 collateralToken = "0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2" # sUSDe on Base
 maxParlayMarkets = "5"
 minCollateral = "100000000000000000000" # 100 sUSDe (18 decimals)
-minRequestExpirationTime = "30" # 60 seconds
+minRequestExpirationTime = "30" # 30 seconds
 maxRequestExpirationTime = "86400" # 1 day
+approvedTakers = [] # Empty array means anyone can fill orders
 
 [deploy.ParlayNFTMaker]
 artifact="ParlayNFT"
@@ -32,7 +33,8 @@ args=[
   "<%= settings.maxParlayMarkets %>",
   "<%= settings.minCollateral %>",
   "<%= settings.minRequestExpirationTime %>",
-  "<%= settings.maxRequestExpirationTime %>"
+  "<%= settings.maxRequestExpirationTime %>",
+  "<%= settings.approvedTakers %>"
 ]
 depends=["deploy.ParlayNFTMaker", "deploy.ParlayNFTTaker"]
 highlight=true
