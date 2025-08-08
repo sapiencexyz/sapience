@@ -117,7 +117,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
         uint256 collateral,
         uint256 payout,
-        uint256 orderExpirationTime
+        uint256 orderExpirationTime,
+        bytes32 refCode
     )
         external
         onlyValidExpirationTime(orderExpirationTime)
@@ -202,11 +203,20 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             predictedOutcomes,
             collateral,
             payout,
-            orderExpirationTime
+            orderExpirationTime,
+            refCode
         );
     }
 
-    function fillParlayOrder(uint256 requestId) external nonReentrant {
+    struct FillParlayOrderRuntime {
+        uint256 requestId;
+        bytes32 refCode;
+        IParlayStructs.ParlayData request;
+        uint256 delta;
+        uint256 takerBalance;
+    }
+
+    function fillParlayOrder(uint256 requestId, bytes32 refCode) external nonReentrant {
         require(
             parlays[requestId].maker != address(0),
             "Request does not exist"
@@ -215,11 +225,14 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
             parlays[requestId].maker != msg.sender,
             "Maker cannot fill their own order"
         );
+        FillParlayOrderRuntime memory runtime;
 
-        IParlayStructs.ParlayData storage request = parlays[requestId];
+        runtime.requestId = requestId;
+        runtime.refCode = refCode;
+        runtime.request = parlays[requestId];
 
-        require(!request.filled, "Order already filled");
-        require(block.timestamp < request.orderExpirationTime, "Order expired");
+        require(!runtime.request.filled, "Order already filled");
+        require(block.timestamp < runtime.request.orderExpirationTime, "Order expired");
         // TODO Add a require for a delay between order submission and order filling
 
         // Check if taker is approved (if approved takers list is not empty)
@@ -228,13 +241,13 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         }
 
         // Calculate the delta (profit amount) that taker needs to provide
-        uint256 delta = request.payout - request.collateral;
+        runtime.delta = runtime.request.payout - runtime.request.collateral;
 
         // Check if taker has sufficient balance for the delta
-        uint256 takerBalance = IERC20(config.collateralToken).balanceOf(
+        runtime.takerBalance = IERC20(config.collateralToken).balanceOf(
             msg.sender
         );
-        require(takerBalance >= delta, "Insufficient taker balance");
+        require(runtime.takerBalance >= runtime.delta, "Insufficient taker balance");
 
         // Transfer delta from taker to contract
         uint256 balanceBefore = IERC20(config.collateralToken).balanceOf(
@@ -243,12 +256,12 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         IERC20(config.collateralToken).safeTransferFrom(
             msg.sender,
             address(this),
-            delta
+            runtime.delta
         );
         uint256 balanceAfter = IERC20(config.collateralToken).balanceOf(
             address(this)
         );
-        require(balanceAfter - balanceBefore == delta, "Delta transfer failed");
+        require(balanceAfter - balanceBefore == runtime.delta, "Delta transfer failed");
 
         // Mint NFTs with unique token IDs
         _nftTokenIdCounter++;
@@ -258,10 +271,10 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         uint256 takerNftTokenId = _nftTokenIdCounter;
 
         // Mark request as filled and update with parlay data
-        request.filled = true;
-        request.taker = msg.sender;
-        request.makerNftTokenId = makerNftTokenId;
-        request.takerNftTokenId = takerNftTokenId;
+        parlays[requestId].filled = true;
+        parlays[requestId].taker = msg.sender;
+        parlays[requestId].makerNftTokenId = makerNftTokenId;
+        parlays[requestId].takerNftTokenId = takerNftTokenId;
 
         // Remove request from unfilled orders
         unfilledOrders.remove(requestId);
@@ -277,18 +290,19 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         takerNftToParlayId[takerNftTokenId] = parlayId;
 
         // Mint NFTs to respective owners
-        IParlayNFT(config.makerNft).mint(request.maker, makerNftTokenId);
+        IParlayNFT(config.makerNft).mint(runtime.request.maker, makerNftTokenId);
         IParlayNFT(config.takerNft).mint(msg.sender, takerNftTokenId);
 
         emit ParlayOrderFilled(
-            requestId,
-            request.maker,
+            runtime.requestId,
+            runtime.request.maker,
             msg.sender,
             makerNftTokenId,
             takerNftTokenId,
-            request.collateral,
-            delta,
-            request.payout
+            runtime.request.collateral,
+            runtime.delta,
+            runtime.request.payout,
+            runtime.refCode
         );
     }
 

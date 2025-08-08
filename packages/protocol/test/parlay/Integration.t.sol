@@ -126,7 +126,8 @@ contract ParlayPoolIntegrationTest is Test {
             outcomes,
             1000e6,
             1200e6,
-            block.timestamp + 60
+            block.timestamp + 60,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
 
@@ -223,14 +224,14 @@ contract ParlayPoolIntegrationTest is Test {
         // Multiple takers try to fill the same order
         vm.startPrank(bob);
         collateralToken.approve(address(pool), 200e6);
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
 
         // Carl's attempt should fail
         vm.startPrank(carl);
         collateralToken.approve(address(pool), 200e6);
         vm.expectRevert("Order already filled");
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
 
         // Verify Bob won
@@ -266,7 +267,8 @@ contract ParlayPoolIntegrationTest is Test {
             outcomes,
             1000e6,
             1200e6,
-            block.timestamp + 60
+            block.timestamp + 60,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
 
@@ -306,7 +308,8 @@ contract ParlayPoolIntegrationTest is Test {
             outcomes,
             1000e6,
             1200e6,
-            block.timestamp + 60
+            block.timestamp + 60,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
 
@@ -519,7 +522,8 @@ contract ParlayPoolIntegrationTest is Test {
             outcomes,
             collateral,
             payout,
-            expirationTime
+            expirationTime,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
     }
@@ -531,7 +535,7 @@ contract ParlayPoolIntegrationTest is Test {
         );
         uint256 delta = request.payout - request.collateral;
         collateralToken.approve(address(pool), delta);
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0)); // Empty refCode
         vm.stopPrank();
     }
 }

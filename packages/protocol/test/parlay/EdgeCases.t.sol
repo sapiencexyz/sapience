@@ -86,7 +86,8 @@ contract ParlayPoolEdgeCasesTest is Test {
             outcomes,
             1000e6,
             1200e6,
-            block.timestamp + 60
+            block.timestamp + 60,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
 
@@ -124,7 +125,8 @@ contract ParlayPoolEdgeCasesTest is Test {
             outcomes,
             MIN_COLLATERAL,
             MIN_COLLATERAL + 1,
-            block.timestamp + 60
+            block.timestamp + 60,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
 
@@ -145,7 +147,8 @@ contract ParlayPoolEdgeCasesTest is Test {
             outcomes,
             1000e6,
             1200e6,
-            block.timestamp + MAX_EXPIRATION_TIME
+            block.timestamp + MAX_EXPIRATION_TIME,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
 
@@ -162,7 +165,7 @@ contract ParlayPoolEdgeCasesTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Payout must be greater than collateral");
-        pool.submitParlayOrder(outcomes, 1000e6, 1000e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1000e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
     }
 
@@ -182,7 +185,7 @@ contract ParlayPoolEdgeCasesTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert();
-        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
 
         // Verify no state changes occurred
@@ -208,7 +211,8 @@ contract ParlayPoolEdgeCasesTest is Test {
                 outcomes,
                 1000e6,
                 1200e6,
-                block.timestamp + 60
+                block.timestamp + 60,
+                bytes32(0) // Empty refCode
             );
             vm.stopPrank();
 
@@ -237,7 +241,7 @@ contract ParlayPoolEdgeCasesTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Invalid market group address");
-        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
     }
 
@@ -254,7 +258,7 @@ contract ParlayPoolEdgeCasesTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Market is already settled");
-        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
     }
 
@@ -267,7 +271,7 @@ contract ParlayPoolEdgeCasesTest is Test {
         );
         uint256 delta = request.payout - request.collateral;
         collateralToken.approve(address(pool), delta);
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
     }
 }
@@ -293,6 +297,6 @@ contract ReentrantContract {
         });
 
         collateralToken.approve(address(pool), 1000e6);
-        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60, bytes32(0));
     }
 }

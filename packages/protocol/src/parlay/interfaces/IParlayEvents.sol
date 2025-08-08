@@ -16,7 +16,8 @@ interface IParlayEvents {
         IParlayStructs.PredictedOutcome[] predictedOutcomes,
         uint256 collateral,
         uint256 payout,
-        uint256 orderExpirationTime
+        uint256 orderExpirationTime,
+        bytes32 refCode
     );
 
     event ParlayOrderFilled(
@@ -27,7 +28,8 @@ interface IParlayEvents {
         uint256 takerNftTokenId,
         uint256 collateral, // locked in the pool from maker
         uint256 delta, // delta paid by taker to reach the payout amount
-        uint256 payout // total payout to the winner
+        uint256 payout, // total payout to the winner,
+        bytes32 refCode
     );
 
     event ParlaySettled(

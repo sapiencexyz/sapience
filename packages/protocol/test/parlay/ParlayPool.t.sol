@@ -95,7 +95,8 @@ contract ParlayPoolTest is Test {
             outcomes,
             collateral,
             payout,
-            expirationTime
+            expirationTime,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
     }
@@ -107,7 +108,7 @@ contract ParlayPoolTest is Test {
         );
         uint256 delta = request.payout - request.collateral;
         collateralToken.approve(address(pool), delta);
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0)); // Empty refCode
         vm.stopPrank();
     }
 
@@ -208,14 +209,16 @@ contract ParlayPoolTest is Test {
             outcomes,
             collateral,
             payout,
-            expirationTime
+            expirationTime,
+            bytes32(0) // Empty refCode
         );
 
         uint256 requestId = pool.submitParlayOrder(
             outcomes,
             collateral,
             payout,
-            expirationTime
+            expirationTime,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
 
@@ -240,7 +243,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Must have at least one market");
-        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
     }
 
@@ -256,7 +259,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Too many markets");
-        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
     }
 
@@ -270,7 +273,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Collateral below minimum");
-        pool.submitParlayOrder(outcomes, 50e6, 1200e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 50e6, 1200e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
     }
 
@@ -286,7 +289,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Payout must be greater than collateral");
-        pool.submitParlayOrder(outcomes, 1000e6, 1000e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1000e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
     }
 
@@ -300,7 +303,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Invalid market group address");
-        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60);
+        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp + 60, bytes32(0));
         vm.stopPrank();
     }
 
@@ -314,7 +317,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(ana);
         vm.expectRevert("Order expiration must be in future");
-        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp - 1);
+        pool.submitParlayOrder(outcomes, 1000e6, 1200e6, block.timestamp - 1, bytes32(0));
         vm.stopPrank();
     }
 
@@ -343,10 +346,11 @@ contract ParlayPoolTest is Test {
             2,
             1000e6,
             delta,
-            1200e6
+            1200e6,
+            bytes32(0)
         );
 
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0)); // Empty refCode
         vm.stopPrank();
 
         (IParlayStructs.ParlayData memory parlay, ) = pool.getParlayOrder(
@@ -378,7 +382,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(carl);
         vm.expectRevert("Order already filled");
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
     }
 
@@ -395,7 +399,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(bob);
         vm.expectRevert("Order expired");
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
     }
 
@@ -412,7 +416,7 @@ contract ParlayPoolTest is Test {
 
         vm.startPrank(bob);
         vm.expectRevert("Insufficient taker balance");
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
     }
 
@@ -464,7 +468,8 @@ contract ParlayPoolTest is Test {
             outcomes,
             1000e6,
             1200e6,
-            block.timestamp + 60
+            block.timestamp + 60,
+            bytes32(0)
         );
         vm.stopPrank();
 
@@ -576,7 +581,8 @@ contract ParlayPoolTest is Test {
             outcomes,
             1000e6,
             1200e6,
-            block.timestamp + 60
+            block.timestamp + 60,
+            bytes32(0)
         );
         vm.stopPrank();
 
@@ -841,14 +847,14 @@ contract ParlayPoolTest is Test {
         // Both Bob and Carl try to fill the same order
         vm.startPrank(bob);
         collateralToken.approve(address(pool), 200e6);
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
 
         // Carl's transaction should fail
         vm.startPrank(carl);
         collateralToken.approve(address(pool), 200e6);
         vm.expectRevert("Order already filled");
-        pool.fillParlayOrder(requestId);
+        pool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
 
         // Verify Bob won
@@ -1245,7 +1251,7 @@ contract ParlayPoolTest is Test {
             1800e6,
             block.timestamp + 60
         );
-        uint256 requestId4 = createParlayRequest(
+        createParlayRequest(
             ana,
             2000e6,
             2400e6,
@@ -1312,7 +1318,7 @@ contract ParlayPoolTest is Test {
         // Bob (approved) should be able to fill
         vm.startPrank(bob);
         collateralToken.approve(address(restrictedPool), 200e6);
-        restrictedPool.fillParlayOrder(requestId);
+        restrictedPool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
         
         // Verify Bob filled the order
@@ -1351,7 +1357,7 @@ contract ParlayPoolTest is Test {
         vm.startPrank(carl);
         collateralToken.approve(address(restrictedPool), 200e6);
         vm.expectRevert("Taker not approved for this order");
-        restrictedPool.fillParlayOrder(requestId);
+        restrictedPool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
     }
 
@@ -1384,7 +1390,7 @@ contract ParlayPoolTest is Test {
         // Anyone should be able to fill (empty approved list means no restrictions)
         vm.startPrank(carl);
         collateralToken.approve(address(openPool), 200e6);
-        openPool.fillParlayOrder(requestId);
+        openPool.fillParlayOrder(requestId, bytes32(0));
         vm.stopPrank();
         
         // Verify Carl filled the order
@@ -1405,6 +1411,70 @@ contract ParlayPoolTest is Test {
         assertEq(config.minRequestExpirationTime, MIN_EXPIRATION_TIME);
         assertEq(config.maxRequestExpirationTime, MAX_EXPIRATION_TIME);
         assertEq(config.approvedTakers.length, 0);
+    }
+
+    function testRefCodeInEvents() public {
+        // Test that refCode is properly included in events
+        bytes32 testRefCode = bytes32(uint256(12345)); // Test refCode
+        
+        IParlayStructs.PredictedOutcome[]
+            memory outcomes = new IParlayStructs.PredictedOutcome[](1);
+        outcomes[0] = IParlayStructs.PredictedOutcome({
+            market: IParlayStructs.Market(marketGroup1, 1),
+            prediction: true
+        });
+
+        vm.startPrank(ana);
+        collateralToken.approve(address(pool), 1000e6);
+        
+        // Expect event with refCode
+        vm.expectEmit(true, true, false, true);
+        emit IParlayEvents.ParlayOrderSubmitted(
+            ana,
+            1,
+            outcomes,
+            1000e6,
+            1200e6,
+            block.timestamp + 60,
+            testRefCode
+        );
+        
+        uint256 requestId = pool.submitParlayOrder(
+            outcomes,
+            1000e6,
+            1200e6,
+            block.timestamp + 60,
+            testRefCode
+        );
+        vm.stopPrank();
+        
+        assertEq(requestId, 1);
+        
+        // Test fillParlayOrder with refCode
+        vm.startPrank(bob);
+        collateralToken.approve(address(pool), 200e6);
+        
+        // Expect event with refCode
+        vm.expectEmit(true, true, true, true);
+        emit IParlayEvents.ParlayOrderFilled(
+            requestId,
+            ana,
+            bob,
+            1,
+            2,
+            1000e6,
+            200e6,
+            1200e6,
+            testRefCode
+        );
+        
+        pool.fillParlayOrder(requestId, testRefCode);
+        vm.stopPrank();
+        
+        // Verify the parlay was filled
+        (IParlayStructs.ParlayData memory parlay, ) = pool.getParlayOrder(requestId);
+        assertEq(parlay.filled, true);
+        assertEq(parlay.taker, bob);
     }
 
     // Helper function to create parlay request with a specific pool
@@ -1432,7 +1502,8 @@ contract ParlayPoolTest is Test {
             outcomes,
             collateral,
             payout,
-            expirationTime
+            expirationTime,
+            bytes32(0) // Empty refCode
         );
         vm.stopPrank();
     }

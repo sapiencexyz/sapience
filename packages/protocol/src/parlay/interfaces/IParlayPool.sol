@@ -17,13 +17,15 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      * @param collateral Amount of collateral to use for the parlay
      * @param payout Minimum acceptable payout for the parlay
      * @param orderExpirationTime Expiration time for the parlay order
+     * @param refCode Reference code for the parlay order
      * @return requestId ID of the parlay request
      */
     function submitParlayOrder(
         IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
         uint256 collateral,
         uint256 payout,
-        uint256 orderExpirationTime
+        uint256 orderExpirationTime,
+        bytes32 refCode
     )
         external
         returns (
@@ -35,8 +37,9 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      * @notice Fill a parlay order directly with the specified payout
      * @param requestId ID of the parlay request
      * @dev First LP to call this function within orderExpirationTime will fill the order
+     * @param refCode Reference code for the parlay order
      */
-    function fillParlayOrder(uint256 requestId) external;
+    function fillParlayOrder(uint256 requestId, bytes32 refCode) external;
 
     /**
      * @notice Settle a parlay after all markets have resolved
