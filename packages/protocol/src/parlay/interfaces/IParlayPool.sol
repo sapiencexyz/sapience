@@ -9,7 +9,6 @@ import "./IParlayEvents.sol";
  * @notice Main interface for the Parlay Pool contract
  */
 interface IParlayPool is IParlayStructs, IParlayEvents {
-
     // ============ Parlay Functions ============
 
     /**
@@ -69,7 +68,10 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      * @notice Get the pool configuration
      * @return config Pool configuration
      */
-    function getConfig() external view returns (IParlayStructs.Settings memory config);
+    function getConfig()
+        external
+        view
+        returns (IParlayStructs.Settings memory config);
 
     /**
      * @notice Get parlay information
@@ -79,7 +81,13 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      */
     function getParlay(
         uint256 tokenId
-    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData memory parlayData,
+            IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+        );
 
     /**
      * @notice Get parlay information by ID
@@ -89,7 +97,13 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      */
     function getParlayById(
         uint256 parlayId
-    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData memory parlayData,
+            IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+        );
 
     /**
      * @notice Get multiple parlays by IDs
@@ -99,10 +113,13 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      */
     function getParlayByIds(
         uint256[] calldata parlayIds
-    ) external view returns (
-        IParlayStructs.ParlayData[] memory parlayDataList,
-        IParlayStructs.PredictedOutcome[][] memory predictedOutcomesList
-    );
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData[] memory parlayDataList,
+            IParlayStructs.PredictedOutcome[][] memory predictedOutcomesList
+        );
 
     /**
      * @notice Get parlay order information
@@ -112,7 +129,13 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
      */
     function getParlayOrder(
         uint256 requestId
-    ) external view returns (IParlayStructs.ParlayData memory parlayData, IParlayStructs.PredictedOutcome[] memory predictedOutcomes);
+    )
+        external
+        view
+        returns (
+            IParlayStructs.ParlayData memory parlayData,
+            IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+        );
 
     /**
      * @notice Check if a parlay order can be filled
@@ -127,11 +150,16 @@ interface IParlayPool is IParlayStructs, IParlayEvents {
     /**
      * @notice Get all unfilled order IDs
      */
-    function getUnfilledOrderIds() external view returns (uint256[] memory orderIds);
+    function getUnfilledOrderIds()
+        external
+        view
+        returns (uint256[] memory orderIds);
 
     /**
      * @notice Get all order IDs where `account` is the maker or taker
      * @param account Address to filter by
      */
-    function getOrderIdsByAddress(address account) external view returns (uint256[] memory orderIds);
+    function getOrderIdsByAddress(
+        address account
+    ) external view returns (uint256[] memory orderIds);
 }

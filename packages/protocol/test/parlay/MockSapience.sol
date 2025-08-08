@@ -6,7 +6,7 @@ import "../../src/market/interfaces/ISapienceStructs.sol";
 contract MockSapience {
     mapping(uint256 => ISapienceStructs.MarketData) private marketData;
     mapping(uint256 => ISapienceStructs.MarketParams) private marketParams;
-    
+
     function setMarketData(
         uint256 marketId,
         bool settled,
@@ -28,8 +28,8 @@ contract MockSapience {
             settled: settled,
             settlementPriceD18: outcome ? maxPrice : minPrice,
             assertionId: bytes32(0),
-            claimStatementYesOrNumeric:  "YES",
-            claimStatementNo: "NO" 
+            claimStatementYesOrNumeric: "YES",
+            claimStatementNo: "NO"
         });
 
         marketParams[marketId] = ISapienceStructs.MarketParams({
@@ -44,10 +44,16 @@ contract MockSapience {
         });
     }
 
-    function getMarket(uint256 marketId) external view returns (ISapienceStructs.MarketData memory, ISapienceStructs.MarketParams memory) {
-        return (
-            marketData[marketId],
-            marketParams[marketId]
-        );
+    function getMarket(
+        uint256 marketId
+    )
+        external
+        view
+        returns (
+            ISapienceStructs.MarketData memory,
+            ISapienceStructs.MarketParams memory
+        )
+    {
+        return (marketData[marketId], marketParams[marketId]);
     }
-} 
+}

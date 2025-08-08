@@ -29,7 +29,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     uint256 private _nftTokenIdCounter; // Single counter for both maker and taker NFTs
 
     mapping(uint256 => IParlayStructs.ParlayData) public parlays;
-    mapping(uint256 => IParlayStructs.PredictedOutcome[]) public parlayPredictedOutcomes;
+    mapping(uint256 => IParlayStructs.PredictedOutcome[])
+        public parlayPredictedOutcomes;
 
     mapping(uint256 => uint256) public makerNftToParlayId; // makerNftTokenId => parlayId
     mapping(uint256 => uint256) public takerNftToParlayId; // takerNftTokenId => parlayId
@@ -99,7 +100,6 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
         _parlayIdCounter = 0;
         _nftTokenIdCounter = 0;
-
     }
 
     // ============ Parlay Order Functions ============
@@ -197,12 +197,16 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         );
     }
 
-    function fillParlayOrder(
-        uint256 requestId
-    ) external nonReentrant {
-        require(parlays[requestId].maker != address(0), "Request does not exist");
-        require(parlays[requestId].maker != msg.sender, "Maker cannot fill their own order");
-        
+    function fillParlayOrder(uint256 requestId) external nonReentrant {
+        require(
+            parlays[requestId].maker != address(0),
+            "Request does not exist"
+        );
+        require(
+            parlays[requestId].maker != msg.sender,
+            "Maker cannot fill their own order"
+        );
+
         IParlayStructs.ParlayData storage request = parlays[requestId];
 
         require(!request.filled, "Order already filled");
@@ -286,7 +290,8 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         );
 
         bool makerWon = true;
-        IParlayStructs.PredictedOutcome[] storage predictedOutcomes = parlayPredictedOutcomes[parlayId];
+        IParlayStructs.PredictedOutcome[]
+            storage predictedOutcomes = parlayPredictedOutcomes[parlayId];
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             IParlayStructs.Market memory market = predictedOutcomes[i].market;
@@ -397,7 +402,11 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
     // ============ View Functions ============
 
-    function getConfig() external view returns (IParlayStructs.Settings memory) {
+    function getConfig()
+        external
+        view
+        returns (IParlayStructs.Settings memory)
+    {
         return config;
     }
 
@@ -446,7 +455,10 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         predictedOutcomesList = new IParlayStructs.PredictedOutcome[][](len);
 
         for (uint256 i = 0; i < len; i++) {
-            (IParlayStructs.ParlayData memory dataItem, IParlayStructs.PredictedOutcome[] memory outcomesItem) = _getParlayView(parlayIds[i]);
+            (
+                IParlayStructs.ParlayData memory dataItem,
+                IParlayStructs.PredictedOutcome[] memory outcomesItem
+            ) = _getParlayView(parlayIds[i]);
             parlayDataList[i] = dataItem;
             predictedOutcomesList[i] = outcomesItem;
         }
@@ -489,7 +501,11 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     /**
      * @notice Get all unfilled order IDs
      */
-    function getUnfilledOrderIds() external view returns (uint256[] memory orderIds) {
+    function getUnfilledOrderIds()
+        external
+        view
+        returns (uint256[] memory orderIds)
+    {
         orderIds = unfilledOrders.values();
     }
 
@@ -498,7 +514,9 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
      * @dev Includes both unfilled and filled orders. Canceled orders are excluded (maker reset to address(0)).
      * @param account Address to filter by
      */
-    function getOrderIdsByAddress(address account) external view returns (uint256[] memory orderIds) {
+    function getOrderIdsByAddress(
+        address account
+    ) external view returns (uint256[] memory orderIds) {
         // Get all orders by maker
         uint256[] memory makerOrderIds = ordersByMaker[account].values();
         uint256 makerOrderIdsLength = makerOrderIds.length;
@@ -511,7 +529,9 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
         orderIds = new uint256[](totalCount);
 
         for (uint256 i = 0; i < totalCount; i++) {
-            orderIds[i] = i < makerOrderIdsLength ? makerOrderIds[i] : takerOrderIds[i - makerOrderIdsLength];
+            orderIds[i] = i < makerOrderIdsLength
+                ? makerOrderIds[i]
+                : takerOrderIds[i - makerOrderIdsLength];
         }
     }
 
@@ -541,10 +561,15 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
     }
 
     function _isParlay(uint256 id) internal view returns (bool) {
-        return parlays[id].maker != address(0) && parlays[id].taker != address(0) && parlays[id].filled;
+        return
+            parlays[id].maker != address(0) &&
+            parlays[id].taker != address(0) &&
+            parlays[id].filled;
     }
 
-    function _isYesNoMarket(IParlayStructs.Market memory market) internal view returns (bool) {
+    function _isYesNoMarket(
+        IParlayStructs.Market memory market
+    ) internal view returns (bool) {
         // Validate market address
         require(
             market.marketGroup != address(0),
@@ -615,12 +640,18 @@ contract ParlayPool is IParlayPool, ReentrancyGuard {
 
     function _getParlayView(
         uint256 parlayId
-    ) internal view returns (
-        IParlayStructs.ParlayData memory parlayData,
-        IParlayStructs.PredictedOutcome[] memory predictedOutcomes
-    ) {
+    )
+        internal
+        view
+        returns (
+            IParlayStructs.ParlayData memory parlayData,
+            IParlayStructs.PredictedOutcome[] memory predictedOutcomes
+        )
+    {
         require(
-            parlayId != 0 && parlayId <= _parlayIdCounter && _isParlay(parlayId),
+            parlayId != 0 &&
+                parlayId <= _parlayIdCounter &&
+                _isParlay(parlayId),
             "Parlay does not exist"
         );
 

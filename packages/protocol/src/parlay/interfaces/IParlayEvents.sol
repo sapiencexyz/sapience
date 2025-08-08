@@ -54,4 +54,4 @@ interface IParlayEvents {
         address indexed maker,
         uint256 collateralReturned
     );
-} 
+}

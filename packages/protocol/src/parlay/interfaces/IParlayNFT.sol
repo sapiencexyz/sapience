@@ -14,10 +14,10 @@ interface IParlayNFT is IERC721 {
      * @param tokenId The token ID to mint
      */
     function mint(address to, uint256 tokenId) external;
-    
+
     /**
      * @notice Burn an existing NFT token
      * @param tokenId The token ID to burn
      */
     function burn(uint256 tokenId) external;
-} 
+}

@@ -10,12 +10,11 @@ import "./interfaces/IParlayNFT.sol";
  * @notice NFT contract for Parlay Pool system
  */
 contract ParlayNFT is IParlayNFT, ERC721, Ownable {
-    
     constructor(
         string memory name,
         string memory symbol
     ) ERC721(name, symbol) Ownable(msg.sender) {}
-    
+
     /**
      * @notice Mint a new parlay NFT (only callable by authorized contracts)
      * @param to Address to mint the NFT to
@@ -24,7 +23,7 @@ contract ParlayNFT is IParlayNFT, ERC721, Ownable {
     function mint(address to, uint256 tokenId) external override onlyOwner {
         _safeMint(to, tokenId);
     }
-    
+
     /**
      * @notice Burn a parlay NFT (only callable by authorized contracts)
      * @param tokenId Token ID to burn
@@ -32,4 +31,4 @@ contract ParlayNFT is IParlayNFT, ERC721, Ownable {
     function burn(uint256 tokenId) external override onlyOwner {
         _burn(tokenId);
     }
-} 
+}
