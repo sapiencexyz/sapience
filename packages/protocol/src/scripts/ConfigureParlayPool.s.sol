@@ -7,7 +7,7 @@ import {ParlayNFT} from "../parlay/ParlayNFT.sol";
 import {IParlayStructs} from "../parlay/interfaces/IParlayStructs.sol";
 
 contract ConfigureParlayPool is Script {
-    function run() external {
+    function run() view external {
         // Replace these with your deployed contract addresses
         address parlayPoolAddress = vm.envAddress("PARLAY_POOL_ADDRESS");
         address makerNftAddress = vm.envAddress("MAKER_NFT_ADDRESS");

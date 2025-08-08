@@ -376,7 +376,7 @@ contract ParlayPoolIntegrationTest is Test {
 
     function settleMarketsForParlay(uint256 parlayId) internal {
         // Settle markets based on the parlay's predicted outcomes
-        (IParlayStructs.ParlayData memory parlay, IParlayStructs.PredictedOutcome[] memory outcomes) = pool.getParlayOrder(parlayId);
+        (, IParlayStructs.PredictedOutcome[] memory outcomes) = pool.getParlayOrder(parlayId);
         
         for (uint256 i = 0; i < outcomes.length; i++) {
             uint256 marketId = outcomes[i].market.marketId;
@@ -387,7 +387,7 @@ contract ParlayPoolIntegrationTest is Test {
 
     function settleMarketsForParlayWithOutcome(uint256 parlayId, bool makerWins) internal {
         // Settle markets to make the maker win or lose
-        (IParlayStructs.ParlayData memory parlay, IParlayStructs.PredictedOutcome[] memory outcomes) = pool.getParlayOrder(parlayId);
+        (, IParlayStructs.PredictedOutcome[] memory outcomes) = pool.getParlayOrder(parlayId);
         
         for (uint256 i = 0; i < outcomes.length; i++) {
             uint256 marketId = outcomes[i].market.marketId;

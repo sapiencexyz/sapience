@@ -10,7 +10,6 @@ contract DeployParlayPool is Script {
     function run() external {
         // Configuration - replace these with your own values
         address collateralToken = vm.envAddress("COLLATERAL_TOKEN"); // sUSDe address
-        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
         
         // ParlayPool configuration
         uint256 maxParlayMarkets = 5; // Maximum number of markets per parlay
