@@ -5,7 +5,6 @@ import type { Hash } from 'viem';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { handleViemError } from '~/utils/blockchain/handleViemError';
-import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 
 interface UseSapiensWriteContractProps {
@@ -17,10 +16,7 @@ interface UseSapiensWriteContractProps {
 }
 
 export function useSapiensWriteContract({
-  onSuccess,
   onError,
-  onLoading,
-  successMessage = 'Transaction completed successfully',
   fallbackErrorMessage = 'Transaction failed',
 }: UseSapiensWriteContractProps) {
   const [txHash, setTxHash] = useState<Hash | undefined>(undefined);
@@ -66,7 +62,6 @@ export function useSapiensWriteContract({
   } = useSendCalls({
     mutation: {
       onSuccess: (data) => {
-        debugger;
         setTxHash(data.capabilities?.transactionHash);
       },
       onError: (error) => {
