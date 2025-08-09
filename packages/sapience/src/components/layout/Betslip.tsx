@@ -676,7 +676,7 @@ const Betslip = () => {
       firstPosition.position.marketAddress,
       firstPosition.marketGroupData.markets[0].marketId,
       expectedPrice,
-      limitCollateral
+      parsedWagerAmount
     );
 
     const lastQuoterData =

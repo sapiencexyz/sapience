@@ -46,6 +46,6 @@ export function getWagerAmountWithSlippage(
   wagerAmount: string,
   slippage: number = DEFAULT_SLIPPAGE
 ) {
-  // return (Number(wagerAmount) * (1 + slippage / 100)).toString();
-  return (Number(wagerAmount) * (1 + slippage)).toString();
+  return (Number(wagerAmount) * (1 + slippage / 100)).toString();
+  //return (Number(wagerAmount) * (1 + slippage)).toString();
 }

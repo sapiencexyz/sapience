@@ -64,7 +64,7 @@ export default function YesNoWagerForm({
     marketData: marketGroupData,
     marketId: marketGroupData.markets?.[0]?.marketId ?? 0, // first market in the array
     expectedPrice: predictionValue === YES_SQRT_PRICE_X96 ? 1 : 0.0000009,
-    wagerAmount: (+wagerAmount + DEFAULT_SLIPPAGE).toString(),
+    wagerAmount,
   });
 
   // Use the createTrade hook
