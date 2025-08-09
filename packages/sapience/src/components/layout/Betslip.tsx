@@ -50,14 +50,11 @@ import {
 } from '~/lib/utils/betslipUtils';
 import { useSapiensWriteContract } from '~/hooks/blockchain/useSapiensWriteContract';
 import { COLLATERAL_DECIMALS } from '~/lib/constants/numbers';
-import {
-  calculateCollateralLimit,
-  DEFAULT_SLIPPAGE,
-  getPredictionValueByMarket,
-} from '~/utils/trade';
+import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 import type { useQuoter } from '~/hooks/forms/useQuoter';
 import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
 import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
+import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 
 interface PositionWithMarketData {
   position: any; // BetSlipPosition from context
@@ -221,6 +218,7 @@ const BetslipContent = ({
                             marketClassification={
                               positionData.marketClassification
                             }
+                            selectedMarketId={positionData.position.marketId}
                             onRemove={() =>
                               removePosition(positionData.position.id)
                             }
@@ -491,7 +489,8 @@ const Betslip = () => {
           const predictionValue =
             getDefaultFormPredictionValue(
               classification,
-              position.prediction
+              position.prediction,
+              position.marketId
             ) || YES_SQRT_PRICE_X96;
 
           const wagerAmount = position.wagerAmount || DEFAULT_WAGER_AMOUNT;
@@ -666,15 +665,25 @@ const Betslip = () => {
       slippage
     );
 
-    const expectedPrice = getPredictionValueByMarket(
-      firstPosition.marketClassification,
-      wagerAmount
-    );
+    // Derive marketId and expectedPrice from the current form selection for this position
+    const formValues = individualMethods.getValues();
+    const predictionValue =
+      formValues?.positions?.[firstPosition.position.id]?.predictionValue ?? '';
+
+    const { expectedPrice } = getQuoteParamsFromPosition({
+      positionId: firstPosition.position.id,
+      marketGroupData: firstPosition.marketGroupData,
+      marketClassification: firstPosition.marketClassification!,
+      predictionValue,
+      wagerAmount,
+    });
+
+    const marketId = firstPosition.position.marketId;
 
     const key = generateQuoteQueryKey(
       firstPosition.position.chainId,
       firstPosition.position.marketAddress,
-      firstPosition.marketGroupData.markets[0].marketId,
+      marketId,
       expectedPrice,
       parsedWagerAmount
     );
@@ -688,7 +697,7 @@ const Betslip = () => {
 
     // Prepare the parameters for the createTraderPosition function
     const tradeParams = {
-      marketId: firstPosition.marketGroupData.markets[0].marketId,
+      marketId,
       size: lastQuoterData.maxSize,
       maxCollateral: limitCollateral,
       deadline,

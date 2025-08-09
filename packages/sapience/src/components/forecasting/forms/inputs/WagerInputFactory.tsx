@@ -8,12 +8,14 @@ interface WagerInputFactoryProps {
   marketClassification: MarketGroupClassification;
   marketGroupData: MarketGroupType;
   positionId: string;
+  defaultSelectedMarketId?: number;
 }
 
 export default function WagerInputFactory({
   marketClassification,
   marketGroupData,
   positionId,
+  defaultSelectedMarketId,
 }: WagerInputFactoryProps) {
   switch (marketClassification) {
     case MarketGroupClassification.YES_NO:
@@ -28,6 +30,7 @@ export default function WagerInputFactory({
         <MultipleChoiceWagerInput
           marketGroupData={marketGroupData}
           positionId={positionId}
+          defaultSelectedMarketId={defaultSelectedMarketId}
         />
       );
     case MarketGroupClassification.NUMERIC:

@@ -45,16 +45,32 @@ export function sqrtPriceToPrediction(sqrtPrice: string): boolean {
  */
 export function getDefaultFormPredictionValue(
   marketClassification: MarketGroupClassification,
-  currentPrediction?: boolean
+  currentPrediction?: boolean,
+  selectedMarketId?: number
 ): string | undefined {
-  if (marketClassification === MarketGroupClassification.YES_NO) {
-    // If we have a current prediction, use it; otherwise default to YES
-    const prediction = currentPrediction ?? true;
-    return predictionToSqrtPrice(prediction);
+  switch (marketClassification) {
+    case MarketGroupClassification.YES_NO: {
+      // If we have a current prediction, use it; otherwise default to YES
+      const prediction = currentPrediction ?? true;
+      return predictionToSqrtPrice(prediction);
+    }
+    case MarketGroupClassification.MULTIPLE_CHOICE: {
+      // If we already know which option (marketId) was selected when adding to betslip, use it
+      if (
+        typeof selectedMarketId === 'number' &&
+        Number.isFinite(selectedMarketId)
+      ) {
+        return String(selectedMarketId);
+      }
+      return undefined;
+    }
+    case MarketGroupClassification.NUMERIC: {
+      // No global default; leave undefined so the numeric input handles it
+      return undefined;
+    }
+    default:
+      return undefined;
   }
-
-  // For other market types, return undefined - let the specific form components handle defaults
-  return undefined;
 }
 
 /**
