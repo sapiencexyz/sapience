@@ -112,7 +112,7 @@
     },
     {
       "type": "event",
-      "name": "MarketGroupInitialized",
+      "name": "MarketGroupDeployed",
       "inputs": [
         {
           "name": "sender",

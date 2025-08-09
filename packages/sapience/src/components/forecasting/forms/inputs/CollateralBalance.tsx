@@ -111,8 +111,8 @@ export default function CollateralBalance({
 
   if (isBalanceLoading) {
     return (
-      <div className="flex items-center space-x-2 px-2">
-        <Loader2 className="h-6 w-6 animate-spin text-xs text-muted-foreground" />
+      <div className="flex items-center space-x-2 px-2 py-1">
+        <Loader2 className="h-5 w-5 animate-spin text-xs text-muted-foreground" />
       </div>
     );
   }

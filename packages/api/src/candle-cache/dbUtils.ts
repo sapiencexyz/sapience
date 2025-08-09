@@ -213,7 +213,8 @@ export async function getMarketPrices({
 
 export async function getLatestMarketPrice(
   initialTimestamp: number,
-  marketIdx: number
+  marketIdx: number,
+  nonZeroCandle: boolean = false
 ): Promise<ReducedMarketPrice | null> {
   const marketPrice = await prisma.marketPrice.findFirst({
     where: {
@@ -222,6 +223,9 @@ export async function getLatestMarketPrice(
         position: {
           market: { id: marketIdx },
         },
+      },
+      value: {
+        gt: nonZeroCandle ? '0' : undefined,
       },
     },
     orderBy: {
