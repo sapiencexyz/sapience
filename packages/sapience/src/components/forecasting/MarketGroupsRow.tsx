@@ -13,6 +13,7 @@ import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/li
 import { getChainShortName } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
+import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
 
 // Import the shared type
 
@@ -97,6 +98,7 @@ const MarketGroupsRow = ({
       question: marketItem.question || marketItem.optionName || displayQuestion,
       chainId: chainId, // Include chainId so betslip knows which chain this market is on
       marketClassification, // Pass classification for intelligent defaults
+      wagerAmount: DEFAULT_WAGER_AMOUNT,
     };
     addPosition(position);
   };

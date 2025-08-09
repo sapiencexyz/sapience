@@ -3,7 +3,7 @@ import { useTransaction } from 'wagmi';
 
 interface UseMonitorTxStatusProps {
   hash?: `0x${string}`;
-  chainId: number;
+  chainId?: number;
   onLoading?: (isLoading: boolean) => void;
   onSuccess?: (receipt: ReturnType<typeof useTransaction>['data']) => void;
   onError?: (error: Error) => void;
@@ -29,7 +29,7 @@ export function useMonitorTxStatus({
     hash,
     chainId,
     query: {
-      enabled: !!hash,
+      enabled: !!hash && chainId !== undefined,
     },
   });
 
@@ -59,7 +59,7 @@ export function useMonitorTxStatus({
   return {
     receipt,
     isSuccess,
-    isPending,
+    isPending: hash && isPending,
     error,
   };
 }

@@ -5,6 +5,7 @@ import QuoteDisplay from './QuoteDisplay';
 import { MarketGroupClassification } from '~/lib/types';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
+import { DEFAULT_SLIPPAGE, getWagerAmountWithSlippage } from '~/utils/trade';
 
 interface WagerInputWithQuoteProps {
   positionId: string;
@@ -41,7 +42,7 @@ export default function WagerInputWithQuote({
     marketData: quoteParams.marketData,
     marketId: quoteParams.marketId,
     expectedPrice: quoteParams.expectedPrice,
-    wagerAmount: quoteParams.wagerAmount,
+    wagerAmount,
   });
 
   // Get display unit for numeric markets

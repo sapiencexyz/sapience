@@ -23,8 +23,12 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SquareStack } from 'lucide-react';
 import { usePrivy } from '@privy-io/react-auth';
+import { sapienceAbi } from '@sapience/ui/lib/abi';
 
 import type { MarketGroupType } from '@sapience/ui/types';
+import { encodeFunctionData, parseUnits } from 'viem';
+import erc20ABI from '@sapience/ui/abis/erc20abi.json';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import {
   WagerInput,
@@ -39,6 +43,15 @@ import {
   DEFAULT_WAGER_AMOUNT,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/betslipUtils';
+import { useSapiensWriteContract } from '~/hooks/blockchain/useSapiensWriteContract';
+import { COLLATERAL_DECIMALS } from '~/lib/constants/numbers';
+import {
+  calculateCollateralLimit,
+  DEFAULT_SLIPPAGE,
+  getPredictionValueByMarket,
+} from '~/utils/trade';
+import type { useQuoter } from '~/hooks/forms/useQuoter';
+import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
 
 interface PositionWithMarketData {
   position: any; // BetSlipPosition from context
@@ -313,6 +326,8 @@ const Betslip = () => {
   const [isParlayMode, setIsParlayMode] = useState(false);
   const isMobile = useIsMobile();
   const { login, authenticated } = usePrivy();
+  const { sendCalls } = useSapiensWriteContract({});
+  const queryClient = useQueryClient();
 
   // Create a map of unique market identifiers to avoid duplicate queries
   const uniqueMarkets = useMemo(() => {
@@ -339,7 +354,12 @@ const Betslip = () => {
   const { queries: marketQueries } = useMultipleMarketGroups(uniqueMarkets);
 
   // Create positions with market data
-  const positionsWithMarketData: PositionWithMarketData[] = useMemo(() => {
+  const positionsWithMarketData = useMemo(() => {
+    console.log('Creating positionsWithMarketData:');
+    console.log('betSlipPositions:', betSlipPositions);
+    console.log('uniqueMarkets:', uniqueMarkets);
+    console.log('marketQueries:', marketQueries);
+
     return betSlipPositions.map((position) => {
       // Use same fallback logic for consistency
       const effectiveChainId = position.chainId || 8453;
@@ -353,7 +373,7 @@ const Betslip = () => {
       const marketQuery =
         marketIndex >= 0 ? marketQueries[marketIndex] : undefined;
 
-      return {
+      const result = {
         position: {
           ...position,
           chainId: effectiveChainId, // Ensure position has chainId for UI display
@@ -363,6 +383,9 @@ const Betslip = () => {
         isLoading: marketQuery?.isLoading || false,
         error: marketQuery?.isError,
       };
+
+      console.log(`Position ${position.id}:`, result);
+      return result;
     });
   }, [betSlipPositions, marketQueries, uniqueMarkets]);
 
@@ -435,6 +458,86 @@ const Betslip = () => {
       login();
       return;
     }
+
+    const firstPosition = positionsWithMarketData[0];
+
+    if (!firstPosition.marketGroupData) {
+      return;
+    }
+    const wagerAmount = firstPosition.position.wagerAmount || '0';
+
+    const parsedWagerAmount = parseUnits(wagerAmount, COLLATERAL_DECIMALS);
+
+    //--------------------------------
+
+    const approveData = encodeFunctionData({
+      abi: erc20ABI,
+      functionName: 'approve',
+      args: [firstPosition.position.marketAddress, parsedWagerAmount],
+    });
+
+    //--------------------------------
+
+    // 30 minutes from now
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
+    const slippage = DEFAULT_SLIPPAGE;
+
+    const limitCollateral = calculateCollateralLimit(
+      parsedWagerAmount,
+      slippage
+    );
+
+    const expectedPrice = getPredictionValueByMarket(
+      firstPosition.marketClassification,
+      wagerAmount
+    );
+
+    const key = generateQuoteQueryKey(
+      firstPosition.position.chainId,
+      firstPosition.position.marketAddress,
+      firstPosition.marketGroupData.markets[0].marketId,
+      expectedPrice,
+      limitCollateral
+    );
+
+    const lastQuoterData =
+      queryClient.getQueryData<ReturnType<typeof useQuoter>['quoteData']>(key);
+
+    if (!lastQuoterData) {
+      throw new Error('No quote data found');
+    }
+
+    // Prepare the parameters for the createTraderPosition function
+    const tradeParams = {
+      marketId: firstPosition.marketGroupData.markets[0].marketId,
+      size: lastQuoterData.maxSize,
+      maxCollateral: limitCollateral,
+      deadline,
+    };
+
+    // // Call the contract function
+    const tradeData = encodeFunctionData({
+      abi: sapienceAbi().abi,
+      functionName: 'createTraderPosition',
+      args: [tradeParams],
+    });
+
+    //--------------------------------
+
+    sendCalls({
+      calls: [
+        {
+          to: firstPosition.marketGroupData.collateralAsset,
+          data: approveData,
+        },
+        {
+          to: firstPosition.position.marketAddress,
+          data: tradeData,
+        },
+      ],
+      chainId: firstPosition.position.chainId,
+    });
+
     // TODO: Implement individual wager submission logic
   };
 
