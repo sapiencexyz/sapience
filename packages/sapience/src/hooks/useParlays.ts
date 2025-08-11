@@ -128,13 +128,17 @@ export function useParlays() {
     let cancelled = false;
     if (!publicClient || doneProbing) return;
 
-    async function probeChunk(start: bigint, chunkSize = 25n) {
+    async function probeChunk(
+      client: NonNullable<typeof publicClient>,
+      start: bigint,
+      chunkSize = 25n
+    ) {
       setLoading(true);
       setError(null);
       const end = start + chunkSize - 1n;
       try {
         const calls = [] as Array<
-          Parameters<typeof publicClient.readContract>[0]
+          Parameters<(typeof client)['readContract']>[0]
         >;
         for (let id = start; id <= end; id++) {
           calls.push({
@@ -145,7 +149,7 @@ export function useParlays() {
           });
         }
         const results = await Promise.all(
-          calls.map((c) => publicClient.readContract(c))
+          calls.map((c) => client.readContract(c))
         );
 
         const found: bigint[] = [];
@@ -195,7 +199,7 @@ export function useParlays() {
     }
 
     // Kick a chunk probe
-    void probeChunk(probeCursor);
+    void probeChunk(publicClient, probeCursor);
     return () => {
       cancelled = true;
     };
