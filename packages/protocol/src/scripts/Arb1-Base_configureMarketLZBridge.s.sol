@@ -9,8 +9,8 @@ import {BridgeTypes} from "../bridge/BridgeTypes.sol";
 contract ConfigureMarketLZBridge is Script {
     function run() external {
         // Replace these env vars with your own values
-        address marketLZBridge = 0x0000000000000000000000000000000000000111;
-        address umaLZBridge = 0x0000000000000000000000000000000000000112;
+        address marketLZBridge = 0xCf17b4834223D7e54B92f8e43229C1E82faF7226;
+        address umaLZBridge = 0x5234634f1089C5AF95662E88FeB8a5E0Fc647ed4;
 
         // eid of other network. In this case is Base's 
         (uint32 eidUMA, bytes32 peerUMA) = (uint32(30184), bytes32(uint256(uint160(umaLZBridge))));
