@@ -44,10 +44,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 // Default values for form fields
 
 const CAT_MEOW_FILE = '/cat-meow.mp3';
-const BASE_CHAIN_ID = 8453;
-const DEFAULT_BASE_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
+const DEFAULT_CHAIN_ID = 42161;
+const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
 const DEFAULT_BOND_CURRENCY = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-const DEFAULT_COLLATERAL_ASSET = '0x5875eee11cf8398102fdad704c9e96607675467a';
+const DEFAULT_COLLATERAL_ASSET = '0x211cc4dd073734da055fbf44a2b4667d5e5fe5d2';
 const DEFAULT_OPTIMISTIC_ORACLE = '0x2aBf1Bd76655de80eDB3086114315Eec75AF500c';
 const DEFAULT_UNISWAP_POS_MANAGER =
   '0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1';
@@ -61,7 +61,7 @@ const DEFAULT_MIN_TRADE_SIZE = '10000';
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
 const DEFAULT_MAX_PRICE_TICK = '0';
-const DEFAULT_FACTORY_ADDRESS = '0x2492c9d2955448181a3CD2a3d5207714949ED0f6';
+const DEFAULT_FACTORY_ADDRESS = '0x8BA766895a6bE31E92A0279C0A5C879b38f52904';
 
 // Type definitions (MarketInput is now imported)
 interface MarketParamsInput {
@@ -326,8 +326,8 @@ const CombinedMarketDialog = () => {
 
     // Set owner based on chain and connected address after mounting
     const defaultOwner =
-      currentChainId === BASE_CHAIN_ID
-        ? DEFAULT_BASE_OWNER
+      currentChainId === DEFAULT_CHAIN_ID
+        ? DEFAULT_OWNER
         : connectedAddress || '';
     setOwner(defaultOwner);
   }, [currentChainId, connectedAddress]);
