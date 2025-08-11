@@ -14,7 +14,7 @@ import {
 
 // Keep in sync with other parlay hooks for now
 export const PARLAY_CONTRACT_ADDRESS =
-  '0xb2d82FAd2847D839773fa226CB094eb195f88abF' as Address;
+  '0x918e72DAB2aF7672AbF534F744770D7F8859C55e' as Address;
 
 const PARLAY_ABI = [
   {
