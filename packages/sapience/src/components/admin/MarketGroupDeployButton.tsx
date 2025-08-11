@@ -19,7 +19,7 @@ import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AbiEvent, Address } from 'viem';
 import { decodeEventLog, parseAbiItem } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useWaitForTransactionReceipt, useWriteContract, useSwitchChain, useChainId } from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 
@@ -48,6 +48,8 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
     writeContract,
     reset: resetWriteContract, // Function to reset write state
   } = useWriteContract();
+  const { switchChain } = useSwitchChain();
+  const currentChainId = useChainId();
 
   const {
     data: receipt,
@@ -185,6 +187,11 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       ] as const;
 
       console.log('Calling writeContract with args:', args);
+
+      if (currentChainId !== group.chainId && switchChain) {
+        switchChain({ chainId: group.chainId });
+        return;
+      }
 
       writeContract({
         address: group.factoryAddress as Address,

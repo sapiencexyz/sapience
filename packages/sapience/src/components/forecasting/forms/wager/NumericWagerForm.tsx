@@ -10,7 +10,6 @@ import type { MarketGroupType } from '@sapience/ui/types';
 import NumericPredict from '../inputs/NumericPredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
-import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
@@ -18,13 +17,11 @@ import { MarketGroupClassification } from '~/lib/types';
 
 interface NumericWagerFormProps {
   marketGroupData: MarketGroupType;
-  isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
 export default function NumericWagerForm({
   marketGroupData,
-  isPermitted = true,
   onSuccess,
 }: NumericWagerFormProps) {
   const { toast } = useToast();
@@ -103,8 +100,6 @@ export default function NumericWagerForm({
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!isPermitted) return;
-
     try {
       await createTrade();
     } catch (error) {
@@ -139,7 +134,6 @@ export default function NumericWagerForm({
 
   const isButtonDisabled =
     !methods.formState.isValid ||
-    !isPermitted ||
     isQuoteLoading ||
     !!quoteError ||
     isCreatingTrade ||
@@ -190,7 +184,7 @@ export default function NumericWagerForm({
           />
         </div>
 
-        <PermittedAlert isPermitted={isPermitted} />
+        {/* Permit gating removed */}
 
         <Button
           type="submit"

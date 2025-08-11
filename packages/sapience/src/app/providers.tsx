@@ -4,7 +4,7 @@ import { PrivyProvider } from '@privy-io/react-auth';
 import { WagmiProvider, createConfig } from '@privy-io/wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
-import { sepolia, base, cannon, type Chain } from 'viem/chains';
+import { sepolia, base, cannon, type Chain, arbitrum } from 'viem/chains';
 import { http } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
@@ -51,11 +51,16 @@ const transports: Record<number, HttpTransport> = {
       ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
       : 'https://base-rpc.publicnode.com'
   ),
+  [arbitrum.id]: http(
+    process.env.NEXT_PUBLIC_INFURA_API_KEY
+      ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+      : 'https://arbitrum-rpc.publicnode.com'
+  ),
   [converge.id]: http(process.env.NEXT_PUBLIC_RPC_URL || ''),
 };
 
 // Use mutable array type Chain[] initially
-const chains: Chain[] = [base, converge];
+const chains: Chain[] = [arbitrum, base, converge];
 
 if (process.env.NODE_ENV !== 'production') {
   transports[cannonAtLocalhost.id] = http('http://localhost:8545');
@@ -77,6 +82,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       appId="cm9x5nf6q00gmk10ns01ppicr"
       clientId="client-WY5ixY1AeM6aabHPcJZPirK3j3Cemt2wAotTQ3yeT7bfX"
       config={{
+        defaultChain: arbitrum,
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
