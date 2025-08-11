@@ -19,7 +19,12 @@ import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Address } from 'viem';
 import { bytesToHex, toBytes } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract, useSwitchChain, useChainId } from 'wagmi';
+import {
+  useWaitForTransactionReceipt,
+  useWriteContract,
+  useSwitchChain,
+  useChainId,
+} from 'wagmi';
 import type { MarketType } from '@sapience/ui/types';
 
 interface MarketDeployButtonProps {

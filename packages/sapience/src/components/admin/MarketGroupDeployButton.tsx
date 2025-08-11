@@ -19,7 +19,12 @@ import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AbiEvent, Address } from 'viem';
 import { decodeEventLog, parseAbiItem } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract, useSwitchChain, useChainId } from 'wagmi';
+import {
+  useWaitForTransactionReceipt,
+  useWriteContract,
+  useSwitchChain,
+  useChainId,
+} from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 
