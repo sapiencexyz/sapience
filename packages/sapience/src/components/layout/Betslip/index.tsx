@@ -38,7 +38,7 @@ import {
   DEFAULT_WAGER_AMOUNT,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/betslipUtils';
-import { UseSapienceWriteContract } from '~/hooks/blockchain/UseSapienceWriteContract';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { COLLATERAL_DECIMALS } from '~/lib/constants/numbers';
 import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 import type { useQuoter } from '~/hooks/forms/useQuoter';
@@ -60,7 +60,7 @@ const Betslip = () => {
   const isMobile = useIsMobile();
   const { login, authenticated } = usePrivy();
   const { sendCalls, isPending: isPendingWriteContract } =
-    UseSapienceWriteContract({
+    useSapienceWriteContract({
       onSuccess: () => {
         clearBetSlip();
       },
