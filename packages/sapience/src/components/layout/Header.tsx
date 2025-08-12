@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
 import Betslip from './Betslip';
@@ -226,14 +227,14 @@ const Header = () => {
                 <Image
                   src="/ethena.svg"
                   alt="Ethena"
-                  width={80}
+                  width={87}
                   height={24}
                   className="dark:invert opacity-90 hover:opacity-100 transition-opacity duration-200"
                 />
               </a>
             </div>
           </div>
-          <div className="flex items-center gap-2 p-2 pl-4 pb-4 pt-4">
+          <div className="flex items-center gap-2 p-2 pl-4 pb-4">
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
                 href="https://github.com/sapiencexyz/sapience"
@@ -276,6 +277,18 @@ const Header = () => {
                   alt="Discord"
                   width={12}
                   height={12}
+                />
+              </a>
+            </Button>
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://blog.sapience.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <SiSubstack
+                  className="h-3 w-3  scale-[70%]"
+                  aria-label="Substack"
                 />
               </a>
             </Button>
