@@ -9,7 +9,7 @@ import { handleViemError } from '~/utils/blockchain/handleViemError';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 
-interface UseSapiensWriteContractProps {
+interface UseSapienceWriteContractProps {
   onSuccess?: (receipt: ReturnType<typeof useTransaction>['data']) => void;
   onError?: (error: Error) => void;
   onTxHash?: (txHash: Hash) => void;
@@ -17,13 +17,13 @@ interface UseSapiensWriteContractProps {
   fallbackErrorMessage?: string;
 }
 
-export function useSapiensWriteContract({
+export function UseSapienceWriteContract({
   onSuccess,
   onError,
   onTxHash,
   successMessage,
   fallbackErrorMessage = 'Transaction failed',
-}: UseSapiensWriteContractProps) {
+}: UseSapienceWriteContractProps) {
   const { data: client } = useConnectorClient();
   const [txHash, setTxHash] = useState<Hash | undefined>(undefined);
   const { toast } = useToast();
