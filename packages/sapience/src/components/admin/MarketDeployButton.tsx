@@ -19,7 +19,12 @@ import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Address } from 'viem';
 import { bytesToHex, toBytes } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import {
+  useWaitForTransactionReceipt,
+  useWriteContract,
+  useSwitchChain,
+  useChainId,
+} from 'wagmi';
 import type { MarketType } from '@sapience/ui/types';
 
 interface MarketDeployButtonProps {
@@ -45,6 +50,8 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
     writeContract,
     reset: resetWriteContract,
   } = useWriteContract();
+  const { switchChain } = useSwitchChain();
+  const currentChainId = useChainId();
 
   const {
     // Wagmi hook for transaction receipt
@@ -163,6 +170,11 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
 
       console.log('Calling writeContract (createMarket) with args:', args);
       console.log('Target contract:', marketGroupAddress);
+
+      if (currentChainId !== chainId && switchChain) {
+        switchChain({ chainId });
+        return;
+      }
 
       writeContract({
         address: marketGroupAddress as Address,

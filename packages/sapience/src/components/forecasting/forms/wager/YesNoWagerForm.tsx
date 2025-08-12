@@ -11,7 +11,6 @@ import { z } from 'zod';
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
-import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { MarketGroupClassification } from '~/lib/types';
@@ -23,13 +22,11 @@ import { DEFAULT_SLIPPAGE } from '~/utils/trade';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
-  isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
 export default function YesNoWagerForm({
   marketGroupData,
-  isPermitted = true,
   onSuccess,
 }: YesNoWagerFormProps) {
   const { toast } = useToast();
@@ -91,8 +88,6 @@ export default function YesNoWagerForm({
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!isPermitted) return;
-
     try {
       await createTrade();
     } catch (error) {
@@ -127,7 +122,6 @@ export default function YesNoWagerForm({
 
   const isButtonDisabled =
     !methods.formState.isValid ||
-    !isPermitted ||
     isQuoteLoading ||
     !!quoteError ||
     isCreatingTrade ||
@@ -208,7 +202,7 @@ export default function YesNoWagerForm({
           />
         </div>
 
-        <PermittedAlert isPermitted={isPermitted} />
+        {/* Permit gating removed */}
 
         <Button
           type="submit"

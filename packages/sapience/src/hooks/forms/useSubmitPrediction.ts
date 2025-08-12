@@ -1,17 +1,21 @@
-import { useCallback } from 'react';
-import type { Address } from 'viem';
-
-import type { MarketGroupClassification } from '../../lib/types';
-import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
+import { useToast } from '@sapience/ui/hooks/use-toast';
+import { useCallback, useEffect, useState } from 'react';
+import { encodeAbiParameters, parseAbiParameters } from 'viem';
 import {
-  getEASContractAddress,
-  EAS_ATTEST_ABI,
-  encodeEASAttest,
-} from '~/hooks/contract/EAS';
-import { useSapiensWriteContract } from '~/hooks/blockchain/useSapiensWriteContract';
+  useAccount,
+  useTransaction,
+  useWriteContract,
+  useSwitchChain,
+} from 'wagmi';
+
+import { MarketGroupClassification } from '../../lib/types';
+import { SCHEMA_UID } from '~/lib/constants/eas';
+
+// Default to Arbitrum; anticipate most transactions occur on Arbitrum.
+// If a market requires a different chain in the future, thread that chainId in via hook params.
+const ARBITRUM_CHAIN_ID = 42161;
 
 interface UseSubmitPredictionProps {
-  marketChainId: number;
   marketAddress: string;
   marketClassification: MarketGroupClassification;
   submissionValue: string; // Value from the form (e.g. "1.23" for numeric, "marketId" for MCQ, pre-calc sqrtPriceX96 for Yes/No)
@@ -21,7 +25,6 @@ interface UseSubmitPredictionProps {
 }
 
 export function useSubmitPrediction({
-  marketChainId,
   marketAddress,
   marketClassification,
   submissionValue,
@@ -29,59 +32,273 @@ export function useSubmitPrediction({
   comment = '',
   onSuccess,
 }: UseSubmitPredictionProps) {
-  const EAS_CONTRACT_ADDRESS = getEASContractAddress(marketChainId);
+  const { address, chainId: currentChainId } = useAccount();
+  const { toast } = useToast();
 
-  const { writeContract, isPending, txHash } = useSapiensWriteContract({
-    onSuccess,
-    successMessage:
-      'Your position will appear on this page and your profile shortly.',
-    fallbackErrorMessage: 'Failed to submit prediction',
+  const [attestationError, setAttestationError] = useState<string | null>(null);
+  const [attestationSuccess, setAttestationSuccess] = useState<string | null>(
+    null
+  );
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    writeContract,
+    data: transactionHash,
+    isPending: isAttesting,
+    error: writeError,
+    reset,
+  } = useWriteContract();
+
+  const {
+    data: txReceipt,
+    isSuccess: txSuccess,
+    status: _status,
+    error: _error,
+  } = useTransaction({
+    hash: transactionHash,
+    chainId: ARBITRUM_CHAIN_ID,
   });
 
-  const submitPrediction = useCallback(async () => {
-    const encodedData = encodeEASAttest({
-      marketAddress: marketAddress as Address,
-      marketId: marketId.toString(),
-      predictionInput: submissionValue,
-      classification: marketClassification,
-      comment,
-    });
+  const { switchChainAsync } = useSwitchChain();
 
-    await writeContract({
-      chainId: marketChainId,
-      address: EAS_CONTRACT_ADDRESS,
-      abi: EAS_ATTEST_ABI,
-      functionName: 'attest',
-      args: [
-        {
-          schema: CONVERGE_SCHEMA_UID as `0x${string}`,
-          data: {
-            recipient:
-              '0x0000000000000000000000000000000000000000' as `0x${string}`,
-            expirationTime: BigInt(0),
-            revocable: false,
-            refUID:
-              '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
-            data: encodedData,
-            value: BigInt(0),
+  const encodeSchemaData = useCallback(
+    (
+      _marketAddress: string,
+      _marketId: string,
+      predictionInput: string,
+      classification: MarketGroupClassification,
+      _comment: string
+    ) => {
+      try {
+        let finalPredictionBigInt: bigint;
+        const JS_2_POW_96 = 2 ** 96;
+
+        switch (classification) {
+          case MarketGroupClassification.NUMERIC: {
+            console.log('predictionInput numeric', predictionInput);
+            const inputNum = parseFloat(predictionInput);
+            if (Number.isNaN(inputNum) || inputNum < 0) {
+              throw new Error(
+                'Numeric prediction input must be a valid non-negative number.'
+              );
+            }
+            const effectivePrice = inputNum * 10 ** 18;
+            const sqrtEffectivePrice = Math.sqrt(effectivePrice);
+            const sqrtPriceX96Float = sqrtEffectivePrice * JS_2_POW_96;
+            finalPredictionBigInt = BigInt(Math.round(sqrtPriceX96Float));
+            break;
+          }
+          case MarketGroupClassification.YES_NO:
+            console.log('predictionInput yes no', predictionInput);
+            finalPredictionBigInt = BigInt(predictionInput);
+            break;
+          case MarketGroupClassification.MULTIPLE_CHOICE:
+            console.log('predictionInput multiple choice', predictionInput);
+            finalPredictionBigInt = BigInt(predictionInput);
+            break;
+          default: {
+            // This will catch any unhandled enum members at compile time
+            const _exhaustiveCheck: never = classification;
+            throw new Error(
+              `Unsupported market classification for encoding: ${_exhaustiveCheck}`
+            );
+          }
+        }
+
+        return encodeAbiParameters(
+          parseAbiParameters(
+            'address marketAddress, uint256 marketId, bytes32 questionId, uint160 prediction, string comment'
+          ),
+          [
+            _marketAddress as `0x${string}`,
+            BigInt(_marketId),
+            `0x0000000000000000000000000000000000000000000000000000000000000000` as `0x${string}`, // TODO: fix this, it is a stub!
+            finalPredictionBigInt,
+            _comment,
+          ]
+        );
+      } catch (error) {
+        console.error('Error encoding schema data:', error);
+        if (
+          error instanceof Error &&
+          (error.message.includes('Numeric prediction input must be') ||
+            error.message.includes('Unsupported market category'))
+        ) {
+          throw error;
+        }
+        throw new Error('Failed to encode prediction data');
+      }
+    },
+    []
+  );
+
+  const submitPrediction = useCallback(async () => {
+    setAttestationError(null);
+    setAttestationSuccess(null);
+    reset();
+
+    try {
+      setIsLoading(true);
+      if (!address) {
+        throw new Error('Wallet not connected. Please connect your wallet.');
+      }
+
+      if (currentChainId === undefined) {
+        throw new Error(
+          'Could not determine the current network. Please ensure your wallet is connected properly and the network is recognized.'
+        );
+      }
+
+      if (currentChainId !== ARBITRUM_CHAIN_ID) {
+        if (!switchChainAsync) {
+          throw new Error(
+            'Chain switching functionality is not available. Please switch manually in your wallet.'
+          );
+        }
+        try {
+          await switchChainAsync({ chainId: ARBITRUM_CHAIN_ID });
+        } catch (switchError) {
+          setIsLoading(false);
+          console.error('Failed to switch chain:', switchError);
+          const message =
+            switchError instanceof Error &&
+            switchError.message.includes('User rejected the request')
+              ? 'Network switch rejected by user.'
+              : 'Failed to switch network. Please try again.';
+          setAttestationError(message);
+          toast({
+            title: 'Network Switch Failed',
+            description: message,
+            variant: 'destructive',
+          });
+          return; // Stop execution
+        }
+      }
+
+      // If we are here, the chain is correct.
+      const encodedData = encodeSchemaData(
+        marketAddress,
+        marketId.toString(),
+        submissionValue,
+        marketClassification,
+        comment
+      );
+
+      writeContract({
+        address: '0x1ABeF822A38CC8906557cD73788ab23A607ae104',
+        abi: [
+          {
+            name: 'attest',
+            type: 'function',
+            stateMutability: 'payable',
+            inputs: [
+              {
+                name: 'request',
+                type: 'tuple',
+                components: [
+                  { name: 'schema', type: 'bytes32' },
+                  {
+                    name: 'data',
+                    type: 'tuple',
+                    components: [
+                      { name: 'recipient', type: 'address' },
+                      { name: 'expirationTime', type: 'uint64' },
+                      { name: 'revocable', type: 'bool' },
+                      { name: 'refUID', type: 'bytes32' },
+                      { name: 'data', type: 'bytes' },
+                      { name: 'value', type: 'uint256' },
+                    ],
+                  },
+                ],
+              },
+            ],
+            outputs: [{ name: 'uid', type: 'bytes32' }],
           },
-        },
-      ],
-    });
+        ],
+        functionName: 'attest',
+        args: [
+          {
+            schema: SCHEMA_UID as `0x${string}`,
+            data: {
+              recipient:
+                '0x0000000000000000000000000000000000000000' as `0x${string}`,
+              expirationTime: BigInt(0),
+              revocable: false,
+              refUID:
+                '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+              data: encodedData,
+              value: BigInt(0),
+            },
+          },
+        ],
+      });
+    } catch (error) {
+      setIsLoading(false);
+      console.error('Attestation submission error:', error);
+      setAttestationError(
+        error instanceof Error ? error.message : 'Failed to submit prediction'
+      );
+    }
   }, [
+    address,
     marketAddress,
     marketClassification,
     submissionValue,
     marketId,
     comment,
+    encodeSchemaData,
     writeContract,
-    EAS_CONTRACT_ADDRESS,
-    marketChainId,
+    reset,
+    setAttestationError,
+    setAttestationSuccess,
+    toast,
+    setIsLoading,
+    currentChainId,
+    switchChainAsync,
   ]);
+
+  useEffect(() => {
+    if (writeError) {
+      setIsLoading(false);
+      const message = writeError.message.includes('User rejected the request')
+        ? 'Transaction rejected by user.'
+        : (writeError.cause as Error)?.message ||
+          writeError.message ||
+          'Prediction submission failed.';
+      setAttestationError(message);
+      setAttestationSuccess(null);
+    }
+  }, [writeError, setIsLoading]);
+
+  useEffect(() => {
+    if (txSuccess && txReceipt) {
+      setIsLoading(false);
+      const successMsg = `Prediction submitted successfully! Transaction: ${txReceipt.hash}`;
+      setAttestationSuccess(successMsg);
+      setAttestationError(null);
+
+      toast({
+        title: 'Prediction Submitted',
+        description:
+          'Your position will appear on this page and your profile shortly.',
+        duration: 5000,
+      });
+
+      // Call the onSuccess callback to trigger refetch
+      onSuccess?.();
+    }
+  }, [txSuccess, txReceipt, address, toast, setIsLoading, onSuccess]);
+
+  const resetStatus = useCallback(() => {
+    setAttestationError(null);
+    setAttestationSuccess(null);
+  }, []);
 
   return {
     submitPrediction,
-    isAttesting: isPending,
-    txHash,
+    isAttesting: isAttesting || isLoading,
+    attestationError,
+    attestationSuccess,
+    resetAttestationStatus: resetStatus,
   };
 }

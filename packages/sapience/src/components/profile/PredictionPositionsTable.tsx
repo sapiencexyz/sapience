@@ -213,7 +213,7 @@ const renderActionsCell = ({
   row: { original: FormattedAttestation };
   chainId?: number;
 }) => {
-  const viewUrl = getAttestationViewURL(chainId || 8453, row.original.id);
+  const viewUrl = getAttestationViewURL(chainId || 42161, row.original.id);
 
   // Don't render the button if no EAS explorer is configured for this chain
   if (!viewUrl) {

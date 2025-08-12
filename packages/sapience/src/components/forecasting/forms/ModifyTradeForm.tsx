@@ -29,7 +29,7 @@ import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 import { formatUnits, parseUnits } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useSwitchChain } from 'wagmi';
 
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 import LottieLoader from '~/components/shared/LottieLoader';
@@ -159,6 +159,10 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     collateralAssetTicker,
     collateralAssetAddress,
   } = marketDetails;
+
+  const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const isChainMismatch = isConnected && currentChainId !== chainId;
 
   const [originalPositionSize, originalPositionDirection]: [
     bigint,
@@ -349,6 +353,18 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   }, [isModifyTradeError, error, toast]);
 
   const handleFormSubmit = async () => {
+    if (isChainMismatch) {
+      if (switchChain) {
+        switchChain({ chainId });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Network switching is not available.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
     await modifyTrade();
   };
 

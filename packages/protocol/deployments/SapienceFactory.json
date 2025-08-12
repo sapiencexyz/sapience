@@ -21,11 +21,6 @@
           "internalType": "address"
         },
         {
-          "name": "feeCollectors",
-          "type": "address[]",
-          "internalType": "address[]"
-        },
-        {
           "name": "minTradeSize",
           "type": "uint256",
           "internalType": "uint256"

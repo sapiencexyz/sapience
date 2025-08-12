@@ -28,7 +28,7 @@ export const INDEXERS: {
   'nyc-air-temperature': new WeatherIndexer('temperature'),
   'sf-precipitation': new WeatherIndexer('precipitation'),
   'bitcoin-hashrate': new BtcHashIndexer(),
-  'attestation-prediction-market': new EASPredictionIndexer(432),
+  'attestation-prediction-market': new EASPredictionIndexer(42161),
 };
 
 // Function to initialize fixtures - upsert resources and markets from fixtures.json

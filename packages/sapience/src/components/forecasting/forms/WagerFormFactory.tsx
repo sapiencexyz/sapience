@@ -7,7 +7,6 @@ import { MarketGroupClassification } from '~/lib/types';
 interface WagerFormFactoryProps {
   marketClassification: MarketGroupClassification;
   marketGroupData: MarketGroupType;
-  isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 

@@ -1,0 +1,57 @@
+name="parlay-pool"
+version="1.0.0"
+preset="test"
+
+[var.settings]
+collateralToken = "0x3138d1B6F726F54813c9Ed6E29A5e44C24Cb11f1" # fake collateral asset on Arb1 
+maxParlayMarkets = "5"
+minCollateral = "100000000000000000000" # 100 sUSDe (18 decimals)
+minRequestExpirationTime = "30" # 30 seconds
+maxRequestExpirationTime = "86400" # 1 day
+approvedTakers = "0xdb5Af497A73620d881561eDb508012A5f84e9BA2" # Empty array means anyone can fill orders
+depends = []
+
+[deploy.ParlayNFTMaker]
+artifact="ParlayNFT"
+args=[
+  "Parlay Maker",
+  "PMKR"
+]
+
+[deploy.ParlayNFTTaker]
+artifact="ParlayNFT"
+args=[
+  "Parlay Taker",
+  "PTKR"
+]
+
+[deploy.ParlayPool]
+artifact="ParlayPool"
+args=[
+  "<%= settings.collateralToken %>",
+  "<%= ParlayNFTMaker.address %>",
+  "<%= ParlayNFTTaker.address %>",
+  "<%= settings.maxParlayMarkets %>",
+  "<%= settings.minCollateral %>",
+  "<%= settings.minRequestExpirationTime %>",
+  "<%= settings.maxRequestExpirationTime %>",
+  ["<%= settings.approvedTakers %>"]
+]
+depends=["deploy.ParlayNFTMaker", "deploy.ParlayNFTTaker"]
+highlight=true
+
+[invoke.transferMakerNFTOwnership]
+target="ParlayNFTMaker"
+func="transferOwnership"
+args=[
+  "<%= ParlayPool.address %>"
+]
+depends=["deploy.ParlayPool"]
+
+[invoke.transferTakerNFTOwnership]
+target="ParlayNFTTaker"
+func="transferOwnership"
+args=[
+  "<%= ParlayPool.address %>"
+]
+depends=["deploy.ParlayPool"] 

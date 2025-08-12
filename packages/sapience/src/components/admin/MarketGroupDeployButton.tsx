@@ -19,13 +19,18 @@ import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { AbiEvent, Address } from 'viem';
 import { decodeEventLog, parseAbiItem } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import {
+  useWaitForTransactionReceipt,
+  useWriteContract,
+  useSwitchChain,
+  useChainId,
+} from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 
-// Event ABI item for parsing logs
-const marketGroupInitializedEvent = parseAbiItem(
-  'event MarketGroupInitialized(address indexed sender, address indexed marketGroup, uint256 nonce)'
+// Event ABI item for parsing logs (from MarketGroupFactory)
+const marketGroupDeployedEvent = parseAbiItem(
+  'event MarketGroupDeployed(address indexed sender, address indexed marketGroup, uint256 nonce)'
 ) as AbiEvent;
 
 interface MarketGroupDeployButtonProps {
@@ -48,6 +53,8 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
     writeContract,
     reset: resetWriteContract, // Function to reset write state
   } = useWriteContract();
+  const { switchChain } = useSwitchChain();
+  const currentChainId = useChainId();
 
   const {
     data: receipt,
@@ -81,7 +88,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
                 | []
                 | [`0x${string}`, ...`0x${string}`[]];
               return decodeEventLog({
-                abi: [marketGroupInitializedEvent],
+                abi: [marketGroupDeployedEvent],
                 data: log.data,
                 topics: typedTopics,
               });
@@ -92,7 +99,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
           .filter(
             (decodedLog) =>
               decodedLog !== null &&
-              decodedLog.eventName === 'MarketGroupInitialized'
+              decodedLog.eventName === 'MarketGroupDeployed'
           );
 
         if (logs.length > 0 && logs[0]?.args && 'marketGroup' in logs[0].args) {
@@ -167,7 +174,6 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       // Prepare parameters for the contract call
       const args = [
         group.collateralAsset as Address,
-        [],
         BigInt(group.minTradeSize),
         group.isBridged,
         {
@@ -185,6 +191,11 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
       ] as const;
 
       console.log('Calling writeContract with args:', args);
+
+      if (currentChainId !== group.chainId && switchChain) {
+        switchChain({ chainId: group.chainId });
+        return;
+      }
 
       writeContract({
         address: group.factoryAddress as Address,

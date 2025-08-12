@@ -9,7 +9,7 @@ import { Badge } from '@sapience/ui/components/ui/badge';
 import { AddressDisplay } from './AddressDisplay';
 import LottieLoader from './LottieLoader';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
-import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants/eas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
@@ -239,7 +239,7 @@ const Comments = ({
     isLoading: isEasLoading,
     refetch,
   } = usePredictions({
-    schemaId: CONVERGE_SCHEMA_UID,
+    schemaId: SCHEMA_UID,
     attesterAddress: shouldFilterByAttester ? address : undefined,
   });
 

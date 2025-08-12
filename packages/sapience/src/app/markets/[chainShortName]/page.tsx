@@ -127,7 +127,7 @@ const DynamicWagerFormFactory = dynamic(
 const WagerForm = ({
   marketGroupData,
   marketClassification,
-  permitData,
+  permitData: _permitData,
   onWagerSuccess,
   activeMarket,
 }: {
@@ -189,7 +189,6 @@ const WagerForm = ({
         <DynamicWagerFormFactory
           marketClassification={marketClassification}
           marketGroupData={marketGroupData}
-          isPermitted={!!permitData?.permitted}
           onSuccess={onWagerSuccess}
         />
       </div>
