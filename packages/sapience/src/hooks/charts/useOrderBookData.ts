@@ -7,10 +7,6 @@ import { usePublicClient } from 'wagmi';
 import type { GraphTick, PoolData } from '~/lib/utils/liquidityUtil';
 import { getFullPool } from '~/lib/utils/liquidityUtil';
 
-
-
-
-
 // Assuming constants like TICK_SPACING_DEFAULT are available or can be added
 // import { TICK_SPACING_DEFAULT } from '~/lib/constants';
 // TODO: Define or import TICK_SPACING_DEFAULT
@@ -60,8 +56,6 @@ type TickDataTuple = [
 ];
 
 // --- Helper Functions ---
-
-
 
 // Basic number formatting (replace with more robust solution if needed)
 const formatNumber = (num: number | undefined | null, decimals = 2): string => {
@@ -175,7 +169,6 @@ export function useOrderBookData({
     return Math.max(1, Math.floor(resolvedSpacing));
   }, [pool?.tickSpacing, tickSpacingProp]);
 
-
   // 1. Generate Tick Range for Querying
   const ticks = useMemo(() => {
     if (!enabled) {
@@ -224,7 +217,7 @@ export function useOrderBookData({
     ) {
       return [];
     }
-    
+
     return ticks.map((tick) => ({
       abi: IUniswapV3PoolABI.abi as AbiFunction[], // Cast ABI
       address: poolAddress as `0x${string}`, // Ensure address format
@@ -238,48 +231,45 @@ export function useOrderBookData({
   const [allTickData, setAllTickData] = useState<any[]>([]);
   const [isLoadingTicks, setIsLoadingTicks] = useState(false);
   const [isErrorTicks, setIsErrorTicks] = useState(false);
-  const [readContractsError, setReadContractsError] = useState<Error | null>(null);
-  
+  const [readContractsError, setReadContractsError] = useState<Error | null>(
+    null
+  );
+
   const publicClient = usePublicClient({ chainId });
-  
-  
+
   // Fetch all data using true parallel multicall
   useEffect(() => {
     const fetchData = async () => {
       if (!enabled || !publicClient || contracts.length === 0) {
         return;
       }
-      
+
       setIsLoadingTicks(true);
       setIsErrorTicks(false);
       setReadContractsError(null);
-      
+
       try {
-        
         // This is the true parallel implementation using viem's multicall
         const results = await publicClient.multicall({
-          contracts
+          contracts,
         });
-        
+
         setAllTickData(results);
         setIsLoadingTicks(false);
       } catch (error) {
         console.error('Multicall error:', error);
         setIsErrorTicks(true);
-        setReadContractsError(error instanceof Error ? error : new Error('Multicall failed'));
+        setReadContractsError(
+          error instanceof Error ? error : new Error('Multicall failed')
+        );
         setIsLoadingTicks(false);
       }
     };
-    
+
     fetchData();
   }, [enabled, publicClient, contracts]);
 
-
-
-  // 4. Data processing (now handled in the multicall effect above)
-  // The data is already processed and stored in allTickData from the multicall effect
-
-  // 6. Process Raw Tick Data into PoolData
+  // 4. Process Raw Tick Data into PoolData
   useEffect(() => {
     const processData = async () => {
       // Process when we have data and pool is available
@@ -370,7 +360,7 @@ export function useOrderBookData({
     actualTickSpacing,
   ]);
 
-  // 7. Derive Order Book Levels from Processed Data
+  // 5. Derive Order Book Levels from Processed Data
   useEffect(() => {
     if (!processedPoolData || !pool) {
       setOrderBookData({ asks: [], bids: [], lastPrice: null });
@@ -484,7 +474,7 @@ export function useOrderBookData({
     });
   }, [processedPoolData, pool, quoteTokenName, baseTokenName]);
 
-  // 8. Combine loading states and return
+  // 6. Combine loading states and return
   const isLoading = Boolean(
     isLoadingTicks ||
       (!processedPoolData &&
