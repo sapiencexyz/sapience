@@ -7,10 +7,16 @@ import { useReadContracts } from 'wagmi';
 import type { GraphTick, PoolData } from '~/lib/utils/liquidityUtil';
 import { getFullPool } from '~/lib/utils/liquidityUtil';
 
+import {
+  useWhatChanged,
+} from '@simbathesailor/use-what-changed';
+
+
+
 // Assuming constants like TICK_SPACING_DEFAULT are available or can be added
 // import { TICK_SPACING_DEFAULT } from '~/lib/constants';
 // TODO: Define or import TICK_SPACING_DEFAULT
-const TICK_SPACING_DEFAULT = 60;
+const TICK_SPACING_DEFAULT = 200;
 
 // --- Types ---
 
@@ -56,6 +62,16 @@ type TickDataTuple = [
 ];
 
 // --- Helper Functions ---
+
+// Chunk array into smaller groups for batching
+const chunkArray = <T>(array: T[], chunkSize: number): T[][] => {
+  console.log("CALLED CHUNK ARRAY");
+  const chunks: T[][] = [];
+  for (let i = 0; i < array.length; i += chunkSize) {
+    chunks.push(array.slice(i, i + chunkSize));
+  }
+  return chunks;
+};
 
 // Basic number formatting (replace with more robust solution if needed)
 const formatNumber = (num: number | undefined | null, decimals = 2): string => {
@@ -164,10 +180,11 @@ export function useOrderBookData({
   const actualTickSpacing = useMemo(() => {
     // Use pool's spacing if available and valid, otherwise fall back to prop or default
     const resolvedSpacing =
-      pool?.tickSpacing ?? tickSpacingProp ?? TICK_SPACING_DEFAULT;
+      pool?.tickSpacing || tickSpacingProp || TICK_SPACING_DEFAULT;
     // Ensure spacing is a positive integer
     return Math.max(1, Math.floor(resolvedSpacing));
   }, [pool?.tickSpacing, tickSpacingProp]);
+
 
   // 1. Generate Tick Range for Querying
   const ticks = useMemo(() => {
@@ -195,7 +212,7 @@ export function useOrderBookData({
 
     for (let i = alignedMinTick; i <= alignedMaxTick; i += spacing) {
       // Basic check against Uniswap V3 theoretical min/max ticks
-      if (i >= -887272 && i <= 887272) {
+      if (-887272 <= i && i <= 887272) {
         tickRange.push(i);
       }
     }
@@ -207,8 +224,9 @@ export function useOrderBookData({
     enabled,
   ]);
 
-  // 2. Prepare Contracts for useReadContracts
-  const contracts = useMemo(() => {
+  // 2. Prepare Contracts for useReadContracts with chunking
+  const CHUNK_SIZE = 50; // Adjust based on RPC limits and performance
+  const contractChunks = useMemo(() => {
     if (
       !poolAddress ||
       poolAddress === '0x' ||
@@ -217,38 +235,86 @@ export function useOrderBookData({
     ) {
       return [];
     }
-    return ticks.map((tick) => ({
+    const contracts = ticks.map((tick) => ({
       abi: IUniswapV3PoolABI.abi as AbiFunction[], // Cast ABI
       address: poolAddress as `0x${string}`, // Ensure address format
       functionName: 'ticks',
       args: [tick],
       chainId,
     }));
+    
+    return chunkArray(contracts, CHUNK_SIZE);
   }, [ticks, poolAddress, chainId]);
 
-  // 3. Fetch Raw Tick Data
+  // 3. Sequential chunked data fetching
+  const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
+  const [allTickData, setAllTickData] = useState<any[]>([]);
+  const [isLoadingTicks, setIsLoadingTicks] = useState(false);
+  const [isErrorTicks, setIsErrorTicks] = useState(false);
+  const [readContractsError, setReadContractsError] = useState<Error | null>(null);
+  
+  const currentChunk = contractChunks[currentChunkIndex] || [];
+  
+  // Fetch data for current chunk
   const {
     data: rawTickData,
-    isLoading: isLoadingTicks,
-    isError: isErrorTicks,
-    error: readContractsError, // Capture the top-level error
+    isLoading: isLoadingCurrentChunk,
+    isError: isErrorCurrentChunk,
+    error: currentChunkError,
   } = useReadContracts({
-    contracts,
+    contracts: currentChunk,
     query: {
-      enabled: enabled && contracts.length > 0, // Only run expensive RPC calls if enabled and contracts are defined
-      // Add other query options like refetchInterval if needed
+      enabled: enabled && currentChunk.length > 0 && currentChunkIndex < contractChunks.length,
     },
   });
 
-  // 4. Process Raw Tick Data into PoolData
+  console.log("chunks", contractChunks);
+
+
+  // 5. Sequential chunk processing with useEffect
+  useWhatChanged([currentChunkIndex, rawTickData, isLoadingCurrentChunk, isErrorCurrentChunk], "currentChunkIndex, rawTickData, isLoadingCurrentChunk, isErrorCurrentChunk", "Hook 5");
+  useEffect(() => {
+
+    console.log('Chunk processing:', { currentChunkIndex, contractChunksLength: contractChunks.length, isLoadingCurrentChunk, isErrorCurrentChunk });
+    
+    // Update loading state
+    setIsLoadingTicks(isLoadingCurrentChunk);
+    setIsErrorTicks(isErrorCurrentChunk);
+    setReadContractsError(currentChunkError);
+    
+    // If we have data from the current chunk, process it
+    if (rawTickData && Array.isArray(rawTickData) && !isLoadingCurrentChunk && !isErrorCurrentChunk) {
+      console.log('Processing chunk data:', rawTickData.length, 'items');
+      
+      setAllTickData(prev => {
+        const newData = [...prev, ...rawTickData];
+        console.log('Updated allTickData:', newData.length, 'total items');
+        return newData;
+      });
+      
+      // Move to next chunk if available
+      if (currentChunkIndex < contractChunks.length - 1) {
+        console.log('Moving to next chunk:', currentChunkIndex + 1);
+        setCurrentChunkIndex(previousIdx => previousIdx + 1);
+      } else {
+        console.log('All chunks processed');
+      }
+    }
+  }, [currentChunkIndex, rawTickData, isLoadingCurrentChunk, isErrorCurrentChunk, currentChunkError, contractChunks.length]);
+
+  // 6. Process Raw Tick Data into PoolData
   useEffect(() => {
     const processData = async () => {
-      if (isLoadingTicks || !rawTickData || !pool) {
+      // Only process when we have all chunks or if there are no chunks
+      const hasAllChunks = contractChunks.length === 0 || 
+        (allTickData.length > 0 && currentChunkIndex >= contractChunks.length - 1);
+      
+      if (isLoadingTicks || !hasAllChunks || !pool) {
         setProcessedPoolData(undefined); // Clear data while loading or if pool/data missing
         return;
       }
 
-      if (isErrorTicks || !Array.isArray(rawTickData)) {
+      if (isErrorTicks || !Array.isArray(allTickData)) {
         console.error(
           'Error fetching raw tick data or data format invalid:',
           readContractsError
@@ -261,11 +327,11 @@ export function useOrderBookData({
       }
 
       try {
-        const processedTicks: GraphTick[] = rawTickData
+        const processedTicks: GraphTick[] = allTickData
           .map((tickData, index) => {
             if (tickData.status === 'failure') {
               console.warn(
-                `Failed to fetch tick ${ticks[index]}:`,
+                `Failed to fetch tick at index ${index}:`,
                 tickData.error // Cast error to Error
               );
               return null; // Skip failed ticks
@@ -274,12 +340,15 @@ export function useOrderBookData({
             if (!result) {
               // Should not happen if status is success, but check anyway
               console.warn(
-                `Missing result for successful tick ${ticks[index]}`
+                `Missing result for successful tick at index ${index}`
               );
               return null;
             }
+            // Map back to original tick index
+            const originalTickIndex = Math.floor(index / CHUNK_SIZE) * CHUNK_SIZE + (index % CHUNK_SIZE);
+            const tickValue = ticks[originalTickIndex];
             return {
-              tickIdx: ticks[index].toString(),
+              tickIdx: tickValue.toString(),
               liquidityGross: result[0].toString(),
               liquidityNet: result[1].toString(),
               // price0/price1 can be derived later if needed
@@ -319,16 +388,18 @@ export function useOrderBookData({
 
     processData(); // Call the async function
   }, [
-    rawTickData,
+    allTickData,
     pool,
     ticks,
     isLoadingTicks,
     isErrorTicks,
     readContractsError,
     actualTickSpacing,
+    currentChunkIndex,
+    contractChunks.length,
   ]);
 
-  // 6. Derive Order Book Levels from Processed Data
+  // 7. Derive Order Book Levels from Processed Data
   useEffect(() => {
     if (!processedPoolData || !pool) {
       setOrderBookData({ asks: [], bids: [], lastPrice: null });
@@ -442,12 +513,12 @@ export function useOrderBookData({
     });
   }, [processedPoolData, pool, quoteTokenName, baseTokenName]);
 
-  // 7. Combine loading states and return
+  // 8. Combine loading states and return
   const isLoading = Boolean(
     isLoadingTicks ||
       (!processedPoolData &&
         !hookError &&
-        contracts.length > 0 &&
+        contractChunks.length > 0 &&
         pool !== null) ||
       (processedPoolData &&
         orderBookData.asks.length === 0 &&
