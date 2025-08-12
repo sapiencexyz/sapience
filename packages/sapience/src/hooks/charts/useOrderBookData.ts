@@ -2,14 +2,12 @@ import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/I
 import type { Pool } from '@uniswap/v3-sdk';
 import { useEffect, useMemo, useState } from 'react';
 import type { AbiFunction } from 'viem';
-import { useReadContracts } from 'wagmi';
+import { usePublicClient } from 'wagmi';
 
 import type { GraphTick, PoolData } from '~/lib/utils/liquidityUtil';
 import { getFullPool } from '~/lib/utils/liquidityUtil';
 
-import {
-  useWhatChanged,
-} from '@simbathesailor/use-what-changed';
+
 
 
 
@@ -63,15 +61,7 @@ type TickDataTuple = [
 
 // --- Helper Functions ---
 
-// Chunk array into smaller groups for batching
-const chunkArray = <T>(array: T[], chunkSize: number): T[][] => {
-  console.log("CALLED CHUNK ARRAY");
-  const chunks: T[][] = [];
-  for (let i = 0; i < array.length; i += chunkSize) {
-    chunks.push(array.slice(i, i + chunkSize));
-  }
-  return chunks;
-};
+
 
 // Basic number formatting (replace with more robust solution if needed)
 const formatNumber = (num: number | undefined | null, decimals = 2): string => {
@@ -224,9 +214,8 @@ export function useOrderBookData({
     enabled,
   ]);
 
-  // 2. Prepare Contracts for useReadContracts with chunking
-  const CHUNK_SIZE = 50; // Adjust based on RPC limits and performance
-  const contractChunks = useMemo(() => {
+  // 2. Prepare Contracts for useReadContracts
+  const contracts = useMemo(() => {
     if (
       !poolAddress ||
       poolAddress === '0x' ||
@@ -235,81 +224,66 @@ export function useOrderBookData({
     ) {
       return [];
     }
-    const contracts = ticks.map((tick) => ({
+    
+    return ticks.map((tick) => ({
       abi: IUniswapV3PoolABI.abi as AbiFunction[], // Cast ABI
       address: poolAddress as `0x${string}`, // Ensure address format
       functionName: 'ticks',
       args: [tick],
       chainId,
     }));
-    
-    return chunkArray(contracts, CHUNK_SIZE);
   }, [ticks, poolAddress, chainId]);
 
-  // 3. Sequential chunked data fetching
-  const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
+  // 3. Parallel data fetching
   const [allTickData, setAllTickData] = useState<any[]>([]);
   const [isLoadingTicks, setIsLoadingTicks] = useState(false);
   const [isErrorTicks, setIsErrorTicks] = useState(false);
   const [readContractsError, setReadContractsError] = useState<Error | null>(null);
   
-  const currentChunk = contractChunks[currentChunkIndex] || [];
+  const publicClient = usePublicClient({ chainId });
   
-  // Fetch data for current chunk
-  const {
-    data: rawTickData,
-    isLoading: isLoadingCurrentChunk,
-    isError: isErrorCurrentChunk,
-    error: currentChunkError,
-  } = useReadContracts({
-    contracts: currentChunk,
-    query: {
-      enabled: enabled && currentChunk.length > 0 && currentChunkIndex < contractChunks.length,
-    },
-  });
-
-  console.log("chunks", contractChunks);
-
-
-  // 5. Sequential chunk processing with useEffect
-  useWhatChanged([currentChunkIndex, rawTickData, isLoadingCurrentChunk, isErrorCurrentChunk], "currentChunkIndex, rawTickData, isLoadingCurrentChunk, isErrorCurrentChunk", "Hook 5");
+  
+  // Fetch all data using true parallel multicall
   useEffect(() => {
-
-    console.log('Chunk processing:', { currentChunkIndex, contractChunksLength: contractChunks.length, isLoadingCurrentChunk, isErrorCurrentChunk });
-    
-    // Update loading state
-    setIsLoadingTicks(isLoadingCurrentChunk);
-    setIsErrorTicks(isErrorCurrentChunk);
-    setReadContractsError(currentChunkError);
-    
-    // If we have data from the current chunk, process it
-    if (rawTickData && Array.isArray(rawTickData) && !isLoadingCurrentChunk && !isErrorCurrentChunk) {
-      console.log('Processing chunk data:', rawTickData.length, 'items');
-      
-      setAllTickData(prev => {
-        const newData = [...prev, ...rawTickData];
-        console.log('Updated allTickData:', newData.length, 'total items');
-        return newData;
-      });
-      
-      // Move to next chunk if available
-      if (currentChunkIndex < contractChunks.length - 1) {
-        console.log('Moving to next chunk:', currentChunkIndex + 1);
-        setCurrentChunkIndex(previousIdx => previousIdx + 1);
-      } else {
-        console.log('All chunks processed');
+    const fetchData = async () => {
+      if (!enabled || !publicClient || contracts.length === 0) {
+        return;
       }
-    }
-  }, [currentChunkIndex, rawTickData, isLoadingCurrentChunk, isErrorCurrentChunk, currentChunkError, contractChunks.length]);
+      
+      setIsLoadingTicks(true);
+      setIsErrorTicks(false);
+      setReadContractsError(null);
+      
+      try {
+        
+        // This is the true parallel implementation using viem's multicall
+        const results = await publicClient.multicall({
+          contracts
+        });
+        
+        setAllTickData(results);
+        setIsLoadingTicks(false);
+      } catch (error) {
+        console.error('Multicall error:', error);
+        setIsErrorTicks(true);
+        setReadContractsError(error instanceof Error ? error : new Error('Multicall failed'));
+        setIsLoadingTicks(false);
+      }
+    };
+    
+    fetchData();
+  }, [enabled, publicClient, contracts]);
+
+
+
+  // 4. Data processing (now handled in the multicall effect above)
+  // The data is already processed and stored in allTickData from the multicall effect
 
   // 6. Process Raw Tick Data into PoolData
   useEffect(() => {
     const processData = async () => {
-      // Only process when we have all chunks or if there are no chunks
-      const hasAllChunks = contractChunks.length === 0 || 
-        (allTickData.length > 0 && currentChunkIndex >= contractChunks.length - 1);
-      
-      if (isLoadingTicks || !hasAllChunks || !pool) {
+      // Process when we have data and pool is available
+      if (isLoadingTicks || !allTickData.length || !pool) {
         setProcessedPoolData(undefined); // Clear data while loading or if pool/data missing
         return;
       }
@@ -345,8 +319,7 @@ export function useOrderBookData({
               return null;
             }
             // Map back to original tick index
-            const originalTickIndex = Math.floor(index / CHUNK_SIZE) * CHUNK_SIZE + (index % CHUNK_SIZE);
-            const tickValue = ticks[originalTickIndex];
+            const tickValue = ticks[index];
             return {
               tickIdx: tickValue.toString(),
               liquidityGross: result[0].toString(),
@@ -395,8 +368,6 @@ export function useOrderBookData({
     isErrorTicks,
     readContractsError,
     actualTickSpacing,
-    currentChunkIndex,
-    contractChunks.length,
   ]);
 
   // 7. Derive Order Book Levels from Processed Data
@@ -518,7 +489,7 @@ export function useOrderBookData({
     isLoadingTicks ||
       (!processedPoolData &&
         !hookError &&
-        contractChunks.length > 0 &&
+        contracts.length > 0 &&
         pool !== null) ||
       (processedPoolData &&
         orderBookData.asks.length === 0 &&
