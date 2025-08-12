@@ -17,7 +17,7 @@ import {
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 
 import Image from 'next/image';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useState, useMemo, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,8 +31,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { wagerAmountSchema } from '~/components/forecasting/forms/inputs/WagerInput';
-import { useMultipleMarketGroups } from '~/hooks/graphql/useMultipleMarketGroups';
-import { getChainShortName } from '~/lib/utils/util';
+
 import { MarketGroupClassification } from '~/lib/types';
 import {
   getDefaultFormPredictionValue,
@@ -51,18 +50,23 @@ import { BetslipContent } from '~/components/layout/Betslip/BetslipContent';
 const Betslip = () => {
   const {
     betSlipPositions,
-    removePosition,
-    updatePosition,
     isPopoverOpen,
     setIsPopoverOpen,
     clearBetSlip,
+    positionsWithMarketData,
   } = useBetSlipContext();
 
   const [isParlayMode, setIsParlayMode] = useState(false);
   const isMobile = useIsMobile();
   const { login, authenticated } = usePrivy();
   const { sendCalls, isPending: isPendingWriteContract } =
-    useSapiensWriteContract({});
+    useSapiensWriteContract({
+      onSuccess: () => {
+        clearBetSlip();
+      },
+      successMessage: 'Your prediction has been submitted.',
+      fallbackErrorMessage: 'Failed to submit prediction',
+    });
   const queryClient = useQueryClient();
   const router = useRouter();
   const { toast } = useToast();
@@ -74,69 +78,12 @@ const Betslip = () => {
     }
   }, [betSlipPositions.length, isParlayMode]);
 
-  // Create a map of unique market identifiers to avoid duplicate queries
-  const uniqueMarkets = useMemo(() => {
-    const marketMap = new Map();
-    betSlipPositions.forEach((position) => {
-      // Fallback to base chain (8453) if chainId is missing (for existing positions)
-      const chainId = position.chainId || 8453;
-      const key = `${chainId}-${position.marketAddress}`;
-
-      if (!marketMap.has(key)) {
-        const chainShortName = getChainShortName(chainId);
-
-        marketMap.set(key, {
-          chainId,
-          marketAddress: position.marketAddress,
-          chainShortName,
-        });
-      }
-    });
-    return Array.from(marketMap.values());
-  }, [betSlipPositions]);
-
-  // Use the custom hook that follows React's rules of hooks
-  const { queries: marketQueries } = useMultipleMarketGroups(uniqueMarkets);
-
-  // Create positions with market data
-  const positionsWithMarketData = useMemo(() => {
-    console.log('Creating positionsWithMarketData:');
-    console.log('betSlipPositions:', betSlipPositions);
-    console.log('uniqueMarkets:', uniqueMarkets);
-    console.log('marketQueries:', marketQueries);
-
-    return betSlipPositions.map((position) => {
-      // Use same fallback logic for consistency
-      const effectiveChainId = position.chainId || 8453;
-
-      const marketIndex = uniqueMarkets.findIndex(
-        (market) =>
-          market.chainId === effectiveChainId &&
-          market.marketAddress === position.marketAddress
-      );
-
-      const marketQuery =
-        marketIndex >= 0 ? marketQueries[marketIndex] : undefined;
-
-      const result = {
-        position: {
-          ...position,
-          chainId: effectiveChainId, // Ensure position has chainId for UI display
-        },
-        marketGroupData: marketQuery?.marketGroupData,
-        marketClassification: marketQuery?.marketClassification,
-        isLoading: marketQuery?.isLoading || false,
-        error: marketQuery?.isError,
-      };
-
-      console.log(`Position ${position.id}:`, result);
-      return result;
-    });
-  }, [betSlipPositions, marketQueries, uniqueMarkets]);
-
   // Create dynamic form schema based on positions
   const formSchema = useMemo(() => {
-    const positionsSchema: Record<string, z.ZodObject<any>> = {};
+    const positionsSchema: Record<
+      string,
+      z.ZodObject<{ predictionValue: z.ZodString; wagerAmount: z.ZodTypeAny }>
+    > = {};
 
     betSlipPositions.forEach((position) => {
       positionsSchema[position.id] = z.object({
@@ -181,14 +128,20 @@ const Betslip = () => {
   }, [betSlipPositions]);
 
   // Set up form for individual wagers
-  const individualMethods = useForm({
+  const individualMethods = useForm<{
+    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+  }>({
     resolver: zodResolver(formSchema),
     defaultValues: generateFormValues,
     mode: 'onChange',
   });
 
   // Set up form for parlay mode
-  const parlayMethods = useForm({
+  const parlayMethods = useForm<{
+    wagerAmount: string;
+    limitAmount: string | number;
+    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+  }>({
     defaultValues: {
       ...generateFormValues,
       wagerAmount: DEFAULT_WAGER_AMOUNT,
@@ -199,6 +152,20 @@ const Betslip = () => {
               parseFloat(DEFAULT_WAGER_AMOUNT))
           : '10',
     },
+  });
+
+  // Reactive form field values (avoid calling watch inside effects/memos)
+  const parlayWagerAmount = useWatch({
+    control: parlayMethods.control,
+    name: 'wagerAmount',
+  });
+  const parlayLimitAmount = useWatch({
+    control: parlayMethods.control,
+    name: 'limitAmount',
+  });
+  const parlayPositionsForm = useWatch({
+    control: parlayMethods.control,
+    name: 'positions',
   });
 
   // Reset form when betslip positions change
@@ -217,53 +184,48 @@ const Betslip = () => {
   }, [parlayMethods, generateFormValues]);
 
   // Calculate and set minimum payout when list length or wager amount changes
+  // Keep limitAmount in sync with wager amount and list length
+  // Calculate minimum payout: 1 / (0.5^(list length) * wager amount)
   useEffect(() => {
-    const wagerAmount =
-      parlayMethods.watch('wagerAmount') || DEFAULT_WAGER_AMOUNT;
+    const wagerAmount = parlayWagerAmount || DEFAULT_WAGER_AMOUNT;
+    const listLength = betSlipPositions.length;
+
+    if (listLength > 0) {
+      const minimumPayout =
+        1 / (Math.pow(0.5, listLength) * parseFloat(wagerAmount));
+      parlayMethods.setValue(
+        'limitAmount',
+        Number.isFinite(minimumPayout) ? minimumPayout.toFixed(2) : '0',
+        { shouldValidate: true }
+      );
+    }
+  }, [parlayWagerAmount, betSlipPositions.length, parlayMethods]);
+
+  // Watch for wager amount changes and update minimum payout accordingly
+  useEffect(() => {
+    const wagerAmount = parlayWagerAmount || DEFAULT_WAGER_AMOUNT;
     const listLength = betSlipPositions.length;
 
     if (listLength > 0) {
       // Calculate minimum payout: 1 / (0.5^(list length) * wager amount)
       const minimumPayout =
         1 / (Math.pow(0.5, listLength) * parseFloat(wagerAmount));
-      parlayMethods.setValue('limitAmount', minimumPayout, {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true,
-      });
-    }
-  }, [betSlipPositions.length, parlayMethods]);
-
-  // Watch for wager amount changes and update minimum payout accordingly
-  useEffect(() => {
-    const subscription = parlayMethods.watch((value, { name }) => {
-      if (name === 'wagerAmount') {
-        const wagerAmount = value.wagerAmount || DEFAULT_WAGER_AMOUNT;
-        const listLength = betSlipPositions.length;
-
-        if (listLength > 0) {
-          // Calculate minimum payout: 1 / (0.5^(list length) * wager amount)
-          const minimumPayout =
-            1 / (Math.pow(0.5, listLength) * parseFloat(wagerAmount));
-          parlayMethods.setValue('limitAmount', minimumPayout.toFixed(2), {
-            shouldValidate: true,
-            shouldDirty: true,
-            shouldTouch: true,
-          });
+      parlayMethods.setValue(
+        'limitAmount',
+        Number.isFinite(minimumPayout) ? minimumPayout.toFixed(2) : '0',
+        {
+          shouldValidate: true,
         }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [betSlipPositions.length, parlayMethods]);
+      );
+    }
+  }, [parlayWagerAmount, betSlipPositions.length, parlayMethods]);
 
   // Prepare parlay positions for the hook
   const parlayPositions = useMemo(() => {
-    const limitAmount = (parlayMethods.watch('limitAmount') ?? '10').toString();
-    const positionsForm = parlayMethods.getValues('positions') as Record<
-      string,
-      { predictionValue?: string }
-    >;
+    const limitAmount = (parlayLimitAmount ?? '10').toString();
+    const positionsForm =
+      (parlayPositionsForm as Record<string, { predictionValue?: string }>) ||
+      {};
 
     return betSlipPositions.map((position) => {
       const predValue = positionsForm?.[position.id]?.predictionValue;
@@ -275,15 +237,15 @@ const Betslip = () => {
         limit: limitAmount,
       };
     });
-  }, [betSlipPositions, parlayMethods]);
+  }, [betSlipPositions, parlayLimitAmount, parlayPositionsForm]);
 
   // Calculate payout amount (for now, use 2x the wager as a simple calculation)
   const payoutAmount = useMemo(() => {
-    const wager = parlayMethods.watch('wagerAmount') || DEFAULT_WAGER_AMOUNT;
+    const wager = parlayWagerAmount || DEFAULT_WAGER_AMOUNT;
     const multiplier =
       betSlipPositions.length > 1 ? betSlipPositions.length * 1.5 : 2;
     return (parseFloat(wager) * multiplier).toString();
-  }, [parlayMethods, betSlipPositions.length]);
+  }, [parlayWagerAmount, betSlipPositions.length]);
 
   // Use the parlay submission hook
   const {
@@ -473,20 +435,15 @@ const Betslip = () => {
   };
 
   const contentProps = {
-    betSlipPositions,
-    removePosition,
-    updatePosition,
-    setIsPopoverOpen,
     isParlayMode,
     setIsParlayMode,
-    positionsWithMarketData,
     individualMethods,
     parlayMethods,
     handleIndividualSubmit,
     handleParlaySubmit,
     isParlaySubmitting,
     parlayError,
-    isSubmitting: isPendingWriteContract,
+    isSubmitting: Boolean(isPendingWriteContract),
   };
 
   if (isMobile) {

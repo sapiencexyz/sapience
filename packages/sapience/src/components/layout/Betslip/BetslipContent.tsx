@@ -1,36 +1,31 @@
+'use client';
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
-import type { MarketGroupType } from '@/sapience/ui/types';
+// import type { MarketGroupType } from '@/sapience/ui/types';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import Link from 'next/link';
-import { FormProvider } from 'react-hook-form';
+import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { SquareStack, AlertTriangle } from 'lucide-react';
 import { Button } from '@/sapience/ui/index';
-import type { MarketGroupClassification } from '~/lib/types';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
+// import type { MarketGroupClassification } from '~/lib/types';
 import YesNoWagerInput from '~/components/forecasting/forms/inputs/YesNoWagerInput';
 import WagerInputWithQuote from '~/components/forecasting/forms/shared/WagerInputWithQuote';
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/forecasting/forms';
 
-interface PositionWithMarketData {
-  position: any; // BetSlipPosition from context
-  marketGroupData?: MarketGroupType;
-  marketClassification?: MarketGroupClassification;
-  isLoading: boolean;
-  error?: any;
-}
-
 interface BetslipContentProps {
-  betSlipPositions: any[];
-  removePosition: (id: string) => void;
-  updatePosition: (id: string, updates: any) => void;
-  setIsPopoverOpen: (open: boolean) => void;
   isParlayMode: boolean;
   setIsParlayMode: (mode: boolean) => void;
-  positionsWithMarketData: PositionWithMarketData[];
-  individualMethods: any;
-  parlayMethods: any;
+  individualMethods: UseFormReturn<{
+    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+  }>;
+  parlayMethods: UseFormReturn<{
+    wagerAmount: string;
+    limitAmount: string | number;
+    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+  }>;
   handleIndividualSubmit: () => void;
   handleParlaySubmit: () => void;
   isParlaySubmitting: boolean;
@@ -39,12 +34,8 @@ interface BetslipContentProps {
 }
 
 export const BetslipContent = ({
-  betSlipPositions,
-  removePosition,
-  setIsPopoverOpen,
   isParlayMode,
   setIsParlayMode,
-  positionsWithMarketData,
   individualMethods,
   parlayMethods,
   handleIndividualSubmit,
@@ -53,6 +44,12 @@ export const BetslipContent = ({
   parlayError,
   isSubmitting,
 }: BetslipContentProps) => {
+  const {
+    betSlipPositions,
+    removePosition,
+    setIsPopoverOpen,
+    positionsWithMarketData,
+  } = useBetSlipContext();
   return (
     <>
       {betSlipPositions.length === 0 ? (
@@ -291,8 +288,8 @@ export const BetslipContent = ({
                             value: 0,
                             message: 'Minimum payout must be positive',
                           },
-                          validate: (value: string) => {
-                            const num = parseFloat(value);
+                          validate: (value: unknown) => {
+                            const num = parseFloat(String(value));
                             return !isNaN(num) || 'Must be a valid number';
                           },
                         })}
