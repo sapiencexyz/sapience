@@ -10,7 +10,7 @@ contract ConfigureUMALZBridge is Script {
     function run() external {
         // Replace these env vars with your own values
         address marketLZBridge = 0xCf17b4834223D7e54B92f8e43229C1E82faF7226;
-        address umaLZBridge = 0x5234634f1089C5AF95662E88FeB8a5E0Fc647ed4;
+        address umaLZBridge = 0x6a8Ac3a120E47101F7a794Ca7445fff022D21F10;
         address optimisticOracleV3 = 0x2aBf1Bd76655de80eDB3086114315Eec75AF500c; // UMA Optimistic Oracle V3 at Base
 
         // eid of other network. In this case is Arbitrum One's 

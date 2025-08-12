@@ -10,9 +10,11 @@ contract DeployUMALZBridge is Script {
         // Replace these env vars with your own values
         address endpoint = 0x1a44076050125825900e736c501f859c50fE728c; // Arbitrum One and Base endpoints are the same
         address owner = 0xdb5Af497A73620d881561eDb508012A5f84e9BA2; // Deployer
+        address umaBondCollateralToken = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913; // USDC Bond address is used on Base where UMA is using the bond
+        uint256 umaBondCollateralMinimumAmount = 100000000; // 100 USDC
 
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-        UMALayerZeroBridge uma = new UMALayerZeroBridge(endpoint, owner, 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8, 500000000); // 500 USDC);
+        UMALayerZeroBridge uma = new UMALayerZeroBridge(endpoint, owner, umaBondCollateralToken, umaBondCollateralMinimumAmount);
         vm.stopBroadcast();
 
         console.log("UMALayerZeroBridge deployed to:", address(uma));
