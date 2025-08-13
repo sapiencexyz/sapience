@@ -543,9 +543,6 @@ importers:
       '@playwright/test':
         specifier: ^1.46.1
         version: 1.47.1
-      '@simbathesailor/use-what-changed':
-        specifier: ^2.0.0
-        version: 2.0.0(react@19.1.0)
       '@tanstack/react-query-devtools':
         specifier: ^5.84.2
         version: 5.84.2(@tanstack/react-query@5.84.2(react@19.1.0))(react@19.1.0)
@@ -6327,11 +6324,6 @@ packages:
 
   '@shikijs/vscode-textmate@9.3.0':
     resolution: {integrity: sha512-jn7/7ky30idSkd/O5yDBfAnVt+JJpepofP/POZ1iMOxK59cOfqIgg/Dj0eFsjOTMw+4ycJN0uhZH/Eb0bs/EUA==}
-
-  '@simbathesailor/use-what-changed@2.0.0':
-    resolution: {integrity: sha512-ulBNrPSvfho9UN6zS2fii3AsdEcp2fMaKeqUZZeCNPaZbB6aXyTUhpEN9atjMAbu/eyK3AY8L4SYJUG62Ekocw==}
-    peerDependencies:
-      react: '>=16'
 
   '@simplewebauthn/browser@9.0.1':
     resolution: {integrity: sha512-wD2WpbkaEP4170s13/HUxPcAV5y4ZXaKo1TfNklS5zDefPinIgXOpgz1kpEvobAsaLPa2KeH7AKKX/od1mrBJw==}
@@ -27080,10 +27072,6 @@ snapshots:
       '@types/hast': 3.0.4
 
   '@shikijs/vscode-textmate@9.3.0': {}
-
-  '@simbathesailor/use-what-changed@2.0.0(react@19.1.0)':
-    dependencies:
-      react: 19.1.0
 
   '@simplewebauthn/browser@9.0.1':
     dependencies:

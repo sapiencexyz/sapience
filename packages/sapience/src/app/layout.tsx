@@ -5,16 +5,12 @@ import type React from 'react';
 
 import '@rainbow-me/rainbowkit/styles.css';
 
-import { setUseWhatChange } from '@simbathesailor/use-what-changed';
-
 import Providers from '~/app/providers';
 import Layout from '~/components/layout';
 import GlobalLoader from '~/components/shared/GlobalLoader';
 import PasswordScrim from '~/components/shared/PasswordScrim';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import '~/styles/globals.css';
-
-setUseWhatChange(process.env.NODE_ENV === 'development');
 
 type RootLayoutProps = {
   children: React.ReactNode;
