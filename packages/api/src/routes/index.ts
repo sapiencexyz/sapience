@@ -12,6 +12,7 @@ import { router as cryptoPricesRoutes } from './crypto-prices';
 import { router as refreshCacheRoutes } from './refreshCache';
 import { router as quoterRoutes } from './quoter';
 import { router as createMarketRoutes } from './createMarket';
+import { router as parlayRoutes } from './parlay';
 import { Router } from 'express';
 
 const router = Router();
@@ -30,5 +31,6 @@ router.use('/crypto-prices', cryptoPricesRoutes);
 router.use('/cache', refreshCacheRoutes);
 router.use('/quoter', quoterRoutes);
 router.use('/create-market-group', createMarketRoutes);
+router.use('/parlay', parlayRoutes);
 
 export { router };

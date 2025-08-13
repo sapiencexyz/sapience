@@ -143,10 +143,15 @@ model Market {
   poolAddress                        String?
   optionName                         String?
   rules                              String?
+  similarMarkets                     String[]      @default([])
   /// @TypeGraphQL.field(name: "marketGroup")
   market_group                       MarketGroup? @relation(fields: [marketGroupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_02755ce1b56a981eef76c0b59b4")
   /// @TypeGraphQL.field(name: "positions")
   position                           Position[]
+  /// @TypeGraphQL.field(name: "parlayIncompatibilityAsA")
+  parlayIncompatibilityAsA           ParlayIncompatibility[] @relation("ParlayIncompatibilityA")
+  /// @TypeGraphQL.field(name: "parlayIncompatibilityAsB")
+  parlayIncompatibilityAsB           ParlayIncompatibility[] @relation("ParlayIncompatibilityB")
 
   @@unique([marketGroupId, marketId], map: "UQ_0a0e1fcc7164cb26a957c806314")
   @@unique([marketGroupId, marketId], map: "UQ_6e25995aba1162dc315f8214ee7")
@@ -345,6 +350,29 @@ model Transaction {
   position             Position?             @relation(fields: [positionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ffeefe4d2253a6af172da38fc49")
 
   @@map("transaction")
+}
+
+model ParlayIncompatibility {
+  id                    Int      @id @default(autoincrement())
+  createdAt             DateTime @default(now()) @db.Timestamp(6)
+  
+  // Referencias a los dos markets incompatibles
+  marketAId             Int
+  marketBId             Int
+  
+  // Razón por la cual son incompatibles (opcional)
+  incompatibilityReason String?  @db.Text
+  
+  // Relaciones
+  marketA               Market   @relation("ParlayIncompatibilityA", fields: [marketAId], references: [id])
+  marketB               Market   @relation("ParlayIncompatibilityB", fields: [marketBId], references: [id])
+  
+  // Índices para optimizar consultas
+  @@unique([marketAId, marketBId])
+  @@index([marketAId])
+  @@index([marketBId])
+  
+  @@map("parlay_incompatibility")
 }
 
 enum transaction_type_enum {

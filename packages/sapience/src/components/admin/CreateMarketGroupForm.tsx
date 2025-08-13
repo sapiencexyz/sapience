@@ -168,6 +168,7 @@ const marketSchema = z
       .number()
       .int('Valid Max Price Tick is required'),
     rules: z.string().optional(), // Align with MarketInput type
+    similarMarkets: z.array(z.string().url('Invalid URL format')).optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: 'End Time must be after Start Time',
@@ -337,7 +338,7 @@ const CreateMarketGroupForm = () => {
   const handleMarketChange = (
     index: number,
     field: keyof MarketInput,
-    value: string
+    value: string | string[]
   ) => {
     setMarkets((prevMarkets) => {
       const newMarkets = [...prevMarkets];

@@ -78,6 +78,7 @@ export interface MarketInput {
   claimStatementYesOrNumeric: string;
   claimStatementNo: string;
   rules?: string;
+  similarMarkets?: string[];
 }
 
 const STARTING_PRICE_MIN_ERROR =
@@ -87,7 +88,7 @@ const STARTING_PRICE_MAX_ERROR =
 
 interface MarketFormFieldsProps {
   market: MarketInput;
-  onMarketChange: (field: keyof MarketInput, value: string) => void;
+  onMarketChange: (field: keyof MarketInput, value: string | string[]) => void;
   marketIndex?: number;
   isCompact?: boolean;
   // Additional props for market group level data
@@ -1197,6 +1198,24 @@ const MarketFormFields = ({
           onChange={(e) => onMarketChange('rules', e.target.value)}
           placeholder="Enter any specific rules or conditions for this market..."
         />
+      </div>
+
+      {/* Similar Markets */}
+      <div>
+        <Label htmlFor={fieldId('similarMarkets')}>Similar Markets (Optional)</Label>
+        <textarea
+          id={fieldId('similarMarkets')}
+          className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          value={market.similarMarkets?.join('\n') || ''}
+          onChange={(e) => {
+            const urls = e.target.value.split('\n').filter(url => url.trim() !== '');
+            onMarketChange('similarMarkets', urls);
+          }}
+          placeholder="Enter URLs of similar markets, one per line&#10;Example:&#10;/market/123&#10;/market/456"
+        />
+        <p className="text-sm text-muted-foreground mt-1">
+          Enter one market URL per line. These markets will be marked as similar to this one.
+        </p>
       </div>
 
       {/* Market Question & Option Name */}
