@@ -2,15 +2,11 @@ import IUniswapV3PoolABI from '@uniswap/v3-core/artifacts/contracts/interfaces/I
 import type { Pool } from '@uniswap/v3-sdk';
 import { useEffect, useMemo, useState } from 'react';
 import type { AbiFunction } from 'viem';
-import { usePublicClient } from 'wagmi';
+import { useReadContracts } from 'wagmi';
 
 import type { GraphTick, PoolData } from '~/lib/utils/liquidityUtil';
 import { getFullPool } from '~/lib/utils/liquidityUtil';
-
-// Assuming constants like TICK_SPACING_DEFAULT are available or can be added
-// import { TICK_SPACING_DEFAULT } from '~/lib/constants';
-// TODO: Define or import TICK_SPACING_DEFAULT
-const TICK_SPACING_DEFAULT = 200;
+import { TICK_SPACING as TICK_SPACING_DEFAULT } from '~/lib/constants/numbers';
 
 // --- Types ---
 
@@ -227,53 +223,24 @@ export function useOrderBookData({
     }));
   }, [ticks, poolAddress, chainId]);
 
-  // 3. Parallel data fetching
-  const [allTickData, setAllTickData] = useState<any[]>([]);
-  const [isLoadingTicks, setIsLoadingTicks] = useState(false);
-  const [isErrorTicks, setIsErrorTicks] = useState(false);
-  const [readContractsError, setReadContractsError] = useState<Error | null>(
-    null
-  );
-
-  const publicClient = usePublicClient({ chainId });
-
-  // Fetch all data using true parallel multicall
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!enabled || !publicClient || contracts.length === 0) {
-        return;
-      }
-
-      setIsLoadingTicks(true);
-      setIsErrorTicks(false);
-      setReadContractsError(null);
-
-      try {
-        // This is the true parallel implementation using viem's multicall
-        const results = await publicClient.multicall({
-          contracts,
-        });
-
-        setAllTickData(results);
-        setIsLoadingTicks(false);
-      } catch (error) {
-        console.error('Multicall error:', error);
-        setIsErrorTicks(true);
-        setReadContractsError(
-          error instanceof Error ? error : new Error('Multicall failed')
-        );
-        setIsLoadingTicks(false);
-      }
-    };
-
-    fetchData();
-  }, [enabled, publicClient, contracts]);
+  const {
+    data: allTickData,
+    isLoading: isLoadingTicks,
+    isError: isErrorTicks,
+    error: readContractsError, // Capture the top-level error
+  } = useReadContracts({
+    contracts,
+    query: {
+      enabled: enabled && contracts.length > 0, // Only run expensive RPC calls if enabled and contracts are defined
+      // Add other query options like refetchInterval if needed
+    },
+  });
 
   // 4. Process Raw Tick Data into PoolData
   useEffect(() => {
     const processData = async () => {
       // Process when we have data and pool is available
-      if (isLoadingTicks || !allTickData.length || !pool) {
+      if (isLoadingTicks || !allTickData?.length || !pool) {
         setProcessedPoolData(undefined); // Clear data while loading or if pool/data missing
         return;
       }
