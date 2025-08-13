@@ -2,8 +2,16 @@
 
 import type React from 'react';
 import { createContext, useContext, useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 import type { MarketGroupClassification } from '~/lib/types';
 import { createPositionDefaults } from '~/lib/utils/betslipUtils';
+import {
+  marketGroupQueryConfig,
+  getMarketGroupFromCache,
+  prefetchMarketGroup,
+} from '~/hooks/graphql/useMarketGroup';
+import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 
 // Updated BetSlipPosition type based on requirements
 export interface BetSlipPosition {
@@ -17,6 +25,15 @@ export interface BetSlipPosition {
   marketClassification?: MarketGroupClassification; // Store classification for better form handling
 }
 
+// Interface for market data with position
+export interface PositionWithMarketData {
+  position: BetSlipPosition;
+  marketGroupData: MarketGroupType | undefined;
+  marketClassification: MarketGroupClassification | undefined;
+  isLoading: boolean;
+  error: boolean | null;
+}
+
 interface BetSlipContextType {
   betSlipPositions: BetSlipPosition[];
   addPosition: (position: Omit<BetSlipPosition, 'id'>) => void;
@@ -26,6 +43,8 @@ interface BetSlipContextType {
   openPopover: () => void;
   isPopoverOpen: boolean;
   setIsPopoverOpen: (open: boolean) => void;
+  // New properties for market data
+  positionsWithMarketData: PositionWithMarketData[];
 }
 
 const BetSlipContext = createContext<BetSlipContextType | undefined>(undefined);
@@ -47,9 +66,46 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
     []
   );
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Create positions with market data from cache
+  const positionsWithMarketData = betSlipPositions.map((position) => {
+    // Use same fallback logic for consistency
+    const effectiveChainId = position.chainId || 8453;
+    const queryKey = marketGroupQueryConfig.queryKey(
+      effectiveChainId,
+      position.marketAddress
+    );
+
+    // Get data from cache
+    const marketGroupData = getMarketGroupFromCache(
+      queryClient,
+      effectiveChainId,
+      position.marketAddress
+    );
+    const isLoading = false; // Since we're fetching proactively, not loading
+    const isError =
+      !marketGroupData && !!queryClient.getQueryState(queryKey)?.error;
+
+    // Get market classification from the data
+    const marketClassification = marketGroupData
+      ? getMarketGroupClassification(marketGroupData)
+      : undefined;
+
+    return {
+      position: {
+        ...position,
+        chainId: effectiveChainId, // Ensure position has chainId for UI display
+      },
+      marketGroupData,
+      marketClassification,
+      isLoading,
+      error: isError,
+    };
+  });
 
   const addPosition = useCallback(
-    (position: Omit<BetSlipPosition, 'id'>) => {
+    async (position: Omit<BetSlipPosition, 'id'>) => {
       // Check if a position with the same marketAddress and marketId already exists
       const existingPositionIndex = betSlipPositions.findIndex(
         (p) =>
@@ -89,17 +145,30 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
           prediction: position.prediction ?? defaults.prediction ?? false,
         };
 
-        setBetSlipPositions((prev) => [...prev, enhancedPosition]);
+        const newPositions = [...betSlipPositions, enhancedPosition];
+        setBetSlipPositions(newPositions);
+
+        // Fetch market data for new markets
+        const effectiveChainId = position.chainId || 8453;
+        await prefetchMarketGroup(
+          queryClient,
+          effectiveChainId,
+          position.marketAddress
+        );
       }
 
       setIsPopoverOpen(true); // Open popover when position is added or updated
     },
-    [betSlipPositions]
+    [betSlipPositions, queryClient]
   );
 
-  const removePosition = useCallback((id: string) => {
-    setBetSlipPositions((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+  const removePosition = useCallback(
+    (id: string) => {
+      const newPositions = betSlipPositions.filter((p) => p.id !== id);
+      setBetSlipPositions(newPositions);
+    },
+    [betSlipPositions]
+  );
 
   const updatePosition = useCallback(
     (id: string, updates: Partial<BetSlipPosition>) => {
@@ -127,6 +196,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
     openPopover,
     isPopoverOpen,
     setIsPopoverOpen,
+    positionsWithMarketData,
   };
 
   return (

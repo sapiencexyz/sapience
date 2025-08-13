@@ -8,11 +8,11 @@ import type { Address } from 'viem';
 
 import ErrorState from '../profile/ErrorState'; // Assuming similar loading/error components
 import LpPositionsTable from '../profile/LpPositionsTable';
-import PredictionPositionsTable from '../profile/PredictionPositionsTable';
+import ForecastsTable from '../profile/ForecastsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
-import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants/eas';
 
 interface UserPositionsTableProps {
   account: Address;
@@ -70,7 +70,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     refetch: refetchAttestations,
   } = usePredictions({
     attesterAddress: account,
-    schemaId: CONVERGE_SCHEMA_UID,
+    schemaId: SCHEMA_UID,
     marketAddress,
     chainId,
     marketId,
@@ -165,7 +165,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
           <motion.div
             exit={{ opacity: 0, y: -10, transition: { duration: 0.2 } }}
           >
-            <PredictionPositionsTable
+            <ForecastsTable
               attestations={safeAttestations}
               parentMarketAddress={marketAddress}
               parentChainId={chainId}

@@ -6,7 +6,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useAccount } from 'wagmi';
-import { useToast } from '@sapience/ui/hooks/use-toast';
+import { usePrivy } from '@privy-io/react-auth';
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
 import YesNoPredict from './inputs/YesNoPredict';
@@ -27,7 +27,7 @@ export default function PredictForm({
   onSuccess,
 }: PredictFormProps) {
   const { isConnected } = useAccount();
-  const { toast } = useToast();
+  const { login, authenticated } = usePrivy();
   const firstMarket = marketGroupData.markets?.[0];
   const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
@@ -140,23 +140,37 @@ export default function PredictForm({
         return predictionValue;
     }
   }, [marketClassification, predictionValue]);
+
+  // Memoize the hook props to prevent infinite loops
+  const submitPredictionProps = useMemo(
+    () => ({
+      marketChainId: marketGroupData.chainId,
+      marketAddress: marketGroupData.address!,
+      marketClassification,
+      marketId,
+      submissionValue,
+      comment,
+      onSuccess,
+    }),
+    [
+      marketGroupData.chainId,
+      marketGroupData.address,
+      marketClassification,
+      marketId,
+      submissionValue,
+      comment,
+      onSuccess,
+    ]
+  );
+
   // Use the submit prediction hook
-  const { submitPrediction, isAttesting } = useSubmitPrediction({
-    marketAddress: marketGroupData.address!,
-    marketClassification,
-    marketId,
-    submissionValue,
-    comment,
-    onSuccess,
-  });
+  const { submitPrediction, isAttesting } = useSubmitPrediction(
+    submitPredictionProps
+  );
 
   const handleSubmit = async () => {
-    if (!isConnected) {
-      toast({
-        title: 'Wallet Not Connected',
-        description: 'Please connect your wallet to submit a prediction.',
-        variant: 'destructive',
-      });
+    if (!authenticated || !isConnected) {
+      login();
       return;
     }
     await submitPrediction();

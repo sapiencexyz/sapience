@@ -49,9 +49,7 @@ interface OptimisticOracleV3Interface {
      * @param assertionId unique identifier for the assertion to fetch information for.
      * @return assertion information about the assertion.
      */
-    function getAssertion(
-        bytes32 assertionId
-    ) external view returns (Assertion memory);
+    function getAssertion(bytes32 assertionId) external view returns (Assertion memory);
 
     /**
      * @notice Asserts a truth about the world, using the default currency and liveness. No callback recipient or
@@ -63,10 +61,7 @@ interface OptimisticOracleV3Interface {
      * any other account that the caller wants to receive the bond at settlement time.
      * @return assertionId unique identifier for this assertion.
      */
-    function assertTruthWithDefaults(
-        bytes memory claim,
-        address asserter
-    ) external returns (bytes32);
+    function assertTruthWithDefaults(bytes memory claim, address asserter) external returns (bytes32);
 
     /**
      * @notice Asserts a truth about the world, using a fully custom configuration.
@@ -128,9 +123,7 @@ interface OptimisticOracleV3Interface {
      * @param assertionId unique identifier for the assertion to resolve and return the resolution for.
      * @return resolution of the assertion.
      */
-    function settleAndGetAssertionResult(
-        bytes32 assertionId
-    ) external returns (bool);
+    function settleAndGetAssertionResult(bytes32 assertionId) external returns (bool);
 
     /**
      * @notice Fetches the resolution of a specific assertion and returns it. If the assertion has not been settled then
@@ -138,9 +131,7 @@ interface OptimisticOracleV3Interface {
      * @param assertionId unique identifier for the assertion to fetch the resolution for.
      * @return resolution of the assertion.
      */
-    function getAssertionResult(
-        bytes32 assertionId
-    ) external view returns (bool);
+    function getAssertionResult(bytes32 assertionId) external view returns (bool);
 
     /**
      * @notice Returns the minimum bond amount required to make an assertion. This is calculated as the final fee of the
@@ -164,11 +155,7 @@ interface OptimisticOracleV3Interface {
         bytes32 indexed identifier
     );
 
-    event AssertionDisputed(
-        bytes32 indexed assertionId,
-        address indexed caller,
-        address indexed disputer
-    );
+    event AssertionDisputed(bytes32 indexed assertionId, address indexed caller, address indexed disputer);
 
     event AssertionSettled(
         bytes32 indexed assertionId,
@@ -178,9 +165,5 @@ interface OptimisticOracleV3Interface {
         address settleCaller
     );
 
-    event AdminPropertiesSet(
-        IERC20 defaultCurrency,
-        uint64 defaultLiveness,
-        uint256 burnedBondPercentage
-    );
+    event AdminPropertiesSet(IERC20 defaultCurrency, uint64 defaultLiveness, uint256 burnedBondPercentage);
 }

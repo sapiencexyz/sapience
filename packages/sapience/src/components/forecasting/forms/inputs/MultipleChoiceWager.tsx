@@ -13,15 +13,17 @@ interface MultipleChoicePredictProps {
   name?: string;
   options: Array<{ name: string; marketId: number }>;
   variant?: 'buttons' | 'dropdown';
+  defaultValue?: string;
 }
 
 export default function MultipleChoiceWagerChoiceSelect({
   name = 'predictionValue',
   options,
   variant = 'buttons',
+  defaultValue,
 }: MultipleChoicePredictProps) {
   const { register, setValue, watch } = useFormContext();
-  const value = watch(name);
+  const value = watch(name) ?? defaultValue;
 
   useEffect(() => {
     if (options && options.length === 1) {

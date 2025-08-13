@@ -1,3 +1,5 @@
+'use client';
+
 import type { MarketGroupType } from '@sapience/ui/types';
 import MultipleChoiceWagerForm from './wager/MultipleChoiceWagerForm';
 import NumericWagerForm from './wager/NumericWagerForm';
@@ -7,7 +9,6 @@ import { MarketGroupClassification } from '~/lib/types';
 interface WagerFormFactoryProps {
   marketClassification: MarketGroupClassification;
   marketGroupData: MarketGroupType;
-  isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 

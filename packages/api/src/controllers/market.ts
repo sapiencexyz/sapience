@@ -47,35 +47,17 @@ export const initializeMarket = async (marketInfo: marketInfo) => {
     address: marketInfo.deployment.address as `0x${string}`,
     abi: Sapience.abi,
     functionName: 'getMarketGroup',
-  })) as [string, string, string, any];
-
-  /* 
-  marketReadResult[0] = owner
-  marketReadResult[1] = collateralAsset
-  marketReadResult[2] = feeCollectorNFT
-  marketReadResult[3] = marketParams
-
-  marketParams = {
-        uint24 feeRate;
-        uint64 assertionLiveness;
-        uint256 bondAmount;
-        address bondCurrency;
-        address uniswapPositionManager;
-        address uniswapSwapRouter;
-        address uniswapQuoter;
-        address optimisticOracleV3;
-  }
-  */
+  })) as [string, string, any];
 
   const marketParams = {
-    feeRate: marketReadResult[3].feeRate,
-    assertionLiveness: BigInt(marketReadResult[3].assertionLiveness).toString(),
-    bondAmount: BigInt(marketReadResult[3].bondAmount).toString(),
-    bondCurrency: marketReadResult[3].bondCurrency,
-    uniswapPositionManager: marketReadResult[3].uniswapPositionManager,
-    uniswapSwapRouter: marketReadResult[3].uniswapSwapRouter,
-    uniswapQuoter: marketReadResult[3].uniswapQuoter,
-    optimisticOracleV3: marketReadResult[3].optimisticOracleV3,
+    feeRate: marketReadResult[2].feeRate,
+    assertionLiveness: BigInt(marketReadResult[2].assertionLiveness).toString(),
+    bondAmount: BigInt(marketReadResult[2].bondAmount).toString(),
+    bondCurrency: marketReadResult[2].bondCurrency,
+    uniswapPositionManager: marketReadResult[2].uniswapPositionManager,
+    uniswapSwapRouter: marketReadResult[2].uniswapSwapRouter,
+    uniswapQuoter: marketReadResult[2].uniswapQuoter,
+    optimisticOracleV3: marketReadResult[2].optimisticOracleV3,
   };
 
   const updatedMarketData = {
@@ -132,7 +114,7 @@ export const initializeMarket = async (marketInfo: marketInfo) => {
     }
   }
 
-  const marketParamsRaw = marketReadResult[3];
+  const marketParamsRaw = marketReadResult[2];
   if (marketParamsRaw) {
     updatedMarketData.marketParamsFeerate = marketParamsRaw.feeRate || null;
     updatedMarketData.marketParamsAssertionliveness =

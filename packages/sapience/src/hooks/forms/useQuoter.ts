@@ -18,6 +18,24 @@ interface UseQuoterProps {
   wagerAmount: string;
 }
 
+// External function to generate quote query key
+export function generateQuoteQueryKey(
+  chainId: number | undefined,
+  address: string | undefined,
+  marketId: number,
+  expectedPrice: number,
+  parsedWagerAmount: bigint | null
+) {
+  return [
+    'quote',
+    chainId,
+    address,
+    marketId,
+    expectedPrice,
+    parsedWagerAmount?.toString(),
+  ] as const;
+}
+
 export function useQuoter({
   marketData,
   marketId,
@@ -38,16 +56,16 @@ export function useQuoter({
     }
   }, [wagerAmount]);
 
-  // Create stable query key
+  // Create stable query key using external function
   const queryKey = useMemo(
-    () => [
-      'quote',
-      marketData?.chainId,
-      marketData?.address,
-      marketId,
-      expectedPrice,
-      parsedWagerAmount?.toString(),
-    ],
+    () =>
+      generateQuoteQueryKey(
+        marketData?.chainId,
+        marketData?.address || undefined,
+        marketId,
+        expectedPrice,
+        parsedWagerAmount
+      ),
     [
       marketData?.chainId,
       marketData?.address,

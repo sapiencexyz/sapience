@@ -7,11 +7,13 @@ import MultipleChoiceWagerChoiceSelect from './MultipleChoiceWager';
 interface MultipleChoiceWagerInputProps {
   marketGroupData: MarketGroupType;
   positionId: string; // Used to namespace form fields
+  defaultSelectedMarketId?: number;
 }
 
 export default function MultipleChoiceWagerInput({
   marketGroupData,
   positionId,
+  defaultSelectedMarketId,
 }: MultipleChoiceWagerInputProps) {
   const predictionFieldName = `positions.${positionId}.predictionValue`;
   const wagerAmountFieldName = `positions.${positionId}.wagerAmount`;
@@ -22,10 +24,18 @@ export default function MultipleChoiceWagerInput({
         <Label>Your Prediction</Label>
         <MultipleChoiceWagerChoiceSelect
           name={predictionFieldName}
-          options={(marketGroupData.markets || []).map((market) => ({
-            name: market.optionName || '',
-            marketId: market.marketId,
-          }))}
+          options={(marketGroupData.markets || [])
+            .slice()
+            .sort((a, b) => a.marketId - b.marketId)
+            .map((market) => ({
+              name: market.optionName || `Market ${market.marketId}`,
+              marketId: market.marketId,
+            }))}
+          defaultValue={
+            typeof defaultSelectedMarketId === 'number'
+              ? String(defaultSelectedMarketId)
+              : undefined
+          }
         />
       </div>
 

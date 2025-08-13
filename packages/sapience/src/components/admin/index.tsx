@@ -43,9 +43,9 @@ const ReindexFactoryForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [factoryAddress, setFactoryAddress] = useState(
-    '0xA61BF5F56a6a035408d5d76EbE58F8204891FB40'
+    '0x8ba766895a6be31e92a0279c0a5c879b38f52904'
   );
-  const [chainId, setChainId] = useState('8453'); // Default to Base
+  const [chainId, setChainId] = useState('42161'); // Default to Arbitrum
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

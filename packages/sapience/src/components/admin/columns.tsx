@@ -150,6 +150,8 @@ const getChainShortName = (chainId: number): string => {
       return 'base';
     case 432:
       return 'converge';
+    case 42161:
+      return 'arb1';
     default:
       return chainId.toString();
   }

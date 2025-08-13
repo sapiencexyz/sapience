@@ -8,9 +8,7 @@ import "../storage/ERC721EnumerableStorage.sol";
 contract NftModule is IERC721Enumerable {
     constructor() {}
 
-    function balanceOf(
-        address holder
-    ) public view virtual override returns (uint256 balance) {
+    function balanceOf(address holder) public view virtual override returns (uint256 balance) {
         if (holder == address(0)) {
             revert InvalidOwner(holder);
         }
@@ -18,9 +16,7 @@ contract NftModule is IERC721Enumerable {
         return ERC721Storage.load().balanceOf[holder];
     }
 
-    function ownerOf(
-        uint256 tokenId
-    ) public view virtual override returns (address) {
+    function ownerOf(uint256 tokenId) public view virtual override returns (address) {
         if (!ERC721Storage._exists(tokenId)) {
             revert TokenDoesNotExist(tokenId);
         }
@@ -36,21 +32,14 @@ contract NftModule is IERC721Enumerable {
         return ERC721Storage.load().symbol;
     }
 
-    function tokenURI(
-        uint256 tokenId
-    ) external view virtual override returns (string memory) {
+    function tokenURI(uint256 tokenId) external view virtual override returns (string memory) {
         if (!ERC721Storage._exists(tokenId)) {
             revert TokenDoesNotExist(tokenId);
         }
 
         string memory baseURI = ERC721Storage.load().baseTokenURI;
 
-        return
-            bytes(baseURI).length > 0
-                ? string(
-                    abi.encodePacked(baseURI, StringUtil.uintToString(tokenId))
-                )
-                : "";
+        return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, StringUtil.uintToString(tokenId))) : "";
     }
 
     function approve(address to, uint256 tokenId) public virtual override {
@@ -61,19 +50,14 @@ contract NftModule is IERC721Enumerable {
             revert CannotSelfApprove(to);
         }
 
-        if (
-            ERC2771Context._msgSender() != holder &&
-            !isApprovedForAll(holder, ERC2771Context._msgSender())
-        ) {
+        if (ERC2771Context._msgSender() != holder && !isApprovedForAll(holder, ERC2771Context._msgSender())) {
             revert AccessError.Unauthorized(ERC2771Context._msgSender());
         }
 
         ERC721Storage._approve(to, tokenId);
     }
 
-    function getApproved(
-        uint256 tokenId
-    ) public view virtual override returns (address operator) {
+    function getApproved(uint256 tokenId) public view virtual override returns (address operator) {
         if (!ERC721Storage._exists(tokenId)) {
             revert TokenDoesNotExist(tokenId);
         }
@@ -81,65 +65,34 @@ contract NftModule is IERC721Enumerable {
         return ERC721Storage.load().tokenApprovals[tokenId];
     }
 
-    function setApprovalForAll(
-        address operator,
-        bool approved
-    ) public virtual override {
+    function setApprovalForAll(address operator, bool approved) public virtual override {
         if (ERC2771Context._msgSender() == operator) {
             revert CannotSelfApprove(operator);
         }
 
-        ERC721Storage.load().operatorApprovals[ERC2771Context._msgSender()][
-            operator
-        ] = approved;
+        ERC721Storage.load().operatorApprovals[ERC2771Context._msgSender()][operator] = approved;
 
         emit ApprovalForAll(ERC2771Context._msgSender(), operator, approved);
     }
 
-    function isApprovedForAll(
-        address holder,
-        address operator
-    ) public view virtual override returns (bool) {
+    function isApprovedForAll(address holder, address operator) public view virtual override returns (bool) {
         return ERC721Storage.load().operatorApprovals[holder][operator];
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public virtual override {
-        if (
-            !ERC721Storage._isApprovedOrOwner(
-                ERC2771Context._msgSender(),
-                tokenId
-            )
-        ) {
+    function transferFrom(address from, address to, uint256 tokenId) public virtual override {
+        if (!ERC721Storage._isApprovedOrOwner(ERC2771Context._msgSender(), tokenId)) {
             revert AccessError.Unauthorized(ERC2771Context._msgSender());
         }
 
         ERC721Storage._transfer(from, to, tokenId);
     }
 
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public virtual override {
+    function safeTransferFrom(address from, address to, uint256 tokenId) public virtual override {
         safeTransferFrom(from, to, tokenId, "");
     }
 
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) public virtual override {
-        if (
-            !ERC721Storage._isApprovedOrOwner(
-                ERC2771Context._msgSender(),
-                tokenId
-            )
-        ) {
+    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public virtual override {
+        if (!ERC721Storage._isApprovedOrOwner(ERC2771Context._msgSender(), tokenId)) {
             revert AccessError.Unauthorized(ERC2771Context._msgSender());
         }
 
@@ -157,10 +110,7 @@ contract NftModule is IERC721Enumerable {
     ///
     ///
 
-    function tokenOfOwnerByIndex(
-        address owner,
-        uint256 index
-    ) public view virtual override returns (uint256) {
+    function tokenOfOwnerByIndex(address owner, uint256 index) public view virtual override returns (uint256) {
         if (balanceOf(owner) <= index) {
             revert IndexOverrun(index, balanceOf(owner));
         }
@@ -178,9 +128,7 @@ contract NftModule is IERC721Enumerable {
      * @dev Returns the token identifier for the `_index`th NFT
      * @notice index is offset by +1 at creation time
      */
-    function tokenByIndex(
-        uint256 index
-    ) public view virtual override returns (uint256) {
+    function tokenByIndex(uint256 index) public view virtual override returns (uint256) {
         if (index > totalSupply()) {
             revert IndexOverrun(index, totalSupply());
         }

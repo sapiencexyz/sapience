@@ -119,6 +119,7 @@ export function MarketPageProvider({
     marketAddress: marketAddress as `0x${string}`,
     marketId: BigInt(marketId),
     abi,
+    chainId,
   });
 
   // Get the market tick spacing

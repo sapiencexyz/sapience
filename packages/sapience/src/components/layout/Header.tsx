@@ -15,14 +15,16 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen, Wallet } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
 import Betslip from './Betslip';
+import SusdeBalance from './SusdeBalance';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -49,6 +51,9 @@ const NavLinks = ({
 }: NavLinksProps) => {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
+  const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const connectedWallet = wallets[0];
   const linkClass = isMobileProp
     ? 'text-xl font-medium justify-start rounded-full'
     : 'text-base font-medium justify-start rounded-full';
@@ -64,16 +69,7 @@ const NavLinks = ({
   };
 
   return (
-    <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-48 pl-4">
-      <Link href="/forecast" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Forecasting
-        </Button>
-      </Link>
+    <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-44 pl-4">
       <Link href="/markets" passHref className="flex w-fit">
         <Button
           variant="ghost"
@@ -81,6 +77,15 @@ const NavLinks = ({
           onClick={handleLinkClick}
         >
           Prediction Markets
+        </Button>
+      </Link>
+      <Link href="/forecast" passHref className="flex w-fit">
+        <Button
+          variant="ghost"
+          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
+          onClick={handleLinkClick}
+        >
+          Forecasting
         </Button>
       </Link>
       <Link href="/vaults" passHref className="flex w-fit">
@@ -110,6 +115,25 @@ const NavLinks = ({
           Build Bots
         </Button>
       </Link>
+      {ready && authenticated && connectedWallet && (
+        <>
+          <Link
+            href={`/profile/${connectedWallet.address}`}
+            passHref
+            className="flex w-fit mx-3 mt-6"
+          >
+            <Button
+              size="xs"
+              className="rounded-full px-3"
+              onClick={handleLinkClick}
+            >
+              <Wallet className="h-3 w-3 scale-[0.8]" />
+              Your Portfolio
+            </Button>
+          </Link>
+          <SusdeBalance onClick={handleLinkClick} />
+        </>
+      )}
     </nav>
   );
 };
@@ -117,8 +141,6 @@ const NavLinks = ({
 const Header = () => {
   const pathname = usePathname();
   const { login, ready, authenticated, logout } = usePrivy();
-  const { wallets } = useWallets();
-  const connectedWallet = wallets[0]; // Get the first connected wallet
 
   return (
     <>
@@ -176,17 +198,6 @@ const Header = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  {connectedWallet && (
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={`/profile/${connectedWallet.address}`}
-                        className="flex items-center cursor-pointer"
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuItem
                     onClick={logout}
                     className="flex items-center cursor-pointer"
@@ -201,7 +212,6 @@ const Header = () => {
               <Button
                 onClick={login}
                 className="bg-primary hover:bg-primary/90 rounded-full px-8"
-                size="lg"
               >
                 Log In
               </Button>
@@ -227,30 +237,14 @@ const Header = () => {
                 <Image
                   src="/ethena.svg"
                   alt="Ethena"
-                  width={80}
+                  width={87}
                   height={24}
                   className="dark:invert opacity-90 hover:opacity-100 transition-opacity duration-200"
                 />
               </a>
             </div>
-            <div className="flex flex-col items-start gap-2 mb-0.5">
-              <span>Built on</span>
-              <a
-                href="https://convergeonchain.xyz"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Image
-                  src="/converge.svg"
-                  alt="Converge"
-                  width={80}
-                  height={24}
-                  className="dark:invert opacity-80 hover:opacity-100 transition-opacity duration-200"
-                />
-              </a>
-            </div>
           </div>
-          <div className="flex items-center gap-2 p-2 pl-4 pb-4 pt-4">
+          <div className="flex items-center gap-2 p-2 pl-4 pb-4">
             <Button size="icon" className="h-6 w-6 rounded-full" asChild>
               <a
                 href="https://github.com/sapiencexyz/sapience"
@@ -293,6 +287,18 @@ const Header = () => {
                   alt="Discord"
                   width={12}
                   height={12}
+                />
+              </a>
+            </Button>
+            <Button size="icon" className="h-6 w-6 rounded-full" asChild>
+              <a
+                href="https://blog.sapience.xyz"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <SiSubstack
+                  className="h-3 w-3  scale-[70%]"
+                  aria-label="Substack"
                 />
               </a>
             </Button>

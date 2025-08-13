@@ -16,7 +16,7 @@ import {
   FormMessage,
 } from '@sapience/ui/components/ui/form';
 import { Input } from '@sapience/ui/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+
 import {
   Tooltip,
   TooltipContent,
@@ -29,7 +29,7 @@ import { AlertTriangle } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 import { formatUnits, parseUnits } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
+import { useAccount, useChainId, useReadContract, useSwitchChain } from 'wagmi';
 
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 import LottieLoader from '~/components/shared/LottieLoader';
@@ -159,6 +159,10 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     collateralAssetTicker,
     collateralAssetAddress,
   } = marketDetails;
+
+  const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const isChainMismatch = isConnected && currentChainId !== chainId;
 
   const [originalPositionSize, originalPositionDirection]: [
     bigint,
@@ -349,7 +353,27 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   }, [isModifyTradeError, error, toast]);
 
   const handleFormSubmit = async () => {
+    if (isChainMismatch) {
+      if (switchChain) {
+        switchChain({ chainId });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Network switching is not available.',
+          variant: 'destructive',
+        });
+      }
+      return;
+    }
     await modifyTrade();
+  };
+
+  const handleDirectionChange = (value: string) => {
+    setValue('direction', value as 'Long' | 'Short', {
+      shouldValidate: true,
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   // Get button state
@@ -410,31 +434,37 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-        {/* Add Direction Tabs */}
-        <Tabs
-          value={direction}
-          onValueChange={(value) => {
-            setValue('direction', value as 'Long' | 'Short', {
-              shouldValidate: true,
-              shouldDirty: true,
-              shouldTouch: true,
-            });
-          }}
-          className="mb-4"
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="Long">
+        {/* Direction Selection Buttons */}
+        <div className="mb-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              type="button"
+              onClick={() => handleDirectionChange('Long')}
+              className={`py-6 text-lg font-normal ${
+                direction === 'Long'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              }`}
+            >
               {marketClassification === MarketGroupClassification.NUMERIC
                 ? 'Long'
                 : 'Yes'}
-            </TabsTrigger>
-            <TabsTrigger value="Short">
+            </Button>
+            <Button
+              type="button"
+              onClick={() => handleDirectionChange('Short')}
+              className={`py-6 text-lg font-normal ${
+                direction === 'Short'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              }`}
+            >
               {marketClassification === MarketGroupClassification.NUMERIC
                 ? 'Short'
                 : 'No'}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+            </Button>
+          </div>
+        </div>
 
         {/* Size Input - Target Size */}
         <div className="mb-6">

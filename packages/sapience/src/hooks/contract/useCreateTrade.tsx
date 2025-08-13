@@ -4,6 +4,7 @@ import { parseUnits, type Abi } from 'viem';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 import { useTokenApproval } from './useTokenApproval';
+import { calculateCollateralLimit } from '~/utils/trade';
 
 /**
  * Parameters for creating a trader position
@@ -102,20 +103,6 @@ export function useCreateTrade({
     !hasAllowance &&
     collateralTokenAddress !== undefined &&
     parsedCollateralAmount > BigInt(0);
-
-  // Calculate collateral limit including slippage
-  // limitCollateral = maxCollateral * (1 + slippagePercent / 100)
-  const calculateCollateralLimit = (
-    amount: bigint,
-    slippage: number
-  ): bigint => {
-    if (amount === BigInt(0)) return BigInt(0);
-    // Use BigInt math to avoid floating point issues
-    // Multiply slippage by 100 to get basis points, add to 10000 (100%)
-    const slippageFactor = BigInt(10000 + Math.floor(slippage * 100));
-    // Calculate limit = amount * (10000 + slippageBasisPoints) / 10000
-    return (amount * slippageFactor) / BigInt(10000);
-  };
 
   const limitCollateral = calculateCollateralLimit(
     parsedCollateralAmount,

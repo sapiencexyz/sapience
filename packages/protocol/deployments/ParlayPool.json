@@ -1,0 +1,129 @@
+{
+  "abi": [
+    {
+      "type": "function",
+      "name": "getConfig",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "config",
+          "type": "tuple",
+          "components": [
+            { "name": "collateralToken", "type": "address" },
+            { "name": "makerNft", "type": "address" },
+            { "name": "takerNft", "type": "address" },
+            { "name": "maxParlayMarkets", "type": "uint256" },
+            { "name": "minCollateral", "type": "uint256" },
+            { "name": "minRequestExpirationTime", "type": "uint256" },
+            { "name": "maxRequestExpirationTime", "type": "uint256" },
+            { "name": "approvedTakers", "type": "address[]" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getUnfilledOrderIds",
+      "stateMutability": "view",
+      "inputs": [],
+      "outputs": [
+        { "name": "orderIds", "type": "uint256[]" }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getOrderIdsByAddress",
+      "stateMutability": "view",
+      "inputs": [
+        { "name": "account", "type": "address" }
+      ],
+      "outputs": [
+        { "name": "orderIds", "type": "uint256[]" }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "getParlayOrder",
+      "stateMutability": "view",
+      "inputs": [
+        { "name": "requestId", "type": "uint256" }
+      ],
+      "outputs": [
+        {
+          "name": "parlayData",
+          "type": "tuple",
+          "components": [
+            { "name": "maker", "type": "address" },
+            { "name": "taker", "type": "address" },
+            { "name": "filled", "type": "bool" },
+            { "name": "makerNftTokenId", "type": "uint256" },
+            { "name": "takerNftTokenId", "type": "uint256" },
+            { "name": "collateral", "type": "uint256" },
+            { "name": "payout", "type": "uint256" },
+            { "name": "settled", "type": "bool" },
+            { "name": "makerWon", "type": "bool" },
+            { "name": "createdAt", "type": "uint256" },
+            { "name": "orderExpirationTime", "type": "uint256" }
+          ]
+        },
+        {
+          "name": "predictedOutcomes",
+          "type": "tuple[]",
+          "components": [
+            {
+              "name": "market",
+              "type": "tuple",
+              "components": [
+                { "name": "marketGroup", "type": "address" },
+                { "name": "marketId", "type": "uint256" }
+              ]
+            },
+            { "name": "prediction", "type": "bool" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "submitParlayOrder",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        {
+          "name": "predictedOutcomes",
+          "type": "tuple[]",
+          "components": [
+            {
+              "name": "market",
+              "type": "tuple",
+              "components": [
+                { "name": "marketGroup", "type": "address" },
+                { "name": "marketId", "type": "uint256" }
+              ]
+            },
+            { "name": "prediction", "type": "bool" }
+          ]
+        },
+        { "name": "collateral", "type": "uint256" },
+        { "name": "payout", "type": "uint256" },
+        { "name": "orderExpirationTime", "type": "uint256" },
+        { "name": "refCode", "type": "bytes32" }
+      ],
+      "outputs": [
+        { "name": "requestId", "type": "uint256" }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "fillParlayOrder",
+      "stateMutability": "nonpayable",
+      "inputs": [
+        { "name": "requestId", "type": "uint256" },
+        { "name": "refCode", "type": "bytes32" }
+      ],
+      "outputs": []
+    }
+  ]
+}
+
+

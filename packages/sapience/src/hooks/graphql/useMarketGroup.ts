@@ -1,5 +1,6 @@
 import { graphqlRequest } from '@sapience/ui/lib';
 import { useQuery } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import type {
@@ -40,6 +41,40 @@ const MARKET_GROUP_QUERY = /* GraphQL */ `
   }
 `;
 
+// Shared configuration for market group queries
+export const marketGroupQueryConfig = {
+  queryKey: (chainId: number, marketAddress: string) =>
+    ['marketGroup', chainId, marketAddress] as const,
+
+  queryFn: async (
+    chainId: number,
+    marketAddress: string
+  ): Promise<MarketGroupType> => {
+    type MarketGroupQueryResult = {
+      marketGroup: MarketGroupType;
+    };
+
+    const data = await graphqlRequest<MarketGroupQueryResult>(
+      MARKET_GROUP_QUERY,
+      {
+        where: {
+          address_chainId: {
+            address: marketAddress,
+            chainId,
+          },
+        },
+      }
+    );
+
+    const marketResponse = data?.marketGroup;
+
+    if (!marketResponse) {
+      throw new Error('No market group data in response');
+    }
+    return marketResponse;
+  },
+};
+
 export const useMarketGroup = ({
   chainShortName,
   marketAddress,
@@ -56,31 +91,8 @@ export const useMarketGroup = ({
     isSuccess,
     isError,
   } = useQuery<MarketGroupType>({
-    queryKey: ['marketGroup', chainId, marketAddress],
-    queryFn: async () => {
-      type MarketGroupQueryResult = {
-        marketGroup: MarketGroupType;
-      };
-
-      const data = await graphqlRequest<MarketGroupQueryResult>(
-        MARKET_GROUP_QUERY,
-        {
-          where: {
-            address_chainId: {
-              address: marketAddress,
-              chainId,
-            },
-          },
-        }
-      );
-
-      const marketResponse = data?.marketGroup;
-
-      if (!marketResponse) {
-        throw new Error('No market group data in response');
-      }
-      return marketResponse;
-    },
+    queryKey: marketGroupQueryConfig.queryKey(chainId, marketAddress),
+    queryFn: () => marketGroupQueryConfig.queryFn(chainId, marketAddress),
     enabled: !!chainId && !!marketAddress && chainId !== 0,
     retry: 3,
     retryDelay: 1000,
@@ -107,3 +119,34 @@ export const useMarketGroup = ({
     marketClassification,
   };
 };
+
+// Cache utilities for market group data
+export function getMarketGroupFromCache(
+  queryClient: QueryClient,
+  chainId: number,
+  marketAddress: string
+): MarketGroupType | undefined {
+  const queryKey = marketGroupQueryConfig.queryKey(chainId, marketAddress);
+  return queryClient.getQueryData(queryKey);
+}
+
+export async function prefetchMarketGroup(
+  queryClient: QueryClient,
+  chainId: number,
+  marketAddress: string
+): Promise<MarketGroupType | null> {
+  const queryKey = marketGroupQueryConfig.queryKey(chainId, marketAddress);
+
+  const existingData = queryClient.getQueryData<MarketGroupType>(queryKey);
+  if (existingData) {
+    return existingData;
+  }
+
+  const marketData = await marketGroupQueryConfig.queryFn(
+    chainId,
+    marketAddress
+  );
+  queryClient.setQueryData(queryKey, marketData);
+
+  return marketData;
+}

@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from '@sapience/ui/components/ui/form';
 import { Input } from '@sapience/ui/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { AlertTriangle } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
@@ -352,25 +352,36 @@ export function CreateTradeForm({
   return (
     <Form {...form}>
       <form onSubmit={handleSubmit(submitForm)} className="space-y-4">
-        <Tabs
-          defaultValue="Long"
-          value={direction}
-          onValueChange={handleDirectionChange}
-          className="mb-4"
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="Long">
+        <div className="mb-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              type="button"
+              onClick={() => handleDirectionChange('Long')}
+              className={`py-6 text-lg font-normal ${
+                direction === 'Long'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              }`}
+            >
               {marketClassification === MarketGroupClassification.NUMERIC
                 ? 'Long'
                 : 'Yes'}
-            </TabsTrigger>
-            <TabsTrigger value="Short">
+            </Button>
+            <Button
+              type="button"
+              onClick={() => handleDirectionChange('Short')}
+              className={`py-6 text-lg font-normal ${
+                direction === 'Short'
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+              }`}
+            >
               {marketClassification === MarketGroupClassification.NUMERIC
                 ? 'Short'
                 : 'No'}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+            </Button>
+          </div>
+        </div>
 
         <div className="mb-8">
           <FormField

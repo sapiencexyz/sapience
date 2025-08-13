@@ -4,12 +4,12 @@ import { blo } from 'blo';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, FrownIcon } from 'lucide-react';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { AddressDisplay } from './AddressDisplay';
 import LottieLoader from './LottieLoader';
 import { usePredictions } from '~/hooks/graphql/usePredictions';
-import { CONVERGE_SCHEMA_UID } from '~/lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants/eas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
@@ -239,7 +239,7 @@ const Comments = ({
     isLoading: isEasLoading,
     refetch,
   } = usePredictions({
-    schemaId: CONVERGE_SCHEMA_UID,
+    schemaId: SCHEMA_UID,
     attesterAddress: shouldFilterByAttester ? address : undefined,
   });
 
@@ -340,9 +340,9 @@ const Comments = ({
   return (
     <div className={`${className || ''}`}>
       {selectedFilter === CommentFilters.SelectedQuestion && !question && (
-        <div className="text-center text-muted-foreground py-8">
-          Please select a question to submit a prediction and view the
-          predictions of other users
+        <div className="text-center text-muted-foreground py-16">
+          <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+          No forecasts found
         </div>
       )}
       {!(selectedFilter === CommentFilters.SelectedQuestion && !question) && (
@@ -352,8 +352,9 @@ const Comments = ({
               <LottieLoader width={32} height={32} />
             </div>
           ) : displayComments.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              No forecasts found.
+            <div className="text-center text-muted-foreground py-16">
+              <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+              No forecasts found
             </div>
           ) : (
             <>

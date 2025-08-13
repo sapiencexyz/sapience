@@ -44,16 +44,16 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 // Default values for form fields
 
 const CAT_MEOW_FILE = '/cat-meow.mp3';
-const BASE_CHAIN_ID = 8453;
-const DEFAULT_BASE_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
+const DEFAULT_CHAIN_ID = 42161;
+const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
 const DEFAULT_BOND_CURRENCY = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-const DEFAULT_COLLATERAL_ASSET = '0x5875eee11cf8398102fdad704c9e96607675467a';
-const DEFAULT_OPTIMISTIC_ORACLE = '0x2aBf1Bd76655de80eDB3086114315Eec75AF500c';
+const DEFAULT_COLLATERAL_ASSET = '0x3138d1B6F726F54813c9Ed6E29A5e44C24Cb11f1';
+const DEFAULT_OPTIMISTIC_ORACLE = '0xCf17b4834223D7e54B92f8e43229C1E82faF7226';
 const DEFAULT_UNISWAP_POS_MANAGER =
-  '0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1';
+  '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
 const DEFAULT_UNISWAP_SWAP_ROUTER =
-  '0xAf5ead464aFFB12dD4CDFB98c9D2C490194FE5d0';
-const DEFAULT_UNISWAP_QUOTER = '0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a';
+  '0xE592427A0AEce92De3Edee1F18E0157C05861564';
+const DEFAULT_UNISWAP_QUOTER = '0x61fFE014bA17989E743c5F6cB21bF9697530B21e';
 const DEFAULT_FEE_RATE = '10000'; // 1%
 const DEFAULT_ASSERTION_LIVENESS = '7200';
 const DEFAULT_BOND_AMOUNT = '500000000';
@@ -61,7 +61,7 @@ const DEFAULT_MIN_TRADE_SIZE = '10000';
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
 const DEFAULT_MAX_PRICE_TICK = '0';
-const DEFAULT_FACTORY_ADDRESS = '0x2492c9d2955448181a3CD2a3d5207714949ED0f6';
+const DEFAULT_FACTORY_ADDRESS = '0x8BA766895a6bE31E92A0279C0A5C879b38f52904';
 
 // Type definitions (MarketInput is now imported)
 interface MarketParamsInput {
@@ -272,7 +272,7 @@ const CombinedMarketDialog = () => {
   const router = useRouter();
 
   // Market group state
-  const [chainId, setChainId] = useState<string>('8453');
+  const [chainId, setChainId] = useState<string>(DEFAULT_CHAIN_ID.toString());
   const [factoryAddress, setFactoryAddress] = useState<string>(
     DEFAULT_FACTORY_ADDRESS
   );
@@ -326,8 +326,8 @@ const CombinedMarketDialog = () => {
 
     // Set owner based on chain and connected address after mounting
     const defaultOwner =
-      currentChainId === BASE_CHAIN_ID
-        ? DEFAULT_BASE_OWNER
+      currentChainId === DEFAULT_CHAIN_ID
+        ? DEFAULT_OWNER
         : connectedAddress || '';
     setOwner(defaultOwner);
   }, [currentChainId, connectedAddress]);

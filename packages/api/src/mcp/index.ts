@@ -1,8 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
-import * as readFoilContractsTools from './readFoilContracts';
-import * as writeFoilContractsTools from './writeFoilContracts';
 import { introspectSchema, queryGraphQL } from './graphql';
 import * as miscTools from './misc';
+import * as marketTools from './marketTools';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 // The McpServer.tool method expects a function that includes an extra parameter,
@@ -34,10 +33,6 @@ function registerTools(server: McpServer, tools: Record<string, any>): void {
 }
 
 export function registerAllMcpTools(server: McpServer): void {
-  // Register all tools using the helper function
-  registerTools(server, readFoilContractsTools);
-  registerTools(server, writeFoilContractsTools);
-
   // Register GraphQL tools individually
   server.tool(
     introspectSchema.name,
@@ -53,4 +48,5 @@ export function registerAllMcpTools(server: McpServer): void {
   );
 
   registerTools(server, miscTools);
+  registerTools(server, marketTools);
 }

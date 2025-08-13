@@ -29,7 +29,7 @@ const EAS_START_BLOCK = {
   11155111: 2958570,
   10: 107476600,
   8453: 3701279,
-  42161: 64528380,
+  42161: 367337046,
   432: 1,
 } as const; // FROM https://github.com/ethereum-attestation-service/eas-indexing-service/blob/master/utils.ts
 
@@ -615,33 +615,6 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
       });
     }
   }
-
-  // // Query methods for your predictions
-  // async getPredictionsByMarket(marketAddress: string, marketId?: string) {
-  //   const where: any = { marketAddress };
-  //   if (marketId) {
-  //     where.marketId = marketId;
-  //   }
-
-  //   return await prisma.predictionAttestation.findMany({
-  //     where,
-  //     orderBy: { timestamp: 'desc' },
-  //   });
-  // }
-
-  // async getPredictionsByAttester(attester: string) {
-  //   return await prisma.predictionAttestation.findMany({
-  //     where: { attester },
-  //     orderBy: { timestamp: 'desc' },
-  //   });
-  // }
-
-  // async getRecentPredictions(limit: number = 100) {
-  //   return await prisma.predictionAttestation.findMany({
-  //     orderBy: { timestamp: 'desc' },
-  //     take: limit,
-  //   });
-  // }
 }
 
 export default EASPredictionIndexer;

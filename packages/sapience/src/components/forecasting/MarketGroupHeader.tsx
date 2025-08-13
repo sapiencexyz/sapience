@@ -1,5 +1,3 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
-import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 
 import type { MarketGroupClassification } from '~/lib/types';
@@ -17,23 +15,6 @@ const MarketGroupHeader: React.FC<MarketGroupHeaderProps> = ({
   marketGroupData,
   activeMarket,
 }) => {
-  // Format end time for badge
-  const endTimeBadge = (() => {
-    const endTime = activeMarket?.endTimestamp;
-    if (typeof endTime !== 'number') {
-      return null;
-    }
-
-    try {
-      const date = fromUnixTime(endTime);
-      const displayTime = formatDistanceToNow(date, { addSuffix: true });
-      return <Badge>Ends {displayTime}</Badge>;
-    } catch (error) {
-      console.error('Error formatting relative time:', error);
-      return null;
-    }
-  })();
-
   // Determine which question to display using the utility function
   const displayQuestion = getMarketHeaderQuestion(
     marketGroupData,
@@ -47,9 +28,7 @@ const MarketGroupHeader: React.FC<MarketGroupHeaderProps> = ({
           <h1 className="text-2xl md:text-4xl font-normal mb-2 leading-tight flex items-center gap-2.5">
             {displayQuestion}
           </h1>
-          <div className="flex flex-wrap gap-y-1.5 lg:gap-y-2 gap-x-3 lg:gap-x-6 text-xs sm:text-sm items-center">
-            {endTimeBadge}
-          </div>
+          {/* End time badge moved to wager form */}
         </div>
       </div>
     </div>

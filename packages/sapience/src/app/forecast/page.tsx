@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import {
@@ -16,6 +16,7 @@ import PredictForm from '~/components/forecasting/forms/PredictForm';
 // import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
+import QuestionSuggestions from '~/components/forecasting/QuestionSuggestions';
 
 // Dynamically import components to avoid SSR issues
 const QuestionSelect = dynamic(
@@ -94,19 +95,17 @@ const ForecastPage = () => {
     );
   });
 
-  // Auto-select the first market when markets are loaded and no market is currently selected
-  useEffect(() => {
-    if (activeMarkets.length > 0 && !selectedMarket) {
-      const firstMarket = activeMarkets[0];
-      setSelectedMarket(firstMarket);
-      // Don't set category filter - keep it as null to show all comments
-      // setSelectedCategory(CommentFilters.SelectedQuestion);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marketGroups]);
+  // Remove auto-selection - user should choose from suggestions
 
   // Handler to select a market and switch to the selected question tab
   const handleMarketSelect = (market: any) => {
+    console.log('Market selected:', {
+      id: market?.id,
+      marketId: market?.marketId,
+      question: market?.question,
+      optionName: market?.optionName,
+      groupQuestion: market?.group?.question,
+    });
     setSelectedCategory(CommentFilters.SelectedQuestion);
     setTimeout(() => {
       setSelectedMarket(market);
@@ -153,22 +152,38 @@ const ForecastPage = () => {
             </div>
           </div>
 
-          {/* Market Selector (direct market search) */}
+          {/* Market Selector (direct market search) - always visible */}
           <div className="backdrop-blur-sm z-10 sticky top-2-">
-            <div className="p-3 pt-6">
+            <div className="p-6 pb-0">
               <QuestionSelect
+                key={selectedMarket?.id || 'no-selection'}
                 marketMode={true}
                 markets={activeMarkets}
-                selectedMarketId={selectedMarket?.marketId?.toString()}
+                selectedMarketId={(() => {
+                  const marketId = selectedMarket?.id?.toString();
+                  console.log(
+                    'Passing selectedMarketId to QuestionSelect:',
+                    marketId,
+                    'from market:',
+                    selectedMarket
+                  );
+                  return marketId;
+                })()}
                 onMarketGroupSelect={handleMarketSelect}
                 setSelectedCategory={setSelectedCategory}
               />
             </div>
           </div>
-          {/* Forecast Form */}
+
+          {/* Question Suggestions or Forecast Form */}
           <div className="border-b border-border relative pb-3">
-            {selectedMarket && (
-              <div className="p-3">
+            {!selectedMarket ? (
+              <QuestionSuggestions
+                markets={activeMarkets}
+                onMarketSelect={handleMarketSelect}
+              />
+            ) : (
+              <div className="p-6 pb-4">
                 <PredictForm
                   marketGroupData={marketGroupData}
                   marketClassification={marketClassification}

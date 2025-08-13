@@ -1,0 +1,4 @@
+forge script src/scripts/Arb1-Base_deployMarketLZBridge.s.sol --rpc-url https://arb1.arbitrum.io/rpc --broadcast  --verify
+forge script src/scripts/Arb1-Base_deployUMALZBridge.s.sol --rpc-url https://mainnet.base.org --broadcast  --verify
+forge script src/scripts/Arb1-Base_configureMarketLZBridge.s.sol --rpc-url https://arb1.arbitrum.io/rpc --broadcast
+forge script src/scripts/Arb1-Base_configureUMALZBridge.s.sol --rpc-url https://mainnet.base.org --broadcast
