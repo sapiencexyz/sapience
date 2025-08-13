@@ -223,50 +223,51 @@ router.post('/get-parlay-chance', async (req: Request, res: Response) => {
       });
     }
 
-    // Validate that markets list is provided
+    // Validate inputs and parse markets in a single loop
     if (!markets || !Array.isArray(markets) || markets.length === 0) {
       return res.status(400).json({
         message: 'Markets array is required and must not be empty',
       });
     }
 
-    // Validate that markets and market predictions have the same length
     if (markets.length !== marketPredictions.length) {
       return res.status(400).json({
         message: 'Markets and market predictions must have the same length',
       });
     }
 
-    // Validate that market predictions are valid
-    for (const prediction of marketPredictions) {
-      if (typeof prediction !== 'boolean') {
-        return res.status(400).json({
-          message: 'Each market prediction must be a boolean',
-        });
-      }
-    }
+    // Check for duplicates and validate format in one pass
+    const uniqueMarkets = new Set();
+    const marketIds = [];
 
-    // Validate that markets are unique
-    const uniqueMarkets = new Set(markets);
-    if (uniqueMarkets.size !== markets.length) {
-      return res.status(400).json({
-        message: 'Markets array must contain unique markets',
-      });
-    }
+    for (let i = 0; i < markets.length; i++) {
+      const market = markets[i];
+      const prediction = marketPredictions[i];
 
-    // Validate that markets are valid
-    for (const market of markets) {
+      // Validate market format
       if (typeof market !== 'string' || !market.includes('/')) {
         return res.status(400).json({
           message:
             'Each market must be in format "marketGroupAddress/marketIdx"',
         });
       }
-    }
 
-    // Validate that markets exist
-    const marketIds = [];
-    for (const market of markets) {
+      // Check for duplicates
+      if (uniqueMarkets.has(market)) {
+        return res.status(400).json({
+          message: 'Markets array must contain unique markets',
+        });
+      }
+      uniqueMarkets.add(market);
+
+      // Validate prediction type
+      if (typeof prediction !== 'boolean') {
+        return res.status(400).json({
+          message: 'Each market prediction must be a boolean',
+        });
+      }
+
+      // Parse and validate market exists
       const [marketGroupAddress, marketIdx] = market.split('/');
       const marketExists = await prisma.market.findFirst({
         where: {
