@@ -13,8 +13,17 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { BetSlipProvider } from '~/lib/context/BetSlipContext';
+import { hashFn } from 'wagmi/query';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient(
+  {
+    defaultOptions: {
+      queries: {
+        queryKeyHashFn: hashFn,
+      },
+    },
+  }
+);
 
 const cannonAtLocalhost = {
   ...cannon,
