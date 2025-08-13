@@ -1,4 +1,7 @@
 import { Button } from '@sapience/ui/components/ui/button';
+import { useToast } from '@sapience/ui/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
 import { useModifyTrade } from '~/hooks/contract/useModifyTrade';
 
@@ -15,8 +18,17 @@ const SellPositionButton = ({
   chainId,
   onSuccess,
 }: SellPositionButtonProps) => {
+  const { toast } = useToast();
   const { abi } = useSapienceAbi();
-  const { closePosition, isClosingPosition, isLoading } = useModifyTrade({
+  const {
+    closePosition,
+    isClosingPosition,
+    isLoading,
+    isSuccess,
+    isError,
+    error,
+    txHash,
+  } = useModifyTrade({
     marketAddress: marketAddress as `0x${string}`,
     marketAbi: abi,
     chainId,
@@ -24,9 +36,36 @@ const SellPositionButton = ({
     enabled: !!marketAddress && !!chainId && positionId !== undefined,
   });
 
+  const successHandled = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && txHash && !successHandled.current) {
+      successHandled.current = true;
+      toast({
+        title: 'Success!',
+        description: 'Position closed successfully',
+      });
+      if (onSuccess) onSuccess();
+    }
+  }, [isSuccess, txHash, onSuccess, toast]);
+
+  useEffect(() => {
+    if (isError && error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message,
+      });
+    }
+  }, [isError, error, toast]);
+
   const handleSell = async () => {
-    await closePosition();
-    if (onSuccess) onSuccess();
+    try {
+      await closePosition();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to close position';
+      toast({ variant: 'destructive', title: 'Error', description: message });
+    }
   };
 
   return (
@@ -36,7 +75,13 @@ const SellPositionButton = ({
       onClick={handleSell}
       disabled={isClosingPosition || isLoading}
     >
-      {isClosingPosition || isLoading ? 'Closing…' : 'Sell'}
+      {isClosingPosition || isLoading ? (
+        <>
+          <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Closing…
+        </>
+      ) : (
+        'Sell'
+      )}
     </Button>
   );
 };
