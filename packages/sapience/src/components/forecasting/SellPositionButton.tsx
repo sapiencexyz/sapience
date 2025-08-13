@@ -42,5 +42,3 @@ const SellPositionButton = ({
 };
 
 export default SellPositionButton;
-
-

@@ -6,7 +6,6 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
-import Link from 'next/link';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
@@ -16,10 +15,7 @@ import SellPositionButton from '../forecasting/SellPositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
-import {
-  calculateEffectiveEntryPrice,
-  getChainShortName,
-} from '~/lib/utils/util';
+import { calculateEffectiveEntryPrice } from '~/lib/utils/util';
 
 interface TraderPositionsTableProps {
   positions: PositionType[];
@@ -223,9 +219,6 @@ export default function TraderPositionsTable({
               }
 
               const isClosed = Number(position.collateral) === 0;
-              const chainShortName = getChainShortName(
-                position.market.marketGroup?.chainId || 0
-              );
               const marketAddress = position.market.marketGroup?.address || '';
 
               // Determine if the position is expired and settled
