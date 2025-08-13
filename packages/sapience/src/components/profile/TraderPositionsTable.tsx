@@ -1,4 +1,3 @@
-import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -13,6 +12,7 @@ import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
 import SettlePositionButton from '../forecasting/SettlePositionButton';
+import SellPositionButton from '../forecasting/SellPositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
@@ -289,16 +289,20 @@ export default function TraderPositionsTable({
                                 }}
                               />
                             ) : (
-                              // Render Sell button only if not on Market Page
+                              // Render Sell action only if not on Market Page
                               !isMarketPage && (
-                                <Link
-                                  href={`/markets/${chainShortName}:${marketAddress}/${position.market.marketId}?positionId=${position.positionId}`}
-                                  passHref
-                                >
-                                  <Button size="xs" variant="outline">
-                                    Sell
-                                  </Button>
-                                </Link>
+                                <SellPositionButton
+                                  marketAddress={marketAddress}
+                                  chainId={
+                                    position.market.marketGroup?.chainId || 0
+                                  }
+                                  positionId={position.positionId}
+                                  onSuccess={() => {
+                                    console.log(
+                                      `Close action for position ${position.positionId} sent.`
+                                    );
+                                  }}
+                                />
                               )
                             ))}
                         </div>
