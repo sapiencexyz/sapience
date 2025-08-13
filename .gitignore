@@ -24,3 +24,5 @@ packages/protocol/deployments/outputs/test
 .vscode
 
 dump.sql
+*storybook.log
+storybook-static
