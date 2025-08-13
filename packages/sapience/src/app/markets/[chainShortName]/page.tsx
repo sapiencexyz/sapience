@@ -29,6 +29,7 @@ import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
 import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
 import PredictForm from '~/components/forecasting/forms/PredictForm';
+import WagerFormFactory from '~/components/forecasting/forms/WagerFormFactory';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,
@@ -109,26 +110,13 @@ const LottieLoader = dynamic(
   }
 );
 
-const DynamicWagerFormFactory = dynamic(
-  () =>
-    import('~/components/forecasting/forms/WagerFormFactory').then((mod) => ({
-      default: mod.default,
-    })),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex justify-center py-8">
-        <LottieLoader width={30} height={30} />
-      </div>
-    ),
-  }
-);
+// Using static import for WagerFormFactory to avoid HMR module factory issues
 
 // Create a WagerForm component to handle the wager form rendering logic
 const WagerForm = ({
   marketGroupData,
   marketClassification,
-  permitData,
+  permitData: _permitData,
   onWagerSuccess,
   activeMarket,
 }: {
@@ -187,10 +175,9 @@ const WagerForm = ({
         {endTimeBadge && <div className="flex mt-3">{endTimeBadge}</div>}
       </div>
       <div className="flex-1">
-        <DynamicWagerFormFactory
+        <WagerFormFactory
           marketClassification={marketClassification}
           marketGroupData={marketGroupData}
-          isPermitted={!!permitData?.permitted}
           onSuccess={onWagerSuccess}
         />
       </div>

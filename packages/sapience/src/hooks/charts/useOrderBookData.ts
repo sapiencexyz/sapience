@@ -6,11 +6,7 @@ import { useReadContracts } from 'wagmi';
 
 import type { GraphTick, PoolData } from '~/lib/utils/liquidityUtil';
 import { getFullPool } from '~/lib/utils/liquidityUtil';
-
-// Assuming constants like TICK_SPACING_DEFAULT are available or can be added
-// import { TICK_SPACING_DEFAULT } from '~/lib/constants';
-// TODO: Define or import TICK_SPACING_DEFAULT
-const TICK_SPACING_DEFAULT = 60;
+import { TICK_SPACING as TICK_SPACING_DEFAULT } from '~/lib/constants/numbers';
 
 // --- Types ---
 
@@ -164,7 +160,7 @@ export function useOrderBookData({
   const actualTickSpacing = useMemo(() => {
     // Use pool's spacing if available and valid, otherwise fall back to prop or default
     const resolvedSpacing =
-      pool?.tickSpacing ?? tickSpacingProp ?? TICK_SPACING_DEFAULT;
+      pool?.tickSpacing || tickSpacingProp || TICK_SPACING_DEFAULT;
     // Ensure spacing is a positive integer
     return Math.max(1, Math.floor(resolvedSpacing));
   }, [pool?.tickSpacing, tickSpacingProp]);
@@ -195,7 +191,7 @@ export function useOrderBookData({
 
     for (let i = alignedMinTick; i <= alignedMaxTick; i += spacing) {
       // Basic check against Uniswap V3 theoretical min/max ticks
-      if (i >= -887272 && i <= 887272) {
+      if (-887272 <= i && i <= 887272) {
         tickRange.push(i);
       }
     }
@@ -217,6 +213,7 @@ export function useOrderBookData({
     ) {
       return [];
     }
+
     return ticks.map((tick) => ({
       abi: IUniswapV3PoolABI.abi as AbiFunction[], // Cast ABI
       address: poolAddress as `0x${string}`, // Ensure address format
@@ -226,9 +223,8 @@ export function useOrderBookData({
     }));
   }, [ticks, poolAddress, chainId]);
 
-  // 3. Fetch Raw Tick Data
   const {
-    data: rawTickData,
+    data: allTickData,
     isLoading: isLoadingTicks,
     isError: isErrorTicks,
     error: readContractsError, // Capture the top-level error
@@ -243,12 +239,13 @@ export function useOrderBookData({
   // 4. Process Raw Tick Data into PoolData
   useEffect(() => {
     const processData = async () => {
-      if (isLoadingTicks || !rawTickData || !pool) {
+      // Process when we have data and pool is available
+      if (isLoadingTicks || !allTickData?.length || !pool) {
         setProcessedPoolData(undefined); // Clear data while loading or if pool/data missing
         return;
       }
 
-      if (isErrorTicks || !Array.isArray(rawTickData)) {
+      if (isErrorTicks || !Array.isArray(allTickData)) {
         console.error(
           'Error fetching raw tick data or data format invalid:',
           readContractsError
@@ -261,11 +258,11 @@ export function useOrderBookData({
       }
 
       try {
-        const processedTicks: GraphTick[] = rawTickData
+        const processedTicks: GraphTick[] = allTickData
           .map((tickData, index) => {
             if (tickData.status === 'failure') {
               console.warn(
-                `Failed to fetch tick ${ticks[index]}:`,
+                `Failed to fetch tick at index ${index}:`,
                 tickData.error // Cast error to Error
               );
               return null; // Skip failed ticks
@@ -274,12 +271,14 @@ export function useOrderBookData({
             if (!result) {
               // Should not happen if status is success, but check anyway
               console.warn(
-                `Missing result for successful tick ${ticks[index]}`
+                `Missing result for successful tick at index ${index}`
               );
               return null;
             }
+            // Map back to original tick index
+            const tickValue = ticks[index];
             return {
-              tickIdx: ticks[index].toString(),
+              tickIdx: tickValue.toString(),
               liquidityGross: result[0].toString(),
               liquidityNet: result[1].toString(),
               // price0/price1 can be derived later if needed
@@ -319,7 +318,7 @@ export function useOrderBookData({
 
     processData(); // Call the async function
   }, [
-    rawTickData,
+    allTickData,
     pool,
     ticks,
     isLoadingTicks,
@@ -328,7 +327,7 @@ export function useOrderBookData({
     actualTickSpacing,
   ]);
 
-  // 6. Derive Order Book Levels from Processed Data
+  // 5. Derive Order Book Levels from Processed Data
   useEffect(() => {
     if (!processedPoolData || !pool) {
       setOrderBookData({ asks: [], bids: [], lastPrice: null });
@@ -442,7 +441,7 @@ export function useOrderBookData({
     });
   }, [processedPoolData, pool, quoteTokenName, baseTokenName]);
 
-  // 7. Combine loading states and return
+  // 6. Combine loading states and return
   const isLoading = Boolean(
     isLoadingTicks ||
       (!processedPoolData &&

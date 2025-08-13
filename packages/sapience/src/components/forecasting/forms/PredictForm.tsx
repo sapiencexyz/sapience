@@ -140,15 +140,33 @@ export default function PredictForm({
         return predictionValue;
     }
   }, [marketClassification, predictionValue]);
+
+  // Memoize the hook props to prevent infinite loops
+  const submitPredictionProps = useMemo(
+    () => ({
+      marketChainId: marketGroupData.chainId,
+      marketAddress: marketGroupData.address!,
+      marketClassification,
+      marketId,
+      submissionValue,
+      comment,
+      onSuccess,
+    }),
+    [
+      marketGroupData.chainId,
+      marketGroupData.address,
+      marketClassification,
+      marketId,
+      submissionValue,
+      comment,
+      onSuccess,
+    ]
+  );
+
   // Use the submit prediction hook
-  const { submitPrediction, isAttesting } = useSubmitPrediction({
-    marketAddress: marketGroupData.address!,
-    marketClassification,
-    marketId,
-    submissionValue,
-    comment,
-    onSuccess,
-  });
+  const { submitPrediction, isAttesting } = useSubmitPrediction(
+    submitPredictionProps
+  );
 
   const handleSubmit = async () => {
     if (!authenticated || !isConnected) {

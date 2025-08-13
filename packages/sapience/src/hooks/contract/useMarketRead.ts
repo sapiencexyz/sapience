@@ -43,12 +43,14 @@ interface UseMarketProps {
   marketAddress: Address;
   marketId: bigint;
   abi: Abi;
+  chainId: number;
 }
 
 export function useMarketRead({
   marketAddress,
   marketId,
   abi,
+  chainId,
 }: UseMarketProps): UseMarketResult {
   const { toast } = useToast();
 
@@ -60,7 +62,7 @@ export function useMarketRead({
   } = useReadContract({
     address: marketAddress,
     abi,
-    chainId: 8453,
+    chainId,
     functionName: 'getMarket',
     args: [marketId],
   });

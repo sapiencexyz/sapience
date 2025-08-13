@@ -23,7 +23,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   const [modifyMode, setModifyMode] = useState<'add' | 'remove'>('add');
 
   // Fetch permit data using useSapience hook
-  const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
+  const { permitData } = useSapience();
 
   // Get data from the forecast context
   const {
@@ -118,7 +118,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
             positionId={positionId as string}
             mode={modifyMode}
             permitData={permitData}
-            isPermitLoadingPermit={isPermitLoadingPermit}
+            isPermitLoadingPermit={false}
           />
         </div>
       ) : (
@@ -127,7 +127,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
           walletData={walletData}
           onSuccess={handleSuccess}
           permitData={permitData}
-          isPermitLoadingPermit={isPermitLoadingPermit}
+          isPermitLoadingPermit={false}
         />
       )}
     </div>

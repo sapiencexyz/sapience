@@ -21,11 +21,6 @@
           "internalType": "address"
         },
         {
-          "name": "feeCollectors",
-          "type": "address[]",
-          "internalType": "address[]"
-        },
-        {
           "name": "minTradeSize",
           "type": "uint256",
           "internalType": "uint256"
@@ -112,7 +107,7 @@
     },
     {
       "type": "event",
-      "name": "MarketGroupInitialized",
+      "name": "MarketGroupDeployed",
       "inputs": [
         {
           "name": "sender",

@@ -79,6 +79,7 @@ interface BondInfoSectionProps {
   handleApprove: () => void;
   bondCurrency: `0x${string}` | undefined;
   bondAmount: bigint | undefined;
+  isBridged: boolean;
 }
 
 const BondInfoSection = ({
@@ -93,61 +94,68 @@ const BondInfoSection = ({
   handleApprove,
   bondCurrency,
   bondAmount,
+  isBridged,
 }: BondInfoSectionProps) => (
   <div>
     <h4 className="text-sm font-medium mb-2">Bond Details</h4>
     <div className="text-xs text-muted-foreground space-y-1">
-      {isLoading && <p>Loading bond info...</p>}
-      {/* Explicitly check if error exists before rendering */}
-      {!!error && (
-        <p className="text-red-500">
-          Error loading bond info: {/* Safely access message property */}
-          {error instanceof Error
-            ? error.message
-            : String(error) || 'Unknown error'}
-        </p>
-      )}
+      {isBridged ? (
+        <p>UMA Bond handled by bridge.</p>
+      ) : (
+        <>
+          {isLoading && <p>Loading bond info...</p>}
+          {/* Explicitly check if error exists before rendering */}
+          {!!error && (
+            <p className="text-red-500">
+              Error loading bond info: {/* Safely access message property */}
+              {error instanceof Error
+                ? error.message
+                : String(error) || 'Unknown error'}
+            </p>
+          )}
 
-      {/* Only show content if NOT loading and NOT erroring */}
-      {!isLoading &&
-        !error &&
-        (marketParams ? (
-          <>
-            <p>Currency: {bondCurrency}</p>
-            <p>Required Amount: {bondAmount?.toString() ?? 'N/A'}</p>
-            {/* Only show allowance/approval if wallet is connected */}
-            {connectedAddress ? (
+          {/* Only show content if NOT loading and NOT erroring */}
+          {!isLoading &&
+            !error &&
+            (marketParams ? (
               <>
-                <p>
-                  Your Allowance:{' '}
-                  {isLoadingAllowance
-                    ? 'Loading...'
-                    : (allowance?.toString() ?? '0')}
-                </p>
-                {requiresApproval && (
-                  <div className="mt-4">
-                    <Button
-                      size="sm"
-                      onClick={handleApprove}
-                      disabled={isApproving}
-                    >
-                      {isApproving && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Approve Bond
-                    </Button>
-                  </div>
+                <p>Currency: {bondCurrency}</p>
+                <p>Required Amount: {bondAmount?.toString() ?? 'N/A'}</p>
+                {/* Only show allowance/approval if wallet is connected */}
+                {connectedAddress ? (
+                  <>
+                    <p>
+                      Your Allowance:{' '}
+                      {isLoadingAllowance
+                        ? 'Loading...'
+                        : (allowance?.toString() ?? '0')}
+                    </p>
+                    {requiresApproval && (
+                      <div className="mt-4">
+                        <Button
+                          size="sm"
+                          onClick={handleApprove}
+                          disabled={isApproving}
+                        >
+                          {isApproving && (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          )}
+                          Approve Bond
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-orange-500 mt-1">
+                    Connect wallet to check allowance and approve.
+                  </p>
                 )}
               </>
             ) : (
-              <p className="text-orange-500 mt-1">
-                Connect wallet to check allowance and approve.
-              </p>
-            )}
-          </>
-        ) : (
-          <p>Bond information not found for this market.</p>
-        ))}
+              <p>Bond information not found for this market.</p>
+            ))}
+        </>
+      )}
     </div>
   </div>
 );
@@ -160,6 +168,7 @@ interface SettleMarketDialogProps {
     owner?: string | null;
     baseTokenName?: string | null;
     quoteTokenName?: string | null;
+    isBridged?: boolean | null;
   };
 }
 
@@ -326,10 +335,9 @@ const SettleMarketDialog = ({
           errorMessage: 'Please select Yes or No.',
         };
       }
-      // Calculate sqrtPriceX96 for 1 if "Yes" is selected, otherwise use 0
+      // Use fixed sqrt prices for Yes (1.0) and No (0.0)
       return {
-        price:
-          inputValue === '1' ? BigInt(convertToSqrtPriceX96(1)) : BigInt(0),
+        price: inputValue === '1' ? YES_SQRT_X96_PRICE : NO_SQRT_X96_PRICE,
       };
     }
 
@@ -362,7 +370,7 @@ const SettleMarketDialog = ({
       const marketId = BigInt(market.marketId);
       const { price, errorMessage } = calculateSettlementPrice(
         settlementValue,
-        marketGroup.baseTokenName === 'Yes'
+        isYesNoMarket
       );
 
       if (errorMessage || price === null) {
@@ -406,9 +414,12 @@ const SettleMarketDialog = ({
   };
 
   // Determine input type and unit display
-  // Assuming market.baseTokenName determines Yes/No vs Numerical
-  // Assuming market.quoteTokenName provides units for numerical
-  const isYesNoMarket = marketGroup.baseTokenName === 'Yes';
+  // Prefer on-chain signal: presence of a non-empty claimStatementNo means Yes/No market
+  const hasClaimNo =
+    !!marketData?.claimStatementNo &&
+    marketData.claimStatementNo !== '0x' &&
+    marketData.claimStatementNo.length > 2;
+  const isYesNoMarket = hasClaimNo || marketGroup.baseTokenName === 'Yes';
   let unitDisplay: string;
   if (isYesNoMarket) {
     unitDisplay = '';
@@ -449,6 +460,7 @@ const SettleMarketDialog = ({
         handleApprove={handleApprove}
         bondCurrency={bondCurrency}
         bondAmount={bondAmount}
+        isBridged={!!marketGroup.isBridged}
       />
       <Separator />
       {/* Settlement Section - Now uses extracted components */}
@@ -471,7 +483,10 @@ const SettleMarketDialog = ({
             connectedAddress={connectedAddress}
             isYesNoMarket={isYesNoMarket}
             settlementValue={settlementValue}
-            claimStatement={marketData?.claimStatementYesOrNumeric ?? ''}
+            claimStatementYesOrNumeric={
+              marketData?.claimStatementYesOrNumeric ?? ''
+            }
+            claimStatementNo={marketData?.claimStatementNo ?? ''}
           />
 
           {/* Submit Button */}
@@ -589,38 +604,46 @@ interface SettlementParamsDisplayProps {
   connectedAddress: `0x${string}` | undefined;
   isYesNoMarket: boolean;
   settlementValue: string;
-  claimStatement: string; // This is `0x${string}` or empty string from prop
+  claimStatementYesOrNumeric: string; // hex string or empty
+  claimStatementNo?: string; // hex string or empty
 }
 
 const SettlementParamsDisplay = ({
-  marketId,
   connectedAddress,
   isYesNoMarket,
   settlementValue,
-  claimStatement,
+  claimStatementYesOrNumeric,
+  claimStatementNo,
 }: SettlementParamsDisplayProps) => {
-  let settlementDisplayValue: string;
-
   if (isYesNoMarket) {
-    if (settlementValue === '1') {
-      settlementDisplayValue = YES_SQRT_X96_PRICE.toString();
-    } else {
-      settlementDisplayValue = NO_SQRT_X96_PRICE.toString();
-    }
-  } else {
-    const numericValue = Number(settlementValue);
-    if (Number.isNaN(numericValue) || settlementValue === '') {
-      settlementDisplayValue = 'Invalid Price';
-    } else {
-      settlementDisplayValue = convertToSqrtPriceX96(numericValue);
-    }
+    const yesText = decodeClaimStatement(claimStatementYesOrNumeric);
+    const noText = decodeClaimStatement(claimStatementNo || '');
+    const selectedText =
+      settlementValue === '1' ? yesText : settlementValue === '0' ? noText : '';
+
+    return (
+      <div className="text-xs text-muted-foreground space-y-1">
+        <p>Connected Wallet: {connectedAddress || 'N/A'}</p>
+        <p className="font-bold">{selectedText || 'Select Yes or No'}</p>
+      </div>
+    );
   }
 
-  const displayClaimStatement = decodeClaimStatement(claimStatement);
+  // Numeric/scalar: keep current behavior (claim followed by settlement display value)
+  let settlementDisplayValue: string;
+  const numericValue = Number(settlementValue);
+  if (Number.isNaN(numericValue) || settlementValue === '') {
+    settlementDisplayValue = 'Invalid Price';
+  } else {
+    settlementDisplayValue = convertToSqrtPriceX96(numericValue);
+  }
+
+  const displayClaimStatement = decodeClaimStatement(
+    claimStatementYesOrNumeric
+  );
 
   return (
     <div className="text-xs text-muted-foreground space-y-1">
-      <p>Market ID: {marketId.toString()}</p>
       <p>Connected Wallet: {connectedAddress || 'N/A'}</p>
       <p className="font-bold">
         {displayClaimStatement} {settlementDisplayValue}

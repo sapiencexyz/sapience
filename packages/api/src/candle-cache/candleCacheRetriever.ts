@@ -1,7 +1,7 @@
 import { ResponseCandleData } from './types';
 import { CANDLE_CACHE_CONFIG, CANDLE_TYPES } from './config';
 import { getTimeWindow } from './candleUtils';
-import { getCandles, getMarketGroups } from './dbUtils';
+import { getCandles, getLatestMarketPrice, getMarketGroups } from './dbUtils';
 import { marketInfoStore } from './marketInfoStore';
 import type { CacheCandle, Prisma } from '../../generated/prisma';
 
@@ -174,6 +174,7 @@ export class CandleCacheRetriever {
       isCumulative: false,
       fillMissingCandles: true,
       fillInitialCandlesWithZeroes: true,
+      marketIdx: marketInfo.marketIdx,
     });
   }
 
@@ -193,6 +194,7 @@ export class CandleCacheRetriever {
     isCumulative,
     fillMissingCandles,
     fillInitialCandlesWithZeroes,
+    marketIdx = -1,
   }: {
     initialTimestamp: number;
     finalTimestamp: number;
@@ -201,12 +203,30 @@ export class CandleCacheRetriever {
     isCumulative: boolean;
     fillMissingCandles: boolean;
     fillInitialCandlesWithZeroes: boolean;
+    marketIdx?: number | undefined;
   }): Promise<{ data: ResponseCandleData[]; lastUpdateTimestamp: number }> {
-    if (
-      (!candles || candles.length === 0) &&
-      !(fillMissingCandles || fillInitialCandlesWithZeroes)
-    ) {
-      return { data: [], lastUpdateTimestamp: 0 };
+    if (!candles || candles.length === 0) {
+      if (!(fillMissingCandles || fillInitialCandlesWithZeroes)) {
+        return { data: [], lastUpdateTimestamp: 0 };
+      } else if (marketIdx > 0) {
+        // edge case for market prices
+        const outputEntries: ResponseCandleData[] = [];
+        const latestMarketPrice = await getLatestMarketPrice(
+          initialTimestamp,
+          marketIdx,
+          true
+        );
+        if (latestMarketPrice) {
+          outputEntries.push({
+            timestamp: latestMarketPrice.timestamp,
+            open: latestMarketPrice.value,
+            high: latestMarketPrice.value,
+            low: latestMarketPrice.value,
+            close: latestMarketPrice.value,
+          });
+        }
+        return { data: outputEntries, lastUpdateTimestamp: initialTimestamp };
+      }
     }
 
     const timeWindow = getTimeWindow(
@@ -223,8 +243,7 @@ export class CandleCacheRetriever {
       low: isCumulative ? candle.sumUsed?.toString() || '0' : candle.low,
       close: isCumulative ? candle.sumUsed?.toString() || '0' : candle.close,
     }));
-
-    const firstCandleTimestamp = candles[0]?.timestamp ?? timeWindow.to;
+    const firstCandleTimestamp = candles[0]?.timestamp ?? timeWindow.from;
     const lastCandleTimestampUpdate =
       candles.length > 0 ? candles[candles.length - 1].lastUpdatedTimestamp : 0;
     // If we need to fill missing candles or initial zeroes
@@ -249,8 +268,8 @@ export class CandleCacheRetriever {
       // Process all timestamps in the window
       for (
         let t = fillInitialCandlesWithZeroes
-          ? timeWindow.from
-          : firstCandleTimestamp;
+          ? firstCandleTimestamp
+          : timeWindow.from;
         t < timeWindow.to;
         t += interval
       ) {

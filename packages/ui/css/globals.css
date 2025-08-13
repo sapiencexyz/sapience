@@ -1,9 +1,10 @@
+/* @import './fonts/AvenirRounded.css';
+@import './fonts/Foil.css'; */
+
 /* Global Styling here */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import './fonts/AvenirRounded.css';
-@import './fonts/Foil.css';
 
 @layer base {
   :root {

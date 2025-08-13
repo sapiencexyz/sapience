@@ -31,7 +31,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
     refetchPositions,
   } = useMarketPage();
 
-  const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
+  const { permitData } = useSapience();
 
   const position = positionId ? getPositionById(positionId) : null;
   const hasPosition = !!position && position.kind === PositionKind.Trade;
@@ -66,7 +66,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
             onSuccess={handleSuccess}
             positionId={positionId as string}
             permitData={permitData}
-            isPermitLoadingPermit={isPermitLoadingPermit}
+            isPermitLoadingPermit={false}
           />
         </div>
       ) : (
@@ -76,7 +76,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
           onConnectWallet={handleConnectWallet}
           onSuccess={handleSuccess}
           permitData={permitData}
-          isPermitLoadingPermit={isPermitLoadingPermit}
+          isPermitLoadingPermit={false}
         />
       )}
     </div>

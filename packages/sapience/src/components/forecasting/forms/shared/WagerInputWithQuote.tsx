@@ -12,6 +12,7 @@ interface WagerInputWithQuoteProps {
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
   onRemove: () => void;
+  selectedMarketId?: number; // default selection for multichoice
 }
 
 export default function WagerInputWithQuote({
@@ -20,6 +21,7 @@ export default function WagerInputWithQuote({
   marketGroupData,
   marketClassification,
   onRemove,
+  selectedMarketId,
 }: WagerInputWithQuoteProps) {
   const { watch } = useFormContext();
 
@@ -41,7 +43,7 @@ export default function WagerInputWithQuote({
     marketData: quoteParams.marketData,
     marketId: quoteParams.marketId,
     expectedPrice: quoteParams.expectedPrice,
-    wagerAmount: quoteParams.wagerAmount,
+    wagerAmount,
   });
 
   // Get display unit for numeric markets
@@ -70,6 +72,7 @@ export default function WagerInputWithQuote({
         marketClassification={marketClassification}
         marketGroupData={marketGroupData}
         positionId={positionId}
+        defaultSelectedMarketId={selectedMarketId}
       />
 
       {/* Quote Display */}

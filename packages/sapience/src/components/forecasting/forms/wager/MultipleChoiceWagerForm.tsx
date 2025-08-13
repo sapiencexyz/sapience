@@ -1,3 +1,5 @@
+'use client';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Label } from '@sapience/ui/components/ui/label';
@@ -12,20 +14,17 @@ import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
 import MultipleChoiceWagerChoiceSelect from '../inputs/MultipleChoiceWager';
-import PermittedAlert from './PermittedAlert';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { MarketGroupClassification } from '~/lib/types';
 
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
-  isPermitted?: boolean;
   onSuccess?: (txHash: `0x${string}`) => void;
 }
 
 export default function MultipleChoiceWagerForm({
   marketGroupData,
-  isPermitted = true,
   onSuccess,
 }: MultipleChoiceWagerFormProps) {
   const { toast } = useToast();
@@ -86,8 +85,6 @@ export default function MultipleChoiceWagerForm({
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!isPermitted) return;
-
     try {
       await createTrade();
     } catch (error) {
@@ -122,7 +119,6 @@ export default function MultipleChoiceWagerForm({
 
   const isButtonDisabled =
     !methods.formState.isValid ||
-    !isPermitted ||
     isQuoteLoading ||
     !!quoteError ||
     isCreatingTrade ||
@@ -174,7 +170,7 @@ export default function MultipleChoiceWagerForm({
           />
         </div>
 
-        <PermittedAlert isPermitted={isPermitted} />
+        {/* Permit gating removed */}
 
         <Button
           type="submit"

@@ -18,6 +18,8 @@ interface WagerInputProps {
   collateralSymbol?: string;
   collateralAddress?: `0x${string}`;
   chainId?: number;
+  // Optional minimum amount (human units) to enforce via validation
+  minAmount?: string | number;
 }
 
 // Define the wager schema that will be used across all forms
@@ -73,6 +75,7 @@ export function WagerInput({
   collateralSymbol = 'sUSDe',
   collateralAddress = '0x0000000000000000000000000000000000000000',
   chainId = 432,
+  minAmount,
 }: WagerInputProps) {
   const {
     register,
@@ -92,8 +95,18 @@ export function WagerInput({
       if (!currentValue) return; // Don't validate empty values
 
       try {
-        // Validate against our schema
-        wagerAmountSchema.parse(currentValue);
+        // Build dynamic schema if a minimum amount is provided
+        const schema = minAmount
+          ? wagerAmountSchema.refine(
+              (val) => Number(val) >= Number(minAmount),
+              {
+                message: `Amount must be at least ${minAmount}`,
+              }
+            )
+          : wagerAmountSchema;
+
+        // Validate against our (possibly dynamic) schema
+        schema.parse(currentValue);
         clearErrors(name);
       } catch (error) {
         if (error instanceof z.ZodError) {
@@ -108,7 +121,7 @@ export function WagerInput({
     };
 
     validateWagerAmount();
-  }, [name, getValues, clearErrors, setError]);
+  }, [name, getValues, clearErrors, setError, minAmount]);
 
   return (
     <div className="space-y-2">
@@ -136,6 +149,18 @@ export function WagerInput({
           placeholder="0.00"
           className={`pr-24 ${errors[name] ? 'border-destructive' : ''}`}
           {...register(name, {
+            validate: (val) => {
+              if (!val || Number.isNaN(Number(val)))
+                return 'Must be a valid number';
+              if (Number(val) <= 0) return 'Amount must be greater than 0';
+              if (
+                typeof minAmount !== 'undefined' &&
+                Number(val) < Number(minAmount)
+              ) {
+                return `Amount must be at least ${minAmount}`;
+              }
+              return true;
+            },
             onChange: (e) => {
               // Allow only numbers and a single decimal point
               const { value } = e.target;
@@ -162,6 +187,12 @@ export function WagerInput({
           {collateralSymbol} {collateralSymbol === 'sUSDS' && <SUsdsHelp />}
         </div>
       </div>
+      {typeof minAmount !== 'undefined' &&
+        Number(getValues(name) || 0) < Number(minAmount) && (
+          <p className="text-xs text-muted-foreground mt-1">
+            Minimum: {minAmount} {collateralSymbol}
+          </p>
+        )}
       {errors[name] && (
         <p className="text-destructive text-sm mt-1">
           {errors[name]?.message?.toString()}

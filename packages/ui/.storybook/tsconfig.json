@@ -1,0 +1,26 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["./*"],
+      "@/components/*": ["src/components/*"],
+      "@/protocol/*": ["../../protocol/*"],
+      "@/stories/*": ["stories/*"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.mjs",
+    "**/*.mdx",
+    "../stories/**/*.ts",
+    "../stories/**/*.tsx",
+    "../stories/**/*.js",
+    "../stories/**/*.jsx",
+    "../stories/**/*.mdx"
+  ],
+  "exclude": ["node_modules"]
+}

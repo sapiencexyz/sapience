@@ -2,4 +2,6 @@
 @uma/=node_modules/@uma
 @openzeppelin/=node_modules/@openzeppelin
 @synthetixio/=node_modules/@synthetixio
+@layerzerolabs/=node_modules/@layerzerolabs
+solidity-bytes-utils/contracts/=node_modules/@layerzerolabs/toolbox-foundry/lib/solidity-bytes-utils
 forge-std/=node_modules/forge-std/src/

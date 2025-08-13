@@ -54,7 +54,7 @@ export async function reindexMarketGroupFactory(
           );
         } catch (error) {
           console.error(
-            `Error decoding MarketGroupInitialized event from factory ${factoryAddress}:`,
+            `Error decoding MarketGroupDeployed event from factory ${factoryAddress}:`,
             error,
             log
           );

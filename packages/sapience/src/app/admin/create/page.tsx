@@ -1,6 +1,11 @@
 'use client';
 
-import CombinedMarketDialog from '~/components/admin/CombinedMarketDialog';
+import dynamic from 'next/dynamic';
+
+const CombinedMarketDialog = dynamic(
+  () => import('~/components/admin/CombinedMarketDialog'),
+  { ssr: false }
+);
 
 export default function CreateMarketGroupPage() {
   return (

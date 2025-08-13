@@ -17,7 +17,12 @@ import {
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Address } from 'viem';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useSwitchChain,
+  useChainId,
+} from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 
@@ -65,6 +70,8 @@ const EnableBridgedMarketGroupButton: React.FC<
     isSuccess: isConfirmed,
     error: receiptError,
   } = useWaitForTransactionReceipt({ hash });
+  const { switchChain } = useSwitchChain();
+  const currentChainId = useChainId();
 
   // Effect to reset state when dialog closes
   useEffect(() => {
@@ -118,6 +125,11 @@ const EnableBridgedMarketGroupButton: React.FC<
         marketGroupAddress,
       ]);
       console.log('Target bridge contract:', bridgeAddress);
+
+      if (currentChainId !== group.chainId && switchChain) {
+        switchChain({ chainId: group.chainId });
+        return;
+      }
 
       writeContract({
         address: bridgeAddress,
