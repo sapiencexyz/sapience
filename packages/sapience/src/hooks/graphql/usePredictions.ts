@@ -1,3 +1,4 @@
+import type { QueryClient } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import React from 'react';
 import { getAddress } from 'viem';
@@ -81,6 +82,85 @@ interface UsePredictionsProps {
   marketId?: number;
 }
 
+// Function to generate consistent query key for both usePredictions and prefetchPredictions
+const generatePredictionsQueryKey = ({
+  marketAddress,
+  schemaId = SCHEMA_UID,
+  attesterAddress,
+  chainId,
+  marketId,
+}: UsePredictionsProps) => {
+  return [
+    'attestations',
+    schemaId,
+    marketAddress || null,
+    attesterAddress || null,
+    chainId || null,
+    marketId || null,
+  ];
+};
+
+const getPredictions = async ({
+  marketAddress,
+  schemaId = SCHEMA_UID,
+  attesterAddress,
+  marketId,
+}: UsePredictionsProps) => {
+  // Normalize addresses if provided
+  let normalizedMarketAddress = marketAddress;
+  if (marketAddress) {
+    try {
+      normalizedMarketAddress = getAddress(marketAddress);
+    } catch (e) {
+      console.error('Failed to normalize market address:', e);
+      // Fallback to the original address
+    }
+  }
+
+  let normalizedAttesterAddress = attesterAddress;
+  if (attesterAddress) {
+    try {
+      normalizedAttesterAddress = getAddress(attesterAddress);
+    } catch (e) {
+      console.error('Failed to normalize attester address:', e);
+      // Fallback to the original address
+    }
+  }
+
+  // Prepare variables, omitting undefined ones
+  const filters: Record<string, { equals: string }>[] = [];
+  if (normalizedMarketAddress) {
+    filters.push({ marketAddress: { equals: normalizedMarketAddress } });
+  }
+  if (normalizedAttesterAddress) {
+    filters.push({ attester: { equals: normalizedAttesterAddress } });
+  }
+
+  if (marketId) {
+    filters.push({ marketId: { equals: String(marketId) } });
+  }
+
+  const variables = {
+    where: {
+      schemaId: { equals: schemaId },
+      AND: filters,
+    },
+    take: 100,
+  };
+
+  try {
+    const data = await graphqlRequest<AttestationsQueryResponse>(
+      GET_ATTESTATIONS_QUERY,
+      variables
+    );
+
+    return data;
+  } catch (error) {
+    console.error('Failed to load predictions:', error);
+    throw new Error('Failed to load predictions');
+  }
+};
+
 export const usePredictions = ({
   marketAddress,
   schemaId = SCHEMA_UID,
@@ -88,75 +168,28 @@ export const usePredictions = ({
   chainId,
   marketId,
 }: UsePredictionsProps) => {
+  const queryKey = generatePredictionsQueryKey({
+    marketAddress,
+    schemaId,
+    attesterAddress,
+    chainId,
+    marketId,
+  });
+
   const {
     data: attestationsData,
     isLoading,
     error,
     refetch,
   } = useQuery<AttestationsQueryResponse | undefined>({
-    queryKey: [
-      'attestations',
-      schemaId,
-      marketAddress,
-      attesterAddress,
-      chainId,
-      marketId,
-    ],
-    queryFn: async () => {
-      // Normalize addresses if provided
-      let normalizedMarketAddress = marketAddress;
-      if (marketAddress) {
-        try {
-          normalizedMarketAddress = getAddress(marketAddress);
-        } catch (e) {
-          console.error('Failed to normalize market address:', e);
-          // Fallback to the original address
-        }
-      }
-
-      let normalizedAttesterAddress = attesterAddress;
-      if (attesterAddress) {
-        try {
-          normalizedAttesterAddress = getAddress(attesterAddress);
-        } catch (e) {
-          console.error('Failed to normalize attester address:', e);
-          // Fallback to the original address
-        }
-      }
-
-      // Prepare variables, omitting undefined ones
-      const filters: Record<string, { equals: string }>[] = [];
-      if (normalizedMarketAddress) {
-        filters.push({ marketAddress: { equals: normalizedMarketAddress } });
-      }
-      if (normalizedAttesterAddress) {
-        filters.push({ attester: { equals: normalizedAttesterAddress } });
-      }
-
-      if (marketId) {
-        filters.push({ marketId: { equals: String(marketId) } });
-      }
-
-      const variables = {
-        where: {
-          schemaId: { equals: schemaId },
-          AND: filters,
-        },
-        take: 100,
-      };
-
-      try {
-        const data = await graphqlRequest<AttestationsQueryResponse>(
-          GET_ATTESTATIONS_QUERY,
-          variables
-        );
-
-        return data;
-      } catch (error) {
-        console.error('Failed to load predictions:', error);
-        throw new Error('Failed to load predictions');
-      }
-    },
+    queryKey,
+    queryFn: () =>
+      getPredictions({
+        marketAddress,
+        schemaId,
+        attesterAddress,
+        marketId,
+      }),
     enabled: Boolean(schemaId),
     retry: 3,
     retryDelay: 1000,
@@ -173,4 +206,21 @@ export const usePredictions = ({
   }, [attestationsData]);
 
   return { data, isLoading, error, refetch };
+};
+
+export const prefetchPredictions = async (
+  queryClient: QueryClient,
+  schemaId: string
+) => {
+  const queryKey = generatePredictionsQueryKey({
+    schemaId,
+  });
+
+  return await queryClient.prefetchQuery({
+    queryKey,
+    queryFn: () =>
+      getPredictions({
+        schemaId,
+      }),
+  });
 };

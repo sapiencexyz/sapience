@@ -1,5 +1,5 @@
 import { graphqlRequest } from '@sapience/ui/lib';
-import { useQuery } from '@tanstack/react-query';
+import { QueryClient, useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import type {
   Market as MarketType,
@@ -8,7 +8,10 @@ import type {
   Position as PositionType,
 } from '@sapience/ui/types/graphql';
 
-import { FOCUS_AREAS, DEFAULT_FOCUS_AREA } from '~/lib/constants/focusAreas';
+import {
+  DEFAULT_FOCUS_AREA,
+  getFocusAreaMap,
+} from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 
@@ -241,85 +244,83 @@ const OPEN_INTEREST_QUERY = /* GraphQL */ `
   }
 `;
 
-// Rename the hook to reflect its output
+export const getEnrichedMarketGroups = async () => {
+  // Create a lookup map for focus areas using their ID (which matches category slug)
+  const focusAreaMap = getFocusAreaMap();
+
+  // --- Fetch initial market group data ---
+  type MarketGroupsQueryResult = {
+    marketGroups: MarketGroupType[];
+  };
+
+  const data = await graphqlRequest<MarketGroupsQueryResult>(MARKETS_QUERY);
+
+  if (!data || !data.marketGroups) {
+    console.error(
+      '[useEnrichedMarketGroups] No market groups data received from API or data structure invalid.'
+    );
+    return [];
+  }
+
+  // --- Process market groups (enrichment only) ---
+  return data.marketGroups.map(
+    (marketGroup: MarketGroupType): EnrichedMarketGroup => {
+      const focusAreaData = focusAreaMap.get(marketGroup?.category?.slug || '');
+
+      let categoryInfo: CategoryType & { iconSvg?: string; color?: string };
+      if (marketGroup.category && focusAreaData) {
+        categoryInfo = {
+          ...marketGroup.category,
+          marketGroups: marketGroup.category.marketGroups,
+          iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
+          color: focusAreaData?.color || '#9CA3AF', // Tailwind gray-400
+        };
+      } else {
+        categoryInfo = {
+          id: -1,
+          name: 'Unknown',
+          slug: 'unknown',
+          createdAt: new Date().toISOString(),
+          resources: [],
+          marketGroups: [],
+          iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
+          color: '#9CA3AF', // Tailwind gray-400
+        };
+      }
+
+      const mappedMarkets = (marketGroup.markets || []).map(
+        (market: MarketType): MarketType => ({
+          ...market,
+          id: market.id,
+          positions: market.positions || [],
+        })
+      );
+
+      // Get classification
+      const classification = getMarketGroupClassification(marketGroup);
+
+      // Return the enriched group WITHOUT fetching marketId here
+      return {
+        ...marketGroup,
+        category: categoryInfo,
+        markets: mappedMarkets,
+        marketClassification: classification,
+      };
+    }
+  );
+};
+
 export const useEnrichedMarketGroups = () => {
   return useQuery<EnrichedMarketGroup[]>({
     queryKey: ['enrichedMarketGroups'],
-    queryFn: async () => {
-      // Create a lookup map for focus areas using their ID (which matches category slug)
-      const focusAreaMap = new Map<
-        string,
-        { iconSvg: string; color: string; name: string }
-      >();
-      FOCUS_AREAS.forEach((area) => {
-        focusAreaMap.set(area.id, {
-          iconSvg: area.iconSvg,
-          color: area.color,
-          name: area.name,
-        });
-      });
+    queryFn: getEnrichedMarketGroups,
+  });
+};
 
-      // --- Fetch initial market group data ---
-      type MarketGroupsQueryResult = {
-        marketGroups: MarketGroupType[];
-      };
-
-      const data = await graphqlRequest<MarketGroupsQueryResult>(MARKETS_QUERY);
-
-      if (!data || !data.marketGroups) {
-        console.error(
-          '[useEnrichedMarketGroups] No market groups data received from API or data structure invalid.'
-        );
-        return [];
-      }
-
-      // --- Process market groups (enrichment only) ---
-      return data.marketGroups.map(
-        (marketGroup: MarketGroupType): EnrichedMarketGroup => {
-          let categoryInfo: CategoryType & { iconSvg?: string; color?: string };
-
-          if (marketGroup.category) {
-            const focusAreaData = focusAreaMap.get(marketGroup.category.slug);
-            categoryInfo = {
-              ...marketGroup.category,
-              marketGroups: marketGroup.category.marketGroups,
-              iconSvg: focusAreaData?.iconSvg || DEFAULT_FOCUS_AREA.iconSvg,
-              color: focusAreaData?.color || '#9CA3AF', // Tailwind gray-400
-            };
-          } else {
-            categoryInfo = {
-              id: -1,
-              name: 'Unknown',
-              slug: 'unknown',
-              createdAt: new Date().toISOString(),
-              resources: [],
-              marketGroups: [],
-              iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
-              color: '#9CA3AF', // Tailwind gray-400
-            };
-          }
-
-          const mappedMarkets = (marketGroup.markets || []).map(
-            (market: MarketType): MarketType => ({
-              ...market,
-              id: market.id,
-              positions: market.positions || [],
-            })
-          );
-
-          // Get classification
-          const classification = getMarketGroupClassification(marketGroup);
-
-          // Return the enriched group WITHOUT fetching marketId here
-          return {
-            ...marketGroup,
-            category: categoryInfo,
-            markets: mappedMarkets,
-            marketClassification: classification,
-          };
-        }
-      );
-    },
+export const prefetchEnrichedMarketGroups = async (queryClient: QueryClient) => {
+  return await queryClient.prefetchQuery({
+    queryKey: ['enrichedMarketGroups'],
+    queryFn: getEnrichedMarketGroups,
   });
 };
 
