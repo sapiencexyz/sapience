@@ -29,8 +29,6 @@ import {
 } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
 import { parseUrlParameter } from '~/lib/utils/util';
-import { NetworkSwitcher } from '~/components/shared/NetworkSwitcher';
-
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -211,12 +209,9 @@ const ForecastContent = () => {
   }
 
   return (
-
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-32">
       <div className="container mx-auto max-w-6xl flex flex-col">
-        <NetworkSwitcher />
         <div className="flex flex-col px-4 md:px-3 flex-1">
-
           <div>
             {marketClassification ===
               MarketGroupClassification.MULTIPLE_CHOICE &&

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
-import { NetworkSwitcher } from '~/components/shared/NetworkSwitcher';
 
 const MarketGroupsListSkeleton = () => <div className="space-y-4" />;
 
@@ -21,7 +20,6 @@ export const metadata: Metadata = {
 const ForecastingPage = () => {
   return (
     <div className="container mx-auto px-4 md:p-8 max-w-8xl mt-16">
-      <NetworkSwitcher />
       <MarketGroupsList />
     </div>
   );
