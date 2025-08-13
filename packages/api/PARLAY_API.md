@@ -1,14 +1,14 @@
 # Parlay API Documentation
 
-Esta documentación describe las nuevas funcionalidades agregadas para soportar parlays en la API.
+This documentation describes the new functionalities added to support parlays in the API.
 
-## Funcionalidades Implementadas
+## Implemented Features
 
-### 1. Similar Markets (Mercados Similares)
+### 1. Similar Markets
 
-Se agregó el campo `similarMarkets` al modelo `Market` que permite almacenar un array de URLs de markets similares.
+The `similarMarkets` field was added to the `Market` model to store an array of URLs of similar markets.
 
-#### Crear Market con Similar Markets
+#### Create Market with Similar Markets
 
 ```typescript
 // POST /create-market-group/:marketGroupAddress/markets
@@ -34,11 +34,11 @@ Se agregó el campo `similarMarkets` al modelo `Market` que permite almacenar un
 }
 ```
 
-### 2. Parlay Incompatibility (Incompatibilidad de Parlays)
+### 2. Parlay Incompatibility
 
-Se implementó un sistema de matriz de incompatibilidad donde por defecto todos los markets son compatibles, excepto los que se marcan explícitamente como incompatibles.
+A matrix incompatibility system was implemented where by default all markets are compatible, except those explicitly marked as incompatible.
 
-#### Marcar Markets como Incompatibles
+#### Mark Markets as Incompatible
 
 ```typescript
 // POST /parlay/incompatibility
@@ -60,7 +60,7 @@ Se implementó un sistema de matriz de incompatibilidad donde por defecto todos 
 }
 ```
 
-#### Remover Incompatibilidad
+#### Remove Incompatibility
 
 ```typescript
 // DELETE /parlay/incompatibility
@@ -77,9 +77,9 @@ Se implementó un sistema de matriz de incompatibilidad donde por defecto todos 
 }
 ```
 
-### 3. Consultas de Compatibilidad
+### 3. Compatibility Queries
 
-#### Obtener Markets Incompatibles
+#### Get Incompatible Markets
 
 ```typescript
 // GET /parlay/incompatible-markets/:marketId
@@ -98,7 +98,7 @@ Se implementó un sistema de matriz de incompatibilidad donde por defecto todos 
 ]
 ```
 
-#### Obtener Markets Compatibles
+#### Get Compatible Markets
 
 ```typescript
 // GET /parlay/compatible-markets/:marketId
@@ -123,7 +123,7 @@ Se implementó un sistema de matriz de incompatibilidad donde por defecto todos 
 ]
 ```
 
-#### Verificar Compatibilidad entre Dos Markets
+#### Check Compatibility between Two Markets
 
 ```typescript
 // GET /parlay/check-compatibility?marketAId=1&marketBId=2
@@ -137,7 +137,7 @@ Se implementó un sistema de matriz de incompatibilidad donde por defecto todos 
 }
 ```
 
-#### Obtener Todas las Incompatibilidades
+#### Get All Incompatibilities
 
 ```typescript
 // GET /parlay/all-incompatibilities
@@ -165,9 +165,9 @@ Se implementó un sistema de matriz de incompatibilidad donde por defecto todos 
 ]
 ```
 
-### 4. Cálculo de Probabilidad de Parlay
+### 4. Parlay Probability Calculation
 
-#### Calcular Probabilidad de Éxito de un Parlay
+#### Calculate Success Probability of a Parlay
 
 ```typescript
 // POST /parlay/get-parlay-chance
@@ -176,14 +176,15 @@ Se implementó un sistema de matriz de incompatibilidad donde por defecto todos 
     "0x1234567890abcdef/1",
     "0x1234567890abcdef/2",
     "0xfedcba0987654321/1"
-  ]
+  ],
+  "marketPredictions": [true, false, true]
 }
 ```
 
 **Response:**
 ```json
 {
-  "parlayChance": 0.7,
+  "parlayChance": 0.343,
   "markets": [
     "0x1234567890abcdef/1",
     "0x1234567890abcdef/2",
@@ -193,14 +194,15 @@ Se implementó un sistema de matriz de incompatibilidad donde por defecto todos 
 }
 ```
 
-**Notas:**
-- `parlayChance` es un valor entre 0 y 1
-- El formato de cada market debe ser `marketGroupAddress/marketId`
-- Por ahora devuelve siempre 0.7 como valor genérico
+**Notes:**
+- `parlayChance` is a value between 0 and 1
+- Each market format must be `marketGroupAddress/marketIdx`
+- `marketPredictions` must be an array of booleans with the same length as `markets`
+- The calculation multiplies the individual probabilities based on predictions (true = Yes, false = No)
 
-## Estructura de Base de Datos
+## Database Structure
 
-### Modelo Market (Actualizado)
+### Market Model (Updated)
 
 ```prisma
 model Market {
@@ -213,34 +215,34 @@ model Market {
 }
 ```
 
-### Modelo ParlayIncompatibility (Nuevo)
+### ParlayIncompatibility Model (New)
 
 ```prisma
 model ParlayIncompatibility {
   id                    Int      @id @default(autoincrement())
   createdAt             DateTime @default(now())
   
-  // Referencias a los dos markets incompatibles
+  // References to the two incompatible markets
   marketAId             Int
   marketBId             Int
   
-  // Razón por la cual son incompatibles (opcional)
+  // Reason why they are incompatible (optional)
   incompatibilityReason String?  @db.Text
   
-  // Relaciones
+  // Relations
   marketA               Market   @relation("ParlayIncompatibilityA", fields: [marketAId], references: [id])
   marketB               Market   @relation("ParlayIncompatibilityB", fields: [marketBId], references: [id])
   
-  // Índices para optimizar consultas
+  // Indexes to optimize queries
   @@unique([marketAId, marketBId])
   @@index([marketAId])
   @@index([marketBId])
 }
 ```
 
-## Ejemplos de Uso
+## Usage Examples
 
-### Escenario 1: Crear Markets Similares
+### Scenario 1: Create Similar Markets
 
 ```typescript
 // Crear market principal
@@ -258,7 +260,7 @@ const mainMarket = await fetch('/create-market-group/0x123/markets', {
 });
 ```
 
-### Escenario 2: Configurar Incompatibilidades
+### Scenario 2: Configure Incompatibilities
 
 ```typescript
 // Marcar markets como incompatibles
@@ -278,14 +280,14 @@ const result = await compatibility.json();
 console.log(result.isCompatible); // false
 ```
 
-### Escenario 3: Obtener Markets para Parlay
+### Scenario 3: Get Markets for Parlay
 
 ```typescript
 // Obtener markets compatibles con market 1
 const compatibleMarkets = await fetch('/parlay/compatible-markets/1');
 const markets = await compatibleMarkets.json();
 
-// Filtrar markets que no están en similarMarkets del market 1
+// Filter markets that are not in similarMarkets of market 1
 const market1 = await fetch('/market/1');
 const market1Data = await market1.json();
 const similarMarketIds = market1Data.similarMarkets.map(url => {
@@ -297,7 +299,7 @@ const parlayCandidates = markets.filter(market =>
   !similarMarketIds.includes(market.id)
 );
 
-// Calcular probabilidad de parlay
+// Calculate parlay probability
 const parlayChance = await fetch('/parlay/get-parlay-chance', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
@@ -311,20 +313,20 @@ const parlayChance = await fetch('/parlay/get-parlay-chance', {
 const chanceResult = await parlayChance.json();
 console.log(`Parlay chance: ${chanceResult.parlayChance}`); // 0.7
 
-## Notas Importantes
+## Important Notes
 
-1. **Por defecto, todos los markets son compatibles** - Solo se almacenan las incompatibilidades explícitas
-2. **Las incompatibilidades son bidireccionales** - Si A es incompatible con B, B es incompatible con A
-3. **El campo similarMarkets es opcional** - Si no se proporciona, se usa un array vacío
-4. **Las URLs en similarMarkets deben seguir el formato** `/market/{id}`
-5. **Las validaciones incluyen**:
-   - Verificar que ambos markets existan
-   - Verificar que no se marque un market como incompatible consigo mismo
-   - Validar que se proporcionen todos los campos requeridos
+1. **By default, all markets are compatible** - Only explicit incompatibilities are stored
+2. **Incompatibilities are bidirectional** - If A is incompatible with B, B is incompatible with A
+3. **The similarMarkets field is optional** - If not provided, an empty array is used
+4. **URLs in similarMarkets must follow the format** `/market/{id}`
+5. **Validations include**:
+   - Verify that both markets exist
+   - Verify that a market is not marked as incompatible with itself
+   - Validate that all required fields are provided
 
-## Próximos Pasos
+## Next Steps
 
-- Implementar GraphQL resolvers para consultas más flexibles
-- Agregar endpoints para bulk operations
-- Implementar cache para mejorar performance
-- Agregar validaciones adicionales según necesidades específicas 
+- Implement GraphQL resolvers for more flexible queries
+- Add endpoints for bulk operations
+- Implement cache to improve performance
+- Add additional validations according to specific needs 

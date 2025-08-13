@@ -3,19 +3,19 @@ import prisma from '../db';
 
 const router = Router();
 
-// POST /parlay/incompatibility - Marcar markets como incompatibles
+// POST /parlay/incompatibility - Mark markets as incompatible
 router.post('/incompatibility', async (req: Request, res: Response) => {
   try {
     const { marketAId, marketBId, incompatibilityReason } = req.body;
 
-    // Validar que los markets sean diferentes
+    // Validate that markets are different
     if (marketAId === marketBId) {
       return res.status(400).json({
         message: 'Cannot mark a market as incompatible with itself',
       });
     }
 
-    // Validar que ambos markets existan
+    // Validate that both markets exist
     const [marketA, marketB] = await Promise.all([
       prisma.market.findUnique({ where: { id: marketAId } }),
       prisma.market.findUnique({ where: { id: marketBId } }),
@@ -44,7 +44,7 @@ router.post('/incompatibility', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /parlay/incompatibility - Remover incompatibilidad (hacer compatibles)
+// DELETE /parlay/incompatibility - Remove incompatibility (make compatible)
 router.delete('/incompatibility', async (req: Request, res: Response) => {
   try {
     const { marketAId, marketBId } = req.body;
@@ -59,7 +59,7 @@ router.delete('/incompatibility', async (req: Request, res: Response) => {
       where: {
         OR: [
           { marketAId, marketBId },
-          { marketAId: marketBId, marketBId: marketAId }, // También eliminar la entrada inversa
+          { marketAId: marketBId, marketBId: marketAId }, // Also remove the inverse entry
         ],
       },
     });
@@ -73,7 +73,7 @@ router.delete('/incompatibility', async (req: Request, res: Response) => {
   }
 });
 
-// GET /parlay/incompatible-markets/:marketId - Obtener markets incompatibles con un market específico
+// GET /parlay/incompatible-markets/:marketId - Get incompatible markets with a specific market
 router.get(
   '/incompatible-markets/:marketId',
   async (req: Request, res: Response) => {
@@ -93,7 +93,7 @@ router.get(
         },
       });
 
-      // Transformar para devolver solo los markets incompatibles
+      // Transform to return only incompatible markets
       const incompatibleMarkets = incompatibilities.map((inc) => {
         return inc.marketAId === parseInt(marketId) ? inc.marketB : inc.marketA;
       });
@@ -108,7 +108,7 @@ router.get(
   }
 );
 
-// GET /parlay/compatible-markets/:marketId - Obtener markets compatibles con un market específico
+// GET /parlay/compatible-markets/:marketId - Get compatible markets with a specific market
 router.get(
   '/compatible-markets/:marketId',
   async (req: Request, res: Response) => {
@@ -116,26 +116,26 @@ router.get(
       const { marketId } = req.params;
       const marketIdInt = parseInt(marketId);
 
-      // Obtener todos los markets
+      // Get all markets
       const allMarkets = await prisma.market.findMany({
-        where: { id: { not: marketIdInt } }, // Excluir el market actual
+        where: { id: { not: marketIdInt } }, // Exclude current market
       });
 
-      // Obtener incompatibilidades
+      // Get incompatibilities
       const incompatibilities = await prisma.parlayIncompatibility.findMany({
         where: {
           OR: [{ marketAId: marketIdInt }, { marketBId: marketIdInt }],
         },
       });
 
-      // Crear set de IDs incompatibles para búsqueda rápida
+      // Create set of incompatible IDs for fast lookup
       const incompatibleIds = new Set(
         incompatibilities.map((inc) =>
           inc.marketAId === marketIdInt ? inc.marketBId : inc.marketAId
         )
       );
 
-      // Filtrar markets compatibles
+      // Filter compatible markets
       const compatibleMarkets = allMarkets.filter(
         (market) => !incompatibleIds.has(market.id)
       );
@@ -150,7 +150,7 @@ router.get(
   }
 );
 
-// GET /parlay/check-compatibility - Verificar si dos markets específicos son compatibles
+// GET /parlay/check-compatibility - Check if two specific markets are compatible
 router.get('/check-compatibility', async (req: Request, res: Response) => {
   try {
     const { marketAId, marketBId } = req.query;
@@ -188,7 +188,7 @@ router.get('/check-compatibility', async (req: Request, res: Response) => {
   }
 });
 
-// GET /parlay/all-incompatibilities - Obtener todas las incompatibilidades
+// GET /parlay/all-incompatibilities - Get all incompatibilities
 router.get('/all-incompatibilities', async (req: Request, res: Response) => {
   try {
     const incompatibilities = await prisma.parlayIncompatibility.findMany({
@@ -207,30 +207,116 @@ router.get('/all-incompatibilities', async (req: Request, res: Response) => {
   }
 });
 
-// POST /parlay/get-parlay-chance - Calcular la probabilidad de éxito de un parlay
+// POST /parlay/get-parlay-chance - Calculate the success probability of a parlay
 router.post('/get-parlay-chance', async (req: Request, res: Response) => {
   try {
-    const { markets } = req.body;
+    const { markets, marketPredictions } = req.body;
 
-    // Validar que se proporcione la lista de markets
+    // Validate that market predictions are provided
+    if (
+      !marketPredictions ||
+      !Array.isArray(marketPredictions) ||
+      marketPredictions.length === 0
+    ) {
+      return res.status(400).json({
+        message: 'Market predictions array is required and must not be empty',
+      });
+    }
+
+    // Validate that markets list is provided
     if (!markets || !Array.isArray(markets) || markets.length === 0) {
       return res.status(400).json({
         message: 'Markets array is required and must not be empty',
       });
     }
 
-    // Validar formato de cada market (marketGroupAddress/marketId)
-    for (const market of markets) {
-      if (typeof market !== 'string' || !market.includes('/')) {
+    // Validate that markets and market predictions have the same length
+    if (markets.length !== marketPredictions.length) {
+      return res.status(400).json({
+        message: 'Markets and market predictions must have the same length',
+      });
+    }
+
+    // Validate that market predictions are valid
+    for (const prediction of marketPredictions) {
+      if (typeof prediction !== 'boolean') {
         return res.status(400).json({
-          message:
-            'Each market must be in format "marketGroupAddress/marketId"',
+          message: 'Each market prediction must be a boolean',
         });
       }
     }
 
-    // Por ahora, devolver siempre 0.7 como valor genérico
-    const parlayChance = 0.7;
+    // Validate that markets are unique
+    const uniqueMarkets = new Set(markets);
+    if (uniqueMarkets.size !== markets.length) {
+      return res.status(400).json({
+        message: 'Markets array must contain unique markets',
+      });
+    }
+
+    // Validate that markets are valid
+    for (const market of markets) {
+      if (typeof market !== 'string' || !market.includes('/')) {
+        return res.status(400).json({
+          message:
+            'Each market must be in format "marketGroupAddress/marketIdx"',
+        });
+      }
+    }
+
+    // Validate that markets exist
+    const marketIds = [];
+    for (const market of markets) {
+      const [marketGroupAddress, marketIdx] = market.split('/');
+      const marketExists = await prisma.market.findFirst({
+        where: {
+          market_group: { address: marketGroupAddress },
+          marketId: parseInt(marketIdx),
+        },
+        include: { market_group: true },
+      });
+
+      if (!marketExists) {
+        return res.status(400).json({
+          message: `Market ${marketGroupAddress}/${marketIdx} does not exist`,
+        });
+      }
+
+      marketIds.push(marketExists.id);
+    }
+
+    // Validate that markets are not incompatible with each other
+    for (let i = 0; i < marketIds.length; i++) {
+      for (let j = i + 1; j < marketIds.length; j++) {
+        const marketAId = marketIds[i];
+        const marketBId = marketIds[j];
+
+        const incompatibility = await prisma.parlayIncompatibility.findFirst({
+          where: {
+            OR: [
+              { marketAId, marketBId },
+              { marketAId: marketBId, marketBId: marketAId },
+            ],
+          },
+        });
+
+        if (incompatibility) {
+          return res.status(400).json({
+            message: `Markets ${marketIds[i]} and ${marketIds[j]} are incompatible`,
+          });
+        }
+      }
+    }
+
+    // Calculate the parlay chance
+    let parlayChance = 1;
+    for (let i = 0; i < marketIds.length; i++) {
+      const marketId = marketIds[i];
+      const marketPrediction = marketPredictions[i];
+      const chanceForYes = await getChanceForYes(marketId);
+      const chanceForNo = 1 - chanceForYes;
+      parlayChance *= marketPrediction ? chanceForYes : chanceForNo;
+    }
 
     return res.json({
       parlayChance,
@@ -244,5 +330,15 @@ router.post('/get-parlay-chance', async (req: Request, res: Response) => {
     });
   }
 });
+
+async function getChanceForYes(marketId: number) {
+  if (marketId === 1) {
+    return 0.7;
+  }
+  if (marketId === 2) {
+    return 0.3;
+  }
+  return 0.5;
+}
 
 export { router };
