@@ -8,13 +8,10 @@ import prisma from '../db';
  */
 export const getAttestationsByMarket = {
   name: 'get_attestations_by_market',
-  description:
-    'Get all attestations for a specific market ID.',
+  description: 'Get all attestations for a specific market ID.',
   parameters: {
     properties: {
-      marketId: z
-        .string()
-        .describe('The market ID to query attestations for'),
+      marketId: z.string().describe('The market ID to query attestations for'),
     },
   },
   function: async ({
