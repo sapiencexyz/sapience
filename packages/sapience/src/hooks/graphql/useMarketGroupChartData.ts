@@ -75,6 +75,7 @@ interface UseMarketGroupChartDataProps {
   fromTimestamp?: number; // Optional start time
   toTimestamp?: number; // Optional end time
   quoteTokenName?: string; // Added quoteTokenName prop
+  hasResource?: boolean; // Whether market group has an associated resource/index
 }
 
 // Update return type
@@ -108,6 +109,7 @@ export const useMarketGroupChartData = ({
   fromTimestamp: propFromTimestamp, // Use optional prop
   toTimestamp: propToTimestamp, // Use optional prop
   quoteTokenName, // Destructure quoteTokenName
+  hasResource = false, // Default to false so we don't fetch index candles unless specified
 }: UseMarketGroupChartDataProps): UseMarketGroupChartDataReturn => {
   // Update state type
   const [chartData, setChartData] = useState<MultiMarketChartDataPoint[]>([]);
@@ -187,27 +189,25 @@ export const useMarketGroupChartData = ({
           }
         );
 
-        // Fetch Index Candles (using the first active marketId)
-        const firstMarketIdString = String(activeMarketIds[0]);
-        const indexCandlePromise = graphqlRequest<IndexCandlesResponse>(
-          GET_INDEX_CANDLES,
-          {
-            address: marketAddress,
-            chainId,
-            marketId: firstMarketIdString, // Using first market ID
-            from: overallStartTime,
-            to: overallEndTime,
-            interval,
+        // Fetch Index Candles only if a resource exists for the market group
+        const indexCandlePromise = (async () => {
+          if (!hasResource) {
+            return [] as Pick<CandleType, 'timestamp' | 'close'>[];
           }
-        )
-          .then((responseData) => {
-            // Return raw index candles here
-            return responseData.indexCandles?.data ?? [];
-          })
-          .catch((err) => {
-            console.error('Error fetching index candles directly:', err);
-            throw err; // Ensure failure propagates to Promise.all
-          });
+          const firstMarketIdString = String(activeMarketIds[0]);
+          const responseData = await graphqlRequest<IndexCandlesResponse>(
+            GET_INDEX_CANDLES,
+            {
+              address: marketAddress,
+              chainId,
+              marketId: firstMarketIdString,
+              from: overallStartTime,
+              to: overallEndTime,
+              interval,
+            }
+          );
+          return responseData.indexCandles?.data ?? [];
+        })();
 
         // Resolve all promises (market and index)
         const [marketCandleResults, rawIndexCandles] = await Promise.all([

@@ -70,7 +70,8 @@ function useMarketPriceData(
   marketAddress: string,
   chainId: number,
   marketId: number,
-  endTimestamp: number
+  endTimestamp: number,
+  enabled: boolean
 ) {
   const now = Math.floor(Date.now() / 1000);
   // Determine if the market is active *before* calculating the timestamp
@@ -99,6 +100,9 @@ function useMarketPriceData(
       timestampForKey,
     ],
     queryFn: async () => {
+      if (!enabled) {
+        return null;
+      }
       // Use the API timestamp for the enabled check
       if (!marketAddress || !chainId || !marketId || !timestampForApi) {
         return null;
@@ -127,7 +131,12 @@ function useMarketPriceData(
       };
     },
     // Use the API timestamp for the enabled check
-    enabled: !!marketAddress && !!chainId && !!marketId && !!timestampForApi,
+    enabled:
+      !!enabled &&
+      !!marketAddress &&
+      !!chainId &&
+      !!marketId &&
+      !!timestampForApi,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -318,7 +327,8 @@ const SettlementPriceCell = ({ group }: { group: EnrichedMarketGroup }) => {
     address,
     chainId,
     marketId,
-    endTimestamp
+    endTimestamp,
+    hasResource
   );
 
   // Now handle early returns after the hook call

@@ -49,10 +49,13 @@ export default function WagerInputWithQuote({
   // Get display unit for numeric markets
   const displayUnit =
     marketClassification === MarketGroupClassification.NUMERIC
-      ? `${marketGroupData.baseTokenName || ''}/${marketGroupData.quoteTokenName || ''}`.replace(
-          '/',
-          ''
-        ) || ''
+      ? (() => {
+          const base = marketGroupData.baseTokenName || '';
+          const quote = marketGroupData.quoteTokenName || '';
+          if (!base && !quote) return '';
+          if (quote.includes('USD')) return base;
+          return `${base}/${quote}`.replace('/', '');
+        })()
       : undefined;
 
   return (

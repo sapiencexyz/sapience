@@ -77,6 +77,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         }
 
         const isMultipleChoice = optionNames && optionNames.length > 1;
+        const isPercentageMarket = yAxisConfig.unit === '%';
         const itemClassName = `flex items-center gap-1.5 mb-0.5 ${isMultipleChoice ? '' : 'text-lg'}`;
 
         return (
@@ -87,7 +88,9 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
             />
             <span className="font-medium text-foreground">
               {formatValue(value)}
-              {baseLabel === MARKET_PREDICTION_LABEL && !isMultipleChoice
+              {baseLabel === MARKET_PREDICTION_LABEL &&
+              !isMultipleChoice &&
+              isPercentageMarket
                 ? ' Chance'
                 : ''}
             </span>

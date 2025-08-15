@@ -261,6 +261,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
         <div className="space-y-4 mt-4">
           {/* Display parameters */}
           <p className="text-sm text-muted-foreground">
+            Chain ID: {group.chainId || NOT_AVAILABLE} <br />
             Nonce: {group.initializationNonce || NOT_AVAILABLE} <br />
             Factory: {group.factoryAddress || NOT_AVAILABLE} <br />
             Collateral: {group.collateralAsset || NOT_AVAILABLE} <br />

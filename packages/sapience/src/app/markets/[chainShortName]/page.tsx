@@ -209,6 +209,7 @@ const MarketGroupPageContent = () => {
     isSuccess,
     marketClassification,
     chainId,
+    activeMarkets,
   } = useMarketGroupPage();
 
   const { isLoading: _isUserPositionsLoading } = usePositions({
@@ -372,6 +373,12 @@ const MarketGroupPageContent = () => {
                     >
                       Forecasts
                     </TabsTrigger>
+                    <TabsTrigger
+                      value="rules"
+                      className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                    >
+                      Rules
+                    </TabsTrigger>
                     {address && (
                       <TabsTrigger
                         value="positions"
@@ -418,6 +425,31 @@ const MarketGroupPageContent = () => {
                   />
                 </div>
               </TabsContent>
+              <TabsContent value="rules" className="mt-0">
+                <div className="p-4 space-y-4">
+                  {activeMarkets.length === 1 && (
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {activeMarkets[0]?.rules ||
+                        'No additional rules clarification provided..'}
+                    </div>
+                  )}
+                  {activeMarkets.length > 1 && (
+                    <div className="space-y-6">
+                      {activeMarkets.map((mkt) => (
+                        <div key={mkt.id}>
+                          <h3 className="text-base font-medium mb-2">
+                            {formatQuestion(mkt.question)}
+                          </h3>
+                          <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {mkt.rules ||
+                              'No additional rules clarification provided..'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
               {address && (
                 <TabsContent value="positions" className="mt-0">
                   <div className="p-4">
@@ -426,6 +458,7 @@ const MarketGroupPageContent = () => {
                       account={address}
                       marketAddress={marketAddress}
                       chainId={chainId}
+                      marketIds={activeMarkets.map((m) => Number(m.marketId))}
                       refetchUserPositions={refetchUserPositions}
                     />
                   </div>

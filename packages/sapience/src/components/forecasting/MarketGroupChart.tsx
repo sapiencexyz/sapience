@@ -44,6 +44,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     marketAddress,
     activeMarketIds: marketIds,
     quoteTokenName: market?.quoteTokenName ?? undefined,
+    hasResource: !!market?.resource,
   });
   const [hoveredChartData, setHoveredChartData] =
     useState<MultiMarketChartDataPoint | null>(null); // New state for hovered data

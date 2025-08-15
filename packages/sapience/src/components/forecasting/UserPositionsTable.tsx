@@ -21,6 +21,7 @@ interface UserPositionsTableProps {
   marketAddress?: string;
   chainId?: number;
   marketId?: number; // Changed from string to number to match typical ID types
+  marketIds?: number[]; // When on a multi-choice group, pass all active marketIds
   refetchUserPositions?: () => void;
   showProfileButton?: boolean;
   showHeaderText?: boolean;
@@ -31,6 +32,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
   marketAddress,
   chainId,
   marketId,
+  marketIds,
   refetchUserPositions,
   showHeaderText = true,
 }) => {
@@ -70,8 +72,14 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     if (marketId != null) {
       return allPositions.filter((p) => p.market?.marketId === marketId);
     }
+    if (marketIds && marketIds.length > 0) {
+      const idSet = new Set(marketIds);
+      return allPositions.filter((p) =>
+        p.market?.marketId != null ? idSet.has(p.market.marketId) : false
+      );
+    }
     return allPositions;
-  }, [allPositions, marketId]);
+  }, [allPositions, marketId, marketIds]);
   const traderPositions = useMemo(
     () => filteredPositions.filter((p) => !p.isLP),
     [filteredPositions]
@@ -80,15 +88,20 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     () => filteredPositions.filter((p) => p.isLP),
     [filteredPositions]
   );
-  const safeAttestations = attestationsData || [];
+  const safeAttestations = useMemo(() => {
+    const atts = attestationsData || [];
+    // Filter attestations to the specific market or active market set when provided
+    if (marketId != null) {
+      return atts.filter((a) => parseInt(a.marketId, 16) === marketId);
+    }
+    if (marketIds && marketIds.length > 0) {
+      const idSet = new Set(marketIds);
+      return atts.filter((a) => idSet.has(parseInt(a.marketId, 16)));
+    }
+    return atts;
+  }, [attestationsData, marketId, marketIds]);
 
-  // Determine if any content exists
-  const hasAnyData =
-    (traderPositions?.length || 0) > 0 ||
-    (lpPositions?.length || 0) > 0 ||
-    (safeAttestations?.length || 0) > 0;
-
-  if (!hasAnyData) return null;
+  // Always render tabs so empty states are visible
 
   return (
     <div className="space-y-6">
