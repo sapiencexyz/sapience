@@ -24,10 +24,10 @@ export const TIME_INTERVALS = {
 export const INDEXERS: {
   [key: string]: IResourcePriceIndexer;
 } = {
-  'ethereum-gas': new evmIndexer(mainnet.id),
+  // 'ethereum-gas': new evmIndexer(mainnet.id),
   'nyc-air-temperature': new WeatherIndexer('temperature'),
-  'sf-precipitation': new WeatherIndexer('precipitation'),
-  'bitcoin-hashrate': new BtcHashIndexer(),
+  // 'sf-precipitation': new WeatherIndexer('precipitation'),
+  // 'bitcoin-hashrate': new BtcHashIndexer(),
   'attestation-prediction-market': new EASPredictionIndexer(42161),
 };
 
