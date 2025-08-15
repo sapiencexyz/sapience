@@ -17,6 +17,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import React from 'react';
+import { FrownIcon } from 'lucide-react';
 
 import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
 import { getAttestationViewURL } from '~/lib/constants/eas';
@@ -313,9 +314,14 @@ const ForecastsTable = ({
     getCoreRowModel: getCoreRowModel(),
   });
 
-  // Add check to return null if no attestations
+  // Empty state
   if (!attestations || attestations.length === 0) {
-    return null;
+    return (
+      <div className="text-center text-muted-foreground py-16">
+        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+        No forecasts found
+      </div>
+    );
   }
 
   const renderContent = (
@@ -384,7 +390,10 @@ const ForecastsTable = ({
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
+                <div className="text-center text-muted-foreground py-16">
+                  <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+                  No forecasts found
+                </div>
               </TableCell>
             </TableRow>
           )}

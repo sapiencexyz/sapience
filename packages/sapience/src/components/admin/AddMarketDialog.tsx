@@ -228,7 +228,6 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
           <MarketFormFields
             market={market}
             onMarketChange={handleMarketChange}
-            isCompact
           />
           <Button type="submit" disabled={isAddingMarket} className="w-full">
             {isAddingMarket ? (

@@ -50,6 +50,7 @@ import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
 import { PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { BetslipContent } from '~/components/layout/Betslip/BetslipContent';
+import { tickToPrice } from '~/lib/utils/tickUtils';
 
 const Betslip = () => {
   const {
@@ -192,12 +193,40 @@ const Betslip = () => {
           const classification =
             position.marketClassification || MarketGroupClassification.NUMERIC;
 
-          const predictionValue =
-            getDefaultFormPredictionValue(
-              classification,
-              position.prediction,
-              position.marketId
-            ) || YES_SQRT_PRICE_X96;
+          // Start with helper default (handles YES/NO and multichoice)
+          let predictionValue = getDefaultFormPredictionValue(
+            classification,
+            position.prediction,
+            position.marketId
+          );
+
+          // For numeric markets, compute a sensible midpoint default when market data is available
+          if (!predictionValue) {
+            if (classification === MarketGroupClassification.NUMERIC) {
+              const withData = positionsWithMarketData.find(
+                (p) => p.position.id === position.id
+              );
+              const firstMarket = withData?.marketGroupData?.markets?.[0];
+              if (firstMarket) {
+                const lowerBound = tickToPrice(
+                  firstMarket.baseAssetMinPriceTick ?? 0
+                );
+                const upperBound = tickToPrice(
+                  firstMarket.baseAssetMaxPriceTick ?? 0
+                );
+                const mid = (lowerBound + upperBound) / 2;
+                predictionValue = String(
+                  mid > -1 && mid < 1 ? mid.toFixed(6) : Math.round(mid)
+                );
+              } else {
+                // Leave blank to let the numeric input compute/display a midpoint locally
+                predictionValue = '';
+              }
+            } else if (classification === MarketGroupClassification.YES_NO) {
+              // Explicit fallback only for YES/NO
+              predictionValue = YES_SQRT_PRICE_X96;
+            }
+          }
 
           const wagerAmount = position.wagerAmount || DEFAULT_WAGER_AMOUNT;
 
@@ -211,7 +240,7 @@ const Betslip = () => {
         })
       ),
     };
-  }, [betSlipPositions]);
+  }, [betSlipPositions, positionsWithMarketData]);
 
   // Set up form for individual wagers
   const individualMethods = useForm<{
@@ -232,9 +261,17 @@ const Betslip = () => {
       ...generateFormValues,
       wagerAmount: DEFAULT_WAGER_AMOUNT,
       limitAmount:
-        betSlipPositions.length > 0
+        positionsWithMarketData.filter(
+          (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
+        ).length > 0
           ? parseFloat(DEFAULT_WAGER_AMOUNT) *
-            Math.pow(2, betSlipPositions.length)
+            Math.pow(
+              2,
+              positionsWithMarketData.filter(
+                (p) =>
+                  p.marketClassification !== MarketGroupClassification.NUMERIC
+              ).length
+            )
           : 2,
     },
   });
@@ -265,9 +302,30 @@ const Betslip = () => {
       wagerAmount:
         parlayMethods.getValues('wagerAmount') ||
         (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
-      limitAmount: parlayMethods.getValues('limitAmount') || '10',
+      limitAmount:
+        parlayMethods.getValues('limitAmount') ||
+        (positionsWithMarketData.filter(
+          (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
+        ).length > 0
+          ? String(
+              parseFloat(DEFAULT_WAGER_AMOUNT) *
+                Math.pow(
+                  2,
+                  positionsWithMarketData.filter(
+                    (p) =>
+                      p.marketClassification !==
+                      MarketGroupClassification.NUMERIC
+                  ).length
+                )
+            )
+          : '10'),
     });
-  }, [parlayMethods, generateFormValues, minParlayWager]);
+  }, [
+    parlayMethods,
+    generateFormValues,
+    minParlayWager,
+    positionsWithMarketData,
+  ]);
 
   // Ensure wager is at least minParlayWager when config loads
   useEffect(() => {
@@ -284,7 +342,9 @@ const Betslip = () => {
   // Minimum payout = wagerAmount × 2^(number of positions), formatted to 2 decimals
   useEffect(() => {
     const wagerAmount = parlayWagerAmount || DEFAULT_WAGER_AMOUNT;
-    const listLength = betSlipPositions.length;
+    const listLength = positionsWithMarketData.filter(
+      (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
+    ).length;
 
     if (listLength > 0) {
       const minimumPayout = parseFloat(wagerAmount) * Math.pow(2, listLength);
@@ -294,7 +354,7 @@ const Betslip = () => {
         { shouldValidate: true }
       );
     }
-  }, [parlayWagerAmount, betSlipPositions.length, parlayMethods]);
+  }, [parlayWagerAmount, positionsWithMarketData, parlayMethods]);
 
   // Prepare parlay positions for the hook
   const parlayPositions = useMemo(() => {
@@ -303,25 +363,41 @@ const Betslip = () => {
       (parlayPositionsForm as Record<string, { predictionValue?: string }>) ||
       {};
 
-    return betSlipPositions.map((position) => {
-      const predValue = positionsForm?.[position.id]?.predictionValue;
-      const isYes = predValue === YES_SQRT_PRICE_X96;
-      return {
-        marketAddress: position.marketAddress,
-        marketId: position.marketId,
-        prediction: isYes,
-        limit: limitAmount,
-      };
-    });
-  }, [betSlipPositions, parlayLimitAmount, parlayPositionsForm]);
+    return positionsWithMarketData
+      .filter(
+        (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
+      )
+      .map(({ position, marketClassification }) => {
+        const predValue = positionsForm?.[position.id]?.predictionValue;
+        if (
+          marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
+        ) {
+          const selectedMarketId = Number(predValue ?? position.marketId);
+          return {
+            marketAddress: position.marketAddress,
+            marketId: selectedMarketId,
+            prediction: true,
+            limit: limitAmount,
+          };
+        }
+        // YES/NO path (default)
+        const isYes = predValue === YES_SQRT_PRICE_X96;
+        return {
+          marketAddress: position.marketAddress,
+          marketId: position.marketId,
+          prediction: isYes,
+          limit: limitAmount,
+        };
+      });
+  }, [positionsWithMarketData, parlayLimitAmount, parlayPositionsForm]);
 
   // Calculate payout amount = wager × 2^(number of positions)
   const payoutAmount = useMemo(() => {
     const wager = parlayWagerAmount || minParlayWager || DEFAULT_WAGER_AMOUNT;
-    const listLength = betSlipPositions.length;
+    const listLength = parlayPositions.length;
     const payout = parseFloat(wager) * Math.pow(2, listLength);
     return Number.isFinite(payout) ? payout.toFixed(2) : '0';
-  }, [parlayWagerAmount, betSlipPositions.length, minParlayWager]);
+  }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
 
   // Use the parlay submission hook
   const {
@@ -340,7 +416,7 @@ const Betslip = () => {
       (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
     payoutAmount,
     enabled:
-      betSlipPositions.length > 0 &&
+      parlayPositions.length > 0 &&
       !!collateralToken &&
       collateralDecimals != null,
     onSuccess: () => {

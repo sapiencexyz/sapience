@@ -10,6 +10,7 @@ import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
+import { FrownIcon } from 'lucide-react';
 import SettlePositionButton from '../forecasting/SettlePositionButton';
 import SellPositionButton from '../forecasting/SellPositionButton';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -156,7 +157,12 @@ export default function TraderPositionsTable({
   const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
 
   if (!positions || positions.length === 0) {
-    return null;
+    return (
+      <div className="text-center text-muted-foreground py-16">
+        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+        No trades found
+      </div>
+    );
   }
 
   const validPositions = positions.filter(
@@ -164,7 +170,12 @@ export default function TraderPositionsTable({
   );
 
   if (validPositions.length === 0) {
-    return null;
+    return (
+      <div className="text-center text-muted-foreground py-16">
+        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+        No trades found
+      </div>
+    );
   }
 
   let displayQuestionColumn;

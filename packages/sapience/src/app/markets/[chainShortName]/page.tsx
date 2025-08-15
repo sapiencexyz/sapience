@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@sapience/ui/components/ui/dialog';
+import { Dialog, DialogContent } from '@sapience/ui/components/ui/dialog';
 import {
   Tabs,
   TabsList,
@@ -13,14 +8,15 @@ import {
   TabsContent,
 } from '@sapience/ui/components/ui/tabs';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, usePathname } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
+import { ChartLineIcon } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
@@ -188,6 +184,7 @@ const MarketGroupPageContent = () => {
   const { address } = useAccount();
   const params = useParams();
   const pathname = usePathname();
+  const router = useRouter();
   const { permitData, isPermitLoading: isPermitLoadingPermit } = useSapience();
   const [showMarketSelector, setShowMarketSelector] = useState(false);
 
@@ -212,6 +209,7 @@ const MarketGroupPageContent = () => {
     isSuccess,
     marketClassification,
     chainId,
+    activeMarkets,
   } = useMarketGroupPage();
 
   const { isLoading: _isUserPositionsLoading } = usePositions({
@@ -236,6 +234,46 @@ const MarketGroupPageContent = () => {
     }
     return markets[0];
   }, [marketGroupByEndTime, marketAddress]);
+
+  // Define callbacks before any conditional returns to keep hook order stable
+  const handleAdvancedViewClick = useCallback(() => {
+    const allMarkets = marketGroupData?.markets || [];
+    const currentTimeSeconds = Date.now() / 1000;
+
+    const activeMarketsList = findActiveMarkets({ markets: allMarkets });
+    const upcomingMarketsList = allMarkets.filter((market: MarketType) => {
+      const start = market.startTimestamp;
+      return (
+        typeof start === 'number' &&
+        !Number.isNaN(start) &&
+        currentTimeSeconds < start
+      );
+    });
+    const pastMarketsList = allMarkets.filter((market: MarketType) => {
+      const end = market.endTimestamp;
+      return (
+        typeof end === 'number' &&
+        !Number.isNaN(end) &&
+        currentTimeSeconds >= end
+      );
+    });
+
+    const listedMarkets = [
+      ...activeMarketsList,
+      ...upcomingMarketsList,
+      ...pastMarketsList,
+    ];
+
+    if (listedMarkets.length === 1) {
+      const onlyMarket = listedMarkets[0];
+      if (onlyMarket?.marketId != null) {
+        router.push(`${pathname}/${onlyMarket.marketId}`);
+        return;
+      }
+    }
+
+    setShowMarketSelector(true);
+  }, [marketGroupData?.markets, router, pathname]);
 
   // If loading, show the Lottie loader
   if (isLoading || isPermitLoadingPermit) {
@@ -335,6 +373,12 @@ const MarketGroupPageContent = () => {
                     >
                       Forecasts
                     </TabsTrigger>
+                    <TabsTrigger
+                      value="rules"
+                      className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                    >
+                      Rules
+                    </TabsTrigger>
                     {address && (
                       <TabsTrigger
                         value="positions"
@@ -346,14 +390,13 @@ const MarketGroupPageContent = () => {
                   </TabsList>
 
                   {/* Advanced View tab-like link (After tabs) */}
-                  <button
-                    type="button"
-                    onClick={() => setShowMarketSelector(true)}
-                    className="text-lg font-medium text-muted-foreground hover:text-primary px-0 flex items-center gap-1 transition-colors"
+                  <Button
+                    onClick={handleAdvancedViewClick}
+                    className="ml-auto text-base"
                   >
-                    Details
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
+                    <ChartLineIcon className="h-8 w-8" />
+                    Advanced View
+                  </Button>
                 </div>
               </div>
               <TabsContent value="forecasts" className="mt-0">
@@ -382,6 +425,31 @@ const MarketGroupPageContent = () => {
                   />
                 </div>
               </TabsContent>
+              <TabsContent value="rules" className="mt-0">
+                <div className="p-4 space-y-4">
+                  {activeMarkets.length === 1 && (
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {activeMarkets[0]?.rules ||
+                        'No additional rules clarification provided..'}
+                    </div>
+                  )}
+                  {activeMarkets.length > 1 && (
+                    <div className="space-y-6">
+                      {activeMarkets.map((mkt) => (
+                        <div key={mkt.id}>
+                          <h3 className="text-base font-medium mb-2">
+                            {formatQuestion(mkt.question)}
+                          </h3>
+                          <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {mkt.rules ||
+                              'No additional rules clarification provided..'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
               {address && (
                 <TabsContent value="positions" className="mt-0">
                   <div className="p-4">
@@ -390,6 +458,7 @@ const MarketGroupPageContent = () => {
                       account={address}
                       marketAddress={marketAddress}
                       chainId={chainId}
+                      marketIds={activeMarkets.map((m) => Number(m.marketId))}
                       refetchUserPositions={refetchUserPositions}
                     />
                   </div>
@@ -403,12 +472,7 @@ const MarketGroupPageContent = () => {
       {/* Market Selection Dialog */}
       <Dialog open={showMarketSelector} onOpenChange={setShowMarketSelector}>
         <DialogContent className="sm:max-w-xl [&>[aria-label='Close']]:hidden p-8">
-          <DialogHeader className="mb-2">
-            <DialogTitle className="text-3xl font-normal">
-              Prediction Markets
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6 pb-2">
+          <div className="space-y-6">
             {(() => {
               // Categorize markets into active, upcoming, and past
               const allMarkets = marketGroupData.markets || [];

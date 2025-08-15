@@ -305,7 +305,7 @@ importers:
         version: 19.1.0(react@19.1.0)
       vocs:
         specifier: ^1.0.5
-        version: 1.0.12(@types/node@24.0.4)(@types/react-dom@18.3.0)(@types/react@19.1.8)(acorn@8.15.0)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.29.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.36.0)(terser@5.43.1)(tsx@4.19.2)(typescript@5.8.3)(yaml@2.7.1)
+        version: 1.0.12(@types/node@24.0.4)(@types/react-dom@18.3.0)(@types/react@19.1.8)(acorn@8.14.1)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.29.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.36.0)(terser@5.43.1)(tsx@4.19.2)(typescript@5.8.3)(yaml@2.7.1)
     devDependencies:
       '@types/react':
         specifier: 19.1.8
@@ -641,7 +641,7 @@ importers:
         version: 19.1.0(react@19.1.0)
       vocs:
         specifier: latest
-        version: 1.0.13(@types/node@24.0.4)(@types/react-dom@18.3.0)(@types/react@19.1.8)(acorn@8.14.1)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.29.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.36.0)(terser@5.43.1)(tsx@4.19.2)(typescript@5.9.2)(yaml@2.7.1)
+        version: 1.0.13(@types/node@24.0.4)(@types/react-dom@18.3.0)(@types/react@19.1.8)(acorn@8.15.0)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.29.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.36.0)(terser@5.43.1)(tsx@4.19.2)(typescript@5.9.2)(yaml@2.7.1)
     devDependencies:
       '@types/react':
         specifier: 19.1.8
@@ -15679,7 +15679,6 @@ packages:
     engines: {node: '>=0.6.0', teleport: '>=0.2.0'}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode@1.5.3:
@@ -44649,12 +44648,12 @@ snapshots:
       tsx: 4.19.2
       yaml: 2.7.1
 
-  vocs@1.0.12(@types/node@24.0.4)(@types/react-dom@18.3.0)(@types/react@19.1.8)(acorn@8.15.0)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.29.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.36.0)(terser@5.43.1)(tsx@4.19.2)(typescript@5.8.3)(yaml@2.7.1):
+  vocs@1.0.12(@types/node@24.0.4)(@types/react-dom@18.3.0)(@types/react@19.1.8)(acorn@8.14.1)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.29.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.36.0)(terser@5.43.1)(tsx@4.19.2)(typescript@5.8.3)(yaml@2.7.1):
     dependencies:
       '@floating-ui/react': 0.27.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@hono/node-server': 1.13.8(hono@4.7.4)
       '@mdx-js/react': 3.1.0(@types/react@19.1.8)(react@19.1.0)
-      '@mdx-js/rollup': 3.1.0(acorn@8.15.0)(rollup@4.36.0)
+      '@mdx-js/rollup': 3.1.0(acorn@8.14.1)(rollup@4.36.0)
       '@noble/hashes': 1.8.0
       '@radix-ui/colors': 3.0.0
       '@radix-ui/react-accordion': 1.2.10(@types/react-dom@18.3.0)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -44741,12 +44740,12 @@ snapshots:
       - typescript
       - yaml
 
-  vocs@1.0.13(@types/node@24.0.4)(@types/react-dom@18.3.0)(@types/react@19.1.8)(acorn@8.14.1)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.29.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.36.0)(terser@5.43.1)(tsx@4.19.2)(typescript@5.9.2)(yaml@2.7.1):
+  vocs@1.0.13(@types/node@24.0.4)(@types/react-dom@18.3.0)(@types/react@19.1.8)(acorn@8.15.0)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.29.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(rollup@4.36.0)(terser@5.43.1)(tsx@4.19.2)(typescript@5.9.2)(yaml@2.7.1):
     dependencies:
       '@floating-ui/react': 0.27.5(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@hono/node-server': 1.13.8(hono@4.7.4)
       '@mdx-js/react': 3.1.0(@types/react@19.1.8)(react@19.1.0)
-      '@mdx-js/rollup': 3.1.0(acorn@8.14.1)(rollup@4.36.0)
+      '@mdx-js/rollup': 3.1.0(acorn@8.15.0)(rollup@4.36.0)
       '@noble/hashes': 1.8.0
       '@radix-ui/colors': 3.0.0
       '@radix-ui/react-accordion': 1.2.10(@types/react-dom@18.3.0)(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)

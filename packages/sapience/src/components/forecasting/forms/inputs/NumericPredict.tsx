@@ -30,10 +30,15 @@ export default function NumericPredict({
   } = useFormContext();
   const value = watch(name);
 
-  const unitsDisplay =
-    baseTokenName && quoteTokenName
-      ? `${baseTokenName}/${quoteTokenName}`
-      : undefined;
+  const unitsDisplay = (() => {
+    if (baseTokenName && quoteTokenName) {
+      return quoteTokenName.includes('USD')
+        ? `${baseTokenName}`
+        : `${baseTokenName}/${quoteTokenName}`;
+    }
+    if (baseTokenName) return baseTokenName;
+    return undefined;
+  })();
 
   // Calculate the step size based on decimal places
   const stepSize = 1 / 10 ** decimalPlaces;

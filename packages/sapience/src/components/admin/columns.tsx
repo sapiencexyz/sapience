@@ -24,6 +24,7 @@ import EnableBridgedMarketGroupButton from './EnableBridgedMarketGroupButton';
 import MarketDeployButton from './MarketDeployButton';
 import MarketGroupDeployButton from './MarketGroupDeployButton';
 import OwnershipDialog from './OwnershipDialog';
+import PublicToggleButton from './PublicToggleButton';
 import ReindexMarketButton from './ReindexMarketButton';
 import SettleMarketDialog from './SettleMarketDialog';
 import { shortenAddress } from '~/lib/utils/util';
@@ -69,7 +70,8 @@ function useMarketPriceData(
   marketAddress: string,
   chainId: number,
   marketId: number,
-  endTimestamp: number
+  endTimestamp: number,
+  enabled: boolean
 ) {
   const now = Math.floor(Date.now() / 1000);
   // Determine if the market is active *before* calculating the timestamp
@@ -98,6 +100,9 @@ function useMarketPriceData(
       timestampForKey,
     ],
     queryFn: async () => {
+      if (!enabled) {
+        return null;
+      }
       // Use the API timestamp for the enabled check
       if (!marketAddress || !chainId || !marketId || !timestampForApi) {
         return null;
@@ -126,7 +131,12 @@ function useMarketPriceData(
       };
     },
     // Use the API timestamp for the enabled check
-    enabled: !!marketAddress && !!chainId && !!marketId && !!timestampForApi,
+    enabled:
+      !!enabled &&
+      !!marketAddress &&
+      !!chainId &&
+      !!marketId &&
+      !!timestampForApi,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -168,8 +178,9 @@ const MarketItem = ({
 }) => {
   const marketId = market.marketId ? Number(market.marketId) : 0;
   const currentMarketId = latestMarketId ? Number(latestMarketId) : 0;
+  // Only allow deploying the next sequential market after the latest deployed
   const shouldShowDeployButton =
-    marketId > currentMarketId &&
+    marketId === currentMarketId + 1 &&
     !!market.startingSqrtPriceX96 &&
     !!market.claimStatementYesOrNumeric;
 
@@ -252,6 +263,7 @@ const MarketItem = ({
             ends {formatTimestamp(market.endTimestamp ?? 0)}
           </span>
         )}
+        <PublicToggleButton market={market} group={group} />
         {renderMarketActions()}
       </div>
     </div>
@@ -315,7 +327,8 @@ const SettlementPriceCell = ({ group }: { group: EnrichedMarketGroup }) => {
     address,
     chainId,
     marketId,
-    endTimestamp
+    endTimestamp,
+    hasResource
   );
 
   // Now handle early returns after the hook call

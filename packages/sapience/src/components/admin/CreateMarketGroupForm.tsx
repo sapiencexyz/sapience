@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Input, Label, useResources } from '@sapience/ui';
+import { Button, Input, Label } from '@sapience/ui';
+// Removed Dialog imports; copy dialog is now a separate component
 import {
   Accordion,
   AccordionContent,
@@ -23,8 +24,7 @@ import {
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { AlertCircle, ArrowLeft, Loader2, Plus, Trash } from 'lucide-react';
-import Image from 'next/image';
+import { AlertCircle, Loader2, Plus, Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { isAddress } from 'viem';
@@ -36,6 +36,8 @@ import {
   FOCUS_AREAS,
 } from '../../lib/constants/focusAreas';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
+import CopyMarketParametersDialog from './CopyMarketParametersDialog';
+import { useResources } from '~/hooks/useResources';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
 // Use environment variable for API base URL, fallback to /api
@@ -43,7 +45,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 
 // Default values for form fields
 
-const CAT_MEOW_FILE = '/cat-meow.mp3';
 const DEFAULT_CHAIN_ID = 42161;
 const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
 const DEFAULT_BOND_CURRENCY = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -262,7 +263,7 @@ const createMarketFromPrevious = (
   };
 };
 
-const CombinedMarketDialog = () => {
+const CreateMarketGroupForm = () => {
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
   const { signMessageAsync } = useSignMessage();
@@ -300,7 +301,7 @@ const CombinedMarketDialog = () => {
   );
   const [isBridged, setIsBridged] = useState<boolean>(true);
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
-  const [quoteTokenName, setQuoteTokenName] = useState<string>('sUSDS');
+  const [quoteTokenName, setQuoteTokenName] = useState<string>('sapUSD');
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
     null
   );
@@ -308,16 +309,11 @@ const CombinedMarketDialog = () => {
 
   // Markets state (uses imported MarketInput)
   const [markets, setMarkets] = useState<MarketInput[]>([createEmptyMarket(1)]);
-  const [marketsWithCopiedParams, setMarketsWithCopiedParams] = useState<
-    Set<number>
-  >(new Set());
 
   // Form state
   const [formError, setFormError] = useState<string | null>(null);
   const [activeMarketIndex, setActiveMarketIndex] = useState<number>(0);
   const [isMounted, setIsMounted] = useState(false);
-
-  const [showCat, setShowCat] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
@@ -441,13 +437,6 @@ const CombinedMarketDialog = () => {
       return [...prevMarkets, newMarket];
     });
 
-    // Track that this market has copied parameters (if there was a previous market)
-    if (markets.length > 0) {
-      setMarketsWithCopiedParams(
-        (prev) => new Set([...Array.from(prev), newMarketId])
-      );
-    }
-
     setActiveMarketIndex(markets.length); // Set active to the new market
   };
 
@@ -460,16 +449,6 @@ const CombinedMarketDialog = () => {
       // If sequential IDs (1, 2, 3...) are strictly needed after removal, map them:
       // return newMarkets.map((market, i) => ({ ...market, id: i + 1 }));
       return prevMarkets.filter((_, i) => i !== index);
-    });
-
-    // Clean up tracking of copied parameters for the removed market
-    setMarketsWithCopiedParams((prev) => {
-      const newSet = new Set(Array.from(prev));
-      const removedMarketId = markets[index]?.id;
-      if (removedMarketId) {
-        newSet.delete(removedMarketId);
-      }
-      return newSet;
     });
 
     // Adjust activeMarketIndex
@@ -608,36 +587,6 @@ const CombinedMarketDialog = () => {
       // Create the market group
       await createMarketGroup(payload); // eslint-disable-line @typescript-eslint/await-thenable
 
-      // Play success sound
-      const audio = new Audio(CAT_MEOW_FILE);
-      audio.play().catch((audioError) => {
-        console.log(
-          'Error playing audio, playing a beep sound instead',
-          audioError
-        );
-        // Fallback: create a simple success beep
-        const context = new (window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext)();
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-
-        oscillator.frequency.setValueAtTime(1000, context.currentTime);
-        oscillator.type = 'sine';
-
-        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(
-          0.01,
-          context.currentTime + 0.5
-        );
-
-        oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.5);
-      });
-
       // Navigate back to admin page
       router.push('/admin');
     } catch (error) {
@@ -658,19 +607,6 @@ const CombinedMarketDialog = () => {
         <div className="relative">
           {/* Form - takes full width */}
           <form onSubmit={handleSubmit} className="space-y-6 p-1">
-            {/* Back Button */}
-            <div className="flex items-center gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push('/admin')}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Admin
-              </Button>
-            </div>
-
             {/* Market Group Details Section - remains largely the same */}
             <div className="space-y-4">
               {/* Market Group Question */}
@@ -708,43 +644,43 @@ const CombinedMarketDialog = () => {
                   </Select>
                 </div>
               </div>
-              {/* Resource Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="resource">Index</Label>
-                <Select
-                  value={selectedResourceId?.toString() || 'none'}
-                  onValueChange={(value) => {
-                    const newResourceId =
-                      value !== 'none' ? parseInt(value, 10) : null;
-                    setSelectedResourceId(newResourceId);
-                    // Update token names based on resource selection
-                    if (newResourceId === null) {
-                      setBaseTokenName('Yes');
-                      setQuoteTokenName('sUSDS');
-                    } else {
-                      setBaseTokenName('');
-                      setQuoteTokenName('');
-                    }
-                  }}
-                >
-                  <SelectTrigger id="resource">
-                    <SelectValue placeholder="Select a resource (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None (Yes/No)</SelectItem>
-                    {resources?.map((resource) => (
-                      <SelectItem
-                        key={resource.id}
-                        value={resource.id.toString()}
-                      >
-                        {resource.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Base Token Name Input */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Base/Quote Token Names and Index (on one row) */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Index Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="resource">Index</Label>
+                  <Select
+                    value={selectedResourceId?.toString() || 'none'}
+                    onValueChange={(value) => {
+                      const newResourceId =
+                        value !== 'none' ? parseInt(value, 10) : null;
+                      setSelectedResourceId(newResourceId);
+                      // Update token names based on resource selection
+                      if (newResourceId === null) {
+                        setBaseTokenName('Yes');
+                        setQuoteTokenName('sUSDS');
+                      } else {
+                        setBaseTokenName('');
+                        setQuoteTokenName('');
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="resource">
+                      <SelectValue placeholder="Select a resource (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None (Yes/No)</SelectItem>
+                      {resources?.map((resource) => (
+                        <SelectItem
+                          key={resource.id}
+                          value={resource.id.toString()}
+                        >
+                          {resource.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="baseTokenName">Base Token Name</Label>
                   <Input
@@ -784,28 +720,7 @@ const CombinedMarketDialog = () => {
 
             {/* Markets Section - Refactored to use MarketFormFields */}
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Markets</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addMarket}
-                >
-                  <Plus className="h-4 w-4 mr-2" /> Add Market
-                </Button>
-              </div>
-
-              {markets.length > 0 && (
-                <p className="text-sm text-muted-foreground">
-                  💡 New markets will copy all parameters from the previous
-                  market including market question, claim statement, pricing
-                  parameters, rules, and option names. You&apos;ll still need to
-                  set the end time for each market.
-                </p>
-              )}
-
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
                 {markets.map((market, index) => (
                   <button
                     key={market.id} // Use market.id for key
@@ -818,14 +733,6 @@ const CombinedMarketDialog = () => {
                     onClick={() => setActiveMarketIndex(index)}
                   >
                     Market {index + 1} {/* Display 1-based index for user */}
-                    {marketsWithCopiedParams.has(market.id) && (
-                      <span
-                        className="ml-1 text-xs opacity-70"
-                        title="Parameters copied from previous market"
-                      >
-                        📋
-                      </span>
-                    )}
                     {markets.length > 1 && (
                       <Trash
                         className="h-3.5 w-3.5 ml-2 cursor-pointer"
@@ -837,6 +744,23 @@ const CombinedMarketDialog = () => {
                     )}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  className="px-3 py-1 text-sm rounded flex items-center bg-secondary"
+                  onClick={addMarket}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-2" /> Add Market
+                </button>
+                <div className="ml-auto">
+                  <CopyMarketParametersDialog
+                    market={markets[activeMarketIndex]}
+                    onMarketChange={(field, value) =>
+                      handleMarketChange(activeMarketIndex, field, value)
+                    }
+                    onMarketGroupChange={handleMarketGroupChange}
+                    onAdvancedConfigChange={handleAdvancedConfigChange}
+                  />
+                </div>
               </div>
 
               {markets.map((market, index) => (
@@ -851,9 +775,7 @@ const CombinedMarketDialog = () => {
                         onMarketChange={(field, value) =>
                           handleMarketChange(index, field, value)
                         }
-                        marketIndex={index} // Pass index for unique field IDs
-                        onMarketGroupChange={handleMarketGroupChange}
-                        onAdvancedConfigChange={handleAdvancedConfigChange}
+                        marketIndex={index}
                       />
                     </CardContent>
                   </Card>
@@ -1019,121 +941,10 @@ const CombinedMarketDialog = () => {
               </Alert>
             )}
           </form>
-
-          {/* Cat Picture - absolutely positioned in the whitespace on the right, with toggle always visible below */}
-          <div className="hidden md:block">
-            <div className="fixed right-12 top-32 z-20 w-80 flex flex-col justify-center items-center">
-              {showCat && (
-                <div>
-                  <Image
-                    src="/cat.png"
-                    width={320}
-                    height={320}
-                    alt="A cute cat"
-                    className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:scale-105 transition-transform"
-                    onClick={() => {
-                      // Using local cat meow sound file
-                      const audio = new Audio(CAT_MEOW_FILE);
-                      audio.play().catch((audioError) => {
-                        console.log('Error playing audio', audioError);
-                        // Fallback: create a simple beep sound
-                        const context = new (window.AudioContext ||
-                          (
-                            window as unknown as {
-                              webkitAudioContext: typeof AudioContext;
-                            }
-                          ).webkitAudioContext)();
-                        const oscillator = context.createOscillator();
-                        const gainNode = context.createGain();
-
-                        oscillator.connect(gainNode);
-                        gainNode.connect(context.destination);
-
-                        oscillator.frequency.setValueAtTime(
-                          800,
-                          context.currentTime
-                        );
-                        oscillator.type = 'sine';
-
-                        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(
-                          0.01,
-                          context.currentTime + 0.3
-                        );
-
-                        oscillator.start(context.currentTime);
-                        oscillator.stop(context.currentTime + 0.3);
-                      });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        // Trigger the same click handler
-                        const audio = new Audio(CAT_MEOW_FILE);
-                        audio.play().catch((audioError) => {
-                          console.log('Error playing audio', audioError);
-                          // Fallback: create a simple beep sound
-                          const context = new (window.AudioContext ||
-                            (
-                              window as unknown as {
-                                webkitAudioContext: typeof AudioContext;
-                              }
-                            ).webkitAudioContext)();
-                          const oscillator = context.createOscillator();
-                          const gainNode = context.createGain();
-
-                          oscillator.connect(gainNode);
-                          gainNode.connect(context.destination);
-
-                          oscillator.frequency.setValueAtTime(
-                            800,
-                            context.currentTime
-                          );
-                          oscillator.type = 'sine';
-
-                          gainNode.gain.setValueAtTime(
-                            0.3,
-                            context.currentTime
-                          );
-                          gainNode.gain.exponentialRampToValueAtTime(
-                            0.01,
-                            context.currentTime + 0.3
-                          );
-
-                          oscillator.start(context.currentTime);
-                          oscillator.stop(context.currentTime + 0.3);
-                        });
-                      }
-                    }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label="Click to hear cat meow sound"
-                  />
-                  <p className="text-sm text-muted-foreground mt-2 text-center">
-                    🐱 Your friendly companion (pet it!)
-                  </p>
-                </div>
-              )}
-              {/* Show Cat Toggle always visible under the image/caption */}
-              <div className="flex items-center gap-2 mt-4">
-                <Label
-                  htmlFor="show-cat"
-                  className="text-sm font-medium select-none cursor-pointer"
-                >
-                  Show Cat
-                </Label>
-                <Switch
-                  id="show-cat"
-                  checked={showCat}
-                  onCheckedChange={setShowCat}
-                />
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>
   );
 };
 
-export default CombinedMarketDialog;
+export default CreateMarketGroupForm;

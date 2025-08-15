@@ -34,26 +34,52 @@ export class VolumeResolver {
       marketAddress
     );
 
-    // 3. Calculate volume
+    let lastCollateral = BigInt(0);
+    let lastPositionId = 0;
+
     const totalVolume = transactions.reduce((sum: number, transaction) => {
-      // Check if baseToken exists and is a valid number string
-      if (transaction.baseToken) {
+      if (
+        transaction.type === 'addLiquidity' ||
+        transaction.type === 'removeLiquidity'
+      ) {
+        return sum;
+      }
+
+      if (
+        transaction.position &&
+        transaction.position.positionId !== lastPositionId
+      ) {
+        lastCollateral = BigInt(0);
+        lastPositionId = transaction.position.positionId;
+      }
+
+      if (transaction.collateral) {
         try {
-          const baseTokenBigInt = BigInt(transaction.baseToken.toString());
-          const absBaseTokenDelta = Math.abs(
-            parseFloat(formatUnits(baseTokenBigInt, TOKEN_PRECISION))
+          const currentCollateral = BigInt(transaction.collateral.toString());
+          const collateralDelta = currentCollateral - lastCollateral;
+
+          // Use absolute value of collateral change as volume
+          const absCollateralDelta = Math.abs(
+            parseFloat(
+              formatUnits(
+                collateralDelta < 0 ? -collateralDelta : collateralDelta,
+                TOKEN_PRECISION
+              )
+            )
           );
-          return sum + absBaseTokenDelta;
+
+          lastCollateral = currentCollateral;
+
+          return sum + absCollateralDelta;
         } catch (error) {
           console.error(
-            `Error processing transaction baseToken: ${transaction.baseToken}`,
+            `Error processing transaction collateral: ${transaction.collateral}`,
             error
           );
-          // Decide how to handle invalid baseToken values, e.g., skip or throw
           return sum;
         }
       }
-      return sum; // Skip transaction if baseToken is missing
+      return sum; // Skip transaction if collateral is missing
     }, 0);
 
     return totalVolume;

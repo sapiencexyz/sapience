@@ -116,8 +116,6 @@ const MarketDataTables = () => {
     marketAddress: marketData?.marketGroup?.address || undefined,
   });
 
-  console.log('allPositions', allPositions);
-
   // Filter positions by type
   const lpPositions = allPositions.filter((pos) => pos.isLP);
   const traderPositions = allPositions.filter((pos) => !pos.isLP);

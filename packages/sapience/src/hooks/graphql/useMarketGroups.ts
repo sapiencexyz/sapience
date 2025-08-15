@@ -1,5 +1,6 @@
 import { graphqlRequest } from '@sapience/ui/lib';
-import { QueryClient, useQuery } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { formatUnits } from 'viem';
 import type {
   Market as MarketType,
@@ -317,7 +318,9 @@ export const useEnrichedMarketGroups = () => {
   });
 };
 
-export const prefetchEnrichedMarketGroups = async (queryClient: QueryClient) => {
+export const prefetchEnrichedMarketGroups = async (
+  queryClient: QueryClient
+) => {
   return await queryClient.prefetchQuery({
     queryKey: ['enrichedMarketGroups'],
     queryFn: getEnrichedMarketGroups,
