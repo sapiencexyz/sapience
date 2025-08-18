@@ -34,17 +34,17 @@ The `similarMarkets` field was added to the `Market` model to store an array of 
 }
 ```
 
-### 2. Parlay Incompatibility
+### 2. Parlay Incompatibility (Market Groups)
 
-A matrix incompatibility system was implemented where by default all markets are compatible, except those explicitly marked as incompatible.
+A matrix incompatibility system was implemented where by default all market groups are compatible, except those explicitly marked as incompatible. **Incompatibilities are managed at the market group level, not individual markets.**
 
-#### Mark Markets as Incompatible
+#### Mark Market Groups as Incompatible
 
 ```typescript
 // POST /parlay/incompatibility
 {
-  "marketAId": 1,
-  "marketBId": 2,
+  "marketGroupAId": 1,
+  "marketGroupBId": 2,
   "incompatibilityReason": "Same event, different outcomes"
 }
 ```
@@ -54,8 +54,8 @@ A matrix incompatibility system was implemented where by default all markets are
 {
   "id": 1,
   "createdAt": "2024-01-01T00:00:00.000Z",
-  "marketAId": 1,
-  "marketBId": 2,
+  "marketGroupAId": 1,
+  "marketGroupBId": 2,
   "incompatibilityReason": "Same event, different outcomes"
 }
 ```
@@ -65,8 +65,8 @@ A matrix incompatibility system was implemented where by default all markets are
 ```typescript
 // DELETE /parlay/incompatibility
 {
-  "marketAId": 1,
-  "marketBId": 2
+  "marketGroupAId": 1,
+  "marketGroupBId": 2
 }
 ```
 
@@ -79,11 +79,11 @@ A matrix incompatibility system was implemented where by default all markets are
 
 ### 3. Compatibility Queries
 
-#### Get Incompatible Markets
+#### Get Incompatible Market Groups
 
 ```typescript
-// GET /parlay/incompatible-markets/:marketId
-// GET /parlay/incompatible-markets/1
+// GET /parlay/incompatible-market-groups/:marketGroupId
+// GET /parlay/incompatible-market-groups/1
 ```
 
 **Response:**
@@ -91,42 +91,19 @@ A matrix incompatibility system was implemented where by default all markets are
 [
   {
     "id": 2,
-    "marketId": 2,
+    "address": "0x1234567890abcdef",
+    "chainId": 1,
     "question": "¿Ganará el equipo B?",
-    "optionName": "Sí"
+    "baseTokenName": "TEAM_B",
+    "quoteTokenName": "USDC"
   }
 ]
 ```
 
-#### Get Compatible Markets
+#### Check Compatibility between Two Market Groups
 
 ```typescript
-// GET /parlay/compatible-markets/:marketId
-// GET /parlay/compatible-markets/1
-```
-
-**Response:**
-```json
-[
-  {
-    "id": 3,
-    "marketId": 3,
-    "question": "¿Ganará el equipo C?",
-    "optionName": "Sí"
-  },
-  {
-    "id": 4,
-    "marketId": 4,
-    "question": "¿Ganará el equipo D?",
-    "optionName": "Sí"
-  }
-]
-```
-
-#### Check Compatibility between Two Markets
-
-```typescript
-// GET /parlay/check-compatibility?marketAId=1&marketBId=2
+// GET /parlay/check-compatibility?marketGroupAId=1&marketGroupBId=2
 ```
 
 **Response:**
@@ -148,17 +125,19 @@ A matrix incompatibility system was implemented where by default all markets are
 [
   {
     "id": 1,
-    "marketAId": 1,
-    "marketBId": 2,
+    "marketGroupAId": 1,
+    "marketGroupBId": 2,
     "incompatibilityReason": "Same event, different outcomes",
-    "marketA": {
+    "marketGroupA": {
       "id": 1,
-      "marketId": 1,
+      "address": "0x1234567890abcdef",
+      "chainId": 1,
       "question": "¿Ganará el equipo A?"
     },
-    "marketB": {
+    "marketGroupB": {
       "id": 2,
-      "marketId": 2,
+      "address": "0xfedcba0987654321",
+      "chainId": 1,
       "question": "¿Ganará el equipo B?"
     }
   }
@@ -199,6 +178,7 @@ A matrix incompatibility system was implemented where by default all markets are
 - Each market format must be `marketGroupAddress/marketIdx`
 - `marketPredictions` must be an array of booleans with the same length as `markets`
 - The calculation multiplies the individual probabilities based on predictions (true = Yes, false = No)
+- **Automatically validates that market groups are compatible** before calculating
 
 ## Database Structure
 
@@ -206,37 +186,51 @@ A matrix incompatibility system was implemented where by default all markets are
 
 ```prisma
 model Market {
-  // ... campos existentes ...
+  // ... existing fields ...
   similarMarkets String[] @default([])
   
-  // Relaciones para parlay incompatibility
-  parlayIncompatibilityAsA ParlayIncompatibility[] @relation("ParlayIncompatibilityA")
-  parlayIncompatibilityAsB ParlayIncompatibility[] @relation("ParlayIncompatibilityB")
+  // Relation to MarketGroup
+  market_group MarketGroup? @relation(fields: [marketGroupId], references: [id])
 }
 ```
 
-### ParlayIncompatibility Model (New)
+### MarketGroup Model (Updated)
+
+```prisma
+model MarketGroup {
+  // ... existing fields ...
+  
+  // Relations
+  market Market[]
+  
+  // Parlay incompatibility relations
+  parlayIncompatibilitiesA ParlayIncompatibility[] @relation("ParlayIncompatibilityA")
+  parlayIncompatibilitiesB ParlayIncompatibility[] @relation("ParlayIncompatibilityB")
+}
+```
+
+### ParlayIncompatibility Model (Updated)
 
 ```prisma
 model ParlayIncompatibility {
   id                    Int      @id @default(autoincrement())
   createdAt             DateTime @default(now())
   
-  // References to the two incompatible markets
-  marketAId             Int
-  marketBId             Int
+  // References to the two incompatible market groups
+  marketGroupAId        Int
+  marketGroupBId        Int
   
   // Reason why they are incompatible (optional)
   incompatibilityReason String?  @db.Text
   
   // Relations
-  marketA               Market   @relation("ParlayIncompatibilityA", fields: [marketAId], references: [id])
-  marketB               Market   @relation("ParlayIncompatibilityB", fields: [marketBId], references: [id])
+  marketGroupA          MarketGroup @relation("ParlayIncompatibilityA", fields: [marketGroupAId], references: [id])
+  marketGroupB          MarketGroup @relation("ParlayIncompatibilityB", fields: [marketGroupBId], references: [id])
   
   // Indexes to optimize queries
-  @@unique([marketAId, marketBId])
-  @@index([marketAId])
-  @@index([marketBId])
+  @@unique([marketGroupAId, marketGroupBId])
+  @@index([marketGroupAId])
+  @@index([marketGroupBId])
 }
 ```
 
@@ -245,14 +239,14 @@ model ParlayIncompatibility {
 ### Scenario 1: Create Similar Markets
 
 ```typescript
-// Crear market principal
+// Create main market
 const mainMarket = await fetch('/create-market-group/0x123/markets', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     marketData: {
       marketQuestion: "¿Ganará el equipo A?",
-      // ... otros campos ...
+      // ... other fields ...
       similarMarkets: ["/market/456", "/market/789"]
     },
     chainId: "1"
@@ -260,69 +254,69 @@ const mainMarket = await fetch('/create-market-group/0x123/markets', {
 });
 ```
 
-### Scenario 2: Configure Incompatibilities
+### Scenario 2: Configure Market Group Incompatibilities
 
 ```typescript
-// Marcar markets como incompatibles
+// Mark market groups as incompatible
 await fetch('/parlay/incompatibility', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    marketAId: 1,
-    marketBId: 2,
+    marketGroupAId: 1,
+    marketGroupBId: 2,
     incompatibilityReason: "Same event, different outcomes"
   })
 });
 
-// Verificar compatibilidad
-const compatibility = await fetch('/parlay/check-compatibility?marketAId=1&marketBId=2');
+// Check compatibility
+const compatibility = await fetch('/parlay/check-compatibility?marketGroupAId=1&marketGroupBId=2');
 const result = await compatibility.json();
 console.log(result.isCompatible); // false
 ```
 
-### Scenario 3: Get Markets for Parlay
+### Scenario 3: Calculate Parlay Probability
 
 ```typescript
-// Obtener markets compatibles con market 1
-const compatibleMarkets = await fetch('/parlay/compatible-markets/1');
-const markets = await compatibleMarkets.json();
-
-// Filter markets that are not in similarMarkets of market 1
-const market1 = await fetch('/market/1');
-const market1Data = await market1.json();
-const similarMarketIds = market1Data.similarMarkets.map(url => {
-  const match = url.match(/\/market\/(\d+)/);
-  return match ? parseInt(match[1]) : null;
-}).filter(id => id !== null);
-
-const parlayCandidates = markets.filter(market => 
-  !similarMarketIds.includes(market.id)
-);
-
-// Calculate parlay probability
+// Calculate parlay probability (automatically validates market group compatibility)
 const parlayChance = await fetch('/parlay/get-parlay-chance', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
     markets: [
       '0x1234567890abcdef/1',
-      '0x1234567890abcdef/2'
-    ]
+      '0x1234567890abcdef/2',
+      '0xfedcba0987654321/1'
+    ],
+    marketPredictions: [true, false, true]
   })
 });
 const chanceResult = await parlayChance.json();
-console.log(`Parlay chance: ${chanceResult.parlayChance}`); // 0.7
+console.log(`Parlay chance: ${chanceResult.parlayChance}`); // 0.343
+```
 
 ## Important Notes
 
-1. **By default, all markets are compatible** - Only explicit incompatibilities are stored
-2. **Incompatibilities are bidirectional** - If A is incompatible with B, B is incompatible with A
-3. **The similarMarkets field is optional** - If not provided, an empty array is used
-4. **URLs in similarMarkets must follow the format** `/market/{id}`
-5. **Validations include**:
-   - Verify that both markets exist
-   - Verify that a market is not marked as incompatible with itself
+1. **By default, all market groups are compatible** - Only explicit incompatibilities are stored
+2. **Incompatibilities are bidirectional** - If market group A is incompatible with B, B is incompatible with A
+3. **Incompatibilities are at market group level** - All markets within incompatible market groups are automatically incompatible
+4. **The similarMarkets field is optional** - If not provided, an empty array is used
+5. **URLs in similarMarkets must follow the format** `/market/{id}`
+6. **Validations include**:
+   - Verify that both market groups exist
+   - Verify that a market group is not marked as incompatible with itself
    - Validate that all required fields are provided
+   - Automatically check market group compatibility before calculating parlay chances
+
+## API Endpoints Summary
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/parlay/incompatibility` | Mark two market groups as incompatible |
+| DELETE | `/parlay/incompatibility` | Remove incompatibility between market groups |
+| GET | `/parlay/incompatible-market-groups/:marketGroupId` | Get incompatible market groups |
+| GET | `/parlay/check-compatibility` | Check if two market groups are compatible |
+| GET | `/parlay/all-incompatibilities` | Get all incompatibilities |
+| POST | `/parlay/get-parlay-chance` | Calculate parlay success probability |
 
 ## Next Steps
 
