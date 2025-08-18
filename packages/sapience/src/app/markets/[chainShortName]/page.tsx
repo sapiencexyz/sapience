@@ -429,7 +429,7 @@ const MarketGroupPageContent = () => {
                 <div className="p-4 space-y-4">
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {marketGroupData?.rules ||
-                      'No additional rules clarification provided..'}
+                      'No additional rules clarification provided.'}
                   </div>
                 </div>
               </TabsContent>

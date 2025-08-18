@@ -500,8 +500,6 @@ const MarketFormFields = ({
         </div>
       </div>
 
-      {/* Rules moved to Market Group level */}
-
       {/* Start/End Times */}
       <div className={'grid grid-cols-1 md:grid-cols-2 gap-6'}>
         <div>

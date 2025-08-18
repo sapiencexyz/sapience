@@ -244,7 +244,6 @@ router.put(
 
     if ('question' in data) updateData.question = data.question;
     if ('optionName' in data) updateData.optionName = data.optionName;
-    // rules moved to market group level; ignore if provided
     if ('public' in data) updateData.public = Boolean((data as any).public);
 
     if (!isDeployed) {

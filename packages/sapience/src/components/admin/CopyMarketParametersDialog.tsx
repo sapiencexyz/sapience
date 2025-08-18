@@ -311,8 +311,6 @@ const CopyMarketParametersDialog = ({
       );
       copyAdvancedConfig(selectedMarketGroup as unknown as MarketGroupCopyData);
 
-      // Rules are now a Market Group field and are not copied per-market
-
       if (minPrice !== '' && maxPrice !== '') {
         const min = Number(minPrice);
         const max = Number(maxPrice);

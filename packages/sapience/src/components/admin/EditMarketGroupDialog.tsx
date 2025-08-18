@@ -203,6 +203,16 @@ const EditMarketGroupDialog = ({ group }: Props) => {
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="rules">Rules</Label>
+            <textarea
+              id="rules"
+              className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={rules}
+              onChange={(e) => setRules(e.target.value)}
+              placeholder="This will be settled based on reporting from ...."
+            />
+          </div>
           {resourceId !== null && (
             <div className="flex items-center gap-2 py-2">
               <Label htmlFor="isCumulative" className="font-medium">
@@ -228,16 +238,6 @@ const EditMarketGroupDialog = ({ group }: Props) => {
               'Save Changes'
             )}
           </Button>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="rules">Rules (Optional)</Label>
-          <textarea
-            id="rules"
-            className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            value={rules}
-            onChange={(e) => setRules(e.target.value)}
-            placeholder="Enter any specific rules for this market group..."
-          />
         </div>
       </DialogContent>
     </Dialog>

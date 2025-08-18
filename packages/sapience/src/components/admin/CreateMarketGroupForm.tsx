@@ -622,16 +622,6 @@ const CreateMarketGroupForm = () => {
                     Write a brief, clear question an AI can understand.
                   </p>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rules">Rules (Optional)</Label>
-                  <textarea
-                    id="rules"
-                    className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    value={rules}
-                    onChange={(e) => setRules(e.target.value)}
-                    placeholder="Enter any specific rules or conditions for this market group..."
-                  />
-                </div>
                 {/* Category */}
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
@@ -710,6 +700,17 @@ const CreateMarketGroupForm = () => {
                     required
                   />
                 </div>
+              </div>
+              {/* Rules - full width, after index/base/quote token name */}
+              <div className="space-y-2">
+                <Label htmlFor="rules">Rules</Label>
+                <textarea
+                  id="rules"
+                  className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={rules}
+                  onChange={(e) => setRules(e.target.value)}
+                  placeholder="This will be settled based on reporting from...."
+                />
               </div>
               {/* isCumulative toggle */}
               {selectedResourceId && (
