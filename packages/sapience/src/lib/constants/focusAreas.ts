@@ -132,6 +132,17 @@ export const FOCUS_AREAS: FocusArea[] = [
     </svg>`,
     color: '#F97316', // orange-500
   },
+  {
+    id: 'culture',
+    name: 'Culture',
+    resources: [],
+    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 6c-2 -1.5 -5 -1.5 -8 0v10c3 -1.5 6 -1.5 8 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 6c2 -1.5 5 -1.5 8 0v10c-3 -1.5 -6 -1.5 -8 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 6v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>`,
+    color: '#D946EF', // fuchsia-500
+  },
 ];
 
 export const DEFAULT_FOCUS_AREA = FOCUS_AREAS[0];
