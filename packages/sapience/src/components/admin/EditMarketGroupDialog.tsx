@@ -19,7 +19,7 @@ import { Switch } from '@sapience/ui/components/ui/switch';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSignMessage } from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
@@ -42,9 +42,7 @@ const EditMarketGroupDialog = ({ group }: Props) => {
 
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState(group.question || '');
-  const [categorySlug, setCategorySlug] = useState(
-    group.category?.slug || ''
-  );
+  const [categorySlug, setCategorySlug] = useState(group.category?.slug || '');
   const [resourceId, setResourceId] = useState<number | null>(
     (group as any).resource?.id || null
   );
@@ -52,7 +50,9 @@ const EditMarketGroupDialog = ({ group }: Props) => {
     group.isCumulative || false
   );
   const [baseTokenName, setBaseTokenName] = useState(group.baseTokenName || '');
-  const [quoteTokenName, setQuoteTokenName] = useState(group.quoteTokenName || '');
+  const [quoteTokenName, setQuoteTokenName] = useState(
+    group.quoteTokenName || ''
+  );
 
   useEffect(() => {
     // When resource toggles, adjust token names similar to Create form behavior
@@ -71,7 +71,9 @@ const EditMarketGroupDialog = ({ group }: Props) => {
 
   const updateCall = async () => {
     const timestamp = Math.floor(Date.now() / 1000);
-    const signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });
+    const signature = await signMessageAsync({
+      message: ADMIN_AUTHENTICATE_MSG,
+    });
 
     const data: Record<string, unknown> = {
       question,
@@ -104,7 +106,10 @@ const EditMarketGroupDialog = ({ group }: Props) => {
   const { mutate, isPending } = useMutation({
     mutationFn: updateCall,
     onSuccess: async () => {
-      toast({ title: 'Group Updated', description: 'Changes saved successfully.' });
+      toast({
+        title: 'Group Updated',
+        description: 'Changes saved successfully.',
+      });
       await queryClient.invalidateQueries({ queryKey: ['marketGroups'] });
       await queryClient.invalidateQueries({
         queryKey: ['marketGroup', group.address, group.chainId],
@@ -123,7 +128,9 @@ const EditMarketGroupDialog = ({ group }: Props) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Edit Group</Button>
+        <Button variant="outline" size="sm">
+          Edit Group
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
@@ -206,7 +213,11 @@ const EditMarketGroupDialog = ({ group }: Props) => {
               />
             </div>
           )}
-          <Button onClick={() => mutate()} disabled={isPending} className="w-full">
+          <Button
+            onClick={() => mutate()}
+            disabled={isPending}
+            className="w-full"
+          >
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...

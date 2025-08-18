@@ -12,13 +12,13 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Pencil } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSignMessage } from 'wagmi';
 
 import type { MarketType } from '@sapience/ui/types';
-import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
+import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
@@ -40,9 +40,10 @@ const toMarketInput = (m: MarketType): MarketInput => {
     ? tickToPrice(Number(m.baseAssetMaxPriceTick))
     : 1;
   const startPrice = m.startingSqrtPriceX96
-    ? (Number(sqrtPriceX96ToPriceD18(BigInt(m.startingSqrtPriceX96))) /
-        10 ** 18)
-        .toString()
+    ? (
+        Number(sqrtPriceX96ToPriceD18(BigInt(m.startingSqrtPriceX96))) /
+        10 ** 18
+      ).toString()
     : '0.5';
   return {
     id: Date.now(),
@@ -64,7 +65,9 @@ const toMarketInput = (m: MarketType): MarketInput => {
 
 const EditMarketDialog = ({ group, market }: Props) => {
   const [open, setOpen] = useState(false);
-  const [formMarket, setFormMarket] = useState<MarketInput>(toMarketInput(market));
+  const [formMarket, setFormMarket] = useState<MarketInput>(
+    toMarketInput(market)
+  );
   const [isPublic, setIsPublic] = useState<boolean>(market.public ?? true);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -91,7 +94,9 @@ const EditMarketDialog = ({ group, market }: Props) => {
 
   const updateCall = async () => {
     const timestamp = Math.floor(Date.now() / 1000);
-    const signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });
+    const signature = await signMessageAsync({
+      message: ADMIN_AUTHENTICATE_MSG,
+    });
 
     const payloadData: Record<string, unknown> = {};
     // Always mappable fields
@@ -145,7 +150,10 @@ const EditMarketDialog = ({ group, market }: Props) => {
   const { mutate, isPending } = useMutation({
     mutationFn: updateCall,
     onSuccess: async () => {
-      toast({ title: 'Market Updated', description: 'Changes saved successfully.' });
+      toast({
+        title: 'Market Updated',
+        description: 'Changes saved successfully.',
+      });
       await queryClient.invalidateQueries({ queryKey: ['marketGroups'] });
       await queryClient.invalidateQueries({
         queryKey: ['marketGroup', group.address, group.chainId],
@@ -174,15 +182,25 @@ const EditMarketDialog = ({ group, market }: Props) => {
         </DialogHeader>
         <div className="p-2">
           <div className="mb-4 flex items-center gap-2">
-            <Switch id="public" checked={isPublic} onCheckedChange={setIsPublic} />
-            <Label htmlFor="public" className="cursor-pointer">Public</Label>
+            <Switch
+              id="public"
+              checked={isPublic}
+              onCheckedChange={setIsPublic}
+            />
+            <Label htmlFor="public" className="cursor-pointer">
+              Public
+            </Label>
           </div>
           <MarketFormFields
             market={formMarket}
             onMarketChange={handleChange}
             disabledFields={disabledFields}
           />
-          <Button onClick={() => mutate()} disabled={isPending} className="w-full mt-4">
+          <Button
+            onClick={() => mutate()}
+            disabled={isPending}
+            className="w-full mt-4"
+          >
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...

@@ -46,7 +46,15 @@ interface MarketFormFieldsProps {
   market: MarketInput;
   onMarketChange: (field: keyof MarketInput, value: string) => void;
   marketIndex?: number;
-  disabledFields?: Partial<Record<keyof MarketInput | 'baseAssetMinPriceTick' | 'baseAssetMaxPriceTick' | 'startingSqrtPriceX96', boolean>>;
+  disabledFields?: Partial<
+    Record<
+      | keyof MarketInput
+      | 'baseAssetMinPriceTick'
+      | 'baseAssetMaxPriceTick'
+      | 'startingSqrtPriceX96',
+      boolean
+    >
+  >;
 }
 
 const MarketFormFields = ({
