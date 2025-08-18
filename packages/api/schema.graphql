@@ -1116,6 +1116,8 @@ type Market {
   maxPriceD18: Decimal
   minPriceD18: Decimal
   optionName: String
+  parlayIncompatibilityAsA(cursor: ParlayIncompatibilityWhereUniqueInput, distinct: [ParlayIncompatibilityScalarFieldEnum!], orderBy: [ParlayIncompatibilityOrderByWithRelationInput!], skip: Int, take: Int, where: ParlayIncompatibilityWhereInput): [ParlayIncompatibility!]!
+  parlayIncompatibilityAsB(cursor: ParlayIncompatibilityWhereUniqueInput, distinct: [ParlayIncompatibilityScalarFieldEnum!], orderBy: [ParlayIncompatibilityOrderByWithRelationInput!], skip: Int, take: Int, where: ParlayIncompatibilityWhereInput): [ParlayIncompatibility!]!
   poolAddress: String
   positions(cursor: PositionWhereUniqueInput, distinct: [PositionScalarFieldEnum!], orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): [Position!]!
   public: Boolean!
@@ -1123,6 +1125,7 @@ type Market {
   rules: String
   settled: Boolean
   settlementPriceD18: Decimal
+  similarMarkets: [String!]!
   startTimestamp: Int
   startingSqrtPriceX96: String
 }
@@ -1160,6 +1163,8 @@ input MarketAvgOrderByAggregateInput {
 }
 
 type MarketCount {
+  parlayIncompatibilityAsA(where: ParlayIncompatibilityWhereInput): Int!
+  parlayIncompatibilityAsB(where: ParlayIncompatibilityWhereInput): Int!
   position(where: PositionWhereInput): Int!
 }
 
@@ -1191,6 +1196,7 @@ type MarketCountAggregate {
   rules: Int!
   settled: Int!
   settlementPriceD18: Int!
+  similarMarkets: Int!
   startTimestamp: Int!
   startingSqrtPriceX96: Int!
 }
@@ -1222,6 +1228,7 @@ input MarketCountOrderByAggregateInput {
   rules: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
+  similarMarkets: SortOrder
   startTimestamp: SortOrder
   startingSqrtPriceX96: SortOrder
 }
@@ -1327,6 +1334,7 @@ type MarketGroupBy {
   rules: String
   settled: Boolean
   settlementPriceD18: Decimal
+  similarMarkets: [String!]
   startTimestamp: Int
   startingSqrtPriceX96: String
 }
@@ -1991,6 +1999,7 @@ input MarketOrderByWithAggregationInput {
   rules: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
+  similarMarkets: SortOrder
   startTimestamp: SortOrderInput
   startingSqrtPriceX96: SortOrderInput
 }
@@ -2017,6 +2026,8 @@ input MarketOrderByWithRelationInput {
   maxPriceD18: SortOrderInput
   minPriceD18: SortOrderInput
   optionName: SortOrderInput
+  parlayIncompatibilityAsA: ParlayIncompatibilityOrderByRelationAggregateInput
+  parlayIncompatibilityAsB: ParlayIncompatibilityOrderByRelationAggregateInput
   poolAddress: SortOrderInput
   positions: PositionOrderByRelationAggregateInput
   public: SortOrder
@@ -2024,6 +2035,7 @@ input MarketOrderByWithRelationInput {
   rules: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
+  similarMarkets: SortOrder
   startTimestamp: SortOrderInput
   startingSqrtPriceX96: SortOrderInput
 }
@@ -2179,6 +2191,11 @@ input MarketPriceWhereUniqueInput {
   value: DecimalFilter
 }
 
+input MarketRelationFilter {
+  is: MarketWhereInput
+  isNot: MarketWhereInput
+}
+
 enum MarketScalarFieldEnum {
   baseAssetMaxPriceTick
   baseAssetMinPriceTick
@@ -2206,6 +2223,7 @@ enum MarketScalarFieldEnum {
   rules
   settled
   settlementPriceD18
+  similarMarkets
   startTimestamp
   startingSqrtPriceX96
 }
@@ -2240,6 +2258,7 @@ input MarketScalarWhereWithAggregatesInput {
   rules: StringNullableWithAggregatesFilter
   settled: BoolNullableWithAggregatesFilter
   settlementPriceD18: DecimalNullableWithAggregatesFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableWithAggregatesFilter
   startingSqrtPriceX96: StringNullableWithAggregatesFilter
 }
@@ -2301,6 +2320,8 @@ input MarketWhereInput {
   maxPriceD18: DecimalNullableFilter
   minPriceD18: DecimalNullableFilter
   optionName: StringNullableFilter
+  parlayIncompatibilityAsA: ParlayIncompatibilityListRelationFilter
+  parlayIncompatibilityAsB: ParlayIncompatibilityListRelationFilter
   poolAddress: StringNullableFilter
   positions: PositionListRelationFilter
   public: BoolFilter
@@ -2308,6 +2329,7 @@ input MarketWhereInput {
   rules: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableFilter
   startingSqrtPriceX96: StringNullableFilter
 }
@@ -2338,6 +2360,8 @@ input MarketWhereUniqueInput {
   maxPriceD18: DecimalNullableFilter
   minPriceD18: DecimalNullableFilter
   optionName: StringNullableFilter
+  parlayIncompatibilityAsA: ParlayIncompatibilityListRelationFilter
+  parlayIncompatibilityAsB: ParlayIncompatibilityListRelationFilter
   poolAddress: StringNullableFilter
   positions: PositionListRelationFilter
   public: BoolFilter
@@ -2345,6 +2369,7 @@ input MarketWhereUniqueInput {
   rules: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableFilter
   startingSqrtPriceX96: StringNullableFilter
 }
@@ -2655,6 +2680,76 @@ input NestedStringWithAggregatesFilter {
 enum NullsOrder {
   first
   last
+}
+
+type ParlayIncompatibility {
+  createdAt: DateTimeISO!
+  id: Int!
+  incompatibilityReason: String
+  marketA: Market!
+  marketAId: Int!
+  marketB: Market!
+  marketBId: Int!
+}
+
+input ParlayIncompatibilityListRelationFilter {
+  every: ParlayIncompatibilityWhereInput
+  none: ParlayIncompatibilityWhereInput
+  some: ParlayIncompatibilityWhereInput
+}
+
+input ParlayIncompatibilityMarketAIdMarketBIdCompoundUniqueInput {
+  marketAId: Int!
+  marketBId: Int!
+}
+
+input ParlayIncompatibilityOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input ParlayIncompatibilityOrderByWithRelationInput {
+  createdAt: SortOrder
+  id: SortOrder
+  incompatibilityReason: SortOrderInput
+  marketA: MarketOrderByWithRelationInput
+  marketAId: SortOrder
+  marketB: MarketOrderByWithRelationInput
+  marketBId: SortOrder
+}
+
+enum ParlayIncompatibilityScalarFieldEnum {
+  createdAt
+  id
+  incompatibilityReason
+  marketAId
+  marketBId
+}
+
+input ParlayIncompatibilityWhereInput {
+  AND: [ParlayIncompatibilityWhereInput!]
+  NOT: [ParlayIncompatibilityWhereInput!]
+  OR: [ParlayIncompatibilityWhereInput!]
+  createdAt: DateTimeFilter
+  id: IntFilter
+  incompatibilityReason: StringNullableFilter
+  marketA: MarketRelationFilter
+  marketAId: IntFilter
+  marketB: MarketRelationFilter
+  marketBId: IntFilter
+}
+
+input ParlayIncompatibilityWhereUniqueInput {
+  AND: [ParlayIncompatibilityWhereInput!]
+  NOT: [ParlayIncompatibilityWhereInput!]
+  OR: [ParlayIncompatibilityWhereInput!]
+  createdAt: DateTimeFilter
+  id: Int
+  incompatibilityReason: StringNullableFilter
+  marketA: MarketRelationFilter
+  marketAId: IntFilter
+  marketAId_marketBId: ParlayIncompatibilityMarketAIdMarketBIdCompoundUniqueInput
+  marketB: MarketRelationFilter
+  marketBId: IntFilter
 }
 
 type PnLType {
@@ -3551,6 +3646,14 @@ input StringNullableFilter {
   not: NestedStringNullableFilter
   notIn: [String!]
   startsWith: String
+}
+
+input StringNullableListFilter {
+  equals: [String!]
+  has: String
+  hasEvery: [String!]
+  hasSome: [String!]
+  isEmpty: Boolean
 }
 
 input StringNullableWithAggregatesFilter {

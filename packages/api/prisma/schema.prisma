@@ -195,6 +195,10 @@ model MarketGroup {
   event                              Event[]
   /// @TypeGraphQL.field(name: "markets")
   market                             Market[]
+  /// @TypeGraphQL.field(name: "parlayIncompatibilitiesA")
+  parlayIncompatibilitiesA           ParlayIncompatibility[] @relation("ParlayIncompatibilityA")
+  /// @TypeGraphQL.field(name: "parlayIncompatibilitiesB")
+  parlayIncompatibilitiesB           ParlayIncompatibility[] @relation("ParlayIncompatibilityB")
   resource                           Resource? @relation(fields: [resourceId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_78409a3738729038b76742291f0")
   category                           Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f092ffcae41efef68cdc30bbd89")
 
@@ -356,21 +360,21 @@ model ParlayIncompatibility {
   id                    Int      @id @default(autoincrement())
   createdAt             DateTime @default(now()) @db.Timestamp(6)
   
-  // Referencias a los dos markets incompatibles
-  marketAId             Int
-  marketBId             Int
+  // Referencias a los dos market groups incompatibles
+  marketGroupAId        Int
+  marketGroupBId        Int
   
   // Razón por la cual son incompatibles (opcional)
   incompatibilityReason String?  @db.Text
   
   // Relaciones
-  marketA               Market   @relation("ParlayIncompatibilityA", fields: [marketAId], references: [id])
-  marketB               Market   @relation("ParlayIncompatibilityB", fields: [marketBId], references: [id])
+  marketGroupA          MarketGroup @relation("ParlayIncompatibilityA", fields: [marketGroupAId], references: [id])
+  marketGroupB          MarketGroup @relation("ParlayIncompatibilityB", fields: [marketGroupBId], references: [id])
   
   // Índices para optimizar consultas
-  @@unique([marketAId, marketBId])
-  @@index([marketAId])
-  @@index([marketBId])
+  @@unique([marketGroupAId, marketGroupBId])
+  @@index([marketGroupAId])
+  @@index([marketGroupBId])
   
   @@map("parlay_incompatibility")
 }
