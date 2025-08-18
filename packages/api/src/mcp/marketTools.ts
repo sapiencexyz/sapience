@@ -32,6 +32,9 @@ export const listActiveMarkets = {
           },
           public: true,
         },
+        include: {
+          market_group: true,
+        },
         orderBy: {
           endTimestamp: 'asc',
         },
@@ -47,6 +50,7 @@ export const listActiveMarkets = {
           m.endTimestamp !== null && m.endTimestamp !== undefined
             ? Number(m.endTimestamp)
             : null,
+        marketGroupAddress: m.market_group?.address || null,
       }));
 
       return {
