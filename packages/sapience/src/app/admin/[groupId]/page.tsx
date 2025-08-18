@@ -14,6 +14,7 @@ import MarketItem, {
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { parseUrlParameter } from '~/lib/utils/util';
 import OwnershipDialog from '~/components/admin/OwnershipDialog';
+import EditMarketGroupDialog from '~/components/admin/EditMarketGroupDialog';
 
 export default function AdminGroupPage({
   params,
@@ -74,6 +75,7 @@ export default function AdminGroupPage({
             marketGroupAddress={group.address as string}
             chainId={group.chainId}
           />
+          <EditMarketGroupDialog group={group} />
           <EditOwnerInline
             groupAddress={group.address as Address}
             currentOwner={group.owner || undefined}

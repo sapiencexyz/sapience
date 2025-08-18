@@ -12,9 +12,9 @@ import { formatDistanceToNow } from 'date-fns';
 import type { Address } from 'viem';
 
 import type { MarketType } from '@sapience/ui/types';
-import PublicToggleButton from './PublicToggleButton';
 import MarketDeployButton from './MarketDeployButton';
 import SettleMarketDialog from './SettleMarketDialog';
+import EditMarketDialog from './EditMarketDialog';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { useMarketGroupLatestMarket } from '~/hooks/contract/useMarketGroupLatestMarket';
 
@@ -106,7 +106,7 @@ const MarketItem = ({ market, group, latestMarketId }: MarketItemProps) => {
             ends {formatTimestamp(market.endTimestamp ?? 0)}
           </span>
         )}
-        <PublicToggleButton market={market} group={group} />
+        <EditMarketDialog market={market} group={group} />
         {renderMarketActions()}
       </div>
     </div>
