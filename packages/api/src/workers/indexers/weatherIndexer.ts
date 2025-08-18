@@ -69,10 +69,10 @@ export class WeatherIndexer implements IResourcePriceIndexer {
 
       if (
         this.resourceType === 'temperature' &&
-        weatherData.temperature.latest?.temperature !== undefined
+        weatherData.temperature.latest?.temperatureF !== undefined
       ) {
         const temperatureValue = (
-          Number(weatherData.temperature.latest.temperature.toFixed(2)) *
+          Number(weatherData.temperature.latest.temperatureF.toFixed(2)) *
           10 ** 9
         ).toString();
         const price = {
@@ -90,8 +90,12 @@ export class WeatherIndexer implements IResourcePriceIndexer {
           typeof temperatureValue
         );
         console.log(
-          `[WeatherIndexer.${this.resourceType}] Raw temperature value:`,
+          `[WeatherIndexer.${this.resourceType}] Raw temperature value (Celsius):`,
           weatherData.temperature.latest.temperature
+        );
+        console.log(
+          `[WeatherIndexer.${this.resourceType}] Raw temperature value (Fahrenheit):`,
+          weatherData.temperature.latest.temperatureF
         );
         console.log(
           `[WeatherIndexer.${this.resourceType}] Formatted temperature value:`,
@@ -128,7 +132,7 @@ export class WeatherIndexer implements IResourcePriceIndexer {
             },
           });
           console.log(
-            `[WeatherIndexer.${this.resourceType}] Upserted temperature data in the database for ${price.timestamp}`
+            `[WeatherIndexer.${this.resourceType}] Upserted temperature data (Fahrenheit) in the database for ${price.timestamp}`
           );
           // const result = await resourcePriceRepository.upsert(price, ['resource', 'timestamp']);
           // console.log(`[WeatherIndexer.${this.resourceType}] Database upsert result:`, result);
