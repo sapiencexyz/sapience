@@ -2,34 +2,16 @@
 
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
 import { graphqlRequest } from '@sapience/ui/lib';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { formatDistanceToNow } from 'date-fns';
-import { Pencil } from 'lucide-react';
-import { useState } from 'react';
 import type { Address } from 'viem';
 import { formatEther } from 'viem';
 
-import type { MarketType } from '@sapience/ui/types';
-import AddMarketDialog from './AddMarketDialog';
 import EnableBridgedMarketGroupButton from './EnableBridgedMarketGroupButton';
-import MarketDeployButton from './MarketDeployButton';
 import MarketGroupDeployButton from './MarketGroupDeployButton';
-import OwnershipDialog from './OwnershipDialog';
-import PublicToggleButton from './PublicToggleButton';
-import ReindexMarketButton from './ReindexMarketButton';
-import SettleMarketDialog from './SettleMarketDialog';
-import { shortenAddress } from '~/lib/utils/util';
+import { shortenAddress, getChainShortName } from '~/lib/utils/util';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
-import { useMarketGroupLatestMarket } from '~/hooks/contract/useMarketGroupLatestMarket';
 import { useMarketGroupBridgeStatus } from '~/hooks/contract/useMarketGroupBridgeStatus';
 
 // GraphQL query for index price at time
@@ -150,154 +132,13 @@ function useMarketPriceData(
   };
 }
 
-const getChainShortName = (chainId: number): string => {
-  switch (chainId) {
-    case 1:
-      return 'eth';
-    case 10:
-      return 'op';
-    case 8453:
-      return 'base';
-    case 432:
-      return 'converge';
-    case 42161:
-      return 'arb1';
-    default:
-      return chainId.toString();
-  }
-};
-
-const MarketItem = ({
-  market,
-  group,
-  latestMarketId,
-}: {
-  market: MarketType;
-  group: EnrichedMarketGroup;
-  latestMarketId?: bigint;
-}) => {
-  const marketId = market.marketId ? Number(market.marketId) : 0;
-  const currentMarketId = latestMarketId ? Number(latestMarketId) : 0;
-  // Only allow deploying the next sequential market after the latest deployed
-  const shouldShowDeployButton =
-    marketId === currentMarketId + 1 &&
-    !!market.startingSqrtPriceX96 &&
-    !!market.claimStatementYesOrNumeric;
-
-  const isDeployed = !!market.poolAddress;
-  const isFutureEndTime = (market.endTimestamp ?? 0) * 1000 > Date.now();
-
-  const formatTimestamp = (timestamp: number) => {
-    if (!timestamp) return 'N/A';
-    const date = new Date(timestamp * 1000);
-    return formatDistanceToNow(date, { addSuffix: true });
-  };
-
-  const renderMarketActions = () => {
-    // Case 1: Deployed group but market not yet deployed
-    if (group.address && !isDeployed && shouldShowDeployButton) {
-      return (
-        <MarketDeployButton
-          market={market}
-          marketGroupAddress={group.address}
-          chainId={group.chainId}
-        />
-      );
-    }
-
-    // Case 2: Deployed group, market deployed but waiting
-    if (group.address && !isDeployed) {
-      return (
-        <Button size="sm" disabled variant="outline">
-          Waiting
-        </Button>
-      );
-    }
-
-    // Case 3: Deployed group, market deployed, past end time, needs settlement
-    if (group.address && isDeployed && !isFutureEndTime) {
-      return (
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="sm" disabled={market.settled ?? false}>
-              {market.settled ? 'Settled' : 'Settle'}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>{market.question}</DialogTitle>
-            </DialogHeader>
-            <SettleMarketDialog market={market} marketGroup={group} />
-          </DialogContent>
-        </Dialog>
-      );
-    }
-
-    // Case 4: Group not deployed yet
-    if (!group.address) {
-      return (
-        <Button size="sm" disabled>
-          Deploy
-        </Button>
-      );
-    }
-
-    // Default case: No action needed
-    return null;
-  };
-
-  return (
-    <div
-      key={`${group.address || group.id}-${market.marketId || market.id}`}
-      className="flex items-center justify-between py-2 gap-4s"
-    >
-      <span className="font-medium items-center flex gap-2">
-        <small className="text-muted-foreground">
-          #{market.marketId || market.id}
-        </small>{' '}
-        {market.question || 'No question available'}
-      </span>
-      <div className="flex items-center space-x-4">
-        {isDeployed && isFutureEndTime && (
-          <span className="text-sm text-gray-500 whitespace-nowrap">
-            ends {formatTimestamp(market.endTimestamp ?? 0)}
-          </span>
-        )}
-        <PublicToggleButton market={market} group={group} />
-        {renderMarketActions()}
-      </div>
-    </div>
-  );
-};
+// Using shared getChainShortName from util
 
 const OwnerCell = ({ group }: { group: EnrichedMarketGroup }) => {
-  const [ownershipDialogOpen, setOwnershipDialogOpen] = useState(false);
-
   if (!group.owner) {
     return <span className="text-muted-foreground">N/A</span>;
   }
-  return (
-    <div className="flex items-center gap-2">
-      <span>{shortenAddress(group.owner)}</span>
-      {group.address && (
-        <>
-          <button
-            type="button"
-            onClick={() => setOwnershipDialogOpen(true)}
-            className="p-1 hover:bg-accent rounded-full transition-colors"
-          >
-            <Pencil className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-          </button>
-          <OwnershipDialog
-            open={ownershipDialogOpen}
-            onOpenChange={setOwnershipDialogOpen}
-            marketGroupAddress={group.address as Address}
-            currentOwner={group.owner ?? undefined}
-          />
-        </>
-      )}
-    </div>
-  );
+  return <span>{shortenAddress(group.owner)}</span>;
 };
 
 // Settlement Price Cell Component
@@ -375,12 +216,6 @@ const SettlementPriceCell = ({ group }: { group: EnrichedMarketGroup }) => {
 };
 
 const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
-  const [marketsDialogOpen, setMarketsDialogOpen] = useState(false);
-  const { latestMarketId } = useMarketGroupLatestMarket(
-    group.address as Address,
-    group.chainId
-  );
-
   // Check if this is a bridged market group that needs to be enabled
   const bridgeAddress = group.isBridged
     ? (group.marketParamsOptimisticoraclev3 as Address)
@@ -397,50 +232,13 @@ const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
     return (
       <div className="flex items-center gap-2 justify-end">
         {needsEnable && <EnableBridgedMarketGroupButton group={group} />}
-        <Dialog open={marketsDialogOpen} onOpenChange={setMarketsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              Edit
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[625px]">
-            <DialogHeader>
-              <DialogTitle>Markets for {group.question}</DialogTitle>
-              <div className="flex items-center gap-2 pt-2">
-                <AddMarketDialog
-                  marketGroupAddress={group.address as Address}
-                  chainId={group.chainId}
-                />
-                <ReindexMarketButton
-                  marketGroupAddress={group.address}
-                  chainId={group.chainId}
-                />
-              </div>
-            </DialogHeader>
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-              {group.markets.length > 0 ? (
-                group.markets
-                  .sort((a, b) => {
-                    const aId = a.marketId ? Number(a.marketId) : Number(a.id);
-                    const bId = b.marketId ? Number(b.marketId) : Number(b.id);
-                    return aId - bId;
-                  })
-                  .map((market) => (
-                    <MarketItem
-                      key={`${group.address || group.id}-${market.marketId || market.id}`}
-                      market={market}
-                      group={group}
-                      latestMarketId={latestMarketId}
-                    />
-                  ))
-              ) : (
-                <p className="text-sm text-gray-500 px-4 py-2">
-                  No markets in this group.
-                </p>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button variant="outline" size="sm" asChild>
+          <a
+            href={`/admin/${encodeURIComponent(`${getChainShortName(group.chainId)}:${group.address}`)}`}
+          >
+            Edit
+          </a>
+        </Button>
         <Button variant="outline" size="sm" asChild>
           <a
             href={`/markets/${getChainShortName(group.chainId)}:${group.address}`}
