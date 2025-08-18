@@ -179,6 +179,7 @@ A matrix incompatibility system was implemented where by default all market grou
 - `marketPredictions` must be an array of booleans with the same length as `markets`
 - The calculation multiplies the individual probabilities based on predictions (true = Yes, false = No)
 - **Automatically validates that market groups are compatible** before calculating
+- **Multiple markets from the same market group are not allowed** - each market group can only have one market in a parlay
 
 ## Database Structure
 
@@ -306,6 +307,7 @@ console.log(`Parlay chance: ${chanceResult.parlayChance}`); // 0.343
    - Verify that a market group is not marked as incompatible with itself
    - Validate that all required fields are provided
    - Automatically check market group compatibility before calculating parlay chances
+   - **Prevent multiple markets from the same market group** in a single parlay
 
 ## API Endpoints Summary
 
