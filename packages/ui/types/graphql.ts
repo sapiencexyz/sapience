@@ -1200,6 +1200,7 @@ export type Market = {
   rules?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
+  similarMarkets: Array<Scalars['String']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
   startingSqrtPriceX96?: Maybe<Scalars['String']['output']>;
 };
@@ -1291,6 +1292,7 @@ export type MarketCountAggregate = {
   rules: Scalars['Int']['output'];
   settled: Scalars['Int']['output'];
   settlementPriceD18: Scalars['Int']['output'];
+  similarMarkets: Scalars['Int']['output'];
   startTimestamp: Scalars['Int']['output'];
   startingSqrtPriceX96: Scalars['Int']['output'];
 };
@@ -1322,6 +1324,7 @@ export type MarketCountOrderByAggregateInput = {
   rules?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
+  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
   startingSqrtPriceX96?: InputMaybe<SortOrder>;
 };
@@ -1357,6 +1360,8 @@ export type MarketGroup = {
   markets: Array<Market>;
   minTradeSize?: Maybe<Scalars['Decimal']['output']>;
   owner?: Maybe<Scalars['String']['output']>;
+  parlayIncompatibilitiesA: Array<ParlayIncompatibility>;
+  parlayIncompatibilitiesB: Array<ParlayIncompatibility>;
   question?: Maybe<Scalars['String']['output']>;
   quoteTokenName?: Maybe<Scalars['String']['output']>;
   resource?: Maybe<Resource>;
@@ -1386,6 +1391,26 @@ export type MarketGroupMarketsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<MarketWhereInput>;
+};
+
+
+export type MarketGroupParlayIncompatibilitiesAArgs = {
+  cursor?: InputMaybe<ParlayIncompatibilityWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ParlayIncompatibilityScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ParlayIncompatibilityOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ParlayIncompatibilityWhereInput>;
+};
+
+
+export type MarketGroupParlayIncompatibilitiesBArgs = {
+  cursor?: InputMaybe<ParlayIncompatibilityWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ParlayIncompatibilityScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ParlayIncompatibilityOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ParlayIncompatibilityWhereInput>;
 };
 
 
@@ -1460,6 +1485,7 @@ export type MarketGroupBy = {
   rules?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
+  similarMarkets?: Maybe<Array<Scalars['String']['output']>>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
   startingSqrtPriceX96?: Maybe<Scalars['String']['output']>;
 };
@@ -1468,6 +1494,8 @@ export type MarketGroupCount = {
   __typename?: 'MarketGroupCount';
   event: Scalars['Int']['output'];
   market: Scalars['Int']['output'];
+  parlayIncompatibilitiesA: Scalars['Int']['output'];
+  parlayIncompatibilitiesB: Scalars['Int']['output'];
 };
 
 
@@ -1478,6 +1506,16 @@ export type MarketGroupCountEventArgs = {
 
 export type MarketGroupCountMarketArgs = {
   where?: InputMaybe<MarketWhereInput>;
+};
+
+
+export type MarketGroupCountParlayIncompatibilitiesAArgs = {
+  where?: InputMaybe<ParlayIncompatibilityWhereInput>;
+};
+
+
+export type MarketGroupCountParlayIncompatibilitiesBArgs = {
+  where?: InputMaybe<ParlayIncompatibilityWhereInput>;
 };
 
 export type MarketGroupCountAggregate = {
@@ -1787,10 +1825,17 @@ export type MarketGroupOrderByWithRelationInput = {
   markets?: InputMaybe<MarketOrderByRelationAggregateInput>;
   minTradeSize?: InputMaybe<SortOrderInput>;
   owner?: InputMaybe<SortOrderInput>;
+  parlayIncompatibilitiesA?: InputMaybe<ParlayIncompatibilityOrderByRelationAggregateInput>;
+  parlayIncompatibilitiesB?: InputMaybe<ParlayIncompatibilityOrderByRelationAggregateInput>;
   question?: InputMaybe<SortOrderInput>;
   quoteTokenName?: InputMaybe<SortOrderInput>;
   resource?: InputMaybe<ResourceOrderByWithRelationInput>;
   resourceId?: InputMaybe<SortOrderInput>;
+};
+
+export type MarketGroupRelationFilter = {
+  is?: InputMaybe<MarketGroupWhereInput>;
+  isNot?: InputMaybe<MarketGroupWhereInput>;
 };
 
 export type MarketGroupScalarFieldEnum =
@@ -1918,6 +1963,8 @@ export type MarketGroupWhereInput = {
   markets?: InputMaybe<MarketListRelationFilter>;
   minTradeSize?: InputMaybe<DecimalNullableFilter>;
   owner?: InputMaybe<StringNullableFilter>;
+  parlayIncompatibilitiesA?: InputMaybe<ParlayIncompatibilityListRelationFilter>;
+  parlayIncompatibilitiesB?: InputMaybe<ParlayIncompatibilityListRelationFilter>;
   question?: InputMaybe<StringNullableFilter>;
   quoteTokenName?: InputMaybe<StringNullableFilter>;
   resource?: InputMaybe<ResourceNullableRelationFilter>;
@@ -1957,6 +2004,8 @@ export type MarketGroupWhereUniqueInput = {
   markets?: InputMaybe<MarketListRelationFilter>;
   minTradeSize?: InputMaybe<DecimalNullableFilter>;
   owner?: InputMaybe<StringNullableFilter>;
+  parlayIncompatibilitiesA?: InputMaybe<ParlayIncompatibilityListRelationFilter>;
+  parlayIncompatibilitiesB?: InputMaybe<ParlayIncompatibilityListRelationFilter>;
   question?: InputMaybe<StringNullableFilter>;
   quoteTokenName?: InputMaybe<StringNullableFilter>;
   resource?: InputMaybe<ResourceNullableRelationFilter>;
@@ -2141,6 +2190,7 @@ export type MarketOrderByWithAggregationInput = {
   rules?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
+  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrderInput>;
   startingSqrtPriceX96?: InputMaybe<SortOrderInput>;
 };
@@ -2174,6 +2224,7 @@ export type MarketOrderByWithRelationInput = {
   rules?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
+  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrderInput>;
   startingSqrtPriceX96?: InputMaybe<SortOrderInput>;
 };
@@ -2367,6 +2418,7 @@ export type MarketScalarFieldEnum =
   | 'rules'
   | 'settled'
   | 'settlementPriceD18'
+  | 'similarMarkets'
   | 'startTimestamp'
   | 'startingSqrtPriceX96';
 
@@ -2400,6 +2452,7 @@ export type MarketScalarWhereWithAggregatesInput = {
   rules?: InputMaybe<StringNullableWithAggregatesFilter>;
   settled?: InputMaybe<BoolNullableWithAggregatesFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableWithAggregatesFilter>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableWithAggregatesFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableWithAggregatesFilter>;
 };
@@ -2469,6 +2522,7 @@ export type MarketWhereInput = {
   rules?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableFilter>;
 };
@@ -2506,6 +2560,7 @@ export type MarketWhereUniqueInput = {
   rules?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableFilter>;
 };
@@ -2816,6 +2871,76 @@ export type NestedStringWithAggregatesFilter = {
 export type NullsOrder =
   | 'first'
   | 'last';
+
+export type ParlayIncompatibility = {
+  __typename?: 'ParlayIncompatibility';
+  createdAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['Int']['output'];
+  incompatibilityReason?: Maybe<Scalars['String']['output']>;
+  marketGroupA: MarketGroup;
+  marketGroupAId: Scalars['Int']['output'];
+  marketGroupB: MarketGroup;
+  marketGroupBId: Scalars['Int']['output'];
+};
+
+export type ParlayIncompatibilityListRelationFilter = {
+  every?: InputMaybe<ParlayIncompatibilityWhereInput>;
+  none?: InputMaybe<ParlayIncompatibilityWhereInput>;
+  some?: InputMaybe<ParlayIncompatibilityWhereInput>;
+};
+
+export type ParlayIncompatibilityMarketGroupAIdMarketGroupBIdCompoundUniqueInput = {
+  marketGroupAId: Scalars['Int']['input'];
+  marketGroupBId: Scalars['Int']['input'];
+};
+
+export type ParlayIncompatibilityOrderByRelationAggregateInput = {
+  _count?: InputMaybe<SortOrder>;
+};
+
+export type ParlayIncompatibilityOrderByWithRelationInput = {
+  createdAt?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  incompatibilityReason?: InputMaybe<SortOrderInput>;
+  marketGroupA?: InputMaybe<MarketGroupOrderByWithRelationInput>;
+  marketGroupAId?: InputMaybe<SortOrder>;
+  marketGroupB?: InputMaybe<MarketGroupOrderByWithRelationInput>;
+  marketGroupBId?: InputMaybe<SortOrder>;
+};
+
+export type ParlayIncompatibilityScalarFieldEnum =
+  | 'createdAt'
+  | 'id'
+  | 'incompatibilityReason'
+  | 'marketGroupAId'
+  | 'marketGroupBId';
+
+export type ParlayIncompatibilityWhereInput = {
+  AND?: InputMaybe<Array<ParlayIncompatibilityWhereInput>>;
+  NOT?: InputMaybe<Array<ParlayIncompatibilityWhereInput>>;
+  OR?: InputMaybe<Array<ParlayIncompatibilityWhereInput>>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  id?: InputMaybe<IntFilter>;
+  incompatibilityReason?: InputMaybe<StringNullableFilter>;
+  marketGroupA?: InputMaybe<MarketGroupRelationFilter>;
+  marketGroupAId?: InputMaybe<IntFilter>;
+  marketGroupB?: InputMaybe<MarketGroupRelationFilter>;
+  marketGroupBId?: InputMaybe<IntFilter>;
+};
+
+export type ParlayIncompatibilityWhereUniqueInput = {
+  AND?: InputMaybe<Array<ParlayIncompatibilityWhereInput>>;
+  NOT?: InputMaybe<Array<ParlayIncompatibilityWhereInput>>;
+  OR?: InputMaybe<Array<ParlayIncompatibilityWhereInput>>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  id?: InputMaybe<Scalars['Int']['input']>;
+  incompatibilityReason?: InputMaybe<StringNullableFilter>;
+  marketGroupA?: InputMaybe<MarketGroupRelationFilter>;
+  marketGroupAId?: InputMaybe<IntFilter>;
+  marketGroupAId_marketGroupBId?: InputMaybe<ParlayIncompatibilityMarketGroupAIdMarketGroupBIdCompoundUniqueInput>;
+  marketGroupB?: InputMaybe<MarketGroupRelationFilter>;
+  marketGroupBId?: InputMaybe<IntFilter>;
+};
 
 export type PnLType = {
   __typename?: 'PnLType';
@@ -4450,6 +4575,14 @@ export type StringNullableFilter = {
   not?: InputMaybe<NestedStringNullableFilter>;
   notIn?: InputMaybe<Array<Scalars['String']['input']>>;
   startsWith?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type StringNullableListFilter = {
+  equals?: InputMaybe<Array<Scalars['String']['input']>>;
+  has?: InputMaybe<Scalars['String']['input']>;
+  hasEvery?: InputMaybe<Array<Scalars['String']['input']>>;
+  hasSome?: InputMaybe<Array<Scalars['String']['input']>>;
+  isEmpty?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type StringNullableWithAggregatesFilter = {
