@@ -84,6 +84,7 @@ interface CreateCombinedPayload {
   marketParams: MarketParamsInput;
   nonce: string;
   question: string;
+  rules?: string;
   category: string;
   baseTokenName: string;
   quoteTokenName: string;
@@ -166,7 +167,6 @@ const marketSchema = z
     baseAssetMaxPriceTick: z.coerce
       .number()
       .int('Valid Max Price Tick is required'),
-    rules: z.string().optional(), // Align with MarketInput type
     similarMarkets: z.array(z.string().url('Invalid URL format')).optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
@@ -234,7 +234,6 @@ const createEmptyMarket = (id: number): MarketInput => {
     highTickPrice: '1',
     claimStatementYesOrNumeric: '',
     claimStatementNo: '',
-    rules: '', // Initialize optional field
   };
 };
 
@@ -257,7 +256,6 @@ const createMarketFromPrevious = (
     highTickPrice: previousMarket.highTickPrice,
     claimStatementYesOrNumeric: previousMarket.claimStatementYesOrNumeric, // Copy claim statement
     claimStatementNo: previousMarket.claimStatementNo, // Copy claim statement
-    rules: previousMarket.rules || '', // Copy rules if they exist
   };
 };
 
@@ -294,6 +292,7 @@ const CreateMarketGroupForm = () => {
     optimisticOracleV3: DEFAULT_OPTIMISTIC_ORACLE,
   });
   const [question, setQuestion] = useState<string>('');
+  const [rules, setRules] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isBridged, setIsBridged] = useState<boolean>(true);
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
@@ -556,6 +555,7 @@ const CreateMarketGroupForm = () => {
         marketParams,
         nonce,
         question,
+        rules: rules || undefined,
         category: selectedCategory,
         baseTokenName,
         quoteTokenName,
@@ -701,6 +701,17 @@ const CreateMarketGroupForm = () => {
                     required
                   />
                 </div>
+              </div>
+              {/* Rules - full width, after index/base/quote token name */}
+              <div className="space-y-2">
+                <Label htmlFor="rules">Rules</Label>
+                <textarea
+                  id="rules"
+                  className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={rules}
+                  onChange={(e) => setRules(e.target.value)}
+                  placeholder="This will be settled based on reporting from...."
+                />
               </div>
               {/* isCumulative toggle */}
               {selectedResourceId && (

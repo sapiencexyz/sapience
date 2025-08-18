@@ -1363,6 +1363,7 @@ export type MarketGroup = {
   parlayIncompatibilitiesA: Array<ParlayIncompatibility>;
   parlayIncompatibilitiesB: Array<ParlayIncompatibility>;
   question?: Maybe<Scalars['String']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
   quoteTokenName?: Maybe<Scalars['String']['output']>;
   resource?: Maybe<Resource>;
   resourceId?: Maybe<Scalars['Int']['output']>;

@@ -16,7 +16,6 @@ interface MarketDataPayload {
   baseAssetMaxPriceTick: string | number;
   claimStatementYesOrNumeric: string;
   claimStatementNo: string | null;
-  rules?: string | null;
   similarMarkets?: string[]; // Array de URLs de markets similares
 }
 
@@ -36,7 +35,6 @@ async function createSingleMarket(
     baseAssetMaxPriceTick,
     claimStatementYesOrNumeric,
     claimStatementNo,
-    rules,
     similarMarkets,
   } = marketData;
 
@@ -59,7 +57,6 @@ async function createSingleMarket(
       marketId: marketIndex + 1,
       question: marketQuestion,
       optionName: optionName || null,
-      rules: rules || null,
       claimStatementYesOrNumeric: claimStatementYesOrNumeric,
       claimStatementNo: claimStatementNo,
       startTimestamp: parseInt(String(startTime), 10),
@@ -87,6 +84,7 @@ router.post('/', async (req: Request, res: Response) => {
       nonce,
       chainId,
       question,
+      rules,
       category: categorySlug,
       baseTokenName,
       quoteTokenName,
@@ -193,6 +191,7 @@ router.post('/', async (req: Request, res: Response) => {
       data: {
         chainId: parseInt(chainId, 10),
         question: question,
+        rules: rules || null,
         baseTokenName: baseTokenName,
         quoteTokenName: quoteTokenName,
         initializationNonce: nonce,

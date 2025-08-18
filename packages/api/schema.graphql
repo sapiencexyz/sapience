@@ -1262,6 +1262,7 @@ type MarketGroup {
   parlayIncompatibilitiesA(cursor: ParlayIncompatibilityWhereUniqueInput, distinct: [ParlayIncompatibilityScalarFieldEnum!], orderBy: [ParlayIncompatibilityOrderByWithRelationInput!], skip: Int, take: Int, where: ParlayIncompatibilityWhereInput): [ParlayIncompatibility!]!
   parlayIncompatibilitiesB(cursor: ParlayIncompatibilityWhereUniqueInput, distinct: [ParlayIncompatibilityScalarFieldEnum!], orderBy: [ParlayIncompatibilityOrderByWithRelationInput!], skip: Int, take: Int, where: ParlayIncompatibilityWhereInput): [ParlayIncompatibility!]!
   question: String
+  rules: String
   quoteTokenName: String
   resource(where: ResourceWhereInput): Resource
   resourceId: Int

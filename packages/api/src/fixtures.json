@@ -46,6 +46,10 @@
     {
       "name": "Economy & Finance",
       "slug": "economy-finance"
+    },
+    {
+      "name": "Culture",
+      "slug": "culture"
     }
   ]
 }

@@ -60,7 +60,6 @@ const marketApiSchema = z
     baseAssetMaxPriceTick: z.coerce
       .number()
       .int('Max Price Tick must be an integer'),
-    rules: z.string().trim().optional(),
     similarMarkets: z.array(z.string().url('Invalid URL format')).optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
@@ -99,7 +98,6 @@ const createEmptyMarket = (id: number): MarketInput => {
     highTickPrice: '1',
     claimStatementYesOrNumeric: '',
     claimStatementNo: '',
-    rules: '',
     similarMarkets: [],
   };
 };

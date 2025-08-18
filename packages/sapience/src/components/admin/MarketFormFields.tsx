@@ -34,7 +34,6 @@ export interface MarketInput {
   baseAssetMaxPriceTick: string;
   claimStatementYesOrNumeric: string;
   claimStatementNo: string;
-  rules?: string;
   similarMarkets?: string[];
 }
 
@@ -47,12 +46,22 @@ interface MarketFormFieldsProps {
   market: MarketInput;
   onMarketChange: (field: keyof MarketInput, value: string | string[]) => void;
   marketIndex?: number;
+  disabledFields?: Partial<
+    Record<
+      | keyof MarketInput
+      | 'baseAssetMinPriceTick'
+      | 'baseAssetMaxPriceTick'
+      | 'startingSqrtPriceX96',
+      boolean
+    >
+  >;
 }
 
 const MarketFormFields = ({
   market,
   onMarketChange,
   marketIndex,
+  disabledFields,
 }: MarketFormFieldsProps) => {
   const [minPriceError, setMinPriceError] = useState<string | null>(null);
   const [maxPriceError, setMaxPriceError] = useState<string | null>(null);
@@ -92,6 +101,11 @@ const MarketFormFields = ({
 
   const startTimestamp = parseTimestamp(market.startTime);
   const endTimestamp = parseTimestamp(market.endTime);
+  const isPricingDisabled = Boolean(
+    disabledFields?.baseAssetMinPriceTick ||
+      disabledFields?.baseAssetMaxPriceTick ||
+      disabledFields?.startingSqrtPriceX96
+  );
 
   // Get the time part as a string for a given timestamp
   const getTimePart = (timestamp: number) => {
@@ -427,6 +441,7 @@ const MarketFormFields = ({
             onChange={(e) => onMarketChange('marketQuestion', e.target.value)}
             placeholder="Will Zohran become the Mayor of NYC?"
             required
+            disabled={disabledFields?.marketQuestion}
           />
         </div>
         <div>
@@ -439,6 +454,7 @@ const MarketFormFields = ({
             value={market.optionName || ''}
             onChange={(e) => onMarketChange('optionName', e.target.value)}
             placeholder="Zohran Mamdani"
+            disabled={disabledFields?.optionName}
           />
         </div>
       </div>
@@ -459,6 +475,7 @@ const MarketFormFields = ({
             }
             placeholder="Mamdani became the mayor."
             required
+            disabled={disabledFields?.claimStatementYesOrNumeric}
           />
           <p className="text-sm text-muted-foreground mt-1">
             This will be followed by the settlement value for numeric markets
@@ -476,23 +493,12 @@ const MarketFormFields = ({
             value={market.claimStatementNo}
             onChange={(e) => onMarketChange('claimStatementNo', e.target.value)}
             placeholder="Mamdani didn't become the mayor."
+            disabled={disabledFields?.claimStatementNo}
           />
           <p className="text-sm text-muted-foreground mt-1">
             Only add for Yes/No markets
           </p>
         </div>
-      </div>
-
-      {/* Rules */}
-      <div>
-        <Label htmlFor={fieldId('rules')}>Rules (Optional)</Label>
-        <textarea
-          id={fieldId('rules')}
-          className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          value={market.rules || ''}
-          onChange={(e) => onMarketChange('rules', e.target.value)}
-          placeholder="Enter any specific rules or conditions for this market..."
-        />
       </div>
 
       {/* Similar Markets */}
@@ -528,6 +534,7 @@ const MarketFormFields = ({
             min={1}
             max={endTimestamp > 0 ? endTimestamp : undefined}
             timePart={getTimePart(startTimestamp)}
+            disabled={disabledFields?.startTime}
           />
         </div>
         <div>
@@ -540,6 +547,7 @@ const MarketFormFields = ({
             }
             min={startTimestamp}
             timePart={getTimePart(endTimestamp)}
+            disabled={disabledFields?.endTime}
           />
         </div>
       </div>
@@ -572,6 +580,7 @@ const MarketFormFields = ({
             inputMode="decimal"
             step="any"
             min="0"
+            disabled={isPricingDisabled}
           />
           {minPriceError && (
             <div className="text-xs text-red-500 mt-1 w-full text-center">
@@ -623,6 +632,7 @@ const MarketFormFields = ({
             inputMode="decimal"
             step="any"
             min="0"
+            disabled={isPricingDisabled}
           />
           {startingPriceError && (
             <div className="text-xs text-red-500 mt-1 w-full text-center">
@@ -656,6 +666,7 @@ const MarketFormFields = ({
             inputMode="decimal"
             step="any"
             min="0"
+            disabled={isPricingDisabled}
           />
           {maxPriceError && (
             <div className="text-xs text-red-500 mt-1 w-full text-center">

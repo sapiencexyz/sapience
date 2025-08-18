@@ -10,6 +10,7 @@ import {
 
 import { MarketGroupClassification } from '../../lib/types';
 import { SCHEMA_UID } from '~/lib/constants/eas';
+import { EAS_ATTEST_ABI, getEASContractAddress } from '~/hooks/contract/EAS';
 
 // Default to Arbitrum; anticipate most transactions occur on Arbitrum.
 // If a market requires a different chain in the future, thread that chainId in via hook params.
@@ -185,36 +186,8 @@ export function useSubmitPrediction({
       );
 
       writeContract({
-        address: '0x1ABeF822A38CC8906557cD73788ab23A607ae104',
-        abi: [
-          {
-            name: 'attest',
-            type: 'function',
-            stateMutability: 'payable',
-            inputs: [
-              {
-                name: 'request',
-                type: 'tuple',
-                components: [
-                  { name: 'schema', type: 'bytes32' },
-                  {
-                    name: 'data',
-                    type: 'tuple',
-                    components: [
-                      { name: 'recipient', type: 'address' },
-                      { name: 'expirationTime', type: 'uint64' },
-                      { name: 'revocable', type: 'bool' },
-                      { name: 'refUID', type: 'bytes32' },
-                      { name: 'data', type: 'bytes' },
-                      { name: 'value', type: 'uint256' },
-                    ],
-                  },
-                ],
-              },
-            ],
-            outputs: [{ name: 'uid', type: 'bytes32' }],
-          },
-        ],
+        address: getEASContractAddress(ARBITRUM_CHAIN_ID),
+        abi: EAS_ATTEST_ABI,
         functionName: 'attest',
         args: [
           {

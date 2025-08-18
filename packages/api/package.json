@@ -5,7 +5,7 @@
   "license": "MIT",
   "main": "index.js",
   "type": "module",
-  "scripts": {
+  "scripts": { 
     "compile": "pnpm lint:fix && tsc",
     "build": "pnpm lint:fix && tsc && npm run sentry:sourcemaps",
     "dev": "pnpm prisma:setup && concurrently \"pnpm run dev:service\" \"pnpm run dev:worker\" \"pnpm run dev:codegen\"",

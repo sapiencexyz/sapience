@@ -427,27 +427,10 @@ const MarketGroupPageContent = () => {
               </TabsContent>
               <TabsContent value="rules" className="mt-0">
                 <div className="p-4 space-y-4">
-                  {activeMarkets.length === 1 && (
-                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {activeMarkets[0]?.rules ||
-                        'No additional rules clarification provided..'}
-                    </div>
-                  )}
-                  {activeMarkets.length > 1 && (
-                    <div className="space-y-6">
-                      {activeMarkets.map((mkt) => (
-                        <div key={mkt.id}>
-                          <h3 className="text-base font-medium mb-2">
-                            {formatQuestion(mkt.question)}
-                          </h3>
-                          <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                            {mkt.rules ||
-                              'No additional rules clarification provided..'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {marketGroupData?.rules ||
+                      'No additional rules clarification provided.'}
+                  </div>
                 </div>
               </TabsContent>
               {address && (

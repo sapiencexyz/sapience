@@ -20,6 +20,7 @@ interface DateTimePickerProps {
   min?: number; // unix timestamp
   max?: number; // unix timestamp
   timePart?: string; // 'HH:mm' string from parent
+  disabled?: boolean;
 }
 
 const DateTimePicker = ({
@@ -30,6 +31,7 @@ const DateTimePicker = ({
   min,
   max,
   timePart,
+  disabled,
 }: DateTimePickerProps) => {
   const isUnset = value === 0;
   const currentDate = isUnset ? new Date() : new Date(value * 1000);
@@ -223,7 +225,7 @@ const DateTimePicker = ({
   };
 
   const handleDateSelect = (newDate: Date | undefined) => {
-    if (!newDate) return;
+    if (!newDate || disabled) return;
 
     // Update calendar state with local date
     setCalendarDate(newDate);
@@ -258,6 +260,7 @@ const DateTimePicker = ({
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return;
     const newTime = e.target.value;
     setLocalTime(newTime);
     setError(null);
@@ -265,6 +268,7 @@ const DateTimePicker = ({
 
   const handleTimeBlur = () => {
     setIsFocused(false);
+    if (disabled) return;
     if (/^\d{2}:\d{2}$/.test(localTime)) {
       updateTime(localTime);
     } else {
@@ -274,6 +278,7 @@ const DateTimePicker = ({
   };
 
   const handleTimeFocus = () => {
+    if (disabled) return;
     setIsFocused(true);
     setError(null);
   };
@@ -427,6 +432,7 @@ const DateTimePicker = ({
                 className={cn('w-full justify-start text-left font-normal')}
                 id={id ? `${id}-date` : undefined}
                 type="button"
+                disabled={disabled}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {isUnset
@@ -458,6 +464,7 @@ const DateTimePicker = ({
             min={computeMinTime()}
             max={computeMaxTime()}
             placeholder={isUnset ? 'Select time' : undefined}
+            disabled={disabled}
           />
         </div>
       </div>
