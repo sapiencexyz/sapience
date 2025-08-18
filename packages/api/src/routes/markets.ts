@@ -81,24 +81,24 @@ router.put(
     const isDeployed = !!group.address;
 
     // Allowed fields based on deployment state
-    const alwaysAllowed = new Set<keyof typeof data>([
+    const alwaysAllowed = new Set<string>([
       'question',
       'rules',
       'category', // slug
       'categorySlug', // alternative key
       'resourceId',
       'isCumulative',
-    ] as unknown as (keyof typeof data)[]);
+    ]);
 
-    const preDeployAllowed = new Set<keyof typeof data>([
+    const preDeployAllowed = new Set<string>([
       ...Array.from(alwaysAllowed),
       'baseTokenName',
       'quoteTokenName',
-    ] as unknown as (keyof typeof data)[]);
+    ]);
 
     const allowed = isDeployed ? alwaysAllowed : preDeployAllowed;
     const incomingKeys = Object.keys(data || {});
-    const forbidden = incomingKeys.filter((k) => !allowed.has(k as any));
+    const forbidden = incomingKeys.filter((k) => !allowed.has(k));
     if (forbidden.length > 0) {
       res.status(400).json({
         error: 'Attempted to update forbidden fields',
@@ -108,20 +108,43 @@ router.put(
     }
 
     // Build prisma update payload
-    const updateData: Record<string, any> = {};
+    type MarketGroupUpdateShape = {
+      question?: string;
+      rules?: string | null;
+      baseTokenName?: string;
+      quoteTokenName?: string;
+      isCumulative?: boolean;
+      categoryId?: number;
+      resourceId?: number | null;
+    };
+    const updateData: MarketGroupUpdateShape = {};
 
-    if ('question' in data) updateData.question = data.question;
-    if ('rules' in data) updateData.rules = (data as any).rules ?? null;
+    if ('question' in data)
+      updateData.question = String(
+        (data as Record<string, unknown>)['question']
+      );
+    if ('rules' in data) {
+      const v = (data as Record<string, unknown>)['rules'];
+      updateData.rules = v == null ? null : String(v);
+    }
     if ('baseTokenName' in data && !isDeployed)
-      updateData.baseTokenName = data.baseTokenName;
+      updateData.baseTokenName = String(
+        (data as Record<string, unknown>)['baseTokenName']
+      );
     if ('quoteTokenName' in data && !isDeployed)
-      updateData.quoteTokenName = data.quoteTokenName;
+      updateData.quoteTokenName = String(
+        (data as Record<string, unknown>)['quoteTokenName']
+      );
 
     if ('isCumulative' in data)
-      updateData.isCumulative = Boolean(data.isCumulative);
+      updateData.isCumulative = Boolean(
+        (data as Record<string, unknown>)['isCumulative']
+      );
 
     // Category mapping by slug (accept category or categorySlug)
-    const categorySlug = (data as any).categorySlug || (data as any).category;
+    const categorySlug =
+      (data as Record<string, unknown>)['categorySlug'] ??
+      (data as Record<string, unknown>)['category'];
     if (categorySlug !== undefined) {
       const category = await prisma.category.findFirst({
         where: { slug: String(categorySlug) },
@@ -135,16 +158,26 @@ router.put(
 
     // Resource validation if provided
     if ('resourceId' in data) {
-      if (data.resourceId === null) {
+      if ((data as Record<string, unknown>)['resourceId'] === null) {
         updateData.resourceId = null;
       } else {
         const resource = await prisma.resource.findFirst({
-          where: { id: Number((data as any).resourceId) },
+          where: {
+            id:
+              typeof (data as Record<string, unknown>)['resourceId'] ===
+                'number' ||
+              typeof (data as Record<string, unknown>)['resourceId'] ===
+                'string'
+                ? Number((data as Record<string, unknown>)['resourceId'])
+                : NaN,
+          },
         });
         if (!resource) {
-          res
-            .status(404)
-            .json({ error: `Resource '${(data as any).resourceId}' not found` });
+          res.status(404).json({
+            error: `Resource '${String(
+              (data as Record<string, unknown>)['resourceId']
+            )}' not found`,
+          });
           return;
         }
         updateData.resourceId = resource.id;
@@ -212,13 +245,9 @@ router.put(
 
     const isDeployed = !!market.poolAddress;
 
-    const alwaysAllowed = new Set<keyof typeof data>([
-      'question',
-      'optionName',
-      'public',
-    ] as unknown as (keyof typeof data)[]);
+    const alwaysAllowed = new Set<string>(['question', 'optionName', 'public']);
 
-    const preDeployAllowed = new Set<keyof typeof data>([
+    const preDeployAllowed = new Set<string>([
       ...Array.from(alwaysAllowed),
       'claimStatementYesOrNumeric',
       'claimStatementNo',
@@ -227,11 +256,11 @@ router.put(
       'startingSqrtPriceX96',
       'baseAssetMinPriceTick',
       'baseAssetMaxPriceTick',
-    ] as unknown as (keyof typeof data)[]);
+    ]);
 
     const allowed = isDeployed ? alwaysAllowed : preDeployAllowed;
     const incomingKeys = Object.keys(data || {});
-    const forbidden = incomingKeys.filter((k) => !allowed.has(k as any));
+    const forbidden = incomingKeys.filter((k) => !allowed.has(k));
     if (forbidden.length > 0) {
       res.status(400).json({
         error: 'Attempted to update forbidden fields',
@@ -240,34 +269,62 @@ router.put(
       return;
     }
 
-    const updateData: Record<string, any> = {};
+    type MarketUpdateShape = {
+      question?: string;
+      optionName?: string;
+      public?: boolean;
+      claimStatementYesOrNumeric?: string;
+      claimStatementNo?: string | null;
+      startTimestamp?: number;
+      endTimestamp?: number;
+      startingSqrtPriceX96?: string;
+      baseAssetMinPriceTick?: number;
+      baseAssetMaxPriceTick?: number;
+    };
+    const updateData: MarketUpdateShape = {};
 
-    if ('question' in data) updateData.question = data.question;
-    if ('optionName' in data) updateData.optionName = data.optionName;
-    if ('public' in data) updateData.public = Boolean((data as any).public);
+    if ('question' in data)
+      updateData.question = String(
+        (data as Record<string, unknown>)['question']
+      );
+    if ('optionName' in data)
+      updateData.optionName = String(
+        (data as Record<string, unknown>)['optionName']
+      );
+    if ('public' in data)
+      updateData.public = Boolean((data as Record<string, unknown>)['public']);
 
     if (!isDeployed) {
       if ('claimStatementYesOrNumeric' in data)
-        updateData.claimStatementYesOrNumeric =
-          (data as any).claimStatementYesOrNumeric;
-      if ('claimStatementNo' in data)
-        updateData.claimStatementNo = (data as any).claimStatementNo ?? null;
+        updateData.claimStatementYesOrNumeric = String(
+          (data as Record<string, unknown>)['claimStatementYesOrNumeric']
+        );
+      if ('claimStatementNo' in data) {
+        const v = (data as Record<string, unknown>)['claimStatementNo'];
+        updateData.claimStatementNo = v == null ? null : String(v);
+      }
       if ('startTime' in data)
-        updateData.startTimestamp = parseInt(String((data as any).startTime), 10);
+        updateData.startTimestamp = parseInt(
+          String((data as Record<string, unknown>)['startTime']),
+          10
+        );
       if ('endTime' in data)
-        updateData.endTimestamp = parseInt(String((data as any).endTime), 10);
+        updateData.endTimestamp = parseInt(
+          String((data as Record<string, unknown>)['endTime']),
+          10
+        );
       if ('startingSqrtPriceX96' in data)
         updateData.startingSqrtPriceX96 = String(
-          (data as any).startingSqrtPriceX96
+          (data as Record<string, unknown>)['startingSqrtPriceX96']
         );
       if ('baseAssetMinPriceTick' in data)
         updateData.baseAssetMinPriceTick = parseInt(
-          String((data as any).baseAssetMinPriceTick),
+          String((data as Record<string, unknown>)['baseAssetMinPriceTick']),
           10
         );
       if ('baseAssetMaxPriceTick' in data)
         updateData.baseAssetMaxPriceTick = parseInt(
-          String((data as any).baseAssetMaxPriceTick),
+          String((data as Record<string, unknown>)['baseAssetMaxPriceTick']),
           10
         );
     }
