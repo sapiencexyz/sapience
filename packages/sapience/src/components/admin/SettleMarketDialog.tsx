@@ -424,7 +424,9 @@ const SettleMarketDialog = ({
   if (isYesNoMarket) {
     unitDisplay = '';
   } else if (marketGroup.baseTokenName && marketGroup.quoteTokenName) {
-    unitDisplay = `${marketGroup.baseTokenName}/${marketGroup.quoteTokenName}`;
+    const base = marketGroup.baseTokenName;
+    const quote = marketGroup.quoteTokenName;
+    unitDisplay = quote.includes('USD') ? `${base}` : `${base}/${quote}`;
   } else {
     unitDisplay = 'Units'; // Fallback unit string
   }

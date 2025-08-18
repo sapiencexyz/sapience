@@ -260,7 +260,22 @@ const ForecastingTable = () => {
     if (!enrichedMarketGroups) return [];
 
     // 1. Filter enrichedMarketGroups by selected Category SLUG *before* flattening
+    //    Also drop any market groups without an address or without any DEPLOYED markets (valid poolAddress)
     const filteredByCategory = enrichedMarketGroups.filter((marketGroup) => {
+      const hasAddress =
+        typeof marketGroup.address === 'string' &&
+        marketGroup.address.length > 0;
+      const hasDeployedMarkets = Array.isArray(marketGroup.markets)
+        ? marketGroup.markets.some(
+            (m) =>
+              typeof m.poolAddress === 'string' &&
+              m.poolAddress.length > 0 &&
+              m.poolAddress !== '0x'
+          )
+        : false;
+
+      if (!hasAddress || !hasDeployedMarkets) return false;
+
       if (selectedCategorySlug === null) return true; // Show all if no category selected
 
       const marketSlug = marketGroup.category?.slug;
@@ -273,37 +288,46 @@ const ForecastingTable = () => {
     const allMarkets: MarketWithContext[] = filteredByCategory.flatMap(
       (marketGroup) => {
         // Filter and map markets within this marketGroup
-        return marketGroup.markets
-          .filter(
-            (
-              market // market is GraphQLMarketType
-            ) =>
-              // Ensure startTimestamp and endTimestamp are numbers
-              typeof market.startTimestamp === 'number' &&
-              typeof market.endTimestamp === 'number'
-            // You might also want to check if market.public is a boolean, etc., if those cause issues.
-            // For now, focusing on timestamps as requested and common sources of null/undefined issues.
-          )
-          .map((market): MarketWithContext => {
-            // At this point, market.startTimestamp and market.endTimestamp are numbers.
-            // marketGroup.address, collateralAsset, category.slug, category.id are strings.
-            return {
-              ...market, // Spread properties from GraphQLMarketType (which includes start/end timestamps)
+        return (
+          marketGroup.markets
+            // Only include deployed markets (with a valid poolAddress)
+            .filter(
+              (market) =>
+                typeof market.poolAddress === 'string' &&
+                market.poolAddress.length > 0 &&
+                market.poolAddress !== '0x'
+            )
+            .filter(
+              (
+                market // market is GraphQLMarketType
+              ) =>
+                // Ensure startTimestamp and endTimestamp are numbers
+                typeof market.startTimestamp === 'number' &&
+                typeof market.endTimestamp === 'number'
+              // You might also want to check if market.public is a boolean, etc., if those cause issues.
+              // For now, focusing on timestamps as requested and common sources of null/undefined issues.
+            )
+            .map((market): MarketWithContext => {
+              // At this point, market.startTimestamp and market.endTimestamp are numbers.
+              // marketGroup.address, collateralAsset, category.slug, category.id are strings.
+              return {
+                ...market, // Spread properties from GraphQLMarketType (which includes start/end timestamps)
 
-              // Explicitly assign core GraphQLMarketType properties that were filtered,
-              // ensuring their type is number for consumers of MarketWithContext.
-              // This helps TypeScript understand they are no longer Maybe<number>.
-              startTimestamp: market.startTimestamp,
-              endTimestamp: market.endTimestamp,
+                // Explicitly assign core GraphQLMarketType properties that were filtered,
+                // ensuring their type is number for consumers of MarketWithContext.
+                // This helps TypeScript understand they are no longer Maybe<number>.
+                startTimestamp: market.startTimestamp,
+                endTimestamp: market.endTimestamp,
 
-              // Add context fields from marketGroup
-              marketAddress: marketGroup.address!,
-              chainId: marketGroup.chainId,
-              collateralAsset: marketGroup.collateralAsset!,
-              categorySlug: marketGroup.category.slug,
-              categoryId: marketGroup.category.id.toString(),
-            };
-          });
+                // Add context fields from marketGroup
+                marketAddress: marketGroup.address!,
+                chainId: marketGroup.chainId,
+                collateralAsset: marketGroup.collateralAsset!,
+                categorySlug: marketGroup.category.slug,
+                categoryId: marketGroup.category.id.toString(),
+              };
+            })
+        );
       }
     );
 

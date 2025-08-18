@@ -270,12 +270,13 @@ export const getYAxisConfig = (
     };
   }
 
-  // Default/Numerical market: Use quote token name, adjust decimals
-  // Construct the unit string as quote/base
+  // Default/Numerical market: Use token symbols, adjust decimals
+  // Construct the unit string as base/quote
   let unit = '';
   if (marketGroup?.baseTokenName && marketGroup?.quoteTokenName) {
-    // Construct unit like "quote/base"
-    unit = `${marketGroup.quoteTokenName}/${marketGroup.baseTokenName}`;
+    const base = marketGroup.baseTokenName;
+    const quote = marketGroup.quoteTokenName;
+    unit = quote.includes('USD') ? `${base}` : `${base}/${quote}`;
   } else if (marketGroup?.quoteTokenName) {
     // Fallback to just quote token name if base is missing
     unit = marketGroup.quoteTokenName;

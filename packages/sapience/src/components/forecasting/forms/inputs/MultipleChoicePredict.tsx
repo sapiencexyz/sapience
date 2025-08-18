@@ -56,7 +56,7 @@ export default function MultipleChoicePredict({
         {options && options.length > 1 ? (
           <>
             <Label>Select Option</Label>
-            <div className="grid grid-cols-1 gap-2 mt-2">
+            <div className="grid grid-cols-1 gap-2 mt-2 mb-4">
               {options.map(({ name: optionName, marketId }) => (
                 <Button
                   key={marketId}

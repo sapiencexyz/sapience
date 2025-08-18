@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
 import { introspectSchema, queryGraphQL } from './graphql';
 import * as miscTools from './misc';
 import * as marketTools from './marketTools';
+import * as attestationTools from './attestationTools';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types';
 
 // The McpServer.tool method expects a function that includes an extra parameter,
@@ -49,4 +50,5 @@ export function registerAllMcpTools(server: McpServer): void {
 
   registerTools(server, miscTools);
   registerTools(server, marketTools);
+  registerTools(server, attestationTools);
 }

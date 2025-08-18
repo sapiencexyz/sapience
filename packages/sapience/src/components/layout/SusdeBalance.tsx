@@ -57,7 +57,7 @@ export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
         asChild
         variant="outline"
         size="xs"
-        className="rounded-full px-3 min-w-[122px] justify-start gap-2 border-black/30"
+        className="rounded-full px-3 min-w-[122px] justify-start gap-2 border-black/30 dark:border-white/30"
         onClick={onClick}
       >
         <a

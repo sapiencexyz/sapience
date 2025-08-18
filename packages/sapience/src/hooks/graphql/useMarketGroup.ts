@@ -30,6 +30,7 @@ const MARKET_GROUP_QUERY = /* GraphQL */ `
         id
         marketId
         question
+        rules
         startTimestamp
         endTimestamp
         settled

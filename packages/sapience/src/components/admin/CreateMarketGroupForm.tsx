@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Input, Label } from '@sapience/ui';
+// Removed Dialog imports; copy dialog is now a separate component
 import {
   Accordion,
   AccordionContent,
@@ -30,11 +31,9 @@ import { isAddress } from 'viem';
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { z } from 'zod';
 
-import {
-  DEFAULT_FOCUS_AREA,
-  FOCUS_AREAS,
-} from '../../lib/constants/focusAreas';
+import { FOCUS_AREAS } from '../../lib/constants/focusAreas';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
+import CopyMarketParametersDialog from './CopyMarketParametersDialog';
 import { useResources } from '~/hooks/useResources';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
@@ -295,9 +294,7 @@ const CreateMarketGroupForm = () => {
     optimisticOracleV3: DEFAULT_OPTIMISTIC_ORACLE,
   });
   const [question, setQuestion] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>(
-    DEFAULT_FOCUS_AREA.id
-  );
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isBridged, setIsBridged] = useState<boolean>(true);
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
   const [quoteTokenName, setQuoteTokenName] = useState<string>('sapUSD');
@@ -308,9 +305,6 @@ const CreateMarketGroupForm = () => {
 
   // Markets state (uses imported MarketInput)
   const [markets, setMarkets] = useState<MarketInput[]>([createEmptyMarket(1)]);
-  const [marketsWithCopiedParams, setMarketsWithCopiedParams] = useState<
-    Set<number>
-  >(new Set());
 
   // Form state
   const [formError, setFormError] = useState<string | null>(null);
@@ -439,13 +433,6 @@ const CreateMarketGroupForm = () => {
       return [...prevMarkets, newMarket];
     });
 
-    // Track that this market has copied parameters (if there was a previous market)
-    if (markets.length > 0) {
-      setMarketsWithCopiedParams(
-        (prev) => new Set([...Array.from(prev), newMarketId])
-      );
-    }
-
     setActiveMarketIndex(markets.length); // Set active to the new market
   };
 
@@ -458,16 +445,6 @@ const CreateMarketGroupForm = () => {
       // If sequential IDs (1, 2, 3...) are strictly needed after removal, map them:
       // return newMarkets.map((market, i) => ({ ...market, id: i + 1 }));
       return prevMarkets.filter((_, i) => i !== index);
-    });
-
-    // Clean up tracking of copied parameters for the removed market
-    setMarketsWithCopiedParams((prev) => {
-      const newSet = new Set(Array.from(prev));
-      const removedMarketId = markets[index]?.id;
-      if (removedMarketId) {
-        newSet.delete(removedMarketId);
-      }
-      return newSet;
     });
 
     // Adjust activeMarketIndex
@@ -639,9 +616,12 @@ const CreateMarketGroupForm = () => {
                     type="text"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Enter the main question for the market group"
+                    placeholder="Who will become the Mayor of NYC?"
                     required
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Write a brief, clear question an AI can understand.
+                  </p>
                 </div>
                 {/* Category */}
                 <div className="space-y-2">
@@ -688,7 +668,7 @@ const CreateMarketGroupForm = () => {
                       <SelectValue placeholder="Select a resource (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">None (Yes/No)</SelectItem>
+                      <SelectItem value="none">None (Yes/No Market)</SelectItem>
                       {resources?.map((resource) => (
                         <SelectItem
                           key={resource.id}
@@ -739,7 +719,7 @@ const CreateMarketGroupForm = () => {
 
             {/* Markets Section - Refactored to use MarketFormFields */}
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap items-center gap-2 mb-4">
                 {markets.map((market, index) => (
                   <button
                     key={market.id} // Use market.id for key
@@ -752,14 +732,6 @@ const CreateMarketGroupForm = () => {
                     onClick={() => setActiveMarketIndex(index)}
                   >
                     Market {index + 1} {/* Display 1-based index for user */}
-                    {marketsWithCopiedParams.has(market.id) && (
-                      <span
-                        className="ml-1 text-xs opacity-70"
-                        title="Parameters copied from previous market"
-                      >
-                        📋
-                      </span>
-                    )}
                     {markets.length > 1 && (
                       <Trash
                         className="h-3.5 w-3.5 ml-2 cursor-pointer"
@@ -778,6 +750,16 @@ const CreateMarketGroupForm = () => {
                 >
                   <Plus className="h-3.5 w-3.5 mr-2" /> Add Market
                 </button>
+                <div className="ml-auto">
+                  <CopyMarketParametersDialog
+                    market={markets[activeMarketIndex]}
+                    onMarketChange={(field, value) =>
+                      handleMarketChange(activeMarketIndex, field, value)
+                    }
+                    onMarketGroupChange={handleMarketGroupChange}
+                    onAdvancedConfigChange={handleAdvancedConfigChange}
+                  />
+                </div>
               </div>
 
               {markets.map((market, index) => (
@@ -792,9 +774,7 @@ const CreateMarketGroupForm = () => {
                         onMarketChange={(field, value) =>
                           handleMarketChange(index, field, value)
                         }
-                        marketIndex={index} // Pass index for unique field IDs
-                        onMarketGroupChange={handleMarketGroupChange}
-                        onAdvancedConfigChange={handleAdvancedConfigChange}
+                        marketIndex={index}
                       />
                     </CardContent>
                   </Card>
