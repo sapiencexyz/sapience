@@ -1358,6 +1358,7 @@ export type MarketGroup = {
   minTradeSize?: Maybe<Scalars['Decimal']['output']>;
   owner?: Maybe<Scalars['String']['output']>;
   question?: Maybe<Scalars['String']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
   quoteTokenName?: Maybe<Scalars['String']['output']>;
   resource?: Maybe<Resource>;
   resourceId?: Maybe<Scalars['Int']['output']>;

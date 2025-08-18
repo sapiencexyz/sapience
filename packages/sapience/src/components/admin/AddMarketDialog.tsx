@@ -60,7 +60,6 @@ const marketApiSchema = z
     baseAssetMaxPriceTick: z.coerce
       .number()
       .int('Max Price Tick must be an integer'),
-    rules: z.string().trim().optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: 'End Time must be after Start Time',
@@ -98,7 +97,6 @@ const createEmptyMarket = (id: number): MarketInput => {
     highTickPrice: '1',
     claimStatementYesOrNumeric: '',
     claimStatementNo: '',
-    rules: '',
   };
 };
 

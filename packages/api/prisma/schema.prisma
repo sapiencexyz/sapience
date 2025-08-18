@@ -142,7 +142,6 @@ model Market {
   question                           String?
   poolAddress                        String?
   optionName                         String?
-  rules                              String?
   /// @TypeGraphQL.field(name: "marketGroup")
   market_group                       MarketGroup? @relation(fields: [marketGroupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_02755ce1b56a981eef76c0b59b4")
   /// @TypeGraphQL.field(name: "positions")
@@ -186,6 +185,7 @@ model MarketGroup {
   initializationNonce                String?   @db.VarChar
   factoryAddress                     String?   @db.VarChar
   minTradeSize                       Decimal?  @db.Decimal(78, 0)
+  rules                              String?
   /// @TypeGraphQL.field(name: "events")
   event                              Event[]
   /// @TypeGraphQL.field(name: "markets")

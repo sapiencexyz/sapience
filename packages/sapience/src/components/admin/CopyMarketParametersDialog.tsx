@@ -37,7 +37,6 @@ interface MarketCopyData {
   optionName?: string | null;
   baseAssetMinPriceTick?: number | null;
   baseAssetMaxPriceTick?: number | null;
-  rules?: string | null;
   claimStatementYesOrNumeric?: string | null;
   claimStatementNo?: string | null;
 }
@@ -312,9 +311,7 @@ const CopyMarketParametersDialog = ({
       );
       copyAdvancedConfig(selectedMarketGroup as unknown as MarketGroupCopyData);
 
-      if (selectedMarket.rules) {
-        onMarketChange('rules', selectedMarket.rules);
-      }
+      // Rules are now a Market Group field and are not copied per-market
 
       if (minPrice !== '' && maxPrice !== '') {
         const min = Number(minPrice);

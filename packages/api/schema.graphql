@@ -1257,6 +1257,7 @@ type MarketGroup {
   minTradeSize: Decimal
   owner: String
   question: String
+  rules: String
   quoteTokenName: String
   resource(where: ResourceWhereInput): Resource
   resourceId: Int

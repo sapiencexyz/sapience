@@ -21,12 +21,12 @@ const MARKET_QUERY = /* GraphQL */ `
       baseAssetMinPriceTick
       baseAssetMaxPriceTick
       optionName
-      rules
       marketGroup {
         id
         address
         chainId
         question
+        rules
         baseTokenName
         quoteTokenName
         collateralAsset

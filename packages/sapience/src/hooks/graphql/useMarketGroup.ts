@@ -21,6 +21,7 @@ const MARKET_GROUP_QUERY = /* GraphQL */ `
       address
       chainId
       question
+      rules
       baseTokenName
       quoteTokenName
       collateralSymbol
@@ -30,7 +31,6 @@ const MARKET_GROUP_QUERY = /* GraphQL */ `
         id
         marketId
         question
-        rules
         startTimestamp
         endTimestamp
         settled

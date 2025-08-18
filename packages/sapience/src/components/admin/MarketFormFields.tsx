@@ -34,7 +34,6 @@ export interface MarketInput {
   baseAssetMaxPriceTick: string;
   claimStatementYesOrNumeric: string;
   claimStatementNo: string;
-  rules?: string;
 }
 
 const STARTING_PRICE_MIN_ERROR =
@@ -501,18 +500,7 @@ const MarketFormFields = ({
         </div>
       </div>
 
-      {/* Rules */}
-      <div>
-        <Label htmlFor={fieldId('rules')}>Rules (Optional)</Label>
-        <textarea
-          id={fieldId('rules')}
-          className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          value={market.rules || ''}
-          onChange={(e) => onMarketChange('rules', e.target.value)}
-          placeholder="Enter any specific rules or conditions for this market..."
-          disabled={disabledFields?.rules}
-        />
-      </div>
+      {/* Rules moved to Market Group level */}
 
       {/* Start/End Times */}
       <div className={'grid grid-cols-1 md:grid-cols-2 gap-6'}>

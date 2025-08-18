@@ -59,7 +59,6 @@ const toMarketInput = (m: MarketType): MarketInput => {
     baseAssetMaxPriceTick: String(m.baseAssetMaxPriceTick ?? ''),
     claimStatementYesOrNumeric: m.claimStatementYesOrNumeric || '',
     claimStatementNo: m.claimStatementNo || '',
-    rules: m.rules || '',
   };
 };
 
@@ -102,7 +101,6 @@ const EditMarketDialog = ({ group, market }: Props) => {
     // Always mappable fields
     payloadData.question = formMarket.marketQuestion;
     payloadData.optionName = formMarket.optionName;
-    payloadData.rules = formMarket.rules || '';
     payloadData.public = isPublic;
 
     if (!isDeployed) {

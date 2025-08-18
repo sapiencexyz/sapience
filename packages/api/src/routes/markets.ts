@@ -83,6 +83,7 @@ router.put(
     // Allowed fields based on deployment state
     const alwaysAllowed = new Set<keyof typeof data>([
       'question',
+      'rules',
       'category', // slug
       'categorySlug', // alternative key
       'resourceId',
@@ -110,6 +111,7 @@ router.put(
     const updateData: Record<string, any> = {};
 
     if ('question' in data) updateData.question = data.question;
+    if ('rules' in data) updateData.rules = (data as any).rules ?? null;
     if ('baseTokenName' in data && !isDeployed)
       updateData.baseTokenName = data.baseTokenName;
     if ('quoteTokenName' in data && !isDeployed)
@@ -213,7 +215,6 @@ router.put(
     const alwaysAllowed = new Set<keyof typeof data>([
       'question',
       'optionName',
-      'rules',
       'public',
     ] as unknown as (keyof typeof data)[]);
 
@@ -243,7 +244,7 @@ router.put(
 
     if ('question' in data) updateData.question = data.question;
     if ('optionName' in data) updateData.optionName = data.optionName;
-    if ('rules' in data) updateData.rules = data.rules ?? null;
+    // rules moved to market group level; ignore if provided
     if ('public' in data) updateData.public = Boolean((data as any).public);
 
     if (!isDeployed) {
