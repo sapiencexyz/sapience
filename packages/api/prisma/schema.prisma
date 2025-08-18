@@ -191,10 +191,6 @@ model MarketGroup {
   event                              Event[]
   /// @TypeGraphQL.field(name: "markets")
   market                             Market[]
-  /// @TypeGraphQL.field(name: "parlayIncompatibilitiesA")
-  parlayIncompatibilitiesA           ParlayIncompatibility[] @relation("ParlayIncompatibilityA")
-  /// @TypeGraphQL.field(name: "parlayIncompatibilitiesB")
-  parlayIncompatibilitiesB           ParlayIncompatibility[] @relation("ParlayIncompatibilityB")
   resource                           Resource? @relation(fields: [resourceId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_78409a3738729038b76742291f0")
   category                           Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f092ffcae41efef68cdc30bbd89")
 
@@ -350,29 +346,6 @@ model Transaction {
   position             Position?             @relation(fields: [positionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ffeefe4d2253a6af172da38fc49")
 
   @@map("transaction")
-}
-
-model ParlayIncompatibility {
-  id                    Int      @id @default(autoincrement())
-  createdAt             DateTime @default(now()) @db.Timestamp(6)
-  
-  // Referencias a los dos market groups incompatibles
-  marketGroupAId        Int
-  marketGroupBId        Int
-  
-  // Razón por la cual son incompatibles (opcional)
-  incompatibilityReason String?  @db.Text
-  
-  // Relaciones
-  marketGroupA          MarketGroup @relation("ParlayIncompatibilityA", fields: [marketGroupAId], references: [id])
-  marketGroupB          MarketGroup @relation("ParlayIncompatibilityB", fields: [marketGroupBId], references: [id])
-  
-  // Índices para optimizar consultas
-  @@unique([marketGroupAId, marketGroupBId])
-  @@index([marketGroupAId])
-  @@index([marketGroupBId])
-  
-  @@map("parlay_incompatibility")
 }
 
 enum transaction_type_enum {
