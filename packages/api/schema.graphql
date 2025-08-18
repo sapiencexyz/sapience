@@ -1116,8 +1116,6 @@ type Market {
   maxPriceD18: Decimal
   minPriceD18: Decimal
   optionName: String
-  parlayIncompatibilityAsA(cursor: ParlayIncompatibilityWhereUniqueInput, distinct: [ParlayIncompatibilityScalarFieldEnum!], orderBy: [ParlayIncompatibilityOrderByWithRelationInput!], skip: Int, take: Int, where: ParlayIncompatibilityWhereInput): [ParlayIncompatibility!]!
-  parlayIncompatibilityAsB(cursor: ParlayIncompatibilityWhereUniqueInput, distinct: [ParlayIncompatibilityScalarFieldEnum!], orderBy: [ParlayIncompatibilityOrderByWithRelationInput!], skip: Int, take: Int, where: ParlayIncompatibilityWhereInput): [ParlayIncompatibility!]!
   poolAddress: String
   positions(cursor: PositionWhereUniqueInput, distinct: [PositionScalarFieldEnum!], orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): [Position!]!
   public: Boolean!
@@ -1163,8 +1161,6 @@ input MarketAvgOrderByAggregateInput {
 }
 
 type MarketCount {
-  parlayIncompatibilityAsA(where: ParlayIncompatibilityWhereInput): Int!
-  parlayIncompatibilityAsB(where: ParlayIncompatibilityWhereInput): Int!
   position(where: PositionWhereInput): Int!
 }
 
@@ -1263,6 +1259,8 @@ type MarketGroup {
   markets(cursor: MarketWhereUniqueInput, distinct: [MarketScalarFieldEnum!], orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): [Market!]!
   minTradeSize: Decimal
   owner: String
+  parlayIncompatibilitiesA(cursor: ParlayIncompatibilityWhereUniqueInput, distinct: [ParlayIncompatibilityScalarFieldEnum!], orderBy: [ParlayIncompatibilityOrderByWithRelationInput!], skip: Int, take: Int, where: ParlayIncompatibilityWhereInput): [ParlayIncompatibility!]!
+  parlayIncompatibilitiesB(cursor: ParlayIncompatibilityWhereUniqueInput, distinct: [ParlayIncompatibilityScalarFieldEnum!], orderBy: [ParlayIncompatibilityOrderByWithRelationInput!], skip: Int, take: Int, where: ParlayIncompatibilityWhereInput): [ParlayIncompatibility!]!
   question: String
   quoteTokenName: String
   resource(where: ResourceWhereInput): Resource
@@ -1342,6 +1340,8 @@ type MarketGroupBy {
 type MarketGroupCount {
   event(where: EventWhereInput): Int!
   market(where: MarketWhereInput): Int!
+  parlayIncompatibilitiesA(where: ParlayIncompatibilityWhereInput): Int!
+  parlayIncompatibilitiesB(where: ParlayIncompatibilityWhereInput): Int!
 }
 
 type MarketGroupCountAggregate {
@@ -1647,10 +1647,17 @@ input MarketGroupOrderByWithRelationInput {
   markets: MarketOrderByRelationAggregateInput
   minTradeSize: SortOrderInput
   owner: SortOrderInput
+  parlayIncompatibilitiesA: ParlayIncompatibilityOrderByRelationAggregateInput
+  parlayIncompatibilitiesB: ParlayIncompatibilityOrderByRelationAggregateInput
   question: SortOrderInput
   quoteTokenName: SortOrderInput
   resource: ResourceOrderByWithRelationInput
   resourceId: SortOrderInput
+}
+
+input MarketGroupRelationFilter {
+  is: MarketGroupWhereInput
+  isNot: MarketGroupWhereInput
 }
 
 enum MarketGroupScalarFieldEnum {
@@ -1778,6 +1785,8 @@ input MarketGroupWhereInput {
   markets: MarketListRelationFilter
   minTradeSize: DecimalNullableFilter
   owner: StringNullableFilter
+  parlayIncompatibilitiesA: ParlayIncompatibilityListRelationFilter
+  parlayIncompatibilitiesB: ParlayIncompatibilityListRelationFilter
   question: StringNullableFilter
   quoteTokenName: StringNullableFilter
   resource: ResourceNullableRelationFilter
@@ -1817,6 +1826,8 @@ input MarketGroupWhereUniqueInput {
   markets: MarketListRelationFilter
   minTradeSize: DecimalNullableFilter
   owner: StringNullableFilter
+  parlayIncompatibilitiesA: ParlayIncompatibilityListRelationFilter
+  parlayIncompatibilitiesB: ParlayIncompatibilityListRelationFilter
   question: StringNullableFilter
   quoteTokenName: StringNullableFilter
   resource: ResourceNullableRelationFilter
@@ -2026,8 +2037,6 @@ input MarketOrderByWithRelationInput {
   maxPriceD18: SortOrderInput
   minPriceD18: SortOrderInput
   optionName: SortOrderInput
-  parlayIncompatibilityAsA: ParlayIncompatibilityOrderByRelationAggregateInput
-  parlayIncompatibilityAsB: ParlayIncompatibilityOrderByRelationAggregateInput
   poolAddress: SortOrderInput
   positions: PositionOrderByRelationAggregateInput
   public: SortOrder
@@ -2191,11 +2200,6 @@ input MarketPriceWhereUniqueInput {
   value: DecimalFilter
 }
 
-input MarketRelationFilter {
-  is: MarketWhereInput
-  isNot: MarketWhereInput
-}
-
 enum MarketScalarFieldEnum {
   baseAssetMaxPriceTick
   baseAssetMinPriceTick
@@ -2320,8 +2324,6 @@ input MarketWhereInput {
   maxPriceD18: DecimalNullableFilter
   minPriceD18: DecimalNullableFilter
   optionName: StringNullableFilter
-  parlayIncompatibilityAsA: ParlayIncompatibilityListRelationFilter
-  parlayIncompatibilityAsB: ParlayIncompatibilityListRelationFilter
   poolAddress: StringNullableFilter
   positions: PositionListRelationFilter
   public: BoolFilter
@@ -2360,8 +2362,6 @@ input MarketWhereUniqueInput {
   maxPriceD18: DecimalNullableFilter
   minPriceD18: DecimalNullableFilter
   optionName: StringNullableFilter
-  parlayIncompatibilityAsA: ParlayIncompatibilityListRelationFilter
-  parlayIncompatibilityAsB: ParlayIncompatibilityListRelationFilter
   poolAddress: StringNullableFilter
   positions: PositionListRelationFilter
   public: BoolFilter
@@ -2686,10 +2686,10 @@ type ParlayIncompatibility {
   createdAt: DateTimeISO!
   id: Int!
   incompatibilityReason: String
-  marketA: Market!
-  marketAId: Int!
-  marketB: Market!
-  marketBId: Int!
+  marketGroupA: MarketGroup!
+  marketGroupAId: Int!
+  marketGroupB: MarketGroup!
+  marketGroupBId: Int!
 }
 
 input ParlayIncompatibilityListRelationFilter {
@@ -2698,9 +2698,9 @@ input ParlayIncompatibilityListRelationFilter {
   some: ParlayIncompatibilityWhereInput
 }
 
-input ParlayIncompatibilityMarketAIdMarketBIdCompoundUniqueInput {
-  marketAId: Int!
-  marketBId: Int!
+input ParlayIncompatibilityMarketGroupAIdMarketGroupBIdCompoundUniqueInput {
+  marketGroupAId: Int!
+  marketGroupBId: Int!
 }
 
 input ParlayIncompatibilityOrderByRelationAggregateInput {
@@ -2711,18 +2711,18 @@ input ParlayIncompatibilityOrderByWithRelationInput {
   createdAt: SortOrder
   id: SortOrder
   incompatibilityReason: SortOrderInput
-  marketA: MarketOrderByWithRelationInput
-  marketAId: SortOrder
-  marketB: MarketOrderByWithRelationInput
-  marketBId: SortOrder
+  marketGroupA: MarketGroupOrderByWithRelationInput
+  marketGroupAId: SortOrder
+  marketGroupB: MarketGroupOrderByWithRelationInput
+  marketGroupBId: SortOrder
 }
 
 enum ParlayIncompatibilityScalarFieldEnum {
   createdAt
   id
   incompatibilityReason
-  marketAId
-  marketBId
+  marketGroupAId
+  marketGroupBId
 }
 
 input ParlayIncompatibilityWhereInput {
@@ -2732,10 +2732,10 @@ input ParlayIncompatibilityWhereInput {
   createdAt: DateTimeFilter
   id: IntFilter
   incompatibilityReason: StringNullableFilter
-  marketA: MarketRelationFilter
-  marketAId: IntFilter
-  marketB: MarketRelationFilter
-  marketBId: IntFilter
+  marketGroupA: MarketGroupRelationFilter
+  marketGroupAId: IntFilter
+  marketGroupB: MarketGroupRelationFilter
+  marketGroupBId: IntFilter
 }
 
 input ParlayIncompatibilityWhereUniqueInput {
@@ -2745,11 +2745,11 @@ input ParlayIncompatibilityWhereUniqueInput {
   createdAt: DateTimeFilter
   id: Int
   incompatibilityReason: StringNullableFilter
-  marketA: MarketRelationFilter
-  marketAId: IntFilter
-  marketAId_marketBId: ParlayIncompatibilityMarketAIdMarketBIdCompoundUniqueInput
-  marketB: MarketRelationFilter
-  marketBId: IntFilter
+  marketGroupA: MarketGroupRelationFilter
+  marketGroupAId: IntFilter
+  marketGroupAId_marketGroupBId: ParlayIncompatibilityMarketGroupAIdMarketGroupBIdCompoundUniqueInput
+  marketGroupB: MarketGroupRelationFilter
+  marketGroupBId: IntFilter
 }
 
 type PnLType {

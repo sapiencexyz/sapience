@@ -8,6 +8,10 @@ router.post('/incompatibility', async (req: Request, res: Response) => {
   try {
     const { marketGroupAId, marketGroupBId, incompatibilityReason } = req.body;
 
+    console.log('marketGroupAId', marketGroupAId);
+    console.log('marketGroupBId', marketGroupBId);
+    console.log('incompatibilityReason', incompatibilityReason);
+
     // Validate that market groups are different
     if (marketGroupAId === marketGroupBId) {
       return res.status(400).json({
