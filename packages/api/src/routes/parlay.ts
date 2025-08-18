@@ -95,54 +95,14 @@ router.get(
 
       // Transform to return only incompatible market groups
       const incompatibleMarketGroups = incompatibilities.map((inc) => {
-        return inc.marketGroupAId === parseInt(marketGroupId) ? inc.marketGroupB : inc.marketGroupA;
+        return inc.marketGroupAId === parseInt(marketGroupId)
+          ? inc.marketGroupB
+          : inc.marketGroupA;
       });
 
       return res.json(incompatibleMarketGroups);
     } catch (error) {
       console.error('Error getting incompatible market groups:', error);
-      return res.status(500).json({
-        message: 'Internal server error',
-      });
-    }
-  }
-);
-
-// GET /parlay/compatible-market-groups/:marketGroupId - Get compatible market groups with a specific market group
-router.get(
-  '/compatible-market-groups/:marketGroupId',
-  async (req: Request, res: Response) => {
-    try {
-      const { marketGroupId } = req.params;
-      const marketGroupIdInt = parseInt(marketGroupId);
-
-      // Get all market groups
-      const allMarketGroups = await prisma.marketGroup.findMany({
-        where: { id: { not: marketGroupIdInt } }, // Exclude current market group
-      });
-
-      // Get incompatibilities
-      const incompatibilities = await prisma.parlayIncompatibility.findMany({
-        where: {
-          OR: [{ marketGroupAId: marketGroupIdInt }, { marketGroupBId: marketGroupIdInt }],
-        },
-      });
-
-      // Create set of incompatible IDs for fast lookup
-      const incompatibleIds = new Set(
-        incompatibilities.map((inc) =>
-          inc.marketGroupAId === marketGroupIdInt ? inc.marketGroupBId : inc.marketGroupAId
-        )
-      );
-
-      // Filter compatible market groups
-      const compatibleMarketGroups = allMarketGroups.filter(
-        (marketGroup) => !incompatibleIds.has(marketGroup.id)
-      );
-
-      return res.json(compatibleMarketGroups);
-    } catch (error) {
-      console.error('Error getting compatible market groups:', error);
       return res.status(500).json({
         message: 'Internal server error',
       });
@@ -285,21 +245,26 @@ router.post('/get-parlay-chance', async (req: Request, res: Response) => {
       }
 
       marketIds.push(marketExists.id);
-      marketGroupIds.add(marketExists.market_group.id);
+      if (marketExists.market_group) {
+        marketGroupIds.add(marketExists.market_group.id);
+      }
     }
 
     // Validate that market groups are not incompatible with each other
     const marketGroupIdsArray = Array.from(marketGroupIds);
     for (let i = 0; i < marketGroupIdsArray.length; i++) {
       for (let j = i + 1; j < marketGroupIdsArray.length; j++) {
-        const marketGroupAId = marketGroupIdsArray[i];
-        const marketGroupBId = marketGroupIdsArray[j];
+        const marketGroupAId = marketGroupIdsArray[i] as number;
+        const marketGroupBId = marketGroupIdsArray[j] as number;
 
         const incompatibility = await prisma.parlayIncompatibility.findFirst({
           where: {
             OR: [
               { marketGroupAId, marketGroupBId },
-              { marketGroupAId: marketGroupBId, marketGroupBId: marketGroupAId },
+              {
+                marketGroupAId: marketGroupBId,
+                marketGroupBId: marketGroupAId,
+              },
             ],
           },
         });

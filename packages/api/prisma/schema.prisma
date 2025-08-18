@@ -148,10 +148,6 @@ model Market {
   market_group                       MarketGroup? @relation(fields: [marketGroupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_02755ce1b56a981eef76c0b59b4")
   /// @TypeGraphQL.field(name: "positions")
   position                           Position[]
-  /// @TypeGraphQL.field(name: "parlayIncompatibilityAsA")
-  parlayIncompatibilityAsA           ParlayIncompatibility[] @relation("ParlayIncompatibilityA")
-  /// @TypeGraphQL.field(name: "parlayIncompatibilityAsB")
-  parlayIncompatibilityAsB           ParlayIncompatibility[] @relation("ParlayIncompatibilityB")
 
   @@unique([marketGroupId, marketId], map: "UQ_0a0e1fcc7164cb26a957c806314")
   @@unique([marketGroupId, marketId], map: "UQ_6e25995aba1162dc315f8214ee7")
