@@ -1,7 +1,7 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 
 import { useSettlePosition } from '~/hooks/contract/useSettlePosition';
 import { MINIMUM_POSITION_WIN } from '~/lib/constants/numbers';
@@ -21,13 +21,21 @@ const SettlePositionButton = ({
 }: SettlePositionButtonProps) => {
   const { toast } = useToast();
 
-  const { settlePosition, simulationData, loadingSimulation, isSettling } =
-    useSettlePosition({
-      positionId,
-      marketAddress,
-      chainId,
-      enabled: true,
-    });
+  const {
+    settlePosition,
+    simulationData,
+    loadingSimulation,
+    isSettling,
+    error,
+    txHash,
+  } = useSettlePosition({
+    positionId,
+    marketAddress,
+    chainId,
+    enabled: true,
+  });
+
+  const successHandled = useRef(false);
 
   const expectedCollateral = useMemo(
     () => simulationData?.result || BigInt(0),
@@ -40,28 +48,34 @@ const SettlePositionButton = ({
     [expectedCollateral]
   );
 
-  const handleSettle = async () => {
-    try {
-      const hash = await settlePosition();
+  useEffect(() => {
+    if (txHash && !successHandled.current) {
+      successHandled.current = true;
+      toast({
+        title: 'Success!',
+        description: 'Position settled successfully',
+      });
+      if (onSuccess) onSuccess();
+    }
+  }, [txHash, onSuccess, toast]);
 
-      if (hash) {
-        toast({
-          title: 'Success!',
-          description: 'Position settled successfully',
-        });
-
-        // Call the onSuccess callback if provided
-        if (onSuccess) {
-          onSuccess();
-        }
-      }
-    } catch (err) {
-      console.error('Error settling position:', err);
+  useEffect(() => {
+    if (error) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to settle position',
+        description: error.message,
       });
+    }
+  }, [error, toast]);
+
+  const handleSettle = async () => {
+    try {
+      await settlePosition();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to settle position';
+      toast({ variant: 'destructive', title: 'Error', description: message });
     }
   };
 
