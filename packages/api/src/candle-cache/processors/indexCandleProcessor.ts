@@ -27,8 +27,14 @@ export class IndexCandleProcessor {
     const prevFeePaidStr = prevCandle?.sumFeePaid || '0';
     const prevUsedStr = prevCandle?.sumUsed || '0';
 
-    const feePaid = BigInt(prevFeePaidStr) + BigInt(feePaidStr);
-    const used = BigInt(prevUsedStr) + BigInt(usedStr);
+    // Convert decimal strings to integers by truncating decimal part
+    const feePaidInt = Math.floor(parseFloat(feePaidStr));
+    const usedInt = Math.floor(parseFloat(usedStr));
+    const prevFeePaidInt = Math.floor(parseFloat(prevFeePaidStr));
+    const prevUsedInt = Math.floor(parseFloat(prevUsedStr));
+
+    const feePaid = BigInt(prevFeePaidInt) + BigInt(feePaidInt);
+    const used = BigInt(prevUsedInt) + BigInt(usedInt);
     const avg = used > 0 ? feePaid / used : 0;
     return { feePaid, used, avg };
   };

@@ -43,8 +43,8 @@ export class TrailingAvgHistoryStore {
       // Get current sums
       const sums = resourceHistory.sums.get(trailingAvgWindowTime)!;
 
-      sums.sumUsed += BigInt(price.used);
-      sums.sumFeePaid += BigInt(price.fee);
+      sums.sumUsed += BigInt(Math.floor(parseFloat(price.used)));
+      sums.sumFeePaid += BigInt(Math.floor(parseFloat(price.fee)));
 
       // Update pointer and remove old values
       const cutoffTime = Math.max(0, price.timestamp - trailingAvgWindowTime);
@@ -57,8 +57,8 @@ export class TrailingAvgHistoryStore {
         resourceHistory.prices[pointer].timestamp <= cutoffTime
       ) {
         const oldPrice = resourceHistory.prices[pointer];
-        sums.sumUsed -= BigInt(oldPrice.used);
-        sums.sumFeePaid -= BigInt(oldPrice.fee);
+        sums.sumUsed -= BigInt(Math.floor(parseFloat(oldPrice.used)));
+        sums.sumFeePaid -= BigInt(Math.floor(parseFloat(oldPrice.fee)));
         deducted = true;
         pointer++;
       }
