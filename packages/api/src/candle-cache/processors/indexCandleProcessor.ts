@@ -27,7 +27,6 @@ export class IndexCandleProcessor {
     const prevFeePaidStr = prevCandle?.sumFeePaid || '0';
     const prevUsedStr = prevCandle?.sumUsed || '0';
 
-    // Convert decimal strings to integers by truncating decimal part
     const feePaidInt = Math.floor(parseFloat(feePaidStr));
     const usedInt = Math.floor(parseFloat(usedStr));
     const prevFeePaidInt = Math.floor(parseFloat(prevFeePaidStr));
