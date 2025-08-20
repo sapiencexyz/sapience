@@ -55,25 +55,28 @@ export default function MultipleChoicePredict({
       <div>
         {options && options.length > 1 ? (
           <>
-            <Label>Select Option</Label>
+            <Label>Your Prediction</Label>
             <div className="grid grid-cols-1 gap-2 mt-2 mb-4">
-              {options.map(({ name: optionName, marketId }) => (
-                <Button
-                  key={marketId}
-                  type="button"
-                  onClick={() => {
-                    setSelectedMarketId(marketId);
-                    setSliderValue([50]); // Reset to 50% when selecting new option
-                  }}
-                  className={`text-center justify-start font-normal ${
-                    selectedMarketId === marketId
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
-                >
-                  {optionName}
-                </Button>
-              ))}
+              {options
+                .slice()
+                .sort((a, b) => a.marketId - b.marketId)
+                .map(({ name: optionName, marketId }) => (
+                  <Button
+                    key={marketId}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMarketId(marketId);
+                      setSliderValue([50]); // Reset to 50% when selecting new option
+                    }}
+                    className={`text-center justify-start font-normal ${
+                      selectedMarketId === marketId
+                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                    }`}
+                  >
+                    {optionName}
+                  </Button>
+                ))}
             </div>
           </>
         ) : (

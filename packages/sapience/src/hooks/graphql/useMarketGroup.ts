@@ -138,16 +138,21 @@ export async function prefetchMarketGroup(
 ): Promise<MarketGroupType | null> {
   const queryKey = marketGroupQueryConfig.queryKey(chainId, marketAddress);
 
+  // If we already have data, return it immediately
   const existingData = queryClient.getQueryData<MarketGroupType>(queryKey);
   if (existingData) {
     return existingData;
   }
 
-  const marketData = await marketGroupQueryConfig.queryFn(
-    chainId,
-    marketAddress
-  );
-  queryClient.setQueryData(queryKey, marketData);
+  // Use React Query's prefetch so fetching state is tracked properly
+  try {
+    await queryClient.prefetchQuery({
+      queryKey,
+      queryFn: () => marketGroupQueryConfig.queryFn(chainId, marketAddress),
+    });
+  } catch {
+    // Swallow errors here; callers can inspect query state for error
+  }
 
-  return marketData;
+  return queryClient.getQueryData<MarketGroupType>(queryKey) ?? null;
 }

@@ -1,7 +1,13 @@
 'use client';
 
 import type React from 'react';
-import { createContext, useContext, useState, useCallback } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 import type { MarketGroupClassification } from '~/lib/types';
@@ -67,6 +73,20 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
   );
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const queryClient = useQueryClient();
+  const [_queryVersion, setQueryVersion] = useState(0);
+
+  // Subscribe to React Query cache updates for marketGroup queries so the
+  // provider re-renders when loading/data/error changes
+  useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      const q = (event as unknown as { query?: { queryKey?: unknown[] } })
+        ?.query;
+      if (Array.isArray(q?.queryKey) && q?.queryKey?.[0] === 'marketGroup') {
+        setQueryVersion((v) => v + 1);
+      }
+    });
+    return () => unsubscribe();
+  }, [queryClient]);
 
   // Create positions with market data from cache
   const positionsWithMarketData = betSlipPositions.map((position) => {
@@ -83,9 +103,10 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
       effectiveChainId,
       position.marketAddress
     );
-    const isLoading = false; // Since we're fetching proactively, not loading
-    const isError =
-      !marketGroupData && !!queryClient.getQueryState(queryKey)?.error;
+    const queryState = queryClient.getQueryState(queryKey);
+    const isLoading =
+      !marketGroupData && queryState?.fetchStatus === 'fetching';
+    const isError = !marketGroupData && !!queryState?.error;
 
     // Get market classification from the data
     const marketClassification = marketGroupData

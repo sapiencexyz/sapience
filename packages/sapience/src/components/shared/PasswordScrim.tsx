@@ -5,9 +5,22 @@ import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
-import Link from 'next/link';
 import { useState, useEffect, useRef } from 'react';
 import type React from 'react';
+import Script from 'next/script';
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@sapience/ui/components/ui/dialog';
+import ViralLoopsFormWidget from './ViralLoopsFormWidget';
+
+declare global {
+  interface Window {
+    VL?: { openPopup?: () => void };
+    ViralLoops?: { showWidget?: (name: string) => void };
+  }
+}
 
 // Create a motion-compatible version of the shadcn Button
 const MotionButton = motion(Button);
@@ -20,6 +33,7 @@ const PasswordScrim = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showError, setShowError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isViralLoopsReady, setIsViralLoopsReady] = useState(false);
 
   useEffect(() => {
     const authStatus = localStorage.getItem('isAuthenticated');
@@ -121,6 +135,13 @@ const PasswordScrim = () => {
           }}
           className="fixed inset-0 z-[9999] flex flex-col bg-background h-screen"
         >
+          <Script
+            id="viral-loops-loader"
+            src="https://app.viral-loops.com/widgetsV2/core/loader.js"
+            strategy="afterInteractive"
+            onLoad={() => setIsViralLoopsReady(true)}
+            data-campaign-id="zRlk5twgrLlTuZnRTVIKY3Cgozo"
+          />
           {/* Error Message moved here for fixed, centered positioning */}
           <AnimatePresence>
             {showError && (
@@ -178,24 +199,36 @@ const PasswordScrim = () => {
                     )}
                   </AnimatePresence>
                 </div>
-                <div className="flex items-center gap-3 text-sm flex-row justify-between">
-                  <Link
-                    href="https://docs.sapience.xyz"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-0.5 text-xs tracking-widest transition-all duration-300 font-semibold uppercase"
-                  >
-                    Read the docs
-                  </Link>
-                  <Link
-                    href="https://discord.gg/HRWFwXHM7x"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-0.5 text-xs tracking-widest transition-all duration-300 font-semibold uppercase"
-                  >
-                    Request early access
-                    <ChevronRight className="w-3 h-3" />
-                  </Link>
+                <div className="flex items-center justify-center text-sm flex-row">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-muted-foreground/70 hover:text-muted-foreground flex items-center gap-0.5 text-xs tracking-widest transition-all duration-300 font-semibold uppercase"
+                        aria-haspopup="dialog"
+                      >
+                        Request early access
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-lg w-full z-[10000] p-0">
+                      <div className="w-full">
+                        {isViralLoopsReady ? (
+                          <ViralLoopsFormWidget
+                            ucid="zRlk5twgrLlTuZnRTVIKY3Cgozo"
+                            popup={false}
+                          />
+                        ) : (
+                          <div
+                            className="py-8 text-center text-sm text-muted-foreground"
+                            aria-live="polite"
+                          >
+                            Loading form...
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </form>
             </div>

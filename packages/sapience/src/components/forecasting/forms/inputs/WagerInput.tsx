@@ -26,9 +26,6 @@ interface WagerInputProps {
 export const wagerAmountSchema = z
   .string()
   .min(1, 'Please enter a wager amount')
-  .refine((val) => !Number.isNaN(Number(val)), {
-    message: 'Must be a valid number',
-  })
   .refine((val) => Number(val) > 0, {
     message: 'Amount must be greater than 0',
   });
@@ -96,14 +93,7 @@ export function WagerInput({
 
       try {
         // Build dynamic schema if a minimum amount is provided
-        const schema = minAmount
-          ? wagerAmountSchema.refine(
-              (val) => Number(val) >= Number(minAmount),
-              {
-                message: `Amount must be at least ${minAmount}`,
-              }
-            )
-          : wagerAmountSchema;
+        const schema = wagerAmountSchema;
 
         // Validate against our (possibly dynamic) schema
         schema.parse(currentValue);
@@ -150,15 +140,8 @@ export function WagerInput({
           className={`pr-24 ${errors[name] ? 'border-destructive' : ''}`}
           {...register(name, {
             validate: (val) => {
-              if (!val || Number.isNaN(Number(val)))
-                return 'Must be a valid number';
+              if (!val) return 'Please enter a wager amount';
               if (Number(val) <= 0) return 'Amount must be greater than 0';
-              if (
-                typeof minAmount !== 'undefined' &&
-                Number(val) < Number(minAmount)
-              ) {
-                return `Amount must be at least ${minAmount}`;
-              }
               return true;
             },
             onChange: (e) => {

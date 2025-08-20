@@ -21,6 +21,7 @@ import YesNoWagerInput from '~/components/forecasting/forms/inputs/YesNoWagerInp
 import WagerInputWithQuote from '~/components/forecasting/forms/shared/WagerInputWithQuote';
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/forecasting/forms';
+import LottieLoader from '~/components/shared/LottieLoader';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -60,8 +61,12 @@ export const BetslipContent = ({
   parlayCollateralAddress,
   parlayChainId,
 }: BetslipContentProps) => {
-  const { betSlipPositions, removePosition, positionsWithMarketData } =
-    useBetSlipContext();
+  const {
+    betSlipPositions,
+    removePosition,
+    positionsWithMarketData,
+    clearBetSlip,
+  } = useBetSlipContext();
   const hasNumericMarket = positionsWithMarketData.some(
     (p) => p.marketClassification === MarketGroupClassification.NUMERIC
   );
@@ -71,7 +76,7 @@ export const BetslipContent = ({
       <div className="w-full h-full flex flex-col">
         <div className={`${betSlipPositions.length === 0 ? '' : 'px-4 pt-4'}`}>
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Make a Prediction</span>
+            <span className="text-sm font-medium">Predict</span>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground flex items-center gap-1 font-medium leading-none">
                 <SquareStack className="w-3 h-3" />
@@ -100,6 +105,17 @@ export const BetslipContent = ({
                   />
                 </span>
               )}
+              {betSlipPositions.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={clearBetSlip}
+                  type="button"
+                  className="ml-3"
+                >
+                  Clear all
+                </Button>
+              )}
             </div>
           </div>
 
@@ -125,9 +141,9 @@ export const BetslipContent = ({
           }`}
         >
           {betSlipPositions.length === 0 ? (
-            <div className="w-full h-full flex items-center justify-center text-center px-12">
+            <div className="w-full h-full flex items-center justify-center text-center px-16">
               <p className="text-base text-muted-foreground">
-                Add your predictions to see your potential payout.
+                Add predictions to see your potential payout.
               </p>
             </div>
           ) : !isParlayMode ? (
@@ -146,13 +162,9 @@ export const BetslipContent = ({
                       className={`mb-4 ${!isLast ? 'border-b border-border pb-4' : ''}`}
                     >
                       {positionData.isLoading && (
-                        <>
-                          <div className="mb-2">
-                            <h3 className="font-medium text-foreground pr-2">
-                              {positionData.position.question}
-                            </h3>
-                          </div>
-                        </>
+                        <div className="flex w-full justify-center py-2">
+                          <LottieLoader width={20} height={20} />
+                        </div>
                       )}
 
                       {positionData.error && (
@@ -306,10 +318,6 @@ export const BetslipContent = ({
                           min: {
                             value: 0,
                             message: 'Minimum payout must be positive',
-                          },
-                          validate: (value: unknown) => {
-                            const num = parseFloat(String(value));
-                            return !isNaN(num) || 'Must be a valid number';
                           },
                         })}
                       />

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
@@ -46,10 +46,16 @@ const MarketGroupsRow = ({
     [chainId]
   );
 
+  // Ensure markets are in ascending order by marketId everywhere in this component
+  const sortedMarkets = React.useMemo(
+    () => [...market].sort((a, b) => a.marketId - b.marketId),
+    [market]
+  );
+
   // Extract market IDs from the market array
   const marketIds = React.useMemo(
-    () => market.map((m) => m.marketId),
-    [market]
+    () => sortedMarkets.map((m) => m.marketId),
+    [sortedMarkets]
   );
 
   // Use the chart data hook to get latest prices
@@ -243,10 +249,9 @@ const MarketGroupsRow = ({
                 }`}
                 className="group"
               >
-                <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
+                <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
                   {displayQuestion}
                 </span>
-                <ChevronRight className="ml-1 inline-block h-5 w-5 align-middle relative -top-0.5 text-muted-foreground transition-colors group-hover:text-foreground" />
               </Link>
             </h3>
             {/* Prediction Section (conditionally rendered) */}
@@ -267,12 +272,11 @@ const MarketGroupsRow = ({
                     >
                       <Link
                         href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
-                        className="group inline-flex items-center gap-0.5"
+                        className="group inline-flex items-center"
                       >
-                        <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
+                        <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
                           Details
                         </span>
-                        <ChevronRight className="-ml-1 h-2 w-2 text-muted-foreground transition-colors group-hover:text-foreground" />
                       </Link>
                     </Button>
                   )}
@@ -344,65 +348,62 @@ const MarketGroupsRow = ({
               <div className="px-6  dark:bg-muted/50">
                 {/* Panel Content */}
                 <div className="max-h-96 overflow-y-auto">
-                  {market.length > 0 ? (
+                  {sortedMarkets.length > 0 ? (
                     <div>
-                      {market
-                        .sort((a, b) => a.marketId - b.marketId)
-                        .map((marketItem) => (
-                          <div
-                            key={marketItem.id}
-                            className="flex flex-col md:flex-row md:items-center md:justify-between py-3 border-t border-border gap-3"
-                          >
-                            {/* Left Side: Option Name + Prediction */}
-                            <div className="flex-grow">
-                              <div className="font-medium text-foreground">
-                                {marketItem.optionName ||
-                                  `Market ${marketItem.marketId}`}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                <span className="text-muted-foreground">
-                                  Market Prediction:{' '}
-                                </span>
-                                <IndividualMarketPrediction
-                                  marketItem={marketItem}
-                                />
-                                <Button
-                                  variant="link"
-                                  size="xs"
-                                  asChild
-                                  className="h-6 px-0 ml-4 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
-                                >
-                                  <Link
-                                    href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
-                                    className="group inline-flex items-center"
-                                  >
-                                    <span className="underline decoration-1 decoration-transparent underline-offset-4 transition-colors group-hover:decoration-foreground/50">
-                                      Details
-                                    </span>
-                                    <ChevronRight className="ml-0 h-2.5 w-2.5 text-muted-foreground transition-colors group-hover:text-foreground" />
-                                  </Link>
-                                </Button>
-                              </div>
+                      {sortedMarkets.map((marketItem) => (
+                        <div
+                          key={marketItem.id}
+                          className="flex flex-col md:flex-row md:items-center md:justify-between py-3 border-t border-border gap-3"
+                        >
+                          {/* Left Side: Option Name + Prediction */}
+                          <div className="flex-grow">
+                            <div className="font-medium text-foreground">
+                              {marketItem.optionName ||
+                                `Market ${marketItem.marketId}`}
                             </div>
-
-                            {/* Right Side: Actions */}
-                            <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
+                            <div className="text-sm text-muted-foreground">
+                              <span className="text-muted-foreground">
+                                Market Prediction:{' '}
+                              </span>
+                              <IndividualMarketPrediction
+                                marketItem={marketItem}
+                              />
                               <Button
-                                variant="default"
-                                onClick={() => handleAddToBetSlip(marketItem)}
-                                className="h-8 px-3 w-24"
+                                variant="link"
+                                size="xs"
+                                asChild
+                                className="h-6 px-0 ml-4 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
                               >
-                                <Image
-                                  src="/susde-icon.svg"
-                                  alt="sUSDe"
-                                  width={18}
-                                  height={18}
-                                />
-                                Predict
+                                <Link
+                                  href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
+                                  className="group inline-flex items-center"
+                                >
+                                  <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+                                    Details
+                                  </span>
+                                </Link>
                               </Button>
                             </div>
                           </div>
-                        ))}
+
+                          {/* Right Side: Actions */}
+                          <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
+                            <Button
+                              variant="default"
+                              onClick={() => handleAddToBetSlip(marketItem)}
+                              className="h-8 px-3 w-24"
+                            >
+                              <Image
+                                src="/susde-icon.svg"
+                                alt="sUSDe"
+                                width={18}
+                                height={18}
+                              />
+                              Predict
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <p className="text-muted-foreground text-center py-8">

@@ -354,6 +354,9 @@ const CreateMarketGroupForm = () => {
       case 'question':
         setQuestion(value);
         break;
+      case 'rules':
+        setRules(value || '');
+        break;
       case 'category':
         setSelectedCategory(value);
         break;

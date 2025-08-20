@@ -42,8 +42,11 @@ export default function MultipleChoiceWagerForm({
   const methods = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      predictionValue:
-        marketGroupData.markets?.[0]?.marketId?.toString() ?? '0', // first market
+      predictionValue: (
+        (marketGroupData.markets || [])
+          .slice()
+          .sort((a, b) => a.marketId - b.marketId)[0]?.marketId ?? 0
+      ).toString(), // first market by ascending id
       wagerAmount: '1',
     },
     mode: 'onChange',
@@ -146,10 +149,13 @@ export default function MultipleChoiceWagerForm({
           <div>
             <Label>Your Prediction</Label>
             <MultipleChoiceWagerChoiceSelect
-              options={(marketGroupData.markets || []).map((market) => ({
-                name: market.optionName || '',
-                marketId: market.marketId,
-              }))}
+              options={(marketGroupData.markets || [])
+                .slice()
+                .sort((a, b) => a.marketId - b.marketId)
+                .map((market) => ({
+                  name: market.optionName || '',
+                  marketId: market.marketId,
+                }))}
             />
           </div>
         </div>

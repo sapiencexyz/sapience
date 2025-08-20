@@ -13,8 +13,8 @@ const MarketGroupsList = dynamic(
 );
 
 export const metadata: Metadata = {
-  title: 'Forecasting',
-  description: 'Make forecasts across various focus areas',
+  title: 'Prediction Markets',
+  description: 'Browse prediction markets across various focus areas',
 };
 
 const ForecastingPage = () => {

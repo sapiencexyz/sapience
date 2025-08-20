@@ -43,6 +43,7 @@ interface MarketCopyData {
 
 interface MarketGroupCopyData {
   question?: string | null;
+  rules?: string | null;
   category?: {
     slug?: string | null;
     id?: string | number | null;
@@ -220,6 +221,10 @@ const CopyMarketParametersDialog = ({
 
     if (selectedMarketGroup.question) {
       onMarketGroupChange('question', selectedMarketGroup.question);
+    }
+
+    if (selectedMarketGroup.rules) {
+      onMarketGroupChange('rules', selectedMarketGroup.rules);
     }
 
     if (selectedMarketGroup.category?.slug) {
@@ -615,7 +620,8 @@ const CopyMarketParametersDialog = ({
                       Copy Market Group Parameters
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Also copy question, category, index, and token names
+                      Also copy question, rules, category, index, and token
+                      names
                     </p>
                   </div>
                   <Switch
@@ -634,15 +640,15 @@ const CopyMarketParametersDialog = ({
                   <div className="space-y-1">
                     <div className="text-xs text-muted-foreground">
                       <span className="font-medium">Always:</span> Market
-                      question, option name, prices, claim statement, rules (if
-                      any of these are present in the database)
+                      question, option name, prices, claim statement (if any of
+                      these are present in the database)
                     </div>
                     {copyMarketGroupParams && (
                       <div className="text-xs text-muted-foreground">
                         <span className="font-medium">Also:</span> Market group
-                        question, category, index, base/quote token names, and
-                        advanced configuration (excluding Chain ID, Factory
-                        Address, and Collateral Asset)
+                        question, rules, category, index, base/quote token
+                        names, and advanced configuration (excluding Chain ID,
+                        Factory Address, and Collateral Asset)
                       </div>
                     )}
                   </div>

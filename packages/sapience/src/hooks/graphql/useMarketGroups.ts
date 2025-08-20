@@ -115,6 +115,7 @@ const MARKETS_QUERY = /* GraphQL */ `
       owner
       collateralAsset
       question
+      rules
       baseTokenName
       quoteTokenName
       factoryAddress
