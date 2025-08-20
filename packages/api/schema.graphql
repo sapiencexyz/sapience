@@ -1120,7 +1120,6 @@ type Market {
   positions(cursor: PositionWhereUniqueInput, distinct: [PositionScalarFieldEnum!], orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): [Position!]!
   public: Boolean!
   question: String
-  rules: String
   settled: Boolean
   settlementPriceD18: Decimal
   startTimestamp: Int
@@ -1188,7 +1187,6 @@ type MarketCountAggregate {
   poolAddress: Int!
   public: Int!
   question: Int!
-  rules: Int!
   settled: Int!
   settlementPriceD18: Int!
   startTimestamp: Int!
@@ -1219,7 +1217,6 @@ input MarketCountOrderByAggregateInput {
   poolAddress: SortOrder
   public: SortOrder
   question: SortOrder
-  rules: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
   startTimestamp: SortOrder
@@ -1257,10 +1254,10 @@ type MarketGroup {
   minTradeSize: Decimal
   owner: String
   question: String
-  rules: String
   quoteTokenName: String
   resource(where: ResourceWhereInput): Resource
   resourceId: Int
+  rules: String
 }
 
 input MarketGroupAddressChainIdCompoundUniqueInput {
@@ -1325,7 +1322,6 @@ type MarketGroupBy {
   poolAddress: String
   public: Boolean!
   question: String
-  rules: String
   settled: Boolean
   settlementPriceD18: Decimal
   startTimestamp: Int
@@ -1367,6 +1363,7 @@ type MarketGroupCountAggregate {
   question: Int!
   quoteTokenName: Int!
   resourceId: Int!
+  rules: Int!
 }
 
 input MarketGroupCountOrderByAggregateInput {
@@ -1398,6 +1395,7 @@ input MarketGroupCountOrderByAggregateInput {
   question: SortOrder
   quoteTokenName: SortOrder
   resourceId: SortOrder
+  rules: SortOrder
 }
 
 type MarketGroupGroupBy {
@@ -1434,6 +1432,7 @@ type MarketGroupGroupBy {
   question: String
   quoteTokenName: String
   resourceId: Int
+  rules: String
 }
 
 input MarketGroupListRelationFilter {
@@ -1471,6 +1470,7 @@ type MarketGroupMaxAggregate {
   question: String
   quoteTokenName: String
   resourceId: Int
+  rules: String
 }
 
 input MarketGroupMaxOrderByAggregateInput {
@@ -1502,6 +1502,7 @@ input MarketGroupMaxOrderByAggregateInput {
   question: SortOrder
   quoteTokenName: SortOrder
   resourceId: SortOrder
+  rules: SortOrder
 }
 
 type MarketGroupMinAggregate {
@@ -1533,6 +1534,7 @@ type MarketGroupMinAggregate {
   question: String
   quoteTokenName: String
   resourceId: Int
+  rules: String
 }
 
 input MarketGroupMinOrderByAggregateInput {
@@ -1564,6 +1566,7 @@ input MarketGroupMinOrderByAggregateInput {
   question: SortOrder
   quoteTokenName: SortOrder
   resourceId: SortOrder
+  rules: SortOrder
 }
 
 input MarketGroupNullableRelationFilter {
@@ -1609,6 +1612,7 @@ input MarketGroupOrderByWithAggregationInput {
   question: SortOrderInput
   quoteTokenName: SortOrderInput
   resourceId: SortOrderInput
+  rules: SortOrderInput
 }
 
 input MarketGroupOrderByWithRelationInput {
@@ -1644,6 +1648,7 @@ input MarketGroupOrderByWithRelationInput {
   quoteTokenName: SortOrderInput
   resource: ResourceOrderByWithRelationInput
   resourceId: SortOrderInput
+  rules: SortOrderInput
 }
 
 enum MarketGroupScalarFieldEnum {
@@ -1675,6 +1680,7 @@ enum MarketGroupScalarFieldEnum {
   question
   quoteTokenName
   resourceId
+  rules
 }
 
 input MarketGroupScalarWhereWithAggregatesInput {
@@ -1709,6 +1715,7 @@ input MarketGroupScalarWhereWithAggregatesInput {
   question: StringNullableWithAggregatesFilter
   quoteTokenName: StringNullableWithAggregatesFilter
   resourceId: IntNullableWithAggregatesFilter
+  rules: StringNullableWithAggregatesFilter
 }
 
 type MarketGroupSumAggregate {
@@ -1775,6 +1782,7 @@ input MarketGroupWhereInput {
   quoteTokenName: StringNullableFilter
   resource: ResourceNullableRelationFilter
   resourceId: IntNullableFilter
+  rules: StringNullableFilter
 }
 
 input MarketGroupWhereUniqueInput {
@@ -1814,6 +1822,7 @@ input MarketGroupWhereUniqueInput {
   quoteTokenName: StringNullableFilter
   resource: ResourceNullableRelationFilter
   resourceId: IntNullableFilter
+  rules: StringNullableFilter
 }
 
 input MarketListRelationFilter {
@@ -1851,7 +1860,6 @@ type MarketMaxAggregate {
   poolAddress: String
   public: Boolean
   question: String
-  rules: String
   settled: Boolean
   settlementPriceD18: Decimal
   startTimestamp: Int
@@ -1882,7 +1890,6 @@ input MarketMaxOrderByAggregateInput {
   poolAddress: SortOrder
   public: SortOrder
   question: SortOrder
-  rules: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
   startTimestamp: SortOrder
@@ -1913,7 +1920,6 @@ type MarketMinAggregate {
   poolAddress: String
   public: Boolean
   question: String
-  rules: String
   settled: Boolean
   settlementPriceD18: Decimal
   startTimestamp: Int
@@ -1944,7 +1950,6 @@ input MarketMinOrderByAggregateInput {
   poolAddress: SortOrder
   public: SortOrder
   question: SortOrder
-  rules: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
   startTimestamp: SortOrder
@@ -1989,7 +1994,6 @@ input MarketOrderByWithAggregationInput {
   poolAddress: SortOrderInput
   public: SortOrder
   question: SortOrderInput
-  rules: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
   startTimestamp: SortOrderInput
@@ -2022,7 +2026,6 @@ input MarketOrderByWithRelationInput {
   positions: PositionOrderByRelationAggregateInput
   public: SortOrder
   question: SortOrderInput
-  rules: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
   startTimestamp: SortOrderInput
@@ -2204,7 +2207,6 @@ enum MarketScalarFieldEnum {
   poolAddress
   public
   question
-  rules
   settled
   settlementPriceD18
   startTimestamp
@@ -2238,7 +2240,6 @@ input MarketScalarWhereWithAggregatesInput {
   poolAddress: StringNullableWithAggregatesFilter
   public: BoolWithAggregatesFilter
   question: StringNullableWithAggregatesFilter
-  rules: StringNullableWithAggregatesFilter
   settled: BoolNullableWithAggregatesFilter
   settlementPriceD18: DecimalNullableWithAggregatesFilter
   startTimestamp: IntNullableWithAggregatesFilter
@@ -2306,7 +2307,6 @@ input MarketWhereInput {
   positions: PositionListRelationFilter
   public: BoolFilter
   question: StringNullableFilter
-  rules: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
   startTimestamp: IntNullableFilter
@@ -2343,7 +2343,6 @@ input MarketWhereUniqueInput {
   positions: PositionListRelationFilter
   public: BoolFilter
   question: StringNullableFilter
-  rules: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
   startTimestamp: IntNullableFilter

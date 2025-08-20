@@ -1197,7 +1197,6 @@ export type Market = {
   positions: Array<Position>;
   public: Scalars['Boolean']['output'];
   question?: Maybe<Scalars['String']['output']>;
-  rules?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
@@ -1288,7 +1287,6 @@ export type MarketCountAggregate = {
   poolAddress: Scalars['Int']['output'];
   public: Scalars['Int']['output'];
   question: Scalars['Int']['output'];
-  rules: Scalars['Int']['output'];
   settled: Scalars['Int']['output'];
   settlementPriceD18: Scalars['Int']['output'];
   startTimestamp: Scalars['Int']['output'];
@@ -1319,7 +1317,6 @@ export type MarketCountOrderByAggregateInput = {
   poolAddress?: InputMaybe<SortOrder>;
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
-  rules?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
@@ -1358,10 +1355,10 @@ export type MarketGroup = {
   minTradeSize?: Maybe<Scalars['Decimal']['output']>;
   owner?: Maybe<Scalars['String']['output']>;
   question?: Maybe<Scalars['String']['output']>;
-  rules?: Maybe<Scalars['String']['output']>;
   quoteTokenName?: Maybe<Scalars['String']['output']>;
   resource?: Maybe<Resource>;
   resourceId?: Maybe<Scalars['Int']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
 };
 
 
@@ -1458,7 +1455,6 @@ export type MarketGroupBy = {
   poolAddress?: Maybe<Scalars['String']['output']>;
   public: Scalars['Boolean']['output'];
   question?: Maybe<Scalars['String']['output']>;
-  rules?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
@@ -1512,6 +1508,7 @@ export type MarketGroupCountAggregate = {
   question: Scalars['Int']['output'];
   quoteTokenName: Scalars['Int']['output'];
   resourceId: Scalars['Int']['output'];
+  rules: Scalars['Int']['output'];
 };
 
 export type MarketGroupCountOrderByAggregateInput = {
@@ -1543,6 +1540,7 @@ export type MarketGroupCountOrderByAggregateInput = {
   question?: InputMaybe<SortOrder>;
   quoteTokenName?: InputMaybe<SortOrder>;
   resourceId?: InputMaybe<SortOrder>;
+  rules?: InputMaybe<SortOrder>;
 };
 
 export type MarketGroupGroupBy = {
@@ -1580,6 +1578,7 @@ export type MarketGroupGroupBy = {
   question?: Maybe<Scalars['String']['output']>;
   quoteTokenName?: Maybe<Scalars['String']['output']>;
   resourceId?: Maybe<Scalars['Int']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
 };
 
 export type MarketGroupListRelationFilter = {
@@ -1618,6 +1617,7 @@ export type MarketGroupMaxAggregate = {
   question?: Maybe<Scalars['String']['output']>;
   quoteTokenName?: Maybe<Scalars['String']['output']>;
   resourceId?: Maybe<Scalars['Int']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
 };
 
 export type MarketGroupMaxOrderByAggregateInput = {
@@ -1649,6 +1649,7 @@ export type MarketGroupMaxOrderByAggregateInput = {
   question?: InputMaybe<SortOrder>;
   quoteTokenName?: InputMaybe<SortOrder>;
   resourceId?: InputMaybe<SortOrder>;
+  rules?: InputMaybe<SortOrder>;
 };
 
 export type MarketGroupMinAggregate = {
@@ -1681,6 +1682,7 @@ export type MarketGroupMinAggregate = {
   question?: Maybe<Scalars['String']['output']>;
   quoteTokenName?: Maybe<Scalars['String']['output']>;
   resourceId?: Maybe<Scalars['Int']['output']>;
+  rules?: Maybe<Scalars['String']['output']>;
 };
 
 export type MarketGroupMinOrderByAggregateInput = {
@@ -1712,6 +1714,7 @@ export type MarketGroupMinOrderByAggregateInput = {
   question?: InputMaybe<SortOrder>;
   quoteTokenName?: InputMaybe<SortOrder>;
   resourceId?: InputMaybe<SortOrder>;
+  rules?: InputMaybe<SortOrder>;
 };
 
 export type MarketGroupNullableRelationFilter = {
@@ -1757,6 +1760,7 @@ export type MarketGroupOrderByWithAggregationInput = {
   question?: InputMaybe<SortOrderInput>;
   quoteTokenName?: InputMaybe<SortOrderInput>;
   resourceId?: InputMaybe<SortOrderInput>;
+  rules?: InputMaybe<SortOrderInput>;
 };
 
 export type MarketGroupOrderByWithRelationInput = {
@@ -1792,6 +1796,7 @@ export type MarketGroupOrderByWithRelationInput = {
   quoteTokenName?: InputMaybe<SortOrderInput>;
   resource?: InputMaybe<ResourceOrderByWithRelationInput>;
   resourceId?: InputMaybe<SortOrderInput>;
+  rules?: InputMaybe<SortOrderInput>;
 };
 
 export type MarketGroupScalarFieldEnum =
@@ -1822,7 +1827,8 @@ export type MarketGroupScalarFieldEnum =
   | 'owner'
   | 'question'
   | 'quoteTokenName'
-  | 'resourceId';
+  | 'resourceId'
+  | 'rules';
 
 export type MarketGroupScalarWhereWithAggregatesInput = {
   AND?: InputMaybe<Array<MarketGroupScalarWhereWithAggregatesInput>>;
@@ -1856,6 +1862,7 @@ export type MarketGroupScalarWhereWithAggregatesInput = {
   question?: InputMaybe<StringNullableWithAggregatesFilter>;
   quoteTokenName?: InputMaybe<StringNullableWithAggregatesFilter>;
   resourceId?: InputMaybe<IntNullableWithAggregatesFilter>;
+  rules?: InputMaybe<StringNullableWithAggregatesFilter>;
 };
 
 export type MarketGroupSumAggregate = {
@@ -1923,6 +1930,7 @@ export type MarketGroupWhereInput = {
   quoteTokenName?: InputMaybe<StringNullableFilter>;
   resource?: InputMaybe<ResourceNullableRelationFilter>;
   resourceId?: InputMaybe<IntNullableFilter>;
+  rules?: InputMaybe<StringNullableFilter>;
 };
 
 export type MarketGroupWhereUniqueInput = {
@@ -1962,6 +1970,7 @@ export type MarketGroupWhereUniqueInput = {
   quoteTokenName?: InputMaybe<StringNullableFilter>;
   resource?: InputMaybe<ResourceNullableRelationFilter>;
   resourceId?: InputMaybe<IntNullableFilter>;
+  rules?: InputMaybe<StringNullableFilter>;
 };
 
 export type MarketListRelationFilter = {
@@ -2000,7 +2009,6 @@ export type MarketMaxAggregate = {
   poolAddress?: Maybe<Scalars['String']['output']>;
   public?: Maybe<Scalars['Boolean']['output']>;
   question?: Maybe<Scalars['String']['output']>;
-  rules?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
@@ -2031,7 +2039,6 @@ export type MarketMaxOrderByAggregateInput = {
   poolAddress?: InputMaybe<SortOrder>;
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
-  rules?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
@@ -2063,7 +2070,6 @@ export type MarketMinAggregate = {
   poolAddress?: Maybe<Scalars['String']['output']>;
   public?: Maybe<Scalars['Boolean']['output']>;
   question?: Maybe<Scalars['String']['output']>;
-  rules?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
@@ -2094,7 +2100,6 @@ export type MarketMinOrderByAggregateInput = {
   poolAddress?: InputMaybe<SortOrder>;
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
-  rules?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
@@ -2139,7 +2144,6 @@ export type MarketOrderByWithAggregationInput = {
   poolAddress?: InputMaybe<SortOrderInput>;
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrderInput>;
-  rules?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
   startTimestamp?: InputMaybe<SortOrderInput>;
@@ -2172,7 +2176,6 @@ export type MarketOrderByWithRelationInput = {
   positions?: InputMaybe<PositionOrderByRelationAggregateInput>;
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrderInput>;
-  rules?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
   startTimestamp?: InputMaybe<SortOrderInput>;
@@ -2365,7 +2368,6 @@ export type MarketScalarFieldEnum =
   | 'poolAddress'
   | 'public'
   | 'question'
-  | 'rules'
   | 'settled'
   | 'settlementPriceD18'
   | 'startTimestamp'
@@ -2398,7 +2400,6 @@ export type MarketScalarWhereWithAggregatesInput = {
   poolAddress?: InputMaybe<StringNullableWithAggregatesFilter>;
   public?: InputMaybe<BoolWithAggregatesFilter>;
   question?: InputMaybe<StringNullableWithAggregatesFilter>;
-  rules?: InputMaybe<StringNullableWithAggregatesFilter>;
   settled?: InputMaybe<BoolNullableWithAggregatesFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableWithAggregatesFilter>;
   startTimestamp?: InputMaybe<IntNullableWithAggregatesFilter>;
@@ -2467,7 +2468,6 @@ export type MarketWhereInput = {
   positions?: InputMaybe<PositionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringNullableFilter>;
-  rules?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
   startTimestamp?: InputMaybe<IntNullableFilter>;
@@ -2504,7 +2504,6 @@ export type MarketWhereUniqueInput = {
   positions?: InputMaybe<PositionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringNullableFilter>;
-  rules?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
   startTimestamp?: InputMaybe<IntNullableFilter>;
