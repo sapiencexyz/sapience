@@ -83,6 +83,12 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
             withdrawalIntents[msg.sender][bondToken].amount == 0,
             "Withdrawal intent already exists"
         );
+        require(
+            block.timestamp >=
+                withdrawalIntents[msg.sender][bondToken].timestamp +
+                    WITHDRAWAL_DELAY,
+            "Cooldown period not over"
+        );
 
         MessagingReceipt memory receipt = _sendBalanceUpdate(
             _getIntentToWithdrawCommandType(),
@@ -142,7 +148,7 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         // Clear intent
         intent.executed = true;
         intent.amount = 0;
-        intent.timestamp = 0;
+        intent.timestamp = block.timestamp; // Notice: We use current timestamp to use as it as cooldown period for the next withdrawal intent
 
         submitterBondBalances[msg.sender][bondToken] -= amount;
 
@@ -163,18 +169,21 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         address bondToken
     ) external virtual nonReentrant returns (MessagingReceipt memory) {
         require(bondToken != address(0), "Bond token cannot be zero address");
+        BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[
+            msg.sender
+        ][bondToken];
+        require(
+            intent.amount > 0,
+            "No withdrawal intent"
+        );
         require(
             block.timestamp >=
-                withdrawalIntents[msg.sender][bondToken].timestamp +
+                intent.timestamp +
                     WITHDRAWAL_DELAY,
             "Waiting period not over"
         );
-        require(
-            withdrawalIntents[msg.sender][bondToken].amount > 0,
-            "No withdrawal intent"
-        );
 
-        uint256 amount = withdrawalIntents[msg.sender][bondToken].amount;
+        uint256 amount = intent.amount;
         MessagingReceipt memory receipt = _sendBalanceUpdate(
             _getRemoveWithdrawalIntentCommandType(),
             msg.sender,
@@ -183,9 +192,9 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         );
 
         // Clear intent
-        withdrawalIntents[msg.sender][bondToken].amount = 0;
-        withdrawalIntents[msg.sender][bondToken].timestamp = 0;
-        withdrawalIntents[msg.sender][bondToken].executed = false;
+        intent.amount = 0;
+        intent.executed = false;
+        intent.timestamp = block.timestamp; // Notice: We use current timestamp to use as it as cooldown period for the next withdrawal intent
 
         emit BondWithdrawalIntentRemoved(msg.sender, bondToken, amount);
 

@@ -359,8 +359,10 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         // Verify that the withdrawal intent is cleared
         (uint256 pendingWithdrawal, uint256 pendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
         assertEq(pendingWithdrawal, 0, "Pending withdrawal should be cleared after execution");
-        assertEq(pendingWithdrawalTimestamp, 0, "Pending withdrawal timestamp should be cleared after execution");
+        assertEq(pendingWithdrawalTimestamp, block.timestamp, "Pending withdrawal timestamp should be set to current timestamp for cooldown period");
         
+        // Wait for cooldown period
+        vm.warp(block.timestamp + 1 days);
         // Set a new withdrawal intent for the remaining balance
         vm.startPrank(umaUser);
         umaBridge.intentToWithdrawBond(address(bondCurrency), 0.3 ether);
@@ -402,7 +404,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         // Verify intent is cleared locally
         (uint256 finalPendingWithdrawal, uint256 finalPendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
         assertEq(finalPendingWithdrawal, 0, "Withdrawal intent should be cleared");
-        assertEq(finalPendingWithdrawalTimestamp, 0, "Withdrawal intent timestamp should be cleared");
+        assertEq(finalPendingWithdrawalTimestamp, block.timestamp, "Withdrawal intent timestamp should be set to current timestamp for cooldown period");
         
         // Verify message is propagated to remote bridge
         verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
@@ -463,7 +465,7 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         // Verify intent is cleared after execution
         (uint256 pendingWithdrawal, uint256 pendingWithdrawalTimestamp) = umaBridge.getPendingWithdrawal(umaUser, address(bondCurrency));
         assertEq(pendingWithdrawal, 0, "Withdrawal intent should be cleared after execution");
-        assertEq(pendingWithdrawalTimestamp, 0, "Withdrawal intent timestamp should be cleared after execution");
+        assertEq(pendingWithdrawalTimestamp, block.timestamp, "Withdrawal intent timestamp should be set to current timestamp for cooldown");
         
         // Try to remove withdrawal intent (should fail as there's no intent)
         vm.startPrank(umaUser);
@@ -497,6 +499,56 @@ contract BridgeTestBondEscrow is TestHelperOz5 {
         // Verify bond balance is unchanged
         uint256 finalBondBalance = umaBridge.getBondBalance(umaUser, address(bondCurrency));
         assertEq(finalBondBalance, initialBondBalance, "Bond balance should remain unchanged after removing intent");
+    }
+
+    function test_executeWithdrawal_thenIntentToWithdrawBond_failsWithCooldown() public {
+        _depositBond(umaUser, 1 ether);
+        
+        // Create withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.5 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Wait for withdrawal delay period
+        vm.warp(block.timestamp + 1 days);
+        
+        // Execute withdrawal
+        vm.startPrank(umaUser);
+        umaBridge.executeWithdrawal(address(bondCurrency));
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Immediately try to create a new withdrawal intent (should fail due to cooldown)
+        vm.startPrank(umaUser);
+        vm.expectRevert("Cooldown period not over");
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.3 ether);
+        vm.stopPrank();
+    }
+
+    function test_removeWithdrawalIntent_thenIntentToWithdrawBond_failsWithCooldown() public {
+        _depositBond(umaUser, 1 ether);
+        
+        // Create withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.5 ether);
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Wait for withdrawal delay period
+        vm.warp(block.timestamp + 1 days);
+        
+        // Remove withdrawal intent
+        vm.startPrank(umaUser);
+        umaBridge.removeWithdrawalIntent(address(bondCurrency));
+        vm.stopPrank();
+        verifyPackets(marketEiD, addressToBytes32(address(marketBridge)));
+        
+        // Immediately try to create a new withdrawal intent (should fail due to cooldown)
+        vm.startPrank(umaUser);
+        vm.expectRevert("Cooldown period not over");
+        umaBridge.intentToWithdrawBond(address(bondCurrency), 0.3 ether);
+        vm.stopPrank();
     }
 
     function _depositBond(address _user, uint256 _amount) internal {
