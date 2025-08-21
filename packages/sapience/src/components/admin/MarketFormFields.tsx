@@ -1,6 +1,7 @@
 'use client';
 
 import { Input, Label } from '@sapience/ui';
+import { Switch } from '@sapience/ui/components/ui/switch';
 import { useEffect, useState } from 'react';
 import {
   Tooltip,
@@ -34,6 +35,7 @@ export interface MarketInput {
   baseAssetMaxPriceTick: string;
   claimStatementYesOrNumeric: string;
   claimStatementNo: string;
+  public: boolean;
 }
 
 const STARTING_PRICE_MIN_ERROR =
@@ -43,7 +45,7 @@ const STARTING_PRICE_MAX_ERROR =
 
 interface MarketFormFieldsProps {
   market: MarketInput;
-  onMarketChange: (field: keyof MarketInput, value: string) => void;
+  onMarketChange: (field: keyof MarketInput, value: string | boolean) => void;
   marketIndex?: number;
   disabledFields?: Partial<
     Record<
@@ -653,6 +655,17 @@ const MarketFormFields = ({
             </div>
           )}
         </div>
+      </div>
+      {/* Visibility */}
+      <div className={'flex items-center gap-2 pt-2'}>
+        <Switch
+          id={fieldId('public')}
+          checked={market.public}
+          onCheckedChange={(checked) => onMarketChange('public', checked)}
+        />
+        <Label htmlFor={fieldId('public')} className="cursor-pointer">
+          Public
+        </Label>
       </div>
     </div>
   );

@@ -33,7 +33,11 @@ const marketApiSchema = z
   .object({
     marketQuestion: z.string().trim().min(1, 'Market Question is required'),
     optionName: z.string().trim().optional(),
-    claimStatement: z.string().trim().min(1, 'Claim Statement is required'),
+    claimStatementYesOrNumeric: z
+      .string()
+      .trim()
+      .min(1, 'Claim Statement is required'),
+    claimStatementNo: z.string().trim().optional(),
     startTime: z.coerce
       .number()
       .int()
@@ -60,6 +64,7 @@ const marketApiSchema = z
     baseAssetMaxPriceTick: z.coerce
       .number()
       .int('Max Price Tick must be an integer'),
+    public: z.boolean().optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: 'End Time must be after Start Time',
@@ -97,6 +102,7 @@ const createEmptyMarket = (id: number): MarketInput => {
     highTickPrice: '1',
     claimStatementYesOrNumeric: '',
     claimStatementNo: '',
+    public: true,
   };
 };
 
@@ -112,8 +118,11 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
   const queryClient = useQueryClient();
   const { signMessageAsync } = useSignMessage();
 
-  const handleMarketChange = (field: keyof MarketInput, value: string) => {
-    setMarket((prevMarket) => ({ ...prevMarket, [field]: value }));
+  const handleMarketChange = (
+    field: keyof MarketInput,
+    value: string | boolean
+  ) => {
+    setMarket((prevMarket) => ({ ...prevMarket, [field]: value as any }));
   };
 
   const addMarketApiCall = async (payload: AddMarketApiPayload) => {

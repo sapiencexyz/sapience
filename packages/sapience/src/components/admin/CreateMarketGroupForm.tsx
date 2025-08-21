@@ -233,6 +233,7 @@ const createEmptyMarket = (id: number): MarketInput => {
     highTickPrice: '1',
     claimStatementYesOrNumeric: '',
     claimStatementNo: '',
+    public: true,
   };
 };
 
@@ -255,6 +256,7 @@ const createMarketFromPrevious = (
     highTickPrice: previousMarket.highTickPrice,
     claimStatementYesOrNumeric: previousMarket.claimStatementYesOrNumeric, // Copy claim statement
     claimStatementNo: previousMarket.claimStatementNo, // Copy claim statement
+    public: previousMarket.public,
   };
 };
 
@@ -330,7 +332,7 @@ const CreateMarketGroupForm = () => {
   const handleMarketChange = (
     index: number,
     field: keyof MarketInput,
-    value: string
+    value: string | boolean
   ) => {
     setMarkets((prevMarkets) => {
       const newMarkets = [...prevMarkets];
@@ -338,7 +340,7 @@ const CreateMarketGroupForm = () => {
       if (newMarkets[index]) {
         newMarkets[index] = {
           ...newMarkets[index],
-          [field]: value,
+          [field]: value as any,
         };
       } else {
         // This case should ideally not happen if IDs are managed correctly

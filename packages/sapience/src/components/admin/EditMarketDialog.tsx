@@ -9,8 +9,6 @@ import {
   DialogTrigger,
 } from '@sapience/ui/components/ui/dialog';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { Switch } from '@sapience/ui/components/ui/switch';
-import { Label } from '@sapience/ui/components/ui/label';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -59,6 +57,7 @@ const toMarketInput = (m: MarketType): MarketInput => {
     baseAssetMaxPriceTick: String(m.baseAssetMaxPriceTick ?? ''),
     claimStatementYesOrNumeric: m.claimStatementYesOrNumeric || '',
     claimStatementNo: m.claimStatementNo || '',
+    public: m.public ?? true,
   };
 };
 
@@ -67,7 +66,6 @@ const EditMarketDialog = ({ group, market }: Props) => {
   const [formMarket, setFormMarket] = useState<MarketInput>(
     toMarketInput(market)
   );
-  const [isPublic, setIsPublic] = useState<boolean>(market.public ?? true);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
@@ -87,7 +85,7 @@ const EditMarketDialog = ({ group, market }: Props) => {
     } as const;
   }, [isDeployed]);
 
-  const handleChange = (field: keyof MarketInput, value: string) => {
+  const handleChange = (field: keyof MarketInput, value: string | boolean) => {
     setFormMarket((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -101,7 +99,7 @@ const EditMarketDialog = ({ group, market }: Props) => {
     // Always mappable fields
     payloadData.question = formMarket.marketQuestion;
     payloadData.optionName = formMarket.optionName;
-    payloadData.public = isPublic;
+    payloadData.public = formMarket.public;
 
     if (!isDeployed) {
       // Only include pre-deploy updateables
@@ -179,16 +177,6 @@ const EditMarketDialog = ({ group, market }: Props) => {
           <DialogTitle>Edit Market #{market.marketId || market.id}</DialogTitle>
         </DialogHeader>
         <div className="p-2">
-          <div className="mb-4 flex items-center gap-2">
-            <Switch
-              id="public"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-            />
-            <Label htmlFor="public" className="cursor-pointer">
-              Public
-            </Label>
-          </div>
           <MarketFormFields
             market={formMarket}
             onMarketChange={handleChange}
