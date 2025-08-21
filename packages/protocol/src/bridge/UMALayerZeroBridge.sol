@@ -175,11 +175,11 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         // Check if contract has enough ETH
         _requireSufficientETH(fee.nativeFee);
 
-        // Check gas thresholds and emit alerts before sending
-        _checkGasThresholds();
-
         // Send the message using the external send function with ETH from contract
         receipt = this._sendMessageWithETH{value: fee.nativeFee}(bridgeConfig.remoteEid, message, options, fee);
+
+        // Check gas thresholds and emit alerts before sending
+        _checkGasThresholds();
 
         return (receipt, fee);
     }
