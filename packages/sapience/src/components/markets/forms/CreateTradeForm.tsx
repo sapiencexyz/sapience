@@ -17,8 +17,8 @@ import { Input } from '@sapience/ui/components/ui/input';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { AlertTriangle } from 'lucide-react';
-import React, { useEffect, useRef, useState } from 'react';
-import type { Abi } from 'viem';
+import React, { useEffect, useState } from 'react';
+import type { Abi, Address } from 'viem';
 import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import {
   useAccount,
@@ -40,19 +40,19 @@ import { MarketGroupClassification } from '~/lib/types';
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
 
 export type TradeFormMarketDetails = {
-  marketAddress: `0x${string}`;
+  marketAddress: Address;
   chainId: number;
   numericMarketId: number;
   marketAbi: Abi;
   collateralAssetTicker: string;
-  collateralAssetAddress?: `0x${string}`;
+  collateralAssetAddress?: Address;
 };
 
 export interface TradeFormProps {
   marketDetails: TradeFormMarketDetails;
   isConnected?: boolean;
   onConnectWallet?: () => void;
-  onSuccess?: (txHash: `0x${string}`) => void;
+  onSuccess?: () => void;
   permitData?: { permitted?: boolean } | null | undefined;
   isPermitLoadingPermit?: boolean;
 }
@@ -74,11 +74,7 @@ export function CreateTradeForm({
   } = useMarketPage();
   const { address: accountAddress } = useAccount();
   const currentChainId = useChainId();
-  const {
-    switchChain,
-    isPending: isSwitchingChain,
-    error: switchChainError,
-  } = useSwitchChain();
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
 
   const {
     marketAddress,
@@ -189,16 +185,7 @@ export function CreateTradeForm({
 
   const showPriceImpactWarning = priceImpact > HIGH_PRICE_IMPACT;
 
-  const {
-    createTrade,
-    isLoading: isCreatingTrade,
-    isSuccess: isTradeCreated,
-    isError: isTradeError,
-    error: tradeError,
-    txHash,
-    isApproving,
-    needsApproval,
-  } = useCreateTrade({
+  const { createTrade, isLoading: isCreatingTrade } = useCreateTrade({
     marketAddress,
     marketAbi,
     chainId,
@@ -208,13 +195,14 @@ export function CreateTradeForm({
     slippagePercent: slippageAsNumber,
     enabled: isConnected && !isChainMismatch && !!marketAddress,
     collateralTokenAddress: collateralAssetAddress,
-    collateralTokenSymbol: collateralAssetTicker,
+    onSuccess: () => {
+      form.reset();
+      onSuccess?.();
+    },
   });
 
   const [estimatedResultingBalance, setEstimatedResultingBalance] =
     useState(walletBalance);
-
-  const successHandled = useRef(false);
 
   useEffect(() => {
     const costNum = parseFloat(estimatedCollateral || '0');
@@ -228,34 +216,6 @@ export function CreateTradeForm({
     const newBalance = (walletNum - costNum).toFixed(COLLATERAL_DECIMALS);
     setEstimatedResultingBalance(newBalance >= '0' ? newBalance : '0');
   }, [estimatedCollateral, walletBalance]);
-
-  useEffect(() => {
-    if (isTradeCreated && txHash && onSuccess && !successHandled.current) {
-      successHandled.current = true;
-
-      toast({
-        title: 'Trade Position Opened',
-        description: 'Your trade position has been successfully opened!',
-      });
-      onSuccess(txHash);
-      form.reset();
-    }
-  }, [isTradeCreated, txHash, onSuccess, toast, form]);
-
-  // Reset the success handler when key inputs change
-  useEffect(() => {
-    successHandled.current = false;
-  }, [sizeInput, direction]);
-
-  useEffect(() => {
-    if (isTradeError && tradeError) {
-      toast({
-        title: 'Error Opening Trade',
-        description: tradeError.message || 'An unknown error occurred.',
-        variant: 'destructive',
-      });
-    }
-  }, [isTradeError, tradeError, switchChainError, toast]);
 
   const submitForm = async () => {
     if (!isConnected) {
@@ -301,17 +261,8 @@ export function CreateTradeForm({
     if (isChainMismatch) {
       return { text: 'Switch Network', loading: isSwitchingChain };
     }
-    if (isApproving) {
-      return { text: `Approving ${collateralAssetTicker}...`, loading: true };
-    }
     if (isCreatingTrade) {
       return { text: 'Opening Position...', loading: true };
-    }
-    if (needsApproval) {
-      return {
-        text: `Approve & Open Position`,
-        loading: false,
-      };
     }
     return { text: `Open Position`, loading: false };
   };
@@ -322,7 +273,6 @@ export function CreateTradeForm({
       isPermitLoadingPermit ||
       permitData?.permitted === false ||
       isSwitchingChain ||
-      isApproving ||
       isCreatingTrade ||
       quoteLoading ||
       !sizeBigInt ||

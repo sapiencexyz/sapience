@@ -2,7 +2,6 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
-import { useToast } from '@sapience/ui/hooks/use-toast';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
@@ -19,14 +18,13 @@ import { MarketGroupClassification } from '~/lib/types';
 
 interface NumericWagerFormProps {
   marketGroupData: MarketGroupType;
-  onSuccess?: (txHash: `0x${string}`) => void;
+  onSuccess?: () => void;
 }
 
 export default function NumericWagerForm({
   marketGroupData,
   onSuccess,
 }: NumericWagerFormProps) {
-  const { toast } = useToast();
   const successHandled = useRef(false);
   const firstMarket = marketGroupData.markets?.[0];
   const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
@@ -79,15 +77,7 @@ export default function NumericWagerForm({
   });
 
   // Use the createTrade hook
-  const {
-    createTrade,
-    isLoading: isCreatingTrade,
-    isSuccess: isTradeCreated,
-    txHash,
-    isApproving,
-    needsApproval,
-    reset: resetTrade,
-  } = useCreateTrade({
+  const { createTrade, isLoading: isCreatingTrade } = useCreateTrade({
     marketAddress: marketGroupData.address as `0x${string}`,
     marketAbi: sapienceAbi().abi,
     chainId: marketGroupData.chainId,
@@ -97,7 +87,10 @@ export default function NumericWagerForm({
     slippagePercent: 0.5, // Default slippage percentage
     enabled: !!quoteData && !!wagerAmount && Number(wagerAmount) > 0,
     collateralTokenAddress: marketGroupData.collateralAsset as `0x${string}`,
-    collateralTokenSymbol: marketGroupData.collateralSymbol || 'token(s)',
+    onSuccess: () => {
+      methods.reset();
+      onSuccess?.();
+    },
   });
 
   // Handle form submission
@@ -108,24 +101,6 @@ export default function NumericWagerForm({
       console.error('Error creating trade:', error);
     }
   };
-
-  // Handle successful trade creation
-  useEffect(() => {
-    if (isTradeCreated && txHash && onSuccess && !successHandled.current) {
-      successHandled.current = true;
-
-      toast({
-        title: 'Wager Submitted',
-        description: 'Your wager has been successfully submitted.',
-      });
-
-      onSuccess(txHash);
-
-      // Reset the form after success
-      methods.reset();
-      resetTrade(); // <-- Reset the trade state for next submission
-    }
-  }, [isTradeCreated, txHash, onSuccess, methods, toast, resetTrade]);
 
   // Only reset the success handler when the form is being filled out again
   useEffect(() => {
@@ -138,16 +113,12 @@ export default function NumericWagerForm({
     !methods.formState.isValid ||
     isQuoteLoading ||
     !!quoteError ||
-    isCreatingTrade ||
-    isApproving;
+    isCreatingTrade;
 
   // Determine button text
   const getButtonText = () => {
     if (isQuoteLoading) return 'Loading...';
-    if (isApproving)
-      return `Approving ${marketGroupData.collateralSymbol || 'tokens'}...`;
     if (isCreatingTrade) return 'Submitting Wager...';
-    if (needsApproval) return `Submit Wager`;
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 
