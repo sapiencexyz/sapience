@@ -125,8 +125,7 @@ library Position {
         validateLp(self);
     }
 
-    // called from depositCollateral, that way the check for self.kind is not needed as
-    // both trader and lps can deposit collateral as long as they are the owner of fee collector NFT
+    // called from preValidateLp
     function validateLp(Data storage self) internal view {
         if (self.isSettled) {
             revert Errors.PositionAlreadySettled(self.id);
