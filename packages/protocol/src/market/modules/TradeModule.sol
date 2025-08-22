@@ -59,9 +59,10 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         positionId = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(positionId);
 
+        ERC721Storage._mint(msg.sender, positionId);
         if (
             !ERC721Storage._checkOnERC721Received(
-                address(this),
+                address(0),
                 msg.sender,
                 positionId,
                 ""
@@ -69,7 +70,6 @@ contract TradeModule is ITradeModule, ReentrancyGuardUpgradeable {
         ) {
             revert Errors.InvalidTransferRecipient(msg.sender);
         }
-        ERC721Storage._mint(msg.sender, positionId);
         position.marketId = params.marketId;
         position.kind = ISapienceStructs.PositionKind.Trade;
 

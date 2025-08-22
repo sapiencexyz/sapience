@@ -36,6 +36,7 @@ library Errors {
     error InvalidInternalTradeSize(uint256 tradeSize);
     error DeltaTradeIsZero();
     error PositionSizeBelowMin();
+    error LiquidityDecreaseTooSmall();
     error InvalidFeeRate(uint24 feeRate);
     error OwnableUnauthorizedAccount(address sender);
     error StartTimeCannotBeZero();

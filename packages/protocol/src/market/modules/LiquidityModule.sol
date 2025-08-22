@@ -71,10 +71,10 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
 
         id = ERC721EnumerableStorage.totalSupply() + 1;
         Position.Data storage position = Position.createValid(id);
-        if (!ERC721Storage._checkOnERC721Received(address(this), msg.sender, id, "")) {
+        ERC721Storage._mint(msg.sender, id);
+        if (!ERC721Storage._checkOnERC721Received(address(0), msg.sender, id, "")) {
             revert Errors.InvalidTransferRecipient(msg.sender);
         }
-        ERC721Storage._mint(msg.sender, id);
 
         MarketGroup.Data storage marketGroup = MarketGroup.load();
         Market.Data storage market = Market.loadValid(params.marketId);
@@ -166,6 +166,11 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
             market.marketParams.uniswapPositionManager
         ).decreaseLiquidity(stack.decreaseParams);
 
+        // Check for dust liquidity issue - if liquidity was requested to decrease but no tokens were returned
+        if (params.liquidity > 0 && decreasedAmount0 == 0 && decreasedAmount1 == 0) {
+            revert Errors.LiquidityDecreaseTooSmall();
+        }
+
         // if all liquidity is removed, close the position and return
         if (params.liquidity == stack.previousLiquidity) {
             return _closeLiquidityPosition(market, position, false, 0);
@@ -194,7 +199,7 @@ contract LiquidityModule is ReentrancyGuardUpgradeable, ILiquidityModule {
         );
 
         // return collateral that isn't required when decreasing position
-        // this is checked in updateValidLp but ignored when feeCollector
+        // this is checked in updateValidLp
         // so we add the check here and return any excess collateral
         int256 deltaCollateral;
         if (stack.newCollateralAmount > stack.requiredCollateralAmount) {
