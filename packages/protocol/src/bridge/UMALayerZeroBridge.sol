@@ -92,11 +92,11 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         AssertionMarketData storage marketData = assertionIdToMarketData[assertionId];
 
         if (msg.sender != optimisticOracleV3Address) {
-            revert("Only the OptimisticOracleV3 can call this function");
+            revert OnlyOptimisticOracleV3CanCall(msg.sender, optimisticOracleV3Address);
         }
 
         if (marketData.bridgeAssertionId == 0) {
-            revert("Invalid assertion ID");
+            revert InvalidAssertionId(assertionId);
         }
 
         // Make assertion data to UMA side via LayerZero
@@ -117,11 +117,11 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         AssertionMarketData storage marketData = assertionIdToMarketData[assertionId];
 
         if (msg.sender != optimisticOracleV3Address) {
-            revert("Only the OptimisticOracleV3 can call this function");
+            revert OnlyOptimisticOracleV3CanCall(msg.sender, optimisticOracleV3Address);
         }
 
         if (marketData.bridgeAssertionId == 0) {
-            revert("Invalid assertion ID");
+            revert InvalidAssertionId(assertionId);
         }
 
         // Make assertion data to UMA side via LayerZero
@@ -138,8 +138,12 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         internal
         override
     {
-        require(_origin.srcEid == bridgeConfig.remoteEid, "Invalid source chain");
-        require(address(uint160(uint256(_origin.sender))) == bridgeConfig.remoteBridge, "Invalid sender");
+        if (_origin.srcEid != bridgeConfig.remoteEid) {
+            revert InvalidSourceChain(bridgeConfig.remoteEid, _origin.srcEid);
+        }
+        if (address(uint160(uint256(_origin.sender))) != bridgeConfig.remoteBridge) {
+            revert InvalidSender(bridgeConfig.remoteBridge, address(uint160(uint256(_origin.sender))));
+        }
 
         // Handle incoming messages from the UMA side
         (uint16 commandType, bytes memory data) = _message.decodeType();
@@ -147,7 +151,7 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         if (commandType == Encoder.CMD_TO_UMA_ASSERT_TRUTH) {
             _handleAssertTruthCmd(data);
         } else {
-            revert("Invalid command type");
+            revert InvalidCommandType(commandType);
         }
     }
 
@@ -190,7 +194,9 @@ contract UMALayerZeroBridge is OApp, IUMALayerZeroBridge, ETHManagement, BondMan
         payable
         returns (MessagingReceipt memory)
     {
-        require(msg.sender == address(this), "Only self-call allowed");
+        if (msg.sender != address(this)) {
+            revert OnlySelfCallAllowed(msg.sender);
+        }
         return _lzSend(_dstEid, _message, _options, _fee, payable(address(this)));
     }
 

@@ -8,6 +8,12 @@ import {BridgeTypes} from "../BridgeTypes.sol";
  * @notice Common interface for LayerZero bridge contracts
  */
 interface ILayerZeroBridge {
+    // Custom errors
+    error InvalidSourceChain(uint32 expectedEid, uint32 actualEid);
+    error InvalidSender(address expectedSender, address actualSender);
+    error InvalidCommandType(uint16 commandType);
+    error OnlySelfCallAllowed(address caller);
+
     // Events
     event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
 

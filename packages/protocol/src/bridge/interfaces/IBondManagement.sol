@@ -8,6 +8,18 @@ import {MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol"
  * @notice Interface for bond management functionality in LayerZero bridges
  */
 interface IBondManagement {
+    // Custom errors
+    error InsufficientBalance(address submitter, address bondToken, uint256 requested, uint256 available);
+    error AmountBelowMinimum(uint256 amount, uint256 minimumAmount);
+    error InvalidBondToken(address bondToken);
+    error BondTokenZeroAddress();
+    error AmountMustBeGreaterThanZero(uint256 amount);
+    error WithdrawalIntentAlreadyExists(address submitter, address bondToken);
+    error CooldownPeriodNotOver(uint256 currentTime, uint256 requiredTime);
+    error NoWithdrawalIntent(address submitter, address bondToken);
+    error WithdrawalAlreadyExecuted(address submitter, address bondToken);
+    error WaitingPeriodNotOver(uint256 currentTime, uint256 requiredTime);
+
     // Events
     event BondDeposited(
         address indexed submitter,

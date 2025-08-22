@@ -41,11 +41,15 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         address bondToken,
         uint256 amount
     ) external virtual nonReentrant returns (MessagingReceipt memory) {
-        require(
-            amount >= _getMinimumDepositAmount(),
-            "Amount must be greater than minimum deposit amount"
-        );
-        require(_isValidToken(bondToken), "Invalid bond token");
+        if (bondToken == address(0)) {
+            revert BondTokenZeroAddress();
+        }
+        if (amount < _getMinimumDepositAmount()) {
+            revert AmountBelowMinimum(amount, _getMinimumDepositAmount());
+        }
+        if (!_isValidToken(bondToken)) {
+            revert InvalidBondToken(bondToken);
+        }
 
         IERC20(bondToken).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -73,22 +77,21 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
         address bondToken,
         uint256 amount
     ) external virtual nonReentrant returns (MessagingReceipt memory) {
-        require(bondToken != address(0), "Bond token cannot be zero address");
-        require(amount > 0, "Amount must be greater than 0");
-        require(
-            submitterBondBalances[msg.sender][bondToken] >= amount,
-            "Insufficient balance"
-        );
-        require(
-            withdrawalIntents[msg.sender][bondToken].amount == 0,
-            "Withdrawal intent already exists"
-        );
-        require(
-            block.timestamp >=
-                withdrawalIntents[msg.sender][bondToken].timestamp +
-                    WITHDRAWAL_DELAY,
-            "Cooldown period not over"
-        );
+        if (bondToken == address(0)) {
+            revert BondTokenZeroAddress();
+        }
+        if (amount == 0) {
+            revert AmountMustBeGreaterThanZero(amount);
+        }
+        if (submitterBondBalances[msg.sender][bondToken] < amount) {
+            revert InsufficientBalance(msg.sender, bondToken, amount, submitterBondBalances[msg.sender][bondToken]);
+        }
+        if (withdrawalIntents[msg.sender][bondToken].amount != 0) {
+            revert WithdrawalIntentAlreadyExists(msg.sender, bondToken);
+        }
+        if (block.timestamp < withdrawalIntents[msg.sender][bondToken].timestamp + WITHDRAWAL_DELAY) {
+            revert CooldownPeriodNotOver(block.timestamp, withdrawalIntents[msg.sender][bondToken].timestamp + WITHDRAWAL_DELAY);
+        }
 
         MessagingReceipt memory receipt = _sendBalanceUpdate(
             _getIntentToWithdrawCommandType(),
@@ -122,20 +125,24 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
     function executeWithdrawal(
         address bondToken
     ) external virtual nonReentrant returns (MessagingReceipt memory) {
-        require(bondToken != address(0), "Bond token cannot be zero address");
+        if (bondToken == address(0)) {
+            revert BondTokenZeroAddress();
+        }
         BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[
             msg.sender
         ][bondToken];
-        require(intent.amount > 0, "No withdrawal intent");
-        require(!intent.executed, "Withdrawal already executed");
-        require(
-            block.timestamp >= intent.timestamp + WITHDRAWAL_DELAY,
-            "Waiting period not over"
-        );
-        require(
-            submitterBondBalances[msg.sender][bondToken] >= intent.amount,
-            "Insufficient balance"
-        );
+        if (intent.amount == 0) {
+            revert NoWithdrawalIntent(msg.sender, bondToken);
+        }
+        if (intent.executed) {
+            revert WithdrawalAlreadyExecuted(msg.sender, bondToken);
+        }
+        if (block.timestamp < intent.timestamp + WITHDRAWAL_DELAY) {
+            revert WaitingPeriodNotOver(block.timestamp, intent.timestamp + WITHDRAWAL_DELAY);
+        }
+        if (submitterBondBalances[msg.sender][bondToken] < intent.amount) {
+            revert InsufficientBalance(msg.sender, bondToken, intent.amount, submitterBondBalances[msg.sender][bondToken]);
+        }
 
         uint256 amount = intent.amount;
         MessagingReceipt memory receipt = _sendBalanceUpdate(
@@ -168,20 +175,18 @@ abstract contract BondManagement is ReentrancyGuard, IBondManagement {
     function removeWithdrawalIntent(
         address bondToken
     ) external virtual nonReentrant returns (MessagingReceipt memory) {
-        require(bondToken != address(0), "Bond token cannot be zero address");
+        if (bondToken == address(0)) {
+            revert BondTokenZeroAddress();
+        }
         BridgeTypes.WithdrawalIntent storage intent = withdrawalIntents[
             msg.sender
         ][bondToken];
-        require(
-            intent.amount > 0,
-            "No withdrawal intent"
-        );
-        require(
-            block.timestamp >=
-                intent.timestamp +
-                    WITHDRAWAL_DELAY,
-            "Waiting period not over"
-        );
+        if (intent.amount == 0) {
+            revert NoWithdrawalIntent(msg.sender, bondToken);
+        }
+        if (block.timestamp < intent.timestamp + WITHDRAWAL_DELAY) {
+            revert WaitingPeriodNotOver(block.timestamp, intent.timestamp + WITHDRAWAL_DELAY);
+        }
 
         uint256 amount = intent.amount;
         MessagingReceipt memory receipt = _sendBalanceUpdate(

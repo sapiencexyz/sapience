@@ -53,10 +53,9 @@ abstract contract FeeManagement is
         uint256 _warningGasThreshold,
         uint256 _criticalGasThreshold
     ) external onlyOwner {
-        require(
-            _warningGasThreshold > _criticalGasThreshold,
-            "Warning threshold must be greater than critical"
-        );
+        if (_warningGasThreshold <= _criticalGasThreshold) {
+            revert InvalidThresholdValues(_warningGasThreshold, _criticalGasThreshold);
+        }
         WARNING_GAS_THRESHOLD = _warningGasThreshold;
         CRITICAL_GAS_THRESHOLD = _criticalGasThreshold;
         emit GasThresholdsUpdated(_warningGasThreshold, _criticalGasThreshold);
