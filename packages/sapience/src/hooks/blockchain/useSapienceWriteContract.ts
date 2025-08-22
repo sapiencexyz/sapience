@@ -3,7 +3,7 @@ import type { useTransaction } from 'wagmi';
 import { useWriteContract, useSendCalls, useConnectorClient } from 'wagmi';
 import type { Hash } from 'viem';
 import { encodeFunctionData } from 'viem';
-import { useWallets } from '@privy-io/react-auth';
+import { useWallets, usePrivy } from '@privy-io/react-auth';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { waitForCallsStatus } from 'viem/actions';
@@ -31,9 +31,12 @@ export function useSapienceWriteContract({
   const { toast } = useToast();
   const [chainId, setChainId] = useState<number | undefined>(undefined);
   const { wallets } = useWallets();
+  const { user, getAccessToken } = usePrivy();
   const embeddedWallet = useMemo(() => {
-    const match = wallets?.find((wallet: any) => wallet?.walletClientType === 'privy');
-    return match as any | undefined;
+    const match = wallets?.find(
+      (wallet) => (wallet as any)?.walletClientType === 'privy'
+    );
+    return match;
   }, [wallets]);
   const isEmbeddedWallet = Boolean(embeddedWallet);
 
@@ -83,14 +86,39 @@ export function useSapienceWriteContract({
         // If using an embedded wallet, route via backend sponsorship endpoint as a single-call batch
         if (isEmbeddedWallet) {
           const params = args[0];
-          const { address, abi, functionName, args: fnArgs, value } = params as any;
-          const calldata = encodeFunctionData({ abi, functionName, args: fnArgs });
+          const {
+            address,
+            abi,
+            functionName,
+            args: fnArgs,
+            value,
+          } = params as any;
+          const calldata = encodeFunctionData({
+            abi,
+            functionName,
+            args: fnArgs,
+          });
+          const token = await getAccessToken();
+          if (!token) {
+            throw new Error(
+              'Unauthorized: missing Privy access token. Please log in again.'
+            );
+          }
+          const walletId = user?.wallet?.id;
+          if (!walletId) {
+            throw new Error(
+              'Embedded walletId not found for sponsorship. Please relogin.'
+            );
+          }
           const response = await fetch('/api/privy/send-calls', {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: {
+              'content-type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
-              walletId: (embeddedWallet as any)?.id,
-              chainId: _chainId,
+              walletId,
+              chainId: Number(_chainId),
               to: address,
               data: calldata,
               value: value ?? '0x0',
@@ -99,15 +127,34 @@ export function useSapienceWriteContract({
           });
           if (!response.ok) {
             const errText = await response.text();
+            // Minimal debug info to help diagnose missing fields during development
+            if (
+              typeof console !== 'undefined' &&
+              typeof console.warn === 'function'
+            ) {
+              console.warn('[Privy send-calls] request body', {
+                walletId,
+                chainId: _chainId,
+                to: address,
+                hasData: Boolean(calldata),
+              });
+            }
             throw new Error(errText || 'Sponsored transaction request failed');
           }
           const data = await response.json();
-          const maybeHash: string | undefined = data?.receipts?.[0]?.transactionHash || data?.transactionHash || data?.txHash;
+          const maybeHash: string | undefined =
+            data?.receipts?.[0]?.transactionHash ||
+            data?.transactionHash ||
+            data?.txHash;
           if (maybeHash) {
             onTxHash?.(maybeHash as Hash);
             setTxHash(maybeHash as Hash);
           } else {
-            toast({ title: 'Success', description: successMessage, duration: 5000 });
+            toast({
+              title: 'Success',
+              description: successMessage,
+              duration: 5000,
+            });
             onSuccess?.(undefined as any);
           }
         } else {
@@ -131,10 +178,13 @@ export function useSapienceWriteContract({
       validateAndSwitchChain,
       writeContractAsync,
       isEmbeddedWallet,
+      embeddedWallet,
       toast,
       fallbackErrorMessage,
       onError,
       onTxHash,
+      user,
+      getAccessToken,
     ]
   );
 
@@ -154,7 +204,6 @@ export function useSapienceWriteContract({
 
         // Validate and switch chain if needed
         await validateAndSwitchChain(_chainId);
-
         // Execute the batch calls
         const data = isEmbeddedWallet
           ? // Route via backend sponsorship endpoint for embedded wallets
@@ -162,14 +211,29 @@ export function useSapienceWriteContract({
               const body = (args[0] as any) ?? {};
               const calls = Array.isArray(body?.calls) ? body.calls : [];
               let lastResult: any = undefined;
+              const token = await getAccessToken();
+              if (!token) {
+                throw new Error(
+                  'Unauthorized: missing Privy access token. Please log in again.'
+                );
+              }
+              const walletId = user?.wallet?.id;
+              if (!walletId) {
+                throw new Error(
+                  'Embedded walletId not found for sponsorship. Please relogin.'
+                );
+              }
               // Execute each call sequentially as individual sponsored txs
               for (const call of calls) {
                 const response = await fetch('/api/privy/send-calls', {
                   method: 'POST',
-                  headers: { 'content-type': 'application/json' },
+                  headers: {
+                    'content-type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                  },
                   body: JSON.stringify({
-                    walletId: (embeddedWallet as any)?.id,
-                    chainId: _chainId,
+                    walletId,
+                    chainId: Number(_chainId),
                     to: call.to,
                     data: call.data,
                     value: call.value ?? '0x0',
@@ -178,7 +242,20 @@ export function useSapienceWriteContract({
                 });
                 if (!response.ok) {
                   const errText = await response.text();
-                  throw new Error(errText || 'Sponsored transaction request failed');
+                  if (
+                    typeof console !== 'undefined' &&
+                    typeof console.warn === 'function'
+                  ) {
+                    console.warn('[Privy send-calls batch] request body', {
+                      walletId,
+                      chainId: _chainId,
+                      to: call.to,
+                      hasData: Boolean(call.data),
+                    });
+                  }
+                  throw new Error(
+                    errText || 'Sponsored transaction request failed'
+                  );
                 }
                 lastResult = await response.json();
               }
@@ -209,7 +286,10 @@ export function useSapienceWriteContract({
             }
           } else {
             // Embedded path or fallback path without aggregator id.
-            const transactionHash = data?.receipts?.[0]?.transactionHash || data?.transactionHash || data?.txHash;
+            const transactionHash =
+              data?.receipts?.[0]?.transactionHash ||
+              data?.transactionHash ||
+              data?.txHash;
             if (transactionHash) {
               onTxHash?.(transactionHash);
               setTxHash(transactionHash);
@@ -247,10 +327,14 @@ export function useSapienceWriteContract({
       validateAndSwitchChain,
       sendCallsAsync,
       client,
+      embeddedWallet,
       toast,
       fallbackErrorMessage,
       onError,
       onTxHash,
+      isEmbeddedWallet,
+      user,
+      getAccessToken,
     ]
   );
 

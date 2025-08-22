@@ -1,16 +1,11 @@
-import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useCallback, useEffect, useState } from 'react';
-import { encodeAbiParameters, parseAbiParameters } from 'viem';
-import {
-  useAccount,
-  useTransaction,
-  useWriteContract,
-  useSwitchChain,
-} from 'wagmi';
+import { useCallback, useState } from 'react';
+import { encodeAbiParameters, parseAbiParameters, type Hash } from 'viem';
+import { useAccount } from 'wagmi';
 
 import { MarketGroupClassification } from '../../lib/types';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 import { EAS_ATTEST_ABI, getEASContractAddress } from '~/hooks/contract/EAS';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 // Default to Arbitrum; anticipate most transactions occur on Arbitrum.
 // If a market requires a different chain in the future, thread that chainId in via hook params.
@@ -33,34 +28,37 @@ export function useSubmitPrediction({
   comment = '',
   onSuccess,
 }: UseSubmitPredictionProps) {
-  const { address, chainId: currentChainId } = useAccount();
-  const { toast } = useToast();
+  const { address } = useAccount();
 
   const [attestationError, setAttestationError] = useState<string | null>(null);
   const [attestationSuccess, setAttestationSuccess] = useState<string | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState(false);
-
+  const [txHash, setTxHash] = useState<Hash | undefined>(undefined);
   const {
     writeContract,
-    data: transactionHash,
     isPending: isAttesting,
-    error: writeError,
     reset,
-  } = useWriteContract();
-
-  const {
-    data: txReceipt,
-    isSuccess: txSuccess,
-    status: _status,
-    error: _error,
-  } = useTransaction({
-    hash: transactionHash,
-    chainId: ARBITRUM_CHAIN_ID,
+  } = useSapienceWriteContract({
+    successMessage:
+      'Your forecast will appear on this page and your profile shortly.',
+    fallbackErrorMessage: 'Forecast submission failed.',
+    onTxHash: (hash) => setTxHash(hash),
+    onSuccess: () => {
+      const successMsg = txHash
+        ? `Prediction submitted successfully! Transaction: ${txHash}`
+        : 'Prediction submitted successfully!';
+      setAttestationSuccess(successMsg);
+      setAttestationError(null);
+      onSuccess?.();
+      setTxHash(undefined);
+    },
+    onError: (error) => {
+      setAttestationError(error.message || 'Prediction submission failed.');
+      setAttestationSuccess(null);
+      setTxHash(undefined);
+    },
   });
-
-  const { switchChainAsync } = useSwitchChain();
 
   const encodeSchemaData = useCallback(
     (
@@ -139,44 +137,9 @@ export function useSubmitPrediction({
     reset();
 
     try {
-      setIsLoading(true);
       if (!address) {
         throw new Error('Wallet not connected. Please connect your wallet.');
       }
-
-      if (currentChainId === undefined) {
-        throw new Error(
-          'Could not determine the current network. Please ensure your wallet is connected properly and the network is recognized.'
-        );
-      }
-
-      if (currentChainId !== ARBITRUM_CHAIN_ID) {
-        if (!switchChainAsync) {
-          throw new Error(
-            'Chain switching functionality is not available. Please switch manually in your wallet.'
-          );
-        }
-        try {
-          await switchChainAsync({ chainId: ARBITRUM_CHAIN_ID });
-        } catch (switchError) {
-          setIsLoading(false);
-          console.error('Failed to switch chain:', switchError);
-          const message =
-            switchError instanceof Error &&
-            switchError.message.includes('User rejected the request')
-              ? 'Network switch rejected by user.'
-              : 'Failed to switch network. Please try again.';
-          setAttestationError(message);
-          toast({
-            title: 'Network Switch Failed',
-            description: message,
-            variant: 'destructive',
-          });
-          return; // Stop execution
-        }
-      }
-
-      // If we are here, the chain is correct.
       const encodedData = encodeSchemaData(
         marketAddress,
         marketId.toString(),
@@ -184,8 +147,8 @@ export function useSubmitPrediction({
         marketClassification,
         comment
       );
-
-      writeContract({
+      await writeContract({
+        chainId: ARBITRUM_CHAIN_ID,
         address: getEASContractAddress(ARBITRUM_CHAIN_ID),
         abi: EAS_ATTEST_ABI,
         functionName: 'attest',
@@ -206,7 +169,6 @@ export function useSubmitPrediction({
         ],
       });
     } catch (error) {
-      setIsLoading(false);
       console.error('Attestation submission error:', error);
       setAttestationError(
         error instanceof Error ? error.message : 'Failed to submit prediction'
@@ -224,43 +186,7 @@ export function useSubmitPrediction({
     reset,
     setAttestationError,
     setAttestationSuccess,
-    toast,
-    setIsLoading,
-    currentChainId,
-    switchChainAsync,
   ]);
-
-  useEffect(() => {
-    if (writeError) {
-      setIsLoading(false);
-      const message = writeError.message.includes('User rejected the request')
-        ? 'Transaction rejected by user.'
-        : (writeError.cause as Error)?.message ||
-          writeError.message ||
-          'Prediction submission failed.';
-      setAttestationError(message);
-      setAttestationSuccess(null);
-    }
-  }, [writeError, setIsLoading]);
-
-  useEffect(() => {
-    if (txSuccess && txReceipt) {
-      setIsLoading(false);
-      const successMsg = `Prediction submitted successfully! Transaction: ${txReceipt.hash}`;
-      setAttestationSuccess(successMsg);
-      setAttestationError(null);
-
-      toast({
-        title: 'Prediction Submitted',
-        description:
-          'Your position will appear on this page and your profile shortly.',
-        duration: 5000,
-      });
-
-      // Call the onSuccess callback to trigger refetch
-      onSuccess?.();
-    }
-  }, [txSuccess, txReceipt, address, toast, setIsLoading, onSuccess]);
 
   const resetStatus = useCallback(() => {
     setAttestationError(null);
@@ -269,7 +195,7 @@ export function useSubmitPrediction({
 
   return {
     submitPrediction,
-    isAttesting: isAttesting || isLoading,
+    isAttesting,
     attestationError,
     attestationSuccess,
     resetAttestationStatus: resetStatus,
