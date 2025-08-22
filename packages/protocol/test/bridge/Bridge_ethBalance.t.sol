@@ -6,6 +6,7 @@ import {MarketLayerZeroBridge} from "../../src/bridge/MarketLayerZeroBridge.sol"
 import {UMALayerZeroBridge} from "../../src/bridge/UMALayerZeroBridge.sol";
 import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
 import {IETHManagement} from "../../src/bridge/interfaces/IETHManagement.sol";
+import {IFeeManagement} from "../../src/bridge/interfaces/IFeeManagement.sol";
 import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
 import {MockMarketGroup} from "./mocks/mockMarketGroup.sol";
@@ -188,7 +189,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 excessiveAmount = address(marketBridge).balance + 1 ether;
 
         vm.startPrank(owner);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert(abi.encodeWithSelector(IFeeManagement.InsufficientETHBalance.selector, excessiveAmount, address(marketBridge).balance));
         marketBridge.withdrawETH(excessiveAmount);
         vm.stopPrank();
     }
@@ -287,7 +288,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 excessiveAmount = address(umaBridge).balance + 1 ether;
 
         vm.startPrank(owner);
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert(abi.encodeWithSelector(IFeeManagement.InsufficientETHBalance.selector, excessiveAmount, address(umaBridge).balance));
         umaBridge.withdrawETH(excessiveAmount);
         vm.stopPrank();
     }

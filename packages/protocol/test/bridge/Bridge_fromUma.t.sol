@@ -11,6 +11,7 @@ import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
 import {MockMarketGroup} from "./mocks/mockMarketGroup.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
+import {IUMALayerZeroBridge} from "../../src/bridge/interfaces/IUMALayerZeroBridge.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
@@ -121,28 +122,28 @@ contract BridgeTestFromUma is TestHelperOz5 {
 
     function test_failsNotUma_Resolved() public {
         vm.startPrank(marketUser);
-        vm.expectRevert("Only the OptimisticOracleV3 can call this function");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.OnlyOptimisticOracleV3CanCall.selector, marketUser, address(mockOptimisticOracleV3)));
         umaBridge.assertionResolvedCallback(bytes32(0), true);
         vm.stopPrank();
     }
 
     function test_failsNotUma_Disputed() public {
         vm.startPrank(marketUser);
-        vm.expectRevert("Only the OptimisticOracleV3 can call this function");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.OnlyOptimisticOracleV3CanCall.selector, marketUser, address(mockOptimisticOracleV3)));
         umaBridge.assertionDisputedCallback(bytes32(0));
         vm.stopPrank();
     }
 
     function test_failsIfWrongAssertionId_Resolved() public {
         vm.startPrank(address(mockOptimisticOracleV3));
-        vm.expectRevert("Invalid assertion ID");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.InvalidAssertionId.selector, bytes32(0)));
         umaBridge.assertionResolvedCallback(bytes32(0), true);
         vm.stopPrank();
     }
 
     function test_failsIfWrongAssertionId_Disputed() public {
         vm.startPrank(address(mockOptimisticOracleV3));
-        vm.expectRevert("Invalid assertion ID");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.InvalidAssertionId.selector, bytes32(0)));
         umaBridge.assertionDisputedCallback(bytes32(0));
         vm.stopPrank();
     }
