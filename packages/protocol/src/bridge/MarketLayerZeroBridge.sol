@@ -75,8 +75,12 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         internal
         override
     {
-        require(_origin.srcEid == bridgeConfig.remoteEid, "Invalid source chain");
-        require(address(uint160(uint256(_origin.sender))) == bridgeConfig.remoteBridge, "Invalid sender");
+        if (_origin.srcEid != bridgeConfig.remoteEid) {
+            revert InvalidSourceChain(bridgeConfig.remoteEid, _origin.srcEid);
+        }
+        if (address(uint160(uint256(_origin.sender))) != bridgeConfig.remoteBridge) {
+            revert InvalidSender(bridgeConfig.remoteBridge, address(uint160(uint256(_origin.sender))));
+        }
 
         // Handle incoming messages from the UMA side
         (uint16 commandType, bytes memory data) = _message.decodeType();
@@ -107,7 +111,7 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
             address marketGroup = assertionIdToMarketGroup[assertionId];
             IUMASettlementModule(marketGroup).assertionDisputedCallback(bytes32(assertionId));
         } else {
-            revert("Invalid command type");
+            revert InvalidCommandType(commandType);
         }
     }
 
@@ -150,7 +154,9 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         payable
         returns (MessagingReceipt memory)
     {
-        require(msg.sender == address(this), "Only self-call allowed");
+        if (msg.sender != address(this)) {
+            revert OnlySelfCallAllowed(msg.sender);
+        }
         return _lzSend(_dstEid, _message, _options, _fee, payable(address(this)));
     }
 
@@ -173,13 +179,14 @@ contract MarketLayerZeroBridge is OApp, ReentrancyGuard, IMarketLayerZeroBridge,
         address currency,
         uint256 bond
     ) external returns (bytes32) {
-        require(enabledMarketGroups[msg.sender], "Only enabled market groups can submit");
+        if (!enabledMarketGroups[msg.sender]) {
+            revert OnlyEnabledMarketGroupsCanSubmit(msg.sender);
+        }
 
         // Check if the asserter has enough bond
-        require(
-            remoteSubmitterBalances[asserter][currency] >= bond + remoteSubmitterWithdrawalIntent[asserter][currency],
-            "Asserter does not have enough bond"
-        );
+        if (remoteSubmitterBalances[asserter][currency] < bond + remoteSubmitterWithdrawalIntent[asserter][currency]) {
+            revert NotEnoughBondAmount(asserter, currency, bond + remoteSubmitterWithdrawalIntent[asserter][currency], remoteSubmitterBalances[asserter][currency]);
+        }
 
         // Advance to next assertionId
         lastAssertionId++;

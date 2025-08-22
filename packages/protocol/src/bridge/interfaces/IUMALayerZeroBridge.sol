@@ -9,6 +9,10 @@ import {IBondManagement} from "./IBondManagement.sol";
  * @notice Interface for UMA-side LayerZero bridge
  */
 interface IUMALayerZeroBridge is ILayerZeroBridge, IBondManagement {
+    // Custom errors
+    error OnlyOptimisticOracleV3CanCall(address caller, address expectedCaller);
+    error InvalidAssertionId(bytes32 assertionId);
+
     // Events
     event OptimisticOracleV3Updated(address indexed optimisticOracleV3);
 

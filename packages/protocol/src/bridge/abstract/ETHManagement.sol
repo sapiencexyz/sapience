@@ -34,7 +34,9 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      * @param amount The amount of ETH to withdraw
      */
     function withdrawETH(uint256 amount) external onlyOwner {
-        require(amount <= address(this).balance, "Insufficient balance");
+        if (amount > address(this).balance) {
+            revert InsufficientETHBalance(amount, address(this).balance);
+        }
 
         (bool success, ) = payable(owner()).call{value: amount}("");
         if (!success) {
@@ -68,10 +70,9 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      * @param requiredFee The fee amount to check against
      */
     function _requireSufficientETH(uint256 requiredFee) internal view {
-        require(
-            address(this).balance >= requiredFee,
-            "Insufficient ETH balance for fee"
-        );
+        if (address(this).balance < requiredFee) {
+            revert InsufficientETHBalance(requiredFee, address(this).balance);
+        }
     }
 
     /**

@@ -11,6 +11,7 @@ import {IMintableToken} from "../../src/market/external/IMintableToken.sol";
 import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
 import {MockMarketGroup} from "./mocks/mockMarketGroup.sol";
 import {ISapienceStructs} from "../../src/market/interfaces/ISapienceStructs.sol";
+import {IMarketLayerZeroBridge} from "../../src/bridge/interfaces/IMarketLayerZeroBridge.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
@@ -109,7 +110,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
 
     function test_failsIfNotEnabledMarketGroup() public {
         vm.startPrank(marketUser);
-        vm.expectRevert("Only enabled market groups can submit");
+        vm.expectRevert(abi.encodeWithSelector(IMarketLayerZeroBridge.OnlyEnabledMarketGroupsCanSubmit.selector, marketUser));
         marketBridge.forwardAssertTruth(
             address(marketUser), 1, "some claim message", address(marketUser), 3600, address(bondCurrency), BOND_AMOUNT
         );
@@ -121,7 +122,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
 
         // Check it reverts
         vm.startPrank(address(mockMarketGroup));
-        vm.expectRevert("Asserter does not have enough bond");
+        vm.expectRevert(abi.encodeWithSelector(IMarketLayerZeroBridge.NotEnoughBondAmount.selector, address(umaUser), address(bondCurrency), userRemoteBondBalance + 1, userRemoteBondBalance));
         marketBridge.forwardAssertTruth(
             address(marketUser),
             1,
@@ -159,7 +160,7 @@ contract BridgeTestFromMarket is TestHelperOz5 {
 
         // Check it reverts
         vm.startPrank(address(mockMarketGroup));
-        vm.expectRevert("Asserter does not have enough bond");
+        vm.expectRevert(abi.encodeWithSelector(IMarketLayerZeroBridge.NotEnoughBondAmount.selector, address(umaUser), address(bondCurrency), userRemoteBondBalance + 1, userRemoteBondBalance));
         marketBridge.forwardAssertTruth(
             address(marketUser),
             1,

@@ -8,6 +8,10 @@ import {ILayerZeroBridge} from "./ILayerZeroBridge.sol";
  * @notice Interface for Market-side LayerZero bridge
  */
 interface IMarketLayerZeroBridge is ILayerZeroBridge {
+    // Custom errors
+    error OnlyEnabledMarketGroupsCanSubmit(address caller);
+    error NotEnoughBondAmount(address asserter, address currency, uint256 required, uint256 available);
+
     // Events
     event AssertionSubmitted(
         address indexed marketGroup,

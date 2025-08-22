@@ -12,6 +12,10 @@ import {MockOptimisticOracleV3} from "./mocks/mockOptimisticOracleV3.sol";
 import {MockMarketGroup} from "./mocks/mockMarketGroup.sol";
 import {ReentrantAttacker} from "./mocks/ReentrantAttacker.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ILayerZeroBridge} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import {IUMALayerZeroBridge} from "../../src/bridge/interfaces/IUMALayerZeroBridge.sol";
+import {IMarketLayerZeroBridge} from "../../src/bridge/interfaces/IMarketLayerZeroBridge.sol";
+import {IBondManagement} from "../../src/bridge/interfaces/IBondManagement.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
@@ -125,7 +129,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
         );
 
         // Try to send message from malicious chain
-        vm.expectRevert("Invalid source chain");
+        vm.expectRevert(abi.encodeWithSelector(ILayerZeroBridge.InvalidSourceChain.selector, umaEiD, maliciousEiD));
         marketBridge.exposed_lzReceive(
             Origin({srcEid: maliciousEiD, sender: addressToBytes32(address(umaBridge)), nonce: 1}),
             bytes32(0),
@@ -142,7 +146,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
             abi.encode(uint256(1), address(0x1), uint64(3600), address(bondCurrency), uint256(1000), "claim")
         );
 
-        vm.expectRevert("Invalid source chain");
+        vm.expectRevert(abi.encodeWithSelector(ILayerZeroBridge.InvalidSourceChain.selector, marketEiD, maliciousEiD));
         umaBridge.exposed_lzReceive(
             Origin({srcEid: maliciousEiD, sender: addressToBytes32(address(marketBridge)), nonce: 1}),
             bytes32(0),
@@ -161,7 +165,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
             abi.encode(uint256(1), address(0x1), uint64(3600), address(bondCurrency), uint256(1000), "claim")
         );
 
-        vm.expectRevert("Invalid sender");
+        vm.expectRevert(abi.encodeWithSelector(ILayerZeroBridge.InvalidSender.selector, address(umaBridge), attacker));
         marketBridge.exposed_lzReceive(
             Origin({
                 srcEid: umaEiD,
@@ -182,7 +186,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
             abi.encode(uint256(1), address(0x1), uint64(3600), address(bondCurrency), uint256(1000), "claim")
         );
 
-        vm.expectRevert("Invalid sender");
+        vm.expectRevert(abi.encodeWithSelector(ILayerZeroBridge.InvalidSender.selector, address(marketBridge), attacker));
         umaBridge.exposed_lzReceive(
             Origin({
                 srcEid: marketEiD,
@@ -203,7 +207,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
         vm.startPrank(attacker);
 
         // Try to call assertionResolvedCallback with reentrancy
-        vm.expectRevert("Only the OptimisticOracleV3 can call this function");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.OnlyOptimisticOracleV3CanCall.selector, attacker, address(mockOptimisticOracleV3)));
         umaBridge.assertionResolvedCallback(assertionId_01, true);
 
         vm.stopPrank();
@@ -245,7 +249,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
             abi.encode("invalid data")
         );
 
-        vm.expectRevert("Invalid command type");
+        vm.expectRevert(abi.encodeWithSelector(ILayerZeroBridge.InvalidCommandType.selector, uint16(999)));
         marketBridge.exposed_lzReceive(
             Origin({srcEid: umaEiD, sender: addressToBytes32(address(umaBridge)), nonce: 1}),
             bytes32(0),
@@ -261,7 +265,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
             abi.encode("invalid data")
         );
 
-        vm.expectRevert("Invalid command type");
+        vm.expectRevert(abi.encodeWithSelector(ILayerZeroBridge.InvalidCommandType.selector, uint16(999)));
         umaBridge.exposed_lzReceive(
             Origin({srcEid: marketEiD, sender: addressToBytes32(address(marketBridge)), nonce: 1}),
             bytes32(0),
@@ -275,14 +279,14 @@ contract BridgeSecurityTest is TestHelperOz5 {
 
     function test_revertInvalidAssertionId_Resolved() public {
         vm.startPrank(address(mockOptimisticOracleV3));
-        vm.expectRevert("Invalid assertion ID");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.InvalidAssertionId.selector, assertionId_999));
         umaBridge.assertionResolvedCallback(assertionId_999, true);
         vm.stopPrank();
     }
 
     function test_revertInvalidAssertionId_Disputed() public {
         vm.startPrank(address(mockOptimisticOracleV3));
-        vm.expectRevert("Invalid assertion ID");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.InvalidAssertionId.selector, assertionId_999));
         umaBridge.assertionDisputedCallback(assertionId_999);
         vm.stopPrank();
     }
@@ -291,14 +295,14 @@ contract BridgeSecurityTest is TestHelperOz5 {
 
     function test_revertUnauthorizedCallback_Resolved() public {
         vm.startPrank(attacker);
-        vm.expectRevert("Only the OptimisticOracleV3 can call this function");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.OnlyOptimisticOracleV3CanCall.selector, attacker, address(mockOptimisticOracleV3)));
         umaBridge.assertionResolvedCallback(assertionId_01, true);
         vm.stopPrank();
     }
 
     function test_revertUnauthorizedCallback_Disputed() public {
         vm.startPrank(attacker);
-        vm.expectRevert("Only the OptimisticOracleV3 can call this function");
+        vm.expectRevert(abi.encodeWithSelector(IUMALayerZeroBridge.OnlyOptimisticOracleV3CanCall.selector, attacker, address(mockOptimisticOracleV3)));
         umaBridge.assertionDisputedCallback(assertionId_01);
         vm.stopPrank();
     }
@@ -307,19 +311,19 @@ contract BridgeSecurityTest is TestHelperOz5 {
 
     function test_revertSelfCallProtection() public {
         vm.startPrank(attacker);
-        vm.expectRevert("Only self-call allowed");
+        vm.expectRevert(abi.encodeWithSelector(ILayerZeroBridge.OnlySelfCallAllowed.selector, attacker));
         umaBridge._sendMessageWithETH(1, "", "", MessagingFee(0, 0));
         vm.stopPrank();
     }
 
     // ============ Zero Address Validation Tests ============
 
-    function test_revertZeroAddress_BondToken_LEO() public {
+    function test_revertZeroAddress_BondToken() public {
         bondCurrency.mint(1000 ether, umaUser);
         vm.startPrank(umaUser);
         bondCurrency.approve(address(umaBridge), 1000 ether);
 
-        vm.expectRevert(); // Should revert for zero address
+        vm.expectRevert(abi.encodeWithSelector(IBondManagement.BondTokenZeroAddress.selector));
         umaBridge.depositBond(address(0), 1000 ether);
         vm.stopPrank();
     }
@@ -337,7 +341,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
     function test_revertUnauthorizedMarketGroup() public {
         // Test that only enabled market groups can submit
         vm.startPrank(attacker);
-        vm.expectRevert("Only enabled market groups can submit");
+        vm.expectRevert(abi.encodeWithSelector(IMarketLayerZeroBridge.OnlyEnabledMarketGroupsCanSubmit.selector, attacker));
         marketBridge.forwardAssertTruth(
             address(0x999), // Unauthorized market group
             1,
@@ -353,7 +357,7 @@ contract BridgeSecurityTest is TestHelperOz5 {
     function test_revertInsufficientBond() public {
         // Test that insufficient bond is rejected
         vm.startPrank(address(mockMarketGroup));
-        vm.expectRevert("Asserter does not have enough bond");
+        vm.expectRevert(abi.encodeWithSelector(IMarketLayerZeroBridge.NotEnoughBondAmount.selector, attacker, address(bondCurrency), BOND_AMOUNT, 0));
         marketBridge.forwardAssertTruth(
             address(mockMarketGroup),
             1,
