@@ -44,9 +44,10 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+    let token;
     try {
       const client = getPrivyClient();
-      const token = authorization.replace(/^Bearer\s+/i, '');
+      token = authorization.replace(/^Bearer\s+/i, '');
       await client.verifyAuthToken(token);
     } catch (_err) {
       return NextResponse.json(
@@ -57,6 +58,12 @@ export async function POST(request: Request) {
 
     const caip2 = `eip155:${chainId}`;
     const client = getPrivyClient();
+
+    const {authorizationKey} = await client.walletApi.generateUserSigner({
+      userJwt: token
+    });
+
+    await client.walletApi.updateAuthorizationKey(authorizationKey);
 
     // Use Privy Server Auth SDK to send a sponsored transaction
     const result = await client.walletApi.ethereum.sendTransaction({
