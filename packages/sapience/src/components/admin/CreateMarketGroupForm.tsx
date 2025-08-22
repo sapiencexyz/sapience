@@ -295,7 +295,7 @@ const CreateMarketGroupForm = () => {
   const [question, setQuestion] = useState<string>('');
   const [rules, setRules] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [isBridged, setIsBridged] = useState<boolean>(true);
+  const [isBridged, setIsBridged] = useState<boolean>(false);
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
   const [quoteTokenName, setQuoteTokenName] = useState<string>('No');
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
