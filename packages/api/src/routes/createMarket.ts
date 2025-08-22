@@ -16,6 +16,7 @@ interface MarketDataPayload {
   baseAssetMaxPriceTick: string | number;
   claimStatementYesOrNumeric: string;
   claimStatementNo: string | null;
+  public?: boolean;
 }
 
 // Helper function to create a single market
@@ -34,6 +35,7 @@ async function createSingleMarket(
     baseAssetMaxPriceTick,
     claimStatementYesOrNumeric,
     claimStatementNo,
+    public: isPublic,
   } = marketData;
 
   // Validate required market fields
@@ -62,6 +64,7 @@ async function createSingleMarket(
       startingSqrtPriceX96: startingSqrtPriceX96,
       baseAssetMinPriceTick: parseInt(String(baseAssetMinPriceTick), 10),
       baseAssetMaxPriceTick: parseInt(String(baseAssetMaxPriceTick), 10),
+      public: isPublic ?? true,
       poolAddress: null,
       settlementPriceD18: null,
       settled: null,
