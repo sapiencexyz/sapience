@@ -10,7 +10,7 @@ import {ILayerZeroBridge} from "./ILayerZeroBridge.sol";
 interface IMarketLayerZeroBridge is ILayerZeroBridge {
     // Custom errors
     error OnlyEnabledMarketGroupsCanSubmit(address caller);
-    error AsserterDoesNotHaveEnoughBond(address asserter, address currency, uint256 required, uint256 available);
+    error NotEnoughBondAmount(address asserter, address currency, uint256 required, uint256 available);
 
     // Events
     event AssertionSubmitted(
