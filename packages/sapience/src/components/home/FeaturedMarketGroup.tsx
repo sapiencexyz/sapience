@@ -53,31 +53,52 @@ export default function FeaturedMarketGroup() {
   const groupedMarketGroups: GroupedMarketGroup[] = React.useMemo(() => {
     if (!enrichedMarketGroups) return [];
 
-    // 1. Map enrichedMarketGroups to MarketWithContext[] (no category filter for homepage)
-    const allMarkets: MarketWithContext[] = enrichedMarketGroups.flatMap(
-      (marketGroup) => {
-        // Filter and map markets within this marketGroup
-        return marketGroup.markets
-          .filter(
-            (market) =>
-              // Ensure startTimestamp and endTimestamp are numbers
-              typeof market.startTimestamp === 'number' &&
-              typeof market.endTimestamp === 'number'
+    // 1. Only consider deployed market groups and deployed markets
+    const deployedGroups = enrichedMarketGroups.filter((group) => {
+      const hasAddress =
+        typeof group.address === 'string' && group.address.length > 0;
+      const hasDeployedMarkets = Array.isArray(group.markets)
+        ? group.markets.some(
+            (m) =>
+              typeof m.poolAddress === 'string' &&
+              m.poolAddress.length > 0 &&
+              m.poolAddress !== '0x'
           )
-          .map((market): MarketWithContext => {
-            return {
-              ...market,
-              // Explicitly assign core GraphQLMarketType properties
-              startTimestamp: market.startTimestamp,
-              endTimestamp: market.endTimestamp,
-              // Add context fields from marketGroup
-              marketAddress: marketGroup.address!,
-              chainId: marketGroup.chainId,
-              collateralAsset: marketGroup.collateralAsset!,
-              categorySlug: marketGroup.category.slug,
-              categoryId: marketGroup.category.id.toString(),
-            };
-          });
+        : false;
+      return hasAddress && hasDeployedMarkets;
+    });
+
+    // 2. Map to MarketWithContext[] (no category filter for homepage)
+    const allMarkets: MarketWithContext[] = deployedGroups.flatMap(
+      (marketGroup) => {
+        return (
+          marketGroup.markets
+            // Only include deployed markets (with a valid poolAddress)
+            .filter(
+              (market) =>
+                typeof market.poolAddress === 'string' &&
+                market.poolAddress.length > 0 &&
+                market.poolAddress !== '0x'
+            )
+            .filter(
+              (market) =>
+                // Ensure startTimestamp and endTimestamp are numbers
+                typeof market.startTimestamp === 'number' &&
+                typeof market.endTimestamp === 'number'
+            )
+            .map((market): MarketWithContext => {
+              return {
+                ...market,
+                startTimestamp: market.startTimestamp,
+                endTimestamp: market.endTimestamp,
+                marketAddress: marketGroup.address!,
+                chainId: marketGroup.chainId,
+                collateralAsset: marketGroup.collateralAsset!,
+                categorySlug: marketGroup.category.slug,
+                categoryId: marketGroup.category.id.toString(),
+              };
+            })
+        );
       }
     );
 
@@ -113,7 +134,7 @@ export default function FeaturedMarketGroup() {
     const result: GroupedMarketGroup[] = Object.entries(groupedByMarketKey).map(
       ([key, markets]) => {
         const firstMarket = markets[0];
-        const enrichedGroup = enrichedMarketGroups.find(
+        const enrichedGroup = deployedGroups.find(
           (group) =>
             group.chainId === firstMarket.chainId &&
             group.address === firstMarket.marketAddress
