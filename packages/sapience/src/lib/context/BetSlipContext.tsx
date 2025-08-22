@@ -93,8 +93,8 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
     // Use same fallback logic for consistency
     const effectiveChainId = position.chainId || 8453;
     const queryKey = marketGroupQueryConfig.queryKey(
-      effectiveChainId,
-      position.marketAddress
+      position.marketAddress,
+      effectiveChainId
     );
 
     // Get data from cache
