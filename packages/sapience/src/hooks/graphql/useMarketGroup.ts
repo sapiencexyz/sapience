@@ -13,10 +13,73 @@ import {
   getChainIdFromShortName,
 } from '../../lib/utils/util';
 
-// GraphQL query to fetch market data
-const MARKET_GROUP_QUERY = /* GraphQL */ `
-  query MarketGroup($where: MarketGroupWhereUniqueInput!) {
+// By address (unique)
+const MARKET_GROUP_BY_ADDRESS_QUERY = /* GraphQL */ `
+  query MarketGroupByAddress($where: MarketGroupWhereUniqueInput!) {
     marketGroup(where: $where) {
+      id
+      address
+      chainId
+      question
+      rules
+      baseTokenName
+      quoteTokenName
+      collateralSymbol
+      collateralAsset
+      markets {
+        optionName
+        id
+        marketId
+        question
+        startTimestamp
+        endTimestamp
+        settled
+        settlementPriceD18
+        baseAssetMinPriceTick
+        baseAssetMaxPriceTick
+      }
+    }
+  }
+`;
+
+// By ID (unique)
+const MARKET_GROUP_BY_ID_QUERY = /* GraphQL */ `
+  query MarketGroupById($id: Int!) {
+    marketGroup(where: { id: $id }) {
+      id
+      address
+      chainId
+      question
+      rules
+      baseTokenName
+      quoteTokenName
+      collateralSymbol
+      collateralAsset
+      markets {
+        optionName
+        id
+        marketId
+        question
+        startTimestamp
+        endTimestamp
+        settled
+        settlementPriceD18
+        baseAssetMinPriceTick
+        baseAssetMaxPriceTick
+      }
+    }
+  }
+`;
+
+// By Nonce (not guaranteed unique in schema -> use findFirst with chainId)
+const MARKET_GROUP_BY_NONCE_QUERY = /* GraphQL */ `
+  query MarketGroupByNonce($chainId: Int!, $nonce: String!) {
+    findFirstMarketGroup(
+      where: {
+        chainId: { equals: $chainId }
+        initializationNonce: { equals: $nonce }
+      }
+    ) {
       id
       address
       chainId
@@ -44,37 +107,63 @@ const MARKET_GROUP_QUERY = /* GraphQL */ `
 
 // Shared configuration for market group queries
 export const marketGroupQueryConfig = {
-  queryKey: (chainId: number, marketAddress: string) =>
-    ['marketGroup', chainId, marketAddress] as const,
-
-  queryFn: async (
-    chainId: number,
-    marketAddress: string
-  ): Promise<MarketGroupType> => {
-    type MarketGroupQueryResult = {
-      marketGroup: MarketGroupType;
-    };
-
-    const data = await graphqlRequest<MarketGroupQueryResult>(
-      MARKET_GROUP_QUERY,
-      {
-        where: {
-          address_chainId: {
-            address: marketAddress,
-            chainId,
-          },
-        },
-      }
-    );
-
-    const marketResponse = data?.marketGroup;
-
-    if (!marketResponse) {
-      throw new Error('No market group data in response');
-    }
-    return marketResponse;
-  },
+  queryKey: (identifier: string, chainId: number) =>
+    ['marketGroup', identifier, chainId] as const,
 };
+
+async function fetchMarketGroup(
+  marketIdentifier: string,
+  chainId: number
+): Promise<MarketGroupType> {
+  const addressRegex = /^0x[a-fA-F0-9]{40}$/;
+  const mgIdMatch = /^mg-(\d+)$/i.exec(marketIdentifier || '');
+  const nonceMatch = /^(?:nonce-)?(\d+)$/i.exec(marketIdentifier || '');
+
+  const isAddress = addressRegex.test(marketIdentifier || '');
+  const mgId = mgIdMatch ? parseInt(mgIdMatch[1], 10) : null;
+  const nonce = !isAddress && !mgIdMatch && nonceMatch ? nonceMatch[1] : null;
+
+  // Address path (backward compatible)
+  if (isAddress) {
+    type Res = { marketGroup: MarketGroupType };
+    const data = await graphqlRequest<Res>(MARKET_GROUP_BY_ADDRESS_QUERY, {
+      where: {
+        address_chainId: {
+          address: marketIdentifier,
+          chainId,
+        },
+      },
+    });
+    const res = data?.marketGroup;
+    if (!res) throw new Error('No market group data in response');
+    return res;
+  }
+
+  // mg-<id>
+  if (mgId !== null) {
+    type Res = { marketGroup: MarketGroupType };
+    const data = await graphqlRequest<Res>(MARKET_GROUP_BY_ID_QUERY, {
+      id: mgId,
+    });
+    const res = data?.marketGroup;
+    if (!res) throw new Error('No market group data in response');
+    return res;
+  }
+
+  // nonce-<n> or bare <n>
+  if (nonce !== null) {
+    type Res = { findFirstMarketGroup: MarketGroupType };
+    const data = await graphqlRequest<Res>(MARKET_GROUP_BY_NONCE_QUERY, {
+      chainId,
+      nonce,
+    });
+    const res = data?.findFirstMarketGroup;
+    if (!res) throw new Error('No market group data in response');
+    return res;
+  }
+
+  throw new Error('Invalid market identifier');
+}
 
 export const useMarketGroup = ({
   chainShortName,
@@ -86,14 +175,31 @@ export const useMarketGroup = ({
   const chainId = getChainIdFromShortName(chainShortName);
   const [activeMarkets, setActiveMarkets] = useState<MarketType[]>([]);
 
+  // Determine identifier type
+  const addressRegex = /^0x[a-fA-F0-9]{40}$/;
+  const mgIdMatch = /^mg-(\d+)$/i.exec(marketAddress || '');
+  const nonceMatch = /^(?:nonce-)?(\d+)$/i.exec(marketAddress || '');
+
+  const isAddress = addressRegex.test(marketAddress || '');
+  const mgId = mgIdMatch ? parseInt(mgIdMatch[1], 10) : null;
+  const nonce = !isAddress && !mgIdMatch && nonceMatch ? nonceMatch[1] : null;
+
+  const identifierKey = isAddress
+    ? `addr:${marketAddress}`
+    : mgId !== null
+      ? `mg:${mgId}`
+      : nonce !== null
+        ? `nonce:${nonce}`
+        : marketAddress;
+
   const {
     data: marketGroupData,
     isLoading,
     isSuccess,
     isError,
   } = useQuery<MarketGroupType>({
-    queryKey: marketGroupQueryConfig.queryKey(chainId, marketAddress),
-    queryFn: () => marketGroupQueryConfig.queryFn(chainId, marketAddress),
+    queryKey: marketGroupQueryConfig.queryKey(identifierKey, chainId),
+    queryFn: async () => fetchMarketGroup(marketAddress, chainId),
     enabled: !!chainId && !!marketAddress && chainId !== 0,
     retry: 3,
     retryDelay: 1000,
@@ -127,7 +233,7 @@ export function getMarketGroupFromCache(
   chainId: number,
   marketAddress: string
 ): MarketGroupType | undefined {
-  const queryKey = marketGroupQueryConfig.queryKey(chainId, marketAddress);
+  const queryKey = marketGroupQueryConfig.queryKey(marketAddress, chainId);
   return queryClient.getQueryData(queryKey);
 }
 
@@ -136,7 +242,7 @@ export async function prefetchMarketGroup(
   chainId: number,
   marketAddress: string
 ): Promise<MarketGroupType | null> {
-  const queryKey = marketGroupQueryConfig.queryKey(chainId, marketAddress);
+  const queryKey = marketGroupQueryConfig.queryKey(marketAddress, chainId);
 
   // If we already have data, return it immediately
   const existingData = queryClient.getQueryData<MarketGroupType>(queryKey);
@@ -148,7 +254,7 @@ export async function prefetchMarketGroup(
   try {
     await queryClient.prefetchQuery({
       queryKey,
-      queryFn: () => marketGroupQueryConfig.queryFn(chainId, marketAddress),
+      queryFn: () => fetchMarketGroup(marketAddress, chainId),
     });
   } catch {
     // Swallow errors here; callers can inspect query state for error

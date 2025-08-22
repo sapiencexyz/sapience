@@ -47,7 +47,7 @@ export enum CommentFilters {
   EnergyDePINCategory = 'energy-depin',
   ClimateChangeCategory = 'climate-change',
   GeopoliticsCategory = 'geopolitics',
-  BiosecurityCategory = 'biosecurity',
+  BiosecurityCategory = 'tech-science',
   SpaceExplorationCategory = 'space-exploration',
   EmergingTechnologiesCategory = 'emerging-technologies',
   AthleticsCategory = 'athletics',

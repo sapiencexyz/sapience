@@ -299,6 +299,20 @@ const MarketGroupPageContent = () => {
     );
   }
 
+  // Determine deployment status for preview handling
+  const isValidAddress =
+    typeof marketGroupData.address === 'string' &&
+    /^0x[a-fA-F0-9]{40}$/.test(marketGroupData.address);
+  const hasDeployedMarket = Array.isArray(marketGroupData.markets)
+    ? marketGroupData.markets.some(
+        (m) =>
+          typeof m.poolAddress === 'string' &&
+          m.poolAddress.length > 0 &&
+          m.poolAddress !== '0x'
+      )
+    : false;
+  const isDeployed = isValidAddress && hasDeployedMarket;
+
   const optionNames = (marketGroupData.markets || []).map(
     (market: MarketType) => market.optionName || ''
   );
@@ -323,29 +337,35 @@ const MarketGroupPageContent = () => {
             <div className="flex flex-col w-full md:flex-1">
               <div className="border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
                 <div className="flex-1">
-                  <MarketGroupChart
-                    chainShortName={chainShortName}
-                    marketAddress={marketAddress}
-                    marketIds={
-                      marketGroupByEndTime
-                        ? marketGroupByEndTime.markets.map((market) =>
-                            Number(market.marketId)
-                          )
-                        : []
-                    }
-                    market={marketGroupData}
-                    minTimestamp={
-                      marketGroupByEndTime &&
-                      marketGroupByEndTime.markets.length > 0
-                        ? Math.min(
-                            ...marketGroupByEndTime.markets.map((market) =>
-                              Number(market.startTimestamp)
+                  {isDeployed ? (
+                    <MarketGroupChart
+                      chainShortName={chainShortName}
+                      marketAddress={marketAddress}
+                      marketIds={
+                        marketGroupByEndTime
+                          ? marketGroupByEndTime.markets.map((market) =>
+                              Number(market.marketId)
                             )
-                          )
-                        : undefined
-                    }
-                    optionNames={optionNames}
-                  />
+                          : []
+                      }
+                      market={marketGroupData}
+                      minTimestamp={
+                        marketGroupByEndTime &&
+                        marketGroupByEndTime.markets.length > 0
+                          ? Math.min(
+                              ...marketGroupByEndTime.markets.map((market) =>
+                                Number(market.startTimestamp)
+                              )
+                            )
+                          : undefined
+                      }
+                      optionNames={optionNames}
+                    />
+                  ) : (
+                    <div className="min-h-[300px] h-full w-full flex items-center justify-center text-muted-foreground">
+                      Market not deployed
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

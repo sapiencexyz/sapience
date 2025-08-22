@@ -254,6 +254,15 @@ const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
 
   return (
     <div className="flex items-center gap-2 justify-end">
+      <Button variant="outline" size="sm" asChild>
+        <a
+          href={`/markets/${getChainShortName(group.chainId)}:mg-${group.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Preview
+        </a>
+      </Button>
       <MarketGroupDeployButton group={group} />
     </div>
   );

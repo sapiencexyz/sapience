@@ -127,6 +127,31 @@ const MarketFormFields = ({
     }
   };
 
+  // Decode on-chain hex claim statements for display when fields are disabled
+  const decodeClaimStatement = (claimStatement: string): string => {
+    if (!claimStatement) return '';
+    if (claimStatement.startsWith('0x') && claimStatement.length > 2) {
+      try {
+        const hexString = claimStatement.slice(2);
+        const bytes = new Uint8Array(
+          hexString.match(/.{1,2}/g)?.map((byte) => parseInt(byte, 16)) || []
+        );
+        return new TextDecoder('utf-8').decode(bytes);
+      } catch {
+        return claimStatement;
+      }
+    }
+    return claimStatement;
+  };
+
+  const displayClaimYesOrNumeric = disabledFields?.claimStatementYesOrNumeric
+    ? decodeClaimStatement(market.claimStatementYesOrNumeric)
+    : market.claimStatementYesOrNumeric;
+
+  const displayClaimNo = disabledFields?.claimStatementNo
+    ? decodeClaimStatement(market.claimStatementNo)
+    : market.claimStatementNo;
+
   // Handle price change and keep sqrtPriceX96 in sync
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const price = e.target.value;
@@ -470,7 +495,7 @@ const MarketFormFields = ({
           <Input
             id={fieldId('claimStatementYesOrNumeric')}
             type="text"
-            value={market.claimStatementYesOrNumeric}
+            value={displayClaimYesOrNumeric}
             onChange={(e) =>
               onMarketChange('claimStatementYesOrNumeric', e.target.value)
             }
@@ -491,7 +516,7 @@ const MarketFormFields = ({
           <Input
             id={fieldId('claimStatementNo')}
             type="text"
-            value={market.claimStatementNo}
+            value={displayClaimNo}
             onChange={(e) => onMarketChange('claimStatementNo', e.target.value)}
             placeholder="Mamdani didn't become the mayor."
             disabled={disabledFields?.claimStatementNo}
