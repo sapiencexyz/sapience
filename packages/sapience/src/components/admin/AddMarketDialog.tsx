@@ -225,13 +225,13 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
           Add Market
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] overflow-y-auto max-h-[90vh]">
+      <DialogContent className="sm:max-w-[700px] overflow-visible max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>
             Add New Market to Group {marketGroupAddress}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-6 p-4">
+        <form onSubmit={handleSubmit} className="space-y-6 p-4 overflow-y-auto max-h-[calc(90vh-120px)]">
           <MarketFormFields
             market={market}
             onMarketChange={handleMarketChange}
