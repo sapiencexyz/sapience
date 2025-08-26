@@ -28,7 +28,7 @@
   ],
   "CATEGORIES": [
     {
-      "name": "Decentralized compute",
+      "name": "Blockchains",
       "slug": "decentralized-compute"
     },
     {
@@ -46,6 +46,10 @@
     {
       "name": "Economy & Finance",
       "slug": "economy-finance"
+    },
+    {
+      "name": "Athletics",
+      "slug": "athletics"
     },
     {
       "name": "Culture",

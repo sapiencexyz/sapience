@@ -9,7 +9,7 @@ export default function ElizaHomepageFeature() {
         <div className="max-w-6xl mx-auto w-full">
           <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
             {/* Left side: Explanatory text and CTAs */}
-            <div className="w-full lg:w-3/5 lg:max-w-[360px] text-left lg:text-inherit">
+            <div className="w-full lg:w-3/5 lg:max-w-[370px] text-left lg:text-inherit">
               <div className="mb-6">
                 <Image
                   src="/elizaos-logo.svg"
@@ -20,8 +20,8 @@ export default function ElizaHomepageFeature() {
                 />
               </div>
               <p className="text-muted-foreground text-lg mb-6">
-                Install the Sapience plug-in for ElizaOS to quickly spin up an
-                agent that submits forecasts onchain.
+                Build AI agents that forecast the future and participate in
+                prediction markets using the ElizaOS plug-in.
               </p>
               <div className="pt-2 gap-2 flex flex-wrap justify-start">
                 <a
@@ -41,7 +41,7 @@ export default function ElizaHomepageFeature() {
                   </Button>
                 </a>
                 <a
-                  href="https://github.com/sapiencexyz/elizaos-boilerplate"
+                  href="https://github.com/sapiencexyz/sage"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="ml-3 sm:ml-5"

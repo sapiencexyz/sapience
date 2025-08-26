@@ -18,7 +18,7 @@ export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
   const accountAddress = connectedWallet?.address as `0x${string}` | undefined;
 
   const SUSDE_ADDRESS_ARBITRUM =
-    '0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2' as `0x${string}`;
+    '0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3' as `0x${string}`; // '0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2'
 
   const { data: decimals } = useReadContract({
     abi: erc20Abi,
@@ -41,13 +41,13 @@ export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
     try {
       const dec =
         typeof decimals === 'number' ? decimals : Number(decimals ?? 18);
-      if (!balance) return `0 sUSDe`;
+      if (!balance) return `0 testUSDe`;
       const human = formatUnits(balance, dec);
       const num = Number(human);
-      if (Number.isNaN(num)) return `0 sUSDe`;
-      return `${num.toLocaleString(undefined, { maximumFractionDigits: 4 })} sUSDe`;
+      if (Number.isNaN(num)) return `0 testUSDe`;
+      return `${num.toLocaleString(undefined, { maximumFractionDigits: 4 })} testUSDe`;
     } catch {
-      return `0 sUSDe`;
+      return `0 testUSDe`;
     }
   }, [balance, decimals]);
 
@@ -66,8 +66,8 @@ export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
           rel="noopener noreferrer"
         >
           <Image
-            src="/susde-icon.svg"
-            alt="sUSDe"
+            src="/usde.svg"
+            alt="USDe"
             width={17}
             height={17}
             className="opacity-90 ml-[-2px]"

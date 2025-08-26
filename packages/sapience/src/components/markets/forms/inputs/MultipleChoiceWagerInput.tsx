@@ -1,0 +1,50 @@
+import { Label } from '@sapience/ui/components/ui/label';
+
+import type { MarketGroupType } from '@sapience/ui/types';
+import { WagerInput } from './WagerInput';
+import MultipleChoiceWagerChoiceSelect from './MultipleChoiceWager';
+
+interface MultipleChoiceWagerInputProps {
+  marketGroupData: MarketGroupType;
+  positionId: string; // Used to namespace form fields
+  defaultSelectedMarketId?: number;
+}
+
+export default function MultipleChoiceWagerInput({
+  marketGroupData,
+  positionId,
+  defaultSelectedMarketId,
+}: MultipleChoiceWagerInputProps) {
+  const predictionFieldName = `positions.${positionId}.predictionValue`;
+  const wagerAmountFieldName = `positions.${positionId}.wagerAmount`;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label>Your Prediction</Label>
+        <MultipleChoiceWagerChoiceSelect
+          name={predictionFieldName}
+          options={(marketGroupData.markets || [])
+            .slice()
+            .sort((a, b) => a.marketId - b.marketId)
+            .map((market) => ({
+              name: market.optionName || `Market ${market.marketId}`,
+              marketId: market.marketId,
+            }))}
+          defaultValue={
+            typeof defaultSelectedMarketId === 'number'
+              ? String(defaultSelectedMarketId)
+              : undefined
+          }
+        />
+      </div>
+
+      <WagerInput
+        name={wagerAmountFieldName}
+        collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
+        collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
+        chainId={marketGroupData.chainId}
+      />
+    </div>
+  );
+}

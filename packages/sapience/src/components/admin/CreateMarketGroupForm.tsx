@@ -44,9 +44,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
 
 const DEFAULT_CHAIN_ID = 42161;
 const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
-const DEFAULT_BOND_CURRENCY = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const DEFAULT_BOND_CURRENCY = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
 const DEFAULT_COLLATERAL_ASSET = '0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3';
-const DEFAULT_OPTIMISTIC_ORACLE = '0xCf17b4834223D7e54B92f8e43229C1E82faF7226';
+const DEFAULT_OPTIMISTIC_ORACLE = '0xa6147867264374F324524E30C02C331cF28aa879';
 const DEFAULT_UNISWAP_POS_MANAGER =
   '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
 const DEFAULT_UNISWAP_SWAP_ROUTER =
@@ -297,7 +297,7 @@ const CreateMarketGroupForm = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isBridged, setIsBridged] = useState<boolean>(false);
   const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
-  const [quoteTokenName, setQuoteTokenName] = useState<string>('No');
+  const [quoteTokenName, setQuoteTokenName] = useState<string>('testUSDe');
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
     null
   );

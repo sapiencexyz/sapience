@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
@@ -12,14 +12,74 @@ import {
   TooltipTrigger,
 } from '@/sapience/ui/index';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
-import PredictForm from '~/components/forecasting/forms/PredictForm';
-import ForecastInfoNotice from '~/components/forecasting/ForecastInfoNotice';
+import PredictForm from '~/components/markets/forms/ForecastForm';
+import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
 // import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
-import QuestionSuggestions from '~/components/forecasting/QuestionSuggestions';
-import WalletAddressPopover from '~/components/DataDrawer/WalletAddressPopover';
+import QuestionSuggestions from '~/components/markets/QuestionSuggestions';
+import WalletAddressPopover from '~/components/markets/DataDrawer/WalletAddressPopover';
 import QuestionSelect from '~/components/shared/QuestionSelect';
+
+type TabsHeaderProps = {
+  isAskTooltipOpen: boolean;
+  setIsAskTooltipOpen: (open: boolean) => void;
+};
+
+const TabsHeader = ({
+  isAskTooltipOpen,
+  setIsAskTooltipOpen,
+}: TabsHeaderProps) => {
+  const closeTimeoutRef = useRef<number | null>(null);
+
+  const handleTapOpen = () => {
+    if (closeTimeoutRef.current) {
+      window.clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setIsAskTooltipOpen(true);
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setIsAskTooltipOpen(false);
+      closeTimeoutRef.current = null;
+    }, 1500);
+  };
+
+  return (
+    <div className="border-b border-border bg-background sticky top-0 z-20 border-t border-border">
+      <div className="flex">
+        <button
+          type="button"
+          className="flex-1 px-4 py-3 font-medium border-b-2 border-b-primary text-primary bg-primary/5"
+        >
+          Forecast
+        </button>
+        <TooltipProvider>
+          <Tooltip open={isAskTooltipOpen} onOpenChange={setIsAskTooltipOpen}>
+            <TooltipTrigger asChild>
+              <div
+                className="flex-1"
+                onClick={handleTapOpen}
+                onTouchStart={handleTapOpen}
+              >
+                <button
+                  type="button"
+                  disabled
+                  className="w-full px-4 py-3 font-medium border-b-2 border-border text-muted-foreground/50 cursor-not-allowed"
+                  aria-disabled="true"
+                >
+                  Ask
+                </button>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Coming Soon</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    </div>
+  );
+};
 
 const ForecastPageImp = () => {
   const { address } = useAccount();
@@ -30,6 +90,7 @@ const ForecastPageImp = () => {
   >(null);
   const [refetchCommentsTrigger, setRefetchCommentsTrigger] = useState(0);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isAskTooltipOpen, setIsAskTooltipOpen] = useState(false);
 
   // State for selected market - moved to top
   const [selectedMarket, setSelectedMarket] = useState<any>(undefined);
@@ -49,25 +110,10 @@ const ForecastPageImp = () => {
     return (
       <div className="min-h-screen bg-background pt-32 xl:pt-0">
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
-          <div className="border-b border-border bg-background sticky top-0 z-20 border-t border-border">
-            <div className="flex">
-              <button
-                type="button"
-                className="flex-1 px-4 py-3 font-medium border-b-2 border-b-primary text-primary bg-primary/5"
-              >
-                Predict
-              </button>
-              <div className="flex-1">
-                <button
-                  type="button"
-                  disabled
-                  className="w-full px-4 py-3 font-medium border-b-2 border-border text-muted-foreground/50 cursor-not-allowed"
-                >
-                  Ask
-                </button>
-              </div>
-            </div>
-          </div>
+          <TabsHeader
+            isAskTooltipOpen={isAskTooltipOpen}
+            setIsAskTooltipOpen={setIsAskTooltipOpen}
+          />
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading market data...</p>
@@ -80,27 +126,12 @@ const ForecastPageImp = () => {
   // Show error state if data fetching failed
   if (error) {
     return (
-      <div className="min-h-screen bg-background pt-32 xl:pt-0">
+      <div className="min-h-screen bg-background pt-24 xl:pt-0">
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
-          <div className="border-b border-border bg-background sticky top-0 z-20 border-t border-border">
-            <div className="flex">
-              <button
-                type="button"
-                className="flex-1 px-4 py-3 font-medium border-b-2 border-b-primary text-primary bg-primary/5"
-              >
-                Predict
-              </button>
-              <div className="flex-1">
-                <button
-                  type="button"
-                  disabled
-                  className="w-full px-4 py-3 font-medium border-b-2 border-border text-muted-foreground/50 cursor-not-allowed"
-                >
-                  Ask
-                </button>
-              </div>
-            </div>
-          </div>
+          <TabsHeader
+            isAskTooltipOpen={isAskTooltipOpen}
+            setIsAskTooltipOpen={setIsAskTooltipOpen}
+          />
           <div className="p-8 text-center">
             <p className="text-destructive mb-4">Failed to load market data</p>
             <button
@@ -173,39 +204,15 @@ const ForecastPageImp = () => {
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div className="min-h-screen bg-background pt-32 xl:pt-0">
+    <div className="min-h-screen bg-background pt-24 xl:pt-0">
       {/* Main content container with Twitter-like layout */}
       <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
         <>
           {/* Tabs */}
-          <div className="border-b border-border bg-background sticky top-0 z-20 border-t border-border">
-            <div className="flex">
-              <button
-                type="button"
-                className="flex-1 px-4 py-3 font-medium border-b-2 border-b-primary text-primary bg-primary/5"
-              >
-                Predict
-              </button>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex-1">
-                      <button
-                        type="button"
-                        disabled
-                        className="w-full px-4 py-3 font-medium border-b-2 border-border text-muted-foreground/50 cursor-not-allowed"
-                      >
-                        Ask
-                      </button>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Coming Soon</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
+          <TabsHeader
+            isAskTooltipOpen={isAskTooltipOpen}
+            setIsAskTooltipOpen={setIsAskTooltipOpen}
+          />
 
           {/* Market Selector (direct market search) - always visible */}
           <div className="backdrop-blur-sm z-10 sticky top-2-">

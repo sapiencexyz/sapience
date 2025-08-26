@@ -3,7 +3,7 @@ import { prefetchEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import ForecastPageImp from '~/app/forecast/ForecastPageImp';
 import Hydrate from '~/components/Hydrate';
 import { SCHEMA_UID } from '~/lib/constants/eas';
-import { prefetchPredictions } from '~/hooks/graphql/usePredictions';
+import { prefetchForecasts } from '~/hooks/graphql/useForecasts';
 
 export function generateMetadata() {
   return {
@@ -23,7 +23,7 @@ const ForecastPage = async () => {
 
   // Prefetch enriched market groups data
   await prefetchEnrichedMarketGroups(serverQC);
-  await prefetchPredictions(serverQC, SCHEMA_UID);
+  await prefetchForecasts(serverQC, SCHEMA_UID);
 
   const state = dehydrate(serverQC);
   return (

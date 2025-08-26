@@ -19,7 +19,7 @@ import Link from 'next/link';
 import React from 'react';
 import { FrownIcon } from 'lucide-react';
 
-import type { FormattedAttestation } from '~/hooks/graphql/usePredictions';
+import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { getAttestationViewURL } from '~/lib/constants/eas';
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 import { useSapience } from '~/lib/context/SapienceProvider';

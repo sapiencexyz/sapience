@@ -172,11 +172,11 @@ const EditMarketDialog = ({ group, market }: Props) => {
           Edit
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] overflow-y-auto max-h-[90vh]">
+      <DialogContent className="sm:max-w-[700px] overflow-visible max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Edit Market #{market.marketId || market.id}</DialogTitle>
         </DialogHeader>
-        <div className="p-2">
+        <div className="p-2 overflow-y-auto max-h-[calc(90vh-120px)]">
           <MarketFormFields
             market={formMarket}
             onMarketChange={handleChange}

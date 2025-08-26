@@ -20,13 +20,13 @@ import { ChartLineIcon } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
-import ForecastInfoNotice from '~/components/forecasting/ForecastInfoNotice';
-import MarketGroupChart from '~/components/forecasting/MarketGroupChart';
-import MarketGroupHeader from '~/components/forecasting/MarketGroupHeader';
-import MarketStatusDisplay from '~/components/forecasting/MarketStatusDisplay';
-import UserPositionsTable from '~/components/forecasting/UserPositionsTable';
-import PredictForm from '~/components/forecasting/forms/PredictForm';
-import WagerFormFactory from '~/components/forecasting/forms/WagerFormFactory';
+import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
+import MarketGroupChart from '~/components/markets/MarketGroupChart';
+import MarketGroupHeader from '~/components/markets/MarketGroupHeader';
+import MarketStatusDisplay from '~/components/markets/MarketStatusDisplay';
+import UserPositionsTable from '~/components/markets/UserPositionsTable';
+import PredictForm from '~/components/markets/forms/ForecastForm';
+import WagerFormFactory from '~/components/markets/forms/WagerFormFactory';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import {
   MarketGroupPageProvider,

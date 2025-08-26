@@ -1,0 +1,38 @@
+import type { MarketGroupType, MarketType } from '@sapience/ui/types';
+
+import type { MarketGroupClassification } from '~/lib/types';
+import { getMarketHeaderQuestion } from '~/lib/utils/util';
+
+interface MarketGroupHeaderProps {
+  marketGroupData: MarketGroupType;
+  activeMarket: MarketType | undefined;
+  chainId: number;
+  marketClassification: MarketGroupClassification | undefined;
+  chainShortName: string;
+}
+
+const MarketGroupHeader: React.FC<MarketGroupHeaderProps> = ({
+  marketGroupData,
+  activeMarket,
+}) => {
+  // Determine which question to display using the utility function
+  const displayQuestion = getMarketHeaderQuestion(
+    marketGroupData,
+    activeMarket
+  );
+
+  return (
+    <div className="w-full p-3 pt-6 pb-4 md:py-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-col gap-3">
+          <h1 className="text-2xl md:text-4xl font-normal mb-2 leading-tight flex items-center gap-2.5">
+            {displayQuestion}
+          </h1>
+          {/* End time badge moved to wager form */}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default MarketGroupHeader;

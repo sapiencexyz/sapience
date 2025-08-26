@@ -13,11 +13,11 @@ import { useEffect, useState } from 'react';
 import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
 import { LineType, TimeInterval } from '@sapience/ui/types/charts';
 
-import OrderBookChart from '~/components/charts/OrderBookChart';
-import PriceChart from '~/components/charts/PriceChart';
-import MarketDataTables from '~/components/DataDrawer';
-import MarketHeader from '~/components/forecasting/MarketHeader';
-import PositionSelector from '~/components/forecasting/PositionSelector';
+import OrderBookChart from '~/components/markets/charts/OrderBookChart';
+import PriceChart from '~/components/markets/charts/PriceChart';
+import MarketDataTables from '~/components/markets/DataDrawer';
+import MarketHeader from '~/components/markets/MarketHeader';
+import PositionSelector from '~/components/markets/PositionSelector';
 
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
@@ -39,7 +39,7 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 
 const SimpleTradeWrapper = dynamic(
   () =>
-    import('~/components/forecasting/SimpleTradeWrapper').then(
+    import('~/components/markets/SimpleTradeWrapper').then(
       (mod) => mod.default
     ),
   {
@@ -51,7 +51,7 @@ const SimpleTradeWrapper = dynamic(
 );
 
 const SimpleLiquidityWrapper = dynamic(
-  () => import('~/components/forecasting/SimpleLiquidityWrapper'),
+  () => import('~/components/markets/SimpleLiquidityWrapper'),
   {
     ssr: false,
     loading: () => (

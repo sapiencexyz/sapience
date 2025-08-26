@@ -10,7 +10,7 @@ import {
 } from '@sapience/ui/components/ui/carousel';
 import { useSidebar } from '@sapience/ui/components/ui/sidebar';
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
-import MarketGroupCard from '../forecasting/MarketGroupCard';
+import MarketGroupCard from '../markets/MarketGroupCard';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
@@ -223,13 +223,7 @@ export default function FeaturedMarketGroup() {
   return (
     <section className="pt-0 px-0 w-full relative z-10">
       <div className="w-full px-0">
-        {groupedMarketGroups.length === 0 ? (
-          <div className="text-center">
-            <p className="text-lg text-muted-foreground">
-              No active market groups available
-            </p>
-          </div>
-        ) : (
+        {groupedMarketGroups.length === 0 ? null : (
           <MobileAndDesktopLists groupedMarketGroups={groupedMarketGroups} />
         )}
       </div>
