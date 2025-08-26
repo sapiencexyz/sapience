@@ -25,8 +25,8 @@
   "dependencies": {
     "@apollo/client": "^3.12.4",
     "@hookform/resolvers": "3.9.0",
-    "@privy-io/react-auth": "^2.21.4",
-    "@privy-io/server-auth": "^1.31.1",
+    "@privy-io/react-auth": "^2.22.0",
+    "@privy-io/server-auth": "^1.32.0",
     "@privy-io/wagmi": "^1.0.6",
     "@rainbow-me/rainbowkit": "^2.1.5",
     "@sapience/ui": "workspace:*",
