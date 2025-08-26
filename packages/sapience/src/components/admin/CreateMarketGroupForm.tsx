@@ -31,11 +31,11 @@ import { isAddress } from 'viem';
 import { useAccount, useChainId, useSignMessage } from 'wagmi';
 import { z } from 'zod';
 
-import { useResources } from '~/hooks/useResources';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { FOCUS_AREAS } from '../../lib/constants/focusAreas';
 import CopyMarketParametersDialog from './CopyMarketParametersDialog';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
+import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
+import { useResources } from '~/hooks/useResources';
 
 // Use environment variable for API base URL, fallback to /api
 const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';

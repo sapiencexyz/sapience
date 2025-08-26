@@ -34,20 +34,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify caller's Privy access token
-    const authorization =
-      request.headers.get('authorization') ||
-      request.headers.get('Authorization');
-    if (!authorization) {
+    // Verify caller's Privy access token from cookie "privy-token"
+    const cookieHeader = request.headers.get('cookie') || '';
+    const rawCookie = cookieHeader
+      .split(';')
+      .map((v) => v.trim())
+      .find((v) => v.startsWith('privy-token='));
+    const token = rawCookie
+      ? decodeURIComponent(rawCookie.split('=')[1] || '')
+      : '';
+    if (!token) {
       return NextResponse.json(
-        { error: 'Unauthorized: missing Authorization header' },
+        { error: 'Unauthorized: missing privy-token cookie' },
         { status: 401 }
       );
     }
-    let token;
     try {
       const client = getPrivyClient();
-      token = authorization.replace(/^Bearer\s+/i, '');
       await client.verifyAuthToken(token);
     } catch (_err) {
       return NextResponse.json(
@@ -59,11 +62,11 @@ export async function POST(request: Request) {
     const caip2 = `eip155:${chainId}`;
     const client = getPrivyClient();
 
-    const {authorizationKey} = await client.walletApi.generateUserSigner({
-      userJwt: token
+    const { authorizationKey } = await client.walletApi.generateUserSigner({
+      userJwt: token,
     });
 
-    await client.walletApi.updateAuthorizationKey(authorizationKey);
+    client.walletApi.updateAuthorizationKey(authorizationKey);
 
     // Use Privy Server Auth SDK to send a sponsored transaction
     const result = await client.walletApi.ethereum.sendTransaction({

@@ -88,8 +88,8 @@ const config = createConfig({
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
     <PrivyProvider
-      appId="cm9x5nf6q00gmk10ns01ppicr"
-      clientId="client-WY5ixY1AeM6aabHPcJZPirK3j3Cemt2wAotTQ3yeT7bfX"
+      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
+      clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID}
       config={{
         defaultChain: arbitrum,
         embeddedWallets: {

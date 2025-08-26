@@ -31,7 +31,7 @@ export function useSapienceWriteContract({
   const { toast } = useToast();
   const [chainId, setChainId] = useState<number | undefined>(undefined);
   const { wallets } = useWallets();
-  const { user, getAccessToken } = usePrivy();
+  const { user } = usePrivy();
   const embeddedWallet = useMemo(() => {
     const match = wallets?.find(
       (wallet) => (wallet as any)?.walletClientType === 'privy'
@@ -98,12 +98,6 @@ export function useSapienceWriteContract({
             functionName,
             args: fnArgs,
           });
-          const token = await getAccessToken();
-          if (!token) {
-            throw new Error(
-              'Unauthorized: missing Privy access token. Please log in again.'
-            );
-          }
           const walletId = user?.wallet?.id;
           if (!walletId) {
             throw new Error(
@@ -114,8 +108,8 @@ export function useSapienceWriteContract({
             method: 'POST',
             headers: {
               'content-type': 'application/json',
-              Authorization: `Bearer ${token}`,
             },
+            credentials: 'include',
             body: JSON.stringify({
               walletId,
               chainId: Number(_chainId),
@@ -184,7 +178,6 @@ export function useSapienceWriteContract({
       onError,
       onTxHash,
       user,
-      getAccessToken,
     ]
   );
 
@@ -211,12 +204,6 @@ export function useSapienceWriteContract({
               const body = (args[0] as any) ?? {};
               const calls = Array.isArray(body?.calls) ? body.calls : [];
               let lastResult: any = undefined;
-              const token = await getAccessToken();
-              if (!token) {
-                throw new Error(
-                  'Unauthorized: missing Privy access token. Please log in again.'
-                );
-              }
               const walletId = user?.wallet?.id;
               if (!walletId) {
                 throw new Error(
@@ -229,8 +216,8 @@ export function useSapienceWriteContract({
                   method: 'POST',
                   headers: {
                     'content-type': 'application/json',
-                    Authorization: `Bearer ${token}`,
                   },
+                  credentials: 'include',
                   body: JSON.stringify({
                     walletId,
                     chainId: Number(_chainId),
@@ -334,7 +321,6 @@ export function useSapienceWriteContract({
       onTxHash,
       isEmbeddedWallet,
       user,
-      getAccessToken,
     ]
   );
 
