@@ -13,6 +13,7 @@ import type { PositionType } from '@sapience/ui/types';
 import { FrownIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SellPositionButton from '../markets/SellPositionButton';
+import SharePositionDialog from '../markets/SharePositionDialog';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
@@ -327,6 +328,10 @@ export default function TraderPositionsTable({
                                 />
                               )
                             ))}
+                          {/* Share button available to all users for their own trades */}
+                          {isOwner && (
+                            <SharePositionDialog position={position} />
+                          )}
                         </div>
                       </TableCell>
                     </>
