@@ -67,8 +67,6 @@ export default function SharePositionDialog({
     if (groupAddress && marketId && position.positionId) {
       sp.set('group', groupAddress);
       sp.set('mid', String(marketId));
-      sp.set('pid', String(position.positionId));
-      if (position.owner) sp.set('owner', position.owner);
     }
     // Always provide text fallbacks so the route can render even if fetch fails
     sp.set('q', question);

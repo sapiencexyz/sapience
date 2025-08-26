@@ -13,15 +13,25 @@ export async function GET(req: Request) {
       });
     }
 
-    const safeSlice = (val: string | null, max: number) =>
-      (val || '').toString().slice(0, max);
+    const normalizeText = (val: string | null, max: number) =>
+      (val || '')
+        .toString()
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, max);
+
     const question =
-      safeSlice(searchParams.get('q'), 160) || 'Trade on Sapience';
-    const wager = safeSlice(searchParams.get('wager'), 32);
-    const payout = safeSlice(searchParams.get('payout'), 32);
-    const symbol = safeSlice(searchParams.get('symbol'), 16);
-    const dir = safeSlice(searchParams.get('dir'), 16); // 'on Yes' | 'on No' | 'long' | 'short'
-    const addr = safeSlice(searchParams.get('addr'), 48);
+      normalizeText(searchParams.get('q'), 160) || 'Trade on Sapience';
+    const wager = normalizeText(searchParams.get('wager'), 32);
+    const payout = normalizeText(searchParams.get('payout'), 32);
+    const symbol = normalizeText(searchParams.get('symbol'), 16);
+    const dir = normalizeText(searchParams.get('dir'), 16); // 'on Yes' | 'on No' | 'long' | 'short'
+
+    // Validate and normalize Ethereum address
+    const rawAddr = (searchParams.get('addr') || '').toString();
+    const cleanedAddr = rawAddr.replace(/\s/g, '').toLowerCase();
+    const addr = /^0x[a-f0-9]{40}$/.test(cleanedAddr) ? cleanedAddr : '';
 
     const lowerDir = (dir || '').toLowerCase();
     const yesNoLabel = lowerDir.includes('on yes')
