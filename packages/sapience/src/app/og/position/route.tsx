@@ -7,11 +7,16 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     if (searchParams.has('debug')) {
-      return new Response('ok', { status: 200, headers: { 'content-type': 'text/plain' } });
+      return new Response('ok', {
+        status: 200,
+        headers: { 'content-type': 'text/plain' },
+      });
     }
 
-    const safeSlice = (val: string | null, max: number) => (val || '').toString().slice(0, max);
-    const question = safeSlice(searchParams.get('q'), 160) || 'Trade on Sapience';
+    const safeSlice = (val: string | null, max: number) =>
+      (val || '').toString().slice(0, max);
+    const question =
+      safeSlice(searchParams.get('q'), 160) || 'Trade on Sapience';
     const wager = safeSlice(searchParams.get('wager'), 32);
     const payout = safeSlice(searchParams.get('payout'), 32);
     const symbol = safeSlice(searchParams.get('symbol'), 16);
@@ -19,12 +24,39 @@ export async function GET(req: Request) {
     const addr = safeSlice(searchParams.get('addr'), 48);
 
     const lowerDir = (dir || '').toLowerCase();
-    const yesNoLabel = lowerDir.includes('on yes') ? 'Yes' : lowerDir.includes('on no') ? 'No' : '';
-    const longShortLabel = lowerDir === 'long' ? 'Long' : lowerDir === 'short' ? 'Short' : '';
+    const yesNoLabel = lowerDir.includes('on yes')
+      ? 'Yes'
+      : lowerDir.includes('on no')
+        ? 'No'
+        : '';
+    const longShortLabel =
+      lowerDir === 'long' ? 'Long' : lowerDir === 'short' ? 'Short' : '';
 
     // Resolve asset URLs from public folder
     const logoUrl = new URL('/sapience.svg', req.url).toString();
     const bgUrl = new URL('/share_bg.png', req.url).toString();
+
+    // Load fonts from public folder
+    const [avenirRegular, avenirDemi, avenirBold] = await Promise.all([
+      fetch(
+        new URL(
+          '/AvenirNextRoundedRegular-1080183-export/AvenirNextRoundedRegular-1080183.ttf',
+          req.url
+        )
+      ).then((res) => res.arrayBuffer()),
+      fetch(
+        new URL(
+          '/AvenirNextRoundedDemi-1080178-export/AvenirNextRoundedDemi-1080178.ttf',
+          req.url
+        )
+      ).then((res) => res.arrayBuffer()),
+      fetch(
+        new URL(
+          '/AvenirNextRoundedBold-1080176-export/AvenirNextRoundedBold-1080176.ttf',
+          req.url
+        )
+      ).then((res) => res.arrayBuffer()),
+    ]);
 
     const width = 1200;
     const height = 630;
@@ -41,7 +73,8 @@ export async function GET(req: Request) {
             padding: 48,
             background: '#FFFFFF',
             color: '#0B1021',
-            fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
+            fontFamily:
+              'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
             position: 'relative',
           }}
         >
@@ -61,7 +94,13 @@ export async function GET(req: Request) {
               alt=""
               width={800}
               height={800}
-              style={{ display: 'flex', width: 800, height: 800, objectFit: 'cover', opacity: 0.66 }}
+              style={{
+                display: 'flex',
+                width: 800,
+                height: 800,
+                objectFit: 'cover',
+                opacity: 0.66,
+              }}
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -80,20 +119,39 @@ export async function GET(req: Request) {
                 display: 'flex',
                 fontSize: 42,
                 lineHeight: 1.2,
-                fontWeight: 700,
+                fontWeight: 600,
                 letterSpacing: -0.5,
               }}
             >
               {question}
             </div>
             {(wager || dir || payout) && (
-              <div style={{ display: 'flex', fontSize: 26, opacity: 0.95, alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  fontSize: 26,
+                  opacity: 0.95,
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+              >
                 <div style={{ display: 'flex' }}>
-                  Wagered {wager}{wager ? ` ${symbol}` : ''}
+                  Wagered {wager}
+                  {wager ? ` ${symbol}` : ''}
                 </div>
                 {yesNoLabel || longShortLabel ? (
                   <>
-                    <div style={{ display: 'block', marginLeft: -6, marginRight: 6, position: 'relative', top: 8 }}>on</div>
+                    <div
+                      style={{
+                        display: 'block',
+                        marginLeft: -6,
+                        marginRight: 6,
+                        position: 'relative',
+                        top: 8,
+                      }}
+                    >
+                      on
+                    </div>
                     <div
                       style={{
                         display: 'flex',
@@ -107,7 +165,7 @@ export async function GET(req: Request) {
                           yesNoLabel === 'Yes' || longShortLabel === 'Long'
                             ? '#10B981'
                             : '#EF4444',
-                        fontWeight: 800,
+                        fontWeight: 600,
                         border:
                           yesNoLabel === 'Yes' || longShortLabel === 'Long'
                             ? '2px solid #10B981'
@@ -122,7 +180,9 @@ export async function GET(req: Request) {
                   <div style={{ display: 'flex' }}>on {dir}</div>
                 ) : null}
                 {payout && (
-                  <div style={{ display: 'flex' }}>to win {payout} {symbol}</div>
+                  <div style={{ display: 'flex' }}>
+                    to win {payout} {symbol}
+                  </div>
                 )}
               </div>
             )}
@@ -138,12 +198,25 @@ export async function GET(req: Request) {
             }}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ display: 'flex', opacity: 0.7 }}>Ethereum Account Address</div>
+              <div style={{ display: 'flex', opacity: 0.7 }}>
+                Ethereum Account Address
+              </div>
               <div style={{ display: 'flex', opacity: 0.85 }}>{addr}</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-              <div style={{ display: 'flex', opacity: 0.7 }}>Explore Prediction Markets</div>
-              <div style={{ display: 'flex', opacity: 0.85, fontWeight: 800 }}>www.sapience.xyz</div>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-end',
+                gap: 4,
+              }}
+            >
+              <div style={{ display: 'flex', opacity: 0.7 }}>
+                Explore Prediction Markets
+              </div>
+              <div style={{ display: 'flex', opacity: 0.85, fontWeight: 600 }}>
+                www.sapience.xyz
+              </div>
             </div>
           </div>
         </div>
@@ -151,6 +224,26 @@ export async function GET(req: Request) {
       {
         width,
         height,
+        fonts: [
+          {
+            name: 'AvenirNextRounded',
+            data: avenirRegular,
+            weight: 400,
+            style: 'normal',
+          },
+          {
+            name: 'AvenirNextRounded',
+            data: avenirDemi,
+            weight: 600,
+            style: 'normal',
+          },
+          {
+            name: 'AvenirNextRounded',
+            data: avenirBold,
+            weight: 700,
+            style: 'normal',
+          },
+        ],
       }
     );
   } catch (err) {
@@ -158,5 +251,3 @@ export async function GET(req: Request) {
     return new Response(`OG route error: ${message}`, { status: 500 });
   }
 }
-
-

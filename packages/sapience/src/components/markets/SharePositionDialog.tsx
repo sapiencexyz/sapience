@@ -8,15 +8,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@sapience/ui/components/ui/dialog';
-import { Input } from '@sapience/ui/components/ui/input';
-import { Label } from '@sapience/ui/components/ui/label';
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Copy, Share2 } from 'lucide-react';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { PositionType } from '@sapience/ui/types';
 import LottieLoader from '../shared/LottieLoader';
-
 
 interface SharePositionDialogProps {
   position: PositionType;
@@ -105,14 +102,6 @@ export default function SharePositionDialog({
     if (open) setCacheBust(String(Date.now()));
   }, [open]);
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-    } catch {
-      // ignore
-    }
-  };
-
   // Append cache-busting param only for the preview image to avoid cached renders
   const previewSrc = `${imageSrc}${cacheBust ? `&cb=${cacheBust}` : ''}`;
 
@@ -125,7 +114,9 @@ export default function SharePositionDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button size="xs" variant="outline">Share</Button>
+          <Button size="xs" variant="outline">
+            Share
+          </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[720px]">
@@ -151,42 +142,55 @@ export default function SharePositionDialog({
             />
           </div>
           <div className="flex gap-3">
-            <Button size="lg" className="w-1/2" type="button" variant="outline" onClick={async () => {
-              try {
-                const res = await fetch(shareUrl, { cache: 'no-store' });
-                const blob = await res.blob();
-                // Try copying image to clipboard
-                // @ts-expect-error: ClipboardItem may not exist in TS lib
-                if (navigator.clipboard && window.ClipboardItem) {
-                  // @ts-expect-error: ClipboardItem may not exist in TS lib
-                  const item = new ClipboardItem({ [blob.type]: blob });
-                  await navigator.clipboard.write([item]);
-                } else {
-                  await navigator.clipboard.writeText(shareUrl);
-                }
-                toast({ title: 'Image copied successfully' });
-              } catch {
+            <Button
+              size="lg"
+              className="w-1/2"
+              type="button"
+              variant="outline"
+              onClick={async () => {
                 try {
-                  await navigator.clipboard.writeText(shareUrl);
+                  const res = await fetch(shareUrl, { cache: 'no-store' });
+                  const blob = await res.blob();
+                  // Try copying image to clipboard
+                  if (navigator.clipboard && window.ClipboardItem) {
+                    const item = new ClipboardItem({ [blob.type]: blob });
+                    await navigator.clipboard.write([item]);
+                  } else {
+                    await navigator.clipboard.writeText(shareUrl);
+                  }
                   toast({ title: 'Image copied successfully' });
                 } catch {
-                  // ignore
+                  try {
+                    await navigator.clipboard.writeText(shareUrl);
+                    toast({ title: 'Image copied successfully' });
+                  } catch {
+                    // ignore
+                  }
                 }
-              }
-            }}>
+              }}
+            >
               <Copy className="mr-2 h-4 w-4" /> Copy Image
             </Button>
-            <Button size="lg" className="w-1/2" type="button" onClick={async () => {
-              if (navigator.share) {
-                try {
-                  await navigator.share({ title: 'Share', text: question, url: shareUrl });
-                  return;
-                } catch {
-                  // fallthrough
+            <Button
+              size="lg"
+              className="w-1/2"
+              type="button"
+              onClick={async () => {
+                if (navigator.share) {
+                  try {
+                    await navigator.share({
+                      title: 'Share',
+                      text: question,
+                      url: shareUrl,
+                    });
+                    return;
+                  } catch {
+                    // fallthrough
+                  }
                 }
-              }
-              window.open(shareUrl, '_blank', 'noopener,noreferrer');
-            }}>
+                window.open(shareUrl, '_blank', 'noopener,noreferrer');
+              }}
+            >
               <Share2 className="mr-2 h-4 w-4" /> Share
             </Button>
           </div>
@@ -195,5 +199,3 @@ export default function SharePositionDialog({
     </Dialog>
   );
 }
-
-
