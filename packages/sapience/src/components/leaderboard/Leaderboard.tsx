@@ -41,7 +41,9 @@ const LoadingIndicator = () => (
 );
 
 const Leaderboard = () => {
+  console.log('[MAIN LEADERBOARD DEBUG] Component rendering (this is the /leaderboard page)...');
   const { leaderboardData, isLoading, wstEthPriceUsd } = useLeaderboard();
+  console.log('[MAIN LEADERBOARD DEBUG] Hook data:', { leaderboardData, isLoading });
 
   const columns = useMemo<ColumnDef<AggregatedLeaderboardEntry>[]>(
     () => [
@@ -72,6 +74,8 @@ const Leaderboard = () => {
     getCoreRowModel: getCoreRowModel(),
     meta: {
       wstEthPriceUsd,
+      isAlreadyUsd: true, // Signal that values are already in USD
+      collateralAddress: undefined, // Not applicable for aggregated view
     },
   });
 

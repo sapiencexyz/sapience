@@ -44,6 +44,7 @@ export class MarketPnL {
   }
 
   async getMarketPnLs(chainId: number, address: string, marketId: number) {
+    console.log(`[PnL DEBUG] Getting PnL for market: chainId=${chainId}, address=${address}, marketId=${marketId}`);
     const currentTimestamp = Date.now() / 1000;
     const datapointTime = startOfInterval(currentTimestamp, this.INTERVAL);
 
@@ -62,10 +63,12 @@ export class MarketPnL {
     }
 
     if (market.datapointTime === datapointTime) {
+      console.log(`[PnL DEBUG] Returning cached data (last calculated at ${new Date(market.datapointTime * 1000).toISOString()})`);
       return market.pnlData;
     }
 
     // Build the pnlData array for this market and datapointTime
+    console.log(`[PnL DEBUG] Recalculating PnL data (new datapoint time: ${new Date(datapointTime * 1000).toISOString()})`);
     market.pnlData = await this.buildPnlData(market.marketData);
     market.datapointTime = datapointTime;
 
@@ -130,6 +133,7 @@ export class MarketPnL {
           }
         }
         ownerPnl.totalPnL = ownerPnl.totalWithdrawals - ownerPnl.totalDeposits;
+        console.log(`[PnL DEBUG] Owner ${ownerId}: deposits=${ownerPnl.totalDeposits}, withdrawals=${ownerPnl.totalWithdrawals}, totalPnL=${ownerPnl.totalPnL}`);
       }
 
       // 6. Return the PnL data array
@@ -154,11 +158,17 @@ export class MarketPnL {
           },
           marketId: Number(marketId),
         },
+        include: {
+          market_group: true,
+        },
       });
 
       if (!market) {
+        console.log(`[PnL DEBUG] Market not found for chainId=${chainId}, address=${address}, marketId=${marketId}`);
         return undefined;
       }
+
+      console.log(`[PnL DEBUG] Found market with collateral: ${market.market_group?.collateralAsset}, symbol: ${market.market_group?.collateralSymbol}`);
 
       const marketPnLData: MarketPnLData = {
         marketData: {

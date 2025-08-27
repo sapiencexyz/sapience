@@ -39,6 +39,8 @@ const GET_MARKET_LEADERBOARD = /* GraphQL */ `
     ) {
       owner
       totalPnL # This is a string representing BigInt
+      collateralAddress
+      collateralSymbol
     }
   }
 `;
@@ -47,6 +49,8 @@ const GET_MARKET_LEADERBOARD = /* GraphQL */ `
 interface RawMarketLeaderboardEntry {
   owner: string;
   totalPnL: string;
+  collateralAddress?: string;
+  collateralSymbol?: string;
 }
 
 // Type definitions for GraphQL responses
@@ -63,6 +67,7 @@ const useAllTimeLeaderboard = () => {
   return useQuery<AggregatedLeaderboardEntry[]>({
     queryKey: ['allTimeLeaderboard'], // Query key remains simple for now
     queryFn: async () => {
+      console.log('[useAllTimeLeaderboard DEBUG] Starting leaderboard query...');
       try {
         // 1. Fetch all markets
         const marketGroupsData =
@@ -109,8 +114,10 @@ const useAllTimeLeaderboard = () => {
 
         const leaderboardResponses = await Promise.all(leaderboardPromises);
 
-        // 4. Aggregate results
+        // 4. Aggregate results (need to convert to USD for each market's collateral)
         const aggregatedPnL: { [owner: string]: number } = {};
+        
+        console.log(`[useLeaderboard DEBUG] Processing ${leaderboardResponses.length} market responses`);
 
         leaderboardResponses.forEach((response, index) => {
           const identifier = publicMarketIdentifiers[index]; // For logging context
@@ -126,6 +133,11 @@ const useAllTimeLeaderboard = () => {
           const marketLeaderboard = response.getMarketLeaderboard;
 
           if (marketLeaderboard) {
+            // Get collateral info for this market
+            const collateralAddress = marketLeaderboard[0]?.collateralAddress;
+            const collateralSymbol = marketLeaderboard[0]?.collateralSymbol;
+            console.log(`[useLeaderboard DEBUG] Market ${identifier.address} uses collateral: ${collateralSymbol} (${collateralAddress})`);
+            
             marketLeaderboard.forEach((entry) => {
               const { owner, totalPnL: rawPnlString } = entry; // Rename for clarity
               let pnlValue: bigint;
@@ -146,17 +158,30 @@ const useAllTimeLeaderboard = () => {
                 aggregatedPnL[owner] = 0;
               }
 
-              // Convert BigInt to Number for aggregation
-              const pnlNumber = Number(pnlValue);
-              if (Number.isNaN(pnlNumber)) {
+              // Convert BigInt to Number and then to USD based on collateral type
+              const pnlTokenAmount = Number(pnlValue) / 1e18; // Convert from wei to token amount
+              
+              // Determine USD value based on collateral
+              let pnlUsd: number;
+              if (collateralAddress?.toLowerCase() === '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3') {
+                // testUSDe is always $1
+                pnlUsd = pnlTokenAmount * 1.0;
+                console.log(`[useLeaderboard DEBUG] ${owner}: ${pnlTokenAmount} testUSDe = $${pnlUsd}`);
+              } else {
+                // Default to wstETH pricing (you could extend this for other tokens)
+                const wstEthPrice = 5540; // Fallback price - you could fetch this dynamically
+                pnlUsd = pnlTokenAmount * wstEthPrice;
+                console.log(`[useLeaderboard DEBUG] ${owner}: ${pnlTokenAmount} ${collateralSymbol} = $${pnlUsd} (at $${wstEthPrice})`);
+              }
+              
+              if (Number.isNaN(pnlUsd)) {
                 console.error(
-                  `Converted PnL number is NaN for owner ${owner}. BigInt value was: ${pnlValue}. Raw string was: '${rawPnlString}'`
+                  `Converted PnL USD is NaN for owner ${owner}. Token amount: ${pnlTokenAmount}, collateral: ${collateralSymbol}`
                 );
-                // Skip aggregation if NaN
                 return;
               }
 
-              aggregatedPnL[owner] += pnlNumber;
+              aggregatedPnL[owner] += pnlUsd;
             });
           } else {
             console.warn(
@@ -197,6 +222,7 @@ const useCryptoPrices = () => {
           ethereum: { usd: response?.eth ?? null },
           bitcoin: { usd: response?.btc ?? null },
           solana: { usd: response?.sol ?? null },
+          testusde: { usd: response?.testusde ?? null },
         };
         // Ensure prices are numbers or null
         prices.ethereum.usd =
@@ -205,6 +231,8 @@ const useCryptoPrices = () => {
           prices.bitcoin.usd !== null ? Number(prices.bitcoin.usd) : null;
         prices.solana.usd =
           prices.solana.usd !== null ? Number(prices.solana.usd) : null;
+        prices.testusde.usd =
+          prices.testusde.usd !== null ? Number(prices.testusde.usd) : null;
 
         // Check for NaN explicitly after conversion
         if (Number.isNaN(prices.ethereum.usd as number)) {
@@ -228,6 +256,13 @@ const useCryptoPrices = () => {
           );
           prices.solana.usd = null;
         }
+        if (Number.isNaN(prices.testusde.usd as number)) {
+          console.warn(
+            'testUSDe price is NaN after conversion. API response:',
+            response?.testusde
+          );
+          prices.testusde.usd = null;
+        }
 
         return prices;
       } catch (error) {
@@ -236,6 +271,7 @@ const useCryptoPrices = () => {
           ethereum: { usd: null },
           bitcoin: { usd: null },
           solana: { usd: null },
+          testusde: { usd: null },
         };
       }
     },
@@ -278,10 +314,13 @@ const useStEthPerToken = (chainId = 1) => {
 // --- Main Hook ---
 
 export const useLeaderboard = () => {
-  const { data: leaderboardData, isLoading } = useAllTimeLeaderboard();
+  console.log('[useLeaderboard DEBUG] Hook called');
+  const { data: leaderboardData, isLoading, error } = useAllTimeLeaderboard();
   const { data: cryptoPrices } = useCryptoPrices();
   const { data: stEthPerToken } = useStEthPerToken(); // Using default chainId 1
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('all');
+  
+  console.log('[useLeaderboard DEBUG] Query state:', { isLoading, error, dataLength: leaderboardData?.length });
 
   // Calculate wstETH price in USD
   const ethPriceUsd = cryptoPrices?.ethereum?.usd || null;
@@ -294,6 +333,8 @@ export const useLeaderboard = () => {
       ? stEthPerTokenNormalized * ethPriceUsd
       : null;
 
+  console.log('[useLeaderboard DEBUG] Returning data:', { leaderboardData, isLoading, wstEthPriceUsd });
+  
   return {
     leaderboardData,
     isLoading,

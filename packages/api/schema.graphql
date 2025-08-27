@@ -2658,6 +2658,8 @@ enum NullsOrder {
 }
 
 type PnLType {
+  collateralAddress: String
+  collateralSymbol: String
   marketId: Int!
   openPositionsPnL: String!
   owner: String!

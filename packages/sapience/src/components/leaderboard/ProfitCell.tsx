@@ -7,18 +7,42 @@ import type React from 'react';
 const PnLDisplay = ({
   value,
   wstEthPriceUsd,
+  collateralAddress,
+  isAlreadyUsd = false,
 }: {
   value: number;
   wstEthPriceUsd: number | null;
+  collateralAddress?: string;
+  isAlreadyUsd?: boolean;
 }) => {
-  const displayValue = value / 1e18;
-  // Use a fallback price if the price is unavailable, maybe log this occurrence
-  const effectivePrice = wstEthPriceUsd ?? 1800;
-  const usdValue = displayValue * effectivePrice;
+  console.log(`[ProfitCell DEBUG] Raw value: ${value}, collateralAddress: ${collateralAddress}, isAlreadyUsd: ${isAlreadyUsd}, wstEthPriceUsd: ${wstEthPriceUsd}`);
+  
+  let usdValue: number;
+  
+  if (isAlreadyUsd) {
+    // Value is already in USD (from aggregated leaderboard)
+    usdValue = value;
+    console.log(`[ProfitCell DEBUG] Value already in USD: $${usdValue}`);
+  } else {
+    // Convert from token amount to USD (for market-specific leaderboard)
+    const displayValue = value / 1e18;
+    
+    // Determine price based on collateral address
+    let effectivePrice = wstEthPriceUsd ?? 1800; // Default fallback for wstETH
+    
+    // Check if this is your testUSDe token
+    if (collateralAddress?.toLowerCase() === '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3') {
+      effectivePrice = 1.0; // testUSDe is always $1
+      console.log(`[ProfitCell DEBUG] Detected testUSDe token, using $1 price`);
+    }
+    
+    usdValue = displayValue * effectivePrice;
+    console.log(`[ProfitCell DEBUG] Token conversion: ${displayValue} * ${effectivePrice} = $${usdValue}`);
+  }
 
   // Handle potential NaN values gracefully
   if (Number.isNaN(usdValue)) {
-    console.error('Calculated PnL resulted in NaN', { value, wstEthPriceUsd });
+    console.error('Calculated PnL resulted in NaN', { value, wstEthPriceUsd, collateralAddress });
     return <span>-</span>; // Display a dash or placeholder for NaN
   }
 
@@ -39,6 +63,8 @@ interface ProfitCellProps<TData> {
     options: {
       meta?: {
         wstEthPriceUsd?: number | null;
+        collateralAddress?: string;
+        isAlreadyUsd?: boolean;
       };
     };
   };
@@ -63,9 +89,11 @@ const ProfitCell = <TData,>({
   }
 
   const wstEthPriceUsd = table.options.meta?.wstEthPriceUsd ?? null; // Provide null as default
+  const collateralAddress = table.options.meta?.collateralAddress;
+  const isAlreadyUsd = table.options.meta?.isAlreadyUsd ?? false;
 
   // Render the display component with the extracted value and price
-  return <PnLDisplay value={value} wstEthPriceUsd={wstEthPriceUsd} />;
+  return <PnLDisplay value={value} wstEthPriceUsd={wstEthPriceUsd} collateralAddress={collateralAddress} isAlreadyUsd={isAlreadyUsd} />;
 };
 
 export default ProfitCell;

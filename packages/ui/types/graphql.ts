@@ -2819,6 +2819,8 @@ export type NullsOrder =
 
 export type PnLType = {
   __typename?: 'PnLType';
+  collateralAddress?: Maybe<Scalars['String']['output']>;
+  collateralSymbol?: Maybe<Scalars['String']['output']>;
   marketId: Scalars['Int']['output'];
   openPositionsPnL: Scalars['String']['output'];
   owner: Scalars['String']['output'];
