@@ -4,7 +4,7 @@ import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
 import Link from 'next/link';
 import { FormProvider, type UseFormReturn } from 'react-hook-form';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
 import {
@@ -26,6 +26,7 @@ import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWit
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
+import type { RfqParams, QuoteBid } from '~/lib/rfq/useRfqQuotes';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -48,6 +49,10 @@ interface BetslipContentProps {
   parlayCollateralSymbol?: string;
   parlayCollateralAddress?: `0x${string}`;
   parlayChainId?: number;
+  // RFQ integration (provided by parent to share a single WS connection)
+  rfqId?: string | null;
+  bids?: QuoteBid[];
+  requestQuotes?: (params: RfqParams | null) => void;
 }
 
 export const BetslipContent = ({
@@ -64,6 +69,8 @@ export const BetslipContent = ({
   parlayCollateralSymbol,
   parlayCollateralAddress,
   parlayChainId,
+  bids = [],
+  requestQuotes,
 }: BetslipContentProps) => {
   // Temporary feature flag: disable parlay UI while keeping code paths intact for easy re-enable
   const PARLAY_FEATURE_ENABLED = false;
@@ -130,6 +137,77 @@ export const BetslipContent = ({
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
     positionsWithMarketData.every((p) => p.isLoading);
+  // Bid selection state and sorting
+  const [selectedBidId, setSelectedBidId] = useState<string | null>(null);
+  const formatAddress = (addr?: string) => {
+    if (!addr || addr.length < 10) return addr || '—';
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+  const sortedBids = useMemo(() => {
+    const toBig = (v: string) => {
+      try {
+        return BigInt(v);
+      } catch {
+        const n = Number(v);
+        return BigInt(Number.isFinite(n) ? Math.floor(n) : 0);
+      }
+    };
+    return [...(bids || [])].sort((a, b) => {
+      const aP = toBig(a.quote.payout);
+      const bP = toBig(b.quote.payout);
+      if (bP > aP) return 1;
+      if (bP < aP) return -1;
+      return 0;
+    });
+  }, [bids]);
+  useEffect(() => {
+    if (!sortedBids || sortedBids.length === 0) {
+      setSelectedBidId(null);
+      return;
+    }
+    const exists = selectedBidId
+      ? sortedBids.some((b) => b.bidId === selectedBidId)
+      : false;
+    if (!selectedBidId || !exists) {
+      setSelectedBidId(sortedBids[0].bidId);
+    }
+  }, [sortedBids, selectedBidId]);
+  // Emit RFQ when parlay form values change
+  useEffect(() => {
+    if (!effectiveParlayMode) return;
+    if (positionsWithMarketData.length === 0) return;
+    if (!requestQuotes) return;
+    const yesNoPositions = positionsWithMarketData.filter(
+      (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
+    );
+    if (yesNoPositions.length === 0) return;
+
+    const chainId = parlayChainId || yesNoPositions[0].position.chainId;
+    const wager = parlayMethods.getValues('wagerAmount') || '0';
+    const minPayout = String(
+      Number(wager || '0') * Math.pow(2, yesNoPositions.length)
+    );
+    const predictedOutcomes = yesNoPositions.map((p) => ({
+      marketGroup: p.position.marketAddress,
+      marketId: p.position.marketId,
+      prediction: true,
+    }));
+
+    const orderExpirationTime = Math.floor(Date.now() / 1000) + 30 * 60;
+    requestQuotes({
+      chainId,
+      collateralWei: '0',
+      minPayoutWei: minPayout,
+      orderExpirationTime,
+      predictedOutcomes,
+    });
+  }, [
+    effectiveParlayMode,
+    positionsWithMarketData,
+    parlayMethods,
+    parlayChainId,
+    requestQuotes,
+  ]);
   return (
     <>
       <div className="w-full h-full flex flex-col">
@@ -199,8 +277,6 @@ export const BetslipContent = ({
               </div>
             </div>
           </div>
-
-          {effectiveParlayMode && null}
         </div>
 
         <div
@@ -468,11 +544,62 @@ export const BetslipContent = ({
                         </PopoverContent>
                       </Popover>
                     </div>
+                    {effectiveParlayMode && sortedBids.length > 0 && (
+                      <div className="space-y-2">
+                        {sortedBids.map((bid) => {
+                          const isSelected = selectedBidId === bid.bidId;
+                          return (
+                            <button
+                              key={bid.bidId}
+                              type="button"
+                              onClick={() => setSelectedBidId(bid.bidId)}
+                              className={`w-full flex items-center justify-between text-xs border rounded p-2 transition-colors ${
+                                isSelected
+                                  ? 'border-primary ring-1 ring-primary/50 bg-primary/5'
+                                  : 'border-border hover:bg-muted/50'
+                              }`}
+                              aria-pressed={isSelected}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="flex flex-col text-left">
+                                  <span>
+                                    Potential Payout: {bid.quote.payout}{' '}
+                                    {parlayCollateralSymbol || 'sUSDe'}
+                                  </span>
+                                  <span>
+                                    Bidder: {formatAddress(bid.taker)}
+                                  </span>
+                                  <span>
+                                    {(() => {
+                                      const ms =
+                                        bid.quote.validUntil * 1000 -
+                                        Date.now();
+                                      if (ms <= 0) return 'Expired';
+                                      const mins = Math.ceil(ms / 60000);
+                                      return `Expires in ${mins} minute${mins === 1 ? '' : 's'}`;
+                                    })()}
+                                  </span>
+                                </div>
+                              </div>
+                              <span
+                                className={`text-[11px] font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}
+                              >
+                                {isSelected ? 'Selected' : 'Select'}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <Button
                       className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                       disabled={
                         isParlaySubmitting ||
-                        positionsWithMarketData.some((p) => p.isLoading)
+                        positionsWithMarketData.some((p) => p.isLoading) ||
+                        (effectiveParlayMode &&
+                          sortedBids.length > 0 &&
+                          !selectedBidId)
                       }
                       type="submit"
                       size="lg"

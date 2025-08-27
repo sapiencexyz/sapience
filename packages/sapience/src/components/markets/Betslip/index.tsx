@@ -50,6 +50,7 @@ import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
 import { PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
+import { useRfqQuotes } from '~/lib/rfq/useRfqQuotes';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
 interface BetslipProps {
@@ -94,6 +95,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   const { toast } = useToast();
   // Parlay config: read minCollateral and collateral token decimals
   const parlayChainId = betSlipPositions[0]?.chainId || 8453;
+  const { rfqId, bids, requestQuotes, notifyOrderCreated } = useRfqQuotes();
 
   const configRead = useReadContracts({
     contracts: [
@@ -446,6 +448,13 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       clearBetSlip();
       setIsPopoverOpen(false);
     },
+    onOrderCreated: (requestId) => {
+      try {
+        notifyOrderCreated(requestId.toString());
+      } catch {
+        console.error('Failed to notify order created');
+      }
+    },
   });
 
   const handleIndividualSubmit = () => {
@@ -630,6 +639,9 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     parlayCollateralSymbol: collateralSymbol,
     parlayCollateralAddress: collateralToken,
     parlayChainId,
+    rfqId,
+    bids,
+    requestQuotes,
   };
 
   if (isCompact) {

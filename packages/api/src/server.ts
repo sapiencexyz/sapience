@@ -3,6 +3,8 @@ import { initializeDataSource } from './db';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
+import { createServer } from 'http';
+import { attachRfqWebSocketServer } from './rfq/ws';
 import dotenv from 'dotenv';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -52,9 +54,19 @@ const startServer = async () => {
 
   handleMcpAppRequests(app, '/mcp');
 
-  app.listen(PORT, () => {
+  const httpServer = createServer(app);
+  const rfqWsEnabled = process.env.ENABLE_RFQ_WS !== 'false';
+  if (rfqWsEnabled) {
+    attachRfqWebSocketServer(httpServer);
+  } else {
+    console.log('RFQ WebSocket server disabled via ENABLE_RFQ_WS=false');
+  }
+  httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`GraphQL endpoint available at /graphql`);
+    if (rfqWsEnabled) {
+      console.log(`WS endpoint available at /ws/rfq`);
+    }
   });
 
   // Only set up Sentry error handling in production
