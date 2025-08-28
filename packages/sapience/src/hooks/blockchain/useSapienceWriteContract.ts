@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import type { useTransaction } from 'wagmi';
+import type { useTransactionReceipt } from 'wagmi';
 import { useWriteContract, useSendCalls, useConnectorClient } from 'wagmi';
 import type { Hash } from 'viem';
 import { encodeFunctionData } from 'viem';
@@ -12,7 +12,9 @@ import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 
 interface useSapienceWriteContractProps {
-  onSuccess?: (receipt: ReturnType<typeof useTransaction>['data']) => void;
+  onSuccess?: (
+    receipt: ReturnType<typeof useTransactionReceipt>['data']
+  ) => void;
   onError?: (error: Error) => void;
   onTxHash?: (txHash: Hash) => void;
   successMessage?: string;
@@ -325,7 +327,7 @@ export function useSapienceWriteContract({
   );
 
   const handleTxSuccess = useCallback(
-    (receipt: ReturnType<typeof useTransaction>['data']) => {
+    (receipt: ReturnType<typeof useTransactionReceipt>['data']) => {
       if (!txHash) return;
 
       toast({
@@ -333,7 +335,6 @@ export function useSapienceWriteContract({
         description: successMessage,
         duration: 5000,
       });
-
       onSuccess?.(receipt);
       setTxHash(undefined);
     },

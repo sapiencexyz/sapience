@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
-import { useTransaction } from 'wagmi';
+import { useTransactionReceipt } from 'wagmi';
 
 interface UseMonitorTxStatusProps {
   hash?: `0x${string}`;
   chainId?: number;
   onLoading?: (isLoading: boolean) => void;
-  onSuccess?: (receipt: ReturnType<typeof useTransaction>['data']) => void;
+  onSuccess?: (
+    receipt: ReturnType<typeof useTransactionReceipt>['data']
+  ) => void;
   onError?: (error: Error) => void;
 }
 
@@ -25,13 +27,14 @@ export function useMonitorTxStatus({
     isSuccess,
     isPending,
     error,
-  } = useTransaction({
+  } = useTransactionReceipt({
     hash,
     chainId,
     query: {
       enabled: !!hash && chainId !== undefined,
     },
   });
+
 
   // Handle loading state
   useEffect(() => {
