@@ -1,10 +1,7 @@
 import erc20ABI from '@sapience/ui/abis/erc20abi.json';
 import { useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
-import {
-  useAccount,
-  useReadContract,
-} from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
@@ -129,7 +126,8 @@ export function useTokenApproval({
       console.error('Error approving tokens:', error);
       setIsApproving(false);
       setIsApproveSuccess(false);
-      const errorObj = error instanceof Error ? error : new Error(String(error));
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
       setError(errorObj);
       throw error;
     }
