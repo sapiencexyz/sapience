@@ -3,6 +3,7 @@ import { initializeDataSource } from './db';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
+import http from 'http';
 import dotenv from 'dotenv';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -13,6 +14,7 @@ import { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from './fixtures';
 import { handleMcpAppRequests } from './routes/mcp';
 import prisma from './db';
+import { createChatWebSocketServer } from './websocket/chat';
 const PORT = 3001;
 
 // Load environment variables
@@ -52,9 +54,15 @@ const startServer = async () => {
 
   handleMcpAppRequests(app, '/mcp');
 
-  app.listen(PORT, () => {
+  const server = http.createServer(app);
+
+  // Initialize WebSocket chat at /chat
+  createChatWebSocketServer(server);
+
+  server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`GraphQL endpoint available at /graphql`);
+    console.log(`WebSocket endpoint available at /chat`);
   });
 
   // Only set up Sentry error handling in production

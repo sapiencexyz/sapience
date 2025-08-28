@@ -15,7 +15,14 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen, Wallet } from 'lucide-react';
+import {
+  LogOut,
+  Menu,
+  User,
+  BookOpen,
+  Wallet,
+  MessageCircle,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -24,6 +31,7 @@ import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
 import SusdeBalance from './SusdeBalance';
+import { useChat } from '~/lib/context/ChatContext';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -52,11 +60,14 @@ const NavLinks = ({
   const { setOpenMobile, isMobile } = useSidebar();
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
+  const { openChat } = useChat();
   const connectedWallet = wallets[0];
   const linkClass = isMobileProp
     ? 'text-xl font-medium justify-start rounded-full'
     : 'text-base font-medium justify-start rounded-full';
   const activeClass = 'bg-secondary';
+
+  // No feature flag: Chat button is always available in the sidebar for authenticated users
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -116,7 +127,23 @@ const NavLinks = ({
       </Link>
       {ready && authenticated && connectedWallet && (
         <div className="mt-6">
-          <SusdeBalance onClick={handleLinkClick} />
+          <div className="flex w-fit mx-3 mt-0">
+            <Button
+              variant="outline"
+              size="xs"
+              className="rounded-full px-3 justify-start gap-2 border-black/30 dark:border-white/30"
+              onClick={() => {
+                handleLinkClick();
+                openChat();
+              }}
+            >
+              <MessageCircle className="h-3 w-3 scale-[0.8]" />
+              <span className="relative top-[1px]">Chat</span>
+            </Button>
+          </div>
+          <div className="mt-4">
+            <SusdeBalance onClick={handleLinkClick} />
+          </div>
           <Link
             href={`/profile/${connectedWallet.address}`}
             passHref

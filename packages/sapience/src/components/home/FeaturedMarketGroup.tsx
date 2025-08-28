@@ -213,7 +213,7 @@ export default function FeaturedMarketGroup() {
         <div className="w-full px-0">
           {/* Maintain space to prevent layout jump while data loads */}
           <div className="mt-0 mb-1 md:mb-4">
-            <div className="md:min-h-[150px] w-full animate-pulse rounded-md bg-muted/40" />
+            <div className="md:min-h-[150px] w-full" />
           </div>
         </div>
       </section>
@@ -320,7 +320,7 @@ function MobileAndDesktopLists({
         </Carousel>
       </div>
 
-      {/* Desktop: Embla carousel with auto-scroll */}
+      {/* Dewtop: Embla carousel with auto-scroll */}
       <div className="hidden md:block w-full px-0">
         <Carousel
           opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}

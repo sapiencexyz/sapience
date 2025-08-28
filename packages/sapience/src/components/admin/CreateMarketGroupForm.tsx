@@ -37,8 +37,8 @@ import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Impo
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useResources } from '~/hooks/useResources';
 
-// Use environment variable for API base URL, fallback to /api
-const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
+// Use environment variable for API base URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
 
 // Default values for form fields
 
