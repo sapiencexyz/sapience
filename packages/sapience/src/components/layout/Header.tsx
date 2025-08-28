@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
@@ -26,7 +27,7 @@ import {
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
@@ -57,10 +58,41 @@ const NavLinks = ({
   onClose,
 }: NavLinksProps) => {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { setOpenMobile, isMobile } = useSidebar();
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
   const { openChat } = useChat();
+  const [chatEnabled, setChatEnabled] = useState(false);
+  useEffect(() => {
+    try {
+      const value =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('chat')
+          : null;
+      setChatEnabled(value === 'true');
+    } catch {
+      setChatEnabled(false);
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      const qp = searchParams?.get('chat');
+      if (qp === 'true') {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('chat', 'true');
+        }
+        setChatEnabled(true);
+      } else if (qp === 'false') {
+        if (typeof window !== 'undefined') {
+          window.localStorage.removeItem('chat');
+        }
+        setChatEnabled(false);
+      }
+    } catch {
+      /* noop */
+    }
+  }, [searchParams]);
   const connectedWallet = wallets[0];
   const linkClass = isMobileProp
     ? 'text-xl font-medium justify-start rounded-full'
@@ -125,7 +157,7 @@ const NavLinks = ({
           Build Bots
         </Button>
       </Link>
-      {ready && authenticated && connectedWallet && (
+      {chatEnabled && (
         <div className="mt-6">
           <div className="flex w-fit mx-3 mt-0">
             <Button
@@ -141,6 +173,10 @@ const NavLinks = ({
               <span className="relative top-[1px]">Chat</span>
             </Button>
           </div>
+        </div>
+      )}
+      {ready && authenticated && connectedWallet && (
+        <div className="mt-6">
           <div className="mt-4">
             <SusdeBalance onClick={handleLinkClick} />
           </div>
