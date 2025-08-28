@@ -1,9 +1,9 @@
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useCallback, useEffect, useState } from 'react';
 import { formatUnits, type Abi } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 import { useTokenApproval } from './useTokenApproval';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
 
 interface UseModifyTradeProps {
@@ -33,10 +33,10 @@ export function useModifyTrade({
   collateralAmount,
 }: UseModifyTradeProps) {
   const { toast } = useToast();
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [processingTx, setProcessingTx] = useState(false);
   const [isClosingPosition, setIsClosingPosition] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Use token approval hook
   const {
@@ -77,38 +77,38 @@ export function useModifyTrade({
     );
   }, [collateralAmount, slippagePercent]);
 
-  // Write contract hook for modifying the position
-  const {
-    writeContractAsync,
-    isPending,
-    data,
-    error: writeError,
-  } = useWriteContract();
+  // Use Sapience write contract hook for modifying the position
+  const { writeContract: sapienceWriteContract, isPending } =
+    useSapienceWriteContract({
+      onSuccess: () => {
+        setProcessingTx(false);
+        setIsClosingPosition(false);
+        setIsSuccess(true);
+        setError(null);
+      },
+      onError: (error: Error) => {
+        setError(error);
+        setProcessingTx(false);
+        setIsClosingPosition(false);
+        setIsSuccess(false);
+      },
+      onTxHash: (_txHash: `0x${string}`) => {
+        toast({
+          title: 'Transaction Submitted',
+          description: 'Position modification submitted.',
+        });
+      },
+      successMessage: 'Position modified successfully.',
+      fallbackErrorMessage: 'Failed to modify position.',
+    });
 
-  // Watch for transaction completion
-  const {
-    isLoading: isConfirming,
-    isSuccess,
-    error: txError,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
-
-  // Set error if any occur during the process
+  // Set error if approval error occurs
   useEffect(() => {
-    if (writeError) {
-      setError(writeError);
-      setProcessingTx(false);
-    }
-    if (txError) {
-      setError(txError);
-      setProcessingTx(false);
-    }
     if (approvalError) {
       setError(approvalError);
       setProcessingTx(false);
     }
-  }, [writeError, txError, approvalError]);
+  }, [approvalError]);
 
   // Function to actually modify the position
   const performModification = useCallback(async (): Promise<void> => {
@@ -130,14 +130,13 @@ export function useModifyTrade({
         deadline,
       };
 
-      const hash = await writeContractAsync({
+      await sapienceWriteContract({
         address: marketAddress,
         abi: marketAbi,
         functionName: 'modifyTraderPosition',
         args: [modifyTradeParams],
         chainId,
       });
-      setTxHash(hash);
     } catch (err) {
       console.error('Error in performModification:', err);
       setError(
@@ -153,7 +152,6 @@ export function useModifyTrade({
     positionId,
     collateralDeltaLimit,
     chainId,
-    writeContractAsync,
   ]);
 
   // When approval is successful, proceed with modification
@@ -236,14 +234,13 @@ export function useModifyTrade({
       };
 
       // Close position by setting size to 0
-      const hash = await writeContractAsync({
+      await sapienceWriteContract({
         address: marketAddress,
         abi: marketAbi,
         functionName: 'modifyTraderPosition',
         args: [modifyTradeParams],
         chainId,
       });
-      setTxHash(hash);
     } catch (err) {
       console.error('Error in closePosition:', err);
       setError(
@@ -258,28 +255,18 @@ export function useModifyTrade({
     marketAbi,
     positionId,
     chainId,
-    writeContractAsync,
+    sapienceWriteContract,
     processingTx,
   ]);
-
-  // Reset processing state on success
-  useEffect(() => {
-    if (isSuccess) {
-      setProcessingTx(false);
-      setIsClosingPosition(false);
-    }
-  }, [isSuccess]);
 
   return {
     modifyTrade,
     closePosition,
-    isLoading: isPending || isConfirming || processingTx,
+    isLoading: isPending || processingTx,
     isClosingPosition,
     isSuccess,
     isError: !!error,
     error,
-    txHash,
-    data,
     isApproving,
     hasAllowance,
     needsApproval,
