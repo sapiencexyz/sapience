@@ -2,9 +2,9 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useCallback, useEffect, useState } from 'react';
 import type { Abi } from 'viem';
 import { parseUnits } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 import { useTokenApproval } from './useTokenApproval';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { CREATE_LIQUIDITY_REDUCTION_PERCENT } from '~/lib/constants/numbers';
 
 /**
@@ -35,7 +35,6 @@ export interface CreateLPResult {
   isError: boolean;
   error: Error | null;
   txHash: `0x${string}` | undefined;
-  data?: `0x${string}` | undefined;
   isApproving: boolean;
   hasAllowance: boolean;
   needsApproval: boolean;
@@ -59,9 +58,10 @@ export function useCreateLP({
   collateralTokenAddress,
 }: CreateLPParams): CreateLPResult {
   const { toast } = useToast();
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [processingTx, setProcessingTx] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
 
   // Use token approval hook
   const {
@@ -87,38 +87,43 @@ export function useCreateLP({
   // Parse collateral amount
   const parsedCollateralAmount = parseUnits(collateralAmount || '0', 18);
 
-  // Write contract hook for creating the liquidity position
-  const {
-    writeContractAsync,
-    isPending,
-    data,
-    error: writeError,
-  } = useWriteContract();
+  // Use Sapience write contract hook
+  const { writeContract: sapienceWriteContract, isPending: isWritingContract } =
+    useSapienceWriteContract({
+      onSuccess: () => {
+        setIsSuccess(true);
+        setProcessingTx(false);
+        setError(null);
+        toast({
+          title: 'Success',
+          description: 'Liquidity position created successfully!',
+          duration: 5000,
+        });
+      },
+      onError: (error: Error) => {
+        setError(error);
+        setProcessingTx(false);
+        setIsSuccess(false);
+      },
+      onTxHash: (hash: `0x${string}`) => {
+        setTxHash(hash);
+        toast({
+          title: 'Transaction Sent',
+          description: 'Creating liquidity position...',
+          duration: 5000,
+        });
+      },
+      successMessage: 'Liquidity position created successfully!',
+      fallbackErrorMessage: 'Failed to create liquidity position',
+    });
 
-  // Watch for transaction completion
-  const {
-    isLoading: isConfirming,
-    isSuccess,
-    error: txError,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
-
-  // Set error if any occur during the process
+  // Set error if approval error occurs
   useEffect(() => {
-    if (writeError) {
-      setError(writeError);
-      setProcessingTx(false); // Reset processing state on write error
-    }
-    if (txError) {
-      setError(txError);
-      setProcessingTx(false); // Reset processing state on transaction error
-    }
     if (approvalError) {
       setError(approvalError);
-      setProcessingTx(false); // Reset processing state on approval error
+      setProcessingTx(false);
     }
-  }, [writeError, txError, approvalError]);
+  }, [approvalError]);
 
   // Function to actually create the liquidity position
   const performCreateLP = useCallback(async (): Promise<void> => {
@@ -134,7 +139,8 @@ export function useCreateLP({
       !marketAddress ||
       (!amount0 && !amount1) ||
       lowPriceTick === null ||
-      highPriceTick === null
+      highPriceTick === null ||
+      !chainId
     ) {
       setProcessingTx(false);
       console.error(
@@ -146,6 +152,8 @@ export function useCreateLP({
 
     try {
       setError(null);
+      setIsSuccess(false);
+      setTxHash(undefined);
 
       // 30 minutes from now
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
@@ -185,14 +193,13 @@ export function useCreateLP({
       console.log('Liquidity Params:', liquidityParams);
 
       setProcessingTx(true);
-      const hash = await writeContractAsync({
+      await sapienceWriteContract({
         address: marketAddress,
         abi: marketAbi,
         functionName: 'createLiquidityPosition',
         args: [liquidityParams],
         chainId,
       });
-      setTxHash(hash);
     } catch (err) {
       console.error('Error in performCreateLP:', err);
       setError(
@@ -210,12 +217,9 @@ export function useCreateLP({
     slippagePercent,
     marketId,
     parsedCollateralAmount,
-    writeContractAsync,
     marketAbi,
     chainId,
-    setProcessingTx,
-    setError,
-    setTxHash,
+    toast,
   ]);
 
   // When approval is successful, proceed with creating the LP
@@ -250,6 +254,8 @@ export function useCreateLP({
   const createLP = async (): Promise<void> => {
     setProcessingTx(true);
     setError(null);
+    setIsSuccess(false);
+    setTxHash(undefined);
 
     try {
       // First check if we need approval
@@ -263,7 +269,6 @@ export function useCreateLP({
       } else {
         // If we already have allowance, create LP directly
         await performCreateLP();
-        setProcessingTx(false);
       }
     } catch (err) {
       setProcessingTx(false);
@@ -272,28 +277,13 @@ export function useCreateLP({
     }
   };
 
-  // Reset processing state on success
-  useEffect(() => {
-    if (isSuccess) {
-      setProcessingTx(false);
-    }
-  }, [isSuccess]);
-
-  // Reset processing state on error from transaction
-  useEffect(() => {
-    if (error) {
-      setProcessingTx(false);
-    }
-  }, [error]);
-
   return {
     createLP,
-    isLoading: isPending || isConfirming || processingTx,
+    isLoading: isWritingContract || processingTx,
     isSuccess,
     isError: !!error,
     error,
     txHash,
-    data,
     isApproving,
     hasAllowance,
     needsApproval,

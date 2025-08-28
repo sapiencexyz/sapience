@@ -188,7 +188,6 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
       // Refetch position data to update UI
       refetchPositionData();
 
-
       // Call the onSuccess callback with a placeholder hash since useSapienceWriteContract handles txHash internally
       onSuccess();
     }
