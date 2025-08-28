@@ -15,15 +15,24 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen, Wallet } from 'lucide-react';
+import {
+  LogOut,
+  Menu,
+  User,
+  BookOpen,
+  Wallet,
+  MessageCircle,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
 import SusdeBalance from './SusdeBalance';
+import { useChat } from '~/lib/context/ChatContext';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -52,11 +61,41 @@ const NavLinks = ({
   const { setOpenMobile, isMobile } = useSidebar();
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
+  const { openChat } = useChat();
   const connectedWallet = wallets[0];
   const linkClass = isMobileProp
     ? 'text-xl font-medium justify-start rounded-full'
     : 'text-base font-medium justify-start rounded-full';
   const activeClass = 'bg-secondary';
+
+  // Feature flag: enable sidebar Chat button via ?chat=true or localStorage("chat") === "true"
+  const [mounted, setMounted] = useState(false);
+  const [chatFeatureEnabled, setChatFeatureEnabled] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const urlChat = params.get('chat');
+        if (urlChat === 'true') {
+          window.localStorage.setItem('chat', 'true');
+          setChatFeatureEnabled(true);
+          return;
+        }
+        if (urlChat === 'false') {
+          window.localStorage.removeItem('chat');
+          setChatFeatureEnabled(false);
+          return;
+        }
+        const stored = window.localStorage.getItem('chat');
+        setChatFeatureEnabled(stored === 'true');
+      }
+    } catch {
+      setChatFeatureEnabled(false);
+    }
+  }, [pathname]);
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -131,6 +170,22 @@ const NavLinks = ({
               Your Portfolio
             </Button>
           </Link>
+          {mounted && chatFeatureEnabled && (
+            <div className="flex w-fit mx-3 mt-4">
+              <Button
+                variant="outline"
+                size="xs"
+                className="rounded-full px-3 justify-start gap-2 border-black/30 dark:border-white/30"
+                onClick={() => {
+                  handleLinkClick();
+                  openChat();
+                }}
+              >
+                <MessageCircle className="h-3 w-3 scale-[0.8]" />
+                <span className="relative top-[1px]">Chat</span>
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </nav>
