@@ -35,7 +35,6 @@ export function useMonitorTxStatus({
     },
   });
 
-
   // Handle loading state
   useEffect(() => {
     if (hash && isPending) {
