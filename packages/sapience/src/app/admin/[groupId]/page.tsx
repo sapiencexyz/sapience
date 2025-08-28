@@ -79,6 +79,7 @@ export default function AdminGroupPage({
           <EditOwnerInline
             groupAddress={group.address as Address}
             currentOwner={group.owner || undefined}
+            chainId={group.chainId}
           />
         </div>
       </div>
@@ -111,9 +112,11 @@ export default function AdminGroupPage({
 const EditOwnerInline = ({
   groupAddress,
   currentOwner,
+  chainId,
 }: {
   groupAddress: Address;
   currentOwner?: string;
+  chainId: number;
 }) => {
   const [open, setOpen] = useState(false);
   return (
@@ -126,6 +129,7 @@ const EditOwnerInline = ({
         onOpenChange={setOpen}
         marketGroupAddress={groupAddress}
         currentOwner={currentOwner}
+        chainId={chainId}
       />
     </>
   );

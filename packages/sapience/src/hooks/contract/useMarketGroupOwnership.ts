@@ -1,15 +1,14 @@
 import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi';
 import { useEffect, useState } from 'react';
 import type { Address } from 'viem';
-import { useReadContract, useWriteContract } from 'wagmi';
+import { useReadContract } from 'wagmi';
+
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 export function useMarketGroupOwnership(marketGroupAddress: Address) {
-  const [nominateLoading, setNominateLoading] = useState(false);
-  const [nominateError, setNominateError] = useState<Error | null>(null);
-  const [acceptLoading, setAcceptLoading] = useState(false);
-  const [acceptError, setAcceptError] = useState<Error | null>(null);
-
   const { abi: marketGroupAbi } = useSapienceAbi();
+  const [nominateError, setNominateError] = useState<string | null>(null);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
 
   const {
     data: pendingOwner,
@@ -22,43 +21,65 @@ export function useMarketGroupOwnership(marketGroupAddress: Address) {
     functionName: 'pendingOwner',
   });
 
-  const { writeContractAsync } = useWriteContract();
+  const { writeContract: nominateWriteContract, isPending: nominateLoading } =
+    useSapienceWriteContract({
+      onSuccess: () => {
+        refetchPendingOwner();
+        setNominateError(null);
+      },
+      onError: (error) => {
+        setNominateError(error.message);
+      },
+      successMessage: 'Ownership nomination sent successfully!',
+      fallbackErrorMessage: 'Failed to nominate new owner',
+    });
 
-  const nominateNewOwner = async (newOwner: Address) => {
-    setNominateLoading(true);
+  const { writeContract: acceptWriteContract, isPending: acceptLoading } =
+    useSapienceWriteContract({
+      onSuccess: () => {
+        refetchPendingOwner();
+        setAcceptError(null);
+      },
+      onError: (error) => {
+        setAcceptError(error.message);
+      },
+      successMessage: 'Ownership accepted successfully!',
+      fallbackErrorMessage: 'Failed to accept ownership',
+    });
+
+  const nominateNewOwner = async (newOwner: Address, chainId: number) => {
     setNominateError(null);
     try {
-      await writeContractAsync({
+      await nominateWriteContract({
+        chainId,
         address: marketGroupAddress,
         abi: marketGroupAbi,
         functionName: 'transferOwnership',
         args: [newOwner],
       });
-      await refetchPendingOwner();
     } catch (err) {
-      setNominateError(err instanceof Error ? err : new Error('Unknown error'));
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to nominate owner';
+      setNominateError(errorMessage);
       throw err;
-    } finally {
-      setNominateLoading(false);
     }
   };
 
-  const acceptOwnership = async () => {
-    setAcceptLoading(true);
+  const acceptOwnership = async (chainId: number) => {
     setAcceptError(null);
     try {
-      await writeContractAsync({
+      await acceptWriteContract({
+        chainId,
         address: marketGroupAddress,
         abi: marketGroupAbi,
         functionName: 'acceptOwnership',
         args: [],
       });
-      await refetchPendingOwner();
     } catch (err) {
-      setAcceptError(err instanceof Error ? err : new Error('Unknown error'));
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to accept ownership';
+      setAcceptError(errorMessage);
       throw err;
-    } finally {
-      setAcceptLoading(false);
     }
   };
 
