@@ -16,7 +16,14 @@ type ChatMessage = {
   address?: string;
 };
 
-const WEBSOCKET_PATH = '/api/chat';
+const WEBSOCKET_PATH = '/chat';
+const API_BASE = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
+
+const buildWebSocketUrl = () => {
+  const u = new URL(API_BASE);
+  const protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${u.host}${WEBSOCKET_PATH}`;
+};
 
 const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
@@ -31,6 +38,7 @@ const ChatWidget = () => {
   const socketTokenRef = useRef<string | null>(null);
 
   const userAddress = connectedWallet?.address || '';
+  const normalizedUserAddress = userAddress.toLowerCase();
 
   const connectSocket = useCallback(
     (url: string, token: string | null) => {
@@ -52,7 +60,9 @@ const ChatWidget = () => {
               return history.map((m) => ({
                 id: crypto.randomUUID(),
                 author:
-                  m.address && m.address === userAddress ? 'me' : 'server',
+                  m.address && m.address.toLowerCase() === normalizedUserAddress
+                    ? 'me'
+                    : 'server',
                 text: m.text,
                 address: m.address,
               }));
@@ -64,7 +74,11 @@ const ChatWidget = () => {
             return;
           }
           if (typeof data.text === 'string') {
-            if (data.address && data.address === userAddress) return;
+            if (
+              data.address &&
+              data.address.toLowerCase() === normalizedUserAddress
+            )
+              return;
             setMessages((prev) => [
               ...prev,
               {
@@ -121,17 +135,7 @@ const ChatWidget = () => {
   useEffect(() => {
     if (!isOpen) return;
 
-    const baseUrl = (() => {
-      const envBase = process.env.NEXT_PUBLIC_FOIL_API_URL;
-      if (envBase) {
-        const u = new URL(envBase);
-        const protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-        return `${protocol}//${u.host}/chat`;
-      }
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const host = window.location.host;
-      return `${protocol}://${host}${WEBSOCKET_PATH}`;
-    })();
+    const baseUrl = buildWebSocketUrl();
 
     let detach: (() => void) | undefined;
     let cancelled = false;
@@ -163,11 +167,15 @@ const ChatWidget = () => {
 
   // When wallet becomes known, reclassify history messages authored by me
   useEffect(() => {
-    if (!userAddress) return;
+    if (!normalizedUserAddress) return;
     setMessages((prev) => {
       let changed = false;
       const next = prev.map((m) => {
-        if (m.author !== 'me' && m.address && m.address === userAddress) {
+        if (
+          m.author !== 'me' &&
+          m.address &&
+          m.address.toLowerCase() === normalizedUserAddress
+        ) {
           changed = true;
           return { ...m, author: 'me' as const };
         }
@@ -175,7 +183,7 @@ const ChatWidget = () => {
       });
       return changed ? next : prev;
     });
-  }, [userAddress]);
+  }, [normalizedUserAddress]);
 
   const canChat = useMemo(
     () => ready && authenticated && !!userAddress,
@@ -211,9 +219,7 @@ const ChatWidget = () => {
       }
 
       // Fetch nonce & message
-      const base = process.env.NEXT_PUBLIC_FOIL_API_URL || '';
-      const prefix = base ? '' : '/api';
-      const resNonce = await fetch(`${base}${prefix}/chat-auth/nonce`);
+      const resNonce = await fetch(`${API_BASE}/chat-auth/nonce`);
       const { message } = await resNonce.json();
 
       // Sign via Privy wallet
@@ -222,7 +228,7 @@ const ChatWidget = () => {
       const signature = await wallet.sign(message);
 
       // Verify
-      const resVerify = await fetch(`${base}${prefix}/chat-auth/verify`, {
+      const resVerify = await fetch(`${API_BASE}/chat-auth/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -252,17 +258,7 @@ const ChatWidget = () => {
     if (!pendingText.trim()) return;
     if (!canChat) return;
     // Build base URL
-    let url = (() => {
-      const envBase = process.env.NEXT_PUBLIC_FOIL_API_URL;
-      if (envBase) {
-        const u = new URL(envBase);
-        const protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-        return `${protocol}//${u.host}/chat`;
-      }
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      const host = window.location.host;
-      return `${protocol}://${host}${WEBSOCKET_PATH}`;
-    })();
+    let url = buildWebSocketUrl();
 
     // Ensure authenticated connection before sending
     let needReconnect = false;

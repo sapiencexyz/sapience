@@ -70,7 +70,7 @@ const ReindexFactoryForm = () => {
       });
 
       // Construct the API URL from environment variable
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL || ''}/reindex/market-group-factory`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/market-group-factory`;
 
       // Call the API endpoint
       const response = await fetch(apiUrl, {

@@ -21,7 +21,7 @@ import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
 
 type Props = {
   group: EnrichedMarketGroup;

@@ -98,7 +98,7 @@ export function createChatWebSocketServer(server: http.Server) {
     }
   );
 
-  // Upgrade handler for /chat path
+  // Upgrade handler for /chat (and /api/chat) path
   server.on(
     'upgrade',
     (request: http.IncomingMessage, socket: Socket, head: Buffer) => {

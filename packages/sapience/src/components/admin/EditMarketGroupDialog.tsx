@@ -27,7 +27,7 @@ import { useResources } from '~/hooks/useResources';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL || '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
 
 type Props = {
   group: EnrichedMarketGroup;
