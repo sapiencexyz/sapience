@@ -1,7 +1,7 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect } from 'react';
 
 import { useSettlePosition } from '~/hooks/contract/useSettlePosition';
 import { MINIMUM_POSITION_WIN } from '~/lib/constants/numbers';
@@ -27,15 +27,18 @@ const SettlePositionButton = ({
     loadingSimulation,
     isSettling,
     error,
-    txHash,
   } = useSettlePosition({
     positionId,
     marketAddress,
     chainId,
     enabled: true,
+    onSuccess,
+    onError: (error) => {
+      // Error handling is now done automatically by useSapienceWriteContract
+      // but we can also handle it here if needed
+      console.error('Settlement error:', error);
+    },
   });
-
-  const successHandled = useRef(false);
 
   const expectedCollateral = useMemo(
     () => simulationData?.result || BigInt(0),
@@ -48,17 +51,7 @@ const SettlePositionButton = ({
     [expectedCollateral]
   );
 
-  useEffect(() => {
-    if (txHash && !successHandled.current) {
-      successHandled.current = true;
-      toast({
-        title: 'Success!',
-        description: 'Position settled successfully',
-      });
-      if (onSuccess) onSuccess();
-    }
-  }, [txHash, onSuccess, toast]);
-
+  // Handle simulation errors (separate from transaction errors)
   useEffect(() => {
     if (error) {
       toast({
@@ -73,9 +66,8 @@ const SettlePositionButton = ({
     try {
       await settlePosition();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Failed to settle position';
-      toast({ variant: 'destructive', title: 'Error', description: message });
+      // Error handling is now done automatically by useSapienceWriteContract
+      console.error('Settlement error:', err);
     }
   };
 
