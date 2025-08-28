@@ -27,7 +27,6 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
@@ -68,34 +67,7 @@ const NavLinks = ({
     : 'text-base font-medium justify-start rounded-full';
   const activeClass = 'bg-secondary';
 
-  // Feature flag: enable sidebar Chat button via ?chat=true or localStorage("chat") === "true"
-  const [mounted, setMounted] = useState(false);
-  const [chatFeatureEnabled, setChatFeatureEnabled] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const params = new URLSearchParams(window.location.search);
-        const urlChat = params.get('chat');
-        if (urlChat === 'true') {
-          window.localStorage.setItem('chat', 'true');
-          setChatFeatureEnabled(true);
-          return;
-        }
-        if (urlChat === 'false') {
-          window.localStorage.removeItem('chat');
-          setChatFeatureEnabled(false);
-          return;
-        }
-        const stored = window.localStorage.getItem('chat');
-        setChatFeatureEnabled(stored === 'true');
-      }
-    } catch {
-      setChatFeatureEnabled(false);
-    }
-  }, [pathname]);
+  // No feature flag: Chat button is always available in the sidebar for authenticated users
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -155,7 +127,23 @@ const NavLinks = ({
       </Link>
       {ready && authenticated && connectedWallet && (
         <div className="mt-6">
-          <SusdeBalance onClick={handleLinkClick} />
+          <div className="flex w-fit mx-3 mt-0">
+            <Button
+              variant="outline"
+              size="xs"
+              className="rounded-full px-3 justify-start gap-2 border-black/30 dark:border-white/30"
+              onClick={() => {
+                handleLinkClick();
+                openChat();
+              }}
+            >
+              <MessageCircle className="h-3 w-3 scale-[0.8]" />
+              <span className="relative top-[1px]">Chat</span>
+            </Button>
+          </div>
+          <div className="mt-4">
+            <SusdeBalance onClick={handleLinkClick} />
+          </div>
           <Link
             href={`/profile/${connectedWallet.address}`}
             passHref
@@ -170,22 +158,6 @@ const NavLinks = ({
               Your Portfolio
             </Button>
           </Link>
-          {mounted && chatFeatureEnabled && (
-            <div className="flex w-fit mx-3 mt-4">
-              <Button
-                variant="outline"
-                size="xs"
-                className="rounded-full px-3 justify-start gap-2 border-black/30 dark:border-white/30"
-                onClick={() => {
-                  handleLinkClick();
-                  openChat();
-                }}
-              >
-                <MessageCircle className="h-3 w-3 scale-[0.8]" />
-                <span className="relative top-[1px]">Chat</span>
-              </Button>
-            </div>
-          )}
         </div>
       )}
     </nav>

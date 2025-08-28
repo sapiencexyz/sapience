@@ -10,6 +10,38 @@ const sessions = new Map<string, ChatSession>();
 
 export const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 export const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const MAX_NONCES = 5000;
+export const MAX_SESSIONS = 10000;
+
+function enforceCap<K, V>(map: Map<K, V>, maxSize: number) {
+  while (map.size > maxSize) {
+    const firstKey = map.keys().next().value as K | undefined;
+    if (firstKey === undefined) break;
+    map.delete(firstKey);
+  }
+}
+
+function periodicCleanup() {
+  const now = Date.now();
+  // Clean nonces: remove expired or used ones
+  for (const [nonce, rec] of nonces) {
+    if (rec.used || now > rec.expiresAt) {
+      nonces.delete(nonce);
+    }
+  }
+  // Clean sessions: remove expired
+  for (const [token, sess] of sessions) {
+    if (now > sess.expiresAt) {
+      sessions.delete(token);
+    }
+  }
+  // Enforce hard caps
+  enforceCap(nonces, MAX_NONCES);
+  enforceCap(sessions, MAX_SESSIONS);
+}
+
+// Run cleanup every minute
+setInterval(periodicCleanup, 60 * 1000).unref?.();
 
 function generateNonce(): string {
   return crypto.randomBytes(16).toString('hex');
@@ -28,6 +60,7 @@ export function createChallenge(host: string): {
   const expiresAt = Date.now() + NONCE_TTL_MS;
   const message = `Sapience Chat — Sign to post.\n\nDomain: ${host}\nNonce: ${nonce}\nExpires: ${new Date(expiresAt).toISOString()}`;
   nonces.set(nonce, { message, expiresAt, used: false });
+  enforceCap(nonces, MAX_NONCES);
   return { nonce, message, expiresAt };
 }
 
@@ -58,6 +91,7 @@ export async function verifyAndCreateToken(params: {
   const token = generateToken();
   const expiresAt = Date.now() + TOKEN_TTL_MS;
   sessions.set(token, { address: params.address.toLowerCase(), expiresAt });
+  enforceCap(sessions, MAX_SESSIONS);
   return { token, expiresAt };
 }
 

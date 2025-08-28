@@ -38,9 +38,6 @@ const ChatWidget = () => {
       socketRef.current = ws;
       socketTokenRef.current = token;
 
-      const onOpen = () => {
-        void 0;
-      };
       const onMessage = (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data);
@@ -101,17 +98,22 @@ const ChatWidget = () => {
         void 0;
       };
 
-      ws.addEventListener('open', onOpen);
-      ws.addEventListener('message', onMessage);
-      ws.addEventListener('error', onError);
-      ws.addEventListener('close', onClose);
+      return new Promise<() => void>((resolve) => {
+        const onOpen = () => {
+          ws.removeEventListener('open', onOpen);
+          const detach = () => {
+            ws.removeEventListener('message', onMessage);
+            ws.removeEventListener('error', onError);
+            ws.removeEventListener('close', onClose);
+          };
+          resolve(detach);
+        };
 
-      return () => {
-        ws.removeEventListener('open', onOpen);
-        ws.removeEventListener('message', onMessage);
-        ws.removeEventListener('error', onError);
-        ws.removeEventListener('close', onClose);
-      };
+        ws.addEventListener('open', onOpen);
+        ws.addEventListener('message', onMessage);
+        ws.addEventListener('error', onError);
+        ws.addEventListener('close', onClose);
+      });
     },
     [userAddress]
   );
@@ -131,11 +133,21 @@ const ChatWidget = () => {
       return `${protocol}://${host}${WEBSOCKET_PATH}`;
     })();
 
-    const cleanup = connectSocket(baseUrl, null);
+    let detach: (() => void) | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = await connectSocket(baseUrl, null);
+        if (!cancelled) detach = d;
+      } catch {
+        /* noop */
+      }
+    })();
 
     return () => {
+      cancelled = true;
       try {
-        cleanup?.();
+        detach?.();
         socketRef.current?.close();
       } finally {
         socketRef.current = null;
@@ -200,7 +212,8 @@ const ChatWidget = () => {
 
       // Fetch nonce & message
       const base = process.env.NEXT_PUBLIC_FOIL_API_URL || '';
-      const resNonce = await fetch(`${base}/chat-auth/nonce`);
+      const prefix = base ? '' : '/api';
+      const resNonce = await fetch(`${base}${prefix}/chat-auth/nonce`);
       const { message } = await resNonce.json();
 
       // Sign via Privy wallet
@@ -209,7 +222,7 @@ const ChatWidget = () => {
       const signature = await wallet.sign(message);
 
       // Verify
-      const resVerify = await fetch(`${base}/chat-auth/verify`, {
+      const resVerify = await fetch(`${base}${prefix}/chat-auth/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -270,18 +283,8 @@ const ChatWidget = () => {
         } catch {
           void 0;
         }
-        // Connect with handlers and token tracking
-        await new Promise<void>((resolve) => {
-          const ws = new WebSocket(url);
-          socketRef.current = ws;
-          socketTokenRef.current = token || null;
-          const _detach = connectSocket(url, token || null);
-          const onOpen = () => {
-            ws.removeEventListener('open', onOpen);
-            resolve();
-          };
-          ws.addEventListener('open', onOpen);
-        });
+        // Connect with handlers and wait for open (single socket)
+        await connectSocket(url, token || null);
       } catch {
         /* noop */
       }
