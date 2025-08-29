@@ -32,4 +32,7 @@ export class PnLType {
 
   @Field(() => String, { nullable: true })
   collateralSymbol?: string;
+
+  @Field(() => Int, { nullable: true })
+  collateralDecimals?: number;
 }

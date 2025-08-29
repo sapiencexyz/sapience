@@ -8,6 +8,7 @@ export interface MarketLeaderboardEntry {
   totalPnL: number;
   collateralAddress?: string;
   collateralSymbol?: string;
+  collateralDecimals?: number;
 }
 
 interface RawMarketLeaderboardEntry {
@@ -20,6 +21,7 @@ interface RawMarketLeaderboardEntry {
   positionCount: number;
   collateralAddress?: string;
   collateralSymbol?: string;
+  collateralDecimals?: number;
 }
 
 const GET_MARKET_LEADERBOARD = /* GraphQL */ `
@@ -42,6 +44,7 @@ const GET_MARKET_LEADERBOARD = /* GraphQL */ `
       positionCount
       collateralAddress
       collateralSymbol
+      collateralDecimals
     }
   }
 `;
@@ -160,8 +163,9 @@ export const useMarketLeaderboard = (
           .map((entry) => {
             try {
               const pnlString = entry.totalPnL || '0';
-              const pnlValue = BigInt(pnlString);
-              const pnlNumber = Number(pnlValue);
+              const collateralDecimals = entry.collateralDecimals || 18; // Default to 18 if not specified
+              const divisor = Math.pow(10, collateralDecimals);
+              const pnlNumber = parseFloat(pnlString) / divisor;
 
               if (Number.isNaN(pnlNumber)) {
                 return null;
@@ -172,6 +176,7 @@ export const useMarketLeaderboard = (
                 totalPnL: pnlNumber,
                 collateralAddress: entry.collateralAddress,
                 collateralSymbol: entry.collateralSymbol,
+                collateralDecimals: entry.collateralDecimals,
               } as MarketLeaderboardEntry;
             } catch (error) {
               console.error(

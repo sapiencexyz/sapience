@@ -15,14 +15,11 @@ const PnLDisplay = ({
   collateralAddress?: string;
   isAlreadyUsd?: boolean;
 }) => {
-  console.log(`[ProfitCell DEBUG] Raw value: ${value}, collateralAddress: ${collateralAddress}, isAlreadyUsd: ${isAlreadyUsd}, wstEthPriceUsd: ${wstEthPriceUsd}`);
-  
   let usdValue: number;
   
   if (isAlreadyUsd) {
     // Value is already in USD (from aggregated leaderboard)
     usdValue = value;
-    console.log(`[ProfitCell DEBUG] Value already in USD: $${usdValue}`);
   } else {
     // Convert from token amount to USD (for market-specific leaderboard)
     const displayValue = value / 1e18;
@@ -33,11 +30,9 @@ const PnLDisplay = ({
     // Check if this is your testUSDe token
     if (collateralAddress?.toLowerCase() === '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3') {
       effectivePrice = 1.0; // testUSDe is always $1
-      console.log(`[ProfitCell DEBUG] Detected testUSDe token, using $1 price`);
     }
     
     usdValue = displayValue * effectivePrice;
-    console.log(`[ProfitCell DEBUG] Token conversion: ${displayValue} * ${effectivePrice} = $${usdValue}`);
   }
 
   // Handle potential NaN values gracefully
@@ -76,11 +71,9 @@ const ProfitCell = <TData,>({
 }: ProfitCellProps<TData>): React.ReactElement => {
   // Ensure the correct column ID is used, assumed to be 'totalPnL' based on previous context
   const rawValue = row.getValue('totalPnL');
-  // Convert bigint to number if needed, with additional safety checks
+  // Convert to number (values should already be in correct format after DB change)
   let value: number;
-  if (typeof rawValue === 'bigint') {
-    value = Number(rawValue);
-  } else if (typeof rawValue === 'string') {
+  if (typeof rawValue === 'string') {
     value = parseFloat(rawValue);
   } else if (typeof rawValue === 'number') {
     value = rawValue;
