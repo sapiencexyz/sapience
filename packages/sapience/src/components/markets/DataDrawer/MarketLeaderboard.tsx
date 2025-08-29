@@ -51,10 +51,15 @@ const MarketLeaderboard = ({
   chainId,
   marketId,
 }: MarketLeaderboardProps) => {
-  console.log('[MARKET LEADERBOARD DEBUG] Component rendering (this is inside a specific market page)...');
+  console.log(
+    '[MARKET LEADERBOARD DEBUG] Component rendering (this is inside a specific market page)...'
+  );
   const { leaderboardData, isLoading, error, wstEthPriceUsd } =
     useMarketLeaderboard(marketAddress, chainId, marketId);
-  console.log('[MARKET LEADERBOARD DEBUG] Hook data:', { leaderboardData, isLoading });
+  console.log('[MARKET LEADERBOARD DEBUG] Hook data:', {
+    leaderboardData,
+    isLoading,
+  });
 
   const columns = useMemo<ColumnDef<MarketLeaderboardEntry>[]>(
     () => [

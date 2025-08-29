@@ -14,7 +14,7 @@ const COINGECKO_ID_MAP: Record<Ticker, string> = {
   sol: 'solana',
   susds: 'susds',
   wsteth: 'wrapped-steth',
-  testusde: 'testusde', 
+  testusde: 'testusde',
 };
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
@@ -176,7 +176,6 @@ router.get('/', async (req, res) => {
         });
     }
 
-    console.log(`[Crypto-Prices DEBUG] Returning final prices:`, finalPrices);
     return res.json(finalPrices);
   } catch (error) {
     console.error('[ERROR IN CRYPTO PRICES ROUTE]', error);

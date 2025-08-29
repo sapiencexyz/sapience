@@ -44,7 +44,6 @@ export class MarketPnL {
   }
 
   async getMarketPnLs(chainId: number, address: string, marketId: number) {
-    console.log(`[PnL DEBUG] Getting PnL for market: chainId=${chainId}, address=${address}, marketId=${marketId}`);
     const currentTimestamp = Date.now() / 1000;
     const datapointTime = startOfInterval(currentTimestamp, this.INTERVAL);
 
@@ -63,12 +62,10 @@ export class MarketPnL {
     }
 
     if (market.datapointTime === datapointTime) {
-      console.log(`[PnL DEBUG] Returning cached data (last calculated at ${new Date(market.datapointTime * 1000).toISOString()})`);
       return market.pnlData;
     }
 
     // Build the pnlData array for this market and datapointTime
-    console.log(`[PnL DEBUG] Recalculating PnL data (new datapoint time: ${new Date(datapointTime * 1000).toISOString()})`);
     market.pnlData = await this.buildPnlData(market.marketData);
     market.datapointTime = datapointTime;
 
@@ -120,28 +117,38 @@ export class MarketPnL {
         // 4. Check if this position is closed (collateral = 0) and calculate realized PnL
         const positionCollateralString = position.collateral || '0';
         const isPositionClosed = positionCollateralString === '0';
-        
+
         // Only include PnL from closed positions (realized PnL)
         if (isPositionClosed && position.transaction.length > 0) {
           for (const transaction of position.transaction) {
             if (transaction.collateral_transfer) {
               try {
                 // Convert collateral to string (will be string after migration, but currently still Decimal)
-                const collateralString = transaction.collateral_transfer.collateral.toString();
-                
+                const collateralString =
+                  transaction.collateral_transfer.collateral.toString();
+
                 // For closed positions, sum all collateral movements to get net realized PnL
                 if (collateralString.startsWith('-')) {
                   // Negative collateral (withdrawal) - add absolute value to withdrawals
                   const absoluteValue = collateralString.slice(1);
                   const currentWithdrawals = BigInt(ownerPnl.totalWithdrawals);
-                  ownerPnl.totalWithdrawals = (currentWithdrawals + BigInt(absoluteValue)).toString();
+                  ownerPnl.totalWithdrawals = (
+                    currentWithdrawals + BigInt(absoluteValue)
+                  ).toString();
                 } else if (collateralString !== '0') {
                   // Positive collateral (deposit)
                   const currentDeposits = BigInt(ownerPnl.totalDeposits);
-                  ownerPnl.totalDeposits = (currentDeposits + BigInt(collateralString)).toString();
+                  ownerPnl.totalDeposits = (
+                    currentDeposits + BigInt(collateralString)
+                  ).toString();
                 }
               } catch (error) {
-                console.error(`Error processing collateral for ${ownerId}:`, error, 'Raw value:', transaction.collateral_transfer.collateral);
+                console.error(
+                  `Error processing collateral for ${ownerId}:`,
+                  error,
+                  'Raw value:',
+                  transaction.collateral_transfer.collateral
+                );
               }
             }
           }
@@ -179,11 +186,8 @@ export class MarketPnL {
       });
 
       if (!market) {
-        console.log(`[PnL DEBUG] Market not found for chainId=${chainId}, address=${address}, marketId=${marketId}`);
         return undefined;
       }
-
-      console.log(`[PnL DEBUG] Found market with collateral: ${market.market_group?.collateralAsset}, symbol: ${market.market_group?.collateralSymbol}`);
 
       const marketPnLData: MarketPnLData = {
         marketData: {

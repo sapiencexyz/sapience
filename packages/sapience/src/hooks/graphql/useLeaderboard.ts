@@ -65,11 +65,13 @@ type MarketLeaderboardQueryResponse = {
 };
 
 // Hook revised for client-side aggregation
-const useAllTimeLeaderboard = () => {
+const useAllTimeLeaderboard = (cryptoPrices: any) => {
   return useQuery<AggregatedLeaderboardEntry[]>({
     queryKey: ['allTimeLeaderboard'], // Query key remains simple for now
     queryFn: async () => {
-      console.log('[useAllTimeLeaderboard DEBUG] Starting leaderboard query...');
+      console.log(
+        '[useAllTimeLeaderboard DEBUG] Starting leaderboard query...'
+      );
       try {
         // 1. Fetch all markets
         const marketGroupsData =
@@ -120,7 +122,6 @@ const useAllTimeLeaderboard = () => {
         const aggregatedPnL: { [owner: string]: number } = {};
 
         leaderboardResponses.forEach((response) => {
-
           if (!response?.getMarketLeaderboard) {
             return;
           }
@@ -131,8 +132,9 @@ const useAllTimeLeaderboard = () => {
             // Get collateral info for this market
             const collateralAddress = marketLeaderboard[0]?.collateralAddress;
             const collateralSymbol = marketLeaderboard[0]?.collateralSymbol;
-            const collateralDecimals = marketLeaderboard[0]?.collateralDecimals || 18; // Default to 18 if not specified
-            
+            const collateralDecimals =
+              marketLeaderboard[0]?.collateralDecimals || 18; // Default to 18 if not specified
+
             marketLeaderboard.forEach((entry) => {
               const { owner, totalPnL: rawPnlString } = entry;
 
@@ -144,18 +146,33 @@ const useAllTimeLeaderboard = () => {
               const pnlStringToConvert = rawPnlString || '0';
               const divisor = Math.pow(10, collateralDecimals);
               const pnlTokenAmount = parseFloat(pnlStringToConvert) / divisor;
-              
+
               // Determine USD value based on collateral
               let pnlUsd: number;
-              if (collateralAddress?.toLowerCase() === '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3') {
+              if (
+                collateralAddress?.toLowerCase() ===
+                '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3'
+              ) {
                 // testUSDe is always $1
                 pnlUsd = pnlTokenAmount * 1.0;
               } else {
-                // Default to wstETH pricing (you could extend this for other tokens)
-                const wstEthPrice = 5540; // Fallback price - you could fetch this dynamically
-                pnlUsd = pnlTokenAmount * wstEthPrice;
+                // For other tokens, try to get price from crypto prices API
+                let tokenPrice = null;
+                if (collateralSymbol?.toLowerCase() === 'eth') {
+                  tokenPrice = cryptoPrices?.ethereum?.usd;
+                } else if (collateralSymbol?.toLowerCase() === 'btc') {
+                  tokenPrice = cryptoPrices?.bitcoin?.usd;
+                } else if (collateralSymbol?.toLowerCase() === 'sol') {
+                  tokenPrice = cryptoPrices?.solana?.usd;
+                } else if (collateralSymbol?.toLowerCase() === 'susde') {
+                  tokenPrice = cryptoPrices?.susde?.usd;
+                }
+
+                pnlUsd = tokenPrice
+                  ? pnlTokenAmount * tokenPrice
+                  : pnlTokenAmount;
               }
-              
+
               if (Number.isNaN(pnlUsd)) {
                 console.error(
                   `Converted PnL USD is NaN for owner ${owner}. Token amount: ${pnlTokenAmount}, collateral: ${collateralSymbol}`
@@ -174,7 +191,7 @@ const useAllTimeLeaderboard = () => {
         )
           .map(([owner, totalPnL]) => ({ owner, totalPnL }))
           .sort((a, b) => b.totalPnL - a.totalPnL);
-        
+
         // Trim to top 10
         return finalLeaderboard.slice(0, 10);
       } catch (error) {
@@ -257,61 +274,50 @@ const useCryptoPrices = () => {
   });
 };
 
-// Query hook for stETH per token data
-const useStEthPerToken = (chainId = 1) => {
-  return useQuery({
-    queryKey: ['stEthPerToken', chainId],
-    queryFn: async () => {
-      try {
-        const response = await foilApi.get(
-          `/getStEthPerTokenAtTimestamps?chainId=${chainId}`
-        );
+// // Query hook for stETH per token data
+// const useStEthPerToken = (chainId = 1) => {
+//   return useQuery({
+//     queryKey: ['stEthPerToken', chainId],
+//     queryFn: async () => {
+//       try {
+//         const response = await foilApi.get(
+//           `/getStEthPerTokenAtTimestamps?chainId=${chainId}`
+//         );
 
-        // The stEthPerToken is directly in the response, not in response.data
-        if (
-          response?.stEthPerToken &&
-          typeof response.stEthPerToken === 'string'
-        ) {
-          return response.stEthPerToken;
-        }
-        console.warn('Using fallback stEthPerToken');
-        // Return a fallback value - typical stETH/wstETH ratio is around 1.1
-        // Multiply by 1e18 to match the expected format from the API
-        return '1100000000000000000'; // ~1.1 stETH per wstETH
-      } catch (error) {
-        console.error('Error fetching stEthPerToken:', error);
-        console.warn('Using fallback stEthPerToken due to error');
-        // Return a fallback value
-        return '1100000000000000000'; // ~1.1 stETH per wstETH
-      }
-    },
-    staleTime: 60 * 1000, // 1 minute
-  });
-};
+//         // The stEthPerToken is directly in the response, not in response.data
+//         if (
+//           response?.stEthPerToken &&
+//           typeof response.stEthPerToken === 'string'
+//         ) {
+//           return response.stEthPerToken;
+//         }
+//         console.warn('Using fallback stEthPerToken');
+//         // Return a fallback value - typical stETH/wstETH ratio is around 1.1
+//         // Multiply by 1e18 to match the expected format from the API
+//         return '1100000000000000000'; // ~1.1 stETH per wstETH
+//       } catch (error) {
+//         console.error('Error fetching stEthPerToken:', error);
+//         console.warn('Using fallback stEthPerToken due to error');
+//         // Return a fallback value
+//         return '1100000000000000000'; // ~1.1 stETH per wstETH
+//       }
+//     },
+//     staleTime: 60 * 1000, // 1 minute
+//   });
+// };
 
 // --- Main Hook ---
 
 export const useLeaderboard = () => {
-  const { data: leaderboardData, isLoading } = useAllTimeLeaderboard();
   const { data: cryptoPrices } = useCryptoPrices();
-  const { data: stEthPerToken } = useStEthPerToken(); // Using default chainId 1
+  const { data: leaderboardData, isLoading } =
+    useAllTimeLeaderboard(cryptoPrices);
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('all');
 
-  // Calculate wstETH price in USD
-  const ethPriceUsd = cryptoPrices?.ethereum?.usd || null;
-  const stEthPerTokenNormalized =
-    stEthPerToken && typeof stEthPerToken === 'string'
-      ? Number(stEthPerToken) / 1e18
-      : null;
-  const wstEthPriceUsd =
-    stEthPerTokenNormalized !== null && ethPriceUsd !== null
-      ? stEthPerTokenNormalized * ethPriceUsd
-      : null;
-  
   return {
     leaderboardData,
     isLoading,
-    wstEthPriceUsd,
+    cryptoPrices,
     selectedTimeframe,
     setSelectedTimeframe,
   };

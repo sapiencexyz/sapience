@@ -40,7 +40,7 @@ export class PnLResolver {
         collateralSymbol: marketGroup?.collateralSymbol || undefined,
         collateralDecimals: marketGroup?.collateralDecimals || undefined,
       }));
-      
+
       return result;
     } catch (error) {
       console.error('Error fetching markets:', error);

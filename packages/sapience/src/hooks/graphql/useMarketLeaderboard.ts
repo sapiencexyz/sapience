@@ -156,7 +156,7 @@ export const useMarketLeaderboard = (
         );
 
         const rawData = data?.getMarketLeaderboard || [];
-        
+
         console.log(`[useMarketLeaderboard DEBUG] Raw GraphQL data:`, rawData);
 
         const processedData: MarketLeaderboardEntry[] = rawData
@@ -189,7 +189,10 @@ export const useMarketLeaderboard = (
           .filter((entry): entry is MarketLeaderboardEntry => entry !== null)
           .sort((a, b) => b.totalPnL - a.totalPnL);
 
-        console.log(`[useMarketLeaderboard DEBUG] Processed data:`, processedData);
+        console.log(
+          `[useMarketLeaderboard DEBUG] Processed data:`,
+          processedData
+        );
         return processedData.slice(0, 10);
       } catch (error) {
         console.error('Error in useMarketLeaderboard:', error);
